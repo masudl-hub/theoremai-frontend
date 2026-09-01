@@ -1,0 +1,98 @@
+<script lang="ts">
+	import type { PageData } from './$types';
+	import type { TurnResponsePayload } from '$lib/types/playground';
+
+	let { data }: { data: PageData } = $props();
+
+	let prompt = $state('Say hello from the THEORUM playground in one short sentence.');
+	let running = $state(false);
+	let status = $state<string | null>(null);
+	let statusKind = $state<'ok' | 'error' | null>(null);
+	let output = $state('');
+	let traceJson = $state('');
+
+	async function runTurn() {
+		running = true;
+		status = 'Running turn…';
+		statusKind = null;
+		output = '';
+		traceJson = '';
+
+		try {
+			const res = await fetch('/api/turn', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ profileId: 'playground.echo', text: prompt })
+			});
+			const body = (await res.json()) as TurnResponsePayload;
+
+			if (!body.ok) {
+				status = body.error;
+				statusKind = 'error';
+				return;
+			}
+
+			output = body.text;
+			traceJson = JSON.stringify(body.trace ?? [], null, 2);
+			status = `Stop: ${JSON.stringify(body.stop)}`;
+			statusKind = 'ok';
+		} catch (error) {
+			status = error instanceof Error ? error.message : 'Request failed.';
+			statusKind = 'error';
+		} finally {
+			running = false;
+		}
+	}
+</script>
+
+<div class="mx-auto max-w-5xl px-6 py-16 md:px-14">
+	<a href="/" class="invert-link mb-10 inline-block text-xs font-bold tracking-widest uppercase"
+		>← Theorum</a
+	>
+
+	<section class="mb-8 border-2 border-black bg-[var(--color-paper-bright)] p-6">
+		<h1 class="mb-2 text-2xl font-extrabold tracking-tighter uppercase md:text-4xl">Playground</h1>
+		<div class="flex flex-wrap gap-4 text-xs text-[var(--color-mute)]">
+			<span>version <code class="text-black">{data.kernel.version}</code></span>
+			{#if data.kernel.submoduleHead}
+				<span>head <code class="text-black">{data.kernel.submoduleHead}</code></span>
+			{/if}
+		</div>
+	</section>
+
+	<div class="grid grid-cols-1 gap-8 md:grid-cols-2">
+		<section class="border-2 border-black bg-[var(--color-paper-bright)] p-6">
+			<h2 class="mb-4 text-xs font-extrabold tracking-widest uppercase">Prompt</h2>
+			<textarea
+				class="field min-h-40 resize-y"
+				bind:value={prompt}
+				aria-label="Turn prompt"
+			></textarea>
+			<div class="mt-4 flex flex-wrap items-center gap-3">
+				<button class="btn btn-solid" onclick={runTurn} disabled={running || !prompt.trim()}>
+					{running ? '[ Running… ]' : '[ Run turn ]'}
+				</button>
+				<p
+					class="text-xs"
+					class:text-[var(--color-mute)]={!statusKind}
+					class:text-[#1a7a45]={statusKind === 'ok'}
+					class:text-[#b00020]={statusKind === 'error'}
+				>
+					{status ?? 'Requires OPENROUTER_API_KEY in .env for live turns.'}
+				</p>
+			</div>
+		</section>
+
+		<section class="border-2 border-black bg-[var(--color-paper-bright)] p-6">
+			<h2 class="mb-4 text-xs font-extrabold tracking-widest uppercase">Output</h2>
+			<div class="min-h-40 text-sm whitespace-pre-wrap">{output || '—'}</div>
+		</section>
+	</div>
+
+	<section class="mt-8 border-2 border-black bg-black p-6 text-white">
+		<h2 class="mb-4 text-xs font-extrabold tracking-widest uppercase">Trace events</h2>
+		<pre class="overflow-x-auto text-[10px] leading-relaxed md:text-xs"
+			>{traceJson || 'Run a turn to inspect raw TurnEvent[] from the kernel.'}</pre
+		>
+	</section>
+</div>
