@@ -1,9 +1,9 @@
 <script lang="ts">
 	import Architecture from '$lib/components/Architecture.svelte';
-	import Builder from '$lib/components/Builder.svelte';
 	import Hero from '$lib/components/Hero.svelte';
 	import Overview from '$lib/components/Overview.svelte';
 	import Pillars from '$lib/components/Pillars.svelte';
+	import Playground from '$lib/components/Playground.svelte';
 	import Use from '$lib/components/Use.svelte';
 	import type { PageData } from './$types';
 
@@ -17,7 +17,7 @@
 		<Pillars />
 		<Architecture />
 		<Use />
-		<Builder />
+		<Playground />
 	</main>
 
 	<footer class="border-t-[3px] border-black px-6 py-10 md:px-14">
@@ -29,7 +29,7 @@
 				</p>
 			</div>
 			<nav class="flex flex-wrap gap-4 text-xs font-bold" aria-label="Footer">
-				<a class="invert-link px-1" href="/playground">Playground</a>
+				<a class="invert-link px-1" href="#playground">Playground</a>
 				<a
 					class="invert-link px-1"
 					href="https://github.com/masudl-hub/theorum"

@@ -123,6 +123,14 @@ html {
 	.hero.landing-section {
 		overflow: visible;
 	}
+
+	/* Tall snap section: grow with content so the page scroll covers the whole profile. */
+	.landing-section.landing-section-grow {
+		height: auto;
+		min-height: 100dvh;
+		max-height: none;
+		overflow: visible;
+	}
 }
 
 body {

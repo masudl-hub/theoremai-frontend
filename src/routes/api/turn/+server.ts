@@ -24,8 +24,7 @@ defineProfile({
 		allow: ['sonar'],
 		config: {
 			sonar: {
-				apiId: 'sonar',
-				openRouterId: 'perplexity/sonar',
+				apiId: 'perplexity/sonar',
 				thinking: { on: 'low', off: 'low' },
 				thinkingLevels: ['low', 'medium', 'high'],
 				summaries: { on: 'none', off: 'none' },
@@ -92,7 +91,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const profile = getProfile(PLAYGROUND_PROFILE_ID);
 		const provider = createProvider(profile, {
-			openRouter: {
+			openAiGateway: {
 				apiKey: openRouterApiKey,
 				siteUrl: 'https://theorum.dev',
 				siteName: 'Theorum Playground'

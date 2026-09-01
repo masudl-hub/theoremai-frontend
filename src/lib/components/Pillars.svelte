@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { pillarArt, type PillarArtId } from '$lib/data/pillar-art';
 
 	type Pillar = {
@@ -171,46 +171,49 @@
 	}
 
 	onMount(() => {
-		const section = sectionEl;
-		if (!section) return;
+		let cleanup: (() => void) | undefined;
 
-		const scroller = scrollerOf();
-		if (!scroller) return;
+		void tick().then(() => {
+			const section = sectionEl;
+			if (!section) return;
 
-		// Tall sticky story is desktop-only (matches landing snap in app.css).
-		if (!desktopStory()) return;
+			const scroller = scrollerOf();
+			if (!scroller || !desktopStory()) return;
 
-		let frame = 0;
+			let frame = 0;
 
-		const sync = () => {
-			frame = 0;
-			const steps = stepNodes();
-			if (!steps.length) return;
-			const rootTop = scroller.getBoundingClientRect().top;
-			let best = active;
-			let bestDist = Infinity;
-			for (let i = 0; i < steps.length; i++) {
-				const dist = Math.abs(steps[i].getBoundingClientRect().top - rootTop);
-				if (dist < bestDist) {
-					bestDist = dist;
-					best = i;
+			const sync = () => {
+				frame = 0;
+				const steps = stepNodes();
+				if (!steps.length) return;
+				const rootTop = scroller.getBoundingClientRect().top;
+				let best = 0;
+				let bestDist = Infinity;
+				for (let i = 0; i < steps.length; i++) {
+					const dist = Math.abs(steps[i].getBoundingClientRect().top - rootTop);
+					if (dist < bestDist) {
+						bestDist = dist;
+						best = i;
+					}
 				}
-			}
-			if (best !== active) active = best;
-		};
+				active = best;
+			};
 
-		const onScroll = () => {
-			if (frame) return;
-			frame = requestAnimationFrame(sync);
-		};
+			const onScroll = () => {
+				if (frame) return;
+				frame = requestAnimationFrame(sync);
+			};
 
-		scroller.addEventListener('scroll', onScroll, { passive: true });
-		sync();
+			scroller.addEventListener('scroll', onScroll, { passive: true });
+			sync();
 
-		return () => {
-			scroller.removeEventListener('scroll', onScroll);
-			if (frame) cancelAnimationFrame(frame);
-		};
+			cleanup = () => {
+				scroller.removeEventListener('scroll', onScroll);
+				if (frame) cancelAnimationFrame(frame);
+			};
+		});
+
+		return () => cleanup?.();
 	});
 </script>
 

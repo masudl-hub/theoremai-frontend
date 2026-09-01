@@ -41,8 +41,9 @@ npm run theorum:pull
 
 ## Development notes
 
-- **Kernel imports are server-only.** Client components should talk to `/api/*` routes, not import `@theorum/core` directly.
-- Vite aliases `@theorum/core` to `theorum/mod.ts` so the site tracks submodule source during development.
+- **Kernel runtime is server-only.** Client components should talk to `/api/*` routes, not import `@theorum/core` directly.
+- **Schema vocab is client-safe.** `import { PROTOCOLS, fieldMeta } from '@theorum/schema'` (Vite alias to `theorum/src/kernel/schema.ts`) — closed unions and profile field tips, no Deno or provider graph.
+- Vite aliases `@theorum/core` to the sibling `../theorum` checkout when present, otherwise the nested submodule, so the site tracks kernel source during development.
 - Transitive npm deps (`ai`, `@openrouter/ai-sdk-provider`, `gpt-tokenizer`) are listed in this repo because the kernel source is bundled through Vite SSR.
 
 ## Scripts

@@ -339,7 +339,7 @@ export const architectureMap: Record<string, ArchNode> = {
 		specs: [
 			['types', 'TurnStop · TurnStopKind'],
 			['api', 'isResumeableStop · shouldAutoContinue'],
-			['also', 'turnStopFromOpenRouter · …']
+			['also', 'turnStopFromOpenAiFinishReason · …']
 		],
 		copyable: true
 	},
@@ -361,10 +361,10 @@ export const architectureMap: Record<string, ArchNode> = {
 		id: 'create_provider',
 		title: 'createProvider',
 		type: 'FACTORY',
-		usage: 'createProvider(profile, { openRouter, gemini, local })',
+		usage: 'createProvider(profile, { openAiGateway, gemini, local })',
 		desc: 'Wire a profile to API keys and transport. Call once per profile (or cache it) before runTurn.',
 		specs: [
-			['opts', 'openRouter · gemini · local'],
+			['opts', 'openAiGateway · gemini · local'],
 			['returns', 'ModelProvider'],
 			['creds', 'host-supplied only']
 		],
@@ -400,7 +400,7 @@ export const architectureMap: Record<string, ArchNode> = {
 		id: 'openrouter',
 		title: 'OpenRouter',
 		type: 'PROVIDER',
-		usage: "import { createProvider } from 'theorum'\n// createProvider(profile, { openRouter: { apiKey } })",
+		usage: "import { createProvider } from 'theorum'\n// createProvider(profile, { openAiGateway: { apiKey } })",
 		desc: 'Route chat through OpenRouter models. Wire it with createProvider — the adapter loads lazily on the first turn.',
 		specs: [
 			['protocol', 'openAi'],
