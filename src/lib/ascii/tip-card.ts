@@ -23,12 +23,87 @@ export function wrapText(text: string, width: number): string[] {
 	return lines;
 }
 
-export function placeTip(e: MouseEvent, width = 400, pad = 12): { x: number; y: number } {
-	let x = e.clientX + pad;
-	if (x + width > window.innerWidth - pad) {
-		x = Math.max(pad, e.clientX - width - pad);
+export function computeTipPosition(
+	clientX: number,
+	clientY: number,
+	tipWidth: number,
+	tipHeight: number,
+	pad = 12
+): { x: number; y: number } {
+	const vpW = typeof window !== 'undefined' ? window.innerWidth : 1024;
+	const vpH = typeof window !== 'undefined' ? window.innerHeight : 768;
+
+	// Horizontal: default to right of cursor; if overflowing right, place to left or clamp
+	let x = clientX + 12;
+	if (x + tipWidth > vpW - pad) {
+		const leftX = clientX - tipWidth - 12;
+		if (leftX >= pad) {
+			x = leftX;
+		} else {
+			x = Math.max(pad, vpW - tipWidth - pad);
+		}
 	}
-	return { x, y: e.clientY };
+	x = Math.max(pad, Math.min(vpW - tipWidth - pad, x));
+
+	// Vertical: default above cursor; if overflowing top, place below or clamp
+	const yAbove = clientY - tipHeight - 10;
+	const yBelow = clientY + 18;
+
+	let y: number;
+	if (yAbove >= pad) {
+		y = yAbove;
+	} else if (yBelow + tipHeight <= vpH - pad) {
+		y = yBelow;
+	} else {
+		// If it cannot fit fully either above or below, pick side with more room
+		if (clientY > vpH / 2) {
+			y = Math.max(pad, yAbove);
+		} else {
+			y = Math.min(vpH - tipHeight - pad, yBelow);
+		}
+	}
+	y = Math.max(pad, Math.min(vpH - tipHeight - pad, y));
+
+	return { x, y };
+}
+
+export function computeTipPositionForRect(
+	targetRect: DOMRect,
+	tipWidth: number,
+	tipHeight: number,
+	pad = 12
+): { x: number; y: number } {
+	const vpW = typeof window !== 'undefined' ? window.innerWidth : 1024;
+	const vpH = typeof window !== 'undefined' ? window.innerHeight : 768;
+
+	let x = targetRect.left;
+	if (x + tipWidth > vpW - pad) {
+		x = Math.max(pad, vpW - tipWidth - pad);
+	}
+	x = Math.max(pad, x);
+
+	const yAbove = targetRect.top - tipHeight - 8;
+	const yBelow = targetRect.bottom + 8;
+
+	let y: number;
+	if (yAbove >= pad) {
+		y = yAbove;
+	} else if (yBelow + tipHeight <= vpH - pad) {
+		y = yBelow;
+	} else {
+		if (targetRect.top > vpH / 2) {
+			y = Math.max(pad, yAbove);
+		} else {
+			y = Math.min(vpH - tipHeight - pad, yBelow);
+		}
+	}
+	y = Math.max(pad, Math.min(vpH - tipHeight - pad, y));
+
+	return { x, y };
+}
+
+export function placeTip(e: MouseEvent, width = 400, pad = 12): { x: number; y: number } {
+	return computeTipPosition(e.clientX, e.clientY, width, 200, pad);
 }
 
 function renderListRows(

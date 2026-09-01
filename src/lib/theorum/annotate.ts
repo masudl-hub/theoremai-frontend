@@ -10,7 +10,7 @@ function wrapKey(path: string, text: string): string {
 	return `<button type="button" class="node" data-type-path="${escapeHtml(path)}">${escapeHtml(text)}</button>`;
 }
 
-const KEY_LINE = /^(\s*)([A-Za-z_][\w]*)(\s*:)(\s*)(.*)$/;
+const KEY_LINE = /^(\s*)(["']?[A-Za-z_][\w.-]*["']?)(\s*:)(\s*)(.*)$/;
 
 /** Preset vocabularies for open kernel fields — sourced from preset packs, not schema. */
 const PRESET_REFERENCE: Record<string, readonly string[]> = {
@@ -31,28 +31,40 @@ export function annotateProfileCode(source: string): string {
 		const comment = commentAt === -1 ? '' : line.slice(commentAt);
 
 		const trimmed = code.trim();
-		if (trimmed === '}' || trimmed === '},' || trimmed === '];' || trimmed === '],') {
-			if (stack.length) stack.pop();
+		if (!trimmed) {
 			out.push(escapeHtml(code) + commentHtml(comment));
 			continue;
 		}
 
 		const match = code.match(KEY_LINE);
 		if (!match) {
+			const delta = braceDelta(code);
+			if (delta < 0) {
+				for (let i = 0; i < -delta && stack.length > 0; i++) {
+					stack.pop();
+				}
+			}
 			out.push(escapeHtml(code) + commentHtml(comment));
 			continue;
 		}
 
-		const [, indent, key, colon, space, restRaw] = match;
+		const [, indent, rawKey, colon, space, restRaw] = match;
 		const rest = restRaw ?? '';
-		const path = catalogPathFor([...stack, key!]);
+		const cleanKey = rawKey!.replace(/^['"]|['"]$/g, '');
+		const path = catalogPathFor([...stack, cleanKey]);
 		const meta = fieldMeta(path);
-		const keyHtml = meta ? wrapKey(path, key!) : escapeHtml(key!);
+		const keyHtml = meta ? wrapKey(path, rawKey!) : escapeHtml(rawKey!);
 
-		const opensObject = rest.trimStart().startsWith('{');
-		const opensArray = rest.trimStart().startsWith('[');
-		if (opensObject || opensArray) stack.push(key!);
-		if (braceDelta(rest) < 0 && stack.length) stack.pop();
+		const delta = braceDelta(rest);
+		if (delta > 0) {
+			for (let i = 0; i < delta; i++) {
+				stack.push(cleanKey);
+			}
+		} else if (delta < 0) {
+			for (let i = 0; i < -delta && stack.length > 0; i++) {
+				stack.pop();
+			}
+		}
 
 		out.push(`${indent}${keyHtml}${escapeHtml(colon!)}${space}${escapeHtml(rest)}${commentHtml(comment)}`);
 	}
@@ -99,12 +111,28 @@ export function fieldTipArt(path: string): string | null {
 	const options = meta.options?.length ? meta.options : preset;
 	const listLabel = preset && !meta.options?.length ? 'preset' : 'options';
 
+	let specs: Array<{ label: string; value: string }> | undefined;
+	let list: readonly string[] | undefined;
+	let labelW: number | undefined;
+
+	if (meta.optionDescriptions) {
+		const entries = Object.entries(meta.optionDescriptions);
+		const maxK = Math.max(...entries.map(([k]) => k.length));
+		labelW = Math.max(8, maxK + 2);
+		specs = entries.map(([label, value]) => ({ label, value }));
+	} else if (options?.length) {
+		list = options;
+	} else {
+		specs = [{ label: 'type', value: meta.type }];
+	}
+
 	return renderAsciiCard({
 		title: path.toUpperCase(),
 		body: meta.doc,
-		specs: options?.length ? undefined : [{ label: 'type', value: meta.type }],
-		list: options,
+		specs,
+		list,
 		listLabel,
+		labelW,
 		footer: preset && !meta.options?.length
 			? 'Google preset vocabulary; kernel accepts any string.'
 			: meta.optionNote

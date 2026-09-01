@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { placeTip } from '$lib/ascii/tip-card';
+	import { computeTipPosition, computeTipPositionForRect } from '$lib/ascii/tip-card';
 
 	let {
 		children,
@@ -21,6 +21,10 @@
 	let tipX = $state(0);
 	let tipY = $state(0);
 	let visible = $state(false);
+	let activeEl = $state<HTMLElement | null>(null);
+	let tipEl = $state<HTMLElement | null>(null);
+	let lastPointer = $state<{ clientX: number; clientY: number } | null>(null);
+	let focusedRect = $state<DOMRect | null>(null);
 
 	function targetEl(e: Event): HTMLElement | null {
 		const el = e.target;
@@ -28,8 +32,26 @@
 		return el.closest(selector) as HTMLElement | null;
 	}
 
-	function moveTip(e: MouseEvent) {
-		const pos = placeTip(e);
+	function estimateDimensions(text: string) {
+		const lines = text.split('\n');
+		const maxLen = Math.max(...lines.map((l) => l.length), 40);
+		// In monospace: ~7.5px per char on mobile (11px), ~8.2px on desktop (12px)
+		const charW = typeof window !== 'undefined' && window.innerWidth >= 768 ? 8.2 : 7.5;
+		const lineH = typeof window !== 'undefined' && window.innerWidth >= 768 ? 16.8 : 15.2;
+		return {
+			w: Math.min(maxLen * charW + 24, typeof window !== 'undefined' ? window.innerWidth - 24 : 400),
+			h: Math.min(lines.length * lineH + 16, typeof window !== 'undefined' ? window.innerHeight - 24 : 300)
+		};
+	}
+
+	function updatePointerPosition(clientX: number, clientY: number) {
+		lastPointer = { clientX, clientY };
+		focusedRect = null;
+		const rect = tipEl?.getBoundingClientRect();
+		const est = tip ? estimateDimensions(tip) : { w: 380, h: 200 };
+		const w = rect?.width || est.w;
+		const h = rect?.height || est.h;
+		const pos = computeTipPosition(clientX, clientY, w, h);
 		tipX = pos.x;
 		tipY = pos.y;
 	}
@@ -37,10 +59,26 @@
 	function showFrom(el: HTMLElement, e: MouseEvent) {
 		const art = resolveTip(el);
 		if (!art) return;
+		activeEl = el;
 		tip = art;
 		visible = true;
-		moveTip(e);
+		updatePointerPosition(e.clientX, e.clientY);
 	}
+
+	$effect(() => {
+		if (visible && tip && tipEl) {
+			const rect = tipEl.getBoundingClientRect();
+			if (focusedRect) {
+				const pos = computeTipPositionForRect(focusedRect, rect.width, rect.height);
+				tipX = pos.x;
+				tipY = pos.y;
+			} else if (lastPointer) {
+				const pos = computeTipPosition(lastPointer.clientX, lastPointer.clientY, rect.width, rect.height);
+				tipX = pos.x;
+				tipY = pos.y;
+			}
+		}
+	});
 
 	function onEnter(e: MouseEvent) {
 		const el = targetEl(e);
@@ -51,22 +89,27 @@
 	function onMove(e: MouseEvent) {
 		const el = targetEl(e);
 		if (!el) {
+			activeEl = null;
 			visible = false;
 			tip = null;
+			lastPointer = null;
 			return;
 		}
-		if (!visible) {
+		if (!visible || el !== activeEl) {
 			showFrom(el, e);
 			return;
 		}
-		moveTip(e);
+		updatePointerPosition(e.clientX, e.clientY);
 	}
 
 	function onLeave(e: MouseEvent) {
 		const related = e.relatedTarget;
 		if (related instanceof Element && related.closest(selector)) return;
+		activeEl = null;
 		visible = false;
 		tip = null;
+		lastPointer = null;
+		focusedRect = null;
 	}
 
 	function onFocusIn(e: FocusEvent) {
@@ -74,18 +117,29 @@
 		if (!el) return;
 		const art = resolveTip(el);
 		if (!art) return;
+		activeEl = el;
 		tip = art;
 		visible = true;
+		lastPointer = null;
 		const rect = el.getBoundingClientRect();
-		tipX = rect.left;
-		tipY = rect.top;
+		focusedRect = rect;
+		const tipRect = tipEl?.getBoundingClientRect();
+		const est = estimateDimensions(art);
+		const w = tipRect?.width || est.w;
+		const h = tipRect?.height || est.h;
+		const pos = computeTipPositionForRect(rect, w, h);
+		tipX = pos.x;
+		tipY = pos.y;
 	}
 
 	function onFocusOut(e: FocusEvent) {
 		const related = e.relatedTarget;
 		if (related instanceof Node && (e.currentTarget as HTMLElement).contains(related)) return;
+		activeEl = null;
 		visible = false;
 		tip = null;
+		lastPointer = null;
+		focusedRect = null;
 	}
 </script>
 
@@ -102,6 +156,7 @@
 	{@render children()}
 	{#if visible && tip}
 		<pre
+			bind:this={tipEl}
 			class="ascii map-tip pointer-events-none font-bold"
 			style="left: {tipX}px; top: {tipY}px;"
 			role="tooltip"
@@ -140,7 +195,7 @@
 		width: 100%;
 		text-align: left;
 		font: inherit;
-		font-size: 0.55rem;
+		font-size: 0.68rem;
 		font-weight: 800;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
@@ -156,7 +211,7 @@
 	:global(.ascii-hover-host[data-hover-variant='label'] .type-label:hover),
 	:global(.ascii-hover-host[data-hover-variant='label'] .type-label:focus-visible) {
 		background: rgba(0, 0, 0, 0.04);
-		color: var(--color-mute);
+		color: #000;
 		outline: none;
 	}
 
@@ -164,19 +219,19 @@
 		position: fixed;
 		z-index: 9999;
 		margin: 0;
-		max-height: 60vh;
+		max-height: calc(100dvh - 24px);
+		max-width: calc(100vw - 24px);
 		overflow: auto;
 		background: var(--color-paper);
 		color: #000;
-		font-size: 10px;
-		line-height: 1.35;
+		font-size: 11px;
+		line-height: 1.38;
 		white-space: pre;
-		transform: translateY(calc(-100% - 8px));
 	}
 
 	@media (min-width: 768px) {
 		:global(.map-tip) {
-			font-size: 11px;
+			font-size: 12px;
 		}
 	}
 </style>

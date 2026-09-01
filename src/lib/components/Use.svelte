@@ -42,14 +42,14 @@ ${agentBlock}`);
 	const modelsBlock = $derived.by(() => {
 		const compactBlock = compaction
 			? `
-          compaction: {
-            maxTokens: 2000,
-            compactAt: 0.75,
-            previousExchanges: 8,
-            profile: "mermaid.compactor", // Requires a registered profile id
-            timing: "after",
-            meter: "history",
-          },`
+        compaction: {
+          maxTokens: 2000,
+          compactAt: 0.75,
+          previousExchanges: 8,
+          profile: "mermaid.compactor",
+          timing: "after",
+          meter: "history",
+        },`
 			: '';
 
 		return `  model: {
@@ -59,91 +59,93 @@ ${agentBlock}`);
     config: {
       flash: {
         apiId: "gemini-3.5-flash-lite",
-        thinking: { on: "medium", off: "minimal" },
+        thinking: {
+          on: "medium",
+          off: "minimal",
+        },
         thinkingLevels: ["minimal", "low", "medium", "high"],
-        summaries: { on: "auto", off: "none" },
+        summaries: {
+          on: "auto",
+          off: "none",
+        },
         maxOutputTokens: 8192,
         temperature: 1,
         keyBuiltins: ["googleMaps", "urlContext"],${compactBlock}
       },
       pro: {
         apiId: "gemini-3.7-flash",
-        thinking: { on: "high", off: "low" },
+        thinking: {
+          on: "high",
+          off: "low",
+        },
         thinkingLevels: ["low", "medium", "high"],
-        summaries: { on: "auto", off: "auto" },
+        summaries: {
+          on: "auto",
+          off: "auto",
+        },
         maxOutputTokens: 64000,
         temperature: 1,
         keyBuiltins: [],${compactBlock}
       },
     },
-    select: { fast: "flash", smart: "pro" },
-    thinking: { fast: "low", smart: "high" },
+    select: {
+      fast: "flash",
+      smart: "pro",
+    },
+    thinking: {
+      fast: "low",
+      smart: "high",
+    },
     controls: ["thinking"],
-    maxSteps: 1, // tool-loop ceiling (default)
+    maxSteps: 1,
   },`;
 	});
 
 	const toolsBlock = $derived.by(() => {
 		const base = `  tools: {
     allow: ["googleSearch", "googleMaps", "urlContext"],
-    // allow = hard ceiling — the turn cannot call anything outside this list
   },`;
 
 		if (!dynamicTools) return base;
 
 		return `${base}
 
-  // Dynamic tools (turn request — not on the profile):
-  // runTurn({
-  //   profile: "mermaid",
-  //   input: { text: "…" },
-  //   tools: {
-  //     lookup_order: true,
+  // Dynamic tools on TurnRequest:
+  // dynamicTools: [{
+  //   name: "lookup_order",
+  //   description: "Fetch order state from the host.",
+  //   loadTier: "T1",
+  //   permissionTier: "session_consent",
+  //   parameters: {
+  //     type: "object",
+  //     properties: { orderId: { type: "string" } },
+  //     required: ["orderId"],
   //   },
-  //   dynamicTools: [{
-  //     name: "lookup_order",
-  //     description: "Fetch order state from the host.",
-  //     loadTier: "T1",               // T0 | T1 | T2
-  //     permissionTier: "session_consent", // auto | session_consent | always_confirm
-  //     parameters: {
-  //       type: "object",
-  //       properties: { orderId: { type: "string" } },
-  //       required: ["orderId"],
-  //     },
-  //     handler: async (args) => ({ status: "ok", data: args }),
-  //   }],
-  // }, provider)`;
+  //   handler: async (args) => ({ status: "ok", data: args }),
+  // }]`;
 	});
 
 	const inputsBlock = `  inputs: {
     text: true,
     attachments: {
-      accept: [
-        "image/png",
-        "image/jpeg",
-        "image/webp",
-        "application/pdf",
-        "text/plain",
-        "text/markdown",
-      ],
+      accept: ["image/png", "image/jpeg", "image/webp", "application/pdf", "text/plain", "text/markdown"],
     },
-    voice: { accept: ["audio/webm", "audio/wav", "audio/mpeg"] },
+    voice: {
+      accept: ["audio/webm", "audio/wav", "audio/mpeg"],
+    },
     maxFiles: 5,
-    // maxBytes / maxTurnBytes / limitsByMime — optional size policy
-    // slots: { aspectRatio: ["1:1", "16:9"] } — optional turn-time selectors
   },`;
 
 	const outputsBlock = $derived.by(() => {
 		const lines: string[] = ['  outputs: {'];
 
 		if (outputKind === 'text') {
-			lines.push('    // plain text — no structured / image / speech pins');
+			lines.push('    structured: null,');
 		} else if (outputKind === 'structured') {
-			lines.push('    structured: "mermaidTurn", // { message, diagram?: { mermaid, title? } }');
+			lines.push('    structured: "mermaidTurn",');
 			if (validation) {
 				lines.push(`    validation: {
       fields: {
-        // Host-owned validator; return { isValid, error? }.
         "diagram.mermaid": (source) => ({
           isValid: typeof source === "string" && source.trim().length > 0,
           error: "diagram.mermaid must be a non-empty string",
@@ -164,19 +166,17 @@ ${agentBlock}`);
 		} else if (outputKind === 'speech') {
 			lines.push(`    speech: {
       voice: "Kore",
-      format: "pcm", // → WAV; mp3 needs openAi speech
+      format: "pcm",
     },`);
 		}
 
-		lines.push(`    // streaming — how the turn emits live events
-    streaming: {
-      streamThoughts: true, // emit model thinking on the turn stream
-      gateMedia: true, // hold media until egress / validation clear
+		lines.push(`    streaming: {
+      streamThoughts: true,
+      gateMedia: true,
     },
-    // resume — continue after a non-user stop (length cut, dropped stream, …)
     resume: {
-      allowContinue: ["length", "stream_incomplete", "provider_error"], // host may resume
-      autoContinue: ["length", "stream_incomplete"], // runner auto-continues these
+      allowContinue: ["length", "stream_incomplete", "provider_error"],
+      autoContinue: ["length", "stream_incomplete"],
     },`);
 
 		lines.push('  },');
@@ -186,18 +186,19 @@ ${agentBlock}`);
 	const guardrailsBlock = $derived.by(() => {
 		const egressLines = egress
 			? `\n    egress: {
-      // Host-owned check before user-visible text is released.
       enforce: async ({ text }) => ({ blocked: false, text }),
-      onBlock: "reject_to_agent", // or "refuse_to_user"
+      onBlock: "reject_to_agent",
       maxRetries: 2,
     },`
 			: '';
 
 		return `  guardrails: {
-    canary: true, // default
-    sanitizeInput: true, // default
-    redactSensitive: true, // default
-    quota: { perDay: 20 }, // host HTTP helper — not enforced inside runTurn${egressLines}
+    canary: true,
+    sanitizeInput: true,
+    redactSensitive: true,
+    quota: {
+      perDay: 20,
+    },${egressLines}
   },`;
 	});
 
@@ -303,10 +304,10 @@ ${agentBlock}`);
 	id="use"
 	class="landing-section landing-section-grow relative flex w-full flex-col items-center justify-start border-b-[3px] border-black px-6 py-20 md:px-14 md:py-12"
 >
-	<div class="relative z-10 mb-6 flex w-full max-w-3xl shrink-0 items-start justify-between gap-4 md:mb-8">
+	<div class="relative z-10 mb-6 flex w-full max-w-6xl shrink-0 items-start justify-between gap-4 md:mb-8">
 		<div>
 			<h3 class="text-sm font-extrabold tracking-[0.22em] uppercase">Define a profile</h3>
-			<p class="mt-2 max-w-lg text-xs text-[var(--color-mute)] md:text-sm">
+			<p class="mt-2 max-w-2xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
 				A profile is the contract for one agent: identity, models, tools, inputs, outputs, and
 				guardrails.
 			</p>
@@ -314,44 +315,44 @@ ${agentBlock}`);
 		{@render copyBtn('all', fullCode)}
 	</div>
 
-	<div class="relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-10 pb-10 md:gap-12">
-		<TypeTip class="flex flex-col gap-10 md:gap-12">
+	<div class="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-12 pb-12 md:gap-14">
+		<TypeTip class="flex flex-col gap-12 md:gap-14">
 		<section class="flex flex-col gap-3" aria-labelledby="use-s0">
 			<div>
-				<h4 id="use-s0" class="text-[11px] font-extrabold tracking-wide uppercase md:text-xs">
+				<h4 id="use-s0" class="text-xs font-extrabold tracking-wide uppercase md:text-sm">
 					1 · Install
 				</h4>
-				<p class="mt-1.5 max-w-xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
+				<p class="mt-1.5 max-w-2xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
 					Add theorum to your project, then import the profile APIs.
 				</p>
 			</div>
 			<div class="relative">
 				<div class="absolute top-0 right-0 z-10">{@render copyBtn('install', installSnippet)}</div>
 				<pre
-					class="ascii profile-code overflow-x-auto pr-8 text-[10px] leading-relaxed font-bold md:text-[11px] md:leading-[1.45]">{@html codeHtml(installSnippet)}</pre>
+					class="ascii profile-code overflow-x-auto pr-8 text-xs leading-snug font-bold md:text-sm md:leading-[1.4]">{@html codeHtml(installSnippet)}</pre>
 			</div>
 		</section>
 
 		<section class="flex flex-col gap-3" aria-labelledby="use-s1">
 			<div>
-				<h4 id="use-s1" class="text-[11px] font-extrabold tracking-wide uppercase md:text-xs">
+				<h4 id="use-s1" class="text-xs font-extrabold tracking-wide uppercase md:text-sm">
 					2 · Describe agent
 				</h4>
-				<p class="mt-1.5 max-w-xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
+				<p class="mt-1.5 max-w-2xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
 					Every profile has an id, a handle, and a system instruction the model receives each turn.
 				</p>
 			</div>
 			<div class="relative">
 				<div class="absolute top-0 right-0 z-10">{@render copyBtn('agent', agentSnippet)}</div>
 				<pre
-					class="ascii profile-code max-h-[min(40vh,18rem)] overflow-auto pr-8 text-[10px] leading-relaxed font-bold md:text-[11px] md:leading-[1.45]">{@html codeHtml(agentSnippet)}</pre>
+					class="ascii profile-code overflow-x-auto pr-8 text-xs leading-snug font-bold md:text-sm md:leading-[1.4]">{@html codeHtml(agentSnippet)}</pre>
 			</div>
 		</section>
 
 		<section class="flex flex-col gap-3" aria-labelledby="use-s2">
 			<div>
 				<div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-					<h4 id="use-s2" class="text-[11px] font-extrabold tracking-wide uppercase md:text-xs">
+					<h4 id="use-s2" class="text-xs font-extrabold tracking-wide uppercase md:text-sm">
 						3 · Define models
 					</h4>
 					<button
@@ -364,7 +365,7 @@ ${agentBlock}`);
 						[ compaction ]
 					</button>
 				</div>
-				<p class="mt-1.5 max-w-xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
+				<p class="mt-1.5 max-w-2xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
 					Select a provider and the models this agent may use. Each model sets thinking levels,
 					token limits, and optional compaction.
 				</p>
@@ -372,14 +373,14 @@ ${agentBlock}`);
 			<div class="relative">
 				<div class="absolute top-0 right-0 z-10">{@render copyBtn('models', modelsBlock)}</div>
 				<pre
-					class="ascii profile-code max-h-[min(40vh,18rem)] overflow-auto pr-8 text-[10px] leading-relaxed font-bold md:text-[11px] md:leading-[1.45]">{@html codeHtml(modelsBlock)}</pre>
+					class="ascii profile-code overflow-x-auto pr-8 text-xs leading-snug font-bold md:text-sm md:leading-[1.4]">{@html codeHtml(modelsBlock)}</pre>
 			</div>
 		</section>
 
 		<section class="flex flex-col gap-3" aria-labelledby="use-s3">
 			<div>
 				<div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-					<h4 id="use-s3" class="text-[11px] font-extrabold tracking-wide uppercase md:text-xs">
+					<h4 id="use-s3" class="text-xs font-extrabold tracking-wide uppercase md:text-sm">
 						4 · Configure tools
 					</h4>
 					<button
@@ -392,7 +393,7 @@ ${agentBlock}`);
 						[ dynamic tools ]
 					</button>
 				</div>
-				<p class="mt-1.5 max-w-xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
+				<p class="mt-1.5 max-w-2xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
 					<code class="font-bold text-black">tools.allow</code> is the maximum set of tools the
 					agent can call. Anything outside that list is rejected.
 				</p>
@@ -400,30 +401,30 @@ ${agentBlock}`);
 			<div class="relative">
 				<div class="absolute top-0 right-0 z-10">{@render copyBtn('tools', toolsBlock)}</div>
 				<pre
-					class="ascii profile-code max-h-[min(40vh,18rem)] overflow-auto pr-8 text-[10px] leading-relaxed font-bold md:text-[11px] md:leading-[1.45]">{@html codeHtml(toolsBlock)}</pre>
+					class="ascii profile-code overflow-x-auto pr-8 text-xs leading-snug font-bold md:text-sm md:leading-[1.4]">{@html codeHtml(toolsBlock)}</pre>
 			</div>
 		</section>
 
 		<section class="flex flex-col gap-3" aria-labelledby="use-s4">
 			<div>
-				<h4 id="use-s4" class="text-[11px] font-extrabold tracking-wide uppercase md:text-xs">
+				<h4 id="use-s4" class="text-xs font-extrabold tracking-wide uppercase md:text-sm">
 					5 · Allow inputs
 				</h4>
-				<p class="mt-1.5 max-w-xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
+				<p class="mt-1.5 max-w-2xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
 					Declare which text, file, and voice inputs the agent accepts on a turn.
 				</p>
 			</div>
 			<div class="relative">
 				<div class="absolute top-0 right-0 z-10">{@render copyBtn('inputs', inputsBlock)}</div>
 				<pre
-					class="ascii profile-code max-h-[min(40vh,18rem)] overflow-auto pr-8 text-[10px] leading-relaxed font-bold md:text-[11px] md:leading-[1.45]">{@html codeHtml(inputsBlock)}</pre>
+					class="ascii profile-code overflow-x-auto pr-8 text-xs leading-snug font-bold md:text-sm md:leading-[1.4]">{@html codeHtml(inputsBlock)}</pre>
 			</div>
 		</section>
 
 		<section class="flex flex-col gap-3" aria-labelledby="use-s5">
 			<div>
 				<div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-					<h4 id="use-s5" class="text-[11px] font-extrabold tracking-wide uppercase md:text-xs">
+					<h4 id="use-s5" class="text-xs font-extrabold tracking-wide uppercase md:text-sm">
 						6 · Describe outputs
 					</h4>
 					<div class="flex flex-wrap gap-x-0.5" role="radiogroup" aria-label="Output kind">
@@ -452,21 +453,21 @@ ${agentBlock}`);
 						{/if}
 					</div>
 				</div>
-				<p class="mt-1.5 max-w-xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
+				<p class="mt-1.5 max-w-2xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
 					Configure how the agent responds: plain text, structured JSON, images, or speech.
 				</p>
 			</div>
 			<div class="relative">
 				<div class="absolute top-0 right-0 z-10">{@render copyBtn('outputs', outputsBlock)}</div>
 				<pre
-					class="ascii profile-code max-h-[min(40vh,18rem)] overflow-auto pr-8 text-[10px] leading-relaxed font-bold md:text-[11px] md:leading-[1.45]">{@html codeHtml(outputsBlock)}</pre>
+					class="ascii profile-code overflow-x-auto pr-8 text-xs leading-snug font-bold md:text-sm md:leading-[1.4]">{@html codeHtml(outputsBlock)}</pre>
 			</div>
 		</section>
 
 		<section class="flex flex-col gap-3" aria-labelledby="use-s6">
 			<div>
 				<div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-					<h4 id="use-s6" class="text-[11px] font-extrabold tracking-wide uppercase md:text-xs">
+					<h4 id="use-s6" class="text-xs font-extrabold tracking-wide uppercase md:text-sm">
 						7 · Set guardrails
 					</h4>
 					<button
@@ -479,7 +480,7 @@ ${agentBlock}`);
 						[ egress ]
 					</button>
 				</div>
-				<p class="mt-1.5 max-w-xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
+				<p class="mt-1.5 max-w-2xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
 					Control canary fencing, input sanitization, sensitive-data redaction, quotas, and egress
 					checks.
 				</p>
@@ -489,7 +490,7 @@ ${agentBlock}`);
 					{@render copyBtn('guardrails', guardrailsBlock)}
 				</div>
 				<pre
-					class="ascii profile-code max-h-[min(40vh,18rem)] overflow-auto pr-8 text-[10px] leading-relaxed font-bold md:text-[11px] md:leading-[1.45]">{@html codeHtml(guardrailsBlock)}</pre>
+					class="ascii profile-code overflow-x-auto pr-8 text-xs leading-snug font-bold md:text-sm md:leading-[1.4]">{@html codeHtml(guardrailsBlock)}</pre>
 			</div>
 		</section>
 		</TypeTip>
@@ -519,10 +520,10 @@ ${agentBlock}`);
 		appearance: none;
 		background: transparent;
 		border: none;
-		padding: 0.15rem 0.2rem;
+		padding: 0.15rem 0.25rem;
 		color: var(--color-mute);
 		cursor: pointer;
-		font-size: 10px;
+		font-size: 11px;
 		font-weight: 800;
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
@@ -543,13 +544,13 @@ ${agentBlock}`);
 	}
 
 	:global(.code-comment) {
-		font-weight: 400;
+		font-weight: 500;
 		color: var(--color-mute);
 	}
 
 	@media (min-width: 768px) {
 		.chip {
-			font-size: 11px;
+			font-size: 12px;
 		}
 	}
 </style>

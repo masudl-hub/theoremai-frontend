@@ -1,45 +1,32 @@
 <script lang="ts">
-	import { Handle, Position, useSvelteFlow, type NodeProps } from '@xyflow/svelte';
+	import { Handle, Position, type NodeProps } from '@xyflow/svelte';
+	import { getContext } from 'svelte';
 	import { facetTitle } from '$lib/playground/facet-ui';
+	import { PLAYGROUND_CTX, type PlaygroundCtx } from '$lib/playground/context';
 	import {
-		type FacetData,
 		type FacetKind,
 		type PlaygroundNode
 	} from '$lib/playground/types';
 
 	let { id, data }: NodeProps<PlaygroundNode> = $props();
 
-	const flow = useSvelteFlow();
+	const playground = getContext<PlaygroundCtx>(PLAYGROUND_CTX);
 
 	const kind = $derived(data.kind as FacetKind);
 	const isHub = $derived(kind === 'identity');
 	const hasSource = $derived(isHub || kind === 'models');
 	const hasTarget = $derived(!isHub);
-	const isActive = $derived(data.expanded);
+	const isActive = $derived(playground?.ui.panelNodeId === id);
 
 	const title = $derived(facetTitle(data));
 
-	function patch(partial: Partial<FacetData>) {
-		flow.updateNodeData(id, partial as Partial<PlaygroundNode['data']>);
-	}
-
 	function setExpanded(opening: boolean) {
-		if (opening) {
-			for (const node of flow.getNodes() as PlaygroundNode[]) {
-				if (node.id === id) continue;
-				if (node.data.expanded) flow.updateNodeData(node.id, { expanded: false });
-				if ((node.zIndex ?? 0) !== 0) flow.updateNode(node.id, { zIndex: 0 });
-			}
-			flow.updateNode(id, { zIndex: 1 });
-		} else {
-			flow.updateNode(id, { zIndex: 0 });
-		}
-		patch({ expanded: opening } as Partial<FacetData>);
+		playground?.togglePanel(id, opening);
 	}
 
 	function toggle(e: MouseEvent) {
 		e.stopPropagation();
-		setExpanded(!data.expanded);
+		setExpanded(!isActive);
 	}
 
 	let headMoved = false;
@@ -58,7 +45,7 @@
 
 <div class="facet" class:facet-hub={isHub}>
 	{#if hasTarget}
-		<Handle id="in" type="target" position={Position.Left} class="facet-handle" />
+		<Handle id="in" type="target" position={Position.Top} class="facet-handle" />
 	{/if}
 
 	<div
@@ -72,7 +59,7 @@
 		onkeydown={(e) => {
 			if (e.key === 'Enter' || e.key === ' ') {
 				e.preventDefault();
-				setExpanded(!data.expanded);
+				setExpanded(!isActive);
 			}
 		}}
 	>
@@ -111,7 +98,7 @@
 	</button>
 
 	{#if hasSource}
-		<Handle id="out" type="source" position={Position.Right} class="facet-handle" />
+		<Handle id="out" type="source" position={Position.Bottom} class="facet-handle" />
 	{/if}
 </div>
 
@@ -119,7 +106,7 @@
 	.facet {
 		display: flex;
 		flex-direction: column;
-		width: 14rem;
+		width: 15rem;
 		border: 1.5px solid #000;
 		background: var(--color-paper);
 		font-family: var(--font-mono);
@@ -127,7 +114,7 @@
 	}
 
 	.facet-hub {
-		width: 15rem;
+		width: 16.5rem;
 	}
 
 	.facet-head {
@@ -136,9 +123,9 @@
 		align-items: center;
 		gap: 0.45rem;
 		flex-shrink: 0;
-		padding: 0.5rem 0.5rem 0.5rem 0.65rem;
+		padding: 0.5rem 0.65rem;
 		border-bottom: 1px solid #000;
-		font-size: 0.62rem;
+		font-size: 0.72rem;
 		font-weight: 800;
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
@@ -173,12 +160,12 @@
 		display: block;
 		width: 100%;
 		margin: 0;
-		padding: 0.45rem 0.65rem 0.55rem;
+		padding: 0.5rem 0.65rem 0.6rem;
 		border: 0;
 		background: transparent;
 		color: var(--color-mute);
 		font: inherit;
-		font-size: 0.65rem;
+		font-size: 0.72rem;
 		line-height: 1.35;
 		font-weight: 600;
 		text-align: left;

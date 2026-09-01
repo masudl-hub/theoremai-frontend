@@ -259,7 +259,7 @@
 				{/each}
 			</div>
 
-			<div class="mt-4 flex items-center gap-6 text-xs font-extrabold tracking-widest uppercase md:mt-6">
+			<div class="mt-4 flex items-center gap-6 text-xs font-extrabold tracking-widest uppercase md:mt-6 md:text-sm">
 				<button type="button" class="invert-link px-2 py-1" onclick={prev} aria-label="Previous">
 					[ &lt; ]
 				</button>
@@ -381,8 +381,8 @@
 		}
 
 		.pillar-art {
-			font-size: 9px;
-			line-height: 1.32;
+			font-size: 11px;
+			line-height: 1.35;
 		}
 
 		.pillar-l2,
@@ -408,14 +408,14 @@
 
 	@media (min-width: 768px) {
 		.pillar-art {
-			font-size: 12px;
+			font-size: 13px;
 			line-height: 1.4;
 		}
 	}
 
 	@media (min-width: 1100px) {
 		.pillar-art {
-			font-size: 13px;
+			font-size: 14px;
 			line-height: 1.42;
 		}
 

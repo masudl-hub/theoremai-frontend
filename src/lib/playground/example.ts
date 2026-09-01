@@ -1,4 +1,10 @@
-import { defaultModelSpec, DRAG_HANDLE, type PlaygroundEdge, type PlaygroundNode } from './types';
+import {
+	defaultModelSpec,
+	DRAG_HANDLE,
+	type PlaygroundEdge,
+	type PlaygroundNode
+} from './types';
+import { PLAYGROUND_COL_PX, PLAYGROUND_ORIGIN, PLAYGROUND_ROW_PX } from './layout';
 
 function edge(source: string, target: string): PlaygroundEdge {
 	return {
@@ -17,11 +23,11 @@ export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 		{
 			id: 'identity',
 			type: 'facet',
-			position: { x: 40, y: 200 },
+			position: { x: PLAYGROUND_ORIGIN.x + PLAYGROUND_COL_PX * 2, y: PLAYGROUND_ORIGIN.y },
 			dragHandle: DRAG_HANDLE,
 			data: {
 				kind: 'identity',
-				expanded: true,
+				expanded: false,
 				agentId: 'sales.agent',
 				handle: 'sales',
 				system: 'Qualify leads. Never invent pricing.',
@@ -31,7 +37,7 @@ export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 		{
 			id: 'models',
 			type: 'facet',
-			position: { x: 400, y: 40 },
+			position: { x: PLAYGROUND_ORIGIN.x, y: PLAYGROUND_ORIGIN.y + PLAYGROUND_ROW_PX },
 			dragHandle: DRAG_HANDLE,
 			data: {
 				kind: 'models',
@@ -47,7 +53,7 @@ export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 		{
 			id: 'model-fast',
 			type: 'facet',
-			position: { x: 760, y: 40 },
+			position: { x: PLAYGROUND_ORIGIN.x, y: PLAYGROUND_ORIGIN.y + PLAYGROUND_ROW_PX * 2 },
 			dragHandle: DRAG_HANDLE,
 			data: defaultModelSpec({
 				modelId: 'fast',
@@ -58,7 +64,7 @@ export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 		{
 			id: 'tools',
 			type: 'facet',
-			position: { x: 400, y: 220 },
+			position: { x: PLAYGROUND_ORIGIN.x + PLAYGROUND_COL_PX, y: PLAYGROUND_ORIGIN.y + PLAYGROUND_ROW_PX },
 			dragHandle: DRAG_HANDLE,
 			data: {
 				kind: 'tools',
@@ -69,7 +75,7 @@ export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 		{
 			id: 'inputs',
 			type: 'facet',
-			position: { x: 400, y: 360 },
+			position: { x: PLAYGROUND_ORIGIN.x + PLAYGROUND_COL_PX * 2, y: PLAYGROUND_ORIGIN.y + PLAYGROUND_ROW_PX },
 			dragHandle: DRAG_HANDLE,
 			data: {
 				kind: 'inputs',
@@ -85,7 +91,7 @@ export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 		{
 			id: 'outputs',
 			type: 'facet',
-			position: { x: 400, y: 500 },
+			position: { x: PLAYGROUND_ORIGIN.x + PLAYGROUND_COL_PX * 3, y: PLAYGROUND_ORIGIN.y + PLAYGROUND_ROW_PX },
 			dragHandle: DRAG_HANDLE,
 			data: {
 				kind: 'outputs',
@@ -117,7 +123,7 @@ export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 		{
 			id: 'guardrails',
 			type: 'facet',
-			position: { x: 400, y: 640 },
+			position: { x: PLAYGROUND_ORIGIN.x + PLAYGROUND_COL_PX * 4, y: PLAYGROUND_ORIGIN.y + PLAYGROUND_ROW_PX },
 			dragHandle: DRAG_HANDLE,
 			data: {
 				kind: 'guardrails',

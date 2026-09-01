@@ -762,7 +762,7 @@
 
 	.facet-field span,
 	.facet-field :global(.type-label) {
-		font-size: 0.55rem;
+		font-size: 0.68rem;
 		font-weight: 800;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
@@ -772,7 +772,7 @@
 	.facet-check :global(.type-label) {
 		display: inline;
 		width: auto;
-		font-size: 0.7rem;
+		font-size: 0.78rem;
 		font-weight: 700;
 		letter-spacing: normal;
 		text-transform: none;
@@ -781,7 +781,7 @@
 	}
 
 	.facet-set legend :global(.type-label) {
-		font-size: 0.55rem;
+		font-size: 0.68rem;
 		font-weight: 800;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
@@ -797,23 +797,23 @@
 		display: flex;
 		align-items: center;
 		gap: 0.45rem;
-		font-size: 0.7rem;
+		font-size: 0.78rem;
 		font-weight: 700;
 	}
 
 	.facet-set {
 		margin: 0;
-		padding: 0.45rem 0 0;
+		padding: 0.5rem 0 0;
 		border: 0;
 		border-top: 1px solid #000;
 		display: flex;
 		flex-direction: column;
-		gap: 0.35rem;
+		gap: 0.4rem;
 	}
 
 	.facet-set legend {
 		padding: 0;
-		font-size: 0.55rem;
+		font-size: 0.68rem;
 		font-weight: 800;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
@@ -822,7 +822,7 @@
 
 	.facet-hint {
 		margin: 0;
-		font-size: 0.62rem;
+		font-size: 0.72rem;
 		line-height: 1.35;
 		color: var(--color-mute);
 		font-weight: 600;
@@ -831,6 +831,6 @@
 	.facet-action {
 		align-self: flex-start;
 		padding: 0.35rem 0.55rem;
-		font-size: 0.62rem;
+		font-size: 0.72rem;
 	}
 </style>

@@ -23,12 +23,12 @@
 	<footer class="border-t-[3px] border-black px-6 py-10 md:px-14">
 		<div class="mx-auto flex w-full max-w-6xl flex-col gap-6 md:flex-row md:items-end md:justify-between">
 			<div>
-				<p class="text-xs font-extrabold tracking-[0.22em] uppercase">Theorum</p>
-				<p class="mt-2 max-w-sm text-xs text-[var(--color-mute)]">
+				<p class="text-xs font-extrabold tracking-[0.22em] uppercase md:text-sm">Theorum</p>
+				<p class="mt-2 max-w-sm text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
 					The flat TypeScript agent kernel. Host-owned profiles, one runner, injected traces.
 				</p>
 			</div>
-			<nav class="flex flex-wrap gap-4 text-xs font-bold" aria-label="Footer">
+			<nav class="flex flex-wrap gap-4 text-xs font-bold md:text-sm" aria-label="Footer">
 				<a class="invert-link px-1" href="#playground">Playground</a>
 				<a
 					class="invert-link px-1"

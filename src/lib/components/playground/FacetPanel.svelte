@@ -1,7 +1,5 @@
 <script lang="ts">
 	import { onMount, getContext } from 'svelte';
-	import { fly } from 'svelte/transition';
-	import { cubicOut } from 'svelte/easing';
 	import FacetEditor from '$lib/components/playground/FacetEditor.svelte';
 	import { facetTitle } from '$lib/playground/facet-ui';
 	import { PLAYGROUND_CTX, type PlaygroundCtx } from '$lib/playground/context';
@@ -27,43 +25,23 @@
 	});
 </script>
 
-<div class="facet-panel-layer">
-	<aside
-		class="facet-panel"
-		aria-labelledby="facet-panel-title"
-		transition:fly={{ x: 28, duration: 320, easing: cubicOut }}
-	>
-		<header class="facet-panel-head">
-			<h2 id="facet-panel-title" class="facet-panel-title">{title}</h2>
-			<button type="button" class="facet-panel-close" onclick={close} aria-label="Close">×</button>
-		</header>
-		<div class="facet-panel-body">
-			<FacetEditor id={node.id} data={node.data} />
-		</div>
-	</aside>
-</div>
+<aside class="facet-panel" aria-labelledby="facet-panel-title">
+	<header class="facet-panel-head">
+		<h2 id="facet-panel-title" class="facet-panel-title">{title}</h2>
+		<button type="button" class="facet-panel-close" onclick={close} aria-label="Close">×</button>
+	</header>
+	<div class="facet-panel-body">
+		<FacetEditor id={node.id} data={node.data} />
+	</div>
+</aside>
 
 <style>
-	.facet-panel-layer {
-		position: absolute;
-		inset: 0;
-		z-index: 40;
-		pointer-events: none;
-	}
-
 	.facet-panel {
-		--facet-panel-inset: 0.75rem;
-
-		position: absolute;
-		top: var(--facet-panel-inset);
-		right: var(--facet-panel-inset);
-		bottom: var(--facet-panel-inset);
-		width: 33.333%;
-		min-width: 16rem;
-		max-width: calc(100% - var(--facet-panel-inset) * 2);
-		pointer-events: auto;
 		display: flex;
 		flex-direction: column;
+		width: 100%;
+		height: 100%;
+		min-width: 16rem;
 		border: 1.5px solid #000;
 		background: var(--color-paper);
 		box-shadow: 0 6px 24px rgba(0, 0, 0, 0.07);
@@ -86,7 +64,7 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		font-size: 0.68rem;
+		font-size: 0.75rem;
 		font-weight: 800;
 		letter-spacing: 0.14em;
 		text-transform: uppercase;

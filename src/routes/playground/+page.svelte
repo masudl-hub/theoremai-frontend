@@ -90,8 +90,8 @@
 	</div>
 
 	<section class="mt-8 border-2 border-black bg-black p-6 text-white">
-		<h2 class="mb-4 text-xs font-extrabold tracking-widest uppercase">Trace events</h2>
-		<pre class="overflow-x-auto text-[10px] leading-relaxed md:text-xs"
+		<h2 class="mb-4 text-xs font-extrabold tracking-widest uppercase md:text-sm">Trace events</h2>
+		<pre class="overflow-x-auto text-xs leading-snug font-bold md:text-sm md:leading-[1.4]"
 			>{traceJson || 'Run a turn to inspect raw TurnEvent[] from the kernel.'}</pre
 		>
 	</section>

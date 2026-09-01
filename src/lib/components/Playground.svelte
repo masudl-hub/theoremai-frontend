@@ -14,12 +14,19 @@
 
 	import FacetNode from '$lib/components/playground/FacetNode.svelte';
 	import FacetPanel from '$lib/components/playground/FacetPanel.svelte';
+	import PlaygroundFlowFit from '$lib/components/playground/PlaygroundFlowFit.svelte';
 	import { compilePlayground } from '$lib/playground/compile';
 	import { PLAYGROUND_CTX, type PlaygroundCtx, type PlaygroundHub } from '$lib/playground/context';
 	import { createBlankGraph, createExampleGraph } from '$lib/playground/example';
 	import {
+		PLAYGROUND_ORIGIN,
+		PLAYGROUND_PANEL_EASE_MS,
+		PLAYGROUND_ROW_PX
+	} from '$lib/playground/layout';
+	import {
 		defaultModelSpec,
 		DRAG_HANDLE,
+		type FacetData,
 		type ModelsData,
 		type PlaygroundEdge,
 		type PlaygroundNode
@@ -30,15 +37,22 @@
 	};
 
 	const starter = createExampleGraph();
-	let nodes = $state.raw<PlaygroundNode[]>(starter.nodes);
-	let edges = $state.raw<PlaygroundEdge[]>(starter.edges);
+	let nodes = $state<PlaygroundNode[]>(starter.nodes);
+	let edges = $state<PlaygroundEdge[]>(starter.edges);
 	let viewport = $state.raw<Viewport>({ x: 0, y: 0, zoom: 1 });
 
 	let running = $state(false);
 	let banner = $state('');
 	let canvasReady = $state(false);
+	let graphKey = $state(0);
+	const ui = $state({ panelNodeId: null as string | null });
 
-	const openNode = $derived(nodes.find((n) => n.data.expanded) ?? null);
+	const panelOpen = $derived(ui.panelNodeId !== null);
+	const openNode = $derived(
+		ui.panelNodeId ? (nodes.find((n) => n.id === ui.panelNodeId) ?? null) : null
+	);
+	const flowPaneWidth = $derived(panelOpen ? '66.666%' : '100%');
+	const panelPaneWidth = $derived(panelOpen ? '33.333%' : '0px');
 
 	const hub = $state<PlaygroundHub>({
 		protocol: 'openAi',
@@ -56,15 +70,20 @@
 
 	function addModelSpec() {
 		const specs = nodes.filter((n) => n.data.kind === 'modelSpec');
+		const modelsNode = nodes.find((n) => n.data.kind === 'models');
 		const id = `model-${crypto.randomUUID().slice(0, 8)}`;
 		const label = `model${specs.length + 1}`;
-		const y = 40 + specs.length * 170;
+		const baseX = modelsNode?.position.x ?? PLAYGROUND_ORIGIN.x;
+		const baseY = modelsNode?.position.y ?? PLAYGROUND_ORIGIN.y + PLAYGROUND_ROW_PX;
+		const lastSpecY =
+			specs.length > 0 ? Math.max(...specs.map((s) => s.position.y)) : baseY + PLAYGROUND_ROW_PX;
+		const y = specs.length === 0 ? baseY + PLAYGROUND_ROW_PX : lastSpecY + PLAYGROUND_ROW_PX - 40;
 		nodes = [
 			...nodes,
 			{
 				id,
 				type: 'facet',
-				position: { x: 760, y },
+				position: { x: baseX, y },
 				dragHandle: DRAG_HANDLE,
 				data: defaultModelSpec({
 					modelId: label,
@@ -91,22 +110,48 @@
 					? { ...n, zIndex: 0, data: { ...n.data, expanded: false } }
 					: { ...n, zIndex: 0 }
 		);
+		openPanel(id);
 	}
 
-	function patchNode(id: string, partial: Partial<PlaygroundNode['data']>) {
-		nodes = nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...partial } } : n));
+	function syncExpanded(activeId: string | null) {
+		nodes = nodes.map((n) => ({
+			...n,
+			zIndex: activeId !== null && n.id === activeId ? 1 : 0,
+			data: {
+				...n.data,
+				expanded: activeId !== null && n.id === activeId
+			} as FacetData
+		}));
+	}
+
+	function openPanel(id: string) {
+		ui.panelNodeId = id;
+		syncExpanded(id);
 	}
 
 	function closePanel(id: string) {
+		if (ui.panelNodeId !== id) return;
+		ui.panelNodeId = null;
+		syncExpanded(null);
+	}
+
+	function togglePanel(id: string, open: boolean) {
+		if (open) openPanel(id);
+		else closePanel(id);
+	}
+
+	function patchNode(id: string, partial: Partial<PlaygroundNode['data']>) {
 		nodes = nodes.map((n) =>
-			n.id === id ? { ...n, zIndex: 0, data: { ...n.data, expanded: false } } : n
+			n.id === id ? { ...n, data: { ...n.data, ...partial } as FacetData } : n
 		);
 	}
 
 	setContext<PlaygroundCtx>(PLAYGROUND_CTX, {
 		addModelSpec,
 		hub,
+		ui,
 		patchNode,
+		togglePanel,
 		closePanel,
 		getNodes: () => nodes
 	});
@@ -120,6 +165,8 @@
 		nodes = next.nodes;
 		edges = next.edges;
 		banner = '';
+		ui.panelNodeId = null;
+		graphKey += 1;
 	}
 
 	function blankCanvas() {
@@ -127,6 +174,8 @@
 		nodes = next.nodes;
 		edges = next.edges;
 		banner = '';
+		ui.panelNodeId = null;
+		graphKey += 1;
 	}
 
 	async function runCompile() {
@@ -155,74 +204,91 @@
 	class="landing-section playground-section relative h-dvh w-full overflow-hidden border-b-[3px] border-black p-0"
 >
 	{#if canvasReady}
-		<div class="playground-shell absolute inset-0">
-			<SvelteFlow
-				bind:nodes
-				bind:edges
-				bind:viewport
-				{nodeTypes}
-				fitView
-				fitViewOptions={{ padding: 0.12 }}
-				minZoom={0.3}
-				maxZoom={1.75}
-				nodesDraggable
-				nodesConnectable={false}
-				elementsSelectable={false}
-				nodesFocusable={false}
-				edgesFocusable={false}
-				elevateNodesOnSelect={false}
-				panOnScroll={false}
-				zoomOnScroll={false}
-				zoomOnPinch
-				preventScrolling={false}
-				colorMode="light"
-				proOptions={{ hideAttribution: true }}
-				defaultEdgeOptions={{
-					style: 'stroke: #000; stroke-width: 1.25'
-				}}
-				class="playground-flow"
-			>
-				<Background
-					variant={BackgroundVariant.Lines}
-					gap={56}
-					lineWidth={1}
-					patternColor="rgba(0,0,0,0.06)"
-					bgColor="var(--color-paper)"
-				/>
-				<Controls showLock={false} position="bottom-left" />
+		<div
+			class="playground-shell"
+			style:--playground-panel-ease-ms="{PLAYGROUND_PANEL_EASE_MS}ms"
+		>
+			<div class="playground-workspace">
+				<div
+					class="playground-flow-pane"
+					style:width={flowPaneWidth}
+					style:flex-shrink="0"
+				>
+					<SvelteFlow
+					bind:nodes
+					bind:edges
+					bind:viewport
+					{nodeTypes}
+					minZoom={0.5}
+					maxZoom={1.75}
+					nodesDraggable
+					nodesConnectable={false}
+					elementsSelectable={false}
+					nodesFocusable={false}
+					edgesFocusable={false}
+					elevateNodesOnSelect={false}
+					panOnScroll={false}
+					zoomOnScroll={false}
+					zoomOnPinch
+					preventScrolling={false}
+					colorMode="light"
+					proOptions={{ hideAttribution: true }}
+					defaultEdgeOptions={{
+						style: 'stroke: #000; stroke-width: 1.25'
+					}}
+					class="playground-flow"
+				>
+					<PlaygroundFlowFit {panelOpen} {graphKey} />
+					<Background
+						variant={BackgroundVariant.Lines}
+						gap={56}
+						lineWidth={1}
+						patternColor="rgba(0,0,0,0.06)"
+						bgColor="var(--color-paper)"
+					/>
+					<Controls showLock={false} position="bottom-left" />
 
-				<Panel position="top-left" class="playground-chrome">
-					<div class="chrome">
-						<span class="chrome-title">Playground</span>
-						<button type="button" class="btn btn-ghost chrome-btn" onclick={resetExample}>
-							Example
-						</button>
-						<button type="button" class="btn btn-ghost chrome-btn" onclick={blankCanvas}>
-							New
-						</button>
-						<button type="button" class="btn btn-ghost chrome-btn" onclick={copySource}>
-							Export
-						</button>
-						<button
-							type="button"
-							class="btn btn-solid chrome-btn"
-							onclick={runCompile}
-							disabled={running}
-						>
-							{running ? '…' : 'Run'}
-						</button>
-						{#if banner}
-							<span class="chrome-banner" class:chrome-ok={banner === 'Agent ready'}>{banner}</span>
-						{/if}
-					</div>
-				</Panel>
-			</SvelteFlow>
+					<Panel position="top-left" class="playground-chrome">
+						<div class="chrome">
+							<span class="chrome-title">Playground</span>
+							<button type="button" class="btn btn-ghost chrome-btn" onclick={resetExample}>
+								Example
+							</button>
+							<button type="button" class="btn btn-ghost chrome-btn" onclick={blankCanvas}>
+								New
+							</button>
+							<button type="button" class="btn btn-ghost chrome-btn" onclick={copySource}>
+								Export
+							</button>
+							<button
+								type="button"
+								class="btn btn-solid chrome-btn"
+								onclick={runCompile}
+								disabled={running}
+							>
+								{running ? '…' : 'Run'}
+							</button>
+							{#if banner}
+								<span class="chrome-banner" class:chrome-ok={banner === 'Agent ready'}>{banner}</span>
+							{/if}
+						</div>
+					</Panel>
+				</SvelteFlow>
+				</div>
 
-			{#if openNode}
-				{#key openNode.id}
-					<FacetPanel node={openNode} />
-				{/key}
-			{/if}
+				<aside
+					class="playground-panel-pane"
+					style:width={panelPaneWidth}
+					style:flex-shrink="0"
+					aria-hidden={!panelOpen}
+				>
+					{#if openNode}
+						{#key openNode.id}
+							<FacetPanel node={openNode} />
+						{/key}
+					{/if}
+				</aside>
+			</div>
 		</div>
 	{:else}
 		<div
@@ -235,9 +301,32 @@
 
 <style>
 	.playground-shell {
-		position: relative;
-		width: 100%;
+		position: absolute;
+		inset: 0;
 		height: 100%;
+		width: 100%;
+	}
+
+	.playground-workspace {
+		display: flex;
+		flex-direction: row;
+		align-items: stretch;
+		height: 100%;
+		width: 100%;
+	}
+
+	.playground-flow-pane,
+	.playground-panel-pane {
+		height: 100%;
+		min-width: 0;
+		overflow: hidden;
+		transition: width var(--playground-panel-ease-ms) cubic-bezier(0.33, 1, 0.68, 1);
+	}
+
+	.playground-panel-pane {
+		box-sizing: border-box;
+		padding: 0.75rem;
+		overflow: hidden;
 	}
 
 	.playground-shell :global(.playground-flow) {
@@ -307,15 +396,15 @@
 
 	.chrome-title {
 		margin-right: 0.35rem;
-		font-size: 0.7rem;
+		font-size: 0.75rem;
 		font-weight: 800;
 		letter-spacing: 0.18em;
 		text-transform: uppercase;
 	}
 
 	.chrome-btn {
-		padding: 0.35rem 0.55rem;
-		font-size: 0.62rem;
+		padding: 0.35rem 0.6rem;
+		font-size: 0.72rem;
 	}
 
 	.chrome-btn.btn-solid {
@@ -329,7 +418,7 @@
 
 	.chrome-banner {
 		margin-left: 0.35rem;
-		font-size: 0.65rem;
+		font-size: 0.72rem;
 		font-weight: 700;
 		letter-spacing: 0.04em;
 		color: var(--color-mute);

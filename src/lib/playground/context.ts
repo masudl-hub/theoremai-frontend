@@ -8,11 +8,18 @@ export type PlaygroundHub = {
 	provider: Provider;
 };
 
+export type PlaygroundUi = {
+	panelNodeId: string | null;
+};
+
 export type PlaygroundCtx = {
 	addModelSpec: () => void;
 	/** Live Models hub pairing — reactive when read in components */
 	hub: PlaygroundHub;
+	/** Reactive UI shell state (panel open/close). */
+	ui: PlaygroundUi;
 	patchNode: (id: string, partial: Partial<PlaygroundNode['data']>) => void;
+	togglePanel: (id: string, open: boolean) => void;
 	closePanel: (id: string) => void;
 	getNodes: () => PlaygroundNode[];
 };

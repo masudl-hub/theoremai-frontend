@@ -14,7 +14,7 @@
 
 	<div class="relative z-10 flex w-full items-end justify-between gap-6 md:gap-10">
 		<div class="min-w-0 flex-1">
-			<p class="anim-rise-d1 mb-3 text-[10px] font-bold tracking-[0.06em] text-black/45 md:text-xs">
+			<p class="anim-rise-d1 mb-3 text-xs font-bold tracking-[0.06em] text-black/60 md:text-sm">
 				{versionLabel}
 			</p>
 			<h1
