@@ -1,7 +1,12 @@
 <script lang="ts">
 import { onMount, tick } from 'svelte';
 import { on } from 'svelte/events';
-import { wrapText } from '$lib/ascii/tip-card';
+import {
+	type AsciiCardSegment,
+	parseAsciiCardSegments,
+	renderAsciiSplitCard,
+	wrapText,
+} from '$lib/ascii/tip-card';
 import { type PillarArtId, pillarArt } from '$lib/data/pillar-art';
 
 type Pillar = {
@@ -55,8 +60,11 @@ const pillars: Pillar[] = [
 
 const FIRST = 0;
 const LAST = pillars.length - 1;
+/** Set true to wire carousel card clicks into the expanded detail overlay. */
+const EXPAND_ON_CLICK = false;
 
 let active = $state(0);
+let expanded = $state<number | null>(null);
 let sectionEl: HTMLElement | undefined = $state();
 
 function wrapBody(text: string, width: number): string[] {
@@ -147,6 +155,46 @@ function select(i: number) {
 	scrollToPillar(i);
 }
 
+function openDetail(i: number) {
+	if (!EXPAND_ON_CLICK) return;
+	select(i);
+	expanded = i;
+}
+
+function closeDetail() {
+	expanded = null;
+}
+
+function detailDims(): { inner: number; minRows: number } {
+	if (typeof window === 'undefined') return { inner: 90, minRows: 28 };
+	const panelW = window.innerWidth * 0.6;
+	const panelH = window.innerHeight * 0.8;
+	const fontPx = window.matchMedia('(min-width: 768px)').matches ? 14 : 12;
+	const charW = fontPx * 0.62;
+	const lineH = fontPx * 1.38;
+	return {
+		inner: Math.max(60, Math.floor(panelW / charW) - 6),
+		minRows: Math.max(20, Math.floor(panelH / lineH) - 4),
+	};
+}
+
+function detailArt(p: Pillar, dims: { inner: number; minRows: number }): string {
+	const leftCols = Math.max(18, Math.floor(dims.inner / 3));
+	const art = pillarArt[p.id].split('\n').map((line) => center(line, leftCols));
+	return renderAsciiSplitCard({
+		title: p.title,
+		body: p.body,
+		art,
+		inner: dims.inner,
+		minRows: dims.minRows,
+		cornerAction: { id: 'close', label: '×' },
+	});
+}
+
+function onDetailAction(id: string) {
+	if (id === 'close') closeDetail();
+}
+
 function prev() {
 	scrollToPillar(active - 1);
 }
@@ -200,6 +248,14 @@ onMount(() => {
 
 	return () => cleanup?.();
 });
+
+$effect(() => {
+	if (expanded === null) return;
+	const onKeydown = (e: KeyboardEvent) => {
+		if (e.key === 'Escape') closeDetail();
+	};
+	return on(window, 'keydown', onKeydown);
+});
 </script>
 
 <section bind:this={sectionEl} id="pillars" class="pillars-root relative w-full">
@@ -226,6 +282,7 @@ onMount(() => {
 					<button
 						id={pillar.id}
 						class="pillar-card absolute top-1/2 left-1/2"
+						class:pillar-card-static={!EXPAND_ON_CLICK}
 						class:pillar-focus={slot === 0}
 						class:pillar-hidden={Math.abs(slot) > 2}
 						class:pillar-l1={slot === -1}
@@ -235,7 +292,7 @@ onMount(() => {
 						aria-current={slot === 0 ? 'true' : undefined}
 						aria-label={pillar.title}
 						type="button"
-						onclick={() => select(i)}
+						onclick={() => openDetail(i)}
 					>
 						<pre class="ascii pillar-art text-xs font-bold md:text-sm">{cardArt(pillar)}</pre>
 					</button>
@@ -266,6 +323,35 @@ onMount(() => {
 		{/each}
 	</div>
 </section>
+
+{#if expanded !== null}
+	{const pillar = $derived(pillars[expanded])}
+	{const dims = $derived(detailDims())}
+	{const segments: AsciiCardSegment[] = $derived(parseAsciiCardSegments(detailArt(pillar, dims)))}
+	<div class="pillar-detail-root" role="presentation">
+		<button
+			type="button"
+			class="pillar-detail-backdrop"
+			aria-label="Close pillar detail"
+			onclick={closeDetail}
+		></button>
+		<div
+			class="pillar-detail-panel"
+			role="dialog"
+			aria-modal="true"
+			aria-label="{pillar.title} detail"
+		>
+			<pre
+				class="ascii pillar-detail-card text-xs font-bold md:text-sm"
+			>{#each segments as segment, i (i)}{#if segment.type === 'text'}{segment.value}{:else}<button
+						type="button"
+						class="ascii-card-action"
+						onclick={() => onDetailAction(segment.id)}
+					>[ {segment.label} ]</button
+					>{/if}{/each}</pre>
+		</div>
+	</div>
+{/if}
 
 <style>
 .pillars-track {
@@ -298,6 +384,10 @@ onMount(() => {
 	padding: 0;
 	margin: 0;
 	cursor: pointer;
+}
+
+.pillar-card-static {
+	cursor: default;
 	transform: translate(-50%, -50%);
 	transition:
 		transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
@@ -421,5 +511,62 @@ onMount(() => {
 	.pillar-r2 {
 		transform: translate(-50%, -50%) translateX(22rem) translateY(1.5rem) rotate(7deg) scale(0.8);
 	}
+}
+
+.pillar-detail-root {
+	position: fixed;
+	inset: 0;
+	z-index: 60;
+	display: grid;
+	place-items: center;
+	padding: 1.25rem;
+}
+
+.pillar-detail-backdrop {
+	position: absolute;
+	inset: 0;
+	border: 0;
+	background: transparent;
+	cursor: pointer;
+}
+
+.pillar-detail-panel {
+	position: relative;
+	z-index: 1;
+	width: 60vw;
+	height: 80vh;
+}
+
+.pillar-detail-card {
+	display: block;
+	width: 100%;
+	height: 100%;
+	box-sizing: border-box;
+	overflow: auto;
+	margin: 0;
+	background: var(--color-paper);
+	color: var(--color-ink);
+	line-height: 1.38;
+	white-space: pre;
+	text-align: left;
+}
+
+.ascii-card-action {
+	display: inline;
+	font: inherit;
+	font-weight: inherit;
+	background: transparent;
+	border: none;
+	padding: 0;
+	margin: 0;
+	color: inherit;
+	cursor: pointer;
+}
+
+.ascii-card-action:hover,
+.ascii-card-action:focus-visible {
+	background: var(--color-ink);
+	color: var(--color-paper-bright);
+	outline: none;
 }
 </style>

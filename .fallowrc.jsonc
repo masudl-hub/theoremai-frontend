@@ -24,13 +24,7 @@
 		"coverage/**",
 		".fallow/**"
 	],
-	"ignoreDependencies": [
-		"@openrouter/ai-sdk-provider",
-		"ai",
-		"gpt-tokenizer",
-		"zod",
-		"zod-to-json-schema"
-	],
+	"ignoreDependencies": ["@openrouter/ai-sdk-provider", "ai", "gpt-tokenizer", "zod"],
 	"ignoreExportsUsedInFile": true,
 	"rules": {
 		"unused-files": "error",

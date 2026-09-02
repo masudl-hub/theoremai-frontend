@@ -1,5 +1,6 @@
 node_modules
 .fallow/
+.theorum-root
 coverage/
 .stryker-cache/
 .stryker-tmp/

@@ -5,11 +5,15 @@
 	"type": "module",
 	"description": "Interactive site for THEORUM — flat agent kernel docs and playground.",
 	"scripts": {
+		"predev": "node --experimental-strip-types scripts/ensure-theorum.mjs",
 		"dev": "node --experimental-strip-types scripts/sync-cloud-css.mjs && vite dev",
+		"prebuild": "node --experimental-strip-types scripts/ensure-theorum.mjs",
 		"build": "node --experimental-strip-types scripts/sync-cloud-css.mjs && vite build",
 		"deploy": "npm run build && wrangler pages deploy .svelte-kit/cloudflare --project-name=theorum",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
+		"postinstall": "node --experimental-strip-types scripts/ensure-theorum.mjs",
+		"precheck": "node --experimental-strip-types scripts/ensure-theorum.mjs",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint:eslint": "node --experimental-strip-types scripts/sync-cloud-css.mjs && eslint .",
@@ -18,8 +22,9 @@
 		"lint:biome:fix": "biome check --write .",
 		"lint:fallow": "fallow audit && fallow health && fallow dupes && fallow dead-code",
 		"lint": "npm run lint:eslint && npm run lint:biome && npm run lint:fallow",
+		"theorum:ensure": "node --experimental-strip-types scripts/ensure-theorum.mjs",
 		"theorum:sync": "git submodule update --init --recursive",
-		"theorum:pull": "git -C theorum pull --ff-only origin main"
+		"theorum:pull": "git -C theorum pull --ff-only origin main || git -C ../theorum pull --ff-only origin main"
 	},
 	"dependencies": {
 		"@openrouter/ai-sdk-provider": "^3.0.0",
@@ -30,8 +35,7 @@
 		"svelte": "^5.56.1",
 		"tailwindcss": "^4.3.3",
 		"theorum": "file:./theorum",
-		"zod": "^3.24.2",
-		"zod-to-json-schema": "^3.24.3"
+		"zod": "^4.1.8"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.8",

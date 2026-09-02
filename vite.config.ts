@@ -1,15 +1,11 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import adapter from '@sveltejs/adapter-cloudflare';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
-
-/** Kernel root — always the nested git submodule at `theorum/`. */
-function resolveTheorumRoot(): string {
-	return path.resolve(import.meta.dirname, 'theorum');
-}
+import { resolveTheorumRoot } from './scripts/resolve-theorum-root.mjs';
 
 function theorumAliases(theorumRoot: string) {
 	const theorumSchema = path.resolve(theorumRoot, 'src/kernel/schema.ts');
@@ -39,11 +35,13 @@ function theorumAliases(theorumRoot: string) {
 }
 
 export default defineConfig(() => {
-	const theorumRoot = resolveTheorumRoot();
+	const { root: theorumRoot, source: theorumSource } = resolveTheorumRoot();
 	const aliases = theorumAliases(theorumRoot);
 	const kernelSubmoduleHead = (() => {
 		try {
-			return execSync('git -C theorum rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+			return execFileSync('git', ['-C', theorumRoot, 'rev-parse', '--short', 'HEAD'], {
+				encoding: 'utf8',
+			}).trim();
 		} catch {
 			return '';
 		}
@@ -63,6 +61,7 @@ export default defineConfig(() => {
 		define: {
 			'import.meta.env.KERNEL_SUBMODULE_HEAD': JSON.stringify(kernelSubmoduleHead),
 			'import.meta.env.KERNEL_PACKAGE_VERSION': JSON.stringify(kernelPackageVersion),
+			'import.meta.env.KERNEL_SOURCE': JSON.stringify(theorumSource),
 		},
 		plugins: [
 			tailwindcss(),

@@ -244,3 +244,68 @@ export function renderAsciiCard(opts: {
 	rows.push(`└${rule}┘`);
 	return rows.join('\n');
 }
+
+function splitCell(content: string, width: number): string {
+	const t = content.length > width ? content.slice(0, width) : content;
+	return t.padEnd(width);
+}
+
+function splitActionCell(action: AsciiCardAction, width: number): string {
+	const visible = actionVisible(action.label);
+	const token = actionToken(action.id, action.label);
+	const lead = Math.max(0, width - visible.length);
+	return `${' '.repeat(lead)}${token}`;
+}
+
+function splitRow(left: string, right: string, leftCols: number, rightCols: number): string {
+	const l = splitCell(left, leftCols);
+	const r = right.includes(ASCII_CARD_ACTION_START) ? right : splitCell(right, rightCols);
+	return `│ ${l} │ ${r} │`;
+}
+
+/**
+ * Two-column ASCII card: title + body in the left third, optional slot lines in
+ * the right two-thirds. Use for expanded detail surfaces (e.g. pillar cards).
+ */
+export function renderAsciiSplitCard(opts: {
+	title: string;
+	body: string;
+	/** Centered illustration lines in the left column, above the body. */
+	art?: readonly string[];
+	/** Right-column lines; blank rows pad the slot when shorter than the body. */
+	slot?: readonly string[];
+	inner?: number;
+	cornerAction?: AsciiCardAction;
+	minRows?: number;
+}): string {
+	const inner = opts.inner ?? 78;
+	const leftCols = Math.max(18, Math.floor(inner / 3));
+	const rightCols = inner - leftCols;
+	const leftRule = '─'.repeat(leftCols + 2);
+	const rightRule = '─'.repeat(rightCols + 2);
+	const title = opts.title.toUpperCase().slice(0, leftCols);
+	const bodyLines = wrapText(opts.body, leftCols);
+	const artLines = opts.art ?? [];
+	const slotLines = opts.slot ?? [];
+	const leftContentRows: string[] = [];
+	if (artLines.length > 0) {
+		leftContentRows.push(...artLines);
+		if (bodyLines.length > 0) leftContentRows.push('');
+	}
+	leftContentRows.push(...bodyLines);
+	const rowCount = Math.max(opts.minRows ?? 10, leftContentRows.length, slotLines.length);
+	const splitRowLocal = (left: string, right: string) => splitRow(left, right, leftCols, rightCols);
+
+	const rows: string[] = [
+		`┌${leftRule}┬${rightRule}┐`,
+		splitRowLocal(title, opts.cornerAction ? splitActionCell(opts.cornerAction, rightCols) : ''),
+		`├${leftRule}┼${rightRule}┤`,
+	];
+
+	for (let i = 0; i < rowCount; i++) {
+		rows.push(splitRowLocal(leftContentRows[i] ?? '', slotLines[i] ?? ''));
+	}
+
+	rows.push(`└${leftRule}┴${rightRule}┘`);
+	return rows.join('\n');
+}
