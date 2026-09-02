@@ -34,3 +34,19 @@ const sizeClass: Record<string, string> = {
 		>{cloud.art}</pre>
 	{/each}
 </div>
+
+<style>
+@keyframes cloud-drift-motion {
+	from {
+		transform: translateX(-6vw);
+	}
+	to {
+		transform: translateX(6vw);
+	}
+}
+
+:global(.cloud-drift) {
+	animation: cloud-drift-motion var(--cloud-duration, 48s) ease-in-out infinite alternate;
+	will-change: transform;
+}
+</style>

@@ -1,70 +1,84 @@
 <script lang="ts">
-import { onDestroy } from 'svelte';
-import { volumeBar } from '$lib/actions/volume-bar';
-import { LiveSessionClient, type LiveSessionStatus } from '$lib/client/live-client';
+import { onDestroy, onMount } from 'svelte';
+import {
+	type LiveConnectPhase,
+	LiveSessionClient,
+	type LiveSessionStatus,
+} from '$lib/client/live-client';
+import { playTh30ReadyChime } from '$lib/client/th30-chime';
+import { acceptTh30GeminiConsent, hasTh30GeminiConsent } from '$lib/client/th30-consent';
+import Th30Cloud from '$lib/components/Th30Cloud.svelte';
+import Th30ConsentModal from '$lib/components/Th30ConsentModal.svelte';
+import { readDocSection, searchDocumentation } from '$lib/docs/unified-docs';
+import type { Th30Caption, Th30CloudState } from '$lib/types/th30';
+
+const GREETING_TRIGGER = '(call connected)';
+
+type StatusLineMode = 'connecting' | 'listening' | 'speaking' | 'thinking' | 'muted';
 
 let client: LiveSessionClient | null = null;
-let status: LiveSessionStatus = $state('disconnected');
-let isExpanded = $state(false);
+let status = $state<LiveSessionStatus>('disconnected');
+let cloudState: Th30CloudState = $state('idle');
 let isMuted = $state(false);
-let volumeLevel = $state(0);
-let textInput = $state('');
-let errorMessage = $state<string | null>(null);
+let sessionLive = $state(false);
+let showConsent = $state(false);
+let showBye = $state(false);
+let permissionDenied = $state(false);
+let connectPhase = $state<LiveConnectPhase | null>(null);
+let micPermission = $state<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
+let greetingSent = false;
+let toolBusy = false;
+let byeTimer: ReturnType<typeof setTimeout> | null = null;
 
-type TranscriptItem = {
-	id: string;
-	speaker: 'user' | 'th30';
-	text: string;
-	time: string;
-};
+let activeActionLabel = $state<string | null>(null);
+let actionLabelTimer: ReturnType<typeof setTimeout> | null = null;
+let activeHighlightTimer: ReturnType<typeof setTimeout> | null = null;
+let activeSelectedLines: HTMLElement[] = [];
+let navFrameActive = $state(false);
+let navFrameTimer: ReturnType<typeof setTimeout> | null = null;
 
-const transcripts = $state<TranscriptItem[]>([]);
-let transcriptContainer = $state<HTMLDivElement | null>(null);
+const caption = $derived.by((): Th30Caption => {
+	if (sessionLive) return 'live';
+	if (permissionDenied) return 'denied';
+	if (status === 'connecting' || cloudState === 'connecting') {
+		if (connectPhase === 'microphone' && micPermission === 'prompt') return 'requesting';
+		return 'connecting';
+	}
+	return 'none';
+});
 
-function scrollToBottom() {
-	if (transcriptContainer) {
-		transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+const statusLineMode = $derived.by((): StatusLineMode | null => {
+	if (!sessionLive && status !== 'connecting') return null;
+	if (isMuted) return 'muted';
+	if (toolBusy || cloudState === 'thinking') return 'thinking';
+	if (cloudState === 'speaking') return 'speaking';
+	if (cloudState === 'listening' || cloudState === 'connecting' || status === 'connecting') {
+		return status === 'connecting' || cloudState === 'connecting' ? 'connecting' : 'listening';
+	}
+	return 'listening';
+});
+
+function mapCloudState(next: LiveSessionStatus): Th30CloudState {
+	if (toolBusy) return 'thinking';
+	switch (next) {
+		case 'connecting':
+			return 'connecting';
+		case 'speaking':
+			return 'speaking';
+		case 'ready':
+		case 'listening':
+			return 'listening';
+		default:
+			return 'idle';
 	}
 }
 
-function handleToolCall(name: string, args: Record<string, unknown>) {
-	if (name === 'navigate' && typeof args.path === 'string') {
-		const targetPath = args.path;
-		if (targetPath.startsWith('/#') || targetPath.startsWith('#')) {
-			const hash = targetPath.includes('#')
-				? targetPath.slice(targetPath.indexOf('#'))
-				: targetPath;
-			const el = document.querySelector(hash);
-			if (el) {
-				el.scrollIntoView({ behavior: 'smooth' });
-				highlightElement(el);
-			} else {
-				window.location.href = targetPath;
-			}
-		} else {
-			window.location.href = targetPath;
-		}
-		return { success: true, navigatedTo: targetPath };
-	}
-
-	if (name === 'highlightSection' && typeof args.selector === 'string') {
-		const el = document.querySelector(args.selector);
-		if (el) {
-			el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-			highlightElement(el);
-			return { success: true, highlighted: args.selector };
-		}
-		return { success: false, error: `Element not found: ${args.selector}` };
-	}
-
-	return { success: true };
-}
-
-function highlightElement(el: Element) {
-	el.classList.add('th30-highlight-pulse');
-	setTimeout(() => {
-		el.classList.remove('th30-highlight-pulse');
-	}, 3500);
+function flashNavFrame() {
+	navFrameActive = true;
+	if (navFrameTimer) clearTimeout(navFrameTimer);
+	navFrameTimer = setTimeout(() => {
+		navFrameActive = false;
+	}, 1200);
 }
 
 function initClient() {
@@ -72,301 +86,489 @@ function initClient() {
 
 	client = new LiveSessionClient({
 		profile: 'theorum.site.th30',
-		onStatusChange: (newStatus) => {
-			status = newStatus;
-			if (newStatus === 'ready' || newStatus === 'listening') {
-				errorMessage = null;
-			}
+		onConnectPhase: (phase) => {
+			connectPhase = phase;
 		},
-		onTranscript: (text, isUser) => {
-			const speaker = isUser ? 'user' : 'th30';
-			const time = new Date().toLocaleTimeString([], {
-				hour: '2-digit',
-				minute: '2-digit',
-				second: '2-digit',
-			});
+		onStatusChange: (newStatus) => {
+			const previous = status;
+			status = newStatus;
+			cloudState = mapCloudState(newStatus);
 
-			// If the last message is from the same speaker, append or update
-			const last = transcripts[transcripts.length - 1];
-			if (last && last.speaker === speaker && Date.now() - Number(last.id) < 4000) {
-				last.text += (last.text ? ' ' : '') + text;
-			} else {
-				transcripts.push({
-					id: Date.now().toString(),
-					speaker,
-					text,
-					time,
-				});
+			if (newStatus === 'ready' || newStatus === 'listening') {
+				permissionDenied = false;
 			}
-			setTimeout(scrollToBottom, 50);
+
+			if (
+				(newStatus === 'listening' || newStatus === 'ready') &&
+				(previous === 'connecting' || previous === 'disconnected')
+			) {
+				void onSessionReady();
+			}
+
+			if (newStatus === 'disconnected' || newStatus === 'error') {
+				sessionLive = false;
+				greetingSent = false;
+				toolBusy = false;
+				cloudState = 'idle';
+				connectPhase = null;
+			}
 		},
 		onError: (err) => {
-			errorMessage = err;
+			permissionDenied = /permission denied/i.test(err);
+			cloudState = 'idle';
+			sessionLive = false;
+			connectPhase = null;
 		},
-		onToolCall: handleToolCall,
-		onVolumeLevel: (level) => {
-			volumeLevel = level;
+		onToolCall: async (name, args) => {
+			toolBusy = true;
+			cloudState = 'thinking';
+			try {
+				return await handleToolCall(name, args);
+			} finally {
+				toolBusy = false;
+				cloudState = mapCloudState(status);
+			}
 		},
 	});
 }
 
-async function toggleConnect() {
+async function onSessionReady() {
+	if (greetingSent || !client) return;
+	if (status !== 'ready' && status !== 'listening') return;
+
+	greetingSent = true;
+	sessionLive = true;
+	permissionDenied = false;
+	cloudState = 'listening';
+
+	void playTh30ReadyChime();
+	await new Promise((resolve) => setTimeout(resolve, 320));
+	if (client && (status === 'ready' || status === 'listening' || status === 'speaking')) {
+		client.sendText(GREETING_TRIGGER);
+	}
+}
+
+function showActionLabel(text: string) {
+	activeActionLabel = text;
+	if (actionLabelTimer) clearTimeout(actionLabelTimer);
+	actionLabelTimer = setTimeout(() => {
+		activeActionLabel = null;
+	}, 4000);
+}
+
+function clearLineHighlights() {
+	for (const el of activeSelectedLines) {
+		el.classList.remove('th30-line-selected');
+	}
+	activeSelectedLines = [];
+}
+
+function highlightLines(container: Element, start: number, end?: number) {
+	clearLineHighlights();
+	const endLine = end ?? start;
+	const selected: HTMLElement[] = [];
+	for (let line = start; line <= endLine; line++) {
+		const lineEl = container.querySelector<HTMLElement>(`[data-line="${line}"]`);
+		if (lineEl) {
+			lineEl.classList.add('th30-line-selected');
+			selected.push(lineEl);
+		}
+	}
+	activeSelectedLines = selected;
+	if (selected.length > 0) {
+		selected[0]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+	}
+
+	if (activeHighlightTimer) clearTimeout(activeHighlightTimer);
+	activeHighlightTimer = setTimeout(() => {
+		clearLineHighlights();
+	}, 7000);
+}
+
+async function handleToolCall(
+	name: string,
+	args: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+	if (name === 'navigate') {
+		const targetPath = (args.path as string) || '/';
+		const subTarget = args.subTarget as string | undefined;
+
+		showActionLabel(`Navigating to ${targetPath}${subTarget ? ` · ${subTarget}` : ''}`);
+		flashNavFrame();
+
+		if (targetPath.startsWith('/#') || targetPath.startsWith('#')) {
+			const hash = targetPath.includes('#')
+				? targetPath.slice(targetPath.indexOf('#'))
+				: targetPath;
+			const el = document.querySelector(hash);
+			if (el) {
+				el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+				if (subTarget) {
+					const subEl = el.querySelector(
+						`[data-node="${subTarget}"], [data-pillar="${subTarget}"], [data-facet="${subTarget}"], #${subTarget}`,
+					);
+					if (subEl) {
+						subEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+					}
+				}
+			} else {
+				window.location.href = targetPath;
+			}
+		} else {
+			window.location.href = targetPath;
+		}
+		return { success: true, navigatedTo: targetPath, subTarget };
+	}
+
+	if (name === 'highlight' || name === 'highlightSection') {
+		const target = ((args.target ?? args.selector) as string) || '#use';
+		const lineStart = typeof args.lineStart === 'number' ? args.lineStart : undefined;
+		const lineEnd = typeof args.lineEnd === 'number' ? args.lineEnd : undefined;
+		const subTarget = args.subTarget as string | undefined;
+		const label = args.label as string | undefined;
+
+		const desc =
+			label ??
+			(lineStart !== undefined
+				? `Lines L${lineStart}${lineEnd ? `-L${lineEnd}` : ''} in ${target}`
+				: `Target ${target}`);
+		showActionLabel(`Selecting: ${desc}`);
+
+		const container = document.querySelector(target);
+		if (container) {
+			if (lineStart !== undefined) {
+				highlightLines(container, lineStart, lineEnd);
+			} else if (subTarget) {
+				const subEl = container.querySelector(
+					`[data-node="${subTarget}"], [data-pillar="${subTarget}"], [data-facet="${subTarget}"], #${subTarget}`,
+				);
+				if (subEl) {
+					subEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				} else {
+					container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				}
+			} else {
+				container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			}
+			return {
+				success: true,
+				highlighted: target,
+				lineRange:
+					lineStart !== undefined
+						? `L${lineStart}${lineEnd && lineEnd !== lineStart ? `-L${lineEnd}` : ''}`
+						: undefined,
+				subTarget,
+				label,
+			};
+		}
+		return { success: false, error: `Element not found for selector: ${target}` };
+	}
+
+	if (name === 'read') {
+		const target = (args.target as string) || '#overview';
+		const detail = (args.detail as 'summary' | 'full' | 'code_only') || 'full';
+		showActionLabel(`Reading section: ${target}`);
+		const doc = readDocSection(target, detail);
+		return {
+			target: doc.target,
+			title: doc.title,
+			content: doc.content,
+			lineCount: doc.lineCount,
+		};
+	}
+
+	if (name === 'searchDocs') {
+		const query = (args.query as string) || '';
+		const source = (args.source as 'all' | 'local' | 'github' | 'jsr' | 'npm') || 'all';
+		const limit = typeof args.limit === 'number' ? args.limit : 5;
+		showActionLabel(`Searching docs for "${query}"`);
+		const searchRes = searchDocumentation(query, source, limit);
+		return {
+			query: searchRes.query,
+			results: searchRes.results,
+			totalMatches: searchRes.totalMatches,
+		};
+	}
+
+	return { success: true };
+}
+
+async function startSession() {
 	initClient();
 	if (!client) return;
+	if (status !== 'disconnected' && status !== 'error') return;
 
-	if (status === 'disconnected' || status === 'error') {
-		errorMessage = null;
-		await client.connect();
-	} else {
-		client.disconnect();
+	permissionDenied = false;
+	greetingSent = false;
+	connectPhase = null;
+	await client.connect();
+}
+
+function handleCloudActivate() {
+	if (sessionLive || status === 'connecting') return;
+
+	if (!hasTh30GeminiConsent()) {
+		showConsent = true;
+		return;
 	}
+
+	void startSession();
 }
 
-function toggleMute() {
-	if (client) {
-		isMuted = client.toggleMute();
-	}
+function handleConsentAccept() {
+	acceptTh30GeminiConsent();
+	showConsent = false;
+	void startSession();
 }
 
-function sendTextMessage() {
-	const trimmed = textInput.trim();
-	if (!trimmed || !client) return;
-
-	transcripts.push({
-		id: Date.now().toString(),
-		speaker: 'user',
-		text: trimmed,
-		time: new Date().toLocaleTimeString([], {
-			hour: '2-digit',
-			minute: '2-digit',
-			second: '2-digit',
-		}),
-	});
-
-	client.sendText(trimmed);
-	textInput = '';
-	setTimeout(scrollToBottom, 50);
+function handleConsentDecline() {
+	showConsent = false;
+	showBye = true;
+	if (byeTimer) clearTimeout(byeTimer);
+	byeTimer = setTimeout(() => {
+		showBye = false;
+	}, 1600);
 }
 
-function sendPrompt(prompt: string) {
-	if (!client || status === 'disconnected') {
-		toggleConnect().then(() => {
-			setTimeout(() => {
-				textInput = prompt;
-				sendTextMessage();
-			}, 1000);
-		});
-	} else {
-		textInput = prompt;
-		sendTextMessage();
-	}
+function handleMute() {
+	if (!client || !sessionLive) return;
+	isMuted = client.toggleMute();
 }
+
+function handleDisconnect() {
+	if (!client) return;
+	client.disconnect();
+	sessionLive = false;
+	isMuted = false;
+	greetingSent = false;
+	toolBusy = false;
+	cloudState = 'idle';
+	connectPhase = null;
+	status = 'disconnected';
+}
+
+onMount(() => {
+	const refreshMicPermission = async () => {
+		try {
+			const result = await navigator.permissions.query({
+				name: 'microphone' as PermissionName,
+			});
+			micPermission = result.state as typeof micPermission;
+			result.onchange = () => {
+				micPermission = result.state as typeof micPermission;
+			};
+		} catch {
+			micPermission = 'unknown';
+		}
+	};
+	void refreshMicPermission();
+});
 
 onDestroy(() => {
-	if (client) {
-		client.disconnect();
-	}
+	if (byeTimer) clearTimeout(byeTimer);
+	if (navFrameTimer) clearTimeout(navFrameTimer);
+	if (client) client.disconnect();
 });
 </script>
 
-<div class="fixed right-4 bottom-4 z-50 font-mono select-none">
-	{#if isExpanded}
-		<div
-			class="flex h-[480px] w-[340px] sm:w-[390px] flex-col border-[2px] border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:border-white dark:bg-black dark:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)]"
-		>
-			<!-- Header -->
-			<div
-				class="flex items-center justify-between border-b-[2px] border-black bg-[#f0f0f0] px-3 py-2 dark:border-white dark:bg-[#1a1a1a]"
-			>
-				<div class="flex items-center gap-2">
-					<span
-						class="inline-block h-2.5 w-2.5 rounded-full {status === 'listening' ? 'bg-emerald-500 animate-pulse' : status === 'speaking' ? 'bg-blue-500 animate-ping' : status === 'connecting' ? 'bg-amber-500 animate-pulse' : status === 'error' ? 'bg-rose-500' : 'bg-neutral-400'}"
-					></span>
-					<span class="text-xs font-black tracking-wider uppercase text-black dark:text-white">
-						TH30 // LIVE GUIDE
-					</span>
-				</div>
-				<div class="flex items-center gap-1.5">
-					<button
-						type="button"
-						class="px-1.5 py-0.5 text-xs font-bold text-black hover:bg-black hover:text-white dark:text-white dark:hover:bg-white dark:hover:text-black"
-						onclick={() => (isExpanded = false)}
-						title="Minimize"
-					>
-						[ _ ]
-					</button>
-				</div>
-			</div>
+{#if statusLineMode}
+	<div
+		class="th30-status-line"
+		class:connecting={statusLineMode === 'connecting'}
+		class:listening={statusLineMode === 'listening'}
+		class:speaking={statusLineMode === 'speaking'}
+		class:thinking={statusLineMode === 'thinking'}
+		class:muted={statusLineMode === 'muted'}
+		aria-hidden="true"
+	>
+		{#if statusLineMode === 'thinking' || statusLineMode === 'connecting'}
+			<span class="th30-status-segment"></span>
+		{/if}
+	</div>
+{/if}
 
-			<!-- Status Bar & Waveform -->
-			<div
-				class="flex items-center justify-between border-b border-black/20 bg-neutral-100 px-3 py-1.5 text-[11px] text-neutral-600 dark:border-white/20 dark:bg-neutral-900 dark:text-neutral-400"
-			>
-				<span class="uppercase font-semibold">
-					STATUS: <span class="text-black dark:text-white font-bold">{status}</span>
-				</span>
-				{#if status === 'listening' || status === 'speaking'}
-					<div class="flex items-center gap-1">
-						{#each Array(6) as _bar, i (i)}
-							<div
-								use:volumeBar={{ level: volumeLevel, index: i }}
-								class="w-1 bg-black dark:bg-white transition-all duration-75"
-							></div>
-						{/each}
-					</div>
-				{/if}
-			</div>
+{#if navFrameActive}
+	<div class="th30-nav-frame" aria-hidden="true"></div>
+{/if}
 
-			<!-- Transcript Area -->
-			<div
-				bind:this={transcriptContainer}
-				class="flex-1 overflow-y-auto p-3 text-xs leading-relaxed space-y-3 bg-neutral-50 dark:bg-neutral-950"
-			>
-				{#if transcripts.length === 0}
-					<div
-						class="flex h-full flex-col items-center justify-center text-center text-neutral-400 p-4"
-					>
-						<span class="text-2xl mb-2">☁</span>
-						<p class="font-bold text-black dark:text-white text-xs mb-1">Th30 is ready</p>
-						<p class="text-[11px] leading-normal max-w-[240px]">
-							Tap Connect to speak live with Gemini 3.1 Flash Live, explore features, or navigate
-							the site.
-						</p>
+{#if showBye}
+	<div class="th30-bye" role="status" aria-live="polite">Bye bye.</div>
+{/if}
 
-						<div class="mt-4 flex flex-wrap gap-1.5 justify-center">
-							<button
-								type="button"
-								class="text-[10px] border border-black/30 dark:border-white/30 px-2 py-1 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition"
-								onclick={() => sendPrompt('Explain the Flat Kernel architecture')}
-							>
-								"Explain Flat Kernel"
-							</button>
-							<button
-								type="button"
-								class="text-[10px] border border-black/30 dark:border-white/30 px-2 py-1 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition"
-								onclick={() => sendPrompt('Show me the Pillars section')}
-							>
-								"Show Pillars"
-							</button>
-						</div>
-					</div>
-				{:else}
-					{#each transcripts as item (item.id)}
-						<div class="flex flex-col {item.speaker === 'user' ? 'items-end' : 'items-start'}">
-							<div class="text-[9px] text-neutral-400 mb-0.5 flex gap-1">
-								<span>{item.speaker === 'user' ? 'YOU' : 'TH30'}</span>
-								<span>•</span>
-								<span>{item.time}</span>
-							</div>
-							<div
-								class="max-w-[85%] rounded px-2.5 py-1.5 {item.speaker === 'user' ? 'bg-black text-white dark:bg-white dark:text-black font-medium' : 'bg-neutral-200 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100 border border-black/10 dark:border-white/10'}"
-							>
-								{item.text}
-							</div>
-						</div>
-					{/each}
-				{/if}
+{#if activeActionLabel}
+	<div class="th30-action-pill text-xs" role="status" aria-live="polite">
+		{activeActionLabel}
+	</div>
+{/if}
 
-				{#if errorMessage}
-					<div
-						class="border border-rose-500 bg-rose-50 p-2 text-[11px] text-rose-700 dark:bg-rose-950/30 dark:text-rose-300"
-					>
-						Error: {errorMessage}
-					</div>
-				{/if}
-			</div>
-
-			<!-- Input & Controls Bar -->
-			<div
-				class="border-t-[2px] border-black bg-white p-2.5 dark:border-white dark:bg-black flex flex-col gap-2"
-			>
-				<form
-					class="flex gap-1.5"
-					onsubmit={(e) => {
-						e.preventDefault();
-						sendTextMessage();
-					}}
-				>
-					<input
-						class="flex-1 border border-black px-2 py-1 text-xs text-black placeholder:text-neutral-400 focus:outline-none dark:border-white dark:bg-neutral-900 dark:text-white"
-						placeholder={status === 'listening' ? 'Speak or type here...' : 'Connect to speak...'}
-						type="text"
-						bind:value={textInput}
-					>
-					<button
-						class="border border-black bg-black px-3 py-1 text-xs font-bold text-white hover:bg-neutral-800 disabled:opacity-40 dark:border-white dark:bg-white dark:text-black dark:hover:bg-neutral-200"
-						disabled={!textInput.trim() || status === 'disconnected'}
-						type="submit"
-					>
-						SEND
-					</button>
-				</form>
-
-				<div class="flex items-center justify-between pt-1">
-					<button
-						type="button"
-						class="flex items-center gap-1.5 border border-black px-2.5 py-1 text-xs font-bold transition {status === 'disconnected' || status === 'error' ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-rose-600 text-white hover:bg-rose-700'}"
-						onclick={toggleConnect}
-					>
-						{status === 'disconnected' || status === 'error' ? '▶ CONNECT' : '■ DISCONNECT'}
-					</button>
-
-					{#if status !== 'disconnected' && status !== 'error'}
-						<button
-							type="button"
-							class="border border-black px-2 py-1 text-xs font-bold {isMuted ? 'bg-amber-200 text-amber-900' : 'bg-neutral-100 text-black'} dark:border-white dark:bg-neutral-800 dark:text-white"
-							onclick={toggleMute}
-						>
-							{isMuted ? '🔇 MUTED' : '🎙 MIC ON'}
-						</button>
-					{/if}
-				</div>
-			</div>
-		</div>
-	{:else}
-		<!-- Collapsed Floating Cloud Button -->
-		<button
-			type="button"
-			class="group flex items-center gap-2.5 border-[2px] border-black bg-white px-3.5 py-2.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-0 dark:border-white dark:bg-black dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]"
-			aria-label="Open Th30 Live Agent"
-			onclick={() => {
-				isExpanded = true;
-				if (status === 'disconnected') {
-					toggleConnect();
-				}
-			}}
-		>
-			<span class="relative flex h-3 w-3">
-				<span
-					class="absolute inline-flex h-full w-full rounded-full opacity-75 {status === 'listening' ? 'animate-ping bg-emerald-400' : status === 'speaking' ? 'animate-ping bg-blue-400' : status === 'connecting' ? 'animate-ping bg-amber-400' : 'bg-neutral-400'}"
-				></span>
-				<span
-					class="relative inline-flex h-3 w-3 rounded-full {status === 'listening' ? 'bg-emerald-500' : status === 'speaking' ? 'bg-blue-500' : status === 'connecting' ? 'bg-amber-500' : 'bg-neutral-500'}"
-				></span>
-			</span>
-			<span class="text-xs font-black tracking-wide uppercase text-black dark:text-white">
-				☁ TH30 LIVE
-			</span>
-		</button>
-	{/if}
+<div id="th30-dock" class="th30-dock">
+	<Th30Cloud
+		mode={cloudState}
+		muted={isMuted}
+		{caption}
+		onActivate={handleCloudActivate}
+		onMute={handleMute}
+		onDisconnect={handleDisconnect}
+	/>
 </div>
 
+<Th30ConsentModal
+	open={showConsent}
+	onAccept={handleConsentAccept}
+	onDecline={handleConsentDecline}
+/>
+
 <style>
-:global(.th30-highlight-pulse) {
-	animation: th30-pulse-ring 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-	outline: 3px solid #10b981;
-	outline-offset: 4px;
+.th30-dock {
+	position: fixed;
+	top: 16px;
+	right: 16px;
+	z-index: 60;
 }
 
-@keyframes th30-pulse-ring {
-	0%,
-	100% {
-		outline-color: #10b981;
-		box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+@media (min-width: 768px) {
+	.th30-dock {
+		top: 24px;
+		right: 24px;
 	}
-	50% {
-		outline-color: #34d399;
-		box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+}
+
+/* Top status line — orchidcare developer loader idiom, state-driven. */
+.th30-status-line {
+	pointer-events: none;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 2px;
+	z-index: 70;
+	overflow: hidden;
+	background: #000;
+}
+
+.th30-status-line.listening {
+	background: repeating-linear-gradient(90deg, #000 0, #000 5px, transparent 5px, transparent 13px);
+	background-size: 26px 100%;
+	animation: th30-status-dash 1.4s linear infinite;
+}
+
+.th30-status-line.speaking {
+	background: repeating-linear-gradient(90deg, #000 0, #000 7px, transparent 7px, transparent 11px);
+	background-size: 22px 100%;
+	animation: th30-status-dash 0.35s linear infinite;
+}
+
+.th30-status-line.muted {
+	background: #000;
+	animation: none;
+}
+
+.th30-status-line.thinking,
+.th30-status-line.connecting {
+	background: transparent;
+	animation: none;
+}
+
+.th30-status-segment {
+	display: block;
+	height: 100%;
+	width: 28%;
+	background: #000;
+	animation: th30-status-sweep 1.3s ease-in-out infinite;
+}
+
+@keyframes th30-status-dash {
+	to {
+		background-position: 26px 0;
+	}
+}
+
+@keyframes th30-status-sweep {
+	0% {
+		transform: translateX(-120%);
+	}
+	100% {
+		transform: translateX(420%);
+	}
+}
+
+.th30-nav-frame {
+	pointer-events: none;
+	position: fixed;
+	inset: 0;
+	z-index: 45;
+	border: 2px solid #000;
+	animation: th30-nav-frame-out 1.2s ease both;
+}
+
+@keyframes th30-nav-frame-out {
+	0% {
+		opacity: 1;
+	}
+	70% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+
+.th30-bye {
+	position: fixed;
+	left: 50%;
+	top: 42%;
+	z-index: 80;
+	transform: translate(-50%, -50%);
+	font-family: var(--font-mono);
+	font-size: 0.95rem;
+	font-weight: 500;
+	letter-spacing: 0.02em;
+	color: var(--color-ink);
+	background: transparent;
+	border: none;
+	padding: 0;
+	animation: th30-bye-fade 1.6s ease both;
+	pointer-events: none;
+}
+
+:global(.code-line.th30-line-selected) {
+	background: rgba(255, 230, 0, 0.35);
+	border-left-color: var(--color-ink);
+	box-shadow:
+		inset 0 0 0 1px rgba(0, 0, 0, 0.4),
+		0 0 14px rgba(255, 215, 0, 0.55);
+	animation: th30-line-glow 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes th30-line-glow {
+	0% {
+		background: rgba(255, 230, 0, 0.25);
+		box-shadow:
+			inset 0 0 0 1px rgba(0, 0, 0, 0.3),
+			0 0 8px rgba(255, 215, 0, 0.4);
+	}
+	100% {
+		background: rgba(255, 230, 0, 0.55);
+		box-shadow:
+			inset 0 0 0 1px rgba(0, 0, 0, 0.7),
+			0 0 20px rgba(255, 210, 0, 0.85);
+	}
+}
+
+@keyframes th30-bye-fade {
+	0% {
+		opacity: 0;
+		transform: translate(-50%, -46%);
+	}
+	15%,
+	70% {
+		opacity: 1;
+		transform: translate(-50%, -50%);
+	}
+	100% {
+		opacity: 0;
+		transform: translate(-50%, -54%);
 	}
 }
 </style>

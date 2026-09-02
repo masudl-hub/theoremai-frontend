@@ -1,5 +1,33 @@
 /** Shared ASCII tooltip card — same box art as the package map. */
 
+function viewportSize(): { w: number; h: number } {
+	return {
+		w: typeof window !== 'undefined' ? window.innerWidth : 1024,
+		h: typeof window !== 'undefined' ? window.innerHeight : 768,
+	};
+}
+
+function pickTipY(
+	yAbove: number,
+	yBelow: number,
+	anchorY: number,
+	tipHeight: number,
+	pad: number,
+	vpH: number,
+): number {
+	let y: number;
+	if (yAbove >= pad) {
+		y = yAbove;
+	} else if (yBelow + tipHeight <= vpH - pad) {
+		y = yBelow;
+	} else if (anchorY > vpH / 2) {
+		y = Math.max(pad, yAbove);
+	} else {
+		y = Math.min(vpH - tipHeight - pad, yBelow);
+	}
+	return Math.max(pad, Math.min(vpH - tipHeight - pad, y));
+}
+
 export function wrapText(text: string, width: number): string[] {
 	const lines: string[] = [];
 	for (const raw of text.split('\n')) {
@@ -30,8 +58,7 @@ export function computeTipPosition(
 	tipHeight: number,
 	pad = 12,
 ): { x: number; y: number } {
-	const vpW = typeof window !== 'undefined' ? window.innerWidth : 1024;
-	const vpH = typeof window !== 'undefined' ? window.innerHeight : 768;
+	const { w: vpW, h: vpH } = viewportSize();
 
 	// Horizontal: default to right of cursor; if overflowing right, place to left or clamp
 	let x = clientX + 12;
@@ -48,21 +75,7 @@ export function computeTipPosition(
 	// Vertical: default above cursor; if overflowing top, place below or clamp
 	const yAbove = clientY - tipHeight - 10;
 	const yBelow = clientY + 18;
-
-	let y: number;
-	if (yAbove >= pad) {
-		y = yAbove;
-	} else if (yBelow + tipHeight <= vpH - pad) {
-		y = yBelow;
-	} else {
-		// If it cannot fit fully either above or below, pick side with more room
-		if (clientY > vpH / 2) {
-			y = Math.max(pad, yAbove);
-		} else {
-			y = Math.min(vpH - tipHeight - pad, yBelow);
-		}
-	}
-	y = Math.max(pad, Math.min(vpH - tipHeight - pad, y));
+	const y = pickTipY(yAbove, yBelow, clientY, tipHeight, pad, vpH);
 
 	return { x, y };
 }
@@ -73,8 +86,7 @@ export function computeTipPositionForRect(
 	tipHeight: number,
 	pad = 12,
 ): { x: number; y: number } {
-	const vpW = typeof window !== 'undefined' ? window.innerWidth : 1024;
-	const vpH = typeof window !== 'undefined' ? window.innerHeight : 768;
+	const { w: vpW, h: vpH } = viewportSize();
 
 	let x = targetRect.left;
 	if (x + tipWidth > vpW - pad) {
@@ -84,20 +96,7 @@ export function computeTipPositionForRect(
 
 	const yAbove = targetRect.top - tipHeight - 8;
 	const yBelow = targetRect.bottom + 8;
-
-	let y: number;
-	if (yAbove >= pad) {
-		y = yAbove;
-	} else if (yBelow + tipHeight <= vpH - pad) {
-		y = yBelow;
-	} else {
-		if (targetRect.top > vpH / 2) {
-			y = Math.max(pad, yAbove);
-		} else {
-			y = Math.min(vpH - tipHeight - pad, yBelow);
-		}
-	}
-	y = Math.max(pad, Math.min(vpH - tipHeight - pad, y));
+	const y = pickTipY(yAbove, yBelow, targetRect.top, tipHeight, pad, vpH);
 
 	return { x, y };
 }
@@ -133,6 +132,50 @@ function renderListRows(
 
 export type SpecLine = { label: string; value: string };
 
+export type AsciiCardAction = {
+	id: string;
+	/** Plain label; rendered as `[ ${label} ]`. */
+	label: string;
+};
+
+/** Embedded markers for interactive action labels inside an ascii card. */
+export const ASCII_CARD_ACTION_START = '\u001e';
+export const ASCII_CARD_ACTION_END = '\u001f';
+
+export type AsciiCardSegment =
+	| { type: 'text'; value: string }
+	| { type: 'action'; id: string; label: string };
+
+function actionToken(id: string, label: string): string {
+	return `${ASCII_CARD_ACTION_START}${id}\u001d${label}${ASCII_CARD_ACTION_END}`;
+}
+
+function actionVisible(label: string): string {
+	return `[ ${label} ]`;
+}
+
+/** Split card art into text + action segments for hydration into live controls. */
+export function parseAsciiCardSegments(art: string): AsciiCardSegment[] {
+	const segments: AsciiCardSegment[] = [];
+	const re = new RegExp(
+		`${ASCII_CARD_ACTION_START}([^${ASCII_CARD_ACTION_END}\\u001d]+)\\u001d([^${ASCII_CARD_ACTION_END}]+)${ASCII_CARD_ACTION_END}`,
+		'g',
+	);
+	let last = 0;
+	for (const match of art.matchAll(re)) {
+		const index = match.index;
+		if (index > last) {
+			segments.push({ type: 'text', value: art.slice(last, index) });
+		}
+		segments.push({ type: 'action', id: match[1], label: match[2] });
+		last = index + match[0].length;
+	}
+	if (last < art.length) {
+		segments.push({ type: 'text', value: art.slice(last) });
+	}
+	return segments;
+}
+
 export function renderAsciiCard(opts: {
 	title: string;
 	body: string;
@@ -142,6 +185,8 @@ export function renderAsciiCard(opts: {
 	usage?: string;
 	copyable?: boolean;
 	footer?: string;
+	/** Right-aligned bracket actions inside the card (permitted interactive variant). */
+	actions?: readonly AsciiCardAction[];
 	inner?: number;
 	labelW?: number;
 }): string {
@@ -186,6 +231,14 @@ export function renderAsciiCard(opts: {
 	}
 	if (footerLines.length) {
 		rows.push(`├${rule}┤`, ...footerLines);
+	}
+
+	if (opts.actions?.length) {
+		const visible = opts.actions.map((a) => actionVisible(a.label)).join(' ');
+		const tokens = opts.actions.map((a) => actionToken(a.id, a.label)).join(' ');
+		const lead = Math.max(0, inner - 2 - visible.length);
+		const trail = Math.max(0, inner - 1 - lead - visible.length);
+		rows.push(pad(''), `│ ${' '.repeat(lead)}${tokens}${' '.repeat(trail)}│`);
 	}
 
 	rows.push(`└${rule}┘`);

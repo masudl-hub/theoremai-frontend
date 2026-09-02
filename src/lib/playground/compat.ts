@@ -3,15 +3,10 @@
  * schema so playground controls cannot drift from createProvider.
  */
 import {
-	coerceProtocol,
-	coerceProvider,
 	EGRESS_ON_BLOCK,
 	GEMINI_FREE_BUCKETS,
 	PROTOCOLS as PROTOCOL_VALUES,
 	PROVIDERS as PROVIDER_VALUES,
-	type Protocol,
-	type Provider,
-	providersFor,
 	SCHEMA_ENFORCEMENTS,
 	SPEECH_AUDIO_FORMATS,
 	TURN_STOP_KINDS as STOP_VALUES,
@@ -19,30 +14,33 @@ import {
 	SUMMARY_MODES,
 	THINKING_LEVELS as THINKING_VALUES,
 	type ThinkingLevel,
-} from '@theorum/schema';
+	TOOL_ACCESS,
+	TOOL_LOAD_TIERS as TOOL_LOAD_VALUES,
+	TOOL_PERMISSION,
+} from 'theorum/schema';
 
-export type { Protocol, Provider };
 export type ThinkingLevelValue = ThinkingLevel;
 
 function labeled<T extends string>(values: readonly T[]): { value: T; label: T }[] {
 	return values.map((value) => ({ value, label: value }));
 }
 
-export const PROTOCOLS = labeled(PROTOCOL_VALUES);
-export const PROVIDERS = labeled(PROVIDER_VALUES);
-export const THINKING_LEVELS = labeled(THINKING_VALUES);
-export const TURN_STOP_KINDS = labeled(STOP_VALUES);
+export const PLAYGROUND_PROTOCOLS = labeled(PROTOCOL_VALUES);
+export const PLAYGROUND_PROVIDERS = labeled(PROVIDER_VALUES);
+export const PLAYGROUND_THINKING_LEVELS = labeled(THINKING_VALUES);
+export const PLAYGROUND_TURN_STOP_KINDS = labeled(STOP_VALUES);
 export const SUMMARY_MODE_OPTIONS = labeled(SUMMARY_MODES);
 export const STREAM_MODE_OPTIONS = labeled(STREAM_MODES);
 export const SCHEMA_ENFORCEMENT_OPTIONS = labeled(SCHEMA_ENFORCEMENTS);
 export const SPEECH_FORMAT_OPTIONS = labeled(SPEECH_AUDIO_FORMATS);
 export const ON_BLOCK_OPTIONS = labeled(EGRESS_ON_BLOCK);
+export const TOOL_LOAD_TIER_OPTIONS = labeled(TOOL_LOAD_VALUES);
+export const TOOL_ACCESS_OPTIONS = labeled(TOOL_ACCESS);
+export const TOOL_PERMISSION_OPTIONS = labeled(TOOL_PERMISSION);
 export const GEMINI_KEY_OPTIONS = [
 	{ value: '' as const, label: '(omit)' },
 	...labeled(GEMINI_FREE_BUCKETS),
 ];
-
-export { coerceProtocol, coerceProvider, providersFor };
 
 export function toggleList(list: string[], value: string, on: boolean): string[] {
 	if (on) return list.includes(value) ? list : [...list, value];

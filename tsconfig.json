@@ -12,5 +12,5 @@
 		"strict": true,
 		"moduleResolution": "bundler"
 	},
-	"exclude": ["theorum/**", ".svelte-kit/**", "node_modules/**"]
+	"exclude": [".svelte-kit/**", "node_modules/**"]
 }

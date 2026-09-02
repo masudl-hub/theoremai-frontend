@@ -25,8 +25,8 @@ $effect(() => on(window, 'keydown', onKeydown));
 
 <aside class="facet-panel" aria-labelledby="facet-panel-title">
 	<header class="facet-panel-head">
-		<h2 id="facet-panel-title" class="facet-panel-title">{title}</h2>
 		<button class="facet-panel-close" aria-label="Close" onclick={close} type="button">×</button>
+		<h2 id="facet-panel-title" class="facet-panel-title text-xs">{title}</h2>
 	</header>
 	<div class="facet-panel-body">
 		<FacetEditor id={node.id} data={node.data} />
@@ -48,7 +48,7 @@ $effect(() => on(window, 'keydown', onKeydown));
 
 .facet-panel-head {
 	display: grid;
-	grid-template-columns: 1fr auto;
+	grid-template-columns: auto 1fr;
 	align-items: center;
 	gap: 0.5rem;
 	flex-shrink: 0;
@@ -62,7 +62,6 @@ $effect(() => on(window, 'keydown', onKeydown));
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	font-size: 0.75rem;
 	font-weight: 800;
 	letter-spacing: 0.14em;
 	text-transform: uppercase;
@@ -88,7 +87,7 @@ $effect(() => on(window, 'keydown', onKeydown));
 	flex-direction: column;
 	min-height: 0;
 	flex: 1 1 auto;
-	padding: 0.85rem;
+	padding: 1rem 1rem 1.15rem;
 	overflow: hidden;
 }
 </style>

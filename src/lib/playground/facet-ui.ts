@@ -8,5 +8,9 @@ export function facetTitle(data: FacetData): string {
 		const mid = data.modelId.trim();
 		return mid || FACET_LABEL.modelSpec;
 	}
+	if (data.kind === 'toolSpec') {
+		const name = data.toolName.trim();
+		return name || FACET_LABEL.toolSpec;
+	}
 	return FACET_LABEL[data.kind];
 }

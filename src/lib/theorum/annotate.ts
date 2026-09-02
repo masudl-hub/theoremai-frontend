@@ -1,5 +1,5 @@
-import { GOOGLE_SPEECH_VOICES } from '@theorum/presets/google/speech-voices';
-import { catalogPathFor, fieldMeta } from '@theorum/schema';
+import { GOOGLE_SPEECH_VOICES } from 'theorum/presets/google/speech-voices';
+import { catalogPathFor, fieldMeta } from 'theorum/schema';
 import { renderAsciiCard } from '$lib/ascii/tip-card';
 
 function escapeHtml(s: string): string {
@@ -25,15 +25,17 @@ export function annotateProfileCode(source: string): string {
 	const lines = source.split('\n');
 	const out: string[] = [];
 
-	for (const line of lines) {
+	lines.forEach((line, idx) => {
+		const lineNum = String(idx + 1);
 		const commentAt = findCommentIndex(line);
 		const code = commentAt === -1 ? line : line.slice(0, commentAt);
 		const comment = commentAt === -1 ? '' : line.slice(commentAt);
 
 		const trimmed = code.trim();
 		if (!trimmed) {
-			out.push(escapeHtml(code) + commentHtml(comment));
-			continue;
+			const inner = escapeHtml(code) + commentHtml(comment);
+			out.push(`<span class="code-line" data-line="${lineNum}">${inner || '&nbsp;'}</span>`);
+			return;
 		}
 
 		const match = code.match(KEY_LINE);
@@ -44,16 +46,18 @@ export function annotateProfileCode(source: string): string {
 					stack.pop();
 				}
 			}
-			out.push(escapeHtml(code) + commentHtml(comment));
-			continue;
+			const inner = escapeHtml(code) + commentHtml(comment);
+			out.push(`<span class="code-line" data-line="${lineNum}">${inner}</span>`);
+			return;
 		}
 
 		const [, indent, rawKey, colon, space, restRaw] = match;
 		const rest = restRaw;
 		const cleanKey = rawKey.replace(/^['"]|['"]$/g, '');
 		if (!cleanKey) {
-			out.push(escapeHtml(code) + commentHtml(comment));
-			continue;
+			const inner = escapeHtml(code) + commentHtml(comment);
+			out.push(`<span class="code-line" data-line="${lineNum}">${inner}</span>`);
+			return;
 		}
 		const path = catalogPathFor([...stack, cleanKey]);
 		const meta = fieldMeta(path);
@@ -70,10 +74,9 @@ export function annotateProfileCode(source: string): string {
 			}
 		}
 
-		out.push(
-			`${indent}${keyHtml}${escapeHtml(colon)}${space}${escapeHtml(rest)}${commentHtml(comment)}`,
-		);
-	}
+		const lineContent = `${indent}${keyHtml}${escapeHtml(colon)}${space}${escapeHtml(rest)}${commentHtml(comment)}`;
+		out.push(`<span class="code-line" data-line="${lineNum}">${lineContent}</span>`);
+	});
 
 	return out.join('\n');
 }

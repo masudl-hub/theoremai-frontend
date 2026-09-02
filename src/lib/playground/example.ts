@@ -1,6 +1,12 @@
 import { PLAYGROUND_COL_PX, PLAYGROUND_ORIGIN, PLAYGROUND_ROW_PX } from './layout';
 import { OPENROUTER_PLAYGROUND_API_ID } from './playground-policy';
-import { DRAG_HANDLE, defaultModelSpec, type PlaygroundEdge, type PlaygroundNode } from './types';
+import {
+	DRAG_HANDLE,
+	defaultModelSpec,
+	defaultToolSpec,
+	type PlaygroundEdge,
+	type PlaygroundNode,
+} from './types';
 
 function edge(source: string, target: string): PlaygroundEdge {
 	return {
@@ -13,7 +19,7 @@ function edge(source: string, target: string): PlaygroundEdge {
 	};
 }
 
-/** Starter graph — sales.agent with one modelSpec child. */
+/** Starter graph — sales.agent with modelSpec + toolSpec children. */
 export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: PlaygroundEdge[] } {
 	const nodes: PlaygroundNode[] = [
 		{
@@ -68,8 +74,52 @@ export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 			data: {
 				kind: 'tools',
 				expanded: false,
-				allow: 'lookup_crm, draft_quote',
+				t2Loader: '',
 			},
+		},
+		{
+			id: 'tool-lookup-crm',
+			type: 'facet',
+			position: {
+				x: PLAYGROUND_ORIGIN.x + PLAYGROUND_COL_PX,
+				y: PLAYGROUND_ORIGIN.y + PLAYGROUND_ROW_PX * 2,
+			},
+			dragHandle: DRAG_HANDLE,
+			data: defaultToolSpec({
+				toolName: 'lookup_crm',
+				description: 'Look up a CRM contact by email or id.',
+				loadTier: 'T0',
+			}),
+		},
+		{
+			id: 'tool-draft-quote',
+			type: 'facet',
+			position: {
+				x: PLAYGROUND_ORIGIN.x + PLAYGROUND_COL_PX,
+				y: PLAYGROUND_ORIGIN.y + PLAYGROUND_ROW_PX * 3 - 40,
+			},
+			dragHandle: DRAG_HANDLE,
+			data: defaultToolSpec({
+				toolName: 'draft_quote',
+				description: 'Draft a quote from qualified lead fields.',
+				loadTier: 'T0',
+				inputJson: `{
+  "type": "object",
+  "properties": {
+    "accountId": { "type": "string" },
+    "sku": { "type": "string" }
+  },
+  "required": ["accountId"]
+}`,
+				outputJson: `{
+  "type": "object",
+  "properties": {
+    "quoteId": { "type": "string" },
+    "total": { "type": "number" }
+  },
+  "required": ["quoteId", "total"]
+}`,
+			}),
 		},
 		{
 			id: 'inputs',
@@ -115,7 +165,6 @@ export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 				imageAspectRatio: '1:1',
 				imageSize: '1K',
 				imageMimeType: 'image/png',
-				imageAllowsGrounding: true,
 				imageMaxInputImages: 3,
 				speechEnabled: false,
 				speechVoice: '',
@@ -155,6 +204,8 @@ export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 		edge('identity', 'outputs'),
 		edge('identity', 'guardrails'),
 		edge('models', 'model-fast'),
+		edge('tools', 'tool-lookup-crm'),
+		edge('tools', 'tool-draft-quote'),
 	];
 
 	return { nodes, edges };
@@ -163,51 +214,53 @@ export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 export function createBlankGraph(): { nodes: PlaygroundNode[]; edges: PlaygroundEdge[] } {
 	const { nodes, edges } = createExampleGraph();
 	return {
-		edges: edges.map((e) => ({ ...e })),
-		nodes: nodes.map((n) => {
-			if (n.data.kind === 'identity') {
-				return {
-					...n,
-					data: {
-						...n.data,
-						expanded: true,
-						agentId: '',
-						handle: '',
-						system: '',
-						chat: false,
-					},
-				};
-			}
-			if (n.data.kind === 'modelSpec') {
-				return {
-					...n,
-					data: defaultModelSpec({
-						modelId: 'fast',
-						apiId: OPENROUTER_PLAYGROUND_API_ID,
-						selectLabel: 'fast',
-					}),
-				};
-			}
-			if (n.data.kind === 'tools') {
-				return { ...n, data: { ...n.data, allow: '', expanded: false } };
-			}
-			if (n.data.kind === 'outputs') {
-				return {
-					...n,
-					data: {
-						...n.data,
-						expanded: false,
-						mode: 'text',
-						schemaId: '',
-						schemaJson: '',
-						validationEnabled: false,
-						imageEnabled: false,
-						speechEnabled: false,
-						resumeEnabled: false,
-					},
-				};
-			}
-			return { ...n, data: { ...n.data, expanded: false } };
-		}),
+		edges: edges.filter((e) => !e.target.startsWith('tool-')),
+		nodes: nodes
+			.filter((n) => n.data.kind !== 'toolSpec')
+			.map((n) => {
+				if (n.data.kind === 'identity') {
+					return {
+						...n,
+						data: {
+							...n.data,
+							expanded: true,
+							agentId: '',
+							handle: '',
+							system: '',
+							chat: false,
+						},
+					};
+				}
+				if (n.data.kind === 'modelSpec') {
+					return {
+						...n,
+						data: defaultModelSpec({
+							modelId: 'fast',
+							apiId: OPENROUTER_PLAYGROUND_API_ID,
+							selectLabel: 'fast',
+						}),
+					};
+				}
+				if (n.data.kind === 'tools') {
+					return { ...n, data: { ...n.data, expanded: false, t2Loader: '' } };
+				}
+				if (n.data.kind === 'outputs') {
+					return {
+						...n,
+						data: {
+							...n.data,
+							expanded: false,
+							mode: 'text',
+							schemaId: '',
+							schemaJson: '',
+							validationEnabled: false,
+							imageEnabled: false,
+							speechEnabled: false,
+							resumeEnabled: false,
+						},
+					};
+				}
+				return { ...n, data: { ...n.data, expanded: false } };
+			}),
 	};
 }

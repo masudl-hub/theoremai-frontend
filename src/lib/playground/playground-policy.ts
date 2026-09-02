@@ -7,6 +7,9 @@
  * - Map grounding (Tools): per-model 0/500 or 0/0 (see mapGrounding flags below).
  */
 
+import type { Protocol } from 'theorum/schema';
+import type { PlaygroundNode } from './types';
+
 export const OPENROUTER_PLAYGROUND_API_ID = 'openrouter/free';
 
 export const OPENROUTER_PLAYGROUND_NOTE =
@@ -302,7 +305,7 @@ export type ProfileLike = {
 			}
 		>;
 	};
-	tools?: { allow?: string[] };
+	tools?: { allow?: string[]; t2Loader?: string };
 };
 
 /** Compile-time gate for the full profile graph. */
@@ -311,6 +314,12 @@ export function playgroundPolicyViolation(profile: ProfileLike): string | null {
 
 	const customErr = validateCustomToolsAllow((profile.tools?.allow ?? []).join(', '));
 	if (customErr) return customErr;
+
+	if (profile.model.protocol === 'geminiLive') {
+		if (profile.tools?.t2Loader?.trim()) {
+			return 'tools.t2Loader has no effect on geminiLive — function declarations are fixed at session start; use T0/T1 only.';
+		}
+	}
 
 	if (isOpenRouterTransport(protocol, provider)) {
 		for (const id of allow) {
@@ -385,4 +394,19 @@ export function syncModelSpecsForTransport(
 		}
 	}
 	return updates;
+}
+
+/** Gemini Interactions speech must be PCM — reset legacy mp3 on the outputs facet. */
+export function clearMp3SpeechOnGeminiInteractions(
+	getNodes: () => PlaygroundNode[] | undefined,
+	patchNode: (id: string, partial: Partial<PlaygroundNode['data']>) => void,
+	protocol: Protocol,
+): void {
+	if (protocol !== 'geminiInteractions') return;
+	for (const n of getNodes() ?? []) {
+		if (n.data.kind !== 'outputs') continue;
+		if (n.data.speechFormat === 'mp3') {
+			patchNode(n.id, { speechFormat: 'pcm' });
+		}
+	}
 }

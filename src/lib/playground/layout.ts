@@ -1,6 +1,14 @@
 /** Shared timing for panel layout transitions. */
 export const PLAYGROUND_PANEL_EASE_MS = 320;
 
+/** Vertical position for the next child spec under a hub node. */
+export function nextChildSpecY(specPositions: Array<{ y: number }>, hubY: number): number {
+	const baseY = hubY + PLAYGROUND_ROW_PX;
+	if (specPositions.length === 0) return baseY;
+	const lastSpecY = Math.max(...specPositions.map((p) => p.y));
+	return lastSpecY + PLAYGROUND_ROW_PX - 40;
+}
+
 /** Facet node width (15rem) plus breathing room between columns. */
 export const PLAYGROUND_NODE_WIDTH_PX = 240;
 

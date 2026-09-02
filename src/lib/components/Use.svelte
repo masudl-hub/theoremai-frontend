@@ -1,8 +1,7 @@
 <script lang="ts">
-/* eslint-disable svelte/no-at-html-tags -- annotateProfileCode escapes HTML before render */
+import ProfileCode from '$lib/components/ProfileCode.svelte';
 import TypeTip from '$lib/components/TypeTip.svelte';
 import UseArt from '$lib/components/UseArt.svelte';
-import { annotateProfileCode } from '$lib/theorum/annotate';
 
 type OutputKind = 'text' | 'structured' | 'image' | 'speech';
 type SnippetId =
@@ -29,19 +28,14 @@ const installSnippet = $derived.by(() => {
 	if (customTools) importNames.push('registerTool');
 	if (egress) importNames.push('standardEgressEnforce');
 	const importLine = `import { ${importNames.join(', ')} } from "theorum";`;
-
-	if (!customTools) {
-		return `npm install theorum
-
-${importLine}`;
-	}
+	const zodImport = customTools ? `\nimport { z } from "zod";` : '';
 
 	return `npm install theorum
 
-${importLine}
-import { z } from "zod";
+${importLine}${zodImport}`;
+});
 
-registerTool({
+const registerToolSnippet = `registerTool({
   type: "function",
   name: "lookup_order",
   description: "Fetch order state from the host.",
@@ -52,9 +46,36 @@ registerTool({
   permission: "session_consent",
   input: z.object({ orderId: z.string() }),
   output: z.object({ status: z.string() }),
-  handler: async (_input) => ({ status: "shipped" }),
-});`;
+  handler: async (input) => ({ status: "shipped" }),
 });
+
+registerTool({
+  type: "function",
+  name: "load_tools",
+  description: "Promote deferred T2 tools when the model requests them.",
+  category: "commerce",
+  access: "read-only",
+  paths: ["*"],
+  loadTier: "T0",
+  permission: "auto",
+  input: z.object({ names: z.array(z.string()) }),
+  output: z.object({ loaded: z.array(z.string()) }),
+  handler: async (input) => ({ loaded: input.names }),
+});
+
+registerTool({
+  type: "function",
+  name: "deferred_lookup",
+  description: "T2 tool — wired only after load_tools promotes it.",
+  category: "commerce",
+  access: "read-only",
+  paths: ["*"],
+  loadTier: "T2",
+  permission: "auto",
+  input: z.object({ q: z.string() }),
+  output: z.object({ finding: z.string() }),
+  handler: async (input) => ({ finding: input.q }),
+});`;
 
 const agentBlock = `  id: "mermaid",
   identity: {
@@ -111,28 +132,21 @@ const modelsBlock = $derived.by(() => {
   },`;
 });
 
-const toolsBlock = $derived.by(() => {
-	const allow = customTools ? `["lookup_order"]` : `[]`;
-	const turnGate = customTools
-		? `
-
-// Per turn — gate tools on (required even when allow / builtInTools list them):
-// runTurn({
-//   profile: "mermaid",
-//   tools: { googleSearch: true, googleMaps: true, lookup_order: true },
-//   ...
-// })
-
-// Custom tools: profile.tools.allow. Provider builtins: model.config.*.builtInTools.
-// T1 tools: host selects which to wire via toolLoader on the turn request.
-// T2 tools: promoted mid-turn by a loader tool (e.g. load_tools).
-
-// After stop.kind === "tool", resume with invokeTool({ resume, provider, signal })`
+const profileToolsBlock = $derived.by(() => {
+	const allow = customTools ? `["lookup_order", "load_tools", "deferred_lookup"]` : `[]`;
+	const t2 = customTools
+		? `,
+    t2Loader: "load_tools"`
 		: '';
-
 	return `  tools: {
-    allow: ${allow},
-  },${turnGate}`;
+    allow: ${allow}${t2},
+    // T1: optional tools.t1Policy(ctx) => ["deferred_lookup"]
+  },`;
+});
+
+const toolsBlock = $derived.by(() => {
+	const registerBlock = customTools ? `${registerToolSnippet}\n\n` : '';
+	return `${registerBlock}${profileToolsBlock}`;
 });
 
 const inputsBlock = `  inputs: {
@@ -170,7 +184,6 @@ const outputsBlock = $derived.by(() => {
       aspectRatio: "1:1",
       size: "2K",
       mimeType: "image/png",
-      allowsGrounding: true,
       maxInputImages: 3,
     },`);
 	} else if (outputKind === 'speech') {
@@ -215,12 +228,13 @@ const guardrailsBlock = $derived.by(() => {
 const fullCode = $derived(
 	[
 		installSnippet,
+		customTools ? `\n${registerToolSnippet}` : '',
 		'',
 		'registerProfile(',
 		'  defineProfile({',
 		agentBlock,
 		modelsBlock,
-		toolsBlock,
+		profileToolsBlock,
 		inputsBlock,
 		outputsBlock,
 		guardrailsBlock,
@@ -229,8 +243,9 @@ const fullCode = $derived(
 	].join('\n'),
 );
 
-function codeHtml(source: string): string {
-	return annotateProfileCode(source);
+function setOutputKind(kind: OutputKind) {
+	outputKind = kind;
+	validation = kind === 'structured';
 }
 
 async function copySnippet(id: SnippetId, text: string) {
@@ -244,11 +259,6 @@ async function copySnippet(id: SnippetId, text: string) {
 	} catch {
 		/* ignore */
 	}
-}
-
-function setOutputKind(kind: OutputKind) {
-	outputKind = kind;
-	validation = kind === 'structured';
 }
 </script>
 
@@ -279,14 +289,14 @@ function setOutputKind(kind: OutputKind) {
 
 <section
 	id="use"
-	class="landing-section landing-section-grow relative flex w-full flex-col items-center justify-start border-b-[3px] border-black px-6 py-20 md:px-14 md:py-12"
+	class="landing-section landing-section-grow relative flex w-full flex-col items-center justify-start px-6 py-20 md:px-14 md:py-12"
 >
 	<div
 		class="relative z-10 mb-6 flex w-full max-w-3xl shrink-0 items-start justify-between gap-4 md:mb-8"
 	>
 		<div>
-			<h3 class="text-sm font-extrabold tracking-[0.22em] uppercase">Define a profile</h3>
-			<p class="mt-2 max-w-2xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
+			<h3 class="text-sm font-extrabold tracking-section uppercase">Define a profile</h3>
+			<p class="mt-2 max-w-2xl text-xs leading-relaxed text-mute md:text-sm">
 				A profile is the contract for one agent: identity, models, tools, inputs, outputs, and
 				guardrails.
 			</p>
@@ -296,51 +306,62 @@ function setOutputKind(kind: OutputKind) {
 
 	<div class="relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-12 pb-12 md:gap-14">
 		<TypeTip class="flex flex-col gap-12 md:gap-14">
-			<section class="flex flex-col gap-3" aria-labelledby="use-s0">
+			<section
+				class="flex flex-col gap-3"
+				aria-labelledby="use-s0"
+				data-subtarget="install"
+				id="use-install"
+			>
 				<div>
 					<h4 id="use-s0" class="text-xs font-extrabold tracking-wide uppercase md:text-sm">
 						1 · Install
 					</h4>
 				</div>
 				<UseArt id="install" />
-				<p class="max-w-2xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
+				<p class="max-w-2xl text-xs leading-relaxed text-mute md:text-sm">
 					Add theorum to your project, then import the profile APIs.
 				</p>
 				<div class="relative">
 					<div class="absolute top-0 right-0 z-10">
 						{@render copyBtn('install', installSnippet)}
 					</div>
-					<pre
-						class="ascii profile-code overflow-x-auto overflow-y-visible pr-8 text-xs leading-snug font-bold md:text-sm md:leading-[1.4]"
-					>{@html codeHtml(installSnippet)}</pre>
+					<ProfileCode source={installSnippet} />
 				</div>
 			</section>
 
-			<section class="flex flex-col gap-3" aria-labelledby="use-s1">
+			<section
+				class="flex flex-col gap-3"
+				aria-labelledby="use-s1"
+				data-subtarget="agent"
+				id="use-agent"
+			>
 				<div>
 					<h4 id="use-s1" class="text-xs font-extrabold tracking-wide uppercase md:text-sm">
 						2 · Describe agent
 					</h4>
 				</div>
 				<UseArt id="agent" />
-				<p class="max-w-2xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
+				<p class="max-w-2xl text-xs leading-relaxed text-mute md:text-sm">
 					Every profile has an id, a handle, and a system instruction the model receives each turn.
 				</p>
 				<div class="relative">
 					<div class="absolute top-0 right-0 z-10">{@render copyBtn('agent', agentSnippet)}</div>
-					<pre
-						class="ascii profile-code overflow-x-auto overflow-y-visible pr-8 text-xs leading-snug font-bold md:text-sm md:leading-[1.4]"
-					>{@html codeHtml(agentSnippet)}</pre>
+					<ProfileCode source={agentSnippet} />
 				</div>
 			</section>
 
-			<section class="flex flex-col gap-3" aria-labelledby="use-s2">
+			<section
+				class="flex flex-col gap-3"
+				aria-labelledby="use-s2"
+				data-subtarget="models"
+				id="use-models"
+			>
 				<div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
 					<h4 id="use-s2" class="text-xs font-extrabold tracking-wide uppercase md:text-sm">
 						3 · Define models
 					</h4>
 					<button
-						class="chip shrink-0"
+						class="chip text-xs shrink-0"
 						class:chip-on={compaction}
 						aria-pressed={compaction}
 						onclick={() => (compaction = !compaction)}
@@ -350,26 +371,29 @@ function setOutputKind(kind: OutputKind) {
 					</button>
 				</div>
 				<UseArt id="models" />
-				<p class="max-w-2xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
+				<p class="max-w-2xl text-xs leading-relaxed text-mute md:text-sm">
 					Select a provider and the models this agent may use. Each model sets thinking levels,
 					token limits, provider builtins (<code class="font-bold text-black">builtInTools</code>),
 					and optional compaction.
 				</p>
 				<div class="relative">
 					<div class="absolute top-0 right-0 z-10">{@render copyBtn('models', modelsBlock)}</div>
-					<pre
-						class="ascii profile-code overflow-x-auto overflow-y-visible pr-8 text-xs leading-snug font-bold md:text-sm md:leading-[1.4]"
-					>{@html codeHtml(modelsBlock)}</pre>
+					<ProfileCode source={modelsBlock} />
 				</div>
 			</section>
 
-			<section class="flex flex-col gap-3" aria-labelledby="use-s3">
+			<section
+				class="flex flex-col gap-3"
+				aria-labelledby="use-s3"
+				data-subtarget="tools"
+				id="use-tools"
+			>
 				<div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
 					<h4 id="use-s3" class="text-xs font-extrabold tracking-wide uppercase md:text-sm">
 						4 · Configure tools
 					</h4>
 					<button
-						class="chip shrink-0"
+						class="chip text-xs shrink-0"
 						class:chip-on={customTools}
 						aria-pressed={customTools}
 						onclick={() => (customTools = !customTools)}
@@ -379,40 +403,58 @@ function setOutputKind(kind: OutputKind) {
 					</button>
 				</div>
 				<UseArt id="tools" />
-				<p class="max-w-2xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
+				<p class="max-w-2xl text-xs leading-relaxed text-mute md:text-sm">
 					<code class="font-bold text-black">tools.allow</code>
-					lists custom function and loader tools only — register them once at startup with
+					lists custom function tools only — register them once at startup with
 					<code class="font-bold text-black">registerTool</code>. Provider builtins belong on each
-					model (<code class="font-bold text-black">builtInTools</code>). Gate either kind per turn
-					with <code class="font-bold text-black">tools: &#123; id: true &#125;</code>.
+					model (<code class="font-bold text-black">builtInTools</code>) and are on whenever that
+					model is selected. Optional on the profile:
+					<code class="font-bold text-black">tools.t1Policy</code>
+					(T1) and
+					<code class="font-bold text-black">tools.t2Loader</code>
+					(designated loader returning
+					<code class="font-bold text-black">{'{ loaded: string[] }'}</code>
+					). T2 promotion is turn-local — the kernel does not remember it on the next turn unless
+					the host restores visibility via
+					<code class="font-bold text-black">invokeTool</code>
+					(<code class="font-bold text-black">promoted</code>
+					/ snapshot) or policy on load. Visibility otherwise follows
+					<code class="font-bold text-black">loadTier</code>
+					on each registered tool.
 				</p>
 				<div class="relative">
 					<div class="absolute top-0 right-0 z-10">{@render copyBtn('tools', toolsBlock)}</div>
-					<pre
-						class="ascii profile-code overflow-x-auto overflow-y-visible pr-8 text-xs leading-snug font-bold md:text-sm md:leading-[1.4]"
-					>{@html codeHtml(toolsBlock)}</pre>
+					<ProfileCode source={toolsBlock} />
 				</div>
 			</section>
 
-			<section class="flex flex-col gap-3" aria-labelledby="use-s4">
+			<section
+				class="flex flex-col gap-3"
+				aria-labelledby="use-s4"
+				data-subtarget="inputs"
+				id="use-inputs"
+			>
 				<div>
 					<h4 id="use-s4" class="text-xs font-extrabold tracking-wide uppercase md:text-sm">
 						5 · Allow inputs
 					</h4>
 				</div>
 				<UseArt id="inputs" />
-				<p class="max-w-2xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
+				<p class="max-w-2xl text-xs leading-relaxed text-mute md:text-sm">
 					Declare which text, file, and voice inputs the agent accepts on a turn.
 				</p>
 				<div class="relative">
 					<div class="absolute top-0 right-0 z-10">{@render copyBtn('inputs', inputsBlock)}</div>
-					<pre
-						class="ascii profile-code overflow-x-auto overflow-y-visible pr-8 text-xs leading-snug font-bold md:text-sm md:leading-[1.4]"
-					>{@html codeHtml(inputsBlock)}</pre>
+					<ProfileCode source={inputsBlock} />
 				</div>
 			</section>
 
-			<section class="flex flex-col gap-3" aria-labelledby="use-s5">
+			<section
+				class="flex flex-col gap-3"
+				aria-labelledby="use-s5"
+				data-subtarget="outputs"
+				id="use-outputs"
+			>
 				<div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
 					<h4 id="use-s5" class="text-xs font-extrabold tracking-wide uppercase md:text-sm">
 						6 · Describe outputs
@@ -420,7 +462,7 @@ function setOutputKind(kind: OutputKind) {
 					<div class="flex flex-wrap gap-x-0.5" aria-label="Output kind" role="radiogroup">
 						{#each ['text', 'structured', 'image', 'speech'] as kind (kind)}
 							<button
-								class="chip"
+								class="chip text-xs"
 								class:chip-on={outputKind === kind}
 								aria-checked={outputKind === kind}
 								onclick={() => setOutputKind(kind as OutputKind)}
@@ -432,7 +474,7 @@ function setOutputKind(kind: OutputKind) {
 						{/each}
 						{#if outputKind === 'structured'}
 							<button
-								class="chip"
+								class="chip text-xs"
 								class:chip-on={validation}
 								aria-pressed={validation}
 								onclick={() => (validation = !validation)}
@@ -444,24 +486,27 @@ function setOutputKind(kind: OutputKind) {
 					</div>
 				</div>
 				<UseArt id="outputs" />
-				<p class="max-w-2xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
+				<p class="max-w-2xl text-xs leading-relaxed text-mute md:text-sm">
 					Configure how the agent responds: plain text, structured JSON, images, or speech.
 				</p>
 				<div class="relative">
 					<div class="absolute top-0 right-0 z-10">{@render copyBtn('outputs', outputsBlock)}</div>
-					<pre
-						class="ascii profile-code overflow-x-auto overflow-y-visible pr-8 text-xs leading-snug font-bold md:text-sm md:leading-[1.4]"
-					>{@html codeHtml(outputsBlock)}</pre>
+					<ProfileCode source={outputsBlock} />
 				</div>
 			</section>
 
-			<section class="flex flex-col gap-3" aria-labelledby="use-s6">
+			<section
+				class="flex flex-col gap-3"
+				aria-labelledby="use-s6"
+				data-subtarget="guardrails"
+				id="use-guardrails"
+			>
 				<div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
 					<h4 id="use-s6" class="text-xs font-extrabold tracking-wide uppercase md:text-sm">
 						7 · Set guardrails
 					</h4>
 					<button
-						class="chip shrink-0"
+						class="chip text-xs shrink-0"
 						class:chip-on={egress}
 						aria-pressed={egress}
 						onclick={() => (egress = !egress)}
@@ -471,18 +516,17 @@ function setOutputKind(kind: OutputKind) {
 					</button>
 				</div>
 				<UseArt id="guardrails" />
-				<p class="max-w-2xl text-xs leading-relaxed text-[var(--color-mute)] md:text-sm">
-					Canary fencing, input sanitization, sensitive-data redaction, quotas, and opt-in egress
-					(<code class="text-black">standardEgressEnforce</code>) — the same stack wired in Th30 Live
-					and the playground default.
+				<p class="max-w-2xl text-xs leading-relaxed text-mute md:text-sm">
+					Canary fencing, input sanitization, sensitive-data redaction, quotas, and opt-in egress (<code
+						class="text-black"
+						>standardEgressEnforce</code
+					>) — the same stack wired in Th30 Live and the playground default.
 				</p>
 				<div class="relative">
 					<div class="absolute top-0 right-0 z-10">
 						{@render copyBtn('guardrails', guardrailsBlock)}
 					</div>
-					<pre
-						class="ascii profile-code overflow-x-auto overflow-y-visible pr-8 text-xs leading-snug font-bold md:text-sm md:leading-[1.4]"
-					>{@html codeHtml(guardrailsBlock)}</pre>
+					<ProfileCode source={guardrailsBlock} />
 				</div>
 			</section>
 		</TypeTip>
@@ -494,18 +538,13 @@ function setOutputKind(kind: OutputKind) {
 	appearance: none;
 	background: transparent;
 	border: none;
-	color: #000;
+	color: var(--color-ink);
 	cursor: pointer;
 	line-height: 0;
 }
 
 .copy-icon:hover {
 	opacity: 0.55;
-}
-
-.copy-icon:focus-visible {
-	outline: 2px solid #000;
-	outline-offset: 2px;
 }
 
 .chip {
@@ -515,7 +554,6 @@ function setOutputKind(kind: OutputKind) {
 	padding: 0.15rem 0.25rem;
 	color: var(--color-mute);
 	cursor: pointer;
-	font-size: 11px;
 	font-weight: 800;
 	letter-spacing: 0.12em;
 	text-transform: uppercase;
@@ -523,16 +561,11 @@ function setOutputKind(kind: OutputKind) {
 }
 
 .chip-on {
-	color: #000;
+	color: var(--color-ink);
 }
 
 .chip:hover {
-	color: #000;
-}
-
-.chip:focus-visible {
-	outline: 2px solid #000;
-	outline-offset: 2px;
+	color: var(--color-ink);
 }
 
 :global(.code-comment) {
@@ -543,11 +576,5 @@ function setOutputKind(kind: OutputKind) {
 :global(pre.profile-code) {
 	margin: 0;
 	overflow-y: visible;
-}
-
-@media (min-width: 768px) {
-	.chip {
-		font-size: 12px;
-	}
 }
 </style>

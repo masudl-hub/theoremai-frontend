@@ -1,3 +1,4 @@
+import type { Edge, Node } from '@xyflow/svelte';
 import type {
 	EgressOnBlock,
 	GeminiFreeBucket,
@@ -8,18 +9,20 @@ import type {
 	StreamMode,
 	SummaryMode,
 	ThinkingLevel,
-} from '@theorum/schema';
-import type { Edge, Node } from '@xyflow/svelte';
+	ToolLoadTier,
+} from 'theorum/schema';
+import { DEFAULT_TOOL_INPUT_SCHEMA, DEFAULT_TOOL_OUTPUT_SCHEMA } from './tool-schema';
 
 /**
  * Canvas node kinds.
- * Multiples nest as children (e.g. models → modelSpec).
+ * Multiples nest as children (e.g. models → modelSpec, tools → toolSpec).
  */
 export type FacetKind =
 	| 'identity'
 	| 'models'
 	| 'modelSpec'
 	| 'tools'
+	| 'toolSpec'
 	| 'inputs'
 	| 'outputs'
 	| 'guardrails';
@@ -63,10 +66,35 @@ export type ModelSpecData = {
 	selectLabel: string;
 };
 
+/** Hub for custom tools — allow is derived from child toolSpec nodes. */
 export type ToolsData = {
 	kind: 'tools';
 	expanded: boolean;
-	allow: string;
+	/** Designated function tool id for T2 promotion (must return { loaded: string[] }). */
+	t2Loader: string;
+};
+
+export type PlaygroundToolType = 'function';
+
+export type ToolAccessValue = 'read-only' | 'read-write' | 'destructive';
+export type ToolPermissionValue = 'auto' | 'session_consent' | 'always_confirm';
+
+/** One custom tool — compiles to registerTool + tools.allow entry. */
+export type ToolSpecData = {
+	kind: 'toolSpec';
+	expanded: boolean;
+	toolName: string;
+	toolType: PlaygroundToolType;
+	description: string;
+	category: string;
+	access: ToolAccessValue;
+	permission: ToolPermissionValue;
+	loadTier: ToolLoadTier;
+	/** Comma-separated paths; `*` = all. */
+	paths: string;
+	/** JSON Schema object as text. */
+	inputJson: string;
+	outputJson: string;
 };
 
 export type InputsData = {
@@ -102,7 +130,6 @@ export type OutputsData = {
 	imageAspectRatio: string;
 	imageSize: string;
 	imageMimeType: string;
-	imageAllowsGrounding: boolean;
 	imageMaxInputImages: number;
 	speechEnabled: boolean;
 	speechVoice: string;
@@ -120,7 +147,7 @@ export type GuardrailsData = {
 	redactSensitive: boolean;
 	quotaEnabled: boolean;
 	perDay: number;
-	egressMode: 'default' | 'none';
+	egressMode: 'default' | 'none' | 'custom';
 	onBlock: EgressOnBlock;
 	egressMaxRetries: number;
 };
@@ -130,6 +157,7 @@ export type FacetData =
 	| ModelsData
 	| ModelSpecData
 	| ToolsData
+	| ToolSpecData
 	| InputsData
 	| OutputsData
 	| GuardrailsData;
@@ -151,6 +179,20 @@ export type StructuredRegistration = {
 	};
 };
 
+/** Compiled custom tool ready for host registerTool + export source. */
+export type ToolRegistration = {
+	type: PlaygroundToolType;
+	name: string;
+	description: string;
+	category: string;
+	access: ToolAccessValue;
+	permission: ToolPermissionValue;
+	loadTier: ToolLoadTier;
+	paths: string[];
+	inputSchema: Record<string, unknown>;
+	outputSchema: Record<string, unknown>;
+};
+
 export type CompileResult =
 	| {
 			ok: true;
@@ -159,6 +201,7 @@ export type CompileResult =
 			source: string;
 			message: string;
 			structured?: StructuredRegistration;
+			customTools: ToolRegistration[];
 	  }
 	| {
 			ok: false;
@@ -171,6 +214,7 @@ export const FACET_LABEL: Record<FacetKind, string> = {
 	models: 'Models',
 	modelSpec: 'Model',
 	tools: 'Tools',
+	toolSpec: 'Tool',
 	inputs: 'Inputs',
 	outputs: 'Outputs',
 	guardrails: 'Guardrails',
@@ -194,5 +238,29 @@ export function defaultModelSpec(partial?: Partial<ModelSpecData>): ModelSpecDat
 		builtInTools: '',
 		selectLabel: 'fast',
 		...partial,
+	};
+}
+
+export function defaultToolSpec(partial?: Partial<ToolSpecData>): ToolSpecData {
+	const toolType: PlaygroundToolType = 'function';
+	const base: ToolSpecData = {
+		kind: 'toolSpec',
+		expanded: false,
+		toolName: 'lookup_crm',
+		toolType,
+		description: 'Playground stub tool — returns a fixed result.',
+		category: 'playground',
+		access: 'read-only',
+		permission: 'auto',
+		loadTier: 'T0',
+		paths: '*',
+		inputJson: DEFAULT_TOOL_INPUT_SCHEMA,
+		outputJson: DEFAULT_TOOL_OUTPUT_SCHEMA,
+	};
+	return {
+		...base,
+		...partial,
+		toolType,
+		loadTier: partial?.loadTier ?? base.loadTier,
 	};
 }

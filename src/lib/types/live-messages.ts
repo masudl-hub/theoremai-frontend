@@ -1,10 +1,13 @@
-import type { TurnEvent } from '@theorum/core';
+import type { TurnEvent } from 'theorum';
+
+export type LiveToolResponse = { id: string; name: string; output: unknown };
 
 export type LiveRelayClientMessage =
 	| { type: 'audio'; data: string }
 	| { type: 'video'; data: string; mimeType?: string }
 	| { type: 'text'; text: string }
-	| { type: 'toolResponse'; id: string; name: string; output: unknown };
+	| { type: 'toolResponse'; id: string; name: string; output: unknown }
+	| { type: 'toolResponses'; responses: LiveToolResponse[] };
 
 export function parseLiveRelayClientMessage(raw: unknown): LiveRelayClientMessage | null {
 	if (!raw || typeof raw !== 'object') return null;
@@ -31,6 +34,17 @@ export function parseLiveRelayClientMessage(raw: unknown): LiveRelayClientMessag
 						output: record.output,
 					}
 				: null;
+		case 'toolResponses': {
+			if (!Array.isArray(record.responses)) return null;
+			const responses = record.responses.filter(
+				(entry): entry is LiveToolResponse =>
+					Boolean(entry) &&
+					typeof entry === 'object' &&
+					typeof (entry as LiveToolResponse).id === 'string' &&
+					typeof (entry as LiveToolResponse).name === 'string',
+			);
+			return responses.length > 0 ? { type: 'toolResponses', responses } : null;
+		}
 		default:
 			return null;
 	}

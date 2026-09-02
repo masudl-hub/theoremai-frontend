@@ -5,24 +5,20 @@ let { versionLabel }: { versionLabel: string } = $props();
 </script>
 
 <section
-	class="hero landing-section relative flex h-dvh w-full flex-col justify-end border-b-[3px] border-black px-6 pb-12 pt-8 md:px-14 md:pb-16"
+	class="hero landing-section relative flex h-dvh w-full flex-col justify-end px-6 pb-12 pt-8 md:px-14 md:pb-16"
 	aria-label="Hero"
 >
-	<CloudSky
-		band="absolute inset-x-0 top-[30%] bottom-[calc(3rem+2.75rem)] z-0 select-none overflow-visible text-black md:top-[28%] md:bottom-[calc(4rem+3.5rem)]"
-	/>
+	<CloudSky band="hero-cloud-band absolute inset-x-0 z-0 select-none overflow-visible text-black" />
 
 	<div class="relative z-10 flex w-full items-end justify-between gap-6 md:gap-10">
 		<div class="min-w-0 flex-1">
-			<p class="anim-rise-d1 mb-3 text-xs font-bold tracking-[0.06em] text-black/60 md:text-sm">
+			<p class="hero-version anim-rise-d1 mb-3 text-xs font-bold text-black/60 md:text-sm">
 				{versionLabel}
 			</p>
-			<h1
-				class="anim-brand text-[clamp(3.75rem,15vw,10.5rem)] leading-[0.82] font-extrabold tracking-tighter text-black uppercase"
-			>
+			<h1 class="hero-title anim-brand font-extrabold tracking-tighter text-black uppercase">
 				Theorum
 			</h1>
-			<p class="anim-rise-d2 mt-4 max-w-[42ch] text-sm font-bold text-black md:mt-5 md:text-xl">
+			<p class="hero-lead anim-rise-d2 mt-4 text-sm font-bold text-black md:mt-5 md:text-xl">
 				A TypeScript kernel for typed agent profiles and deterministic turns.
 			</p>
 		</div>
@@ -51,7 +47,7 @@ let { versionLabel }: { versionLabel: string } = $props();
 				rel="noopener noreferrer"
 				target="_blank"
 			>
-				<img class="h-5 w-5 md:h-7 md:w-7" alt="JSR" draggable="false" src="/jsr.png">
+				<img class="jsr-mark h-5 w-5 md:h-7 md:w-7" alt="JSR" draggable="false" src="/jsr.png">
 			</a>
 			<a
 				class="invert-link px-1.5 py-1.5"
@@ -73,5 +69,10 @@ let { versionLabel }: { versionLabel: string } = $props();
 <style>
 .hero {
 	overflow: visible;
+}
+
+/* PNG mark — invert to white when the link fills black. */
+:global(.invert-link:hover) .jsr-mark {
+	filter: invert(1);
 }
 </style>

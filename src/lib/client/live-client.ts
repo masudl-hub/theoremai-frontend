@@ -12,8 +12,9 @@
  */
 
 /* eslint-disable @typescript-eslint/no-deprecated -- ScriptProcessorNode until AudioWorklet migration */
-import type { TurnEvent } from '@theorum/core';
+import type { TurnEvent } from 'theorum';
 import { parseLiveServerEnvelope } from '$lib/types/live-messages';
+import { isPermissionDeniedError } from './live-errors';
 
 export type LiveSessionStatus =
 	| 'disconnected'
@@ -23,10 +24,13 @@ export type LiveSessionStatus =
 	| 'speaking'
 	| 'error';
 
+export type LiveConnectPhase = 'socket' | 'microphone';
+
 export interface LiveClientOptions {
 	profile?: string;
 	relayUrl?: string;
 	onStatusChange?: (status: LiveSessionStatus) => void;
+	onConnectPhase?: (phase: LiveConnectPhase | null) => void;
 	onTranscript?: (text: string, isUser: boolean) => void;
 	onTurnEvent?: (event: TurnEvent) => void;
 	onError?: (error: string) => void;
@@ -100,6 +104,8 @@ export class LiveSessionClient {
 	private playbackNodes: AudioBufferSourceNode[] = [];
 	private nextPlaybackTime = 0;
 	private status: LiveSessionStatus = 'disconnected';
+	private micActivating = false;
+	private connectTimeout: ReturnType<typeof setTimeout> | null = null;
 	private isMuted = false;
 	private options: LiveClientOptions;
 
@@ -107,48 +113,66 @@ export class LiveSessionClient {
 		this.options = options;
 	}
 
-	public get currentStatus(): LiveSessionStatus {
-		return this.status;
-	}
-
-	public get muted(): boolean {
-		return this.isMuted;
-	}
-
 	private setStatus(newStatus: LiveSessionStatus): void {
 		this.status = newStatus;
+		if (newStatus === 'listening' || newStatus === 'disconnected' || newStatus === 'error') {
+			this.clearConnectTimeout();
+		}
 		this.options.onStatusChange?.(newStatus);
 	}
 
-	public async connect(): Promise<void> {
-		if (
-			this.ws &&
-			(this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)
-		) {
-			return;
-		}
+	private setConnectPhase(phase: LiveConnectPhase | null): void {
+		this.options.onConnectPhase?.(phase);
+	}
 
+	private clearConnectTimeout(): void {
+		if (this.connectTimeout) {
+			clearTimeout(this.connectTimeout);
+			this.connectTimeout = null;
+		}
+	}
+
+	private detachWebSocket(): void {
+		if (!this.ws) return;
+		this.ws.onopen = null;
+		this.ws.onmessage = null;
+		this.ws.onclose = null;
+		this.ws.onerror = null;
+		try {
+			this.ws.close();
+		} catch {
+			/* ignore */
+		}
+		this.ws = null;
+	}
+
+	private teardownConnection(): void {
+		this.clearConnectTimeout();
+		this.micActivating = false;
+		this.setConnectPhase(null);
+		this.detachWebSocket();
+		this.cleanupAudio();
+	}
+
+	private failConnect(message: string, denied = false): void {
+		if (this.status === 'error' || this.status === 'disconnected') return;
+		this.teardownConnection();
+		this.options.onError?.(denied ? 'Permission denied...' : message);
+		this.setStatus('error');
+	}
+
+	public async connect(): Promise<void> {
+		this.teardownConnection();
 		this.setStatus('connecting');
+		this.setConnectPhase('socket');
 
 		try {
-			// Initialize AudioContext
 			const AudioContextClass = window.AudioContext;
 			this.audioContext = new AudioContextClass();
 			if (this.audioContext.state === 'suspended') {
 				await this.audioContext.resume();
 			}
 
-			// Request Microphone stream
-			this.micStream = await navigator.mediaDevices.getUserMedia({
-				audio: {
-					channelCount: 1,
-					echoCancellation: true,
-					noiseSuppression: true,
-					autoGainControl: true,
-				},
-			});
-
-			// Setup WebSocket
 			const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 			const profileParam = this.options.profile
 				? `?profile=${encodeURIComponent(this.options.profile)}`
@@ -159,27 +183,71 @@ export class LiveSessionClient {
 			this.ws = new WebSocket(url);
 			this.ws.binaryType = 'arraybuffer';
 
-			this.ws.onopen = () => {
-				this.setupMicrophonePipeline();
-			};
+			this.connectTimeout = setTimeout(() => {
+				if (this.status === 'connecting') {
+					this.failConnect('Live connection timed out');
+				}
+			}, 20_000);
 
 			this.ws.onmessage = (event: MessageEvent<string | ArrayBuffer | Blob>) => {
 				void this.handleServerMessage(event.data);
 			};
 
 			this.ws.onclose = () => {
-				this.cleanupAudio();
+				if (this.status === 'connecting') {
+					this.failConnect('Live connection closed before ready');
+					return;
+				}
+				this.teardownConnection();
 				this.setStatus('disconnected');
 			};
 
 			this.ws.onerror = () => {
-				this.options.onError?.('WebSocket live connection error');
-				this.setStatus('error');
+				this.failConnect('WebSocket live connection error');
 			};
 		} catch (err) {
-			this.cleanupAudio();
-			this.options.onError?.((err as Error).message || 'Failed to start live session');
-			this.setStatus('error');
+			const error = err as DOMException & Error;
+			this.failConnect(
+				error.message || 'Failed to start live session',
+				isPermissionDeniedError(err),
+			);
+		}
+	}
+
+	private async activateMicrophone(): Promise<void> {
+		if (this.micActivating || this.status !== 'connecting') return;
+		this.micActivating = true;
+		this.setConnectPhase('microphone');
+
+		try {
+			if (!this.audioContext || this.audioContext.state === 'closed') {
+				const AudioContextClass = window.AudioContext;
+				this.audioContext = new AudioContextClass();
+				if (this.audioContext.state === 'suspended') {
+					await this.audioContext.resume();
+				}
+			}
+
+			this.micStream = await navigator.mediaDevices.getUserMedia({
+				audio: {
+					channelCount: 1,
+					echoCancellation: true,
+					noiseSuppression: true,
+					autoGainControl: true,
+				},
+			});
+
+			this.setupMicrophonePipeline();
+			this.setConnectPhase(null);
+			this.setStatus('listening');
+		} catch (err) {
+			const error = err as DOMException & Error;
+			this.failConnect(
+				error.message || 'Failed to access microphone',
+				isPermissionDeniedError(err),
+			);
+		} finally {
+			this.micActivating = false;
 		}
 	}
 
@@ -224,7 +292,7 @@ export class LiveSessionClient {
 			if (!payload) return;
 
 			if (payload.type === 'ready') {
-				this.setStatus('listening');
+				await this.activateMicrophone();
 				return;
 			}
 
@@ -240,64 +308,68 @@ export class LiveSessionClient {
 				return;
 			}
 
-			if (payload.type === 'events') {
-				for (const event of payload.events) {
-					this.options.onTurnEvent?.(event);
+			const toolCalls: Array<{
+				id: string;
+				name: string;
+				arguments: Record<string, unknown>;
+			}> = [];
 
-					if (event.type === 'evidence' && event.evidence?.kind === 'input_transcription') {
-						if (event.text) {
-							this.options.onTranscript?.(event.text, true);
-						}
-					} else if (event.type === 'text' && event.text) {
-						this.options.onTranscript?.(event.text, false);
-					} else if (event.type === 'media' && event.media?.data) {
-						// Model audio chunk
-						this.setStatus('speaking');
-						await this.enqueueAudioChunk(event.media.data, event.media.mimeType);
-					} else if (event.type === 'tool' && event.tool) {
-						// Execute client-side tool
-						await this.handleToolExecution(
-							event.tool.id || '',
-							event.tool.name,
-							event.tool.arguments || {},
-						);
-					} else if (event.type === 'done') {
-						if (event.interrupted) {
-							this.cancelPlayback();
-						}
-						this.setStatus('listening');
+			for (const event of payload.events) {
+				this.options.onTurnEvent?.(event);
+
+				if (event.type === 'evidence' && event.evidence?.kind === 'input_transcription') {
+					if (event.text) {
+						this.options.onTranscript?.(event.text, true);
 					}
+				} else if (event.type === 'text' && event.text) {
+					this.options.onTranscript?.(event.text, false);
+				} else if (event.type === 'media' && event.media?.data) {
+					// Model audio chunk
+					this.setStatus('speaking');
+					await this.enqueueAudioChunk(event.media.data, event.media.mimeType);
+				} else if (event.type === 'tool' && event.tool?.name) {
+					toolCalls.push({
+						id: event.tool.id ?? '',
+						name: event.tool.name,
+						arguments: event.tool.arguments ?? {},
+					});
+				} else if (event.type === 'done') {
+					if (event.interrupted) {
+						this.cancelPlayback();
+					}
+					this.setStatus('listening');
 				}
+			}
+
+			if (toolCalls.length > 0) {
+				await this.handleToolExecutions(toolCalls);
 			}
 		} catch (err) {
 			this.options.onError?.((err as Error).message || 'Failed to parse live server event');
 		}
 	}
 
-	private async handleToolExecution(
-		id: string,
-		name: string,
-		args: Record<string, unknown>,
+	private async handleToolExecutions(
+		calls: Array<{ id: string; name: string; arguments: Record<string, unknown> }>,
 	): Promise<void> {
-		let output: Record<string, unknown> = { success: true };
+		const responses: Array<{ id: string; name: string; output: unknown }> = [];
 
-		if (this.options.onToolCall) {
-			try {
-				output = await this.options.onToolCall(name, args);
-			} catch (err) {
-				output = { error: (err as Error).message || 'Tool execution failed' };
+		for (const call of calls) {
+			let output: Record<string, unknown> = { success: true };
+
+			if (this.options.onToolCall) {
+				try {
+					output = await this.options.onToolCall(call.name, call.arguments);
+				} catch (err) {
+					output = { error: (err as Error).message || 'Tool execution failed' };
+				}
 			}
+
+			responses.push({ id: call.id, name: call.name, output });
 		}
 
 		if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-			this.ws.send(
-				JSON.stringify({
-					type: 'toolResponse',
-					id,
-					name,
-					output,
-				}),
-			);
+			this.ws.send(JSON.stringify({ type: 'toolResponses', responses }));
 		}
 	}
 
@@ -322,6 +394,15 @@ export class LiveSessionClient {
 				audioBuffer = this.audioContext.createBuffer(1, float32.length, 24000);
 				audioBuffer.getChannelData(0).set(float32);
 			}
+
+			const channel = audioBuffer.getChannelData(0);
+			let sum = 0;
+			for (let i = 0; i < channel.length; i++) {
+				const val = channel[i] ?? 0;
+				sum += val * val;
+			}
+			const rms = Math.sqrt(sum / Math.max(1, channel.length));
+			this.options.onVolumeLevel?.(Math.min(1, rms * 4), false);
 
 			const source = this.audioContext.createBufferSource();
 			source.buffer = audioBuffer;
@@ -361,10 +442,6 @@ export class LiveSessionClient {
 		}
 	}
 
-	public setMute(muted: boolean): void {
-		this.isMuted = muted;
-	}
-
 	public toggleMute(): boolean {
 		this.isMuted = !this.isMuted;
 		return this.isMuted;
@@ -377,15 +454,7 @@ export class LiveSessionClient {
 	}
 
 	public disconnect(): void {
-		this.cleanupAudio();
-		if (this.ws) {
-			try {
-				this.ws.close();
-			} catch {
-				/* ignore */
-			}
-			this.ws = null;
-		}
+		this.teardownConnection();
 		this.setStatus('disconnected');
 	}
 

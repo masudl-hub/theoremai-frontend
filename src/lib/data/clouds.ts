@@ -18,20 +18,20 @@ export type CloudSpec = {
 
 /** Towering Monarch — tall multi-tiered cauliflower with heavy shaded base */
 export const CUMULUS = [
-	'              .  : .',
-	'           .   .----.   .',
-	'         .  .-(      )-.',
-	'        .-(              )-.',
-	'      .(    .----.          ).',
-	'    .(   . (      )__         ).',
-	'   (   .  (          )__ .---.  )',
-	'  (  .   (   . : . .    (     )  )',
-	'  ( .  .(  . : : .   . . : .   ). )',
-	"   '(   .(     )__ .__(     ).   )'",
-	"     '-(  . : .   (   . : .   )-'",
-	"       '-(     )-' '-(     )-'",
-	"          '---'   .   '---'",
-	'             .  : . .',
+	'            .  : .',
+	'         .---.  .----.   .',
+	'       .(     ).-(      )-.',
+	'      .-(                  )-.',
+	'    .(    .----.             ).',
+	'  .(   . (      )__            ).',
+	' (   .  (          )__ .---.    )',
+	'(  .   (   . : . .    (     )    )',
+	'( .  .(  . : : .   . . : .   ).  )',
+	".( '(  .(     )__ .__(     ).   )'",
+	" '(  .( . : .   (   . : .   ). )'",
+	"   '-(     )-' '-(     )-'",
+	"      '---'   .   '---'",
+	'         .  : . .',
 ].join('\n');
 
 /** Asymmetrical Twin — tall dominant peak + smaller companion with saddle bridge */
@@ -174,4 +174,16 @@ export const skyStipple = [
 	'  .            .                 .                 .',
 	'         .            .            .       .',
 	'  .                 .                 .            .',
+].join('\n');
+
+/** Denser cousin of skyStipple — same glyph language, tighter spacing (storm under Th30). */
+export const thunderStipple = [
+	'  .    .      .   .     .    .   .    .     .   .',
+	' .   .    .     .   .    .      .   .    .    .  ',
+	'   .   .    .  .    .   .   .     .   .   .    .',
+	' .    .   .    .     .  .    .   .    .     .  .',
+	'  .  .    .   .   .    .    .  .   .    .   .  ',
+	' .   .  .    .    .   .   .    .    .  .    .  .',
+	'   .   .   .   .    .  .    .   .   .    .   . ',
+	' .    .  .    .   .    .   .  .    .   .    .  ',
 ].join('\n');

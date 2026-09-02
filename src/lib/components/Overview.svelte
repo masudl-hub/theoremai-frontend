@@ -5,16 +5,16 @@ import { cloudParadeSparse } from '$lib/data/clouds';
 
 <section
 	id="overview"
-	class="landing-section relative flex min-h-dvh w-full flex-col items-center justify-center border-b-[3px] border-black px-6 py-20 md:px-14 md:py-12"
+	class="landing-section relative flex min-h-dvh w-full flex-col items-center justify-center px-6 py-20 md:px-14 md:py-12"
 >
 	<CloudSky
-		band="absolute inset-x-0 top-[8%] bottom-[8%] z-0 select-none overflow-visible text-black"
+		band="cloud-band-section absolute inset-x-0 z-0 select-none overflow-visible text-black"
 		clouds={cloudParadeSparse}
 	/>
 
 	<div class="relative z-10 w-full max-w-6xl text-center">
 		<h2
-			class="mx-auto mb-6 max-w-3xl text-3xl leading-[0.95] font-extrabold tracking-tighter uppercase md:mb-8 md:text-5xl"
+			class="mx-auto mb-6 max-w-3xl text-3xl leading-display font-extrabold tracking-tighter uppercase md:mb-8 md:text-5xl"
 		>
 			A unified runtime<br>for agentic execution.
 		</h2>

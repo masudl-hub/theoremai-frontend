@@ -24,7 +24,7 @@ function defaultNode(node: PackageNode): ArchNode {
 			specs: [
 				['root', 'mod.ts'],
 				['tree', 'src/'],
-				['version', '0.1.15'],
+				['version', '1.0.0'],
 			],
 			copyable: true,
 		};
@@ -661,7 +661,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		title: 'tools',
 		type: 'CORE',
 		usage: "import { registerTool, getTool, invokeTool } from 'theorum'",
-		desc: 'Process-local tool registry — register builtins and host function tools at startup.',
+		desc: 'Process-local tool registry — registerTool at startup. Custom tools: tools.allow. Builtins: model builtInTools (+ registerGooglePreset).',
 		specs: [
 			['path', 'src/kernel/tools/'],
 			['api', 'registerTool · invokeTool'],
@@ -673,26 +673,13 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_tools_mod',
 		title: 'mod.ts',
 		type: 'BARREL',
-		usage: "import { registerTool, invokeTool } from 'theorum'",
+		usage: "import { registerTool, invokeTool, prepareTurnToolSnapshot } from 'theorum'",
 		desc: 'Tool registry public surface — also re-exported from theorum/kernel and mod.ts.',
 		specs: [
 			['path', 'src/kernel/tools/mod.ts'],
-			['api', 'registerTool · invokeTool'],
-			['execute', 'executeRegisteredTool'],
+			['api', 'registerTool · invokeTool · prepareTurnToolSnapshot · cloneTurnToolSnapshot'],
 		],
 		copyable: true,
-	},
-	kernel_tools_define: {
-		id: 'kernel_tools_define',
-		title: 'define.ts',
-		type: 'CORE',
-		usage: "import { defineTool } from 'theorum'",
-		desc: 'defineTool — validate and normalize tool definitions (called internally by registerTool).',
-		specs: [
-			['path', 'src/kernel/tools/define.ts'],
-			['api', 'defineTool'],
-			['export', 'via mod.ts'],
-		],
 	},
 	kernel_tools_registry: {
 		id: 'kernel_tools_registry',
@@ -709,12 +696,12 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_tools_execute',
 		title: 'execute.ts',
 		type: 'INTERNAL',
-		usage: '// Internal',
-		desc: 'executeRegisteredTool — shared by runTurn tool loop and invokeTool.',
+		usage: '// Internal — formatToolResult exported',
+		desc: 'executeRegisteredTool — shared by runTurn tool loop and invokeTool. Builtins → provider_native.',
 		specs: [
 			['path', 'src/kernel/tools/execute.ts'],
 			['pairs', 'runner/steps.ts'],
-			['export', 'none'],
+			['export', 'formatToolResult (public)'],
 		],
 	},
 	kernel_tools_invoke: {
@@ -755,13 +742,15 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 	kernel_tools_resolve: {
 		id: 'kernel_tools_resolve',
 		title: 'resolve.ts',
-		type: 'INTERNAL',
-		usage: '// Internal',
-		desc: 'Resolves per-turn tool ceilings from tools.allow, model builtInTools, gates, and paths.',
+		type: 'CORE',
+		usage: "import { prepareTurnToolSnapshot, cloneTurnToolSnapshot } from 'theorum'",
+		desc: 'TurnToolSnapshot — T0 resolve, expandT1Policy, promoteLoadedTools (turn-local T2), clone for concurrent invoke.',
 		specs: [
 			['path', 'src/kernel/tools/resolve.ts'],
-			['export', 'none'],
+			['api', 'prepareTurnToolSnapshot · cloneTurnToolSnapshot'],
+			['export', 'via mod.ts'],
 		],
+		copyable: true,
 	},
 	kernel_tools_schema: {
 		id: 'kernel_tools_schema',
@@ -1158,7 +1147,10 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		specs: [
 			['entry', 'theorum/guardrails'],
 			['path', 'src/guardrails/'],
-			['modules', 'error · sanitize · injection · sensitive · egress · live-outbound-gate · quota · normalize'],
+			[
+				'modules',
+				'error · sanitize · injection · sensitive · egress · live-outbound-gate · quota · normalize',
+			],
 		],
 		copyable: true,
 	},
@@ -1222,7 +1214,10 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		desc: 'Live outbound session — accumulates text/thought, canary gate, egress enforce at turnComplete.',
 		specs: [
 			['path', 'src/guardrails/live-outbound-gate.ts'],
-			['api', 'createLiveOutboundGateSession · processLiveOutboundBatch · finalizeLiveOutboundTurn'],
+			[
+				'api',
+				'createLiveOutboundGateSession · processLiveOutboundBatch · finalizeLiveOutboundTurn',
+			],
 			['pairs', 'live-relay.ts · canary-gate.ts'],
 		],
 		copyable: true,
@@ -1459,11 +1454,12 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		title: 'google.ts',
 		type: 'PRESET',
 		usage: "import { registerGooglePreset, GOOGLE_BUILTIN_TOOLS } from 'theorum/presets/google'",
-		desc: 'Registers Google Search, Maps, URL context, code execution builtins plus image/voice vocab.',
+		desc: 'Registers Google Search, Maps, URL context, code execution builtins into the tool registry. Profiles declare them on model.config.*.builtInTools.',
 		specs: [
 			['entry', 'theorum/presets/google'],
 			['path', 'src/presets/google.ts'],
 			['tools', 'search · maps · urlContext · codeExecution'],
+			['profile', 'model.config.*.builtInTools'],
 		],
 		copyable: true,
 	},
@@ -1501,7 +1497,7 @@ function buildArchitectureMap(): Record<string, ArchNode> {
 }
 
 /**
- * Architecture map for theorum@0.1.15.
+ * Architecture map for theorum@1.0.0.
  * copyable = real CLI string or package import a host should use.
  * Non-copyable nodes are internals — shipped, but not on public barrels.
  */

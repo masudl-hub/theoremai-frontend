@@ -10,30 +10,37 @@
  * @module
  */
 
-import { parseLiveRelayClientMessage } from '$lib/types/live-messages';
-import { ensureKernelInitialized } from './kernel-init';
-import { TH30_CLIENT_TOOLS, TH30_PROFILE_ID } from './th30';
 import {
-	abortLiveOutboundTurn,
 	bindCanary,
-	buildGeminiLiveRealtimeInput,
-	buildGeminiLiveRealtimeText,
-	buildGeminiLiveSetupMessage,
-	buildGeminiLiveToolResponse,
-	buildGeminiLiveWebSocketUrl,
 	createLiveOutboundGateSession,
 	finalizeLiveOutboundTurn,
-	foldGeminiLiveServerMessage,
 	getProfile,
 	type LiveOutboundGateSession,
 	mintCanary,
 	type ProviderCompleteRequest,
-	parseGeminiLiveMessage,
+	pickModel,
 	prepareLiveInboundText,
+	prepareTurnToolSnapshot,
 	processLiveOutboundBatch,
+	publicError,
 	type TurnEvent,
 	type WireFunctionTool,
-} from './theorum';
+} from 'theorum';
+import { abortLiveOutboundTurn } from 'theorum/guardrails';
+import { forClientEvents } from 'theorum/host';
+import {
+	buildGeminiLiveRealtimeInput,
+	buildGeminiLiveRealtimeText,
+	buildGeminiLiveSetupMessage,
+	buildGeminiLiveToolResponse,
+	buildGeminiLiveToolResponses,
+	buildGeminiLiveWebSocketUrl,
+	foldGeminiLiveServerMessage,
+	parseGeminiLiveMessage,
+} from 'theorum/providers/google/live';
+import { parseLiveRelayClientMessage } from '$lib/types/live-messages';
+import { ensureKernelInitialized } from './kernel-init';
+import { getTh30WireTools, TH30_PROFILE_ID } from './th30';
 
 export type LiveRelayEnv = {
 	GEMINI_API_KEY?: string;
@@ -64,9 +71,10 @@ function bufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
 function buildCompleteRequestForProfile(
 	profileId: string,
 	wireTools: WireFunctionTool[],
+	builtins: string[],
 ): { completeReq: ProviderCompleteRequest; outboundGate: LiveOutboundGateSession } {
 	const profile = getProfile(profileId);
-	const select = Object.keys(profile.model.select ?? {})[0] ?? 'gemini31FlashLive';
+	const select = Object.keys(profile.model.select ?? {})[0] ?? profile.model.allow[0];
 	const modelConfig = profile.model.config[select];
 	let system = profile.identity.system ?? '';
 	let canary: string | undefined;
@@ -80,13 +88,13 @@ function buildCompleteRequestForProfile(
 
 	return {
 		completeReq: {
-			model: profile.model.allow[0],
+			model: select,
 			apiId: modelConfig.apiId,
 			system,
 			temperature: modelConfig.temperature,
 			maxOutputTokens: modelConfig.maxOutputTokens,
 			thinking: modelConfig.thinking.on,
-			builtins: modelConfig.builtInTools,
+			builtins,
 			wireTools,
 			input: [],
 			structured: null,
@@ -95,6 +103,32 @@ function buildCompleteRequestForProfile(
 		},
 		outboundGate,
 	};
+}
+
+/** Resolve Live wire + builtins via kernel TurnToolSnapshot (T0/T1 only on Live). */
+async function prepareLiveTooling(profileId: string): Promise<{
+	wireTools: WireFunctionTool[];
+	builtins: string[];
+}> {
+	if (profileId === TH30_PROFILE_ID) {
+		const profile = getProfile(profileId);
+		const select = profile.model.allow[0];
+		if (!select) {
+			throw new Error(`Profile '${profileId}' has no models in model.allow`);
+		}
+		return {
+			wireTools: getTh30WireTools(),
+			builtins: profile.model.config[select].builtInTools,
+		};
+	}
+	const profile = getProfile(profileId);
+	const modelId = pickModel(profile);
+	const snapshot = await prepareTurnToolSnapshot(
+		profile,
+		{ profile: profileId, input: { text: '' } },
+		modelId,
+	);
+	return { wireTools: snapshot.wire, builtins: snapshot.builtins };
 }
 
 function sendGateError(serverWs: WebSocket, error: string): void {
@@ -108,7 +142,7 @@ function sendGateError(serverWs: WebSocket, error: string): void {
 
 function sendGateEvents(serverWs: WebSocket, events: TurnEvent[]): void {
 	if (events.length === 0) return;
-	serverWs.send(JSON.stringify({ type: 'events', events }));
+	serverWs.send(JSON.stringify({ type: 'events', events: forClientEvents(events) }));
 }
 
 async function applyOutboundGate(
@@ -165,9 +199,13 @@ export async function handleLiveRelay(request: Request, env: LiveRelayEnv): Prom
 
 	const url = new URL(request.url);
 	const profileId = url.searchParams.get('profile') || TH30_PROFILE_ID;
-	const wireTools = profileId === TH30_PROFILE_ID ? TH30_CLIENT_TOOLS : [];
+	const { wireTools, builtins } = await prepareLiveTooling(profileId);
 	const profile = getProfile(profileId);
-	const { completeReq, outboundGate } = buildCompleteRequestForProfile(profileId, wireTools);
+	const { completeReq, outboundGate } = buildCompleteRequestForProfile(
+		profileId,
+		wireTools,
+		builtins,
+	);
 
 	// Cloudflare Workers duplex pair for browser ↔ worker relay
 	// @ts-expect-error WebSocketPair is a Cloudflare Workers global
@@ -247,7 +285,7 @@ export async function handleLiveRelay(request: Request, env: LiveRelayEnv): Prom
 				serverWs.send(
 					JSON.stringify({
 						type: 'error',
-						error: (err as Error).message || 'Failed to process upstream message',
+						error: publicError(err),
 					}),
 				);
 			}
@@ -312,6 +350,12 @@ export async function handleLiveRelay(request: Request, env: LiveRelayEnv): Prom
 
 				if (msg?.type === 'toolResponse') {
 					const frame = buildGeminiLiveToolResponse(msg.id, msg.name, msg.output);
+					sendToUpstream(JSON.stringify(frame));
+					return;
+				}
+
+				if (msg?.type === 'toolResponses') {
+					const frame = buildGeminiLiveToolResponses(msg.responses);
 					sendToUpstream(JSON.stringify(frame));
 				}
 			} else if (event.data instanceof ArrayBuffer || event.data instanceof Uint8Array) {

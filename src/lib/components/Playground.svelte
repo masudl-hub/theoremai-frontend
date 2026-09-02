@@ -17,10 +17,11 @@ import PlaygroundFlowFit from '$lib/components/playground/PlaygroundFlowFit.svel
 import { compilePlayground } from '$lib/playground/compile';
 import { PLAYGROUND_CTX, type PlaygroundCtx, type PlaygroundHub } from '$lib/playground/context';
 import { createBlankGraph, createExampleGraph } from '$lib/playground/example';
-import { PLAYGROUND_ORIGIN, PLAYGROUND_ROW_PX } from '$lib/playground/layout';
+import { appendChildSpecNode } from '$lib/playground/graph-mutations';
+import { PLAYGROUND_COL_PX, PLAYGROUND_ORIGIN } from '$lib/playground/layout';
 import {
-	DRAG_HANDLE,
 	defaultModelSpec,
+	defaultToolSpec,
 	type FacetData,
 	type ModelsData,
 	type PlaygroundEdge,
@@ -64,46 +65,48 @@ $effect(() => {
 function addModelSpec() {
 	const specs = nodes.filter((n) => n.data.kind === 'modelSpec');
 	const modelsNode = nodes.find((n) => n.data.kind === 'models');
-	const id = `model-${crypto.randomUUID().slice(0, 8)}`;
 	const label = `model${specs.length + 1}`;
-	const baseX = modelsNode?.position.x ?? PLAYGROUND_ORIGIN.x;
-	const baseY = modelsNode?.position.y ?? PLAYGROUND_ORIGIN.y + PLAYGROUND_ROW_PX;
-	const lastSpecY =
-		specs.length > 0 ? Math.max(...specs.map((s) => s.position.y)) : baseY + PLAYGROUND_ROW_PX;
-	const y = specs.length === 0 ? baseY + PLAYGROUND_ROW_PX : lastSpecY + PLAYGROUND_ROW_PX - 40;
-	nodes = [
-		...nodes,
-		{
-			id,
-			type: 'facet',
-			position: { x: baseX, y },
-			dragHandle: DRAG_HANDLE,
-			data: defaultModelSpec({
-				modelId: label,
-				selectLabel: label,
-				expanded: true,
-			}),
-		},
-	];
-	edges = [
-		...edges,
-		{
-			id: `e-models-${id}`,
-			source: 'models',
-			target: id,
-			sourceHandle: 'out',
-			targetHandle: 'in',
-			type: 'smoothstep',
-		},
-	];
-	nodes = nodes.map((n) =>
-		n.id === id
-			? { ...n, zIndex: Date.now(), data: { ...n.data, expanded: true } }
-			: n.data.expanded
-				? { ...n, zIndex: 0, data: { ...n.data, expanded: false } }
-				: { ...n, zIndex: 0 },
-	);
-	openPanel(id);
+	const hubPosition = {
+		x: modelsNode?.position.x ?? PLAYGROUND_ORIGIN.x,
+		y: modelsNode?.position.y ?? PLAYGROUND_ORIGIN.y,
+	};
+	const appended = appendChildSpecNode(nodes, edges, {
+		parentId: 'models',
+		idPrefix: 'model',
+		hubPosition,
+		specs,
+		data: defaultModelSpec({
+			modelId: label,
+			selectLabel: label,
+			expanded: true,
+		}),
+	});
+	nodes = appended.nodes;
+	edges = appended.edges;
+	openPanel(appended.id);
+}
+
+function addToolSpec() {
+	const specs = nodes.filter((n) => n.data.kind === 'toolSpec');
+	const toolsNode = nodes.find((n) => n.data.kind === 'tools');
+	const label = `tool_${specs.length + 1}`;
+	const hubPosition = {
+		x: toolsNode?.position.x ?? PLAYGROUND_ORIGIN.x + PLAYGROUND_COL_PX,
+		y: toolsNode?.position.y ?? PLAYGROUND_ORIGIN.y,
+	};
+	const appended = appendChildSpecNode(nodes, edges, {
+		parentId: 'tools',
+		idPrefix: 'tool',
+		hubPosition,
+		specs,
+		data: defaultToolSpec({
+			toolName: label,
+			expanded: true,
+		}),
+	});
+	nodes = appended.nodes;
+	edges = appended.edges;
+	openPanel(appended.id);
 }
 
 function syncExpanded(activeId: string | null) {
@@ -141,6 +144,7 @@ function patchNode(id: string, partial: Partial<PlaygroundNode['data']>) {
 
 setContext<PlaygroundCtx>(PLAYGROUND_CTX, {
 	addModelSpec,
+	addToolSpec,
 	hub,
 	ui,
 	patchNode,
@@ -177,7 +181,7 @@ async function runCompile() {
 	banner = '';
 	await new Promise((r) => setTimeout(r, 120));
 	const result = compilePlayground(nodes);
-	banner = result.ok ? 'Agent ready · live turn at /playground' : result.message;
+	banner = result.ok ? 'Agent ready · defineProfile compiled' : result.message;
 	running = false;
 }
 
@@ -194,7 +198,7 @@ async function copySource() {
 
 <section
 	id="playground"
-	class="landing-section playground-section relative h-dvh w-full overflow-hidden border-b-[3px] border-black p-0"
+	class="landing-section playground-section relative h-dvh w-full overflow-hidden p-0"
 >
 	{#if canvasReady}
 		<div class="playground-shell" class:playground-shell--panel-open={panelOpen}>
@@ -233,7 +237,7 @@ async function copySource() {
 
 						<Panel class="playground-chrome" position="top-left">
 							<div class="chrome">
-								<span class="chrome-title">Playground</span>
+								<span class="chrome-title text-xs">Playground</span>
 								<button class="btn btn-ghost chrome-btn" onclick={resetExample} type="button">
 									Example
 								</button>
@@ -252,9 +256,7 @@ async function copySource() {
 									{running ? '…' : 'Run'}
 								</button>
 								{#if banner}
-									<span
-										class="chrome-banner"
-										class:chrome-ok={banner.startsWith('Agent ready')}
+									<span class="chrome-banner" class:chrome-ok={banner.startsWith('Agent ready')}
 										>{banner}</span
 									>
 								{/if}
@@ -274,7 +276,7 @@ async function copySource() {
 		</div>
 	{:else}
 		<div
-			class="flex h-full items-center justify-center text-xs font-bold tracking-widest uppercase text-[var(--color-mute)]"
+			class="flex h-full items-center justify-center text-xs font-bold tracking-widest uppercase text-mute"
 		>
 			Loading canvas…
 		</div>
@@ -287,6 +289,7 @@ async function copySource() {
 	inset: 0;
 	height: 100%;
 	width: 100%;
+	background: var(--color-paper);
 }
 
 .playground-workspace {
@@ -326,6 +329,7 @@ async function copySource() {
 	box-sizing: border-box;
 	padding: 0.75rem;
 	overflow: hidden;
+	background: var(--color-paper);
 }
 
 .playground-shell :global(.playground-flow) {
@@ -379,7 +383,7 @@ async function copySource() {
 
 .playground-shell :global(.svelte-flow__controls-button:hover) {
 	background: rgba(0, 0, 0, 0.06);
-	color: #000;
+	color: var(--color-ink);
 }
 
 .playground-shell :global(.playground-chrome) {
@@ -396,7 +400,6 @@ async function copySource() {
 
 .chrome-title {
 	margin-right: 0.35rem;
-	font-size: 0.75rem;
 	font-weight: 800;
 	letter-spacing: 0.18em;
 	text-transform: uppercase;
@@ -409,7 +412,7 @@ async function copySource() {
 
 .chrome-btn.btn-solid {
 	background: transparent;
-	color: #000;
+	color: var(--color-ink);
 }
 
 .chrome-btn.btn-solid:hover {
@@ -425,7 +428,7 @@ async function copySource() {
 }
 
 .chrome-ok {
-	color: #000;
+	color: var(--color-ink);
 	font-weight: 800;
 }
 </style>

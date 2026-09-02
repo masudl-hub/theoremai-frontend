@@ -6,7 +6,7 @@ export type PackageNode = {
 	children?: PackageNode[];
 };
 
-/** Complete src/ tree for theorum@0.1.15 — every folder and file under src/, plus root mod.ts. */
+/** Complete src/ tree for theorum@1.0.0 — every folder and file under src/, plus root mod.ts. */
 export const packageTree: PackageNode = {
 	id: 'theorum',
 	label: 'Theorum',
@@ -66,7 +66,6 @@ export const packageTree: PackageNode = {
 			]),
 			folder('kernel_tools', 'tools/', 'src/kernel/tools/', [
 				file('kernel_tools_mod', 'mod.ts', 'src/kernel/tools/mod.ts'),
-				file('kernel_tools_define', 'define.ts', 'src/kernel/tools/define.ts'),
 				file('kernel_tools_execute', 'execute.ts', 'src/kernel/tools/execute.ts'),
 				file('kernel_tools_harness', 'harness.ts', 'src/kernel/tools/harness.ts'),
 				file('kernel_tools_invoke', 'invoke.ts', 'src/kernel/tools/invoke.ts'),
@@ -166,7 +165,11 @@ export const packageTree: PackageNode = {
 			file('guardrails_error', 'error.ts', 'src/guardrails/error.ts'),
 			file('guardrails_egress', 'egress.ts', 'src/guardrails/egress.ts'),
 			file('guardrails_injection', 'injection.ts', 'src/guardrails/injection.ts'),
-			file('guardrails_live_outbound_gate', 'live-outbound-gate.ts', 'src/guardrails/live-outbound-gate.ts'),
+			file(
+				'guardrails_live_outbound_gate',
+				'live-outbound-gate.ts',
+				'src/guardrails/live-outbound-gate.ts',
+			),
 			file('guardrails_normalize', 'normalize.ts', 'src/guardrails/normalize.ts'),
 			file('guardrails_quota', 'quota.ts', 'src/guardrails/quota.ts'),
 			file('guardrails_sanitize', 'sanitize.ts', 'src/guardrails/sanitize.ts'),
@@ -382,10 +385,6 @@ const WIDE_MAP_LINES: Seg[][] = [
 		n('kernel_tools', 'Tools'),
 		s(' ───────────────────┬── '),
 		n('kernel_tools_mod', 'mod.ts'),
-	],
-	[
-		s('          │                   │                            ├── '),
-		n('kernel_tools_define', 'define.ts'),
 	],
 	[
 		s('          │                   │                            ├── '),

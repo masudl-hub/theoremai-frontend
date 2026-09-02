@@ -1,6 +1,6 @@
 export const PLAYGROUND_CTX = 'theorum-playground';
 
-import type { Protocol, Provider } from './compat';
+import type { Protocol, Provider } from 'theorum/schema';
 import type { PlaygroundNode } from './types';
 
 export type PlaygroundHub = {
@@ -14,6 +14,7 @@ export type PlaygroundUi = {
 
 export type PlaygroundCtx = {
 	addModelSpec: () => void;
+	addToolSpec: () => void;
 	/** Live Models hub pairing — reactive when read in components */
 	hub: PlaygroundHub;
 	/** Reactive UI shell state (panel open/close). */

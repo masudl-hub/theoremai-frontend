@@ -171,38 +171,13 @@ function onFocusOut(e: FocusEvent) {
 	{#if visible && tip}
 		<pre
 			bind:this={tipEl}
-			class="ascii map-tip pointer-events-none font-bold"
+			class="ascii map-tip pointer-events-none text-xs font-bold"
 			role="tooltip"
 		>{tip}</pre>
 	{/if}
 </div>
 
 <style>
-:global(.ascii-hover-host[data-hover-variant="schema"] .node) {
-	display: inline;
-	font: inherit;
-	font-weight: inherit;
-	background: transparent;
-	border: none;
-	border-bottom: 1px dashed #000;
-	padding: 0;
-	margin: 0;
-	cursor: crosshair;
-	color: inherit;
-	transition:
-		background-color 0.1s ease,
-		color 0.1s ease,
-		border-color 0.1s ease;
-}
-
-:global(.ascii-hover-host[data-hover-variant="schema"] .node:hover),
-:global(.ascii-hover-host[data-hover-variant="schema"] .node:focus-visible) {
-	background: #000;
-	color: #fff;
-	border-bottom-style: solid;
-	outline: none;
-}
-
 :global(.ascii-hover-host[data-hover-variant="label"] .type-label) {
 	display: block;
 	width: 100%;
@@ -226,7 +201,7 @@ function onFocusOut(e: FocusEvent) {
 :global(.ascii-hover-host[data-hover-variant="label"] .type-label:hover),
 :global(.ascii-hover-host[data-hover-variant="label"] .type-label:focus-visible) {
 	background: rgba(0, 0, 0, 0.04);
-	color: #000;
+	color: var(--color-ink);
 	outline: none;
 }
 
@@ -238,15 +213,9 @@ function onFocusOut(e: FocusEvent) {
 	max-width: calc(100vw - 24px);
 	overflow: auto;
 	background: var(--color-paper);
-	color: #000;
+	color: var(--color-ink);
 	font-size: 11px;
 	line-height: 1.38;
 	white-space: pre;
-}
-
-@media (min-width: 768px) {
-	:global(.map-tip) {
-		font-size: 12px;
-	}
 }
 </style>

@@ -1,6 +1,9 @@
 node_modules
 .fallow/
 coverage/
+.stryker-cache/
+.stryker-tmp/
+stryker.log
 
 # Output
 .output

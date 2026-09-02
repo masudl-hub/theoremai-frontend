@@ -50,7 +50,7 @@ $effect(() => {
 <div bind:this={rootEl} class="select nodrag nowheel" class:select-open={open}>
 	<button
 		id={inputId}
-		class="select-trigger field"
+		class="select-trigger field text-sm"
 		aria-expanded={open}
 		aria-haspopup="listbox"
 		{disabled}
@@ -68,7 +68,7 @@ $effect(() => {
 			{#each options as opt (opt.value)}
 				<li role="presentation">
 					<button
-						class="select-option"
+						class="select-option text-xs"
 						class:select-option-on={opt.value === value}
 						aria-selected={opt.value === value}
 						onclick={() => pick(opt.value)}
@@ -98,7 +98,6 @@ $effect(() => {
 	text-align: left;
 	cursor: pointer;
 	font: inherit;
-	font-size: 0.8rem;
 	font-weight: 700;
 }
 
@@ -106,8 +105,6 @@ $effect(() => {
 .select-trigger:focus-visible {
 	background: transparent;
 	color: inherit;
-	outline: 1.5px solid #000;
-	outline-offset: 0;
 }
 
 .select-trigger:disabled {
@@ -151,11 +148,10 @@ $effect(() => {
 	background: transparent;
 	padding: 0.55rem 0.75rem;
 	font: inherit;
-	font-size: 0.75rem;
 	font-weight: 700;
 	text-align: left;
 	cursor: pointer;
-	color: #000;
+	color: var(--color-ink);
 }
 
 .select-option:last-child {
@@ -172,8 +168,6 @@ $effect(() => {
 }
 
 .select-option:focus-visible {
-	outline: 1.5px solid #000;
-	outline-offset: -1.5px;
 	background: rgba(0, 0, 0, 0.04);
 }
 </style>

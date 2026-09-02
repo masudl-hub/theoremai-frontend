@@ -1,6 +1,7 @@
 <script lang="ts">
 import { onMount, tick } from 'svelte';
 import { on } from 'svelte/events';
+import { wrapText } from '$lib/ascii/tip-card';
 import { type PillarArtId, pillarArt } from '$lib/data/pillar-art';
 
 type Pillar = {
@@ -15,7 +16,7 @@ const pillars: Pillar[] = [
 		title: 'Profile',
 		body: [
 			'Agent setup is usually scattered — prompts here, tools there, no single definition.',
-			'A profile puts model, tools, inputs, outputs, and guardrails in one contract you can read and change.',
+			'A profile puts identity, model, tools.allow (custom functions), builtInTools (provider natives), inputs, outputs, and guardrails in one contract.',
 		].join('\n\n'),
 	},
 	{
@@ -23,7 +24,7 @@ const pillars: Pillar[] = [
 		title: 'Kernel',
 		body: [
 			'Custom runners diverge. Streaming, retries, and tools take different paths.',
-			'The kernel runs every turn the same way: resolve, stream, tools, repair, done.',
+			'The kernel runs every turn the same way: resolve snapshot, stream, tools, done. Tool visibility is turn-local — the kernel does not remember T2 promotion across turns.',
 		].join('\n\n'),
 	},
 	{
@@ -57,23 +58,6 @@ const LAST = pillars.length - 1;
 
 let active = $state(0);
 let sectionEl: HTMLElement | undefined = $state();
-
-function wrapText(text: string, width: number): string[] {
-	const lines: string[] = [];
-	const words = text.split(/\s+/).filter(Boolean);
-	let line = '';
-	for (const word of words) {
-		const next = line ? `${line} ${word}` : word;
-		if (next.length <= width) {
-			line = next;
-			continue;
-		}
-		if (line) lines.push(line);
-		line = word.length > width ? word.slice(0, width) : word;
-	}
-	if (line) lines.push(line);
-	return lines;
-}
 
 function wrapBody(text: string, width: number): string[] {
 	const paragraphs = text
@@ -221,17 +205,17 @@ onMount(() => {
 <section bind:this={sectionEl} id="pillars" class="pillars-root relative w-full">
 	<!-- Sticky stage: stays put while the track below is scrolled. -->
 	<div
-		class="pillars-pin relative z-10 flex min-h-dvh w-full flex-col items-center justify-start border-b-[3px] border-black px-6 py-20 md:h-dvh md:overflow-hidden md:px-14 md:py-12"
+		class="pillars-pin section-divide-b relative z-10 flex min-h-dvh w-full flex-col items-center justify-start px-6 py-20 md:h-dvh md:overflow-hidden md:px-14 md:py-12"
 	>
 		<div class="relative z-10 mb-6 w-full max-w-6xl shrink-0 text-center md:mb-5">
-			<h3 class="text-sm font-extrabold tracking-[0.22em] uppercase">Pillars</h3>
+			<h3 class="text-sm font-extrabold tracking-section uppercase">Pillars</h3>
 		</div>
 
 		<div
 			class="relative z-10 flex min-h-0 w-full max-w-6xl flex-1 flex-col items-center justify-center"
 		>
 			<div
-				class="pillar-stage relative h-[34rem] w-full max-w-6xl md:h-[38rem]"
+				class="pillar-stage relative w-full max-w-6xl"
 				aria-activedescendant={pillars[active].id}
 				aria-label="Pillars"
 				role="listbox"
@@ -253,7 +237,7 @@ onMount(() => {
 						type="button"
 						onclick={() => select(i)}
 					>
-						<pre class="ascii pillar-art font-bold">{cardArt(pillar)}</pre>
+						<pre class="ascii pillar-art text-xs font-bold md:text-sm">{cardArt(pillar)}</pre>
 					</button>
 				{/each}
 			</div>
@@ -264,7 +248,7 @@ onMount(() => {
 				<button class="invert-link px-2 py-1" aria-label="Previous" onclick={prev} type="button">
 					[ &lt; ]
 				</button>
-				<span class="min-w-28 text-center text-[var(--color-mute)]">{pillars[active].title}</span>
+				<span class="min-w-28 text-center text-mute">{pillars[active].title}</span>
 				<button class="invert-link px-2 py-1" aria-label="Next" onclick={next} type="button">
 					[ &gt; ]
 				</button>
@@ -321,16 +305,20 @@ onMount(() => {
 		filter 0.45s ease;
 }
 
-.pillar-card:focus-visible {
-	outline: 2px solid #000;
-	outline-offset: 8px;
+.pillar-stage {
+	height: var(--size-pillar-stage);
+}
+
+@media (min-width: 768px) {
+	.pillar-stage {
+		height: var(--size-pillar-stage-md);
+	}
 }
 
 .pillar-art {
 	margin: 0;
 	background: var(--color-paper);
-	color: #000;
-	font-size: 11px;
+	color: var(--color-ink);
 	line-height: 1.38;
 	white-space: pre;
 	text-align: left;
@@ -382,7 +370,6 @@ onMount(() => {
 	}
 
 	.pillar-art {
-		font-size: 11px;
 		line-height: 1.35;
 	}
 
@@ -409,14 +396,12 @@ onMount(() => {
 
 @media (min-width: 768px) {
 	.pillar-art {
-		font-size: 13px;
 		line-height: 1.4;
 	}
 }
 
 @media (min-width: 1100px) {
 	.pillar-art {
-		font-size: 14px;
 		line-height: 1.42;
 	}
 

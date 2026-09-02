@@ -160,15 +160,15 @@ $effect(() => {
 
 <section bind:this={sectionEl} id="architecture" class="architecture-root relative w-full">
 	<div
-		class="architecture-pin landing-section relative z-10 flex max-h-dvh min-h-dvh w-full flex-col items-center justify-start overflow-hidden border-b-[3px] border-black px-6 py-20 md:px-14 md:py-12"
+		class="architecture-pin landing-section relative z-10 flex max-h-dvh min-h-dvh w-full flex-col items-center justify-start overflow-hidden px-6 py-20 md:px-14 md:py-12"
 	>
 		<CloudSky
-			band="absolute inset-x-0 top-[8%] bottom-[8%] z-0 select-none overflow-visible text-black"
+			band="cloud-band-section absolute inset-x-0 z-0 select-none overflow-visible text-black"
 			clouds={cloudParadeSparse}
 		/>
 
 		<div class="relative z-10 mb-6 w-full max-w-6xl shrink-0 text-center md:mb-5">
-			<h3 class="text-sm font-extrabold tracking-[0.22em] uppercase">Package map</h3>
+			<h3 class="text-sm font-extrabold tracking-section uppercase">Package map</h3>
 		</div>
 
 		<div class="relative z-10 flex min-h-0 w-full max-w-6xl flex-1 flex-col overflow-hidden">
@@ -184,7 +184,7 @@ $effect(() => {
 					role="presentation"
 				>
 					<pre
-						class="ascii text-xs leading-snug font-bold md:text-sm md:leading-[1.4]"
+						class="ascii text-xs leading-snug font-bold md:text-sm md:leading-profile-code"
 					>{@html tree}</pre>
 				</div>
 			</AsciiHover>

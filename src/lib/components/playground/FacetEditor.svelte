@@ -1,31 +1,40 @@
 <script lang="ts">
 import { getContext } from 'svelte';
+import type { Protocol, Provider, ToolLoadTier } from 'theorum/schema';
+import { coerceProtocol, coerceProvider, providersFor } from 'theorum/schema';
+import Checkbox from '$lib/components/playground/Checkbox.svelte';
+import MimeAcceptGrid from '$lib/components/playground/MimeAcceptGrid.svelte';
 import Select from '$lib/components/Select.svelte';
 import TypeTip from '$lib/components/TypeTip.svelte';
 import {
-	coerceProtocol,
-	coerceProvider,
 	GEMINI_KEY_OPTIONS,
 	ON_BLOCK_OPTIONS,
-	PROTOCOLS,
-	PROVIDERS,
-	type Protocol,
-	type Provider,
-	providersFor,
+	PLAYGROUND_PROTOCOLS,
+	PLAYGROUND_PROVIDERS,
+	PLAYGROUND_THINKING_LEVELS,
+	PLAYGROUND_TURN_STOP_KINDS,
 	SCHEMA_ENFORCEMENT_OPTIONS,
 	SPEECH_FORMAT_OPTIONS,
 	STREAM_MODE_OPTIONS,
 	SUMMARY_MODE_OPTIONS,
-	THINKING_LEVELS,
 	type ThinkingLevelValue,
-	TURN_STOP_KINDS,
+	TOOL_ACCESS_OPTIONS,
+	TOOL_LOAD_TIER_OPTIONS,
+	TOOL_PERMISSION_OPTIONS,
 	toggleList,
 } from '$lib/playground/compat';
 import { PLAYGROUND_CTX, type PlaygroundCtx } from '$lib/playground/context';
 import { defaultApiIdPlaceholder } from '$lib/playground/free-tier';
-import { ATTACHMENT_ACCEPT_OPTIONS, toggleMime, VOICE_ACCEPT_OPTIONS } from '$lib/playground/mime';
+import { ATTACHMENT_ACCEPT_OPTIONS, VOICE_ACCEPT_OPTIONS } from '$lib/playground/mime';
+import {
+	OUTPUT_ROLE_OPTIONS,
+	type OutputRole,
+	outputRoleFromData,
+	patchOutputRole,
+} from '$lib/playground/outputs';
 import {
 	allowedBuiltinsForGemini,
+	clearMp3SpeechOnGeminiInteractions,
 	defaultGeminiApiId,
 	GOOGLE_BUILTIN_OPTIONS,
 	type GoogleBuiltinId,
@@ -41,8 +50,9 @@ import type {
 	FacetData,
 	ModelSpecData,
 	ModelsData,
-	OutputsData,
 	PlaygroundNode,
+	ToolAccessValue,
+	ToolPermissionValue,
 } from '$lib/playground/types';
 
 let { id, data }: { id: string; data: PlaygroundNode['data'] } = $props();
@@ -52,12 +62,12 @@ const playground = getContext<PlaygroundCtx>(PLAYGROUND_CTX);
 const modelsHub = $derived(playground.hub);
 
 const providerOptions = $derived.by(() => {
-	if (data.kind !== 'models') return PROVIDERS;
+	if (data.kind !== 'models') return PLAYGROUND_PROVIDERS;
 	const allowed = new Set(providersFor(data.protocol as Protocol));
-	return PROVIDERS.filter((p) => allowed.has(p.value));
+	return PLAYGROUND_PROVIDERS.filter((p) => allowed.has(p.value));
 });
 
-const protocolOptions = PROTOCOLS;
+const protocolOptions = PLAYGROUND_PROTOCOLS;
 
 const speechFormatOptions = $derived.by(() => {
 	const protocol = modelsHub.protocol ?? 'openAi';
@@ -67,12 +77,8 @@ const speechFormatOptions = $derived.by(() => {
 	return SPEECH_FORMAT_OPTIONS;
 });
 
-const thinkingOptions = THINKING_LEVELS;
+const thinkingOptions = PLAYGROUND_THINKING_LEVELS;
 const keyOptions = GEMINI_KEY_OPTIONS;
-const outputModeOptions = [
-	{ value: 'text', label: 'null (free text)' },
-	{ value: 'structured', label: 'schema id' },
-];
 const streamModeOptions = STREAM_MODE_OPTIONS;
 const enforcedOptions = SCHEMA_ENFORCEMENT_OPTIONS;
 const summaryOptions = SUMMARY_MODE_OPTIONS;
@@ -161,20 +167,26 @@ function patch(partial: Partial<FacetData>) {
 	playground.patchNode(id, partial as Partial<PlaygroundNode['data']>);
 }
 
+const outputRole = $derived.by((): OutputRole => {
+	if (data.kind !== 'outputs') return 'text';
+	return outputRoleFromData(data);
+});
+
+function setOutputRole(role: OutputRole) {
+	if (data.kind !== 'outputs') return;
+	patch(patchOutputRole(role));
+}
+
 function setProtocol(next: Protocol) {
 	if (data.kind !== 'models') return;
 	const provider = coerceProvider(next, data.provider as Provider);
 	patch({ protocol: next, provider });
 	syncHubModelSpecs(next, provider);
-	if (next === 'geminiInteractions') {
-		for (const n of playground.getNodes() ?? []) {
-			if (n.data.kind !== 'outputs') continue;
-			const out = n.data as OutputsData;
-			if (out.speechFormat === 'mp3') {
-				playground.patchNode(n.id, { speechFormat: 'pcm' });
-			}
-		}
-	}
+	clearMp3SpeechOnGeminiInteractions(
+		() => playground.getNodes(),
+		(id, partial) => playground.patchNode(id, partial),
+		next,
+	);
 }
 
 function setProvider(next: Provider) {
@@ -182,21 +194,23 @@ function setProvider(next: Provider) {
 	const protocol = coerceProtocol(data.protocol as Protocol, next);
 	patch({ protocol, provider: next });
 	syncHubModelSpecs(protocol, next);
-	if (protocol === 'geminiInteractions') {
-		for (const n of playground.getNodes() ?? []) {
-			if (n.data.kind !== 'outputs') continue;
-			const out = n.data as OutputsData;
-			if (out.speechFormat === 'mp3') {
-				playground.patchNode(n.id, { speechFormat: 'pcm' });
-			}
-		}
-	}
+	clearMp3SpeechOnGeminiInteractions(
+		() => playground.getNodes(),
+		(id, partial) => playground.patchNode(id, partial),
+		protocol,
+	);
 }
 </script>
 
 <div class="facet-editor">
 	{#snippet t(path: string, text: string = path)}
-		<button class="type-label" data-type-path={path} type="button">{text}</button>
+		<button class="type-label facet-field-label" data-type-path={path} type="button">{text}</button>
+	{/snippet}
+	{#snippet attachmentsAcceptLegend()}
+		{@render t('inputs.attachments.accept')}
+	{/snippet}
+	{#snippet voiceAcceptLegend()}
+		{@render t('inputs.voice.accept')}
 	{/snippet}
 	<TypeTip variant="label">
 		{#if data.kind === 'identity'}
@@ -230,12 +244,8 @@ function setProvider(next: Provider) {
 			<p class="facet-hint">
 				Optional here — or load the same string from another file when you wire the profile.
 			</p>
-			<label class="facet-check">
-				<input
-					checked={data.chat}
-					onchange={(e) => patch({ chat: e.currentTarget.checked })}
-					type="checkbox"
-				>
+			<label class="facet-check text-xs">
+				<Checkbox checked={data.chat} onchange={(v) => patch({ chat: v })} />
 				{@render t('identity.chat')}
 			</label>
 		{:else if data.kind === 'models'}
@@ -271,12 +281,8 @@ function setProvider(next: Provider) {
 					value={data.thinking}
 				/>
 			</label>
-			<label class="facet-check">
-				<input
-					checked={data.thinkingControl}
-					onchange={(e) => patch({ thinkingControl: e.currentTarget.checked })}
-					type="checkbox"
-				>
+			<label class="facet-check text-xs">
+				<Checkbox checked={data.thinkingControl} onchange={(v) => patch({ thinkingControl: v })} />
 				{@render t('model.controls')}
 			</label>
 			<label class="facet-field">
@@ -363,20 +369,19 @@ function setProvider(next: Provider) {
 			</label>
 			<fieldset class="facet-set">
 				<legend>{@render t('model.config.*.thinkingLevels', 'config.thinkingLevels')}</legend>
-				{#each THINKING_LEVELS as opt (opt.value)}
-					<label class="facet-check">
-						<input
+				{#each PLAYGROUND_THINKING_LEVELS as opt (opt.value)}
+					<label class="facet-check text-xs">
+						<Checkbox
 							checked={data.thinkingLevels.includes(opt.value)}
-							onchange={(e) =>
+							onchange={(v) =>
 								patch({
 									thinkingLevels: toggleList(
 										data.thinkingLevels,
 										opt.value,
-										e.currentTarget.checked
+										v
 									) as ThinkingLevelValue[]
 								})}
-							type="checkbox"
-						>
+						/>
 						<span>{opt.label}</span>
 					</label>
 				{/each}
@@ -424,20 +429,18 @@ function setProvider(next: Provider) {
 					<legend>{@render t('model.config.*.builtInTools', 'config.builtInTools')}</legend>
 					{#each GOOGLE_BUILTIN_OPTIONS as opt (opt.value)}
 						{const allowed = $derived(allowedGeminiBuiltins.includes(opt.value))}
-						<label class="facet-check" class:facet-check-disabled={!allowed}>
-							<input
+						<label class="facet-check text-xs" class:facet-check-disabled={!allowed}>
+							<Checkbox
 								checked={geminiBuiltIns.includes(opt.value)}
 								disabled={!allowed}
-								onchange={(e) => toggleGeminiBuiltin(opt.value, e.currentTarget.checked)}
-								type="checkbox"
-							>
+								onchange={(v) => toggleGeminiBuiltin(opt.value, v)}
+							/>
 							<span>{opt.label}{allowed ? '' : ' (unavailable on free tier)'}</span>
 						</label>
 					{/each}
 				</fieldset>
 				<p class="facet-hint">
-					Provider builtins for this model. Turn gate:
-					<code>tools: &#123; googleSearch: true &#125;</code>.
+					Provider builtins for this model — on whenever this model is selected (not turn-gated).
 				</p>
 			{:else}
 				<label class="facet-field">
@@ -452,71 +455,149 @@ function setProvider(next: Provider) {
 				</label>
 			{/if}
 		{:else if data.kind === 'tools'}
+			<p class="facet-hint">
+				Child nodes are custom function tools — each becomes <code>registerTool</code> and is listed
+				in
+				<code>tools.allow</code>. Provider builtins stay on each model (<code>builtInTools</code>).
+				T2 promotion is turn-local: only the designated loader may return
+				<code>{'{ loaded: string[] }'}</code>.
+			</p>
 			<label class="facet-field">
-				{@render t('tools.allow')}
+				{@render t('tools.t2Loader', 'tools.t2Loader')}
 				<input
 					class="field"
 					autocomplete="off"
-					oninput={(e) => patch({ allow: e.currentTarget.value })}
-					placeholder="tool_a, tool_b"
-					value={data.allow}
+					oninput={(e) => patch({ t2Loader: e.currentTarget.value })}
+					placeholder="load_tools (optional)"
+					value={data.t2Loader}
 				>
 			</label>
 			<p class="facet-hint">
-				Custom function and loader tools only — register with <code>registerTool</code> at startup.
-				Provider builtins belong on each model spec (<code>builtInTools</code>). Turn
-				<code>tools: &#123; id: true &#125;</code>
-				gates what is on; anything outside the ceiling is rejected.
+				Optional function tool id. When that tool completes with
+				<code>{'{ loaded: ["…"] }'}</code>, the kernel promotes those T2 ids for the rest of the
+				turn only. On <code>geminiLive</code>, declarations are fixed at session start — use T0/T1.
+			</p>
+			<button
+				class="btn btn-ghost facet-action"
+				onclick={() => playground.addToolSpec()}
+				type="button"
+			>
+				[ + Tool ]
+			</button>
+		{:else if data.kind === 'toolSpec'}
+			<label class="facet-field">
+				{@render t('name', 'name')}
+				<input
+					class="field"
+					autocomplete="off"
+					oninput={(e) => patch({ toolName: e.currentTarget.value })}
+					placeholder="lookup_crm"
+					value={data.toolName}
+				>
+			</label>
+			<label class="facet-field">
+				{@render t('type', 'type')}
+				<input class="field" disabled readonly value="function">
+			</label>
+			<label class="facet-field">
+				{@render t('description', 'description')}
+				<textarea
+					class="field facet-textarea"
+					oninput={(e) => patch({ description: e.currentTarget.value })}
+					rows="2"
+					value={data.description}
+				></textarea>
+			</label>
+			<label class="facet-field">
+				{@render t('category', 'category')}
+				<input
+					class="field"
+					autocomplete="off"
+					oninput={(e) => patch({ category: e.currentTarget.value })}
+					value={data.category}
+				>
+			</label>
+			<label class="facet-field">
+				{@render t('access', 'access')}
+				<Select
+					onchange={(v) => patch({ access: v as ToolAccessValue })}
+					options={TOOL_ACCESS_OPTIONS}
+					value={data.access}
+				/>
+			</label>
+			<label class="facet-field">
+				{@render t('permission', 'permission')}
+				<Select
+					onchange={(v) => patch({ permission: v as ToolPermissionValue })}
+					options={TOOL_PERMISSION_OPTIONS}
+					value={data.permission}
+				/>
+			</label>
+			<label class="facet-field">
+				{@render t('loadTier', 'loadTier')}
+				<Select
+					onchange={(v) => patch({ loadTier: v as ToolLoadTier })}
+					options={TOOL_LOAD_TIER_OPTIONS}
+					value={data.loadTier}
+				/>
+			</label>
+			<p class="facet-hint">
+				T2 (<code>loadTier: "T2"</code>) stays off the wire until
+				<code>profile.tools.t2Loader</code>
+				returns <code>{'{ loaded: string[] }'}</code> — promotion lasts for that turn only.
+			</p>
+			<label class="facet-field">
+				{@render t('paths', 'paths')}
+				<input
+					class="field"
+					autocomplete="off"
+					oninput={(e) => patch({ paths: e.currentTarget.value })}
+					placeholder="*"
+					value={data.paths}
+				>
+			</label>
+			<label class="facet-field">
+				{@render t('input', 'input (JSON Schema)')}
+				<textarea
+					class="field facet-textarea facet-code"
+					oninput={(e) => patch({ inputJson: e.currentTarget.value })}
+					rows="8"
+					spellcheck="false"
+					value={data.inputJson}
+				></textarea>
+			</label>
+			<label class="facet-field">
+				{@render t('output', 'output (JSON Schema)')}
+				<textarea
+					class="field facet-textarea facet-code"
+					oninput={(e) => patch({ outputJson: e.currentTarget.value })}
+					rows="8"
+					spellcheck="false"
+					value={data.outputJson}
+				></textarea>
+			</label>
+			<p class="facet-hint">
+				Listed in <code>tools.allow</code> when compiled. Visibility follows
+				<code>loadTier</code>
+				(T0 / T1 / T2). Handler is a stub at runtime.
 			</p>
 		{:else if data.kind === 'inputs'}
-			<label class="facet-check">
-				<input
-					checked={data.text}
-					onchange={(e) => patch({ text: e.currentTarget.checked })}
-					type="checkbox"
-				>
+			<label class="facet-check text-xs">
+				<Checkbox checked={data.text} onchange={(v) => patch({ text: v })} />
 				{@render t('inputs.text')}
 			</label>
-			<fieldset class="facet-set">
-				<legend>{@render t('inputs.attachments.accept')}</legend>
-				{#each ATTACHMENT_ACCEPT_OPTIONS as opt (opt.value)}
-					<label class="facet-check">
-						<input
-							checked={data.attachmentsAccept.includes(opt.value)}
-							onchange={(e) =>
-								patch({
-									attachmentsAccept: toggleMime(
-										data.attachmentsAccept,
-										opt.value,
-										e.currentTarget.checked
-									)
-								})}
-							type="checkbox"
-						>
-						<span>{opt.label}</span>
-					</label>
-				{/each}
-			</fieldset>
-			<fieldset class="facet-set">
-				<legend>{@render t('inputs.voice.accept')}</legend>
-				{#each VOICE_ACCEPT_OPTIONS as opt (opt.value)}
-					<label class="facet-check">
-						<input
-							checked={data.voiceAccept.includes(opt.value)}
-							onchange={(e) =>
-								patch({
-									voiceAccept: toggleMime(
-										data.voiceAccept,
-										opt.value,
-										e.currentTarget.checked
-									)
-								})}
-							type="checkbox"
-						>
-						<span>{opt.label}</span>
-					</label>
-				{/each}
-			</fieldset>
+			<MimeAcceptGrid
+				legend={attachmentsAcceptLegend}
+				onSelected={(next) => patch({ attachmentsAccept: next })}
+				options={ATTACHMENT_ACCEPT_OPTIONS}
+				selected={data.attachmentsAccept}
+			/>
+			<MimeAcceptGrid
+				legend={voiceAcceptLegend}
+				onSelected={(next) => patch({ voiceAccept: next })}
+				options={VOICE_ACCEPT_OPTIONS}
+				selected={data.voiceAccept}
+			/>
 			<label class="facet-field">
 				{@render t('inputs.maxFiles')}
 				<input
@@ -549,14 +630,18 @@ function setProvider(next: Provider) {
 			</label>
 		{:else if data.kind === 'outputs'}
 			<label class="facet-field">
-				{@render t('outputs.structured')}
+				<span>Primary output</span>
 				<Select
-					onchange={(v) => patch({ mode: v as 'text' | 'structured' })}
-					options={outputModeOptions}
-					value={data.mode}
+					onchange={(v) => setOutputRole(v as OutputRole)}
+					options={OUTPUT_ROLE_OPTIONS}
+					value={outputRole}
 				/>
 			</label>
-			{#if data.mode === 'structured'}
+			<p class="facet-hint">
+				Structured JSON, image, and speech are mutually exclusive wire formats. Image profiles still
+				stream free text alongside generated images (outputs.structured stays null).
+			</p>
+			{#if outputRole === 'structured'}
 				<label class="facet-field">
 					<span>schema id</span>
 					<input
@@ -590,15 +675,7 @@ function setProvider(next: Provider) {
 				</p>
 			{/if}
 
-			<label class="facet-check">
-				<input
-					checked={data.imageEnabled}
-					onchange={(e) => patch({ imageEnabled: e.currentTarget.checked })}
-					type="checkbox"
-				>
-				{@render t('outputs.image')}
-			</label>
-			{#if data.imageEnabled}
+			{#if outputRole === 'image'}
 				<label class="facet-field">
 					{@render t('outputs.image.aspectRatio', 'image.aspectRatio')}
 					<input
@@ -626,14 +703,6 @@ function setProvider(next: Provider) {
 						value={data.imageMimeType}
 					>
 				</label>
-				<label class="facet-check">
-					<input
-						checked={data.imageAllowsGrounding}
-						onchange={(e) => patch({ imageAllowsGrounding: e.currentTarget.checked })}
-						type="checkbox"
-					>
-					{@render t('outputs.image.allowsGrounding', 'image.allowsGrounding')}
-				</label>
 				<label class="facet-field">
 					{@render t('outputs.image.maxInputImages', 'image.maxInputImages')}
 					<input
@@ -646,15 +715,7 @@ function setProvider(next: Provider) {
 				</label>
 			{/if}
 
-			<label class="facet-check">
-				<input
-					checked={data.speechEnabled}
-					onchange={(e) => patch({ speechEnabled: e.currentTarget.checked })}
-					type="checkbox"
-				>
-				{@render t('outputs.speech')}
-			</label>
-			{#if data.speechEnabled}
+			{#if outputRole === 'speech'}
 				<label class="facet-field">
 					{@render t('outputs.speech.voice', 'speech.voice')}
 					<input
@@ -674,12 +735,11 @@ function setProvider(next: Provider) {
 				</label>
 			{/if}
 
-			<label class="facet-check">
-				<input
+			<label class="facet-check text-xs">
+				<Checkbox
 					checked={data.validationEnabled}
-					onchange={(e) => patch({ validationEnabled: e.currentTarget.checked })}
-					type="checkbox"
-				>
+					onchange={(v) => patch({ validationEnabled: v })}
+				/>
 				{@render t('outputs.validation')}
 			</label>
 			{#if data.validationEnabled}
@@ -712,104 +772,74 @@ function setProvider(next: Provider) {
 					value={data.streamMode}
 				/>
 			</label>
-			<label class="facet-check">
-				<input
-					checked={data.streamThoughts}
-					onchange={(e) => patch({ streamThoughts: e.currentTarget.checked })}
-					type="checkbox"
-				>
+			<label class="facet-check text-xs">
+				<Checkbox checked={data.streamThoughts} onchange={(v) => patch({ streamThoughts: v })} />
 				{@render t('outputs.streaming.streamThoughts', 'streaming.streamThoughts')}
 			</label>
-			<label class="facet-check">
-				<input
-					checked={data.gateMedia}
-					onchange={(e) => patch({ gateMedia: e.currentTarget.checked })}
-					type="checkbox"
-				>
+			<label class="facet-check text-xs">
+				<Checkbox checked={data.gateMedia} onchange={(v) => patch({ gateMedia: v })} />
 				{@render t('outputs.streaming.gateMedia', 'streaming.gateMedia')}
 			</label>
 
-			<label class="facet-check">
-				<input
-					checked={data.resumeEnabled}
-					onchange={(e) => patch({ resumeEnabled: e.currentTarget.checked })}
-					type="checkbox"
-				>
+			<label class="facet-check text-xs">
+				<Checkbox checked={data.resumeEnabled} onchange={(v) => patch({ resumeEnabled: v })} />
 				{@render t('outputs.resume')}
 			</label>
 			{#if data.resumeEnabled}
 				<fieldset class="facet-set">
 					<legend>{@render t('outputs.resume.allowContinue', 'resume.allowContinue')}</legend>
-					{#each TURN_STOP_KINDS as opt (opt.value)}
-						<label class="facet-check">
-							<input
+					{#each PLAYGROUND_TURN_STOP_KINDS as opt (opt.value)}
+						<label class="facet-check text-xs">
+							<Checkbox
 								checked={data.allowContinue.includes(opt.value)}
-								onchange={(e) =>
+								onchange={(v) =>
 									patch({
 										allowContinue: toggleList(
 											data.allowContinue,
 											opt.value,
-											e.currentTarget.checked
+											v
 										)
 									})}
-								type="checkbox"
-							>
+							/>
 							<span>{opt.label}</span>
 						</label>
 					{/each}
 				</fieldset>
 				<fieldset class="facet-set">
 					<legend>{@render t('outputs.resume.autoContinue', 'resume.autoContinue')}</legend>
-					{#each TURN_STOP_KINDS as opt (opt.value)}
-						<label class="facet-check">
-							<input
+					{#each PLAYGROUND_TURN_STOP_KINDS as opt (opt.value)}
+						<label class="facet-check text-xs">
+							<Checkbox
 								checked={data.autoContinue.includes(opt.value)}
-								onchange={(e) =>
+								onchange={(v) =>
 									patch({
 										autoContinue: toggleList(
 											data.autoContinue,
 											opt.value,
-											e.currentTarget.checked
+											v
 										)
 									})}
-								type="checkbox"
-							>
+							/>
 							<span>{opt.label}</span>
 						</label>
 					{/each}
 				</fieldset>
 			{/if}
 		{:else if data.kind === 'guardrails'}
-			<label class="facet-check">
-				<input
-					checked={data.canary}
-					onchange={(e) => patch({ canary: e.currentTarget.checked })}
-					type="checkbox"
-				>
+			<label class="facet-check text-xs">
+				<Checkbox checked={data.canary} onchange={(v) => patch({ canary: v })} />
 				{@render t('guardrails.canary')}
 			</label>
-			<label class="facet-check">
-				<input
-					checked={data.sanitizeInput}
-					onchange={(e) => patch({ sanitizeInput: e.currentTarget.checked })}
-					type="checkbox"
-				>
+			<label class="facet-check text-xs">
+				<Checkbox checked={data.sanitizeInput} onchange={(v) => patch({ sanitizeInput: v })} />
 				{@render t('guardrails.sanitizeInput')}
 			</label>
-			<label class="facet-check">
-				<input
-					checked={data.redactSensitive}
-					onchange={(e) => patch({ redactSensitive: e.currentTarget.checked })}
-					type="checkbox"
-				>
+			<label class="facet-check text-xs">
+				<Checkbox checked={data.redactSensitive} onchange={(v) => patch({ redactSensitive: v })} />
 				{@render t('guardrails.redactSensitive')}
 			</label>
-			<label class="facet-check">
-				<input
-					checked={data.quotaEnabled}
-					onchange={(e) => patch({ quotaEnabled: e.currentTarget.checked })}
-					type="checkbox"
-				>
+			<label class="facet-check text-xs">
+				<Checkbox checked={data.quotaEnabled} onchange={(v) => patch({ quotaEnabled: v })} />
 				{@render t('guardrails.quota', 'guardrails.quota (optional)')}
 			</label>
 			{#if data.quotaEnabled}
@@ -865,20 +895,18 @@ function setProvider(next: Provider) {
 .facet-editor {
 	display: flex;
 	flex-direction: column;
-	gap: 0.55rem;
+	gap: 1.25rem;
 	min-height: 0;
 	flex: 1 1 auto;
 	overflow-x: hidden;
 	overflow-y: auto;
 	font-family: var(--font-mono);
-	color: #000;
+	color: var(--color-ink);
 }
 
 .facet-editor :global(.field:focus) {
 	background: transparent;
 	color: inherit;
-	outline: 1.5px solid #000;
-	outline-offset: 0;
 }
 
 .facet-editor :global(.select-trigger:focus),
@@ -889,17 +917,11 @@ function setProvider(next: Provider) {
 
 .facet-editor :global(.btn-ghost:hover) {
 	background: rgba(0, 0, 0, 0.05);
-	color: #000;
+	color: var(--color-ink);
 }
 
-.facet-field {
-	display: flex;
-	flex-direction: column;
-	gap: 0.2rem;
-}
-
-.facet-field span,
-.facet-field :global(.type-label) {
+.facet-field-label,
+.facet-field span {
 	font-size: 0.68rem;
 	font-weight: 800;
 	letter-spacing: 0.1em;
@@ -910,7 +932,6 @@ function setProvider(next: Provider) {
 .facet-check :global(.type-label) {
 	display: inline;
 	width: auto;
-	font-size: 0.78rem;
 	font-weight: 700;
 	letter-spacing: normal;
 	text-transform: none;
@@ -918,12 +939,11 @@ function setProvider(next: Provider) {
 	cursor: help;
 }
 
-.facet-set legend :global(.type-label) {
-	font-size: 0.68rem;
-	font-weight: 800;
-	letter-spacing: 0.1em;
-	text-transform: uppercase;
-	color: var(--color-mute);
+.facet-field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.55rem;
+	margin-bottom: 0.15rem;
 }
 
 .facet-area {
@@ -934,42 +954,41 @@ function setProvider(next: Provider) {
 .facet-check {
 	display: flex;
 	align-items: center;
-	gap: 0.45rem;
-	font-size: 0.78rem;
+	gap: 0.5rem;
+	margin-bottom: 0.35rem;
 	font-weight: 700;
 }
 
+.facet-set .facet-check {
+	margin-bottom: 0;
+}
+
 .facet-set {
-	margin: 0;
-	padding: 0.5rem 0 0;
+	margin: 0 0 0.5rem;
+	padding: 0.85rem 0 0.65rem;
 	border: 0;
-	border-top: 1px solid #000;
+	border-top: 1px solid var(--color-ink);
 	display: flex;
 	flex-direction: column;
-	gap: 0.4rem;
+	gap: 0.7rem;
 }
 
 .facet-set legend {
 	padding: 0;
-	font-size: 0.68rem;
-	font-weight: 800;
-	letter-spacing: 0.1em;
-	text-transform: uppercase;
-	color: var(--color-mute);
 }
 
 .facet-hint {
-	margin: 0;
+	margin: 0.15rem 0 0.35rem;
 	font-size: 0.72rem;
-	line-height: 1.35;
+	line-height: 1.55;
 	color: var(--color-mute);
 	font-weight: 600;
 }
 
 .facet-note {
-	margin: 0.35rem 0 0;
+	margin: 0.25rem 0 0.35rem;
 	font-size: 0.68rem;
-	line-height: 1.4;
+	line-height: 1.55;
 	color: var(--color-mute);
 	font-weight: 600;
 }
@@ -982,5 +1001,16 @@ function setProvider(next: Provider) {
 	align-self: flex-start;
 	padding: 0.35rem 0.55rem;
 	font-size: 0.72rem;
+}
+
+.facet-textarea {
+	resize: vertical;
+	min-height: 3.5rem;
+	line-height: 1.35;
+}
+
+.facet-code {
+	font-size: 0.72rem;
+	white-space: pre;
 }
 </style>

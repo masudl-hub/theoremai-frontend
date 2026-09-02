@@ -24,6 +24,7 @@ declare global {
 
 interface ImportMetaEnv {
 	readonly KERNEL_SUBMODULE_HEAD?: string;
+	readonly KERNEL_PACKAGE_VERSION?: string;
 }
 
 interface ImportMeta {

@@ -3,6 +3,7 @@ import { Handle, type NodeProps, Position } from '@xyflow/svelte';
 import { getContext } from 'svelte';
 import { PLAYGROUND_CTX, type PlaygroundCtx } from '$lib/playground/context';
 import { facetTitle } from '$lib/playground/facet-ui';
+import { outputRoleFromData, outputRoleLabel } from '$lib/playground/outputs';
 import type { FacetKind, PlaygroundNode } from '$lib/playground/types';
 
 let { id, data }: NodeProps<PlaygroundNode> = $props();
@@ -11,11 +12,21 @@ const playground = getContext<PlaygroundCtx>(PLAYGROUND_CTX);
 
 const kind = $derived(data.kind as FacetKind);
 const isHub = $derived(kind === 'identity');
-const hasSource = $derived(isHub || kind === 'models');
+const hasSource = $derived(isHub || kind === 'models' || kind === 'tools');
 const hasTarget = $derived(!isHub);
 const isActive = $derived(playground.ui.panelNodeId === id);
 
 const title = $derived(facetTitle(data));
+
+const toolChildren = $derived(
+	kind === 'tools'
+		? playground
+				.getNodes()
+				.filter((n) => n.data.kind === 'toolSpec')
+				.map((n) => (n.data.kind === 'toolSpec' ? n.data.toolName.trim() || '…' : ''))
+				.filter(Boolean)
+		: [],
+);
 
 function setExpanded(opening: boolean) {
 	playground.togglePanel(id, opening);
@@ -82,8 +93,18 @@ function onHeadClick(e: MouseEvent) {
 		{:else if data.kind === 'modelSpec'}
 			{data.apiId || '—'}
 			· temp={data.temperature}
+			{#if data.builtInTools.trim()}
+				· builtins[{data.builtInTools}]
+			{/if}
 		{:else if data.kind === 'tools'}
-			allow [{data.allow || '—'}]
+			{#if toolChildren.length}
+				{toolChildren.join(', ')}
+			{:else}
+				[+ Tool]
+			{/if}
+		{:else if data.kind === 'toolSpec'}
+			{data.toolType}
+			· {data.loadTier}
 		{:else if data.kind === 'inputs'}
 			text={String(data.text)}
 			{#if data.attachmentsAccept.length}
@@ -93,12 +114,10 @@ function onHeadClick(e: MouseEvent) {
 				· voice[{data.voiceAccept.length}]
 			{/if}
 		{:else if data.kind === 'outputs'}
-			structured={data.mode === 'structured' ? data.schemaId || '…' : 'null'}
-			{#if data.imageEnabled}
-				· image
-			{/if}
-			{#if data.speechEnabled}
-				· speech
+			{const role = outputRoleFromData(data)}
+			{outputRoleLabel(role)}
+			{#if role === 'structured' && data.schemaId.trim()}
+				· {data.schemaId.trim()}
 			{/if}
 			{#if data.resumeEnabled}
 				· resume
@@ -123,7 +142,7 @@ function onHeadClick(e: MouseEvent) {
 	border: 1.5px solid #000;
 	background: var(--color-paper);
 	font-family: var(--font-mono);
-	color: #000;
+	color: var(--color-ink);
 }
 
 .facet-hub {
@@ -186,7 +205,7 @@ function onHeadClick(e: MouseEvent) {
 }
 
 .facet-summary:hover {
-	color: #000;
+	color: var(--color-ink);
 }
 
 :global(.facet-handle) {
