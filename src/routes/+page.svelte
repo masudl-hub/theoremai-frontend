@@ -25,7 +25,7 @@ let { data }: { data: PageData } = $props();
 			class="mx-auto flex w-full max-w-6xl flex-col gap-6 md:flex-row md:items-end md:justify-between"
 		>
 			<div>
-				<p class="text-xs font-extrabold tracking-[0.22em] uppercase md:text-sm">Theorum</p>
+				<p class="text-xs font-extrabold tracking-section uppercase md:text-sm">Theorum</p>
 				<p class="mt-2 max-w-sm text-xs leading-relaxed text-mute md:text-sm">
 					The flat TypeScript agent kernel. Host-owned profiles, one runner, injected traces.
 				</p>

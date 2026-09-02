@@ -195,6 +195,7 @@ function buildOutputs(outputs: OutputsData): Record<string, unknown> {
 			...(outputs.imageSize.trim() ? { size: outputs.imageSize.trim() } : {}),
 			...(outputs.imageMimeType.trim() ? { mimeType: outputs.imageMimeType.trim() } : {}),
 			...(outputs.imageMaxInputImages > 0 ? { maxInputImages: outputs.imageMaxInputImages } : {}),
+			...(outputs.imageIncludeText ? { includeText: true } : {}),
 		};
 	}
 

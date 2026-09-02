@@ -20,6 +20,15 @@
 	--size-pillar-stage-md: 38rem;
 }
 
+@keyframes cloud-drift {
+	from {
+		transform: translateX(-6vw);
+	}
+	to {
+		transform: translateX(6vw);
+	}
+}
+
 @keyframes brand-in {
 	from {
 		opacity: 0;
@@ -61,6 +70,7 @@
 }
 
 .cloud-drift {
+	animation: cloud-drift var(--cloud-duration, 48s) ease-in-out infinite alternate;
 	will-change: transform;
 }
 

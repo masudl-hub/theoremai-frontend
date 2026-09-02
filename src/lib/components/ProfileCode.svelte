@@ -42,7 +42,7 @@ $effect(() => {
 >
 	<pre
 		bind:this={pre}
-		class="ascii profile-code overflow-x-auto overflow-y-visible pr-8 text-xs leading-snug font-bold md:text-sm md:leading-profile-code"
+		class="ascii profile-code overflow-x-auto overflow-y-visible pr-8 text-xs font-bold md:text-sm"
 	>{@html html}</pre>
 </div>
 
@@ -59,7 +59,6 @@ $effect(() => {
 :global(.code-line) {
 	display: block;
 	width: 100%;
-	min-height: 1.25em;
 	transition:
 		background-color 0.2s ease,
 		box-shadow 0.2s ease;

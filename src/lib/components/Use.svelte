@@ -185,6 +185,7 @@ const outputsBlock = $derived.by(() => {
       size: "2K",
       mimeType: "image/png",
       maxInputImages: 3,
+      includeText: true,
     },`);
 	} else if (outputKind === 'speech') {
 		lines.push(`    speech: {
@@ -289,7 +290,7 @@ async function copySnippet(id: SnippetId, text: string) {
 
 <section
 	id="use"
-	class="landing-section landing-section-grow relative flex w-full flex-col items-center justify-start px-6 py-20 md:px-14 md:py-12"
+	class="use-section landing-section landing-section-grow relative flex w-full flex-col items-center justify-start px-6 py-20 md:px-14 md:py-12"
 >
 	<div
 		class="relative z-10 mb-6 flex w-full max-w-3xl shrink-0 items-start justify-between gap-4 md:mb-8"
@@ -576,5 +577,13 @@ async function copySnippet(id: SnippetId, text: string) {
 :global(pre.profile-code) {
 	margin: 0;
 	overflow-y: visible;
+}
+
+.use-section :global(pre.profile-code) {
+	line-height: 1.25;
+}
+
+.use-section :global(.code-line) {
+	min-height: 0;
 }
 </style>

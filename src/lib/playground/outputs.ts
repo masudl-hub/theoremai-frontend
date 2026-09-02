@@ -6,7 +6,7 @@ export type OutputRole = 'text' | 'structured' | 'image' | 'speech';
 export const OUTPUT_ROLE_OPTIONS: { value: OutputRole; label: string }[] = [
 	{ value: 'text', label: 'Chat (text only)' },
 	{ value: 'structured', label: 'Structured JSON' },
-	{ value: 'image', label: 'Image (+ interleaved text)' },
+	{ value: 'image', label: 'Image generation' },
 	{ value: 'speech', label: 'Speech (TTS)' },
 ];
 

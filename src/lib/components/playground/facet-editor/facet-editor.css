@@ -1,0 +1,127 @@
+.facet-editor {
+	display: flex;
+	flex-direction: column;
+	gap: 1.25rem;
+	min-height: 0;
+	flex: 1 1 auto;
+	overflow-x: hidden;
+	overflow-y: auto;
+	font-family: var(--font-mono);
+	color: var(--color-ink);
+}
+
+.facet-editor .field:focus {
+	background: transparent;
+	color: inherit;
+}
+
+.facet-editor .select-trigger:focus,
+.facet-editor .select-trigger:focus-visible {
+	background: transparent;
+	color: inherit;
+}
+
+.facet-editor .btn-ghost:hover {
+	background: rgba(0, 0, 0, 0.05);
+	color: var(--color-ink);
+}
+
+.facet-field-label,
+.facet-field span {
+	font-size: 0.68rem;
+	font-weight: 800;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--color-mute);
+}
+
+.facet-check .type-label {
+	display: inline;
+	width: auto;
+	font-weight: 700;
+	letter-spacing: normal;
+	text-transform: none;
+	color: inherit;
+	cursor: help;
+}
+
+.facet-field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.55rem;
+	margin-bottom: 0.15rem;
+}
+
+.facet-area {
+	resize: vertical;
+	min-height: 4rem;
+}
+
+.facet-check {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin-bottom: 0.35rem;
+	font-weight: 700;
+}
+
+.facet-set .facet-check {
+	margin-bottom: 0;
+}
+
+.facet-set {
+	margin: 0 0 0.5rem;
+	padding: 0.85rem 0 0.65rem;
+	border: 0;
+	border-top: 1px solid var(--color-ink);
+	display: flex;
+	flex-direction: column;
+	gap: 0.7rem;
+}
+
+.facet-set legend {
+	padding: 0;
+}
+
+.facet-check-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0.35rem 0.85rem;
+}
+
+.facet-hint {
+	margin: 0.15rem 0 0.35rem;
+	font-size: 0.72rem;
+	line-height: 1.55;
+	color: var(--color-mute);
+	font-weight: 600;
+}
+
+.facet-note {
+	margin: 0.25rem 0 0.35rem;
+	font-size: 0.68rem;
+	line-height: 1.55;
+	color: var(--color-mute);
+	font-weight: 600;
+}
+
+.facet-check-disabled {
+	opacity: 0.45;
+}
+
+.facet-action {
+	align-self: flex-start;
+	padding: 0.35rem 0.55rem;
+	font-size: 0.72rem;
+}
+
+.facet-textarea {
+	resize: vertical;
+	min-height: 3.5rem;
+	line-height: 1.35;
+}
+
+.facet-code {
+	font-size: 0.72rem;
+	white-space: pre;
+}

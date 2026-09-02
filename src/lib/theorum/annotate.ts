@@ -78,7 +78,7 @@ export function annotateProfileCode(source: string): string {
 		out.push(`<span class="code-line" data-line="${lineNum}">${lineContent}</span>`);
 	});
 
-	return out.join('\n');
+	return out.join('');
 }
 
 function commentHtml(comment: string): string {

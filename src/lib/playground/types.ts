@@ -131,6 +131,8 @@ export type OutputsData = {
 	imageSize: string;
 	imageMimeType: string;
 	imageMaxInputImages: number;
+	/** When true, request interleaved assistant text alongside generated images. */
+	imageIncludeText: boolean;
 	speechEnabled: boolean;
 	speechVoice: string;
 	speechFormat: SpeechAudioFormat;
