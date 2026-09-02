@@ -1,3 +1,5 @@
+import { type PackageNode, packageTree, walkPackageTree } from './package-tree';
+
 export type ArchSpec = [label: string, value: string];
 
 export type ArchNode = {
@@ -11,587 +13,1498 @@ export type ArchNode = {
 	copyable?: boolean;
 };
 
+function defaultNode(node: PackageNode): ArchNode {
+	if (node.kind === 'package') {
+		return {
+			id: node.id,
+			title: 'Theorum',
+			type: 'PACKAGE',
+			usage: "import { defineProfile, runTurn } from 'theorum'",
+			desc: 'Published npm/JSR package — root barrel plus every module under src/.',
+			specs: [
+				['root', 'mod.ts'],
+				['tree', 'src/'],
+				['version', '0.1.15'],
+			],
+			copyable: true,
+		};
+	}
+
+	if (node.kind === 'folder') {
+		return {
+			id: node.id,
+			title: node.label.replace(/\/$/, ''),
+			type: 'FOLDER',
+			usage: `// ${node.path}`,
+			desc: `Directory \`${node.path}\` in the published package.`,
+			specs: [
+				['path', node.path],
+				['files', String(node.children?.length ?? 0)],
+				['kind', 'folder'],
+			],
+		};
+	}
+
+	const exportPaths: Record<string, string> = {
+		'mod.ts': 'theorum',
+		'src/kernel/mod.ts': 'theorum/kernel',
+		'src/providers/mod.ts': 'theorum/providers',
+		'src/providers/local/mod.ts': 'theorum/providers/local',
+		'src/guardrails/mod.ts': 'theorum/guardrails',
+		'src/observability/mod.ts': 'theorum/observability',
+		'src/host/mod.ts': 'theorum/host',
+		'src/cli/index.ts': 'theorum/cli',
+		'src/presets/mod.ts': 'theorum/presets',
+		'src/presets/google.ts': 'theorum/presets/google',
+	};
+	const entry = exportPaths[node.path];
+
+	return {
+		id: node.id,
+		title: node.label,
+		type: entry ? 'BARREL' : 'FILE',
+		usage: entry ? `import { … } from '${entry}'` : `// Internal — ${node.path}`,
+		desc: entry
+			? `Public barrel \`${node.path}\` — re-export entry for \`${entry}\`.`
+			: `Source file \`${node.path}\`. Shipped in the package; not a separate export path.`,
+		specs: [
+			['path', node.path],
+			['export', node.path in exportPaths ? exportPaths[node.path] : 'none'],
+			['kind', 'file'],
+		],
+		copyable: Boolean(entry),
+	};
+}
+
+/** Curated hovers keyed by package-tree ids — override generic defaults where it matters. */
+const ARCH_OVERRIDES: Record<string, ArchNode> = {
+	mod: {
+		id: 'mod',
+		title: 'mod.ts',
+		type: 'BARREL',
+		usage: "import { defineProfile, runTurn, createProvider } from 'theorum'",
+		desc: 'Root public API — profiles, turns, guardrails, compaction, tools, and provider factory re-exports.',
+		specs: [
+			['entry', 'theorum'],
+			['path', 'mod.ts'],
+			['also', 'theorum/kernel · /providers · /guardrails · …'],
+		],
+		copyable: true,
+	},
+	cli: {
+		id: 'cli',
+		title: 'cli',
+		type: 'TOOLING',
+		usage: 'npx theorum --help',
+		desc: 'Command-line entry — profile inspection, manual turns, matrix stress tests.',
+		specs: [
+			['entry', 'theorum/cli'],
+			['path', 'src/cli/'],
+			['bin', 'theorum'],
+		],
+		copyable: true,
+	},
+	cli_index: {
+		id: 'cli_index',
+		title: 'index.ts',
+		type: 'BARREL',
+		usage: 'npx theorum --help',
+		desc: 'CLI router — dispatches to commands/ and wires matrix/ for `test --matrix`.',
+		specs: [
+			['path', 'src/cli/index.ts'],
+			['entry', 'theorum/cli'],
+			['cmds', 'run · test · profile · bench · fuzz'],
+		],
+		copyable: true,
+	},
+	cli_commands: {
+		id: 'cli_commands',
+		title: 'commands',
+		type: 'FOLDER',
+		usage: '// src/cli/commands/',
+		desc: 'One module per CLI subcommand — run, test, profile, bench, fuzz-guardrails.',
+		specs: [
+			['path', 'src/cli/commands/'],
+			['files', '5'],
+			['kind', 'folder'],
+		],
+	},
+	cli_commands_run: {
+		id: 'cli_commands_run',
+		title: 'run.ts',
+		type: 'COMMAND',
+		usage: 'npx theorum run --profile <id> --prompt "…"',
+		desc: 'Send one prompt through a registered profile and watch tokens stream.',
+		specs: [
+			['path', 'src/cli/commands/run.ts'],
+			['flags', '--profile · --prompt · --mode'],
+			['extra', '--search · --map'],
+		],
+		copyable: true,
+	},
+	cli_commands_test: {
+		id: 'cli_commands_test',
+		title: 'test.ts',
+		type: 'COMMAND',
+		usage: 'npx theorum test --profile <id> --matrix',
+		desc: 'Connectivity ping or full permutation sweep via matrix/.',
+		specs: [
+			['path', 'src/cli/commands/test.ts'],
+			['modes', '--lite · --matrix · --all'],
+			['flags', '--profile · --mode'],
+		],
+		copyable: true,
+	},
+	cli_commands_profile: {
+		id: 'cli_commands_profile',
+		title: 'profile.ts',
+		type: 'COMMAND',
+		usage: 'npx theorum profile show <id>',
+		desc: 'List or dump profile blueprints as JSON.',
+		specs: [
+			['path', 'src/cli/commands/profile.ts'],
+			['subs', 'list · show <id>'],
+			['out', 'JSON blueprint'],
+		],
+		copyable: true,
+	},
+	cli_commands_bench: {
+		id: 'cli_commands_bench',
+		title: 'bench.ts',
+		type: 'COMMAND',
+		usage: 'npx theorum bench',
+		desc: 'Synthetic kernel throughput benchmark — mock streams, not model quality.',
+		specs: [
+			['path', 'src/cli/commands/bench.ts'],
+			['flags', '--chunks · --iterations · --warmup'],
+			['target', 'mock stream'],
+		],
+		copyable: true,
+	},
+	cli_commands_fuzz: {
+		id: 'cli_commands_fuzz',
+		title: 'fuzz-guardrails.ts',
+		type: 'COMMAND',
+		usage: 'npx theorum fuzz',
+		desc: 'Adversarial corpus against injectionSpans and related guardrails.',
+		specs: [
+			['path', 'src/cli/commands/fuzz-guardrails.ts'],
+			['target', 'injectionSpans'],
+			['corpus', 'adversarial prompts'],
+		],
+		copyable: true,
+	},
+	cli_matrix: {
+		id: 'cli_matrix',
+		title: 'matrix',
+		type: 'FOLDER',
+		usage: '// Internal — used by: theorum test --matrix',
+		desc: 'Turn-shape permutations for `test --matrix` — fixtures + synthesizer.',
+		specs: [
+			['path', 'src/cli/matrix/'],
+			['via', 'theorum test --matrix'],
+			['export', 'none'],
+		],
+	},
+	cli_matrix_fixtures: {
+		id: 'cli_matrix_fixtures',
+		title: 'fixtures.ts',
+		type: 'INTERNAL',
+		usage: '// Internal — src/cli/matrix/fixtures.ts',
+		desc: 'Synthetic media and inputs for matrix runs — deterministic stress fixtures.',
+		specs: [
+			['path', 'src/cli/matrix/fixtures.ts'],
+			['kind', 'synthetic media'],
+			['export', 'none'],
+		],
+	},
+	cli_matrix_synthesizer: {
+		id: 'cli_matrix_synthesizer',
+		title: 'synthesizer.ts',
+		type: 'INTERNAL',
+		usage: '// Internal — src/cli/matrix/synthesizer.ts',
+		desc: 'Builds lite, stress, and matrix test requests from a profile blueprint.',
+		specs: [
+			['path', 'src/cli/matrix/synthesizer.ts'],
+			['builds', 'lite · stress · matrix'],
+			['export', 'none'],
+		],
+	},
+	kernel: {
+		id: 'kernel',
+		title: 'kernel',
+		type: 'RUNTIME',
+		usage: "import { runTurn, defineProfile } from 'theorum/kernel'",
+		desc: 'Typed execution kernel — profiles, turns, tools, compaction, stop/resume.',
+		specs: [
+			['entry', 'theorum/kernel'],
+			['path', 'src/kernel/'],
+			['door', 'runTurn'],
+		],
+		copyable: true,
+	},
+	kernel_mod: {
+		id: 'kernel_mod',
+		title: 'mod.ts',
+		type: 'BARREL',
+		usage: "import { runTurn, defineProfile } from 'theorum/kernel'",
+		desc: 'Kernel public barrel — runner, profiles, tools, schema vocab, compaction, stop helpers.',
+		specs: [
+			['entry', 'theorum/kernel'],
+			['path', 'src/kernel/mod.ts'],
+			['also', 're-exported on theorum'],
+		],
+		copyable: true,
+	},
+	kernel_types: {
+		id: 'kernel_types',
+		title: 'types.ts',
+		type: 'CONTRACTS',
+		usage: "import type { Profile, TurnRequest, TurnEvent } from 'theorum/kernel'",
+		desc: 'Behavioral type contracts — Profile, TurnRequest, TurnEvent, tool envelopes, provider shapes.',
+		specs: [
+			['path', 'src/kernel/types.ts'],
+			['kind', 'type-only exports'],
+			['detail', 'docs/contracts/kernel.md'],
+		],
+		copyable: true,
+	},
+	kernel_schema: {
+		id: 'kernel_schema',
+		title: 'schema.ts',
+		type: 'CONTRACTS',
+		usage: "import { PROTOCOLS, fieldMeta, isValidPair, providersFor } from 'theorum'",
+		desc: 'Closed unions and profile field metadata — protocol/provider pairs, thinking levels, tool tiers.',
+		specs: [
+			['path', 'src/kernel/schema.ts'],
+			['pairs', 'PROTOCOLS · PROVIDERS · PROTOCOL_PROVIDERS'],
+			['ui', 'fieldMeta · PROFILE_FIELDS · EXTRA_FIELDS'],
+		],
+		copyable: true,
+	},
+	kernel_stop: {
+		id: 'kernel_stop',
+		title: 'stop.ts',
+		type: 'CORE',
+		usage: "import { isResumeableStop, shouldAutoContinue } from 'theorum'",
+		desc: 'Turn stop kinds, resume/auto-continue helpers, and provider finish-reason mapping.',
+		specs: [
+			['path', 'src/kernel/stop.ts'],
+			['types', 'TurnStop · TurnStopKind'],
+			['api', 'isResumeableStop · shouldAutoContinue'],
+		],
+		copyable: true,
+	},
+	kernel_engine: {
+		id: 'kernel_engine',
+		title: 'engine',
+		type: 'INTERNAL',
+		usage: '// Internal — src/kernel/engine/',
+		desc: 'Turn pipeline internals — boundary, delta, repair, compaction, runner orchestration.',
+		specs: [
+			['path', 'src/kernel/engine/'],
+			['owns', 'boundary · delta · repair · compaction'],
+			['runner', 'runner.ts → runner/'],
+		],
+	},
+	kernel_engine_assert: {
+		id: 'kernel_engine_assert',
+		title: 'assert.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Engine invariants — failures surface as TheorumError, not raw throws.',
+		specs: [
+			['path', 'src/kernel/engine/assert.ts'],
+			['surfaces', 'TheorumError · publicError'],
+			['export', 'none'],
+		],
+	},
+	kernel_engine_boundary: {
+		id: 'kernel_engine_boundary',
+		title: 'boundary.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'User-content fencing — canary tokens, rolling stream gate, and `<user_data>` blocks before the model sees input.',
+		specs: [
+			['path', 'src/kernel/engine/boundary.ts'],
+			['does', 'canary · stream gate · <user_data> fence'],
+			['export', 'mintCanary · createCanaryStreamGate · scanTextForCanaryLeak'],
+		],
+	},
+	kernel_engine_canary_gate: {
+		id: 'kernel_engine_canary_gate',
+		title: 'canary-gate.ts',
+		type: 'SECURITY',
+		usage: "import { createCanaryGateSession, filterCanaryGatedEvents } from 'theorum'",
+		desc: 'Batch Live event gate — holds outbound chunks until turnComplete, then scans for canary leaks.',
+		specs: [
+			['path', 'src/kernel/engine/canary-gate.ts'],
+			['pairs', 'guardrails/live-outbound-gate.ts'],
+			['api', 'createCanaryGateSession · filterCanaryGatedEvents'],
+		],
+		copyable: true,
+	},
+	kernel_engine_compaction: {
+		id: 'kernel_engine_compaction',
+		title: 'compaction.ts',
+		type: 'CORE',
+		usage: "import { shouldCompact, splitForCompaction } from 'theorum'",
+		desc: 'History trimming before context overflow — meters, splits, and token estimates.',
+		specs: [
+			['path', 'src/kernel/engine/compaction.ts'],
+			['api', 'shouldCompact · splitForCompaction'],
+			['also', 'estimateHistoryTokens · compactionMeter'],
+		],
+		copyable: true,
+	},
+	kernel_engine_delta: {
+		id: 'kernel_engine_delta',
+		title: 'delta.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Maps provider chunks to TurnEvent stream — text, tools, thoughts, done.',
+		specs: [
+			['path', 'src/kernel/engine/delta.ts'],
+			['maps', 'provider chunk → TurnEvent'],
+			['export', 'none'],
+		],
+	},
+	kernel_engine_hash: {
+		id: 'kernel_engine_hash',
+		title: 'hash.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Stable hashing helpers for engine records and dedup keys.',
+		specs: [
+			['path', 'src/kernel/engine/hash.ts'],
+			['export', 'none'],
+		],
+	},
+	kernel_engine_history_tokens: {
+		id: 'kernel_engine_history_tokens',
+		title: 'history-tokens.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Token estimates for chat history — feeds compaction thresholds.',
+		specs: [
+			['path', 'src/kernel/engine/history-tokens.ts'],
+			['pairs', 'compaction.ts'],
+			['export', 'none'],
+		],
+	},
+	kernel_engine_live_inbound: {
+		id: 'kernel_engine_live_inbound',
+		title: 'live-inbound.ts',
+		type: 'SECURITY',
+		usage: "import { prepareLiveInboundText } from 'theorum'",
+		desc: 'Live client text path — sanitizeTurnRequest plus `<user_data>` fence before upstream send.',
+		specs: [
+			['path', 'src/kernel/engine/live-inbound.ts'],
+			['api', 'prepareLiveInboundText'],
+			['pairs', 'live-relay.ts · boundary.ts'],
+		],
+		copyable: true,
+	},
+	kernel_engine_record: {
+		id: 'kernel_engine_record',
+		title: 'record.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Trace record assembly inputs from runner state.',
+		specs: [
+			['path', 'src/kernel/engine/record.ts'],
+			['export', 'none'],
+		],
+	},
+	kernel_engine_repair: {
+		id: 'kernel_engine_repair',
+		title: 'repair.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Structured-output and egress repair turns before a turn finishes.',
+		specs: [
+			['path', 'src/kernel/engine/repair.ts'],
+			['pairs', 'validation · egress'],
+			['export', 'none'],
+		],
+	},
+	kernel_engine_runner: {
+		id: 'kernel_engine_runner',
+		title: 'runner.ts',
+		type: 'RUNTIME',
+		usage: "import { runTurn } from 'theorum'",
+		desc: 'Public runTurn export — thin re-export of engine/runner/mod.ts.',
+		specs: [
+			['path', 'src/kernel/engine/runner.ts'],
+			['impl', 'src/kernel/engine/runner/'],
+			['api', 'runTurn(request, provider, opts?)'],
+		],
+		copyable: true,
+	},
+	kernel_engine_tree: {
+		id: 'kernel_engine_tree',
+		title: 'tree.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Structured output parse tree helpers for validation gates.',
+		specs: [
+			['path', 'src/kernel/engine/tree.ts'],
+			['export', 'none'],
+		],
+	},
+	kernel_engine_runner_dir: {
+		id: 'kernel_engine_runner_dir',
+		title: 'runner',
+		type: 'INTERNAL',
+		usage: '// Internal — src/kernel/engine/runner/',
+		desc: 'Deterministic turn runner — resolve, sanitize, stream, tool loop, trace, done.',
+		specs: [
+			['path', 'src/kernel/engine/runner/'],
+			['door', 'mod.ts → runTurn'],
+			['export', 'none (via runner.ts)'],
+		],
+	},
+	kernel_engine_runner_mod: {
+		id: 'kernel_engine_runner_mod',
+		title: 'mod.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'runTurn implementation — orchestrates steps/, stream/, gates/, and tokens/.',
+		specs: [
+			['path', 'src/kernel/engine/runner/mod.ts'],
+			['api', 'runTurn'],
+			['export', 'none (via runner.ts)'],
+		],
+	},
+	kernel_engine_runner_gates: {
+		id: 'kernel_engine_runner_gates',
+		title: 'gates.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Structured JSON validation and repair loop at end of stream.',
+		specs: [
+			['path', 'src/kernel/engine/runner/gates.ts'],
+			['does', 'validate · repair loop'],
+			['export', 'none'],
+		],
+	},
+	kernel_engine_runner_schema_validation: {
+		id: 'kernel_engine_runner_schema_validation',
+		title: 'schema-validation.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'JSON schema enforcement helpers used by gates.ts.',
+		specs: [
+			['path', 'src/kernel/engine/runner/schema-validation.ts'],
+			['export', 'none'],
+		],
+	},
+	kernel_engine_runner_state: {
+		id: 'kernel_engine_runner_state',
+		title: 'state.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Per-turn ephemeral runner state — step index, repair attempts.',
+		specs: [
+			['path', 'src/kernel/engine/runner/state.ts'],
+			['scope', 'per-turn'],
+			['export', 'none'],
+		],
+	},
+	kernel_engine_runner_steps: {
+		id: 'kernel_engine_runner_steps',
+		title: 'steps.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Tool-loop step driver — continues turns until maxSteps or terminal done.',
+		specs: [
+			['path', 'src/kernel/engine/runner/steps.ts'],
+			['export', 'none'],
+		],
+	},
+	kernel_engine_runner_stream: {
+		id: 'kernel_engine_runner_stream',
+		title: 'stream.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Live token stream shaping — respects outputs.streaming and tool call gating.',
+		specs: [
+			['path', 'src/kernel/engine/runner/stream.ts'],
+			['respects', 'outputs.streaming'],
+			['export', 'none'],
+		],
+	},
+	kernel_engine_runner_tokens: {
+		id: 'kernel_engine_runner_tokens',
+		title: 'tokens.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Usage token aggregation for done events and trace records.',
+		specs: [
+			['path', 'src/kernel/engine/runner/tokens.ts'],
+			['export', 'none'],
+		],
+	},
+	kernel_registry: {
+		id: 'kernel_registry',
+		title: 'registry',
+		type: 'CORE',
+		usage: "import { registerProfile, registerStructured } from 'theorum'",
+		desc: 'Profiles, structured schemas, ingress, and vault — not the tool registry (see tools/).',
+		specs: [
+			['path', 'src/kernel/registry/'],
+			['holds', 'profiles · schemas · ingress · vault'],
+			['api', 'registerProfile · resolveTurn'],
+		],
+		copyable: true,
+	},
+	kernel_registry_catalog: {
+		id: 'kernel_registry_catalog',
+		title: 'catalog.ts',
+		type: 'CORE',
+		usage: "import { requireModelSpec, mimeAllowed, clampThinkingLevel } from 'theorum'",
+		desc: 'Model spec lookup and MIME helpers for profile validation.',
+		specs: [
+			['path', 'src/kernel/registry/catalog.ts'],
+			['api', 'requireModelSpec · modelEntryByApiId'],
+			['mime', 'mimeAllowed · mediaKindForMime'],
+		],
+		copyable: true,
+	},
+	kernel_registry_profiles: {
+		id: 'kernel_registry_profiles',
+		title: 'profiles.ts',
+		type: 'CORE',
+		usage: "import { defineProfile, registerProfile, getProfile } from 'theorum'",
+		desc: 'defineProfile / registerProfile and in-memory profile registry.',
+		specs: [
+			['path', 'src/kernel/registry/profiles.ts'],
+			['api', 'defineProfile · registerProfile · getProfile'],
+			['fields', 'model · tools · inputs · outputs · guardrails'],
+		],
+		copyable: true,
+	},
+	kernel_registry_resolve: {
+		id: 'kernel_registry_resolve',
+		title: 'resolve.ts',
+		type: 'CORE',
+		usage: "import { resolveTurn, projectProfile } from 'theorum'",
+		desc: 'Combines profile + TurnRequest into ResolvedGeneration for the runner.',
+		specs: [
+			['path', 'src/kernel/registry/resolve.ts'],
+			['api', 'resolveTurn · projectProfile'],
+			['out', 'ResolvedGeneration'],
+		],
+		copyable: true,
+	},
+	kernel_registry_schemas: {
+		id: 'kernel_registry_schemas',
+		title: 'schemas.ts',
+		type: 'CONTRACTS',
+		usage: "import { registerStructured, getStructured } from 'theorum'",
+		desc: 'Structured output schema registry — enforced at runner gates.',
+		specs: [
+			['path', 'src/kernel/registry/schemas.ts'],
+			['api', 'registerStructured · getStructured'],
+			['enforced', 'at gates'],
+		],
+		copyable: true,
+	},
+	kernel_registry_ingress: {
+		id: 'kernel_registry_ingress',
+		title: 'ingress.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Normalizes multimodal turn input before resolve runs.',
+		specs: [
+			['path', 'src/kernel/registry/ingress.ts'],
+			['handles', 'text · image · voice'],
+			['export', 'none'],
+		],
+	},
+	kernel_registry_attachments: {
+		id: 'kernel_registry_attachments',
+		title: 'attachments.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Attachment normalization and MIME validation for profile inputs.',
+		specs: [
+			['path', 'src/kernel/registry/attachments.ts'],
+			['export', 'none'],
+		],
+	},
+	kernel_registry_provider_request: {
+		id: 'kernel_registry_provider_request',
+		title: 'provider-request.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Builds provider wire requests from resolved generations.',
+		specs: [
+			['path', 'src/kernel/registry/provider-request.ts'],
+			['export', 'none'],
+		],
+	},
+	kernel_registry_vault: {
+		id: 'kernel_registry_vault',
+		title: 'vault.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Gemini transport vault types — fed into createProvider for key rotation.',
+		specs: [
+			['path', 'src/kernel/registry/vault.ts'],
+			['feeds', 'createProvider · gemini option'],
+			['export', 'none'],
+		],
+	},
+	kernel_tools: {
+		id: 'kernel_tools',
+		title: 'tools',
+		type: 'CORE',
+		usage: "import { registerTool, getTool, invokeTool } from 'theorum'",
+		desc: 'Process-local tool registry — register builtins and host function tools at startup.',
+		specs: [
+			['path', 'src/kernel/tools/'],
+			['api', 'registerTool · invokeTool'],
+			['execute', 'execute.ts · harness.ts'],
+		],
+		copyable: true,
+	},
+	kernel_tools_mod: {
+		id: 'kernel_tools_mod',
+		title: 'mod.ts',
+		type: 'BARREL',
+		usage: "import { registerTool, invokeTool } from 'theorum'",
+		desc: 'Tool registry public surface — also re-exported from theorum/kernel and mod.ts.',
+		specs: [
+			['path', 'src/kernel/tools/mod.ts'],
+			['api', 'registerTool · invokeTool'],
+			['execute', 'executeRegisteredTool'],
+		],
+		copyable: true,
+	},
+	kernel_tools_define: {
+		id: 'kernel_tools_define',
+		title: 'define.ts',
+		type: 'CORE',
+		usage: "import { defineTool } from 'theorum'",
+		desc: 'defineTool — validate and normalize tool definitions (called internally by registerTool).',
+		specs: [
+			['path', 'src/kernel/tools/define.ts'],
+			['api', 'defineTool'],
+			['export', 'via mod.ts'],
+		],
+	},
+	kernel_tools_registry: {
+		id: 'kernel_tools_registry',
+		title: 'registry.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'In-memory tool catalog — registerTool, getTool, listTools.',
+		specs: [
+			['path', 'src/kernel/tools/registry.ts'],
+			['export', 'none'],
+		],
+	},
+	kernel_tools_execute: {
+		id: 'kernel_tools_execute',
+		title: 'execute.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'executeRegisteredTool — shared by runTurn tool loop and invokeTool.',
+		specs: [
+			['path', 'src/kernel/tools/execute.ts'],
+			['pairs', 'runner/steps.ts'],
+			['export', 'none'],
+		],
+	},
+	kernel_tools_invoke: {
+		id: 'kernel_tools_invoke',
+		title: 'invoke.ts',
+		type: 'CORE',
+		usage: "import { invokeTool } from 'theorum'",
+		desc: 'Direct tool invocation outside a full turn — same executor as the runner.',
+		specs: [
+			['path', 'src/kernel/tools/invoke.ts'],
+			['api', 'invokeTool'],
+			['export', 'via mod.ts'],
+		],
+		copyable: true,
+	},
+	kernel_tools_harness: {
+		id: 'kernel_tools_harness',
+		title: 'harness.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Test harness tool registration — registerHarnessTools for CLI matrix.',
+		specs: [
+			['path', 'src/kernel/tools/harness.ts'],
+			['export', 'none'],
+		],
+	},
+	kernel_tools_project: {
+		id: 'kernel_tools_project',
+		title: 'project.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Projects tools.allow + model builtInTools into registered tool metadata for host/UI.',
+		specs: [
+			['path', 'src/kernel/tools/project.ts'],
+			['export', 'none'],
+		],
+	},
+	kernel_tools_resolve: {
+		id: 'kernel_tools_resolve',
+		title: 'resolve.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Resolves per-turn tool ceilings from tools.allow, model builtInTools, gates, and paths.',
+		specs: [
+			['path', 'src/kernel/tools/resolve.ts'],
+			['export', 'none'],
+		],
+	},
+	kernel_tools_schema: {
+		id: 'kernel_tools_schema',
+		title: 'schema.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Tool JSON-schema validation and Gemini tool wire shapes.',
+		specs: [
+			['path', 'src/kernel/tools/schema.ts'],
+			['export', 'none'],
+		],
+	},
+	kernel_tools_types: {
+		id: 'kernel_tools_types',
+		title: 'types.ts',
+		type: 'CONTRACTS',
+		usage: "import type { ToolDefinition, ToolEnvelope } from 'theorum/kernel'",
+		desc: 'Tool registry type contracts — ToolDefinition, ToolEnvelope, tiers.',
+		specs: [
+			['path', 'src/kernel/tools/types.ts'],
+			['kind', 'types'],
+			['export', 'via mod.ts'],
+		],
+	},
+	providers: {
+		id: 'providers',
+		title: 'providers',
+		type: 'INTEGRATION',
+		usage: "import { createProvider } from 'theorum/providers'",
+		desc: 'Provider adapters — lazy-loaded on first complete via create-provider.ts.',
+		specs: [
+			['entry', 'theorum/providers'],
+			['path', 'src/providers/'],
+			['folders', 'google/ · openrouter/ · local/ · shared/'],
+		],
+		copyable: true,
+	},
+	providers_mod: {
+		id: 'providers_mod',
+		title: 'mod.ts',
+		type: 'BARREL',
+		usage: "import { createProvider } from 'theorum/providers'",
+		desc: 'Thin providers barrel — createProvider is the only public door.',
+		specs: [
+			['entry', 'theorum/providers'],
+			['path', 'src/providers/mod.ts'],
+			['lazy', 'adapter folders on first complete'],
+		],
+		copyable: true,
+	},
+	providers_create_provider: {
+		id: 'providers_create_provider',
+		title: 'create-provider.ts',
+		type: 'FACTORY',
+		usage: 'createProvider(profile, { openAiGateway, gemini, local })',
+		desc: 'Routes profile protocol/provider to a lazy adapter import.',
+		specs: [
+			['path', 'src/providers/create-provider.ts'],
+			['opts', 'openAiGateway · gemini · local'],
+			['returns', 'ModelProvider'],
+		],
+		copyable: true,
+	},
+	providers_types: {
+		id: 'providers_types',
+		title: 'types.ts',
+		type: 'CONTRACTS',
+		usage: "import type { ModelProvider } from 'theorum/providers'",
+		desc: 'Provider adapter interfaces — ModelProvider, complete request/response shapes.',
+		specs: [
+			['path', 'src/providers/types.ts'],
+			['kind', 'types'],
+			['export', 'via mod.ts'],
+		],
+	},
+	providers_expose_for_tests: {
+		id: 'providers_expose_for_tests',
+		title: 'expose-for-tests.ts',
+		type: 'INTERNAL',
+		usage: '// Internal — tests only',
+		desc: 'Test-only exports for adapter isolation tests — not part of public API.',
+		specs: [
+			['path', 'src/providers/expose-for-tests.ts'],
+			['export', 'none'],
+		],
+	},
+	providers_google: {
+		id: 'providers_google',
+		title: 'google',
+		type: 'FOLDER',
+		usage: '// src/providers/google/',
+		desc: 'Google transports — interactions/ SSE, live/ WebSocket, plus keys.ts and urls.ts.',
+		specs: [
+			['path', 'src/providers/google/'],
+			['sub', 'interactions/ · live/'],
+			['files', 'keys.ts · urls.ts'],
+		],
+	},
+	providers_google_keys: {
+		id: 'providers_google_keys',
+		title: 'keys.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Gemini API key rotation and vault slot selection.',
+		specs: [
+			['path', 'src/providers/google/keys.ts'],
+			['pairs', 'registry/vault.ts'],
+			['export', 'none'],
+		],
+	},
+	providers_google_urls: {
+		id: 'providers_google_urls',
+		title: 'urls.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Google Interactions and Live endpoint URL helpers.',
+		specs: [
+			['path', 'src/providers/google/urls.ts'],
+			['export', 'none'],
+		],
+	},
+	providers_google_interactions: {
+		id: 'providers_google_interactions',
+		title: 'interactions',
+		type: 'FOLDER',
+		usage: 'createProvider(profile, { gemini }) // geminiInteractions + google',
+		desc: 'Interactions SSE adapter — chat, image, speech over HTTP SSE.',
+		specs: [
+			['path', 'src/providers/google/interactions/'],
+			['protocol', 'geminiInteractions'],
+			['files', 'mod.ts · stream.ts · framing.ts'],
+		],
+		copyable: true,
+	},
+	providers_google_interactions_mod: {
+		id: 'providers_google_interactions_mod',
+		title: 'mod.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Interactions adapter entry — wired lazily from create-provider.ts.',
+		specs: [
+			['path', 'src/providers/google/interactions/mod.ts'],
+			['export', 'none'],
+		],
+	},
+	providers_google_interactions_stream: {
+		id: 'providers_google_interactions_stream',
+		title: 'stream.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Interactions SSE stream parser and event folding.',
+		specs: [
+			['path', 'src/providers/google/interactions/stream.ts'],
+			['export', 'none'],
+		],
+	},
+	providers_google_interactions_framing: {
+		id: 'providers_google_interactions_framing',
+		title: 'framing.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Interactions wire framing — request bodies and SSE line parsing.',
+		specs: [
+			['path', 'src/providers/google/interactions/framing.ts'],
+			['export', 'none'],
+		],
+	},
+	providers_google_live: {
+		id: 'providers_google_live',
+		title: 'live',
+		type: 'FOLDER',
+		usage: 'createProvider(profile, { gemini }) // geminiLive + google',
+		desc: 'Gemini Live WebSocket adapter.',
+		specs: [
+			['path', 'src/providers/google/live/'],
+			['protocol', 'geminiLive'],
+			['files', 'mod.ts · stream.ts · framing.ts'],
+		],
+		copyable: true,
+	},
+	providers_google_live_mod: {
+		id: 'providers_google_live_mod',
+		title: 'mod.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Live adapter entry — wired lazily from create-provider.ts.',
+		specs: [
+			['path', 'src/providers/google/live/mod.ts'],
+			['export', 'none'],
+		],
+	},
+	providers_google_live_stream: {
+		id: 'providers_google_live_stream',
+		title: 'stream.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Live WebSocket stream parser.',
+		specs: [
+			['path', 'src/providers/google/live/stream.ts'],
+			['export', 'none'],
+		],
+	},
+	providers_google_live_framing: {
+		id: 'providers_google_live_framing',
+		title: 'framing.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Live session wire framing.',
+		specs: [
+			['path', 'src/providers/google/live/framing.ts'],
+			['export', 'none'],
+		],
+	},
+	providers_openrouter: {
+		id: 'providers_openrouter',
+		title: 'openrouter',
+		type: 'FOLDER',
+		usage: 'createProvider(profile, { openAiGateway }) // openAi + openrouter',
+		desc: 'OpenRouter chat and speech adapters plus openai/ wire helpers.',
+		specs: [
+			['path', 'src/providers/openrouter/'],
+			['files', 'chat.ts · speech.ts'],
+			['sub', 'openai/'],
+		],
+		copyable: true,
+	},
+	providers_openrouter_chat: {
+		id: 'providers_openrouter_chat',
+		title: 'chat.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'OpenRouter chat adapter — lazy-loads Vercel AI SDK on first complete.',
+		specs: [
+			['path', 'src/providers/openrouter/chat.ts'],
+			['lazy', 'AI SDK'],
+			['export', 'none'],
+		],
+	},
+	providers_openrouter_speech: {
+		id: 'providers_openrouter_speech',
+		title: 'speech.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'OpenRouter /audio/speech adapter for speech outputs.',
+		specs: [
+			['path', 'src/providers/openrouter/speech.ts'],
+			['export', 'none'],
+		],
+	},
+	providers_openrouter_openai: {
+		id: 'providers_openrouter_openai',
+		title: 'openai',
+		type: 'FOLDER',
+		usage: '// Internal — src/providers/openrouter/openai/',
+		desc: 'Shared OpenAI-compat wire — compat, sdk-messages, chat-payload.',
+		specs: [
+			['path', 'src/providers/openrouter/openai/'],
+			['modules', 'compat · sdk-messages · chat-payload'],
+			['export', 'none'],
+		],
+	},
+	providers_openrouter_openai_compat: {
+		id: 'providers_openrouter_openai_compat',
+		title: 'compat.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'OpenAI-compat finish reasons and wire normalization.',
+		specs: [
+			['path', 'src/providers/openrouter/openai/compat.ts'],
+			['export', 'none'],
+		],
+	},
+	providers_openrouter_openai_sdk_messages: {
+		id: 'providers_openrouter_openai_sdk_messages',
+		title: 'sdk-messages.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Maps TurnHistory to Vercel AI SDK message arrays.',
+		specs: [
+			['path', 'src/providers/openrouter/openai/sdk-messages.ts'],
+			['export', 'none'],
+		],
+	},
+	providers_openrouter_openai_chat_payload: {
+		id: 'providers_openrouter_openai_chat_payload',
+		title: 'chat-payload.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Builds OpenRouter chat completion payloads from resolved generations.',
+		specs: [
+			['path', 'src/providers/openrouter/openai/chat-payload.ts'],
+			['export', 'none'],
+		],
+	},
+	providers_local: {
+		id: 'providers_local',
+		title: 'local',
+		type: 'FOLDER',
+		usage: "import { createLocalProvider } from 'theorum/providers/local'",
+		desc: 'Local OpenAI-compatible server adapter (Ollama, LM Studio, etc.).',
+		specs: [
+			['path', 'src/providers/local/'],
+			['entry', 'theorum/providers/local'],
+			['files', 'local.ts · mod.ts'],
+		],
+		copyable: true,
+	},
+	providers_local_local: {
+		id: 'providers_local_local',
+		title: 'local.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Local adapter implementation — default http://127.0.0.1:11434.',
+		specs: [
+			['path', 'src/providers/local/local.ts'],
+			['export', 'none'],
+		],
+	},
+	providers_local_mod: {
+		id: 'providers_local_mod',
+		title: 'mod.ts',
+		type: 'BARREL',
+		usage: "import { createLocalProvider } from 'theorum/providers/local'",
+		desc: 'Local provider subpath export.',
+		specs: [
+			['entry', 'theorum/providers/local'],
+			['path', 'src/providers/local/mod.ts'],
+			['default', 'http://127.0.0.1:11434'],
+		],
+		copyable: true,
+	},
+	providers_shared: {
+		id: 'providers_shared',
+		title: 'shared',
+		type: 'FOLDER',
+		usage: '// Internal — src/providers/shared/',
+		desc: 'Cross-adapter helpers shared by Google and OpenRouter transports.',
+		specs: [
+			['path', 'src/providers/shared/'],
+			['modules', 'sse · pcm · upstream-tap · upstream-tape'],
+			['export', 'none'],
+		],
+	},
+	providers_shared_sse: {
+		id: 'providers_shared_sse',
+		title: 'sse.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Generic SSE line parser utilities.',
+		specs: [
+			['path', 'src/providers/shared/sse.ts'],
+			['export', 'none'],
+		],
+	},
+	providers_shared_pcm: {
+		id: 'providers_shared_pcm',
+		title: 'pcm.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'PCM audio chunk helpers for speech adapters.',
+		specs: [
+			['path', 'src/providers/shared/pcm.ts'],
+			['export', 'none'],
+		],
+	},
+	providers_shared_upstream_tap: {
+		id: 'providers_shared_upstream_tap',
+		title: 'upstream-tap.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Tap upstream bytes for trace/debug without altering the stream.',
+		specs: [
+			['path', 'src/providers/shared/upstream-tap.ts'],
+			['export', 'none'],
+		],
+	},
+	providers_shared_upstream_tape: {
+		id: 'providers_shared_upstream_tape',
+		title: 'upstream-tape.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Record upstream payloads into cutout tapes for mint-trace flush.',
+		specs: [
+			['path', 'src/providers/shared/upstream-tape.ts'],
+			['pairs', 'host/mint-trace.ts'],
+		],
+	},
+	guardrails: {
+		id: 'guardrails',
+		title: 'guardrails',
+		type: 'SECURITY',
+		usage: "import { sanitizeTurnRequest, injectionSpans } from 'theorum/guardrails'",
+		desc: 'Inbound safety toolkit — scrub inputs, detect injections/secrets, standard egress enforce, Live outbound gate.',
+		specs: [
+			['entry', 'theorum/guardrails'],
+			['path', 'src/guardrails/'],
+			['modules', 'error · sanitize · injection · sensitive · egress · live-outbound-gate · quota · normalize'],
+		],
+		copyable: true,
+	},
+	guardrails_mod: {
+		id: 'guardrails_mod',
+		title: 'mod.ts',
+		type: 'BARREL',
+		usage: "import { sanitizeTurnRequest, injectionSpans } from 'theorum/guardrails'",
+		desc: 'Guardrails public barrel — also partially re-exported from mod.ts.',
+		specs: [
+			['entry', 'theorum/guardrails'],
+			['path', 'src/guardrails/mod.ts'],
+			['policy', 'host-owned'],
+		],
+		copyable: true,
+	},
+	guardrails_error: {
+		id: 'guardrails_error',
+		title: 'error.ts',
+		type: 'SECURITY',
+		usage: "import { publicError, TheorumError } from 'theorum'",
+		desc: 'TheorumError and publicError mapping for safe client responses.',
+		specs: [
+			['path', 'src/guardrails/error.ts'],
+			['api', 'publicError · TheorumError'],
+			['also', 'toErrorEvent · throwIfAborted'],
+		],
+		copyable: true,
+	},
+	guardrails_injection: {
+		id: 'guardrails_injection',
+		title: 'injection.ts',
+		type: 'SECURITY',
+		usage: "import { injectionSpans } from 'theorum/guardrails'",
+		desc: 'Prompt-injection span detection on inbound text.',
+		specs: [
+			['path', 'src/guardrails/injection.ts'],
+			['api', 'injectionSpans(text)'],
+			['returns', 'span ranges'],
+		],
+		copyable: true,
+	},
+	guardrails_egress: {
+		id: 'guardrails_egress',
+		title: 'egress.ts',
+		type: 'SECURITY',
+		usage: "import { standardEgressEnforce } from 'theorum'",
+		desc: 'Default egress enforce — canary leak, sensitive spans, injection echo, system-boundary blocks.',
+		specs: [
+			['path', 'src/guardrails/egress.ts'],
+			['api', 'standardEgressEnforce'],
+			['profile', 'guardrails.egress.enforce (opt-in)'],
+		],
+		copyable: true,
+	},
+	guardrails_live_outbound_gate: {
+		id: 'guardrails_live_outbound_gate',
+		title: 'live-outbound-gate.ts',
+		type: 'SECURITY',
+		usage: "import { createLiveOutboundGateSession } from 'theorum'",
+		desc: 'Live outbound session — accumulates text/thought, canary gate, egress enforce at turnComplete.',
+		specs: [
+			['path', 'src/guardrails/live-outbound-gate.ts'],
+			['api', 'createLiveOutboundGateSession · processLiveOutboundBatch · finalizeLiveOutboundTurn'],
+			['pairs', 'live-relay.ts · canary-gate.ts'],
+		],
+		copyable: true,
+	},
+	guardrails_sensitive: {
+		id: 'guardrails_sensitive',
+		title: 'sensitive.ts',
+		type: 'SECURITY',
+		usage: "import { sensitiveSpans } from 'theorum/guardrails'",
+		desc: 'Credential and PII-like pattern detection.',
+		specs: [
+			['path', 'src/guardrails/sensitive.ts'],
+			['api', 'sensitiveSpans(text)'],
+			['returns', 'span ranges'],
+		],
+		copyable: true,
+	},
+	guardrails_normalize: {
+		id: 'guardrails_normalize',
+		title: 'normalize.ts',
+		type: 'INTERNAL',
+		usage: '// Internal — src/guardrails/normalize.ts',
+		desc: 'Unicode normalization before injection regex — strips homoglyphs and invisible chars.',
+		specs: [
+			['path', 'src/guardrails/normalize.ts'],
+			['used', 'injection detection'],
+			['export', 'none'],
+		],
+	},
+	guardrails_quota: {
+		id: 'guardrails_quota',
+		title: 'quota.ts',
+		type: 'SECURITY',
+		usage: "import { takeSlot, releaseSlot } from 'theorum'",
+		desc: 'In-memory daily quota slots for HTTP demos.',
+		specs: [
+			['path', 'src/guardrails/quota.ts'],
+			['api', 'takeSlot · releaseSlot · skipQuota'],
+			['profile', 'guardrails.quota.perDay'],
+		],
+		copyable: true,
+	},
+	guardrails_sanitize: {
+		id: 'guardrails_sanitize',
+		title: 'sanitize.ts',
+		type: 'SECURITY',
+		usage: "import { sanitizeTurnRequest } from 'theorum'",
+		desc: 'Turn input sanitization — fences, ids, risky field stripping.',
+		specs: [
+			['path', 'src/guardrails/sanitize.ts'],
+			['api', 'sanitizeTurnRequest · sanitizeText'],
+			['also', 'sanitizeProjectId'],
+		],
+		copyable: true,
+	},
+	observability: {
+		id: 'observability',
+		title: 'observability',
+		type: 'TELEMETRY',
+		usage: "import { writeTrace, jsonlSink, noopSink } from 'theorum/observability'",
+		desc: 'Trace sinks and record helpers — host-injected, never ambient.',
+		specs: [
+			['entry', 'theorum/observability'],
+			['path', 'src/observability/'],
+			['write', 'writeTrace'],
+		],
+		copyable: true,
+	},
+	observability_mod: {
+		id: 'observability_mod',
+		title: 'mod.ts',
+		type: 'BARREL',
+		usage: "import { jsonlSink, writeTrace } from 'theorum/observability'",
+		desc: 'Observability public barrel — sinks and TraceRecord type.',
+		specs: [
+			['entry', 'theorum/observability'],
+			['path', 'src/observability/mod.ts'],
+			['sinks', 'jsonl · memory · noop · dir'],
+		],
+		copyable: true,
+	},
+	observability_trace: {
+		id: 'observability_trace',
+		title: 'trace.ts',
+		type: 'TELEMETRY',
+		usage: "import { jsonlSink, memorySink, noopSink, writeTrace } from 'theorum/observability'",
+		desc: 'Sink implementations and writeTrace — pass to runTurn as third argument.',
+		specs: [
+			['path', 'src/observability/trace.ts'],
+			['api', 'jsonlSink · memorySink · noopSink · writeTrace'],
+			['also', 'sinkFromDir · resolveTraceDir'],
+		],
+		copyable: true,
+	},
+	observability_trace_record: {
+		id: 'observability_trace_record',
+		title: 'trace-record.ts',
+		type: 'TELEMETRY',
+		usage: "import type { TraceRecord } from 'theorum/observability'",
+		desc: 'TraceRecord shape — timings, usage, stop reason for analytics pipelines.',
+		specs: [
+			['path', 'src/observability/trace-record.ts'],
+			['kind', 'type + builder inputs'],
+			['helpers', 'trace-usage · trace-attach · spans'],
+		],
+		copyable: true,
+	},
+	observability_spans: {
+		id: 'observability_spans',
+		title: 'spans.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Span redaction — applySpans before traces leave the process.',
+		specs: [
+			['path', 'src/observability/spans.ts'],
+			['export', 'none'],
+		],
+	},
+	observability_trace_attach: {
+		id: 'observability_trace_attach',
+		title: 'trace-attach.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Correlates attachments and metadata on trace records.',
+		specs: [
+			['path', 'src/observability/trace-attach.ts'],
+			['export', 'none'],
+		],
+	},
+	observability_trace_usage: {
+		id: 'observability_trace_usage',
+		title: 'trace-usage.ts',
+		type: 'INTERNAL',
+		usage: '// Internal',
+		desc: 'Attaches provider token usage events to TraceRecord.',
+		specs: [
+			['path', 'src/observability/trace-usage.ts'],
+			['export', 'none'],
+		],
+	},
+	host: {
+		id: 'host',
+		title: 'host',
+		type: 'HOST',
+		usage: "import { json, caughtStatus, flushMintTrace } from 'theorum/host'",
+		desc: 'Optional Deno HTTP helpers — replies, cutout traces, streaming JSON preview.',
+		specs: [
+			['entry', 'theorum/host'],
+			['path', 'src/host/'],
+			['runtime', 'Deno-oriented'],
+		],
+		copyable: true,
+	},
+	host_mod: {
+		id: 'host_mod',
+		title: 'mod.ts',
+		type: 'BARREL',
+		usage: "import { json, flushMintTrace, readStreamingJsonStringField } from 'theorum/host'",
+		desc: 'Host public barrel.',
+		specs: [
+			['entry', 'theorum/host'],
+			['path', 'src/host/mod.ts'],
+			['modules', 'reply · mint-trace · readStreamingJsonStringField'],
+		],
+		copyable: true,
+	},
+	host_reply: {
+		id: 'host_reply',
+		title: 'reply.ts',
+		type: 'HOST',
+		usage: "import { json, caughtStatus } from 'theorum/host'",
+		desc: 'HTTP reply helpers — JSON bodies and status constants.',
+		specs: [
+			['path', 'src/host/reply.ts'],
+			['api', 'json · caughtStatus'],
+			['codes', 'HTTP_OK · HTTP_BUSY · HTTP_*'],
+		],
+		copyable: true,
+	},
+	host_mint_trace: {
+		id: 'host_mint_trace',
+		title: 'mint-trace.ts',
+		type: 'HOST',
+		usage: "import { flushMintTrace } from 'theorum/host'",
+		desc: 'Flush cutout trace tapes after a turn.',
+		specs: [
+			['path', 'src/host/mint-trace.ts'],
+			['api', 'flushMintTrace'],
+			['type', 'CutoutTape'],
+		],
+		copyable: true,
+	},
+	host_read_streaming_json: {
+		id: 'host_read_streaming_json',
+		title: 'readStreamingJsonStringField.ts',
+		type: 'HOST',
+		usage: "import { readStreamingJsonStringField } from 'theorum/host'",
+		desc: 'Peek at a string field while structured JSON is still streaming.',
+		specs: [
+			['path', 'src/host/readStreamingJsonStringField.ts'],
+			['api', 'readStreamingJsonStringField'],
+			['use', 'partial structured JSON'],
+		],
+		copyable: true,
+	},
+	presets: {
+		id: 'presets',
+		title: 'presets',
+		type: 'PRESET',
+		usage: "import { registerGooglePreset } from 'theorum/presets'",
+		desc: 'Optional convenience packs — Google builtins and media vocab.',
+		specs: [
+			['entry', 'theorum/presets'],
+			['path', 'src/presets/'],
+			['kernel', 'no product opinions'],
+		],
+		copyable: true,
+	},
+	presets_mod: {
+		id: 'presets_mod',
+		title: 'mod.ts',
+		type: 'BARREL',
+		usage: "import { registerGooglePreset } from 'theorum/presets'",
+		desc: 'Presets barrel — re-exports Google preset symbols.',
+		specs: [
+			['entry', 'theorum/presets'],
+			['path', 'src/presets/mod.ts'],
+			['packs', 'google'],
+		],
+		copyable: true,
+	},
+	presets_google: {
+		id: 'presets_google',
+		title: 'google.ts',
+		type: 'PRESET',
+		usage: "import { registerGooglePreset, GOOGLE_BUILTIN_TOOLS } from 'theorum/presets/google'",
+		desc: 'Registers Google Search, Maps, URL context, code execution builtins plus image/voice vocab.',
+		specs: [
+			['entry', 'theorum/presets/google'],
+			['path', 'src/presets/google.ts'],
+			['tools', 'search · maps · urlContext · codeExecution'],
+		],
+		copyable: true,
+	},
+	presets_google_dir: {
+		id: 'presets_google_dir',
+		title: 'google',
+		type: 'FOLDER',
+		usage: '// src/presets/google/',
+		desc: 'Google preset support files — speech voice id list.',
+		specs: [
+			['path', 'src/presets/google/'],
+			['files', 'speech-voices.ts'],
+		],
+	},
+	presets_google_speech_voices: {
+		id: 'presets_google_speech_voices',
+		title: 'speech-voices.ts',
+		type: 'INTERNAL',
+		usage: '// Internal — src/presets/google/speech-voices.ts',
+		desc: 'Closed GOOGLE_SPEECH_VOICES list consumed by presets/google.ts.',
+		specs: [
+			['path', 'src/presets/google/speech-voices.ts'],
+			['export', 'GOOGLE_SPEECH_VOICES'],
+			['used', 'presets/google.ts'],
+		],
+	},
+};
+
+function buildArchitectureMap(): Record<string, ArchNode> {
+	const map: Record<string, ArchNode> = {};
+	walkPackageTree(packageTree, (node) => {
+		map[node.id] = ARCH_OVERRIDES[node.id] ?? defaultNode(node);
+	});
+	return map;
+}
+
 /**
  * Architecture map for theorum@0.1.15.
  * copyable = real CLI string or package import a host should use.
  * Non-copyable nodes are internals — shipped, but not on public barrels.
  */
-export const architectureMap: Record<string, ArchNode> = {
-	cli: {
-		id: 'cli',
-		title: 'CLI',
-		type: 'TOOLING',
-		usage: 'npx theorum --help',
-		desc: 'Command-line tools for your app. Inspect profiles, run a turn by hand, or stress-test without building a custom harness.',
-		specs: [
-			['entry', 'theorum/cli'],
-			['export', 'main'],
-			['bin', 'theorum'],
-			['cmds', 'run · test · profile · bench · fuzz']
-		],
-		copyable: true
-	},
-	run: {
-		id: 'run',
-		title: 'Run',
-		type: 'COMMAND',
-		usage: 'npx theorum run --profile <id> --prompt "…"',
-		desc: 'Send one prompt through a registered profile and watch tokens stream. Use while wiring agents or reproducing a bug.',
-		specs: [
-			['flags', '--profile · --prompt · --mode'],
-			['extra', '--search · --map'],
-			['out', 'live stream']
-		],
-		copyable: true
-	},
-	test: {
-		id: 'test',
-		title: 'Test',
-		type: 'COMMAND',
-		usage: 'npx theorum test --profile <id> --matrix',
-		desc: 'Quick connectivity ping or full permutation sweep. Run before shipping a profile change or in CI.',
-		specs: [
-			['modes', '--lite · --matrix · --all'],
-			['flags', '--profile · --mode'],
-			['extra', '--search · --map']
-		],
-		copyable: true
-	},
-	profile: {
-		id: 'profile',
-		title: 'Profile',
-		type: 'COMMAND',
-		usage: 'npx theorum profile show <id>',
-		desc: 'List or dump profile blueprints as JSON. Use when you need to see what your app actually registered.',
-		specs: [
-			['subs', 'list · show <id>'],
-			['out', 'JSON blueprint']
-		],
-		copyable: true
-	},
-	bench: {
-		id: 'bench',
-		title: 'Bench',
-		type: 'COMMAND',
-		usage: 'npx theorum bench',
-		desc: 'Measure kernel throughput with synthetic streams. For comparing perf changes, not for testing model quality.',
-		specs: [
-			['flags', '--chunks · --iterations · --warmup'],
-			['target', 'mock stream']
-		],
-		copyable: true
-	},
-	fuzz: {
-		id: 'fuzz',
-		title: 'Fuzz',
-		type: 'COMMAND',
-		usage: 'npx theorum fuzz',
-		desc: 'Throw known injection strings at your guardrails. Use to verify detectors before you expose an endpoint.',
-		specs: [
-			['target', 'injectionSpans'],
-			['corpus', 'adversarial prompts']
-		],
-		copyable: true
-	},
-	matrix: {
-		id: 'matrix',
-		title: 'Matrix',
-		type: 'INTERNAL',
-		usage: '// Internal — used by: theorum test --matrix',
-		desc: 'What `test --matrix` calls under the hood. Builds every valid turn shape so you do not hand-write combos.',
-		specs: [
-			['path', 'src/cli/matrix/'],
-			['via', 'theorum test --matrix'],
-			['export', 'none']
-		]
-	},
-	fixtures: {
-		id: 'fixtures',
-		title: 'Fixtures',
-		type: 'INTERNAL',
-		usage: '// Internal — src/cli/matrix/fixtures.ts',
-		desc: 'Fake images and inputs for matrix runs. Keeps stress tests deterministic instead of depending on real uploads.',
-		specs: [
-			['path', 'src/cli/matrix/fixtures.ts'],
-			['kind', 'synthetic media'],
-			['export', 'none']
-		]
-	},
-	synthesizer: {
-		id: 'synthesizer',
-		title: 'Synthesizer',
-		type: 'INTERNAL',
-		usage: '// Internal — src/cli/matrix/synthesizer.ts',
-		desc: 'Turns a profile into concrete test requests — lite pings, stress cases, or full matrix permutations.',
-		specs: [
-			['path', 'src/cli/matrix/synthesizer.ts'],
-			['builds', 'lite · stress · matrix'],
-			['export', 'none']
-		]
-	},
-	kernel: {
-		id: 'kernel',
-		title: 'Kernel',
-		type: 'RUNTIME',
-		usage: "import { runTurn, defineProfile } from 'theorum/kernel'",
-		desc: 'The runtime without provider wiring. Use when you want profiles, turns, and types but bring your own transport layer.',
-		specs: [
-			['entry', 'theorum/kernel'],
-			['door', 'runTurn'],
-			['contract', 'defineProfile · resolveTurn'],
-			['events', 'thought · text · tool · done · error']
-		],
-		copyable: true
-	},
-	engine: {
-		id: 'engine',
-		title: 'Engine',
-		type: 'INTERNAL',
-		usage: '// Internal — src/kernel/engine/',
-		desc: 'Where a turn actually moves step by step — streaming, repair, compaction hooks. You feel it through runTurn, not direct imports.',
-		specs: [
-			['path', 'src/kernel/engine/'],
-			['owns', 'boundary · delta · runner · repair'],
-			['export', 'none (via runTurn)']
-		]
-	},
-	assert: {
-		id: 'assert',
-		title: 'Assert',
-		type: 'INTERNAL',
-		usage: '// Internal',
-		desc: 'Small sanity checks inside the engine. When something breaks here, you get a normal Theorum error — not a raw crash.',
-		specs: [
-			['path', 'src/kernel/engine/assert.ts'],
-			['surfaces', 'TheorumError · publicError'],
-			['export', 'none']
-		]
-	},
-	boundary: {
-		id: 'boundary',
-		title: 'Boundary',
-		type: 'INTERNAL',
-		usage: '// Internal',
-		desc: 'Wraps user content before it hits the model — canary tokens and fenced blocks so prompts stay separated from instructions.',
-		specs: [
-			['path', 'src/kernel/engine/boundary.ts'],
-			['does', 'canary · <user_data> fence'],
-			['export', 'none']
-		]
-	},
-	compaction: {
-		id: 'compaction',
-		title: 'Compaction',
-		type: 'CORE',
-		usage: "import { shouldCompact, splitForCompaction } from 'theorum'",
-		desc: 'Helps you trim long chat history before context overflows. Call from your host when threads get too big.',
-		specs: [
-			['entry', 'theorum · theorum/kernel'],
-			['api', 'shouldCompact · splitForCompaction'],
-			['also', 'estimateHistoryTokens · compactionMeter']
-		],
-		copyable: true
-	},
-	delta: {
-		id: 'delta',
-		title: 'Delta',
-		type: 'INTERNAL',
-		usage: '// Internal',
-		desc: 'Translates raw provider chunks into the events your app listens for — text, tools, thoughts, done.',
-		specs: [
-			['path', 'src/kernel/engine/delta.ts'],
-			['maps', 'provider chunk → TurnEvent'],
-			['export', 'none']
-		]
-	},
-	runner: {
-		id: 'runner',
-		title: 'Runner',
-		type: 'RUNTIME',
-		usage: "import { runTurn } from 'theorum'",
-		desc: 'The front door for execution. Pass a turn request, async-iterate events until the turn finishes. This is what most apps call.',
-		specs: [
-			['api', 'runTurn(request, provider, opts?)'],
-			['yields', 'AsyncIterable<TurnEvent>'],
-			['events', 'thought · text · tool · structured · done']
-		],
-		copyable: true
-	},
-	gates: {
-		id: 'gates',
-		title: 'Gates',
-		type: 'INTERNAL',
-		usage: '// Internal',
-		desc: 'Checks model output against your schemas and retries when structured JSON comes back malformed.',
-		specs: [
-			['path', 'src/kernel/engine/runner/gates.ts'],
-			['does', 'validate · repair loop'],
-			['export', 'none']
-		]
-	},
-	state: {
-		id: 'state',
-		title: 'State',
-		type: 'INTERNAL',
-		usage: '// Internal',
-		desc: 'Remembers where a turn is mid-flight — which step, which repair attempt. Ephemeral; lives only for that turn.',
-		specs: [
-			['path', 'src/kernel/engine/runner/state.ts'],
-			['scope', 'per-turn'],
-			['export', 'none']
-		]
-	},
-	stream: {
-		id: 'stream',
-		title: 'Stream',
-		type: 'INTERNAL',
-		usage: '// Internal',
-		desc: 'Filters and shapes the live token stream — respects profile flags and catches tool calls before they escape.',
-		specs: [
-			['path', 'src/kernel/engine/runner/stream.ts'],
-			['respects', 'outputs.streaming'],
-			['export', 'none']
-		]
-	},
-	registry: {
-		id: 'registry',
-		title: 'Registry',
-		type: 'CORE',
-		usage: "import { registerProfile, registerStructured } from 'theorum'",
-		desc: "Your app's catalog of profiles, tools, and output schemas. Register at startup; the kernel looks everything up from here.",
-		specs: [
-			['holds', 'profiles · tools · schemas'],
-			['api', 'register* · get* · list*'],
-			['lifetime', 'host process']
-		],
-		copyable: true
-	},
-	catalog: {
-		id: 'catalog',
-		title: 'Catalog',
-		type: 'CORE',
-		usage: "import { registerTools, getTool, CATALOG } from 'theorum'",
-		desc: 'Directory of tools the kernel knows about — builtins plus whatever your host registers. Enforces MIME and thinking limits.',
-		specs: [
-			['api', 'registerTools · getTool · CATALOG'],
-			['clamps', 'MIME · thinkingLevels'],
-			['also', 'requireModelSpec · mimeAllowed']
-		],
-		copyable: true
-	},
-	profiles: {
-		id: 'profiles',
-		title: 'Profiles',
-		type: 'CORE',
-		usage: "import { defineProfile, registerProfile, getProfile } from 'theorum'",
-		desc: 'Define an agent contract once — model, tools, inputs, guardrails — then register it. Every turn references a profile id. The system prompt lives here too.',
-		specs: [
-			['api', 'defineProfile · registerProfile · getProfile'],
-			['fields', 'model · tools · inputs · outputs · guardrails'],
-			['also', 'identity.system']
-		],
-		copyable: true
-	},
-	resolve: {
-		id: 'resolve',
-		title: 'Resolve',
-		type: 'CORE',
-		usage: "import { resolveTurn, projectProfile } from 'theorum'",
-		desc: 'Combines a profile with a incoming request into an executable plan. Useful when you need the plan without running yet.',
-		specs: [
-			['api', 'resolveTurn · projectProfile'],
-			['in', 'Profile + TurnRequest'],
-			['out', 'ResolvedGeneration']
-		],
-		copyable: true
-	},
-	schemas: {
-		id: 'schemas',
-		title: 'Schemas',
-		type: 'CONTRACTS',
-		usage: "import { registerStructured, getStructured } from 'theorum'",
-		desc: 'Register JSON shapes for structured outputs. The runner validates model replies against them before your app sees data.',
-		specs: [
-			['api', 'registerStructured · getStructured'],
-			['id', 'StructuredSchemaId'],
-			['enforced', 'at gates']
-		],
-		copyable: true
-	},
-	ingress: {
-		id: 'ingress',
-		title: 'Ingress',
-		type: 'INTERNAL',
-		usage: '// Internal',
-		desc: 'Normalizes whatever the user sent — text, images, speech — into the shape the profile expects before resolve runs.',
-		specs: [
-			['path', 'src/kernel/registry/ingress.ts'],
-			['handles', 'text · image · voice'],
-			['export', 'none']
-		]
-	},
-	stop: {
-		id: 'stop',
-		title: 'Stop',
-		type: 'CORE',
-		usage: "import { isResumeableStop, shouldAutoContinue } from 'theorum'",
-		desc: 'Tells you why a turn ended and whether to resume or auto-continue. Use in multi-step flows and tool loops.',
-		specs: [
-			['types', 'TurnStop · TurnStopKind'],
-			['api', 'isResumeableStop · shouldAutoContinue'],
-			['also', 'turnStopFromOpenAiFinishReason · …']
-		],
-		copyable: true
-	},
-	providers: {
-		id: 'providers',
-		title: 'Providers',
-		type: 'INTEGRATION',
-		usage: "import { createProvider } from 'theorum/providers'",
-		desc: 'Connect profiles to real models. One factory picks OpenRouter, Gemini, local, or speech based on your profile config.',
-		specs: [
-			['entry', 'theorum/providers'],
-			['door', 'createProvider'],
-			['protocol', 'openAi · geminiInteractions'],
-			['provider', 'google · openrouter · local']
-		],
-		copyable: true
-	},
-	create_provider: {
-		id: 'create_provider',
-		title: 'createProvider',
-		type: 'FACTORY',
-		usage: 'createProvider(profile, { openAiGateway, gemini, local })',
-		desc: 'Wire a profile to API keys and transport. Call once per profile (or cache it) before runTurn.',
-		specs: [
-			['opts', 'openAiGateway · gemini · local'],
-			['returns', 'ModelProvider'],
-			['creds', 'host-supplied only']
-		],
-		copyable: true
-	},
-	local: {
-		id: 'local',
-		title: 'Local',
-		type: 'PROVIDER',
-		usage: "import { createLocalProvider } from 'theorum'",
-		desc: 'Talk to Ollama, LM Studio, or any OpenAI-compatible server on your machine. Good for offline dev and fast iteration.',
-		specs: [
-			['api', 'createLocalProvider'],
-			['wire', 'OpenAI /v1/chat/completions'],
-			['default', 'http://127.0.0.1:11434']
-		],
-		copyable: true
-	},
-	gemini: {
-		id: 'gemini',
-		title: 'Gemini',
-		type: 'PROVIDER',
-		usage: "import { createProvider } from 'theorum'\n// createProvider(profile, { gemini: { … } })",
-		desc: 'Google Interactions API path. Handles free/paid key rotation when you hit quota limits.',
-		specs: [
-			['protocol', 'geminiInteractions'],
-			['provider', 'google'],
-			['vault', 'freeA · freeB · freeC · paid']
-		],
-		copyable: true
-	},
-	openrouter: {
-		id: 'openrouter',
-		title: 'OpenRouter',
-		type: 'PROVIDER',
-		usage: "import { createProvider } from 'theorum'\n// createProvider(profile, { openAiGateway: { apiKey } })",
-		desc: 'Route chat through OpenRouter models. Wire it with createProvider — the adapter loads lazily on the first turn.',
-		specs: [
-			['protocol', 'openAi'],
-			['provider', 'openrouter'],
-			['sdk', 'Vercel AI SDK (lazy)']
-		],
-		copyable: true
-	},
-	speech: {
-		id: 'speech',
-		title: 'Speech',
-		type: 'PROVIDER',
-		usage: "import { createProvider } from 'theorum'",
-		desc: 'Text-to-speech when your profile declares a speech output. Picks Google or OpenRouter depending on model config.',
-		specs: [
-			['via', 'outputs.speech'],
-			['google', 'Interactions'],
-			['openAi', '/audio/speech']
-		],
-		copyable: true
-	},
-	guardrails: {
-		id: 'guardrails',
-		title: 'Guardrails',
-		type: 'SECURITY',
-		usage: "import { sanitizeTurnRequest, injectionSpans } from 'theorum/guardrails'",
-		desc: 'Inbound safety toolkit — scrub inputs, spot injections and secrets, map errors for clients. Policy stays in your app.',
-		specs: [
-			['entry', 'theorum/guardrails'],
-			['detect', 'injectionSpans · sensitiveSpans'],
-			['clean', 'sanitizeTurnRequest'],
-			['errors', 'publicError · TheorumError']
-		],
-		copyable: true
-	},
-	error: {
-		id: 'error',
-		title: 'Error',
-		type: 'SECURITY',
-		usage: "import { publicError, TheorumError } from 'theorum'",
-		desc: 'Safe errors for API responses. Full detail goes to your trace sink; users see a clean message.',
-		specs: [
-			['api', 'publicError · TheorumError'],
-			['also', 'toErrorEvent · throwIfAborted'],
-			['codes', 'PUBLIC_* constants']
-		],
-		copyable: true
-	},
-	injection: {
-		id: 'injection',
-		title: 'Injection',
-		type: 'SECURITY',
-		usage: "import { injectionSpans } from 'theorum/guardrails'",
-		desc: 'Flags text that looks like prompt injection. Run on inbound messages before you decide to block, warn, or log.',
-		specs: [
-			['api', 'injectionSpans(text)'],
-			['returns', 'span ranges'],
-			['policy', 'host-owned']
-		],
-		copyable: true
-	},
-	sensitive: {
-		id: 'sensitive',
-		title: 'Sensitive',
-		type: 'SECURITY',
-		usage: "import { sensitiveSpans } from 'theorum/guardrails'",
-		desc: 'Flags credentials and PII-like patterns. Use to redact or reject before content reaches the model or your logs.',
-		specs: [
-			['api', 'sensitiveSpans(text)'],
-			['returns', 'span ranges'],
-			['policy', 'host-owned']
-		],
-		copyable: true
-	},
-	quota: {
-		id: 'quota',
-		title: 'Quota',
-		type: 'SECURITY',
-		usage: "import { takeSlot, releaseSlot } from 'theorum'",
-		desc: 'Simple in-memory daily limits per user or key. Handy for demos; production apps usually swap in their own store.',
-		specs: [
-			['api', 'takeSlot · releaseSlot · skipQuota'],
-			['profile', 'guardrails.quota.perDay'],
-			['store', 'in-memory']
-		],
-		copyable: true
-	},
-	sanitize: {
-		id: 'sanitize',
-		title: 'Sanitize',
-		type: 'SECURITY',
-		usage: "import { sanitizeTurnRequest } from 'theorum'",
-		desc: 'Cleans turn input before execution — strips risky fields, normalizes ids, applies text fences. Call early in your request path.',
-		specs: [
-			['api', 'sanitizeTurnRequest · sanitizeText'],
-			['also', 'sanitizeProjectId'],
-			['limit', 'PROJECT_ID_MAX']
-		],
-		copyable: true
-	},
-	observability: {
-		id: 'observability',
-		title: 'Observability',
-		type: 'TELEMETRY',
-		usage: "import { writeTrace, jsonlSink, noopSink } from 'theorum/observability'",
-		desc: 'Audit trail you own. Pass a sink into runTurn; the kernel never phones home or writes to a hidden log file.',
-		specs: [
-			['entry', 'theorum/observability'],
-			['write', 'writeTrace'],
-			['sinks', 'jsonl · memory · noop · dir'],
-			['ambient', 'none']
-		],
-		copyable: true
-	},
-	sinks: {
-		id: 'sinks',
-		title: 'Sinks',
-		type: 'TELEMETRY',
-		usage: "import { jsonlSink, memorySink, noopSink, sinkFromDir, writeTrace } from 'theorum/observability'",
-		desc: 'Where traces land — JSONL file, memory (tests), noop (off), or a directory. Pick one and hand it to runTurn.',
-		specs: [
-			['api', 'jsonlSink · memorySink · noopSink'],
-			['also', 'sinkFromDir · resolveTraceDir'],
-			['type', 'TraceSink']
-		],
-		copyable: true
-	},
-	trace_record: {
-		id: 'trace_record',
-		title: 'TraceRecord',
-		type: 'TELEMETRY',
-		usage: "import type { TraceRecord } from 'theorum/observability'",
-		desc: "The shape of one turn's audit entry — timings, usage, stop reason. Type-only import for your analytics pipeline.",
-		specs: [
-			['kind', 'type-only'],
-			['version', 'TraceRecord v2'],
-			['holds', 'events · usage · stop']
-		],
-		copyable: true
-	},
-	host: {
-		id: 'host',
-		title: 'Host',
-		type: 'HOST',
-		usage: "import { json, caughtStatus, flushMintTrace } from 'theorum/host'",
-		desc: 'Optional Deno HTTP helpers — JSON responses, status mapping, flushing cutout traces. Skip if you are not on Deno.',
-		specs: [
-			['entry', 'theorum/host'],
-			['http', 'json · caughtStatus · HTTP_*'],
-			['trace', 'flushMintTrace'],
-			['runtime', 'Deno-oriented']
-		],
-		copyable: true
-	},
-	streaming_preview: {
-		id: 'streaming_preview',
-		title: 'Streaming preview',
-		type: 'HOST',
-		usage: "import { readStreamingJsonStringField } from 'theorum/host'",
-		desc: 'Peek at a string field while JSON is still arriving. Show live previews in UI before the model finishes.',
-		specs: [
-			['api', 'readStreamingJsonStringField'],
-			['entry', 'theorum/host'],
-			['use', 'partial structured JSON']
-		],
-		copyable: true
-	},
-	presets: {
-		id: 'presets',
-		title: 'Presets',
-		type: 'PRESET',
-		usage: "import { registerGooglePreset } from 'theorum/presets'",
-		desc: 'Shortcut packs that register common tools and vocab. Optional — only if you want batteries included.',
-		specs: [
-			['entry', 'theorum/presets'],
-			['ships', 'Google pack'],
-			['kernel', 'no product opinions']
-		],
-		copyable: true
-	},
-	presets_google: {
-		id: 'presets_google',
-		title: 'Google',
-		type: 'PRESET',
-		usage: "import { registerGooglePreset, GOOGLE_BUILTIN_TOOLS } from 'theorum/presets/google'",
-		desc: 'One call to wire Google Search, Maps, and URL context tools plus image/voice metadata for Gemini profiles.',
-		specs: [
-			['entry', 'theorum/presets/google'],
-			['tools', 'search · maps · urlContext'],
-			['vocab', 'image sizes · voice mimes']
-		],
-		copyable: true
-	}
-};
+export const architectureMap: Record<string, ArchNode> = buildArchitectureMap();
+
+export { renderPackageTree } from './package-tree';

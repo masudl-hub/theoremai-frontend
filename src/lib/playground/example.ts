@@ -1,10 +1,6 @@
-import {
-	defaultModelSpec,
-	DRAG_HANDLE,
-	type PlaygroundEdge,
-	type PlaygroundNode
-} from './types';
 import { PLAYGROUND_COL_PX, PLAYGROUND_ORIGIN, PLAYGROUND_ROW_PX } from './layout';
+import { OPENROUTER_PLAYGROUND_API_ID } from './playground-policy';
+import { DRAG_HANDLE, defaultModelSpec, type PlaygroundEdge, type PlaygroundNode } from './types';
 
 function edge(source: string, target: string): PlaygroundEdge {
 	return {
@@ -13,7 +9,7 @@ function edge(source: string, target: string): PlaygroundEdge {
 		target,
 		sourceHandle: 'out',
 		targetHandle: 'in',
-		type: 'smoothstep'
+		type: 'smoothstep',
 	};
 }
 
@@ -31,8 +27,8 @@ export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 				agentId: 'sales.agent',
 				handle: 'sales',
 				system: 'Qualify leads. Never invent pricing.',
-				chat: false
-			}
+				chat: false,
+			},
 		},
 		{
 			id: 'models',
@@ -47,8 +43,8 @@ export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 				thinking: 'minimal',
 				maxSteps: 1,
 				thinkingControl: false,
-				key: ''
-			}
+				key: '',
+			},
 		},
 		{
 			id: 'model-fast',
@@ -57,25 +53,31 @@ export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 			dragHandle: DRAG_HANDLE,
 			data: defaultModelSpec({
 				modelId: 'fast',
-				apiId: 'perplexity/sonar',
-				selectLabel: 'fast'
-			})
+				apiId: OPENROUTER_PLAYGROUND_API_ID,
+				selectLabel: 'fast',
+			}),
 		},
 		{
 			id: 'tools',
 			type: 'facet',
-			position: { x: PLAYGROUND_ORIGIN.x + PLAYGROUND_COL_PX, y: PLAYGROUND_ORIGIN.y + PLAYGROUND_ROW_PX },
+			position: {
+				x: PLAYGROUND_ORIGIN.x + PLAYGROUND_COL_PX,
+				y: PLAYGROUND_ORIGIN.y + PLAYGROUND_ROW_PX,
+			},
 			dragHandle: DRAG_HANDLE,
 			data: {
 				kind: 'tools',
 				expanded: false,
-				allow: 'lookup_crm, draft_quote'
-			}
+				allow: 'lookup_crm, draft_quote',
+			},
 		},
 		{
 			id: 'inputs',
 			type: 'facet',
-			position: { x: PLAYGROUND_ORIGIN.x + PLAYGROUND_COL_PX * 2, y: PLAYGROUND_ORIGIN.y + PLAYGROUND_ROW_PX },
+			position: {
+				x: PLAYGROUND_ORIGIN.x + PLAYGROUND_COL_PX * 2,
+				y: PLAYGROUND_ORIGIN.y + PLAYGROUND_ROW_PX,
+			},
 			dragHandle: DRAG_HANDLE,
 			data: {
 				kind: 'inputs',
@@ -85,13 +87,16 @@ export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 				voiceAccept: [],
 				maxFiles: 0,
 				maxBytes: 0,
-				maxTurnBytes: 0
-			}
+				maxTurnBytes: 0,
+			},
 		},
 		{
 			id: 'outputs',
 			type: 'facet',
-			position: { x: PLAYGROUND_ORIGIN.x + PLAYGROUND_COL_PX * 3, y: PLAYGROUND_ORIGIN.y + PLAYGROUND_ROW_PX },
+			position: {
+				x: PLAYGROUND_ORIGIN.x + PLAYGROUND_COL_PX * 3,
+				y: PLAYGROUND_ORIGIN.y + PLAYGROUND_ROW_PX,
+			},
 			dragHandle: DRAG_HANDLE,
 			data: {
 				kind: 'outputs',
@@ -117,13 +122,16 @@ export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 				speechFormat: 'pcm',
 				resumeEnabled: false,
 				allowContinue: ['length', 'stream_incomplete', 'provider_error'],
-				autoContinue: ['length', 'stream_incomplete']
-			}
+				autoContinue: ['length', 'stream_incomplete'],
+			},
 		},
 		{
 			id: 'guardrails',
 			type: 'facet',
-			position: { x: PLAYGROUND_ORIGIN.x + PLAYGROUND_COL_PX * 4, y: PLAYGROUND_ORIGIN.y + PLAYGROUND_ROW_PX },
+			position: {
+				x: PLAYGROUND_ORIGIN.x + PLAYGROUND_COL_PX * 4,
+				y: PLAYGROUND_ORIGIN.y + PLAYGROUND_ROW_PX,
+			},
 			dragHandle: DRAG_HANDLE,
 			data: {
 				kind: 'guardrails',
@@ -134,10 +142,10 @@ export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 				quotaEnabled: false,
 				perDay: 100,
 				egressMode: 'default',
-				onBlock: 'reject_to_agent',
-				egressMaxRetries: 2
-			}
-		}
+				onBlock: 'refuse_to_user',
+				egressMaxRetries: 2,
+			},
+		},
 	];
 
 	const edges: PlaygroundEdge[] = [
@@ -146,7 +154,7 @@ export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 		edge('identity', 'inputs'),
 		edge('identity', 'outputs'),
 		edge('identity', 'guardrails'),
-		edge('models', 'model-fast')
+		edge('models', 'model-fast'),
 	];
 
 	return { nodes, edges };
@@ -166,8 +174,8 @@ export function createBlankGraph(): { nodes: PlaygroundNode[]; edges: Playground
 						agentId: '',
 						handle: '',
 						system: '',
-						chat: false
-					}
+						chat: false,
+					},
 				};
 			}
 			if (n.data.kind === 'modelSpec') {
@@ -175,9 +183,9 @@ export function createBlankGraph(): { nodes: PlaygroundNode[]; edges: Playground
 					...n,
 					data: defaultModelSpec({
 						modelId: 'fast',
-						apiId: '',
-						selectLabel: 'fast'
-					})
+						apiId: OPENROUTER_PLAYGROUND_API_ID,
+						selectLabel: 'fast',
+					}),
 				};
 			}
 			if (n.data.kind === 'tools') {
@@ -195,11 +203,11 @@ export function createBlankGraph(): { nodes: PlaygroundNode[]; edges: Playground
 						validationEnabled: false,
 						imageEnabled: false,
 						speechEnabled: false,
-						resumeEnabled: false
-					}
+						resumeEnabled: false,
+					},
 				};
 			}
 			return { ...n, data: { ...n.data, expanded: false } };
-		})
+		}),
 	};
 }

@@ -17,7 +17,7 @@ export type CloudSpec = {
 /* ── Cumulus: vertical updrafts, cauliflower domes, distinct personalities ── */
 
 /** Towering Monarch — tall multi-tiered cauliflower with heavy shaded base */
-const CUMULUS = [
+export const CUMULUS = [
 	'              .  : .',
 	'           .   .----.   .',
 	'         .  .-(      )-.',
@@ -31,11 +31,11 @@ const CUMULUS = [
 	"     '-(  . : .   (   . : .   )-'",
 	"       '-(     )-' '-(     )-'",
 	"          '---'   .   '---'",
-	'             .  : . .'
+	'             .  : . .',
 ].join('\n');
 
 /** Asymmetrical Twin — tall dominant peak + smaller companion with saddle bridge */
-const CUMULUS_TWIN = [
+export const CUMULUS_TWIN = [
 	'        .  : .',
 	'      .  .---.                 .  .',
 	'    . .-(     )-.  .        .---.',
@@ -47,11 +47,11 @@ const CUMULUS_TWIN = [
 	"   '-( ( . : : .   . . : .   )   )-'",
 	"      '-(     )---(     )---'   .",
 	"         '---'     '---'",
-	'            .  : .    .'
+	'            .  : .    .',
 ].join('\n');
 
 /** Cotton Scud — light, airy, buoyant, minimal interior clutter */
-const CUMULUS_SM = [
+export const CUMULUS_SM = [
 	'        .  .',
 	'     .__(   )__.',
 	'   _(           )_',
@@ -60,11 +60,11 @@ const CUMULUS_SM = [
 	"   '(   .   .   )'",
 	"     '-( )-( )-'",
 	"        '   '",
-	'       .  .'
+	'       .  .',
 ].join('\n');
 
 /** Wind-Sheared Anvil — high crosswinds stretching the top rightward */
-const CUMULUS_MID = [
+export const CUMULUS_MID = [
 	'             .  : .',
 	'          .   .-----.  .   .  ~  ~',
 	'        .  .-(       )__     ~  ~',
@@ -73,18 +73,18 @@ const CUMULUS_MID = [
 	'   .(    . (     )__      . : .     )',
 	'  (   .   (         )____        .   )',
 	'  ( .   .(  . : . .      ) .   .    )',
-	'   \'(  . ( . : : .   .  )      .  )\'',
+	"   '(  . ( . : : .   .  )      .  )'",
 	"     '(   .(     )__ . ) .     )-'",
 	"       '-(  . : .   (   )---.-'",
 	"         '-(     )-' '-(   )'",
 	"            '---'       '-'",
-	'               .  : . .'
+	'               .  : . .',
 ].join('\n');
 
 /* ── Stratocumulus: horizontal rolling waves, mammatus pouches, shelf fronts ── */
 
 /** Rolling Wave Bank — organic undulating crests with floating pillow undercarriage */
-const STRATO = [
+export const STRATO = [
 	'        .  : .                     .  : .',
 	'     .__(     )__.              .__(     )__.',
 	'   _(             )__        .__(            )__',
@@ -95,11 +95,11 @@ const STRATO = [
 	"   '-(    .            .            .       )-'",
 	"      '-(   )-.______.--(   )-.______.--(   )-'",
 	"         '-'             '-'             '-'",
-	'            .  : .          .  : .          .  : .'
+	'            .  : .          .  : .          .  : .',
 ].join('\n');
 
 /** Mammatus Tabletop — flat low-slung plate with hanging bubble pouches */
-const STRATO_SM = [
+export const STRATO_SM = [
 	'        .  : .  .  : .',
 	'    ._______________________.',
 	'  .(                         ).',
@@ -108,11 +108,11 @@ const STRATO_SM = [
 	"  '(   .     .     .     .   )'",
 	"    '-( )--( )---( )--( )---'",
 	"       '    '     '    '",
-	'      .  : .       .  :'
+	'      .  : .       .  :',
 ].join('\n');
 
 /** Panoramic Shelf — multi-tiered stepped billows stretching across the horizon */
-const STRATO_WIDE = [
+export const STRATO_WIDE = [
 	'              .  : .                                 .  : .',
 	'           .__(     )__                           .__(     )__',
 	'       .__(            )__                     .__(           )__',
@@ -124,7 +124,7 @@ const STRATO_WIDE = [
 	"    '-(     .            .         .   .            .         .     )-'",
 	"       '-(   )-.________.-(   )-.________.-(   )-.________.-(   )-'",
 	"          '-'                '-'              '-'              '-'",
-	'             .  : .               .  : .               .  : .'
+	'             .  : .               .  : .               .  : .',
 ].join('\n');
 
 /**
@@ -146,7 +146,7 @@ export const cloudParade: CloudSpec[] = [
 	/* ground line — bottoms flush with the brand word */
 	{ id: 'strato-1', art: STRATO, size: 'xl', left: '0%', bottom: '0%', opacity: 0.18 },
 	{ id: 'strato-wide', art: STRATO_WIDE, size: 'lg', left: '48%', bottom: '0%', opacity: 0.2 },
-	{ id: 'strato-sm-2', art: STRATO_SM, size: 'sm', left: '72%', bottom: '2%', opacity: 0.22 }
+	{ id: 'strato-sm-2', art: STRATO_SM, size: 'sm', left: '72%', bottom: '2%', opacity: 0.22 },
 ];
 
 /** Sparse sky for content-heavy sections — room to breathe around the thesis / map. */
@@ -154,7 +154,7 @@ export const cloudParadeSparse: CloudSpec[] = [
 	{ id: 'sparse-cumulus', art: CUMULUS, size: 'md', left: '8%', top: '6%', opacity: 0.16 },
 	{ id: 'sparse-twin', art: CUMULUS_TWIN, size: 'sm', left: '72%', top: '4%', opacity: 0.14 },
 	{ id: 'sparse-strato', art: STRATO_SM, size: 'md', left: '18%', bottom: '6%', opacity: 0.14 },
-	{ id: 'sparse-wide', art: STRATO, size: 'lg', left: '58%', bottom: '2%', opacity: 0.12 }
+	{ id: 'sparse-wide', art: STRATO, size: 'lg', left: '58%', bottom: '2%', opacity: 0.12 },
 ];
 
 /** Open upper sky — independent of the cloud band */
@@ -173,5 +173,5 @@ export const skyStipple = [
 	'        .            .      .            .            .',
 	'  .            .                 .                 .',
 	'         .            .            .       .',
-	'  .                 .                 .            .'
+	'  .                 .                 .            .',
 ].join('\n');

@@ -28,7 +28,7 @@ export function computeTipPosition(
 	clientY: number,
 	tipWidth: number,
 	tipHeight: number,
-	pad = 12
+	pad = 12,
 ): { x: number; y: number } {
 	const vpW = typeof window !== 'undefined' ? window.innerWidth : 1024;
 	const vpH = typeof window !== 'undefined' ? window.innerHeight : 768;
@@ -71,7 +71,7 @@ export function computeTipPositionForRect(
 	targetRect: DOMRect,
 	tipWidth: number,
 	tipHeight: number,
-	pad = 12
+	pad = 12,
 ): { x: number; y: number } {
 	const vpW = typeof window !== 'undefined' ? window.innerWidth : 1024;
 	const vpH = typeof window !== 'undefined' ? window.innerHeight : 768;
@@ -102,16 +102,12 @@ export function computeTipPositionForRect(
 	return { x, y };
 }
 
-export function placeTip(e: MouseEvent, width = 400, pad = 12): { x: number; y: number } {
-	return computeTipPosition(e.clientX, e.clientY, width, 200, pad);
-}
-
 function renderListRows(
 	items: readonly string[],
 	listLabel: string,
 	inner: number,
 	labelW: number,
-	columns = 2
+	columns = 2,
 ): string[] {
 	if (!items.length) return [];
 
@@ -128,14 +124,14 @@ function renderListRows(
 			const item = items[i + c];
 			cols.push(item ? item.slice(0, colW).padEnd(colW) : ''.padEnd(colW));
 		}
-		while (cols.length > 1 && cols[cols.length - 1]!.trim() === '') cols.pop();
+		while (cols.length > 1 && cols[cols.length - 1]?.trim() === '') cols.pop();
 		const line = cols.join(' '.repeat(colGap)).trimEnd();
 		rows.push(i === 0 ? `${head}${line}` : `${headPad}${line}`);
 	}
 	return rows;
 }
 
-type SpecLine = { label: string; value: string };
+export type SpecLine = { label: string; value: string };
 
 export function renderAsciiCard(opts: {
 	title: string;
@@ -153,9 +149,7 @@ export function renderAsciiCard(opts: {
 	const listLabel = opts.listLabel ?? 'options';
 	const headLen = `${listLabel.padEnd(labelW)} `.length;
 	const maxItemLen = opts.list?.length ? Math.max(...opts.list.map((s) => s.length)) : 0;
-	const inner =
-		opts.inner ??
-		(opts.list?.length ? Math.max(44, maxItemLen * 2 + headLen + 6) : 44);
+	const inner = opts.inner ?? (opts.list?.length ? Math.max(44, maxItemLen * 2 + headLen + 6) : 44);
 	const rule = '─'.repeat(inner);
 	const pad = (s: string) => `│ ${s.padEnd(inner - 1)}│`;
 	const title = opts.title.slice(0, inner - 2);
@@ -164,14 +158,16 @@ export function renderAsciiCard(opts: {
 	const specLines = (opts.specs ?? []).flatMap(({ label, value }) => {
 		const head = `${label.padEnd(labelW)} `;
 		const wrapped = wrapText(value, inner - 2 - head.length);
-		return wrapped.map((line, i) => (i === 0 ? `${head}${line}` : `${' '.repeat(head.length)}${line}`));
+		return wrapped.map((line, i) =>
+			i === 0 ? `${head}${line}` : `${' '.repeat(head.length)}${line}`,
+		);
 	});
 
 	const listLines = opts.list ? renderListRows(opts.list, listLabel, inner, labelW) : [];
 
 	const usageLines = opts.usage
 		? wrapText(opts.usage, inner - 4).map((line) =>
-				pad(`${opts.copyable ? '> ' : '  '}${line}`.padEnd(inner - 2))
+				pad(`${opts.copyable ? '> ' : '  '}${line}`.padEnd(inner - 2)),
 			)
 		: [];
 

@@ -1,0 +1,58 @@
+{
+	"$schema": "./node_modules/fallow/schema.json",
+	"entry": [
+		"src/routes/**/+page.{ts,svelte}",
+		"src/routes/**/+layout.{ts,svelte}",
+		"src/routes/**/+server.ts",
+		"src/routes/**/+page.server.ts",
+		"src/routes/**/+layout.server.ts",
+		"src/hooks.server.ts",
+		"src/hooks.client.ts",
+		"src/app.html",
+		"vite.config.ts"
+	],
+	"ignorePatterns": [
+		"theorum/**",
+		"node_modules/**",
+		".svelte-kit/**",
+		".output/**",
+		"build/**",
+		"coverage/**",
+		".fallow/**"
+	],
+	"ignoreDependencies": [
+		"@openrouter/ai-sdk-provider",
+		"ai",
+		"gpt-tokenizer",
+		"zod",
+		"zod-to-json-schema"
+	],
+	"ignoreExportsUsedInFile": true,
+	"rules": {
+		"unused-files": "error",
+		"unused-exports": "error",
+		"unused-types": "error",
+		"unused-dependencies": "error",
+		"circular-dependency": "error",
+		"unresolved-imports": "error",
+		"private-type-leaks": "error",
+		"boundary-violations": "error",
+		"dev-dependencies-in-production": "warn"
+	},
+	"duplicates": {
+		"mode": "strict",
+		"minTokens": 40,
+		"minLines": 5,
+		"minOccurrences": 2,
+		"ignoreImports": true
+	},
+	"health": {
+		"maxCyclomatic": 15,
+		"maxCognitive": 20,
+		"maxCrap": 20,
+		"maxUnitSize": 50
+	},
+	"audit": {
+		"gate": "all"
+	}
+}

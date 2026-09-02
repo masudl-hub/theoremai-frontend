@@ -1,5 +1,5 @@
-import { catalogPathFor, fieldMeta } from '@theorum/schema';
 import { GOOGLE_SPEECH_VOICES } from '@theorum/presets/google/speech-voices';
+import { catalogPathFor, fieldMeta } from '@theorum/schema';
 import { renderAsciiCard } from '$lib/ascii/tip-card';
 
 function escapeHtml(s: string): string {
@@ -14,7 +14,7 @@ const KEY_LINE = /^(\s*)(["']?[A-Za-z_][\w.-]*["']?)(\s*:)(\s*)(.*)$/;
 
 /** Preset vocabularies for open kernel fields — sourced from preset packs, not schema. */
 const PRESET_REFERENCE: Record<string, readonly string[]> = {
-	'outputs.speech.voice': GOOGLE_SPEECH_VOICES
+	'outputs.speech.voice': GOOGLE_SPEECH_VOICES,
 };
 
 /**
@@ -49,11 +49,15 @@ export function annotateProfileCode(source: string): string {
 		}
 
 		const [, indent, rawKey, colon, space, restRaw] = match;
-		const rest = restRaw ?? '';
-		const cleanKey = rawKey!.replace(/^['"]|['"]$/g, '');
+		const rest = restRaw;
+		const cleanKey = rawKey.replace(/^['"]|['"]$/g, '');
+		if (!cleanKey) {
+			out.push(escapeHtml(code) + commentHtml(comment));
+			continue;
+		}
 		const path = catalogPathFor([...stack, cleanKey]);
 		const meta = fieldMeta(path);
-		const keyHtml = meta ? wrapKey(path, rawKey!) : escapeHtml(rawKey!);
+		const keyHtml = meta ? wrapKey(path, rawKey) : escapeHtml(rawKey);
 
 		const delta = braceDelta(rest);
 		if (delta > 0) {
@@ -66,7 +70,9 @@ export function annotateProfileCode(source: string): string {
 			}
 		}
 
-		out.push(`${indent}${keyHtml}${escapeHtml(colon!)}${space}${escapeHtml(rest)}${commentHtml(comment)}`);
+		out.push(
+			`${indent}${keyHtml}${escapeHtml(colon)}${space}${escapeHtml(rest)}${commentHtml(comment)}`,
+		);
 	}
 
 	return out.join('\n');
@@ -80,7 +86,7 @@ function commentHtml(comment: string): string {
 function findCommentIndex(line: string): number {
 	let inString: '"' | "'" | null = null;
 	for (let i = 0; i < line.length; i++) {
-		const ch = line[i]!;
+		const ch = line[i];
 		if (inString) {
 			if (ch === inString && line[i - 1] !== '\\') inString = null;
 			continue;
@@ -107,9 +113,11 @@ export function fieldTipArt(path: string): string | null {
 	const meta = fieldMeta(path);
 	if (!meta) return null;
 
-	const preset = PRESET_REFERENCE[path];
-	const options = meta.options?.length ? meta.options : preset;
-	const listLabel = preset && !meta.options?.length ? 'preset' : 'options';
+	const preset = path in PRESET_REFERENCE ? PRESET_REFERENCE[path] : undefined;
+	const hasMetaOptions = Boolean(meta.options?.length);
+	const options = hasMetaOptions ? meta.options : preset;
+	const usesPresetList = preset !== undefined && !hasMetaOptions;
+	const listLabel = usesPresetList ? 'preset' : 'options';
 
 	let specs: Array<{ label: string; value: string }> | undefined;
 	let list: readonly string[] | undefined;
@@ -120,7 +128,7 @@ export function fieldTipArt(path: string): string | null {
 		const maxK = Math.max(...entries.map(([k]) => k.length));
 		labelW = Math.max(8, maxK + 2);
 		specs = entries.map(([label, value]) => ({ label, value }));
-	} else if (options?.length) {
+	} else if (options && options.length > 0) {
 		list = options;
 	} else {
 		specs = [{ label: 'type', value: meta.type }];
@@ -133,8 +141,8 @@ export function fieldTipArt(path: string): string | null {
 		list,
 		listLabel,
 		labelW,
-		footer: preset && !meta.options?.length
+		footer: usesPresetList
 			? 'Google preset vocabulary; kernel accepts any string.'
-			: meta.optionNote
+			: meta.optionNote,
 	});
 }

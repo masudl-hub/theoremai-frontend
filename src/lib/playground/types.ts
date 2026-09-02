@@ -1,4 +1,3 @@
-import type { Edge, Node } from '@xyflow/svelte';
 import type {
 	EgressOnBlock,
 	GeminiFreeBucket,
@@ -8,8 +7,9 @@ import type {
 	SpeechAudioFormat,
 	StreamMode,
 	SummaryMode,
-	ThinkingLevel
+	ThinkingLevel,
 } from '@theorum/schema';
+import type { Edge, Node } from '@xyflow/svelte';
 
 /**
  * Canvas node kinds.
@@ -59,7 +59,7 @@ export type ModelSpecData = {
 	thinkingLevels: ThinkingLevel[];
 	summariesOn: SummaryMode;
 	summariesOff: SummaryMode;
-	keyBuiltins: string;
+	builtInTools: string;
 	selectLabel: string;
 };
 
@@ -120,7 +120,7 @@ export type GuardrailsData = {
 	redactSensitive: boolean;
 	quotaEnabled: boolean;
 	perDay: number;
-	egressMode: 'default' | 'none' | 'custom';
+	egressMode: 'default' | 'none';
 	onBlock: EgressOnBlock;
 	egressMaxRetries: number;
 };
@@ -143,6 +143,14 @@ export type CompileIssue = {
 	message: string;
 };
 
+export type StructuredRegistration = {
+	id: string;
+	spec: {
+		enforced: SchemaEnforcement;
+		jsonSchema?: Record<string, unknown>;
+	};
+};
+
 export type CompileResult =
 	| {
 			ok: true;
@@ -150,6 +158,7 @@ export type CompileResult =
 			profile: Record<string, unknown>;
 			source: string;
 			message: string;
+			structured?: StructuredRegistration;
 	  }
 	| {
 			ok: false;
@@ -164,7 +173,7 @@ export const FACET_LABEL: Record<FacetKind, string> = {
 	tools: 'Tools',
 	inputs: 'Inputs',
 	outputs: 'Outputs',
-	guardrails: 'Guardrails'
+	guardrails: 'Guardrails',
 };
 
 export const DRAG_HANDLE = '.facet-head';
@@ -182,8 +191,8 @@ export function defaultModelSpec(partial?: Partial<ModelSpecData>): ModelSpecDat
 		thinkingLevels: ['minimal', 'low', 'medium', 'high'],
 		summariesOn: 'auto',
 		summariesOff: 'none',
-		keyBuiltins: '',
+		builtInTools: '',
 		selectLabel: 'fast',
-		...partial
+		...partial,
 	};
 }

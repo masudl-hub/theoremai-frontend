@@ -1,0 +1,119 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
+	"files": {
+		"includes": [
+			"src/**/*.ts",
+			"src/**/*.svelte",
+			"src/**/*.css",
+			"vite.config.ts",
+			"biome.json",
+			"package.json",
+			".fallowrc.jsonc",
+			"eslint.config.js",
+			"!theorum",
+			"!node_modules",
+			"!.svelte-kit",
+			"!.output",
+			"!build",
+			"!coverage",
+			"!.fallow"
+		]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"indentWidth": 2,
+		"lineWidth": 100
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "single",
+			"trailingCommas": "all",
+			"semicolons": "always"
+		}
+	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
+		},
+		"formatter": {
+			"enabled": true
+		},
+		"linter": {
+			"enabled": true
+		}
+	},
+	"html": {
+		"experimentalFullSupportEnabled": true,
+		"formatter": {
+			"enabled": true
+		}
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"complexity": {
+				"noImportantStyles": "warn"
+			},
+			"correctness": {
+				"noUnusedVariables": "error",
+				"noConstAssign": "error",
+				"noConstantCondition": "error"
+			},
+			"style": {
+				"useConst": "error",
+				"noNonNullAssertion": "error"
+			},
+			"suspicious": {
+				"noExplicitAny": "error"
+			},
+			"performance": {
+				"noBarrelFile": "off",
+				"noReExportAll": "off"
+			},
+			"a11y": {
+				"recommended": false,
+				"noLabelWithoutControl": "off",
+				"noStaticElementInteractions": "off",
+				"useKeyWithMouseEvents": "off",
+				"noSvgWithoutTitle": "off",
+				"useSemanticElements": "off",
+				"noNoninteractiveElementToInteractiveRole": "off",
+				"useButtonType": "off"
+			}
+		}
+	},
+	"overrides": [
+		{
+			"includes": ["**/*.svelte"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"noUnusedVariables": "off"
+					},
+					"a11y": {
+						"recommended": false
+					}
+				}
+			}
+		},
+		{
+			"includes": ["src/app.d.ts"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"noUnusedVariables": "off"
+					}
+				}
+			}
+		}
+	],
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	}
+}

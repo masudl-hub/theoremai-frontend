@@ -1,8 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap');
-@import 'tailwindcss';
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap");
+@import "tailwindcss";
+@import "./lib/styles/cloud-placements.css";
 
 @theme {
-	--font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 	--color-ink: #000000;
 	--color-paper: #f7f5f0;
 	--color-paper-bright: #ffffff;
@@ -87,7 +88,7 @@
 }
 
 .paper-grid::before {
-	content: '';
+	content: "";
 	pointer-events: none;
 	position: absolute;
 	inset: 0;
@@ -124,8 +125,8 @@ html {
 		overflow: visible;
 	}
 
-	/* Tall snap section: grow with content so the page scroll covers the whole profile. */
-	.landing-section.landing-section-grow {
+	/* Tall doc sections (Define a profile) — grow with content; code blocks stay full height. */
+	.landing-section-grow {
 		height: auto;
 		min-height: 100dvh;
 		max-height: none;
@@ -257,7 +258,7 @@ body {
 }
 
 .cursor-blink::after {
-	content: '▋';
+	content: "▋";
 	margin-left: 2px;
 	animation: blink 1s step-end infinite;
 }
@@ -282,6 +283,6 @@ body {
 	.anim-rise-d3,
 	.cloud-drift,
 	.cursor-blink::after {
-		animation: none !important;
+		animation: none;
 	}
 }

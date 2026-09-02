@@ -1,11 +1,11 @@
-import type { PageServerLoad } from './$types';
 import { getKernelVersionLabel, getSubmoduleHead } from '$lib/server/theorum';
+import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = () => {
 	return {
 		kernel: {
 			versionLabel: getKernelVersionLabel(),
-			submoduleHead: getSubmoduleHead()
-		}
+			submoduleHead: getSubmoduleHead(),
+		},
 	};
 };

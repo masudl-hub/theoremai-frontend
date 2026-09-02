@@ -18,7 +18,7 @@ export const pillarArt: Record<PillarArtId, string> = {
 		"        '-(   '-------'   )-'    ",
 		"           '-(         )-'       ",
 		"              '---.---'          ",
-		'                . : .            '
+		'                . : .            ',
 	].join('\n'),
 
 	// Converging katabatic gorge / vortex throat
@@ -35,7 +35,7 @@ export const pillarArt: Record<PillarArtId, string> = {
 		"           '-(             )-'           ",
 		"              '-(   .   )-'              ",
 		"                 '-----'                 ",
-		'                  . : .                  '
+		'                  . : .                  ',
 	].join('\n'),
 
 	// Tri-lobe confluence — three crowns into one vortex
@@ -52,7 +52,7 @@ export const pillarArt: Record<PillarArtId, string> = {
 		"             '-(     |     )-'               ",
 		"                '-(  v  )-'                  ",
 		"                   '---'                     ",
-		'                   . : .                     '
+		'                   . : .                     ',
 	].join('\n'),
 
 	// Atmospheric inversion sieve — dense cloud into laminar mist
@@ -68,7 +68,7 @@ export const pillarArt: Record<PillarArtId, string> = {
 		"    '-(   '-( )-.  | : |  .-( )-'   )-'  ",
 		"       '-(       )-( : )-(       )-'     ",
 		"          '-----'   ':'   '-----'        ",
-		'             .  : .     .  : .           '
+		'             .  : .     .  : .           ',
 	].join('\n'),
 
 	// Phosphorescent lightning arborization through a deep night cloud
@@ -85,6 +85,6 @@ export const pillarArt: Record<PillarArtId, string> = {
 		"      '-(  . : .---o--------o-   )-'     ",
 		"        '-(     )    '-(     )-'         ",
 		"           '---'        '---'            ",
-		'              .  : .  .  : .             '
-	].join('\n')
+		'              .  : .  .  : .             ',
+	].join('\n'),
 };

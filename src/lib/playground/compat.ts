@@ -7,25 +7,21 @@ import {
 	coerceProvider,
 	EGRESS_ON_BLOCK,
 	GEMINI_FREE_BUCKETS,
-	isValidPair,
-	PROTOCOL_PROVIDERS,
 	PROTOCOLS as PROTOCOL_VALUES,
 	PROVIDERS as PROVIDER_VALUES,
-	protocolsFor,
+	type Protocol,
+	type Provider,
 	providersFor,
 	SCHEMA_ENFORCEMENTS,
 	SPEECH_AUDIO_FORMATS,
+	TURN_STOP_KINDS as STOP_VALUES,
 	STREAM_MODES,
 	SUMMARY_MODES,
 	THINKING_LEVELS as THINKING_VALUES,
-	TURN_STOP_KINDS as STOP_VALUES,
-	type Protocol,
-	type Provider,
-	type SpeechAudioFormat,
-	type ThinkingLevel
+	type ThinkingLevel,
 } from '@theorum/schema';
 
-export type { Protocol, Provider, SpeechAudioFormat };
+export type { Protocol, Provider };
 export type ThinkingLevelValue = ThinkingLevel;
 
 function labeled<T extends string>(values: readonly T[]): { value: T; label: T }[] {
@@ -43,10 +39,10 @@ export const SPEECH_FORMAT_OPTIONS = labeled(SPEECH_AUDIO_FORMATS);
 export const ON_BLOCK_OPTIONS = labeled(EGRESS_ON_BLOCK);
 export const GEMINI_KEY_OPTIONS = [
 	{ value: '' as const, label: '(omit)' },
-	...labeled(GEMINI_FREE_BUCKETS)
+	...labeled(GEMINI_FREE_BUCKETS),
 ];
 
-export { coerceProtocol, coerceProvider, isValidPair, PROTOCOL_PROVIDERS, protocolsFor, providersFor };
+export { coerceProtocol, coerceProvider, providersFor };
 
 export function toggleList(list: string[], value: string, on: boolean): string[] {
 	if (on) return list.includes(value) ? list : [...list, value];

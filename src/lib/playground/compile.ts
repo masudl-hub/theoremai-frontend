@@ -1,20 +1,21 @@
+import {
+	playgroundPolicyViolation,
+	validateCustomToolsAllow,
+	validateGeminiModelSpec,
+	validateOpenRouterModelSpec,
+} from './playground-policy';
 import type {
 	CompileIssue,
 	CompileResult,
 	FacetData,
-	GuardrailsData,
-	IdentityData,
-	InputsData,
-	ModelSpecData,
-	ModelsData,
 	OutputsData,
 	PlaygroundNode,
-	ToolsData
+	StructuredRegistration,
 } from './types';
 
 function asKind<T extends FacetData['kind']>(
 	nodes: PlaygroundNode[],
-	kind: T
+	kind: T,
 ): Extract<FacetData, { kind: T }> | undefined {
 	const node = nodes.find((n) => n.data.kind === kind);
 	return node?.data as Extract<FacetData, { kind: T }> | undefined;
@@ -22,7 +23,7 @@ function asKind<T extends FacetData['kind']>(
 
 function allOfKind<T extends FacetData['kind']>(
 	nodes: PlaygroundNode[],
-	kind: T
+	kind: T,
 ): Array<{ id: string; data: Extract<FacetData, { kind: T }> }> {
 	return nodes
 		.filter((n) => n.data.kind === kind)
@@ -40,32 +41,36 @@ function parseList(raw: string): string[] {
 export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 	const issues: CompileIssue[] = [];
 
-	const identity = asKind(nodes, 'identity') as IdentityData | undefined;
-	const models = asKind(nodes, 'models') as ModelsData | undefined;
-	const specs = allOfKind(nodes, 'modelSpec') as Array<{ id: string; data: ModelSpecData }>;
-	const tools = asKind(nodes, 'tools') as ToolsData | undefined;
-	const inputs = asKind(nodes, 'inputs') as InputsData | undefined;
-	const outputs = asKind(nodes, 'outputs') as OutputsData | undefined;
-	const guardrails = asKind(nodes, 'guardrails') as GuardrailsData | undefined;
+	const identity = asKind(nodes, 'identity');
+	const models = asKind(nodes, 'models');
+	const specs = allOfKind(nodes, 'modelSpec');
+	const tools = asKind(nodes, 'tools');
+	const inputs = asKind(nodes, 'inputs');
+	const outputs = asKind(nodes, 'outputs');
+	const guardrails = asKind(nodes, 'guardrails');
 
 	if (!identity) {
 		issues.push({
 			nodeId: 'identity',
 			facet: 'identity',
-			message: 'Describe agent node is missing.'
+			message: 'Describe agent node is missing.',
 		});
 	} else {
 		if (!identity.agentId.trim()) {
 			issues.push({ nodeId: 'identity', facet: 'identity', message: 'id is required.' });
 		}
 		if (!identity.handle.trim()) {
-			issues.push({ nodeId: 'identity', facet: 'identity', message: 'identity.handle is required.' });
+			issues.push({
+				nodeId: 'identity',
+				facet: 'identity',
+				message: 'identity.handle is required.',
+			});
 		}
 		if (!identity.system.trim()) {
 			issues.push({
 				nodeId: 'identity',
 				facet: 'identity',
-				message: 'identity.system is required.'
+				message: 'identity.system is required.',
 			});
 		}
 	}
@@ -78,7 +83,7 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 		issues.push({
 			nodeId: 'models',
 			facet: 'models',
-			message: 'Add at least one model config node.'
+			message: 'Add at least one model config node.',
 		});
 	}
 
@@ -91,7 +96,7 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 			issues.push({
 				nodeId: id,
 				facet: 'modelSpec',
-				message: `Duplicate model id '${mid}'.`
+				message: `Duplicate model id '${mid}'.`,
 			});
 		} else {
 			seenIds.add(mid);
@@ -100,13 +105,29 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 			issues.push({
 				nodeId: id,
 				facet: 'modelSpec',
-				message: 'Model wire id is required.'
+				message: 'Model wire id is required.',
 			});
+		} else if (models) {
+			const err =
+				models.protocol === 'openAi' && models.provider === 'openrouter'
+					? validateOpenRouterModelSpec(data.apiId)
+					: (models.protocol === 'geminiInteractions' || models.protocol === 'geminiLive') &&
+							models.provider === 'google'
+						? validateGeminiModelSpec(data.apiId, data.builtInTools)
+						: null;
+			if (err) {
+				issues.push({ nodeId: id, facet: 'modelSpec', message: err });
+			}
 		}
 	}
 
 	if (!tools) {
 		issues.push({ nodeId: 'tools', facet: 'tools', message: 'Tools node is missing.' });
+	} else {
+		const customErr = validateCustomToolsAllow(tools.allow);
+		if (customErr) {
+			issues.push({ nodeId: 'tools', facet: 'tools', message: customErr });
+		}
 	}
 
 	if (!inputs) {
@@ -119,7 +140,7 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 		issues.push({
 			nodeId: 'outputs',
 			facet: 'outputs',
-			message: 'outputs.structured schema id is required when mode is structured.'
+			message: 'outputs.structured schema id is required when mode is structured.',
 		});
 	}
 
@@ -127,7 +148,7 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 		issues.push({
 			nodeId: 'guardrails',
 			facet: 'guardrails',
-			message: 'Guardrails node is missing.'
+			message: 'Guardrails node is missing.',
 		});
 	} else if (
 		guardrails.quotaEnabled &&
@@ -136,7 +157,7 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 		issues.push({
 			nodeId: 'guardrails',
 			facet: 'guardrails',
-			message: 'guardrails.quota.perDay must be ≥ 1 when quota is enabled.'
+			message: 'guardrails.quota.perDay must be ≥ 1 when quota is enabled.',
 		});
 	}
 
@@ -153,7 +174,7 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 		return {
 			ok: false,
 			issues,
-			message: `Compile failed · ${issues.length} issue${issues.length === 1 ? '' : 's'}`
+			message: `Compile failed · ${String(issues.length)} issue${issues.length === 1 ? '' : 's'}`,
 		};
 	}
 
@@ -163,7 +184,7 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 
 	for (const { data } of specs) {
 		const mid = data.modelId.trim();
-		config[mid] = {
+		const specEntry: Record<string, unknown> = {
 			apiId: data.apiId.trim(),
 			thinking: { on: data.thinkingOn, off: data.thinkingOff },
 			thinkingLevels: data.thinkingLevels.length
@@ -172,8 +193,9 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 			summaries: { on: data.summariesOn, off: data.summariesOff },
 			maxOutputTokens: data.maxOutputTokens,
 			temperature: data.temperature,
-			keyBuiltins: parseList(data.keyBuiltins)
+			builtInTools: parseList(data.builtInTools),
 		};
+		config[mid] = specEntry;
 		const label = data.selectLabel.trim() || mid;
 		select[label] = mid;
 	}
@@ -186,7 +208,7 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 		identity: {
 			handle: identity.handle.trim(),
 			system: identity.system.trim(),
-			...(identity.chat ? { chat: true } : {})
+			...(identity.chat ? { chat: true } : {}),
 		},
 		model: {
 			protocol: models.protocol,
@@ -197,7 +219,11 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 			thinking: models.thinking,
 			maxSteps: models.maxSteps,
 			...(controls.length ? { controls } : {}),
-			...(models.key ? { key: models.key } : {})
+			...(models.key
+				? { key: models.key }
+				: models.protocol === 'geminiInteractions' || models.protocol === 'geminiLive'
+					? { key: 'freeA' }
+					: {}),
 		},
 		tools: { allow: allowTools },
 		inputs: {
@@ -208,59 +234,78 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 			...(inputs.voiceAccept.length ? { voice: { accept: inputs.voiceAccept } } : {}),
 			...(inputs.maxFiles > 0 ? { maxFiles: inputs.maxFiles } : {}),
 			...(inputs.maxBytes > 0 ? { maxBytes: inputs.maxBytes } : {}),
-			...(inputs.maxTurnBytes > 0 ? { maxTurnBytes: inputs.maxTurnBytes } : {})
+			...(inputs.maxTurnBytes > 0 ? { maxTurnBytes: inputs.maxTurnBytes } : {}),
 		},
 		outputs: buildOutputs(outputs),
 		guardrails: {
 			canary: guardrails.canary,
 			sanitizeInput: guardrails.sanitizeInput,
 			redactSensitive: guardrails.redactSensitive,
-			...(guardrails.quotaEnabled ? { quota: { perDay: guardrails.perDay } } : {})
-		}
+			...(guardrails.quotaEnabled ? { quota: { perDay: guardrails.perDay } } : {}),
+		},
 	};
 
+	const tierMsg = playgroundPolicyViolation(
+		profile as Parameters<typeof playgroundPolicyViolation>[0],
+	);
+	if (tierMsg) {
+		issues.push({ nodeId: 'models', facet: 'models', message: tierMsg });
+		return {
+			ok: false,
+			issues,
+			message: `Compile failed · ${String(issues.length)} issue${issues.length === 1 ? '' : 's'}`,
+		};
+	}
+
+	const egressMode: 'default' | 'none' =
+		guardrails.egressMode === 'none' ? 'none' : 'default';
+
 	const guardrailsOut = profile.guardrails as Record<string, unknown>;
-	let egressStub = '';
-	if (guardrails.egressMode === 'custom') {
+	if (egressMode === 'default') {
 		guardrailsOut.egress = {
 			onBlock: guardrails.onBlock,
 			maxRetries: guardrails.egressMaxRetries,
-			enforce: '__HOST_EGRESS__'
+			enforce: '__STANDARD_EGRESS__',
 		};
-		egressStub = `
-// Host-owned egress — replace __HOST_EGRESS__ with your enforce fn.
-`;
 	}
 
 	let schemaRegister = '';
+	let structured: StructuredRegistration | undefined;
 	if (outputs.mode === 'structured' && outputs.schemaId.trim()) {
-		let jsonBody: unknown = undefined;
+		let jsonBody: Record<string, unknown> | undefined;
 		if (outputs.schemaJson.trim()) {
 			try {
-				jsonBody = JSON.parse(outputs.schemaJson);
+				const parsed = JSON.parse(outputs.schemaJson) as Record<string, unknown>;
+				jsonBody = parsed;
 			} catch {
 				jsonBody = undefined;
 			}
 		}
 		const spec = {
 			enforced: outputs.schemaEnforced,
-			...(jsonBody ? { jsonSchema: jsonBody } : {})
+			...(jsonBody ? { jsonSchema: jsonBody } : {}),
 		};
+		structured = { id: outputs.schemaId.trim(), spec };
 		schemaRegister = `
 registerStructured(${JSON.stringify(outputs.schemaId.trim())}, ${JSON.stringify(spec, null, 2)});
 `;
 	}
 
+	const importNames = ['defineProfile', 'registerProfile', 'registerStructured'];
+	if (egressMode === 'default') {
+		importNames.push('standardEgressEnforce');
+	}
+
+	const profileJson = JSON.stringify(profile, null, 2).replace(
+		'"__STANDARD_EGRESS__"',
+		'standardEgressEnforce',
+	);
+
 	const source = `import {
-  defineProfile,
-  registerProfile,
-  registerStructured,
+  ${importNames.join(',\n  ')},
 } from "theorum";
-${egressStub}${schemaRegister}
-const profile = defineProfile(${JSON.stringify(profile, null, 2).replace(
-		'"__HOST_EGRESS__"',
-		'({ text, canary }) => {\n    // TODO: host policy\n    return { blocked: false, text };\n  }'
-	)});
+${schemaRegister}
+const profile = defineProfile(${profileJson});
 
 registerProfile(profile);
 `;
@@ -270,7 +315,8 @@ registerProfile(profile);
 		agentId: identity.agentId.trim(),
 		profile,
 		source,
-		message: 'Agent ready'
+		message: 'Agent ready',
+		structured,
 	};
 }
 
@@ -280,44 +326,38 @@ function buildOutputs(outputs: OutputsData): Record<string, unknown> {
 		streaming: {
 			mode: outputs.streamMode,
 			streamThoughts: outputs.streamThoughts,
-			...(outputs.gateMedia ? { gateMedia: true } : {})
-		}
+			...(outputs.gateMedia ? { gateMedia: true } : {}),
+		},
 	};
 
 	if (outputs.validationEnabled) {
 		out.validation = {
 			maxRetries: outputs.maxRetries,
-			...(outputs.repairGuidance.trim()
-				? { repairGuidance: outputs.repairGuidance.trim() }
-				: {})
+			...(outputs.repairGuidance.trim() ? { repairGuidance: outputs.repairGuidance.trim() } : {}),
 		};
 	}
 
 	if (outputs.imageEnabled) {
 		out.image = {
-			...(outputs.imageAspectRatio.trim()
-				? { aspectRatio: outputs.imageAspectRatio.trim() }
-				: {}),
+			...(outputs.imageAspectRatio.trim() ? { aspectRatio: outputs.imageAspectRatio.trim() } : {}),
 			...(outputs.imageSize.trim() ? { size: outputs.imageSize.trim() } : {}),
 			...(outputs.imageMimeType.trim() ? { mimeType: outputs.imageMimeType.trim() } : {}),
 			allowsGrounding: outputs.imageAllowsGrounding,
-			...(outputs.imageMaxInputImages > 0
-				? { maxInputImages: outputs.imageMaxInputImages }
-				: {})
+			...(outputs.imageMaxInputImages > 0 ? { maxInputImages: outputs.imageMaxInputImages } : {}),
 		};
 	}
 
 	if (outputs.speechEnabled) {
 		out.speech = {
 			...(outputs.speechVoice.trim() ? { voice: outputs.speechVoice.trim() } : {}),
-			format: outputs.speechFormat
+			format: outputs.speechFormat,
 		};
 	}
 
 	if (outputs.resumeEnabled) {
 		out.resume = {
 			...(outputs.allowContinue.length ? { allowContinue: outputs.allowContinue } : {}),
-			...(outputs.autoContinue.length ? { autoContinue: outputs.autoContinue } : {})
+			...(outputs.autoContinue.length ? { autoContinue: outputs.autoContinue } : {}),
 		};
 	}
 

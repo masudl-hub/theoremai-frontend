@@ -1,0 +1,3 @@
+# HTML documents must not be edge-cached across deploys (custom domain had max-age=7200).
+/*
+	Cache-Control: no-cache, must-revalidate
