@@ -16,6 +16,7 @@ const svelteConfig = {
 
 const tsFiles = ['src/**/*.ts'];
 const svelteFiles = ['src/**/*.svelte', 'src/**/*.svelte.ts', 'src/**/*.svelte.js'];
+const cursorHookFiles = ['.cursor/hooks/**/*.mjs'];
 
 function scopeSvelteConfigs(configs) {
 	return configs.map((entry) => ({
@@ -100,6 +101,16 @@ export default ts.config(
 	...scopeSvelteConfigs(svelte.configs.all),
 	...scopeSvelteConfigs(svelte.configs.prettier),
 	eslintConfigPrettier,
+	{
+		files: cursorHookFiles,
+		languageOptions: {
+			globals: {
+				...globals.node,
+			},
+			ecmaVersion: 'latest',
+			sourceType: 'module',
+		},
+	},
 	...ts.configs.strictTypeChecked.map((config) => ({
 		...config,
 		files: tsFiles,
