@@ -1,4 +1,3 @@
-import { GOOGLE_SPEECH_VOICES } from 'theorum/presets/google/speech-voices';
 import { catalogPathFor, fieldMeta } from 'theorum/schema';
 import { renderAsciiCard } from '$lib/ascii/tip-card';
 
@@ -11,11 +10,6 @@ function wrapKey(path: string, text: string): string {
 }
 
 const KEY_LINE = /^(\s*)(["']?[A-Za-z_][\w.-]*["']?)(\s*:)(\s*)(.*)$/;
-
-/** Preset vocabularies for open kernel fields — sourced from preset packs, not schema. */
-const PRESET_REFERENCE: Record<string, readonly string[]> = {
-	'outputs.speech.voice': GOOGLE_SPEECH_VOICES,
-};
 
 /**
  * Annotate `defineProfile` source — only keys hover; values stay plain text.
@@ -116,10 +110,9 @@ export function fieldTipArt(path: string): string | null {
 	const meta = fieldMeta(path);
 	if (!meta) return null;
 
-	const preset = path in PRESET_REFERENCE ? PRESET_REFERENCE[path] : undefined;
 	const hasMetaOptions = Boolean(meta.options?.length);
-	const options = hasMetaOptions ? meta.options : preset;
-	const usesPresetList = preset !== undefined && !hasMetaOptions;
+	const options = hasMetaOptions ? meta.options : undefined;
+	const usesPresetList = Boolean(meta.optionNote && options?.length);
 	const listLabel = usesPresetList ? 'preset' : 'options';
 
 	let specs: Array<{ label: string; value: string }> | undefined;

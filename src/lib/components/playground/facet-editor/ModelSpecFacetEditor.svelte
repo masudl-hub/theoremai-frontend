@@ -11,7 +11,6 @@ import {
 	GOOGLE_BUILTIN_OPTIONS,
 	type GoogleBuiltinId,
 	OPENROUTER_PLAYGROUND_API_ID,
-	OPENROUTER_PLAYGROUND_NOTE,
 } from '$lib/playground/playground-policy';
 import type { ModelSpecData } from '$lib/playground/types';
 import FacetFieldLabel from './FacetFieldLabel.svelte';
@@ -53,7 +52,7 @@ function geminiBuiltinAllowed(builtin: GoogleBuiltinId): boolean {
 </script>
 
 <label class="facet-field">
-	<span>id (allow / config key)</span>
+	<FacetFieldLabel path="model.config.*" />
 	<input
 		class="field"
 		autocomplete="off"
@@ -62,7 +61,7 @@ function geminiBuiltinAllowed(builtin: GoogleBuiltinId): boolean {
 	>
 </label>
 <label class="facet-field">
-	<span>select label</span>
+	<FacetFieldLabel path="model.select.*" />
 	<input
 		class="field"
 		autocomplete="off"
@@ -72,20 +71,15 @@ function geminiBuiltinAllowed(builtin: GoogleBuiltinId): boolean {
 	>
 </label>
 <label class="facet-field">
-	<FacetFieldLabel path="model.config.*.apiId" text="config.apiId" />
+	<FacetFieldLabel path="model.config.*.apiId" />
 	{#if hubOpenRouter}
 		<input class="field" readonly value={OPENROUTER_PLAYGROUND_API_ID}>
-		<p class="facet-note">{OPENROUTER_PLAYGROUND_NOTE}</p>
 	{:else if hubGoogle}
 		<Select
 			onchange={(v) => onGeminiApiIdChange(v)}
 			options={geminiModelOptions}
 			value={geminiApiId}
 		/>
-		<p class="facet-note">
-			Playground restriction: non-pro models with free-tier quota only. Builtins below are filtered
-			per model.
-		</p>
 	{:else}
 		<input
 			class="field"
@@ -97,7 +91,7 @@ function geminiBuiltinAllowed(builtin: GoogleBuiltinId): boolean {
 	{/if}
 </label>
 <label class="facet-field">
-	<FacetFieldLabel path="model.config.*.thinking.on" text="config.thinking.on" />
+	<FacetFieldLabel path="model.config.*.thinking.on" />
 	<Select
 		onchange={(v) => patch({ thinkingOn: v as ThinkingLevelValue })}
 		options={thinkingOptions}
@@ -105,7 +99,7 @@ function geminiBuiltinAllowed(builtin: GoogleBuiltinId): boolean {
 	/>
 </label>
 <label class="facet-field">
-	<FacetFieldLabel path="model.config.*.thinking.off" text="config.thinking.off" />
+	<FacetFieldLabel path="model.config.*.thinking.off" />
 	<Select
 		onchange={(v) => patch({ thinkingOff: v as ThinkingLevelValue })}
 		options={thinkingOptions}
@@ -114,27 +108,29 @@ function geminiBuiltinAllowed(builtin: GoogleBuiltinId): boolean {
 </label>
 <fieldset class="facet-set">
 	<legend>
-		<FacetFieldLabel path="model.config.*.thinkingLevels" text="config.thinkingLevels" />
+		<FacetFieldLabel path="model.config.*.thinkingLevels" />
 	</legend>
-	{#each PLAYGROUND_THINKING_LEVELS as opt (opt.value)}
-		<label class="facet-check text-xs">
-			<Checkbox
-				checked={data.thinkingLevels.includes(opt.value)}
-				onchange={(v) =>
-					patch({
-						thinkingLevels: toggleList(
-							data.thinkingLevels,
-							opt.value,
-							v
-						) as ThinkingLevelValue[]
-					})}
-			/>
-			<span>{opt.label}</span>
-		</label>
-	{/each}
+	<div class="facet-check-grid">
+		{#each PLAYGROUND_THINKING_LEVELS as opt (opt.value)}
+			<label class="facet-check">
+				<Checkbox
+					checked={data.thinkingLevels.includes(opt.value)}
+					onchange={(v) =>
+						patch({
+							thinkingLevels: toggleList(
+								data.thinkingLevels,
+								opt.value,
+								v
+							) as ThinkingLevelValue[]
+						})}
+				/>
+				<span>{opt.label}</span>
+			</label>
+		{/each}
+	</div>
 </fieldset>
 <label class="facet-field">
-	<FacetFieldLabel path="model.config.*.summaries.on" text="config.summaries.on" />
+	<FacetFieldLabel path="model.config.*.summaries.on" />
 	<Select
 		onchange={(v) => patch({ summariesOn: v as 'auto' | 'none' })}
 		options={summaryOptions}
@@ -142,7 +138,7 @@ function geminiBuiltinAllowed(builtin: GoogleBuiltinId): boolean {
 	/>
 </label>
 <label class="facet-field">
-	<FacetFieldLabel path="model.config.*.summaries.off" text="config.summaries.off" />
+	<FacetFieldLabel path="model.config.*.summaries.off" />
 	<Select
 		onchange={(v) => patch({ summariesOff: v as 'auto' | 'none' })}
 		options={summaryOptions}
@@ -150,7 +146,7 @@ function geminiBuiltinAllowed(builtin: GoogleBuiltinId): boolean {
 	/>
 </label>
 <label class="facet-field">
-	<FacetFieldLabel path="model.config.*.maxOutputTokens" text="config.maxOutputTokens" />
+	<FacetFieldLabel path="model.config.*.maxOutputTokens" />
 	<input
 		class="field"
 		min="1"
@@ -160,7 +156,7 @@ function geminiBuiltinAllowed(builtin: GoogleBuiltinId): boolean {
 	>
 </label>
 <label class="facet-field">
-	<FacetFieldLabel path="model.config.*.temperature" text="config.temperature" />
+	<FacetFieldLabel path="model.config.*.temperature" />
 	<input
 		class="field"
 		max="2"
@@ -174,30 +170,24 @@ function geminiBuiltinAllowed(builtin: GoogleBuiltinId): boolean {
 {#if hubGoogle}
 	<fieldset class="facet-set">
 		<legend>
-			<FacetFieldLabel path="model.config.*.builtInTools" text="config.builtInTools" />
+			<FacetFieldLabel path="model.config.*.builtInTools" />
 		</legend>
-		{#each GOOGLE_BUILTIN_OPTIONS as opt (opt.value)}
-			<label
-				class="facet-check text-xs"
-				class:facet-check-disabled={!geminiBuiltinAllowed(opt.value)}
-			>
-				<Checkbox
-					checked={geminiBuiltIns.includes(opt.value)}
-					disabled={!geminiBuiltinAllowed(opt.value)}
-					onchange={(v) => onGeminiBuiltinToggle(opt.value, v)}
-				/>
-				<span
-					>{opt.label}{geminiBuiltinAllowed(opt.value) ? '' : ' (unavailable on free tier)'}</span
-				>
-			</label>
-		{/each}
+		<div class="facet-check-grid">
+			{#each GOOGLE_BUILTIN_OPTIONS as opt (opt.value)}
+				<label class="facet-check" class:facet-check-disabled={!geminiBuiltinAllowed(opt.value)}>
+					<Checkbox
+						checked={geminiBuiltIns.includes(opt.value)}
+						disabled={!geminiBuiltinAllowed(opt.value)}
+						onchange={(v) => onGeminiBuiltinToggle(opt.value, v)}
+					/>
+					<span>{opt.label}</span>
+				</label>
+			{/each}
+		</div>
 	</fieldset>
-	<p class="facet-hint">
-		Provider builtins for this model — on whenever this model is selected (not turn-gated).
-	</p>
 {:else}
 	<label class="facet-field">
-		<FacetFieldLabel path="model.config.*.builtInTools" text="config.builtInTools" />
+		<FacetFieldLabel path="model.config.*.builtInTools" />
 		<input
 			class="field"
 			autocomplete="off"

@@ -171,7 +171,7 @@ function onFocusOut(e: FocusEvent) {
 	{#if visible && tip}
 		<pre
 			bind:this={tipEl}
-			class="ascii map-tip pointer-events-none text-xs font-bold"
+			class="ascii ascii-card-surface map-tip pointer-events-none text-xs font-bold"
 			role="tooltip"
 		>{tip}</pre>
 	{/if}

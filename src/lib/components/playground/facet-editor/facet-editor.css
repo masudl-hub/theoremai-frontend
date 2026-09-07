@@ -1,127 +1,376 @@
-.facet-editor {
+/**
+ * Playground facet panel — typography and spacing tokens.
+ * Scoped to .facet-panel only.
+ */
+.facet-panel {
+	--fe-font-label: 0.75rem; /* 12px — field + section titles */
+	--fe-font-body: 0.75rem; /* 12px — inputs, checkbox labels */
+	--fe-font-caption: 0.6875rem; /* 11px — meta copy */
+	--fe-weight-label: 800;
+	--fe-weight-body: 600;
+	--fe-weight-strong: 700;
+	--fe-track-label: 0.1em;
+	--fe-line-body: 1.35;
+	--fe-line-caption: 1.5;
+
+	--fe-space-1: 0.25rem; /* 4px */
+	--fe-space-2: 0.5rem; /* 8px */
+	--fe-space-3: 0.75rem; /* 12px */
+	--fe-space-4: 1rem; /* 16px */
+	--fe-space-section: 1.25rem; /* 20px — above field / section titles */
+	--fe-space-list: 0.25rem; /* 4px — between rows in a checkbox list */
+	--fe-space-field: var(--fe-space-2); /* label → control within one field */
+
 	display: flex;
 	flex-direction: column;
-	gap: 1.25rem;
-	min-height: 0;
-	flex: 1 1 auto;
-	overflow-x: hidden;
-	overflow-y: auto;
+	width: 100%;
+	height: 100%;
+	min-width: 16rem;
+	border: 1.5px solid #000;
+	background: var(--color-paper);
+	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.07);
 	font-family: var(--font-mono);
 	color: var(--color-ink);
 }
 
-.facet-editor .field:focus {
+/* ── Panel chrome ──────────────────────────────────────────────── */
+
+.facet-panel-head {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	align-items: center;
+	gap: var(--fe-space-2);
+	flex-shrink: 0;
+	padding: var(--fe-space-3);
+	border-bottom: 1px solid #000;
+}
+
+.facet-panel-title {
+	margin: 0;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: var(--fe-font-label);
+	font-weight: var(--fe-weight-label);
+	letter-spacing: var(--fe-track-label);
+	text-transform: uppercase;
+}
+
+.facet-panel-close {
+	appearance: none;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font-size: 0.875rem;
+	line-height: 1;
+	padding: var(--fe-space-1);
+	cursor: pointer;
+}
+
+.facet-panel-close:hover {
+	background: rgba(0, 0, 0, 0.06);
+}
+
+.facet-panel-body {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	flex: 1 1 auto;
+	padding: var(--fe-space-3);
+	overflow: hidden;
+}
+
+/* ── Editor shell ──────────────────────────────────────────────── */
+
+.facet-panel .facet-editor {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	flex: 1 1 auto;
+	overflow: hidden;
+	font-family: var(--font-mono);
+	font-size: var(--fe-font-body);
+	line-height: var(--fe-line-body);
+	color: var(--color-ink);
+}
+
+/* Field blocks render inside TypeTip's hover host — section rhythm lives here. */
+.facet-panel .facet-editor > .ascii-hover-host {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	flex: 1 1 auto;
+	overflow-x: hidden;
+	overflow-y: auto;
+}
+
+.facet-panel .facet-editor > .ascii-hover-host > * + * {
+	margin-top: var(--fe-space-section);
+}
+
+.facet-panel .facet-editor .field {
+	font-size: var(--fe-font-body);
+	padding: var(--fe-space-2) var(--fe-space-3);
+}
+
+.facet-panel .facet-editor .select-trigger {
+	font-size: var(--fe-font-body);
+	padding: var(--fe-space-2) var(--fe-space-3);
+}
+
+.facet-panel .facet-editor .field:focus {
 	background: transparent;
 	color: inherit;
 }
 
-.facet-editor .select-trigger:focus,
-.facet-editor .select-trigger:focus-visible {
+.facet-panel .facet-editor .select-trigger:focus,
+.facet-panel .facet-editor .select-trigger:focus-visible {
 	background: transparent;
 	color: inherit;
 }
 
-.facet-editor .btn-ghost:hover {
+.facet-panel .facet-editor .btn-ghost:hover {
 	background: rgba(0, 0, 0, 0.05);
 	color: var(--color-ink);
 }
 
-.facet-field-label,
-.facet-field span {
-	font-size: 0.68rem;
-	font-weight: 800;
-	letter-spacing: 0.1em;
+/* ── Field blocks ──────────────────────────────────────────────── */
+
+.facet-panel .facet-field-label {
+	font-size: var(--fe-font-label);
+	font-weight: var(--fe-weight-label);
+	letter-spacing: var(--fe-track-label);
 	text-transform: uppercase;
 	color: var(--color-mute);
 }
 
-.facet-check .type-label {
-	display: inline;
-	width: auto;
-	font-weight: 700;
-	letter-spacing: normal;
-	text-transform: none;
-	color: inherit;
-	cursor: help;
-}
-
-.facet-field {
+.facet-panel .facet-field {
 	display: flex;
 	flex-direction: column;
-	gap: 0.55rem;
-	margin-bottom: 0.15rem;
+	gap: var(--fe-space-field);
 }
 
-.facet-area {
+.facet-panel .facet-area {
 	resize: vertical;
 	min-height: 4rem;
 }
 
-.facet-check {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	margin-bottom: 0.35rem;
-	font-weight: 700;
-}
+/* ── Section sets (legend + list) ──────────────────────────────── */
 
-.facet-set .facet-check {
-	margin-bottom: 0;
-}
-
-.facet-set {
-	margin: 0 0 0.5rem;
-	padding: 0.85rem 0 0.65rem;
+.facet-panel .facet-set {
+	margin: 0;
+	padding: var(--fe-space-3) 0 0;
 	border: 0;
 	border-top: 1px solid var(--color-ink);
 	display: flex;
 	flex-direction: column;
-	gap: 0.7rem;
+	gap: var(--fe-space-field);
 }
 
-.facet-set legend {
+.facet-panel .facet-set legend {
 	padding: 0;
+	margin: 0;
 }
 
-.facet-check-grid {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 0.35rem 0.85rem;
+.facet-panel .facet-check-grid,
+.facet-panel .facet-checks-list {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	column-gap: var(--fe-space-3);
+	row-gap: var(--fe-space-list);
 }
 
-.facet-hint {
-	margin: 0.15rem 0 0.35rem;
-	font-size: 0.72rem;
-	line-height: 1.55;
-	color: var(--color-mute);
-	font-weight: 600;
+/* ── Checkboxes ────────────────────────────────────────────────── */
+
+.facet-panel .facet-check {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--fe-space-2);
+	margin: 0;
+	padding: var(--fe-space-list) 0;
+	font-size: var(--fe-font-body);
+	font-weight: var(--fe-weight-body);
+	line-height: var(--fe-line-body);
+	cursor: pointer;
+	min-width: 0;
+	max-width: 100%;
 }
 
-.facet-note {
-	margin: 0.25rem 0 0.35rem;
-	font-size: 0.68rem;
-	line-height: 1.55;
-	color: var(--color-mute);
-	font-weight: 600;
+.facet-panel .facet-check-grid > .facet-check,
+.facet-panel .facet-checks-list > :is(.facet-check, .facet-check-row) {
+	flex: 1 1 11rem;
 }
 
-.facet-check-disabled {
+.facet-panel .facet-check > :not(.bracket-check) {
+	min-width: 0;
+	flex: 1 1 auto;
+	overflow-wrap: anywhere;
+}
+
+.facet-panel .facet-check:hover {
+	background: rgba(0, 0, 0, 0.04);
+}
+
+.facet-panel .facet-check .type-label {
+	display: block;
+	width: auto;
+	min-width: 0;
+	font-size: inherit;
+	font-weight: inherit;
+	letter-spacing: normal;
+	text-transform: none;
+	color: inherit;
+	cursor: help;
+	overflow-wrap: anywhere;
+}
+
+.facet-panel .facet-check .bracket-check:hover:not(:disabled) {
+	background: transparent;
+	color: inherit;
+}
+
+.facet-panel .facet-set .facet-check {
+	margin-bottom: 0;
+}
+
+.facet-panel .facet-check-disabled {
 	opacity: 0.45;
 }
 
-.facet-action {
+.facet-panel .facet-action {
 	align-self: flex-start;
-	padding: 0.35rem 0.55rem;
-	font-size: 0.72rem;
+	padding: var(--fe-space-1) var(--fe-space-2);
+	font-size: var(--fe-font-caption);
 }
 
-.facet-textarea {
+.facet-panel .facet-textarea {
 	resize: vertical;
 	min-height: 3.5rem;
-	line-height: 1.35;
+	line-height: var(--fe-line-body);
 }
 
-.facet-code {
-	font-size: 0.72rem;
+.facet-panel .facet-code {
+	font-size: var(--fe-font-caption);
 	white-space: pre;
+}
+
+/* ── Bracket checkbox control ──────────────────────────────────── */
+
+.facet-panel .bracket-check {
+	flex-shrink: 0;
+	width: 1.75rem;
+	text-align: center;
+}
+
+.facet-panel .bracket-check:focus-visible {
+	outline: 2px solid #000;
+	outline-offset: 1px;
+}
+
+/* ── Identity editor ───────────────────────────────────────────── */
+
+.facet-panel .facet-field-hint {
+	margin: var(--fe-space-field) 0 0;
+	font-size: var(--fe-font-caption);
+	font-weight: var(--fe-weight-body);
+	line-height: var(--fe-line-body);
+	color: var(--color-mute);
+}
+
+.facet-panel .modality-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--fe-space-field);
+	margin-top: var(--fe-space-field);
+}
+
+.facet-panel .modality-card {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	padding: var(--fe-space-2) var(--fe-space-3);
+	border: 1.5px solid #000;
+	border-radius: var(--radius-md);
+	background: var(--color-paper);
+	text-align: left;
+	cursor: pointer;
+	font-family: var(--font-mono);
+	transition:
+		background 150ms ease,
+		color 150ms ease;
+}
+
+.facet-panel .modality-card:hover {
+	background: rgba(0, 0, 0, 0.05);
+}
+
+.facet-panel .modality-name {
+	font-size: var(--fe-font-label);
+	font-weight: var(--fe-weight-label);
+	letter-spacing: var(--fe-track-label);
+	text-transform: uppercase;
+}
+
+.facet-panel .modality-desc {
+	font-size: var(--fe-font-caption);
+	opacity: 0.75;
+	margin-top: var(--fe-space-1);
+	line-height: var(--fe-line-body);
+}
+
+.facet-panel .modality-card--active {
+	background: var(--color-ink);
+	color: var(--color-paper-bright);
+}
+
+.facet-panel .modality-card--active:hover {
+	background: var(--color-ink);
+}
+
+.facet-panel .modality-card--active .modality-desc {
+	opacity: 0.85;
+}
+
+.facet-panel .facet-subgroup {
+	padding-top: var(--fe-space-3);
+	border-top: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.facet-panel .facet-subgroup-title {
+	font-size: var(--fe-font-label);
+	font-weight: var(--fe-weight-label);
+	letter-spacing: var(--fe-track-label);
+	text-transform: uppercase;
+	display: block;
+}
+
+.facet-panel .facet-checks-list {
+	margin-top: var(--fe-space-field);
+}
+
+.facet-panel .facet-check-row {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--fe-space-2);
+	font-size: var(--fe-font-body);
+	font-weight: var(--fe-weight-body);
+	opacity: 0.85;
+	min-width: 0;
+	max-width: 100%;
+}
+
+.facet-panel .check-fixed {
+	flex-shrink: 0;
+	font-weight: var(--fe-weight-label);
+	width: 1.75rem;
+	text-align: center;
+}
+
+.facet-panel .check-label {
+	font-size: inherit;
+	letter-spacing: normal;
+	min-width: 0;
+	overflow-wrap: anywhere;
 }

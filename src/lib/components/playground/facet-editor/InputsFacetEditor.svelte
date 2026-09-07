@@ -16,7 +16,7 @@ let { data, patch }: { data: InputsData; patch: FacetPatch } = $props();
 	<FacetFieldLabel path="inputs.voice.accept" />
 {/snippet}
 
-<label class="facet-check text-xs">
+<label class="facet-check">
 	<Checkbox checked={data.text} onchange={(v) => patch({ text: v })} />
 	<FacetFieldLabel path="inputs.text" />
 </label>

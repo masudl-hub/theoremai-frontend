@@ -60,7 +60,7 @@ export function runTh30ToolCall(
 		return { success: true, navigatedTo: targetPath, subTarget };
 	}
 
-	if (name === 'highlight' || name === 'highlightSection') {
+	if (name === 'highlight') {
 		const target = ((args.target ?? args.selector) as string) || '#use';
 		const lineStart = typeof args.lineStart === 'number' ? args.lineStart : undefined;
 		const lineEnd = typeof args.lineEnd === 'number' ? args.lineEnd : undefined;

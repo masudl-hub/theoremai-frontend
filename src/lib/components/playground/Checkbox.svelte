@@ -40,14 +40,6 @@ let {
 	line-height: 1;
 	color: inherit;
 	cursor: pointer;
-	transition:
-		background-color 0.1s ease,
-		color 0.1s ease;
-}
-
-.bracket-check:hover:not(:disabled) {
-	background: var(--color-ink);
-	color: var(--color-paper-bright);
 }
 
 .bracket-check:focus-visible {

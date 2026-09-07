@@ -14,7 +14,7 @@ let { data, patch }: { data: ToolSpecData; patch: FacetPatch } = $props();
 </script>
 
 <label class="facet-field">
-	<FacetFieldLabel path="name" text="name" />
+	<FacetFieldLabel path="name" />
 	<input
 		class="field"
 		autocomplete="off"
@@ -24,11 +24,11 @@ let { data, patch }: { data: ToolSpecData; patch: FacetPatch } = $props();
 	>
 </label>
 <label class="facet-field">
-	<FacetFieldLabel path="type" text="type" />
+	<FacetFieldLabel path="type" />
 	<input class="field" disabled readonly value="function">
 </label>
 <label class="facet-field">
-	<FacetFieldLabel path="description" text="description" />
+	<FacetFieldLabel path="description" />
 	<textarea
 		class="field facet-textarea"
 		oninput={(e) => patch({ description: e.currentTarget.value })}
@@ -37,7 +37,7 @@ let { data, patch }: { data: ToolSpecData; patch: FacetPatch } = $props();
 	></textarea>
 </label>
 <label class="facet-field">
-	<FacetFieldLabel path="category" text="category" />
+	<FacetFieldLabel path="category" />
 	<input
 		class="field"
 		autocomplete="off"
@@ -46,7 +46,7 @@ let { data, patch }: { data: ToolSpecData; patch: FacetPatch } = $props();
 	>
 </label>
 <label class="facet-field">
-	<FacetFieldLabel path="access" text="access" />
+	<FacetFieldLabel path="access" />
 	<Select
 		onchange={(v) => patch({ access: v as ToolAccessValue })}
 		options={TOOL_ACCESS_OPTIONS}
@@ -54,7 +54,7 @@ let { data, patch }: { data: ToolSpecData; patch: FacetPatch } = $props();
 	/>
 </label>
 <label class="facet-field">
-	<FacetFieldLabel path="permission" text="permission" />
+	<FacetFieldLabel path="permission" />
 	<Select
 		onchange={(v) => patch({ permission: v as ToolPermissionValue })}
 		options={TOOL_PERMISSION_OPTIONS}
@@ -62,20 +62,15 @@ let { data, patch }: { data: ToolSpecData; patch: FacetPatch } = $props();
 	/>
 </label>
 <label class="facet-field">
-	<FacetFieldLabel path="loadTier" text="loadTier" />
+	<FacetFieldLabel path="loadTier" />
 	<Select
 		onchange={(v) => patch({ loadTier: v as ToolLoadTier })}
 		options={TOOL_LOAD_TIER_OPTIONS}
 		value={data.loadTier}
 	/>
 </label>
-<p class="facet-hint">
-	T2 (<code>loadTier: "T2"</code>) stays off the wire until
-	<code>profile.tools.t2Loader</code>
-	returns <code>{'{ loaded: string[] }'}</code> — promotion lasts for that turn only.
-</p>
 <label class="facet-field">
-	<FacetFieldLabel path="paths" text="paths" />
+	<FacetFieldLabel path="paths" />
 	<input
 		class="field"
 		autocomplete="off"
@@ -85,7 +80,7 @@ let { data, patch }: { data: ToolSpecData; patch: FacetPatch } = $props();
 	>
 </label>
 <label class="facet-field">
-	<FacetFieldLabel path="input" text="input (JSON Schema)" />
+	<FacetFieldLabel path="input" />
 	<textarea
 		class="field facet-textarea facet-code"
 		oninput={(e) => patch({ inputJson: e.currentTarget.value })}
@@ -95,7 +90,7 @@ let { data, patch }: { data: ToolSpecData; patch: FacetPatch } = $props();
 	></textarea>
 </label>
 <label class="facet-field">
-	<FacetFieldLabel path="output" text="output (JSON Schema)" />
+	<FacetFieldLabel path="output" />
 	<textarea
 		class="field facet-textarea facet-code"
 		oninput={(e) => patch({ outputJson: e.currentTarget.value })}
@@ -104,8 +99,3 @@ let { data, patch }: { data: ToolSpecData; patch: FacetPatch } = $props();
 		value={data.outputJson}
 	></textarea>
 </label>
-<p class="facet-hint">
-	Listed in <code>tools.allow</code> when compiled. Visibility follows
-	<code>loadTier</code>
-	(T0 / T1 / T2). Handler is a stub at runtime.
-</p>

@@ -4,22 +4,20 @@ import type { Protocol, Provider } from 'theorum/schema';
 import { coerceProtocol, coerceProvider, providersFor } from 'theorum/schema';
 import TypeTip from '$lib/components/TypeTip.svelte';
 import {
-	GEMINI_KEY_OPTIONS,
+	KEY_SLOT_OPTIONS,
 	ON_BLOCK_OPTIONS,
-	PLAYGROUND_PROTOCOLS,
 	PLAYGROUND_PROVIDERS,
 	PLAYGROUND_THINKING_LEVELS,
+	protocolsForModality,
 	SCHEMA_ENFORCEMENT_OPTIONS,
-	SPEECH_FORMAT_OPTIONS,
 	STREAM_MODE_OPTIONS,
 	toggleList,
 } from '$lib/playground/compat';
 import { PLAYGROUND_CTX, type PlaygroundCtx } from '$lib/playground/context';
-import { defaultApiIdPlaceholder } from '$lib/playground/free-tier';
-import { type OutputRole, outputRoleFromData, patchOutputRole } from '$lib/playground/outputs';
 import {
 	allowedBuiltinsForGemini,
 	clearMp3SpeechOnGeminiInteractions,
+	defaultApiIdForTransport,
 	defaultGeminiApiId,
 	type GoogleBuiltinId,
 	geminiModelSelectOptions,
@@ -29,14 +27,17 @@ import {
 	sanitizeBuiltInsForApiId,
 	syncModelSpecsForTransport,
 } from '$lib/playground/playground-policy';
-import type { FacetData, ModelSpecData, PlaygroundNode } from '$lib/playground/types';
+import type { FacetData, ModelSpecData, PlaygroundNode, ProfileType } from '$lib/playground/types';
 import './facet-editor/facet-editor.css';
 import GuardrailsFacetEditor from './facet-editor/GuardrailsFacetEditor.svelte';
 import IdentityFacetEditor from './facet-editor/IdentityFacetEditor.svelte';
+import ImageFacetEditor from './facet-editor/ImageFacetEditor.svelte';
 import InputsFacetEditor from './facet-editor/InputsFacetEditor.svelte';
+import LiveFacetEditor from './facet-editor/LiveFacetEditor.svelte';
 import ModelSpecFacetEditor from './facet-editor/ModelSpecFacetEditor.svelte';
 import ModelsFacetEditor from './facet-editor/ModelsFacetEditor.svelte';
 import OutputsFacetEditor from './facet-editor/OutputsFacetEditor.svelte';
+import SpeechFacetEditor from './facet-editor/SpeechFacetEditor.svelte';
 import ToolSpecFacetEditor from './facet-editor/ToolSpecFacetEditor.svelte';
 import ToolsFacetEditor from './facet-editor/ToolsFacetEditor.svelte';
 
@@ -52,18 +53,18 @@ const providerOptions = $derived.by(() => {
 	return PLAYGROUND_PROVIDERS.filter((p) => allowed.has(p.value));
 });
 
-const protocolOptions = PLAYGROUND_PROTOCOLS;
+const identityProfileType = $derived(
+	(
+		playground.getNodes().find((n) => n.data.kind === 'identity')?.data as
+			| { profileType?: string }
+			| undefined
+	)?.profileType,
+);
 
-const speechFormatOptions = $derived.by(() => {
-	const protocol = modelsHub.protocol ?? 'openAi';
-	if (protocol === 'geminiInteractions') {
-		return SPEECH_FORMAT_OPTIONS.filter((opt) => opt.value === 'pcm');
-	}
-	return SPEECH_FORMAT_OPTIONS;
-});
+const protocolOptions = $derived(protocolsForModality(identityProfileType as ProfileType));
 
 const thinkingOptions = PLAYGROUND_THINKING_LEVELS;
-const keyOptions = GEMINI_KEY_OPTIONS;
+const keyOptions = KEY_SLOT_OPTIONS;
 const streamModeOptions = STREAM_MODE_OPTIONS;
 const enforcedOptions = SCHEMA_ENFORCEMENT_OPTIONS;
 const egressModeOptions = [
@@ -103,7 +104,7 @@ const apiIdPlaceholder = $derived.by(() => {
 	if (data.kind !== 'modelSpec') return 'apiId';
 	const protocol = modelsHub.protocol ?? 'openAi';
 	const provider = modelsHub.provider ?? 'openrouter';
-	return defaultApiIdPlaceholder(protocol, provider);
+	return defaultApiIdForTransport(protocol, provider);
 });
 
 const onBlockOptions = ON_BLOCK_OPTIONS;
@@ -154,22 +155,15 @@ function patch(partial: Partial<FacetData>) {
 	playground.patchNode(id, partial as Partial<PlaygroundNode['data']>);
 }
 
-const outputRole = $derived.by((): OutputRole => {
-	if (data.kind !== 'outputs') return 'text';
-	return outputRoleFromData(data);
-});
-
-function setOutputRole(role: OutputRole) {
-	if (data.kind !== 'outputs') return;
-	patch(patchOutputRole(role));
-}
-
-const onOutputRoleChange = setOutputRole;
-
 function setProtocol(next: Protocol) {
 	if (data.kind !== 'models') return;
 	const provider = coerceProvider(next, data.provider as Provider);
-	patch({ protocol: next, provider });
+	const google = provider === 'google' && (next === 'geminiInteractions' || next === 'geminiLive');
+	patch({
+		protocol: next,
+		provider,
+		...(google && !data.key ? { key: 'slotA' as const } : {}),
+	});
 	syncHubModelSpecs(next, provider);
 	clearMp3SpeechOnGeminiInteractions(
 		() => playground.getNodes(),
@@ -181,7 +175,13 @@ function setProtocol(next: Protocol) {
 function setProvider(next: Provider) {
 	if (data.kind !== 'models') return;
 	const protocol = coerceProtocol(data.protocol as Protocol, next);
-	patch({ protocol, provider: next });
+	const google =
+		next === 'google' && (protocol === 'geminiInteractions' || protocol === 'geminiLive');
+	patch({
+		protocol,
+		provider: next,
+		...(google && !data.key ? { key: 'slotA' as const } : {}),
+	});
 	syncHubModelSpecs(protocol, next);
 	clearMp3SpeechOnGeminiInteractions(
 		() => playground.getNodes(),
@@ -198,6 +198,12 @@ const onProviderChange = setProvider;
 	<TypeTip variant="label">
 		{#if data.kind === 'identity'}
 			<IdentityFacetEditor {data} {patch} />
+		{:else if data.kind === 'image'}
+			<ImageFacetEditor {data} {patch} />
+		{:else if data.kind === 'speech'}
+			<SpeechFacetEditor {data} {patch} />
+		{:else if data.kind === 'live'}
+			<LiveFacetEditor {data} {patch} />
 		{:else if data.kind === 'models'}
 			<ModelsFacetEditor
 				{data}
@@ -209,6 +215,7 @@ const onProviderChange = setProvider;
 				{protocolOptions}
 				{thinkingOptions}
 				{keyOptions}
+				isLive={identityProfileType === 'live'}
 			/>
 		{:else if data.kind === 'modelSpec'}
 			<ModelSpecFacetEditor
@@ -226,21 +233,13 @@ const onProviderChange = setProvider;
 				{thinkingOptions}
 			/>
 		{:else if data.kind === 'tools'}
-			<ToolsFacetEditor {data} {patch} {playground} />
+			<ToolsFacetEditor {data} {patch} {playground} isLive={identityProfileType === 'live'} />
 		{:else if data.kind === 'toolSpec'}
 			<ToolSpecFacetEditor {data} {patch} />
 		{:else if data.kind === 'inputs'}
 			<InputsFacetEditor {data} {patch} />
 		{:else if data.kind === 'outputs'}
-			<OutputsFacetEditor
-				{data}
-				{patch}
-				{outputRole}
-				{onOutputRoleChange}
-				{speechFormatOptions}
-				{enforcedOptions}
-				{streamModeOptions}
-			/>
+			<OutputsFacetEditor {data} {patch} {enforcedOptions} {streamModeOptions} />
 		{:else if data.kind === 'guardrails'}
 			<GuardrailsFacetEditor {data} {patch} {onBlockOptions} {egressModeOptions} />
 		{/if}

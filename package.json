@@ -22,6 +22,7 @@
 		"lint:biome:fix": "biome check --write .",
 		"lint:fallow": "fallow audit && fallow health && fallow dupes && fallow dead-code",
 		"lint": "npm run lint:eslint && npm run lint:biome && npm run lint:fallow",
+		"pressure:playground": "npx vite-node scripts/pressure-playground.mjs",
 		"theorum:ensure": "node --experimental-strip-types scripts/ensure-theorum.mjs",
 		"theorum:sync": "git submodule update --init --recursive",
 		"theorum:pull": "git -C theorum pull --ff-only origin main || git -C ../theorum pull --ff-only origin main"
@@ -29,12 +30,14 @@
 	"dependencies": {
 		"@openrouter/ai-sdk-provider": "^3.0.0",
 		"@sveltejs/kit": "^2.63.0",
+		"@tabler/icons-svelte": "^3.46.0",
 		"@xyflow/svelte": "^1.6.5",
 		"ai": "^7.0.0",
 		"gpt-tokenizer": "^4.0.0",
 		"svelte": "^5.56.1",
 		"tailwindcss": "^4.3.3",
 		"theorum": "file:./theorum",
+		"ws": "^8.21.3",
 		"zod": "^4.1.8"
 	},
 	"devDependencies": {

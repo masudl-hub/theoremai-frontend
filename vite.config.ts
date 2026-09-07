@@ -6,6 +6,7 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 import { resolveTheorumRoot } from './scripts/resolve-theorum-root.mjs';
+import { liveRelayDevPlugin } from './scripts/vite-live-relay-plugin.mjs';
 
 function theorumAliases(theorumRoot: string) {
 	const theorumSchema = path.resolve(theorumRoot, 'src/kernel/schema.ts');
@@ -21,6 +22,7 @@ function theorumAliases(theorumRoot: string) {
 		'theorum/guardrails': path.resolve(theorumRoot, 'src/guardrails/mod.ts'),
 		'theorum/presets/google/speech-voices': theorumGoogleSpeechVoices,
 		'theorum/presets/google': path.resolve(theorumRoot, 'src/presets/google.ts'),
+		'theorum/interface': path.resolve(theorumRoot, 'src/interface/mod.ts'),
 		'theorum/providers/google/live': path.resolve(theorumRoot, 'src/providers/google/live/mod.ts'),
 		theorum: path.resolve(theorumRoot, 'mod.ts'),
 		// Legacy aliases kept for any remaining @theorum imports.
@@ -65,6 +67,9 @@ export default defineConfig(() => {
 		},
 		plugins: [
 			tailwindcss(),
+			// Before sveltekit so /api/live/relay upgrades are claimed (Vite otherwise
+			// never completes the handshake; Workers WebSocketPair is absent in Node).
+			liveRelayDevPlugin(),
 			sveltekit({
 				compilerOptions: {
 					runes: ({ filename }) =>
@@ -79,11 +84,13 @@ export default defineConfig(() => {
 		},
 		ssr: {
 			noExternal: [
+				'@tabler/icons-svelte',
 				'theorum',
 				'theorum/schema',
 				'theorum/host',
 				'theorum/guardrails',
 				'theorum/presets/google',
+				'theorum/interface',
 				'theorum/presets/google/speech-voices',
 				'theorum/providers/google/live',
 				'@theorum/core',

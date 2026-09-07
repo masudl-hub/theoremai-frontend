@@ -18,6 +18,15 @@
 	--size-hero-lead: 42ch;
 	--size-pillar-stage: 34rem;
 	--size-pillar-stage-md: 38rem;
+	--radius: 0;
+	--radius-xs: 0;
+	--radius-sm: 0;
+	--radius-md: 0;
+	--radius-lg: 0;
+	--radius-xl: 0;
+	--radius-2xl: 0;
+	--radius-3xl: 0;
+	--radius-4xl: 0;
 }
 
 @keyframes cloud-drift {
@@ -114,6 +123,14 @@ html {
 	}
 }
 
+button,
+input,
+textarea,
+select {
+	appearance: none;
+	border-radius: 0;
+}
+
 body {
 	margin: 0;
 	min-height: 100%;
@@ -146,6 +163,55 @@ body {
 	white-space: pre;
 	line-height: 1.15;
 	font-variant-ligatures: none;
+}
+
+/* Inline actions embedded in ascii cards (Pillars detail, Th30 consent, etc.). */
+.ascii-card-action {
+	display: inline;
+	font: inherit;
+	font-weight: inherit;
+	background: transparent;
+	border: none;
+	padding: 0;
+	margin: 0;
+	color: inherit;
+	cursor: pointer;
+}
+
+.ascii-card-action:hover,
+.ascii-card-action:focus-visible {
+	background: var(--color-ink);
+	color: var(--color-paper-bright);
+	outline: none;
+}
+
+.ascii-modal-root {
+	position: fixed;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	padding: 1.25rem;
+}
+
+.ascii-modal-backdrop {
+	position: absolute;
+	inset: 0;
+	border: 0;
+	background: transparent;
+	cursor: pointer;
+}
+
+.ascii-modal-panel {
+	position: relative;
+	z-index: 1;
+}
+
+.ascii-card-surface {
+	margin: 0;
+	background: var(--color-paper);
+	color: var(--color-ink);
+	line-height: 1.38;
+	white-space: pre;
 }
 
 .rule {
@@ -201,8 +267,10 @@ body {
 }
 
 .field {
+	appearance: none;
 	width: 100%;
 	border: 1.5px solid var(--color-ink);
+	border-radius: 0;
 	background: transparent;
 	padding: 0.65rem 0.75rem;
 	font: inherit;
@@ -219,7 +287,9 @@ body {
 }
 
 .btn {
+	appearance: none;
 	border: 2px solid var(--color-ink);
+	border-radius: 0;
 	padding: 0.7rem 1rem;
 	font: inherit;
 	font-size: 0.7rem;

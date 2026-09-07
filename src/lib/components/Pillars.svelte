@@ -1,8 +1,11 @@
 <script lang="ts">
 import { onMount, tick } from 'svelte';
 import { on } from 'svelte/events';
+import AsciiCardSegments from '$lib/ascii/AsciiCardSegments.svelte';
 import {
 	type AsciiCardSegment,
+	asciiFrameBottom,
+	asciiFrameTop,
 	parseAsciiCardSegments,
 	renderAsciiSplitCard,
 	wrapText,
@@ -96,7 +99,7 @@ function cardArt(p: Pillar): string {
 	const body = wrapBody(p.body, inner - 2).map(pad);
 
 	return [
-		`┌${rule}┐`,
+		asciiFrameTop(rule),
 		blank,
 		pad(center(p.title.toUpperCase(), inner - 2)),
 		blank,
@@ -108,7 +111,7 @@ function cardArt(p: Pillar): string {
 		blank,
 		...body,
 		blank,
-		`└${rule}┘`,
+		asciiFrameBottom(rule),
 	].join('\n');
 }
 
@@ -294,7 +297,9 @@ $effect(() => {
 						type="button"
 						onclick={() => openDetail(i)}
 					>
-						<pre class="ascii pillar-art text-xs font-bold md:text-sm">{cardArt(pillar)}</pre>
+						<pre
+							class="ascii ascii-card-surface pillar-art text-xs font-bold md:text-sm"
+						>{cardArt(pillar)}</pre>
 					</button>
 				{/each}
 			</div>
@@ -328,27 +333,22 @@ $effect(() => {
 	{const pillar = $derived(pillars[expanded])}
 	{const dims = $derived(detailDims())}
 	{const segments: AsciiCardSegment[] = $derived(parseAsciiCardSegments(detailArt(pillar, dims)))}
-	<div class="pillar-detail-root" role="presentation">
+	<div class="ascii-modal-root pillar-detail-root" role="presentation">
 		<button
 			type="button"
-			class="pillar-detail-backdrop"
+			class="ascii-modal-backdrop"
 			aria-label="Close pillar detail"
 			onclick={closeDetail}
 		></button>
 		<div
-			class="pillar-detail-panel"
+			class="ascii-modal-panel pillar-detail-panel"
 			role="dialog"
 			aria-modal="true"
 			aria-label="{pillar.title} detail"
 		>
 			<pre
-				class="ascii pillar-detail-card text-xs font-bold md:text-sm"
-			>{#each segments as segment, i (i)}{#if segment.type === 'text'}{segment.value}{:else}<button
-						type="button"
-						class="ascii-card-action"
-						onclick={() => onDetailAction(segment.id)}
-					>[ {segment.label} ]</button
-					>{/if}{/each}</pre>
+				class="ascii ascii-card-surface pillar-detail-card text-xs font-bold md:text-sm"
+			><AsciiCardSegments {segments} onAction={onDetailAction} /></pre>
 		</div>
 	</div>
 {/if}
@@ -407,10 +407,6 @@ $effect(() => {
 
 .pillar-art {
 	margin: 0;
-	background: var(--color-paper);
-	color: var(--color-ink);
-	line-height: 1.38;
-	white-space: pre;
 	text-align: left;
 }
 
@@ -514,25 +510,10 @@ $effect(() => {
 }
 
 .pillar-detail-root {
-	position: fixed;
-	inset: 0;
 	z-index: 60;
-	display: grid;
-	place-items: center;
-	padding: 1.25rem;
-}
-
-.pillar-detail-backdrop {
-	position: absolute;
-	inset: 0;
-	border: 0;
-	background: transparent;
-	cursor: pointer;
 }
 
 .pillar-detail-panel {
-	position: relative;
-	z-index: 1;
 	width: 60vw;
 	height: 80vh;
 }
@@ -543,30 +524,6 @@ $effect(() => {
 	height: 100%;
 	box-sizing: border-box;
 	overflow: auto;
-	margin: 0;
-	background: var(--color-paper);
-	color: var(--color-ink);
-	line-height: 1.38;
-	white-space: pre;
 	text-align: left;
-}
-
-.ascii-card-action {
-	display: inline;
-	font: inherit;
-	font-weight: inherit;
-	background: transparent;
-	border: none;
-	padding: 0;
-	margin: 0;
-	color: inherit;
-	cursor: pointer;
-}
-
-.ascii-card-action:hover,
-.ascii-card-action:focus-visible {
-	background: var(--color-ink);
-	color: var(--color-paper-bright);
-	outline: none;
 }
 </style>

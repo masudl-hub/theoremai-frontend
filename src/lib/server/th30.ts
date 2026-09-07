@@ -1,5 +1,5 @@
 /**
- * Th30 ("Theo") — The live, grounded site assistant for THEORUM.
+ * Th30 ("T H 3 O" / "T H thirty") — The live, grounded site assistant for THEORUM.
  *
  * Configured as a real-time Gemini 3.1 Flash Live voice/speech agent with
  * client-side UI navigation, precise line/element highlighting,
@@ -10,14 +10,7 @@
  * @module
  */
 
-import {
-	defineProfile,
-	getTool,
-	registerProfile,
-	registerTool,
-	standardEgressEnforce,
-	type WireFunctionTool,
-} from 'theorum';
+import { defineProfile, registerProfile, registerTool, standardEgressEnforce } from 'theorum';
 import { z } from 'zod';
 import {
 	formatNavigablePathsForPrompt,
@@ -264,32 +257,16 @@ export function registerTh30Tools(): void {
 	registerTool(th30SearchDocsTool);
 }
 
-/** Get wire function declarations for Th30 tools from registry. */
-export function getTh30WireTools(): WireFunctionTool[] {
-	const tools: WireFunctionTool[] = [];
-	for (const id of TH30_TOOL_IDS) {
-		const tool = getTool(id);
-		if (tool && tool.type === 'function') {
-			tools.push({
-				type: 'function',
-				name: tool.name,
-				description: tool.description,
-				parameters: tool.inputSchema,
-			});
-		}
-	}
-	return tools;
-}
-
 /* -------------------------------------------------------------------------- */
 /* System Prompt & Profile Definition                                         */
 /* -------------------------------------------------------------------------- */
 
-export const TH30_SYSTEM_PROMPT = `You are Th30 (pronounced "Theo"), the real-time AI guide for THEORUM — the flat, zero-bloat TypeScript agent kernel. You are built on THEORUM.
+export const TH30_SYSTEM_PROMPT = `You are Th30, the real-time AI guide for THEORUM — the flat, zero-bloat TypeScript agent kernel. You are built on THEORUM.
+Your name is spoken letter-by-letter as "T H 3 O", or as "T H thirty" (the digits 3-0). Never say "Theo", "three O", "three-oh", or "theo". When you introduce yourself, say it as "T H 3 O" or "T H thirty".
 You speak concisely, naturally, and warmly. You are speaking directly through real-time audio.
 Keep responses clear, concise, and direct (1-3 sentences per turn) since this is a voice conversation.
 
-When the call first connects you will receive a user turn with the text "(call connected)". Treat that as the session-start signal: greet the user aloud. Introduce yourself as Th30, THEORUM's assistant, and ask what they're thinking about. One or two short sentences. Do not read or mention the trigger text.
+When the call first connects you will receive a user turn with the text "(call connected)". Treat that as the session-start signal: greet the user aloud. Introduce yourself as T H 3 O (or T H thirty), THEORUM's assistant, and ask what they're thinking about. One or two short sentences. Do not read or mention the trigger text.
 
 THEORUM Architectural Principles you know deeply:
 1. Flatness & Zero-Bloat: Single runner loop, direct provider adapters, zero framework overhead (no LangChain abstractions).
@@ -316,6 +293,7 @@ Whenever you refer to code, an install command, an architecture pillar, or any s
 - NEVER rely solely on speaking line numbers aloud (e.g., saying "line 3" without visual context is difficult for a user to follow).
 - ALWAYS call the "highlight" tool with the target, lineStart, and lineEnd (or subTarget) to physically illuminate and select the section on screen as you speak.
 - Guide the user visually and aurally together.
+- Never claim you navigated, highlighted, read, or searched unless you actually issued that function call in this turn. If a tool returns an error, say so briefly and retry once with corrected arguments.
 
 When a user asks to see a section, inspect code, or explore an architecture component:
 1. Call "navigate" or "read" if you need exact line details.
@@ -328,6 +306,7 @@ export function ensureTh30ProfileRegistered(): void {
 	registerTh30Tools();
 
 	const profile = defineProfile({
+		type: 'live',
 		id: TH30_PROFILE_ID,
 		identity: {
 			handle: 'th30',
@@ -337,7 +316,7 @@ export function ensureTh30ProfileRegistered(): void {
 			protocol: 'geminiLive',
 			provider: 'google',
 			allow: ['gemini31FlashLive'],
-			key: 'freeA',
+			key: 'slotA',
 			config: {
 				gemini31FlashLive: {
 					apiId: 'gemini-3.1-flash-live-preview',
@@ -350,6 +329,24 @@ export function ensureTh30ProfileRegistered(): void {
 				},
 			},
 		},
+		live: {
+			voice: 'Aoede',
+			vad: {
+				// Barge-in on, coarsest Gemini sensitivity. Fine choppy-cut protection is
+				// client-side: live-client withholds quiet mic frames while model audio plays.
+				activityHandling: 'START_OF_ACTIVITY_INTERRUPTS',
+				startSensitivity: 'START_SENSITIVITY_LOW',
+				endSensitivity: 'END_SENSITIVITY_LOW',
+				prefixPaddingMs: 400,
+				silenceDurationMs: 1500,
+			},
+			sessionResumption: true,
+			contextCompression: 'slidingWindow',
+			transcription: {
+				input: true,
+				output: true,
+			},
+		},
 		tools: {
 			allow: [...TH30_TOOL_IDS],
 		},
@@ -359,24 +356,6 @@ export function ensureTh30ProfileRegistered(): void {
 			maxFiles: 5,
 			maxBytes: 10 * 1024 * 1024,
 			maxTurnBytes: 25 * 1024 * 1024,
-		},
-		outputs: {
-			live: {
-				voice: 'Aoede',
-				vad: {
-					activityHandling: 'START_OF_ACTIVITY_INTERRUPTS',
-					startSensitivity: 'START_SENSITIVITY_LOW',
-					endSensitivity: 'END_SENSITIVITY_LOW',
-					prefixPaddingMs: 300,
-					silenceDurationMs: 1200,
-				},
-				sessionResumption: true,
-				contextCompression: 'slidingWindow',
-				transcription: {
-					input: true,
-					output: true,
-				},
-			},
 		},
 		guardrails: {
 			canary: true,

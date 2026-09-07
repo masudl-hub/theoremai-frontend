@@ -35,7 +35,7 @@ export function appendChildSpecNode(
 			target: id,
 			sourceHandle: 'out',
 			targetHandle: 'in',
-			type: 'smoothstep',
+			type: 'default',
 		},
 	];
 	const expanded = nextNodes.map((n) =>

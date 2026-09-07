@@ -1,12 +1,299 @@
+import type {
+	ProfileDefinition,
+	ProfileDefinitionBase,
+	ProfileGuardrailsSpec,
+	ProfileInputsSpec,
+	ProfileLiveSpec,
+	ProfileModelSpec,
+	ProfileOutputsSpec,
+	ProfileToolsSpec,
+	ProfileTurnResumptionSpec,
+} from 'theorum';
 import { emitRegisterToolSource, validatePlaygroundGraph } from './compile-validate';
 import { parseList, playgroundPolicyViolation } from './playground-policy';
 import type {
 	CompileIssue,
 	CompileResult,
+	GuardrailsData,
+	ImageData,
+	InputsData,
+	LiveData,
+	ModelSpecData,
 	OutputsData,
 	PlaygroundNode,
+	SpeechData,
 	StructuredRegistration,
 } from './types';
+
+function buildModelConfig(specs: Array<{ id: string; data: ModelSpecData }>): {
+	allow: string[];
+	config: ProfileModelSpec['config'];
+	select: Record<string, string>;
+} {
+	const allow = specs.map((s) => s.data.modelId.trim());
+	const config: ProfileModelSpec['config'] = {};
+	const select: Record<string, string> = {};
+
+	for (const { data } of specs) {
+		const mid = data.modelId.trim();
+		config[mid] = {
+			apiId: data.apiId.trim(),
+			thinking: { on: data.thinkingOn, off: data.thinkingOff },
+			thinkingLevels: data.thinkingLevels.length
+				? data.thinkingLevels
+				: ['minimal', 'low', 'medium', 'high'],
+			summaries: { on: data.summariesOn, off: data.summariesOff },
+			maxOutputTokens: data.maxOutputTokens,
+			temperature: data.temperature,
+			builtInTools: parseList(data.builtInTools),
+		};
+		const label = data.selectLabel.trim() || mid;
+		select[label] = mid;
+	}
+	return { allow, config, select };
+}
+
+function buildInputsPayload(inputs?: InputsData): ProfileInputsSpec {
+	if (!inputs) return { text: true };
+	return {
+		text: inputs.text,
+		...(inputs.attachmentsAccept.length
+			? { attachments: { accept: inputs.attachmentsAccept } }
+			: {}),
+		...(inputs.voiceAccept.length ? { voice: { accept: inputs.voiceAccept } } : {}),
+		...(inputs.maxFiles > 0 ? { maxFiles: inputs.maxFiles } : {}),
+		...(inputs.maxBytes > 0 ? { maxBytes: inputs.maxBytes } : {}),
+		...(inputs.maxTurnBytes > 0 ? { maxTurnBytes: inputs.maxTurnBytes } : {}),
+	};
+}
+
+function buildGuardrailsPayload(guardrails?: GuardrailsData): {
+	payload?: ProfileGuardrailsSpec;
+	egressMode: 'default' | 'none';
+} {
+	if (!guardrails) return { egressMode: 'default' };
+	const egressMode = guardrails.egressMode === 'none' ? 'none' : 'default';
+	const guardrailsOut: ProfileGuardrailsSpec = {
+		canary: guardrails.canary,
+		sanitizeInput: guardrails.sanitizeInput,
+		redactSensitive: guardrails.redactSensitive,
+		...(guardrails.quotaEnabled ? { quota: { perDay: guardrails.perDay } } : {}),
+	};
+	if (egressMode === 'default') {
+		guardrailsOut.egress = {
+			onBlock: guardrails.onBlock,
+			maxRetries: guardrails.egressMaxRetries,
+			enforce: '__STANDARD_EGRESS__' as unknown as ProfileGuardrailsSpec extends {
+				egress?: { enforce: infer E };
+			}
+				? E
+				: never,
+		};
+	}
+	return { payload: guardrailsOut, egressMode };
+}
+
+function buildStructuredRegistration(outputs?: OutputsData): {
+	structured?: StructuredRegistration;
+	schemaRegister: string;
+} {
+	if (outputs?.mode !== 'structured' || !outputs.schemaId.trim()) {
+		return { schemaRegister: '' };
+	}
+	let jsonBody: Record<string, unknown> | undefined;
+	if (outputs.schemaJson.trim()) {
+		try {
+			jsonBody = JSON.parse(outputs.schemaJson) as Record<string, unknown>;
+		} catch {
+			jsonBody = undefined;
+		}
+	}
+	const spec = {
+		enforced: outputs.schemaEnforced,
+		...(jsonBody ? { jsonSchema: jsonBody } : {}),
+	};
+	const structured = { id: outputs.schemaId.trim(), spec };
+	const schemaRegister = `\nregisterStructured(${JSON.stringify(outputs.schemaId.trim())}, ${JSON.stringify(spec, null, 2)});\n`;
+	return { structured, schemaRegister };
+}
+
+type AssembleProfileParams = {
+	profileType: 'text' | 'image' | 'speech' | 'live';
+	base: ProfileDefinitionBase;
+	toolsSpec: ProfileToolsSpec;
+	inputsPayload: ProfileInputsSpec;
+	image?: ImageData;
+	speech?: SpeechData;
+	live?: LiveData;
+	outputs?: OutputsData;
+};
+
+type InteractionsModel = AssembleProfileParams['base']['model'] & {
+	protocol: 'geminiInteractions' | 'openAi';
+};
+
+type LiveModel = AssembleProfileParams['base']['model'] & {
+	protocol: 'geminiLive';
+};
+
+function withInteractionsModel(base: ProfileDefinitionBase): ProfileDefinitionBase & {
+	model: InteractionsModel;
+} {
+	return {
+		...base,
+		model: base.model as InteractionsModel,
+	};
+}
+
+function withLiveModel(base: ProfileDefinitionBase): ProfileDefinitionBase & { model: LiveModel } {
+	return {
+		...base,
+		model: base.model as LiveModel,
+	};
+}
+
+function buildTurnResumption(
+	outputs?: OutputsData,
+	profileType?: AssembleProfileParams['profileType'],
+): ProfileTurnResumptionSpec | undefined {
+	if (!outputs?.resumeEnabled || profileType === 'live') return undefined;
+	return {
+		...(outputs.allowContinue.length ? { allowContinue: outputs.allowContinue } : {}),
+		...(outputs.autoContinue.length ? { autoContinue: outputs.autoContinue } : {}),
+	};
+}
+
+function buildImageSpec(image?: ImageData) {
+	return {
+		...(image?.aspectRatio.trim() ? { aspectRatio: image.aspectRatio.trim() } : {}),
+		...(image?.size.trim() ? { size: image.size.trim() } : {}),
+		...(image?.mimeType.trim() ? { mimeType: image.mimeType.trim() } : {}),
+		...(image && image.maxInputImages > 0 ? { maxInputImages: image.maxInputImages } : {}),
+		...(image?.includeText ? { includeText: true } : {}),
+	};
+}
+
+function buildSpeechSpec(speech?: SpeechData) {
+	return {
+		...(speech?.voice.trim() ? { voice: speech.voice.trim() } : {}),
+		...(speech?.format ? { format: speech.format } : {}),
+	};
+}
+
+function buildLiveVad(live?: LiveData) {
+	if (
+		!live?.vadEnabled ||
+		!(
+			live.vadActivityHandling ||
+			live.vadStartSensitivity ||
+			live.vadEndSensitivity ||
+			live.vadPrefixPaddingMs !== '' ||
+			live.vadSilenceDurationMs !== ''
+		)
+	) {
+		return undefined;
+	}
+	return {
+		...(live.vadActivityHandling ? { activityHandling: live.vadActivityHandling } : {}),
+		...(live.vadStartSensitivity ? { startSensitivity: live.vadStartSensitivity } : {}),
+		...(live.vadEndSensitivity ? { endSensitivity: live.vadEndSensitivity } : {}),
+		...(live.vadPrefixPaddingMs !== '' ? { prefixPaddingMs: live.vadPrefixPaddingMs } : {}),
+		...(live.vadSilenceDurationMs !== '' ? { silenceDurationMs: live.vadSilenceDurationMs } : {}),
+	};
+}
+
+function buildLiveIngress(live?: LiveData) {
+	if (!live) return undefined;
+	const ingress: NonNullable<ProfileLiveSpec['ingress']> = {};
+	let wired = false;
+	if (!live.ingressAudio) {
+		ingress.audio = false;
+		wired = true;
+	}
+	if (live.ingressVideo) {
+		ingress.video = true;
+		wired = true;
+	}
+	if (!live.ingressText) {
+		ingress.text = false;
+		wired = true;
+	}
+	return wired ? ingress : undefined;
+}
+
+function buildLiveSpec(live?: LiveData) {
+	const vad = buildLiveVad(live);
+	const ingress = buildLiveIngress(live);
+	return {
+		...(ingress ? { ingress } : {}),
+		...(live?.voice.trim() ? { voice: live.voice.trim() } : {}),
+		...(live?.sessionResumption ? { sessionResumption: true } : {}),
+		...(live?.proactiveAudio ? { proactiveAudio: true } : {}),
+		...(live?.contextCompression ? { contextCompression: live.contextCompression } : {}),
+		...(vad ? { vad } : {}),
+		...((live?.transcriptionInput || live?.transcriptionOutput) && {
+			transcription: {
+				...(live.transcriptionInput ? { input: true } : {}),
+				...(live.transcriptionOutput ? { output: true } : {}),
+			},
+		}),
+	};
+}
+
+function assembleTextProfile(params: AssembleProfileParams): ProfileDefinition {
+	const turnResumption = buildTurnResumption(params.outputs, params.profileType);
+	return {
+		...withInteractionsModel(params.base),
+		type: 'text',
+		tools: params.toolsSpec,
+		inputs: params.inputsPayload,
+		...(turnResumption ? { turnResumption } : {}),
+	};
+}
+
+function assembleImageProfile(params: AssembleProfileParams): ProfileDefinition {
+	const turnResumption = buildTurnResumption(params.outputs, params.profileType);
+	return {
+		...withInteractionsModel(params.base),
+		type: 'image',
+		image: buildImageSpec(params.image),
+		tools: params.toolsSpec,
+		inputs: params.inputsPayload,
+		...(turnResumption ? { turnResumption } : {}),
+	};
+}
+
+function assembleSpeechProfile(params: AssembleProfileParams): ProfileDefinition {
+	const turnResumption = buildTurnResumption(params.outputs, params.profileType);
+	return {
+		...withInteractionsModel(params.base),
+		type: 'speech',
+		speech: buildSpeechSpec(params.speech),
+		...(turnResumption ? { turnResumption } : {}),
+	};
+}
+
+function assembleLiveProfile(params: AssembleProfileParams): ProfileDefinition {
+	return {
+		...withLiveModel(params.base),
+		type: 'live',
+		live: buildLiveSpec(params.live),
+		tools: params.toolsSpec,
+	};
+}
+
+function assembleProfileDefinition(params: AssembleProfileParams): ProfileDefinition {
+	switch (params.profileType) {
+		case 'text':
+			return assembleTextProfile(params);
+		case 'image':
+			return assembleImageProfile(params);
+		case 'speech':
+			return assembleSpeechProfile(params);
+		case 'live':
+			return assembleLiveProfile(params);
+	}
+}
 
 /** Validate the graph and emit a defineProfile-shaped contract. */
 export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
@@ -20,84 +307,84 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 		};
 	}
 
-	const { identity, models, tools, inputs, outputs, guardrails, specs, customTools } =
-		validated.value;
+	const {
+		identity,
+		models,
+		tools,
+		inputs,
+		outputs,
+		guardrails,
+		image,
+		speech,
+		live,
+		specs,
+		customTools,
+	} = validated.value;
 	const issues: CompileIssue[] = [];
 
-	const allow = specs.map((s) => s.data.modelId.trim());
-	const config: Record<string, unknown> = {};
-	const select: Record<string, string> = {};
-
-	for (const { data } of specs) {
-		const mid = data.modelId.trim();
-		const specEntry: Record<string, unknown> = {
-			apiId: data.apiId.trim(),
-			thinking: { on: data.thinkingOn, off: data.thinkingOff },
-			thinkingLevels: data.thinkingLevels.length
-				? data.thinkingLevels
-				: ['minimal', 'low', 'medium', 'high'],
-			summaries: { on: data.summariesOn, off: data.summariesOff },
-			maxOutputTokens: data.maxOutputTokens,
-			temperature: data.temperature,
-			builtInTools: parseList(data.builtInTools),
-		};
-		config[mid] = specEntry;
-		const label = data.selectLabel.trim() || mid;
-		select[label] = mid;
-	}
-
-	const controls = models.thinkingControl ? ['thinking'] : [];
+	const { allow, config, select } = buildModelConfig(specs);
+	const controls = models.thinkingControl ? (['thinking'] as const) : [];
+	const profileType = identity.profileType || 'text';
 	const allowTools = customTools.map((t) => t.name);
-	const toolsSpec: Record<string, unknown> = { allow: allowTools };
-	if (tools.t2Loader.trim()) {
-		toolsSpec.t2Loader = tools.t2Loader.trim();
-	}
+	const toolsSpec: ProfileToolsSpec =
+		profileType === 'live'
+			? { allow: allowTools }
+			: {
+					allow: allowTools,
+					...(tools?.t2Loader.trim() ? { t2Loader: tools.t2Loader.trim() } : {}),
+				};
 
-	const profile: Record<string, unknown> = {
+	const modelSpec: ProfileModelSpec =
+		profileType === 'live'
+			? {
+					protocol: models.protocol,
+					provider: models.provider,
+					allow,
+					config,
+					select,
+					thinking: models.thinking,
+					...(models.key ? { key: models.key } : {}),
+				}
+			: {
+					protocol: models.protocol,
+					provider: models.provider,
+					allow,
+					config,
+					select,
+					thinking: models.thinking,
+					maxSteps: models.maxSteps,
+					...(controls.length ? { controls: [...controls] } : {}),
+					...(models.key ? { key: models.key } : {}),
+				};
+
+	const { payload: guardrailsPayload, egressMode } = buildGuardrailsPayload(guardrails);
+	const outputsPayload =
+		profileType !== 'live' && outputs ? (buildOutputs(outputs) as ProfileOutputsSpec) : undefined;
+
+	const base: ProfileDefinitionBase = {
 		id: identity.agentId.trim(),
 		identity: {
 			handle: identity.handle.trim(),
 			system: identity.system.trim(),
 			...(identity.chat ? { chat: true } : {}),
 		},
-		model: {
-			protocol: models.protocol,
-			provider: models.provider,
-			allow,
-			config,
-			select,
-			thinking: models.thinking,
-			maxSteps: models.maxSteps,
-			...(controls.length ? { controls } : {}),
-			...(models.key
-				? { key: models.key }
-				: models.protocol === 'geminiInteractions' || models.protocol === 'geminiLive'
-					? { key: 'freeA' }
-					: {}),
-		},
-		tools: toolsSpec,
-		inputs: {
-			text: inputs.text,
-			...(inputs.attachmentsAccept.length
-				? { attachments: { accept: inputs.attachmentsAccept } }
-				: {}),
-			...(inputs.voiceAccept.length ? { voice: { accept: inputs.voiceAccept } } : {}),
-			...(inputs.maxFiles > 0 ? { maxFiles: inputs.maxFiles } : {}),
-			...(inputs.maxBytes > 0 ? { maxBytes: inputs.maxBytes } : {}),
-			...(inputs.maxTurnBytes > 0 ? { maxTurnBytes: inputs.maxTurnBytes } : {}),
-		},
-		outputs: buildOutputs(outputs),
-		guardrails: {
-			canary: guardrails.canary,
-			sanitizeInput: guardrails.sanitizeInput,
-			redactSensitive: guardrails.redactSensitive,
-			...(guardrails.quotaEnabled ? { quota: { perDay: guardrails.perDay } } : {}),
-		},
+		model: modelSpec,
+		...(outputsPayload ? { outputs: outputsPayload } : {}),
+		...(guardrailsPayload ? { guardrails: guardrailsPayload } : {}),
 	};
 
-	const tierMsg = playgroundPolicyViolation(
-		profile as Parameters<typeof playgroundPolicyViolation>[0],
-	);
+	const profile: ProfileDefinition = assembleProfileDefinition({
+		profileType,
+		base,
+		toolsSpec,
+		inputsPayload: buildInputsPayload(inputs),
+		image,
+		speech,
+		live,
+		outputs,
+	});
+
+	const tierMsg = playgroundPolicyViolation(profile);
 	if (tierMsg) {
 		issues.push({ nodeId: 'models', facet: 'models', message: tierMsg });
 		return {
@@ -107,42 +394,15 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 		};
 	}
 
-	const egressMode: 'default' | 'none' = guardrails.egressMode === 'none' ? 'none' : 'default';
+	const { structured, schemaRegister } =
+		profileType === 'live'
+			? { structured: undefined, schemaRegister: '' }
+			: buildStructuredRegistration(outputs);
 
-	const guardrailsOut = profile.guardrails as Record<string, unknown>;
-	if (egressMode === 'default') {
-		guardrailsOut.egress = {
-			onBlock: guardrails.onBlock,
-			maxRetries: guardrails.egressMaxRetries,
-			enforce: '__STANDARD_EGRESS__',
-		};
-	}
-
-	let schemaRegister = '';
-	let structured: StructuredRegistration | undefined;
-	if (outputs.mode === 'structured' && outputs.schemaId.trim()) {
-		let jsonBody: Record<string, unknown> | undefined;
-		if (outputs.schemaJson.trim()) {
-			try {
-				const parsed = JSON.parse(outputs.schemaJson) as Record<string, unknown>;
-				jsonBody = parsed;
-			} catch {
-				jsonBody = undefined;
-			}
-		}
-		const spec = {
-			enforced: outputs.schemaEnforced,
-			...(jsonBody ? { jsonSchema: jsonBody } : {}),
-		};
-		structured = { id: outputs.schemaId.trim(), spec };
-		schemaRegister = `
-registerStructured(${JSON.stringify(outputs.schemaId.trim())}, ${JSON.stringify(spec, null, 2)});
-`;
-	}
-
-	const importNames = ['defineProfile', 'registerProfile', 'registerStructured'];
+	const importNames = ['defineProfile', 'registerProfile'];
+	if (structured) importNames.push('registerStructured');
 	if (customTools.length) importNames.push('registerTool');
-	if (egressMode === 'default') importNames.push('standardEgressEnforce');
+	if (egressMode === 'default' && guardrails) importNames.push('standardEgressEnforce');
 
 	const toolRegister = customTools.map(emitRegisterToolSource).join('\n');
 	const zodImport = customTools.length ? `import { z } from "zod";\n` : '';
@@ -174,11 +434,11 @@ registerProfile(profile);
 
 function buildOutputs(outputs: OutputsData): Record<string, unknown> {
 	const out: Record<string, unknown> = {
-		structured: outputs.mode === 'structured' ? outputs.schemaId.trim() : null,
+		structured:
+			outputs.mode === 'structured' && outputs.schemaId.trim() ? outputs.schemaId.trim() : null,
 		streaming: {
 			mode: outputs.streamMode,
 			streamThoughts: outputs.streamThoughts,
-			...(outputs.gateMedia ? { gateMedia: true } : {}),
 		},
 	};
 
@@ -186,30 +446,6 @@ function buildOutputs(outputs: OutputsData): Record<string, unknown> {
 		out.validation = {
 			maxRetries: outputs.maxRetries,
 			...(outputs.repairGuidance.trim() ? { repairGuidance: outputs.repairGuidance.trim() } : {}),
-		};
-	}
-
-	if (outputs.imageEnabled) {
-		out.image = {
-			...(outputs.imageAspectRatio.trim() ? { aspectRatio: outputs.imageAspectRatio.trim() } : {}),
-			...(outputs.imageSize.trim() ? { size: outputs.imageSize.trim() } : {}),
-			...(outputs.imageMimeType.trim() ? { mimeType: outputs.imageMimeType.trim() } : {}),
-			...(outputs.imageMaxInputImages > 0 ? { maxInputImages: outputs.imageMaxInputImages } : {}),
-			...(outputs.imageIncludeText ? { includeText: true } : {}),
-		};
-	}
-
-	if (outputs.speechEnabled) {
-		out.speech = {
-			...(outputs.speechVoice.trim() ? { voice: outputs.speechVoice.trim() } : {}),
-			format: outputs.speechFormat,
-		};
-	}
-
-	if (outputs.resumeEnabled) {
-		out.resume = {
-			...(outputs.allowContinue.length ? { allowContinue: outputs.allowContinue } : {}),
-			...(outputs.autoContinue.length ? { autoContinue: outputs.autoContinue } : {}),
 		};
 	}
 

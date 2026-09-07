@@ -1,5 +1,20 @@
 /** Shared ASCII tooltip card — same box art as the package map. */
 
+export const ASCII_CORNER = {
+	tl: '┌',
+	tr: '┐',
+	bl: '└',
+	br: '┘',
+} as const;
+
+export function asciiFrameTop(rule: string): string {
+	return `${ASCII_CORNER.tl}${rule}${ASCII_CORNER.tr}`;
+}
+
+export function asciiFrameBottom(rule: string): string {
+	return `${ASCII_CORNER.bl}${rule}${ASCII_CORNER.br}`;
+}
+
 function viewportSize(): { w: number; h: number } {
 	return {
 		w: typeof window !== 'undefined' ? window.innerWidth : 1024,
@@ -218,7 +233,7 @@ export function renderAsciiCard(opts: {
 
 	const footerLines = opts.footer ? wrapText(opts.footer, inner - 2).map((line) => pad(line)) : [];
 
-	const rows: string[] = [`┌${rule}┐`, pad(title), `├${rule}┤`, ...body.map(pad)];
+	const rows: string[] = [asciiFrameTop(rule), pad(title), `├${rule}┤`, ...body.map(pad)];
 
 	if (specLines.length) {
 		rows.push(pad(''), ...specLines.map(pad));
@@ -241,7 +256,7 @@ export function renderAsciiCard(opts: {
 		rows.push(pad(''), `│ ${' '.repeat(lead)}${tokens}${' '.repeat(trail)}│`);
 	}
 
-	rows.push(`└${rule}┘`);
+	rows.push(asciiFrameBottom(rule));
 	return rows.join('\n');
 }
 
@@ -297,7 +312,7 @@ export function renderAsciiSplitCard(opts: {
 	const splitRowLocal = (left: string, right: string) => splitRow(left, right, leftCols, rightCols);
 
 	const rows: string[] = [
-		`┌${leftRule}┬${rightRule}┐`,
+		`${ASCII_CORNER.tl}${leftRule}┬${rightRule}${ASCII_CORNER.tr}`,
 		splitRowLocal(title, opts.cornerAction ? splitActionCell(opts.cornerAction, rightCols) : ''),
 		`├${leftRule}┼${rightRule}┤`,
 	];
@@ -306,6 +321,6 @@ export function renderAsciiSplitCard(opts: {
 		rows.push(splitRowLocal(leftContentRows[i] ?? '', slotLines[i] ?? ''));
 	}
 
-	rows.push(`└${leftRule}┴${rightRule}┘`);
+	rows.push(`${ASCII_CORNER.bl}${leftRule}┴${rightRule}${ASCII_CORNER.br}`);
 	return rows.join('\n');
 }

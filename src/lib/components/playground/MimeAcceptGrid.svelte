@@ -1,7 +1,7 @@
 <script lang="ts">
 import type { Snippet } from 'svelte';
 import Checkbox from '$lib/components/playground/Checkbox.svelte';
-import { toggleMime } from '$lib/playground/mime';
+import { isMimeSelected, toggleMime } from '$lib/playground/mime';
 
 let {
 	legend,
@@ -14,6 +14,8 @@ let {
 	selected: string[];
 	onSelected: (next: string[]) => void;
 } = $props();
+
+const catalog = $derived(options.map((opt) => opt.value));
 </script>
 
 <fieldset class="facet-set">
@@ -22,8 +24,8 @@ let {
 		{#each options as opt (opt.value)}
 			<label class="facet-check">
 				<Checkbox
-					checked={selected.includes(opt.value)}
-					onchange={(v) => onSelected(toggleMime(selected, opt.value, v))}
+					checked={isMimeSelected(selected, opt.value)}
+					onchange={(v) => onSelected(toggleMime(selected, opt.value, v, catalog))}
 				/>
 				<span>{opt.label}</span>
 			</label>

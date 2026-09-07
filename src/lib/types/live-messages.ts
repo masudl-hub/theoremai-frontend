@@ -52,7 +52,6 @@ export function parseLiveRelayClientMessage(raw: unknown): LiveRelayClientMessag
 
 export type LiveServerEnvelope =
 	| { type: 'ready' }
-	| { type: 'interrupted' }
 	| { type: 'events'; events: TurnEvent[] }
 	| { type: 'error'; error: string };
 
@@ -65,8 +64,7 @@ export function parseLiveServerEnvelope(raw: unknown): LiveServerEnvelope | null
 	const record = raw as Record<string, unknown>;
 	switch (record.type) {
 		case 'ready':
-		case 'interrupted':
-			return { type: record.type };
+			return { type: 'ready' };
 		case 'events':
 			if (!Array.isArray(record.events)) return null;
 			return {

@@ -1,46 +1,18 @@
 /**
- * Cloudflare Worker stateless WebSocket relay for Gemini 3.1 Flash Live.
+ * Cloudflare Worker WebSocket relay for Gemini Live via THEORUM `runSession`.
  *
  * Bridges the browser client WebSocket (PCM mic stream + UI tools)
- * to Google's upstream `BidiGenerateContent` WebSocket service.
- *
- * Outbound events pass through the kernel Live outbound gate (canary + egress).
- * Inbound client text is sanitized and fenced before upstream send.
+ * to a gated live session. Outbound canary/egress and inbound text prep
+ * are owned by `runSession` — this host only pipes sockets and tool replies.
  *
  * @module
  */
 
-import {
-	bindCanary,
-	createLiveOutboundGateSession,
-	finalizeLiveOutboundTurn,
-	getProfile,
-	type LiveOutboundGateSession,
-	mintCanary,
-	type ProviderCompleteRequest,
-	pickModel,
-	prepareLiveInboundText,
-	prepareTurnToolSnapshot,
-	processLiveOutboundBatch,
-	publicError,
-	type TurnEvent,
-	type WireFunctionTool,
-} from 'theorum';
-import { abortLiveOutboundTurn } from 'theorum/guardrails';
+import { getProfile, type LiveSession, publicError, runSession } from 'theorum';
 import { forClientEvents } from 'theorum/host';
-import {
-	buildGeminiLiveRealtimeInput,
-	buildGeminiLiveRealtimeText,
-	buildGeminiLiveSetupMessage,
-	buildGeminiLiveToolResponse,
-	buildGeminiLiveToolResponses,
-	buildGeminiLiveWebSocketUrl,
-	foldGeminiLiveServerMessage,
-	parseGeminiLiveMessage,
-} from 'theorum/providers/google/live';
 import { parseLiveRelayClientMessage } from '$lib/types/live-messages';
 import { ensureKernelInitialized } from './kernel-init';
-import { getTh30WireTools, TH30_PROFILE_ID } from './th30';
+import { TH30_PROFILE_ID } from './th30';
 
 export type LiveRelayEnv = {
 	GEMINI_API_KEY?: string;
@@ -48,14 +20,6 @@ export type LiveRelayEnv = {
 	GEMINI_API_KEY_FREE_B?: string;
 	GEMINI_API_KEY_FREE_C?: string;
 };
-
-/** Decode upstream WebSocket payloads (Workers uses `binaryType = 'arraybuffer'`). */
-function decodeWebSocketText(data: unknown): string {
-	if (typeof data === 'string') return data;
-	if (data instanceof ArrayBuffer) return new TextDecoder().decode(data);
-	if (data instanceof Uint8Array) return new TextDecoder().decode(data);
-	throw new Error('Unsupported upstream WebSocket payload type');
-}
 
 /** Convert binary PCM chunks to base64 for Gemini Live realtime input framing. */
 function bufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
@@ -67,306 +31,67 @@ function bufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
 	return btoa(binary);
 }
 
-/** Build complete request object for setup framing and per-session outbound gate. */
-function buildCompleteRequestForProfile(
-	profileId: string,
-	wireTools: WireFunctionTool[],
-	builtins: string[],
-): { completeReq: ProviderCompleteRequest; outboundGate: LiveOutboundGateSession } {
-	const profile = getProfile(profileId);
-	const select = Object.keys(profile.model.select ?? {})[0] ?? profile.model.allow[0];
-	const modelConfig = profile.model.config[select];
-	let system = profile.identity.system ?? '';
-	let canary: string | undefined;
-
-	if (profile.guardrails.canary !== false) {
-		canary = mintCanary();
-		system = bindCanary(system, canary);
+/**
+ * Cloudflare Workers outbound WebSocket via fetch upgrade
+ * (preferred over `new WebSocket` on the Workers runtime).
+ */
+async function openCloudflareUpstreamWebSocket(url: string): Promise<WebSocket> {
+	const httpsUpstreamUrl = url.replace(/^wss:\/\//i, 'https://');
+	const upstreamResp = await fetch(httpsUpstreamUrl, {
+		headers: { Upgrade: 'websocket' },
+	});
+	const ws = (upstreamResp as unknown as { webSocket?: WebSocket & { accept(): void } }).webSocket;
+	if (!ws) {
+		throw new Error(`Upstream WebSocket upgrade failed with status ${String(upstreamResp.status)}`);
 	}
-
-	const outboundGate = createLiveOutboundGateSession(profile, canary);
-
-	return {
-		completeReq: {
-			model: select,
-			apiId: modelConfig.apiId,
-			system,
-			temperature: modelConfig.temperature,
-			maxOutputTokens: modelConfig.maxOutputTokens,
-			thinking: modelConfig.thinking.on,
-			builtins,
-			wireTools,
-			input: [],
-			structured: null,
-			image: null,
-			live: profile.outputs.live,
-		},
-		outboundGate,
-	};
+	ws.binaryType = 'arraybuffer';
+	ws.accept();
+	return ws;
 }
 
-/** Resolve Live wire + builtins via kernel TurnToolSnapshot (T0/T1 only on Live). */
-async function prepareLiveTooling(profileId: string): Promise<{
-	wireTools: WireFunctionTool[];
-	builtins: string[];
-}> {
-	if (profileId === TH30_PROFILE_ID) {
-		const profile = getProfile(profileId);
-		const select = profile.model.allow[0];
-		if (!select) {
-			throw new Error(`Profile '${profileId}' has no models in model.allow`);
-		}
-		return {
-			wireTools: getTh30WireTools(),
-			builtins: profile.model.config[select].builtInTools,
-		};
-	}
-	const profile = getProfile(profileId);
-	const modelId = pickModel(profile);
-	const snapshot = await prepareTurnToolSnapshot(
-		profile,
-		{ profile: profileId, input: { text: '' } },
-		modelId,
-	);
-	return { wireTools: snapshot.wire, builtins: snapshot.builtins };
-}
-
-function sendGateError(serverWs: WebSocket, error: string): void {
-	serverWs.send(JSON.stringify({ type: 'error', error }));
-	try {
-		serverWs.close(1011, 'guardrail withheld');
-	} catch {
-		/* ignore */
-	}
-}
-
-function sendGateEvents(serverWs: WebSocket, events: TurnEvent[]): void {
-	if (events.length === 0) return;
-	serverWs.send(JSON.stringify({ type: 'events', events: forClientEvents(events) }));
-}
-
-async function applyOutboundGate(
-	serverWs: WebSocket,
-	session: LiveOutboundGateSession,
-	events: TurnEvent[],
-	turnPhase: 'streaming' | 'complete' | 'abort',
-): Promise<boolean> {
-	if (turnPhase === 'abort') {
-		abortLiveOutboundTurn(session);
-		return true;
-	}
-
-	const batch = processLiveOutboundBatch(session, events);
-	if (batch.action === 'withhold') {
-		sendGateError(serverWs, batch.error);
-		return false;
-	}
-	if (batch.action === 'emit') {
-		sendGateEvents(serverWs, batch.events);
-	}
-
-	if (turnPhase === 'complete') {
-		const finalized = await finalizeLiveOutboundTurn(session);
-		if (finalized.action === 'withhold') {
-			sendGateError(serverWs, finalized.error);
-			return false;
-		}
-		if (finalized.action === 'emit') {
-			sendGateEvents(serverWs, finalized.events);
-		}
-	}
-
-	return true;
-}
-
-/** Handle incoming WebSocket upgrade request and spawn duplex relay pipe. */
-export async function handleLiveRelay(request: Request, env: LiveRelayEnv): Promise<Response> {
-	if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') {
-		return new Response('Expected WebSocket upgrade', { status: 426 });
-	}
-
-	ensureKernelInitialized();
-
-	const apiKey =
+function resolveGeminiApiKey(env: LiveRelayEnv): string | undefined {
+	return (
 		env.GEMINI_API_KEY_FREE_A?.trim() ||
 		env.GEMINI_API_KEY?.trim() ||
 		env.GEMINI_API_KEY_FREE_B?.trim() ||
-		env.GEMINI_API_KEY_FREE_C?.trim();
-
-	if (!apiKey) {
-		return new Response('GEMINI_API_KEY is not configured on server', { status: 500 });
-	}
-
-	const url = new URL(request.url);
-	const profileId = url.searchParams.get('profile') || TH30_PROFILE_ID;
-	const { wireTools, builtins } = await prepareLiveTooling(profileId);
-	const profile = getProfile(profileId);
-	const { completeReq, outboundGate } = buildCompleteRequestForProfile(
-		profileId,
-		wireTools,
-		builtins,
+		env.GEMINI_API_KEY_FREE_C?.trim()
 	);
+}
 
-	// Cloudflare Workers duplex pair for browser ↔ worker relay
-	// @ts-expect-error WebSocketPair is a Cloudflare Workers global
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-call -- WebSocketPair is a Workers runtime global
-	const [clientWs, serverWs] = new WebSocketPair() as unknown as [WebSocket, WebSocket];
-
-	// Connect upstream to Google Gemini Live WebSocket via Cloudflare fetch upgrade
-	const upstreamUrl = buildGeminiLiveWebSocketUrl(apiKey);
-	const httpsUpstreamUrl = upstreamUrl.replace(/^wss:\/\//i, 'https://');
-
-	let upstreamWs: WebSocket;
-	try {
-		const upstreamResp = await fetch(httpsUpstreamUrl, {
-			headers: { Upgrade: 'websocket' },
-		});
-
-		const ws = (upstreamResp as unknown as { webSocket?: WebSocket & { accept(): void } })
-			.webSocket;
-		if (!ws) {
-			return new Response(
-				`Upstream WebSocket upgrade failed with status ${String(upstreamResp.status)}`,
-				{ status: 502 },
-			);
-		}
-		ws.binaryType = 'arraybuffer';
-		ws.accept();
-		upstreamWs = ws;
-	} catch (err) {
-		return new Response(`Failed to connect upstream: ${(err as Error).message}`, { status: 502 });
-	}
-
-	const sendToUpstream = (payload: string) => {
-		try {
-			upstreamWs.send(payload);
-		} catch {
-			/* ignore */
-		}
-	};
-
-	// Send setup frame immediately to upstream
-	const setupMsg = buildGeminiLiveSetupMessage(completeReq);
-	upstreamWs.send(JSON.stringify(setupMsg));
-
-	upstreamWs.addEventListener('message', (event) => {
-		void (async () => {
-			try {
-				const rawText = decodeWebSocketText(event.data);
-				const parsed = parseGeminiLiveMessage(rawText);
-				if (!parsed) return;
-
-				if (parsed.setupComplete) {
-					serverWs.send(JSON.stringify({ type: 'ready', profile: profileId }));
-					return;
-				}
-
-				const events = foldGeminiLiveServerMessage(parsed);
-				const serverContent = parsed.serverContent as { turnComplete?: boolean } | undefined;
-				const interrupted = events.some((ev) => ev.type === 'done' && ev.interrupted === true);
-				const turnComplete = Boolean(serverContent?.turnComplete);
-
-				let turnPhase: 'streaming' | 'complete' | 'abort' = 'streaming';
-				if (interrupted) {
-					turnPhase = 'abort';
-				} else if (turnComplete) {
-					turnPhase = 'complete';
-				}
-
-				const ok = await applyOutboundGate(serverWs, outboundGate, events, turnPhase);
-				if (!ok) {
-					try {
-						upstreamWs.close(1011, 'guardrail withheld');
-					} catch {
-						/* ignore */
-					}
-				}
-			} catch (err) {
-				serverWs.send(
-					JSON.stringify({
-						type: 'error',
-						error: publicError(err),
-					}),
-				);
-			}
-		})();
-	});
-
-	upstreamWs.addEventListener('close', (event) => {
-		try {
-			serverWs.close(event.code || 1000, event.reason || 'Upstream closed');
-		} catch {
-			/* ignore */
-		}
-	});
-
-	upstreamWs.addEventListener('error', () => {
-		try {
-			serverWs.send(
-				JSON.stringify({
-					type: 'error',
-					error: 'Upstream Gemini Live connection error',
-				}),
-			);
-			serverWs.close(1011, 'Upstream error');
-		} catch {
-			/* ignore */
-		}
-	});
-
-	// Client serverWs events
-	(serverWs as unknown as { accept: () => void }).accept();
-
+function pipeBrowserToSession(serverWs: WebSocket, session: LiveSession): void {
 	serverWs.addEventListener('message', (event: MessageEvent) => {
 		try {
 			if (typeof event.data === 'string') {
 				const msg = parseLiveRelayClientMessage(JSON.parse(event.data) as unknown);
 				if (msg?.type === 'audio') {
-					const frame = buildGeminiLiveRealtimeInput({
-						type: 'audio',
-						mimeType: 'audio/pcm;rate=16000',
-						data: msg.data,
-					});
-					sendToUpstream(JSON.stringify(frame));
+					session.sendAudio({ data: msg.data, mimeType: 'audio/pcm;rate=16000' });
 					return;
 				}
-
 				if (msg?.type === 'video') {
-					const frame = buildGeminiLiveRealtimeInput({
-						type: 'video',
-						mimeType: msg.mimeType ?? 'image/jpeg',
+					session.sendVideo({
 						data: msg.data,
+						mimeType: msg.mimeType ?? 'image/jpeg',
 					});
-					sendToUpstream(JSON.stringify(frame));
 					return;
 				}
-
 				if (msg?.type === 'text') {
-					const safeText = prepareLiveInboundText(profile, msg.text);
-					const frame = buildGeminiLiveRealtimeText(safeText);
-					sendToUpstream(JSON.stringify(frame));
+					session.sendText(msg.text);
 					return;
 				}
-
 				if (msg?.type === 'toolResponse') {
-					const frame = buildGeminiLiveToolResponse(msg.id, msg.name, msg.output);
-					sendToUpstream(JSON.stringify(frame));
+					session.sendToolResponse(msg.id, msg.name, msg.output);
 					return;
 				}
-
 				if (msg?.type === 'toolResponses') {
-					const frame = buildGeminiLiveToolResponses(msg.responses);
-					sendToUpstream(JSON.stringify(frame));
+					session.sendToolResponses(msg.responses);
 				}
-			} else if (event.data instanceof ArrayBuffer || event.data instanceof Uint8Array) {
-				// Raw binary PCM 16kHz audio stream from AudioWorklet
-				const base64 = bufferToBase64(event.data);
-				const frame = buildGeminiLiveRealtimeInput({
-					type: 'audio',
+				return;
+			}
+			if (event.data instanceof ArrayBuffer || event.data instanceof Uint8Array) {
+				session.sendAudio({
+					data: bufferToBase64(event.data),
 					mimeType: 'audio/pcm;rate=16000',
-					data: base64,
 				});
-				sendToUpstream(JSON.stringify(frame));
 			}
 		} catch (err) {
 			serverWs.send(
@@ -377,16 +102,168 @@ export async function handleLiveRelay(request: Request, env: LiveRelayEnv): Prom
 			);
 		}
 	});
+}
 
-	serverWs.addEventListener('close', (event: CloseEvent) => {
-		try {
-			if (upstreamWs.readyState === WebSocket.OPEN) {
-				upstreamWs.close(event.code || 1000, event.reason || 'Client disconnected');
+async function pipeSessionToBrowser(
+	serverWs: WebSocket,
+	session: LiveSession,
+	profileId: string,
+): Promise<void> {
+	serverWs.send(JSON.stringify({ type: 'ready', profile: profileId }));
+	try {
+		for await (const event of session.events()) {
+			if (event.type === 'error') {
+				serverWs.send(
+					JSON.stringify({
+						type: 'error',
+						error: event.error ?? 'Live session error',
+					}),
+				);
+				try {
+					serverWs.close(1011, 'session error');
+				} catch {
+					/* ignore */
+				}
+				return;
 			}
+			serverWs.send(JSON.stringify({ type: 'events', events: forClientEvents([event]) }));
+		}
+	} catch (err) {
+		serverWs.send(
+			JSON.stringify({
+				type: 'error',
+				error: publicError(err),
+			}),
+		);
+	} finally {
+		try {
+			serverWs.close(1000, 'session ended');
 		} catch {
 			/* ignore */
 		}
+	}
+}
+
+function openLiveSession(
+	profileId: string,
+	env: LiveRelayEnv,
+	apiKey: string,
+	openWebSocket?: (url: string) => Promise<WebSocket>,
+): Promise<LiveSession> {
+	return runSession(
+		{ profile: profileId },
+		{
+			gemini: {
+				vault: {
+					slotA: apiKey,
+					slotB: env.GEMINI_API_KEY_FREE_B?.trim(),
+					slotC: env.GEMINI_API_KEY_FREE_C?.trim(),
+					paid: env.GEMINI_API_KEY?.trim(),
+				},
+			},
+			...(openWebSocket ? { openWebSocket } : {}),
+		},
+	);
+}
+
+/**
+ * Local Vite / Node entry: browser socket already accepted by the Vite plugin.
+ * Uses `runSession` with the standard WebSocket constructor for upstream Gemini.
+ */
+export async function handleNodeLiveRelay(
+	clientWs: WebSocket,
+	requestUrl: string | URL,
+	env: LiveRelayEnv,
+): Promise<void> {
+	const apiKey = resolveGeminiApiKey(env);
+	if (!apiKey) {
+		clientWs.send(
+			JSON.stringify({
+				type: 'error',
+				error: 'No Gemini API key configured (GEMINI_API_KEY or GEMINI_API_KEY_FREE_A/B/C)',
+			}),
+		);
+		clientWs.close(1011, 'missing api key');
+		return;
+	}
+
+	ensureKernelInitialized();
+
+	const url = typeof requestUrl === 'string' ? new URL(requestUrl, 'http://localhost') : requestUrl;
+	const profileId = url.searchParams.get('profile') || TH30_PROFILE_ID;
+	const profile = getProfile(profileId);
+	if (profile.type !== 'live') {
+		clientWs.send(
+			JSON.stringify({
+				type: 'error',
+				error: `Profile '${profileId}' is not type 'live'`,
+			}),
+		);
+		clientWs.close(1011, 'bad profile');
+		return;
+	}
+
+	let session: LiveSession;
+	try {
+		session = await openLiveSession(profileId, env, apiKey);
+	} catch (err) {
+		try {
+			clientWs.send(JSON.stringify({ type: 'error', error: publicError(err) }));
+			clientWs.close(1011, 'relay failed');
+		} catch {
+			/* ignore */
+		}
+		return;
+	}
+
+	pipeBrowserToSession(clientWs, session);
+	clientWs.addEventListener('close', () => {
+		void session.close('client disconnected');
 	});
+	await pipeSessionToBrowser(clientWs, session, profileId);
+}
+
+/** Handle incoming WebSocket upgrade request and spawn duplex relay pipe. */
+export async function handleLiveRelay(request: Request, env: LiveRelayEnv): Promise<Response> {
+	if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') {
+		return new Response('Expected WebSocket upgrade', { status: 426 });
+	}
+
+	ensureKernelInitialized();
+
+	const apiKey = resolveGeminiApiKey(env);
+	if (!apiKey) {
+		return new Response(
+			'No Gemini API key configured (GEMINI_API_KEY or GEMINI_API_KEY_FREE_A/B/C)',
+			{ status: 500 },
+		);
+	}
+
+	const url = new URL(request.url);
+	const profileId = url.searchParams.get('profile') || TH30_PROFILE_ID;
+	const profile = getProfile(profileId);
+	if (profile.type !== 'live') {
+		return new Response(`Profile '${profileId}' is not type 'live'`, { status: 400 });
+	}
+
+	// Cloudflare Workers duplex pair for browser ↔ worker relay
+	// @ts-expect-error WebSocketPair is a Cloudflare Workers global
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-call -- WebSocketPair is a Workers runtime global
+	const [clientWs, serverWs] = new WebSocketPair() as unknown as [WebSocket, WebSocket];
+	(serverWs as unknown as { accept: () => void }).accept();
+
+	let session: LiveSession;
+	try {
+		session = await openLiveSession(profileId, env, apiKey, openCloudflareUpstreamWebSocket);
+	} catch (err) {
+		return new Response(`Failed to open live session: ${publicError(err)}`, { status: 502 });
+	}
+
+	pipeBrowserToSession(serverWs, session);
+	serverWs.addEventListener('close', () => {
+		void session.close('client disconnected');
+	});
+	void pipeSessionToBrowser(serverWs, session, profileId);
 
 	return new Response(null, {
 		status: 101,

@@ -2,7 +2,6 @@
 import Checkbox from '$lib/components/playground/Checkbox.svelte';
 import Select from '$lib/components/Select.svelte';
 import { PLAYGROUND_TURN_STOP_KINDS, toggleList } from '$lib/playground/compat';
-import { OUTPUT_ROLE_OPTIONS, type OutputRole } from '$lib/playground/outputs';
 import type { OutputsData } from '$lib/playground/types';
 import FacetFieldLabel from './FacetFieldLabel.svelte';
 import type { FacetPatch } from './types';
@@ -10,47 +9,43 @@ import type { FacetPatch } from './types';
 let {
 	data,
 	patch,
-	outputRole,
-	onOutputRoleChange,
-	speechFormatOptions,
 	enforcedOptions,
 	streamModeOptions,
 }: {
 	data: OutputsData;
 	patch: FacetPatch;
-	outputRole: OutputRole;
-	onOutputRoleChange: (role: OutputRole) => void;
-	speechFormatOptions: ReadonlyArray<{ value: string; label: string }>;
 	enforcedOptions: ReadonlyArray<{ value: string; label: string }>;
 	streamModeOptions: ReadonlyArray<{ value: string; label: string }>;
 } = $props();
+
+const OUTPUT_MODE_OPTIONS = [
+	{ value: 'text', label: 'Free text / streaming' },
+	{ value: 'structured', label: 'Structured JSON schema' },
+];
 </script>
 
 <label class="facet-field">
-	<span>Primary output</span>
+	<FacetFieldLabel path="outputs.format" />
 	<Select
-		onchange={(v) => onOutputRoleChange(v as OutputRole)}
-		options={OUTPUT_ROLE_OPTIONS}
-		value={outputRole}
+		onchange={(v) => patch({ mode: v as 'text' | 'structured' })}
+		options={OUTPUT_MODE_OPTIONS}
+		value={data.mode}
 	/>
 </label>
-<p class="facet-hint">
-	Structured JSON, image, and speech are mutually exclusive provider wire formats. Image profiles
-	can optionally include interleaved assistant text via outputs.image.includeText.
-</p>
-{#if outputRole === 'structured'}
+
+{#if data.mode === 'structured'}
 	<label class="facet-field">
-		<span>schema id</span>
+		<FacetFieldLabel path="outputs.structured" />
 		<input
 			class="field"
 			autocomplete="off"
 			oninput={(e) => patch({ schemaId: e.currentTarget.value })}
-			placeholder="my.app.lead.schema"
+			placeholder="my.app.output.schema"
 			value={data.schemaId}
 		>
 	</label>
 	<label class="facet-field">
-		<span>registerStructured.enforced</span>
+		<FacetFieldLabel path="registerStructured.enforced" />
 		<Select
 			onchange={(v) => patch({ schemaEnforced: v as 'responseFormat' | 'prompt' })}
 			options={enforcedOptions}
@@ -58,7 +53,7 @@ let {
 		/>
 	</label>
 	<label class="facet-field">
-		<span>registerStructured.jsonSchema (optional JSON)</span>
+		<FacetFieldLabel path="registerStructured.jsonSchema" />
 		<textarea
 			class="field facet-area"
 			oninput={(e) => patch({ schemaJson: e.currentTarget.value })}
@@ -67,84 +62,15 @@ let {
 			value={data.schemaJson}
 		></textarea>
 	</label>
-	<p class="facet-hint">Profile stores the schema id only. Body goes through registerStructured.</p>
 {/if}
 
-{#if outputRole === 'image'}
-	<label class="facet-field">
-		<FacetFieldLabel path="outputs.image.aspectRatio" text="image.aspectRatio" />
-		<input
-			class="field"
-			autocomplete="off"
-			oninput={(e) => patch({ imageAspectRatio: e.currentTarget.value })}
-			value={data.imageAspectRatio}
-		>
-	</label>
-	<label class="facet-field">
-		<FacetFieldLabel path="outputs.image.size" text="image.size" />
-		<input
-			class="field"
-			autocomplete="off"
-			oninput={(e) => patch({ imageSize: e.currentTarget.value })}
-			value={data.imageSize}
-		>
-	</label>
-	<label class="facet-field">
-		<FacetFieldLabel path="outputs.image.mimeType" text="image.mimeType" />
-		<input
-			class="field"
-			autocomplete="off"
-			oninput={(e) => patch({ imageMimeType: e.currentTarget.value })}
-			value={data.imageMimeType}
-		>
-	</label>
-	<label class="facet-field">
-		<FacetFieldLabel path="outputs.image.maxInputImages" text="image.maxInputImages" />
-		<input
-			class="field"
-			min="0"
-			oninput={(e) => patch({ imageMaxInputImages: Number(e.currentTarget.value) })}
-			type="number"
-			value={data.imageMaxInputImages}
-		>
-	</label>
-	<label class="facet-check text-xs">
-		<Checkbox checked={data.imageIncludeText} onchange={(v) => patch({ imageIncludeText: v })} />
-		<FacetFieldLabel path="outputs.image.includeText" text="image.includeText" />
-	</label>
-	<p class="facet-hint">
-		When enabled, the provider may stream assistant text alongside generated images (Gemini:
-		response_format array with text + image entries).
-	</p>
-{/if}
-
-{#if outputRole === 'speech'}
-	<label class="facet-field">
-		<FacetFieldLabel path="outputs.speech.voice" text="speech.voice" />
-		<input
-			class="field"
-			autocomplete="off"
-			oninput={(e) => patch({ speechVoice: e.currentTarget.value })}
-			value={data.speechVoice}
-		>
-	</label>
-	<label class="facet-field">
-		<FacetFieldLabel path="outputs.speech.format" text="speech.format" />
-		<Select
-			onchange={(v) => patch({ speechFormat: v as 'pcm' | 'mp3' })}
-			options={speechFormatOptions}
-			value={data.speechFormat}
-		/>
-	</label>
-{/if}
-
-<label class="facet-check text-xs">
+<label class="facet-check">
 	<Checkbox checked={data.validationEnabled} onchange={(v) => patch({ validationEnabled: v })} />
 	<FacetFieldLabel path="outputs.validation" />
 </label>
 {#if data.validationEnabled}
 	<label class="facet-field">
-		<FacetFieldLabel path="outputs.validation.maxRetries" text="validation.maxRetries" />
+		<FacetFieldLabel path="outputs.validation.maxRetries" />
 		<input
 			class="field"
 			min="0"
@@ -154,7 +80,7 @@ let {
 		>
 	</label>
 	<label class="facet-field">
-		<FacetFieldLabel path="outputs.validation.repairGuidance" text="validation.repairGuidance" />
+		<FacetFieldLabel path="outputs.validation.repairGuidance" />
 		<textarea
 			class="field facet-area"
 			oninput={(e) => patch({ repairGuidance: e.currentTarget.value })}
@@ -172,60 +98,63 @@ let {
 		value={data.streamMode}
 	/>
 </label>
-<label class="facet-check text-xs">
-	<Checkbox checked={data.streamThoughts} onchange={(v) => patch({ streamThoughts: v })} />
-	<FacetFieldLabel path="outputs.streaming.streamThoughts" text="streaming.streamThoughts" />
-</label>
-<label class="facet-check text-xs">
-	<Checkbox checked={data.gateMedia} onchange={(v) => patch({ gateMedia: v })} />
-	<FacetFieldLabel path="outputs.streaming.gateMedia" text="streaming.gateMedia" />
-</label>
 
-<label class="facet-check text-xs">
+<div class="facet-check-grid">
+	<label class="facet-check">
+		<Checkbox checked={data.streamThoughts} onchange={(v) => patch({ streamThoughts: v })} />
+		<FacetFieldLabel path="outputs.streaming.streamThoughts" />
+	</label>
+</div>
+
+<label class="facet-check">
 	<Checkbox checked={data.resumeEnabled} onchange={(v) => patch({ resumeEnabled: v })} />
-	<FacetFieldLabel path="outputs.resume" />
+	<FacetFieldLabel path="turnResumption" />
 </label>
 {#if data.resumeEnabled}
 	<fieldset class="facet-set">
 		<legend>
-			<FacetFieldLabel path="outputs.resume.allowContinue" text="resume.allowContinue" />
+			<FacetFieldLabel path="turnResumption.allowContinue" />
 		</legend>
-		{#each PLAYGROUND_TURN_STOP_KINDS as opt (opt.value)}
-			<label class="facet-check text-xs">
-				<Checkbox
-					checked={data.allowContinue.includes(opt.value)}
-					onchange={(v) =>
-						patch({
-							allowContinue: toggleList(
-								data.allowContinue,
-								opt.value,
-								v
-							)
-						})}
-				/>
-				<span>{opt.label}</span>
-			</label>
-		{/each}
+		<div class="facet-check-grid">
+			{#each PLAYGROUND_TURN_STOP_KINDS as opt (opt.value)}
+				<label class="facet-check">
+					<Checkbox
+						checked={data.allowContinue.includes(opt.value)}
+						onchange={(v) =>
+							patch({
+								allowContinue: toggleList(
+									data.allowContinue,
+									opt.value,
+									v
+								)
+							})}
+					/>
+					<span>{opt.label}</span>
+				</label>
+			{/each}
+		</div>
 	</fieldset>
 	<fieldset class="facet-set">
 		<legend>
-			<FacetFieldLabel path="outputs.resume.autoContinue" text="resume.autoContinue" />
+			<FacetFieldLabel path="turnResumption.autoContinue" />
 		</legend>
-		{#each PLAYGROUND_TURN_STOP_KINDS as opt (opt.value)}
-			<label class="facet-check text-xs">
-				<Checkbox
-					checked={data.autoContinue.includes(opt.value)}
-					onchange={(v) =>
-						patch({
-							autoContinue: toggleList(
-								data.autoContinue,
-								opt.value,
-								v
-							)
-						})}
-				/>
-				<span>{opt.label}</span>
-			</label>
-		{/each}
+		<div class="facet-check-grid">
+			{#each PLAYGROUND_TURN_STOP_KINDS as opt (opt.value)}
+				<label class="facet-check">
+					<Checkbox
+						checked={data.autoContinue.includes(opt.value)}
+						onchange={(v) =>
+							patch({
+								autoContinue: toggleList(
+									data.autoContinue,
+									opt.value,
+									v
+								)
+							})}
+					/>
+					<span>{opt.label}</span>
+				</label>
+			{/each}
+		</div>
 	</fieldset>
 {/if}

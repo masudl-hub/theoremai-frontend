@@ -1,5 +1,12 @@
 <script lang="ts">
 import {
+	IconBook2,
+	IconCopy,
+	IconFilePlus,
+	IconLoader2,
+	IconPlayerPlay,
+} from '@tabler/icons-svelte';
+import {
 	Background,
 	BackgroundVariant,
 	Controls,
@@ -9,20 +16,34 @@ import {
 	type Viewport,
 } from '@xyflow/svelte';
 import { onMount, setContext } from 'svelte';
+import { resolve } from '$app/paths';
 import '@xyflow/svelte/dist/style.css';
+import '$lib/components/playground/playground-graph.css';
 
+import AsciiCardSegments from '$lib/ascii/AsciiCardSegments.svelte';
+import { parseAsciiCardSegments, renderAsciiCard } from '$lib/ascii/tip-card';
+import AsciiHover from '$lib/components/AsciiHover.svelte';
 import FacetNode from '$lib/components/playground/FacetNode.svelte';
 import FacetPanel from '$lib/components/playground/FacetPanel.svelte';
 import PlaygroundFlowFit from '$lib/components/playground/PlaygroundFlowFit.svelte';
+import { savePlaygroundRunPayload } from '$lib/interface/run-payload';
 import { compilePlayground } from '$lib/playground/compile';
 import { PLAYGROUND_CTX, type PlaygroundCtx, type PlaygroundHub } from '$lib/playground/context';
-import { createBlankGraph, createExampleGraph } from '$lib/playground/example';
+import {
+	createBlankGraph,
+	createExampleGraph,
+	createInitialGraph,
+	syncGraphForProfile,
+} from '$lib/playground/example';
 import { appendChildSpecNode } from '$lib/playground/graph-mutations';
 import { PLAYGROUND_COL_PX, PLAYGROUND_ORIGIN } from '$lib/playground/layout';
 import {
+	type CompileIssue,
 	defaultModelSpec,
 	defaultToolSpec,
+	FACET_LABEL,
 	type FacetData,
+	type IdentityData,
 	type ModelsData,
 	type PlaygroundEdge,
 	type PlaygroundNode,
@@ -32,16 +53,18 @@ const nodeTypes: NodeTypes = {
 	facet: FacetNode,
 };
 
-const starter = createExampleGraph();
+const starter = createInitialGraph();
 let nodes = $state<PlaygroundNode[]>(starter.nodes);
 let edges = $state<PlaygroundEdge[]>(starter.edges);
 let viewport = $state.raw<Viewport>({ x: 0, y: 0, zoom: 1 });
 
 let running = $state(false);
 let banner = $state('');
+let compileIssues = $state<CompileIssue[]>([]);
+let compileLogOpen = $state(false);
 let canvasReady = $state(false);
 let graphKey = $state(0);
-const ui = $state({ panelNodeId: null as string | null });
+const ui = $state<{ panelNodeId: string | null }>({ panelNodeId: 'identity' });
 
 const panelOpen = $derived(ui.panelNodeId !== null);
 const openNode = $derived(
@@ -137,9 +160,32 @@ function togglePanel(id: string, open: boolean) {
 }
 
 function patchNode(id: string, partial: Partial<PlaygroundNode['data']>) {
+	const prevNode = nodes.find((n) => n.id === id);
 	nodes = nodes.map((n) =>
 		n.id === id ? { ...n, data: { ...n.data, ...partial } as FacetData } : n,
 	);
+	if (id === 'identity') {
+		const updatedIdentity = nodes.find((n) => n.id === 'identity')?.data as
+			| IdentityData
+			| undefined;
+		if (updatedIdentity) {
+			const prevIdentity = prevNode?.data as IdentityData | undefined;
+			const typeChanged = prevIdentity?.profileType !== updatedIdentity.profileType;
+			const facetsChanged =
+				prevIdentity?.includeTools !== updatedIdentity.includeTools ||
+				prevIdentity?.includeInputs !== updatedIdentity.includeInputs ||
+				prevIdentity?.includeOutputs !== updatedIdentity.includeOutputs ||
+				prevIdentity?.includeGuardrails !== updatedIdentity.includeGuardrails;
+
+			if (typeChanged || facetsChanged) {
+				const synced = syncGraphForProfile(nodes, edges, updatedIdentity);
+				nodes = synced.nodes;
+				edges = synced.edges;
+				syncExpanded(ui.panelNodeId);
+				graphKey += 1;
+			}
+		}
+	}
 }
 
 setContext<PlaygroundCtx>(PLAYGROUND_CTX, {
@@ -157,12 +203,24 @@ onMount(() => {
 	canvasReady = true;
 });
 
+function clearBanner() {
+	banner = '';
+	compileIssues = [];
+	compileLogOpen = false;
+}
+
+function setCompileFailure(message: string, issues: CompileIssue[]) {
+	banner = message;
+	compileIssues = issues;
+	compileLogOpen = false;
+}
+
 function resetExample() {
 	const next = createExampleGraph();
 	nodes = next.nodes;
 	edges = next.edges;
-	banner = '';
-	ui.panelNodeId = null;
+	clearBanner();
+	openPanel('identity');
 	graphKey += 1;
 }
 
@@ -170,29 +228,123 @@ function blankCanvas() {
 	const next = createBlankGraph();
 	nodes = next.nodes;
 	edges = next.edges;
-	banner = '';
-	ui.panelNodeId = null;
+	clearBanner();
+	openPanel('identity');
 	graphKey += 1;
 }
 
 async function runCompile() {
 	if (running) return;
 	running = true;
-	banner = '';
+	clearBanner();
 	await new Promise((r) => setTimeout(r, 120));
 	const result = compilePlayground(nodes);
-	banner = result.ok ? 'Agent ready · defineProfile compiled' : result.message;
+	if (!result.ok) {
+		setCompileFailure(result.message, result.issues);
+		running = false;
+		return;
+	}
+	savePlaygroundRunPayload({
+		agentId: result.agentId,
+		profile: result.profile,
+		customTools: result.customTools,
+		structured: result.structured,
+	});
 	running = false;
+	window.open(`${resolve('/playground/run')}`, '_blank', 'noopener,noreferrer');
 }
 
 async function copySource() {
 	const result = compilePlayground(nodes);
 	if (!result.ok) {
-		banner = result.message;
+		setCompileFailure(result.message, result.issues);
 		return;
 	}
 	await navigator.clipboard.writeText(result.source);
 	banner = 'Copied defineProfile';
+	compileIssues = [];
+	compileLogOpen = false;
+}
+
+function toggleCompileLog() {
+	compileLogOpen = !compileLogOpen;
+}
+
+const compileLogSegments = $derived.by(() => {
+	if (!compileIssues.length) return [];
+	const art = renderAsciiCard({
+		title: 'COMPILE',
+		body: 'Fix the issues below, then run again.',
+		specs: compileIssues.map((issue) => ({
+			label: FACET_LABEL[issue.facet],
+			value: issue.message,
+		})),
+		inner: 48,
+		actions: [{ id: 'close', label: 'close' }],
+	});
+	return parseAsciiCardSegments(art);
+});
+
+function onCompileLogAction(id: string) {
+	if (id === 'close') {
+		compileLogOpen = false;
+		return;
+	}
+	openPanel(id);
+	compileLogOpen = false;
+}
+
+const CHROME_TIPS: Record<string, { title: string; body: string }> = {
+	example: {
+		title: 'EXAMPLE',
+		body: 'Load the demo sales-agent graph.',
+	},
+	new: {
+		title: 'NEW',
+		body: 'Blank canvas — identity hub only.',
+	},
+	copy: {
+		title: 'COPY',
+		body: 'Copy defineProfile source to the clipboard.',
+	},
+	run: {
+		title: 'RUN',
+		body: 'Compile the graph and open the run shell.',
+	},
+};
+
+const FLOW_TIPS: Record<string, { title: string; body: string }> = {
+	'svelte-flow__controls-zoomin': {
+		title: 'ZOOM IN',
+		body: 'Magnify the canvas.',
+	},
+	'svelte-flow__controls-zoomout': {
+		title: 'ZOOM OUT',
+		body: 'Shrink the canvas view.',
+	},
+	'svelte-flow__controls-fitview': {
+		title: 'FIT',
+		body: 'Center and fit all nodes in view.',
+	},
+};
+
+function renderTip(tip: { title: string; body: string }): string {
+	return renderAsciiCard({ title: tip.title, body: tip.body, inner: 40 });
+}
+
+function playgroundTip(el: HTMLElement): string | null {
+	const chromeKey = el.getAttribute('data-chrome-tip');
+	if (chromeKey) {
+		const tip = CHROME_TIPS[chromeKey];
+		if (tip) return renderTip(tip);
+	}
+	for (const cls of Object.keys(FLOW_TIPS)) {
+		if (el.classList.contains(cls)) {
+			const tip = FLOW_TIPS[cls];
+			if (tip) return renderTip(tip);
+		}
+	}
+	return null;
 }
 </script>
 
@@ -204,65 +356,120 @@ async function copySource() {
 		<div class="playground-shell" class:playground-shell--panel-open={panelOpen}>
 			<div class="playground-workspace">
 				<div class="playground-flow-pane">
-					<SvelteFlow
-						class="playground-flow"
-						colorMode="light"
-						edgesFocusable={false}
-						elementsSelectable={false}
-						elevateNodesOnSelect={false}
-						maxZoom={1.75}
-						minZoom={0.5}
-						{nodeTypes}
-						nodesDraggable
-						bind:nodes
-						bind:edges
-						bind:viewport
-						nodesConnectable={false}
-						nodesFocusable={false}
-						panOnScroll={false}
-						zoomOnScroll={false}
-						zoomOnPinch
-						preventScrolling={false}
-						proOptions={{ hideAttribution: true }}
+					<AsciiHover
+						class="playground-flow-hover"
+						onResolveTip={playgroundTip}
+						selector="[data-chrome-tip], .svelte-flow__controls-button"
 					>
-						<PlaygroundFlowFit {graphKey} {panelOpen} />
-						<Background
-							bgColor="var(--color-paper)"
-							gap={56}
-							lineWidth={1}
-							patternColor="rgba(0,0,0,0.06)"
-							variant={BackgroundVariant.Lines}
-						/>
-						<Controls position="bottom-left" showLock={false} />
+						<SvelteFlow
+							class="playground-flow"
+							colorMode="light"
+							edgesFocusable={false}
+							elementsSelectable={false}
+							elevateNodesOnSelect={false}
+							maxZoom={1.75}
+							minZoom={0.5}
+							{nodeTypes}
+							nodesDraggable
+							bind:nodes
+							bind:edges
+							bind:viewport
+							nodesConnectable={false}
+							nodesFocusable={false}
+							panOnScroll={false}
+							zoomOnScroll={false}
+							zoomOnPinch
+							preventScrolling={false}
+							proOptions={{ hideAttribution: true }}
+						>
+							<PlaygroundFlowFit {graphKey} {panelOpen} />
+							<Background
+								bgColor="var(--color-paper)"
+								gap={56}
+								lineWidth={1}
+								patternColor="rgba(0,0,0,0.06)"
+								variant={BackgroundVariant.Lines}
+							/>
+							<Controls position="bottom-left" showLock={false} />
 
-						<Panel class="playground-chrome" position="top-left">
-							<div class="chrome">
-								<span class="chrome-title text-xs">Playground</span>
-								<button class="btn btn-ghost chrome-btn" onclick={resetExample} type="button">
-									Example
-								</button>
-								<button class="btn btn-ghost chrome-btn" onclick={blankCanvas} type="button">
-									New
-								</button>
-								<button class="btn btn-ghost chrome-btn" onclick={copySource} type="button">
-									Export
-								</button>
-								<button
-									class="btn btn-solid chrome-btn"
-									disabled={running}
-									onclick={runCompile}
-									type="button"
-								>
-									{running ? '…' : 'Run'}
-								</button>
-								{#if banner}
-									<span class="chrome-banner" class:chrome-ok={banner.startsWith('Agent ready')}
-										>{banner}</span
+							<Panel class="playground-chrome" position="top-left">
+								<div class="chrome">
+									<span class="chrome-title">Theorum Builder</span>
+									<button
+										class="chrome-icon-btn"
+										data-chrome-tip="example"
+										aria-label="Load example"
+										onclick={resetExample}
+										type="button"
 									>
-								{/if}
-							</div>
-						</Panel>
-					</SvelteFlow>
+										<IconBook2 size={18} stroke={1.75} aria-hidden="true" />
+									</button>
+									<button
+										class="chrome-icon-btn"
+										data-chrome-tip="new"
+										aria-label="New canvas"
+										onclick={blankCanvas}
+										type="button"
+									>
+										<IconFilePlus size={18} stroke={1.75} aria-hidden="true" />
+									</button>
+									<button
+										class="chrome-icon-btn"
+										data-chrome-tip="copy"
+										aria-label="Copy source"
+										onclick={copySource}
+										type="button"
+									>
+										<IconCopy size={18} stroke={1.75} aria-hidden="true" />
+									</button>
+									<button
+										class="chrome-icon-btn"
+										data-chrome-tip="run"
+										aria-label="Run compile"
+										disabled={running}
+										onclick={runCompile}
+										type="button"
+									>
+										{#if running}
+											<span class="chrome-icon-spin" aria-hidden="true">
+												<IconLoader2 size={18} stroke={1.75} />
+											</span>
+										{:else}
+											<IconPlayerPlay size={18} stroke={1.75} aria-hidden="true" />
+										{/if}
+									</button>
+									{#if banner}
+										{#if compileIssues.length}
+											<div class="chrome-banner-wrap">
+												<button
+													type="button"
+													class="chrome-banner"
+													aria-expanded={compileLogOpen}
+													aria-controls="playground-compile-log"
+													onclick={toggleCompileLog}
+												>
+													{banner}
+												</button>
+												{#if compileLogOpen}
+													<pre
+														id="playground-compile-log"
+														class="ascii ascii-card-surface chrome-compile-card text-xs font-bold"
+													><AsciiCardSegments
+															segments={compileLogSegments}
+															onAction={onCompileLogAction}
+														/></pre>
+												{/if}
+											</div>
+										{:else}
+											<span class="chrome-banner" class:chrome-ok={banner.startsWith('Agent ready')}
+												>{banner}</span
+											>
+										{/if}
+									{/if}
+								</div>
+							</Panel>
+						</SvelteFlow>
+					</AsciiHover>
 				</div>
 
 				<aside class="playground-panel-pane" aria-hidden={!panelOpen}>
@@ -275,11 +482,7 @@ async function copySource() {
 			</div>
 		</div>
 	{:else}
-		<div
-			class="flex h-full items-center justify-center text-xs font-bold tracking-widest uppercase text-mute"
-		>
-			Loading canvas…
-		</div>
+		<div class="playground-loading">Loading canvas…</div>
 	{/if}
 </section>
 
@@ -313,6 +516,12 @@ async function copySource() {
 	width: 100%;
 }
 
+.playground-flow-pane :global(.playground-flow-hover) {
+	display: block;
+	height: 100%;
+	width: 100%;
+}
+
 .playground-panel-pane {
 	width: 0;
 }
@@ -327,108 +536,8 @@ async function copySource() {
 
 .playground-panel-pane {
 	box-sizing: border-box;
-	padding: 0.75rem;
+	padding: var(--pg-space-3);
 	overflow: hidden;
 	background: var(--color-paper);
-}
-
-.playground-shell :global(.playground-flow) {
-	width: 100%;
-	height: 100%;
-}
-
-.playground-shell :global(.playground-flow) {
-	--xy-node-border-radius: 0;
-	--xy-node-boxshadow-default: none;
-	--xy-node-boxshadow-selected: none;
-	--xy-edge-stroke: #000;
-	--xy-edge-stroke-width: 1.25;
-	--xy-connectionline-stroke: #000;
-	background: var(--color-paper);
-}
-
-.playground-shell :global(.svelte-flow__attribution) {
-	display: none;
-}
-
-.playground-shell :global(.svelte-flow__node) {
-	padding: 0;
-	border: none;
-	background: transparent;
-	box-shadow: none;
-	outline: none;
-}
-
-.playground-shell :global(.svelte-flow__node:focus),
-.playground-shell :global(.svelte-flow__node:focus-visible),
-.playground-shell :global(.svelte-flow__node.selected) {
-	outline: none;
-	box-shadow: none;
-}
-
-.playground-shell :global(.svelte-flow__controls) {
-	border: 2px solid #000;
-	border-radius: 0;
-	box-shadow: none;
-	overflow: hidden;
-	margin: 0.75rem;
-}
-
-.playground-shell :global(.svelte-flow__controls-button) {
-	border-bottom: 1px solid #000;
-	background: transparent;
-	width: 1.6rem;
-	height: 1.6rem;
-}
-
-.playground-shell :global(.svelte-flow__controls-button:hover) {
-	background: rgba(0, 0, 0, 0.06);
-	color: var(--color-ink);
-}
-
-.playground-shell :global(.playground-chrome) {
-	margin: 0.75rem;
-}
-
-.chrome {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 0.35rem 0.5rem;
-	font-family: var(--font-mono);
-}
-
-.chrome-title {
-	margin-right: 0.35rem;
-	font-weight: 800;
-	letter-spacing: 0.18em;
-	text-transform: uppercase;
-}
-
-.chrome-btn {
-	padding: 0.35rem 0.6rem;
-	font-size: 0.72rem;
-}
-
-.chrome-btn.btn-solid {
-	background: transparent;
-	color: var(--color-ink);
-}
-
-.chrome-btn.btn-solid:hover {
-	background: rgba(0, 0, 0, 0.06);
-}
-
-.chrome-banner {
-	margin-left: 0.35rem;
-	font-size: 0.72rem;
-	font-weight: 700;
-	letter-spacing: 0.04em;
-	color: var(--color-mute);
-}
-
-.chrome-ok {
-	color: var(--color-ink);
-	font-weight: 800;
 }
 </style>

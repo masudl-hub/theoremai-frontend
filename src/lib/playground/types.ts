@@ -1,7 +1,16 @@
 import type { Edge, Node } from '@xyflow/svelte';
 import type {
+	ProfileDefinition,
+	ProfileImageSpec,
+	ProfileLiveSpec,
+	ProfileSpeechSpec,
+	ProfileType,
+} from 'theorum';
+import type {
 	EgressOnBlock,
-	GeminiFreeBucket,
+	LiveActivityHandling,
+	LiveSpeechSensitivity,
+	OverflowKeySlot,
 	Protocol,
 	Provider,
 	SchemaEnforcement,
@@ -10,8 +19,11 @@ import type {
 	SummaryMode,
 	ThinkingLevel,
 	ToolLoadTier,
+	TurnStopKind,
 } from 'theorum/schema';
 import { DEFAULT_TOOL_INPUT_SCHEMA, DEFAULT_TOOL_OUTPUT_SCHEMA } from './tool-schema';
+
+export type { ProfileType };
 
 /**
  * Canvas node kinds.
@@ -25,15 +37,23 @@ export type FacetKind =
 	| 'toolSpec'
 	| 'inputs'
 	| 'outputs'
-	| 'guardrails';
+	| 'guardrails'
+	| 'image'
+	| 'speech'
+	| 'live';
 
 export type IdentityData = {
 	kind: 'identity';
 	expanded: boolean;
 	agentId: string;
+	profileType: ProfileType | '';
 	handle: string;
 	system: string;
 	chat: boolean;
+	includeTools?: boolean;
+	includeInputs?: boolean;
+	includeOutputs?: boolean;
+	includeGuardrails?: boolean;
 };
 
 /** Top-level `profile.model` — protocol/provider/allow/select/thinking/maxSteps. */
@@ -46,7 +66,7 @@ export type ModelsData = {
 	maxSteps: number;
 	/** `model.controls` — only ControlId `'thinking'` today */
 	thinkingControl: boolean;
-	key: GeminiFreeBucket | '';
+	key: OverflowKeySlot | '';
 };
 
 /** One entry in `profile.model.config[id]` (+ allow/select). */
@@ -122,7 +142,6 @@ export type OutputsData = {
 	schemaJson: string;
 	streamMode: StreamMode;
 	streamThoughts: boolean;
-	gateMedia: boolean;
 	validationEnabled: boolean;
 	maxRetries: number;
 	repairGuidance: string;
@@ -137,8 +156,8 @@ export type OutputsData = {
 	speechVoice: string;
 	speechFormat: SpeechAudioFormat;
 	resumeEnabled: boolean;
-	allowContinue: string[];
-	autoContinue: string[];
+	allowContinue: TurnStopKind[];
+	autoContinue: TurnStopKind[];
 };
 
 export type GuardrailsData = {
@@ -154,6 +173,52 @@ export type GuardrailsData = {
 	egressMaxRetries: number;
 };
 
+export type ImageData = {
+	kind: 'image';
+	expanded: boolean;
+	aspectRatio: NonNullable<ProfileImageSpec['aspectRatio']>;
+	size: NonNullable<ProfileImageSpec['size']>;
+	mimeType: NonNullable<ProfileImageSpec['mimeType']>;
+	maxInputImages: NonNullable<ProfileImageSpec['maxInputImages']>;
+	includeText: NonNullable<ProfileImageSpec['includeText']>;
+};
+
+export type SpeechData = {
+	kind: 'speech';
+	expanded: boolean;
+	voice: NonNullable<ProfileSpeechSpec['voice']>;
+	format: NonNullable<ProfileSpeechSpec['format']>;
+};
+
+export type LiveData = {
+	kind: 'live';
+	expanded: boolean;
+	/** Realtime mic ingress (`live.ingress.audio`). */
+	ingressAudio: boolean;
+	/** Webcam JPEG frame ingress (`live.ingress.video`). */
+	ingressVideo: boolean;
+	/** Typed text ingress (`live.ingress.text`). */
+	ingressText: boolean;
+	voice: NonNullable<ProfileLiveSpec['voice']>;
+	sessionResumption: NonNullable<ProfileLiveSpec['sessionResumption']>;
+	/** When true, wire `proactivity.proactiveAudio`. When false, omit (provider default). */
+	proactiveAudio: boolean;
+	contextCompression: '' | NonNullable<ProfileLiveSpec['contextCompression']>;
+	transcriptionInput: boolean;
+	transcriptionOutput: boolean;
+	/**
+	 * When false, omit `live.vad` entirely (provider defaults).
+	 * When true, only non-empty VAD fields are compiled onto the profile.
+	 */
+	vadEnabled: boolean;
+	vadActivityHandling: '' | LiveActivityHandling;
+	vadStartSensitivity: '' | LiveSpeechSensitivity;
+	vadEndSensitivity: '' | LiveSpeechSensitivity;
+	/** Empty string = omit; otherwise milliseconds. */
+	vadPrefixPaddingMs: number | '';
+	vadSilenceDurationMs: number | '';
+};
+
 export type FacetData =
 	| IdentityData
 	| ModelsData
@@ -162,7 +227,10 @@ export type FacetData =
 	| ToolSpecData
 	| InputsData
 	| OutputsData
-	| GuardrailsData;
+	| GuardrailsData
+	| ImageData
+	| SpeechData
+	| LiveData;
 
 export type PlaygroundNode = Node<FacetData, 'facet'>;
 export type PlaygroundEdge = Edge;
@@ -199,7 +267,7 @@ export type CompileResult =
 	| {
 			ok: true;
 			agentId: string;
-			profile: Record<string, unknown>;
+			profile: ProfileDefinition;
 			source: string;
 			message: string;
 			structured?: StructuredRegistration;
@@ -212,7 +280,7 @@ export type CompileResult =
 	  };
 
 export const FACET_LABEL: Record<FacetKind, string> = {
-	identity: 'Describe agent',
+	identity: 'Profile',
 	models: 'Models',
 	modelSpec: 'Model',
 	tools: 'Tools',
@@ -220,9 +288,58 @@ export const FACET_LABEL: Record<FacetKind, string> = {
 	inputs: 'Inputs',
 	outputs: 'Outputs',
 	guardrails: 'Guardrails',
+	image: 'Image',
+	speech: 'Speech',
+	live: 'Live',
 };
 
 export const DRAG_HANDLE = '.facet-head';
+
+export function defaultImageSpec(partial?: Partial<ImageData>): ImageData {
+	return {
+		kind: 'image',
+		expanded: false,
+		aspectRatio: '',
+		size: '',
+		mimeType: 'image/png',
+		maxInputImages: 3,
+		includeText: false,
+		...partial,
+	};
+}
+
+export function defaultSpeechSpec(partial?: Partial<SpeechData>): SpeechData {
+	return {
+		kind: 'speech',
+		expanded: false,
+		voice: '',
+		format: 'pcm',
+		...partial,
+	};
+}
+
+export function defaultLiveSpec(partial?: Partial<LiveData>): LiveData {
+	return {
+		kind: 'live',
+		expanded: false,
+		ingressAudio: true,
+		ingressVideo: false,
+		ingressText: true,
+		voice: '',
+		sessionResumption: false,
+		proactiveAudio: false,
+		contextCompression: '',
+		transcriptionInput: false,
+		transcriptionOutput: false,
+		vadEnabled: false,
+		vadActivityHandling: '',
+		vadStartSensitivity: '',
+		vadEndSensitivity: '',
+		vadPrefixPaddingMs: '',
+		vadSilenceDurationMs: '',
+		...partial,
+	};
+}
 
 export function defaultModelSpec(partial?: Partial<ModelSpecData>): ModelSpecData {
 	return {

@@ -43,6 +43,11 @@ let activeSelectedLines: HTMLElement[] = [];
 let navFrameActive = $state(false);
 let navFrameTimer: ReturnType<typeof setTimeout> | null = null;
 
+/** Live ASR captions — current turn only (fills mid-turn). */
+let liveCaptionUser = $state('');
+let liveCaptionAgent = $state('');
+let liveCaptionVisible = $derived(liveCaptionUser.length > 0 || liveCaptionAgent.length > 0);
+
 const caption = $derived.by((): Th30Caption => {
 	if (sessionLive) return 'live';
 	if (permissionDenied) return 'denied';
@@ -142,7 +147,21 @@ function initClient() {
 				toolBusy = false;
 				cloudState = 'idle';
 				connectPhase = null;
+				liveCaptionUser = '';
+				liveCaptionAgent = '';
 			}
+		},
+		onTranscript: (text, isUser, meta) => {
+			if (meta?.interim) {
+				if (isUser) liveCaptionUser = text;
+				else liveCaptionAgent = text;
+				return;
+			}
+			if (isUser) liveCaptionUser += text;
+			else liveCaptionAgent += text;
+		},
+		onSessionClosing: () => {
+			showActionLabel('Session ending soon');
 		},
 		onError: (err) => {
 			permissionDenied = /permission denied/i.test(err);
@@ -268,6 +287,17 @@ onDestroy(() => {
 
 <Th30Overlays {statusLineMode} {navFrameActive} {showBye} {activeActionLabel} />
 
+{#if liveCaptionVisible}
+	<div class="th30-live-captions" aria-live="polite">
+		{#if liveCaptionUser}
+			<p class="th30-live-captions__line th30-live-captions__line--user">{liveCaptionUser}</p>
+		{/if}
+		{#if liveCaptionAgent}
+			<p class="th30-live-captions__line th30-live-captions__line--agent">{liveCaptionAgent}</p>
+		{/if}
+	</div>
+{/if}
+
 <div id="th30-dock" class="th30-dock">
 	<Th30Cloud
 		mode={cloudState}
@@ -293,10 +323,45 @@ onDestroy(() => {
 	z-index: 60;
 }
 
+.th30-live-captions {
+	position: fixed;
+	left: 16px;
+	right: 16px;
+	bottom: 24px;
+	z-index: 55;
+	max-width: 36rem;
+	margin: 0 auto;
+	pointer-events: none;
+}
+
+.th30-live-captions__line {
+	margin: 0 0 0.35rem;
+	padding: 0.5rem 0.75rem;
+	font-size: 0.875rem;
+	line-height: 1.35;
+	background: color-mix(in srgb, canvas 88%, transparent);
+	box-shadow: 0 1px 2px color-mix(in srgb, CanvasText 12%, transparent);
+}
+
+.th30-live-captions__line--user {
+	opacity: 0.85;
+}
+
+.th30-live-captions__line--agent {
+	font-weight: 500;
+}
+
 @media (min-width: 768px) {
 	.th30-dock {
 		top: 24px;
 		right: 24px;
+	}
+
+	.th30-live-captions {
+		left: 24px;
+		right: auto;
+		bottom: 32px;
+		width: min(36rem, calc(100vw - 12rem));
 	}
 }
 </style>

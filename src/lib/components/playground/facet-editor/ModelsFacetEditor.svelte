@@ -18,6 +18,7 @@ let {
 	protocolOptions,
 	thinkingOptions,
 	keyOptions,
+	isLive = false,
 }: {
 	data: ModelsData;
 	patch: FacetPatch;
@@ -28,6 +29,7 @@ let {
 	protocolOptions: ReadonlyArray<{ value: string; label: string }>;
 	thinkingOptions: ReadonlyArray<{ value: string; label: string }>;
 	keyOptions: ReadonlyArray<{ value: string; label: string }>;
+	isLive?: boolean;
 } = $props();
 </script>
 
@@ -47,7 +49,6 @@ let {
 		value={data.provider}
 	/>
 </label>
-<p class="facet-hint">Child nodes fill model.allow / model.config / model.select.</p>
 <button class="btn btn-ghost facet-action" onclick={() => playground.addModelSpec()} type="button">
 	[ + Model ]
 </button>
@@ -59,20 +60,22 @@ let {
 		value={data.thinking}
 	/>
 </label>
-<label class="facet-check text-xs">
-	<Checkbox checked={data.thinkingControl} onchange={(v) => patch({ thinkingControl: v })} />
-	<FacetFieldLabel path="model.controls" />
-</label>
-<label class="facet-field">
-	<FacetFieldLabel path="model.maxSteps" />
-	<input
-		class="field"
-		min="1"
-		oninput={(e) => patch({ maxSteps: Number(e.currentTarget.value) })}
-		type="number"
-		value={data.maxSteps}
-	>
-</label>
+{#if !isLive}
+	<label class="facet-check">
+		<Checkbox checked={data.thinkingControl} onchange={(v) => patch({ thinkingControl: v })} />
+		<FacetFieldLabel path="model.controls" />
+	</label>
+	<label class="facet-field">
+		<FacetFieldLabel path="model.maxSteps" />
+		<input
+			class="field"
+			min="1"
+			oninput={(e) => patch({ maxSteps: Number(e.currentTarget.value) })}
+			type="number"
+			value={data.maxSteps}
+		>
+	</label>
+{/if}
 <label class="facet-field">
 	<FacetFieldLabel path="model.key" />
 	<Select

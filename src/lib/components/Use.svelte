@@ -196,7 +196,6 @@ const outputsBlock = $derived.by(() => {
 
 	lines.push(`    streaming: {
       streamThoughts: true,
-      gateMedia: true,
     },
     resume: {
       allowContinue: ["length", "stream_incomplete", "provider_error"],

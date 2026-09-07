@@ -2,8 +2,7 @@
 import { Handle, type NodeProps, Position } from '@xyflow/svelte';
 import { getContext } from 'svelte';
 import { PLAYGROUND_CTX, type PlaygroundCtx } from '$lib/playground/context';
-import { facetTitle } from '$lib/playground/facet-ui';
-import { outputRoleFromData, outputRoleLabel } from '$lib/playground/outputs';
+import { facetChips, facetTitle } from '$lib/playground/facet-ui';
 import type { FacetKind, PlaygroundNode } from '$lib/playground/types';
 
 let { id, data }: NodeProps<PlaygroundNode> = $props();
@@ -12,8 +11,9 @@ const playground = getContext<PlaygroundCtx>(PLAYGROUND_CTX);
 
 const kind = $derived(data.kind as FacetKind);
 const isHub = $derived(kind === 'identity');
-const hasSource = $derived(isHub || kind === 'models' || kind === 'tools');
-const hasTarget = $derived(!isHub);
+const isBranchHub = $derived(kind === 'models' || kind === 'tools');
+const isBranchLeaf = $derived(kind === 'modelSpec' || kind === 'toolSpec');
+const hasSpineTarget = $derived(!isHub && !isBranchLeaf);
 const isActive = $derived(playground.ui.panelNodeId === id);
 
 const title = $derived(facetTitle(data));
@@ -27,6 +27,8 @@ const toolChildren = $derived(
 				.filter(Boolean)
 		: [],
 );
+
+const chips = $derived(facetChips(data, toolChildren));
 
 function setExpanded(opening: boolean) {
 	playground.togglePanel(id, opening);
@@ -51,9 +53,22 @@ function onHeadClick(e: MouseEvent) {
 }
 </script>
 
-<div class="facet" class:facet-hub={isHub}>
-	{#if hasTarget}
-		<Handle id="in" class="facet-handle" position={Position.Top} type="target" />
+<div class="facet" class:facet-hub={isHub} class:facet-active={isActive}>
+	{#if hasSpineTarget}
+		<Handle
+			id="in"
+			class="facet-handle facet-handle--spine"
+			position={Position.Top}
+			type="target"
+		/>
+	{/if}
+	{#if isBranchLeaf}
+		<Handle
+			id="in-left"
+			class="facet-handle facet-handle--branch"
+			position={Position.Left}
+			type="target"
+		/>
 	{/if}
 
 	<div
@@ -83,136 +98,30 @@ function onHeadClick(e: MouseEvent) {
 		</button>
 	</div>
 
-	<button class="facet-summary nodrag" onclick={toggle} type="button">
-		{#if data.kind === 'identity'}
-			{data.handle || '—'}
-			· {data.system.slice(0, 40)}{data.system.length > 40 ? '…' : ''}
-		{:else if data.kind === 'models'}
-			{data.provider}/{data.protocol}
-			· maxSteps={data.maxSteps}
-		{:else if data.kind === 'modelSpec'}
-			{data.apiId || '—'}
-			· temp={data.temperature}
-			{#if data.builtInTools.trim()}
-				· builtins[{data.builtInTools}]
-			{/if}
-		{:else if data.kind === 'tools'}
-			{#if toolChildren.length}
-				{toolChildren.join(', ')}
-			{:else}
-				[+ Tool]
-			{/if}
-		{:else if data.kind === 'toolSpec'}
-			{data.toolType}
-			· {data.loadTier}
-		{:else if data.kind === 'inputs'}
-			text={String(data.text)}
-			{#if data.attachmentsAccept.length}
-				· attach[{data.attachmentsAccept.length}]
-			{/if}
-			{#if data.voiceAccept.length}
-				· voice[{data.voiceAccept.length}]
-			{/if}
-		{:else if data.kind === 'outputs'}
-			{const role = outputRoleFromData(data)}
-			{outputRoleLabel(role)}
-			{#if role === 'structured' && data.schemaId.trim()}
-				· {data.schemaId.trim()}
-			{/if}
-			{#if data.resumeEnabled}
-				· resume
-			{/if}
-		{:else if data.kind === 'guardrails'}
-			canary={String(data.canary)}
-			· sanitize={String(data.sanitizeInput)}
-			· egress={data.egressMode}
-		{/if}
+	<button class="facet-body nodrag" onclick={toggle} type="button">
+		<div class="facet-chips">
+			{#each chips as chip, idx (chip + String(idx))}
+				<span class="facet-chip">{chip}</span>
+			{/each}
+		</div>
 	</button>
 
-	{#if hasSource}
-		<Handle id="out" class="facet-handle" position={Position.Bottom} type="source" />
+	{#if isHub || isBranchHub}
+		{#if isHub}
+			<Handle
+				id="out"
+				class="facet-handle facet-handle--spine"
+				position={Position.Bottom}
+				type="source"
+			/>
+		{/if}
+		{#if isBranchHub}
+			<Handle
+				id="branch"
+				class="facet-handle facet-handle--branch"
+				position={Position.Right}
+				type="source"
+			/>
+		{/if}
 	{/if}
 </div>
-
-<style>
-.facet {
-	display: flex;
-	flex-direction: column;
-	width: 15rem;
-	border: 1.5px solid #000;
-	background: var(--color-paper);
-	font-family: var(--font-mono);
-	color: var(--color-ink);
-}
-
-.facet-hub {
-	width: 16.5rem;
-}
-
-.facet-head {
-	display: grid;
-	grid-template-columns: 1fr auto;
-	align-items: center;
-	gap: 0.45rem;
-	flex-shrink: 0;
-	padding: 0.5rem 0.65rem;
-	border-bottom: 1px solid #000;
-	font-size: 0.72rem;
-	font-weight: 800;
-	letter-spacing: 0.12em;
-	text-transform: uppercase;
-	cursor: grab;
-}
-
-.facet-head:active {
-	cursor: grabbing;
-}
-
-.facet-title {
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	pointer-events: none;
-}
-
-.facet-chevron {
-	appearance: none;
-	border: 0;
-	background: transparent;
-	color: inherit;
-	font: inherit;
-	font-size: 0.95rem;
-	line-height: 1;
-	padding: 0.15rem 0.35rem;
-	cursor: pointer;
-}
-
-.facet-summary {
-	display: block;
-	width: 100%;
-	margin: 0;
-	padding: 0.5rem 0.65rem 0.6rem;
-	border: 0;
-	background: transparent;
-	color: var(--color-mute);
-	font: inherit;
-	font-size: 0.72rem;
-	line-height: 1.35;
-	font-weight: 600;
-	text-align: left;
-	cursor: pointer;
-}
-
-.facet-summary:hover {
-	color: var(--color-ink);
-}
-
-:global(.facet-handle) {
-	width: 8px;
-	height: 8px;
-	border: 1.5px solid #000;
-	background: var(--color-paper);
-	border-radius: 0;
-}
-</style>

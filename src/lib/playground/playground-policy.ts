@@ -317,7 +317,11 @@ export function playgroundPolicyViolation(profile: ProfileLike): string | null {
 
 	if (profile.model.protocol === 'geminiLive') {
 		if (profile.tools?.t2Loader?.trim()) {
-			return 'tools.t2Loader has no effect on geminiLive — function declarations are fixed at session start; use T0/T1 only.';
+			return 'tools.t2Loader is not supported on geminiLive — function declarations are fixed at session setup.';
+		}
+		const tools = profile.tools as { t1Policy?: unknown };
+		if (tools.t1Policy !== undefined) {
+			return 'tools.t1Policy is not supported on geminiLive — declare T0 tools in tools.allow for session setup.';
 		}
 	}
 

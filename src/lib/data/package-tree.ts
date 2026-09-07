@@ -21,8 +21,6 @@ export const packageTree: PackageNode = {
 			file('kernel_stop', 'stop.ts', 'src/kernel/stop.ts'),
 			folder('kernel_engine', 'engine/', 'src/kernel/engine/', [
 				file('kernel_engine_assert', 'assert.ts', 'src/kernel/engine/assert.ts'),
-				file('kernel_engine_boundary', 'boundary.ts', 'src/kernel/engine/boundary.ts'),
-				file('kernel_engine_canary_gate', 'canary-gate.ts', 'src/kernel/engine/canary-gate.ts'),
 				file('kernel_engine_compaction', 'compaction.ts', 'src/kernel/engine/compaction.ts'),
 				file('kernel_engine_delta', 'delta.ts', 'src/kernel/engine/delta.ts'),
 				file('kernel_engine_hash', 'hash.ts', 'src/kernel/engine/hash.ts'),
@@ -36,6 +34,9 @@ export const packageTree: PackageNode = {
 				file('kernel_engine_repair', 'repair.ts', 'src/kernel/engine/repair.ts'),
 				file('kernel_engine_runner', 'runner.ts', 'src/kernel/engine/runner.ts'),
 				file('kernel_engine_tree', 'tree.ts', 'src/kernel/engine/tree.ts'),
+				folder('kernel_engine_session', 'session/', 'src/kernel/engine/session/', [
+					file('kernel_engine_session_mod', 'mod.ts', 'src/kernel/engine/session/mod.ts'),
+				]),
 				folder('kernel_engine_runner_dir', 'runner/', 'src/kernel/engine/runner/', [
 					file('kernel_engine_runner_mod', 'mod.ts', 'src/kernel/engine/runner/mod.ts'),
 					file('kernel_engine_runner_gates', 'gates.ts', 'src/kernel/engine/runner/gates.ts'),
@@ -117,6 +118,11 @@ export const packageTree: PackageNode = {
 						'src/providers/google/live/framing.ts',
 					),
 					file('providers_google_live_mod', 'mod.ts', 'src/providers/google/live/mod.ts'),
+					file(
+						'providers_google_live_session',
+						'session.ts',
+						'src/providers/google/live/session.ts',
+					),
 					file('providers_google_live_stream', 'stream.ts', 'src/providers/google/live/stream.ts'),
 				]),
 			]),
@@ -162,6 +168,8 @@ export const packageTree: PackageNode = {
 		]),
 		folder('guardrails', 'guardrails/', 'src/guardrails/', [
 			file('guardrails_mod', 'mod.ts', 'src/guardrails/mod.ts'),
+			file('guardrails_canary', 'canary.ts', 'src/guardrails/canary.ts'),
+			file('guardrails_canary_gate', 'canary-gate.ts', 'src/guardrails/canary-gate.ts'),
 			file('guardrails_error', 'error.ts', 'src/guardrails/error.ts'),
 			file('guardrails_egress', 'egress.ts', 'src/guardrails/egress.ts'),
 			file('guardrails_injection', 'injection.ts', 'src/guardrails/injection.ts'),
@@ -272,14 +280,6 @@ const WIDE_MAP_LINES: Seg[][] = [
 	],
 	[
 		s('          │                   │                            ├── '),
-		n('kernel_engine_boundary', 'boundary.ts'),
-	],
-	[
-		s('          │                   │                            ├── '),
-		n('kernel_engine_canary_gate', 'canary-gate.ts'),
-	],
-	[
-		s('          │                   │                            ├── '),
 		n('kernel_engine_compaction', 'compaction.ts'),
 	],
 	[
@@ -309,6 +309,12 @@ const WIDE_MAP_LINES: Seg[][] = [
 	[
 		s('          │                   │                            ├── '),
 		n('kernel_engine_runner', 'runner.ts'),
+	],
+	[
+		s('          │                   │                            ├── '),
+		n('kernel_engine_session', 'session/'),
+		s(' ──── '),
+		n('kernel_engine_session_mod', 'mod.ts'),
 	],
 	[
 		s('          │                   │                            ├── '),
@@ -463,6 +469,10 @@ const WIDE_MAP_LINES: Seg[][] = [
 		n('providers_google_live_framing', 'framing.ts'),
 	],
 	[
+		s('          │                   │                                             ├── '),
+		n('providers_google_live_session', 'session.ts'),
+	],
+	[
 		s('          │                   │                                             └── '),
 		n('providers_google_live_stream', 'stream.ts'),
 	],
@@ -533,8 +543,10 @@ const WIDE_MAP_LINES: Seg[][] = [
 		s('          ├── '),
 		n('guardrails', 'Guardrails'),
 		s(' ─────┬── '),
-		n('guardrails_error', 'error.ts'),
+		n('guardrails_canary', 'canary.ts'),
 	],
+	[s('          │                   ├── '), n('guardrails_canary_gate', 'canary-gate.ts')],
+	[s('          │                   ├── '), n('guardrails_error', 'error.ts')],
 	[s('          │                   ├── '), n('guardrails_injection', 'injection.ts')],
 	[s('          │                   ├── '), n('guardrails_egress', 'egress.ts')],
 	[

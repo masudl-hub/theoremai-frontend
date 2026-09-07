@@ -6,6 +6,7 @@
  * - 16-bit 16kHz PCM microphone audio recording & streaming.
  * - Gapless 24kHz PCM / WAV model voice playback scheduling.
  * - Barge-in interruption cancellation (instant audio queue flush).
+ * - Quiet-mic gate while model audio plays (reduces false barge-in from speaker bleed).
  * - UI tool execution and response routing.
  *
  * @module
@@ -13,8 +14,39 @@
 
 /* eslint-disable @typescript-eslint/no-deprecated -- ScriptProcessorNode until AudioWorklet migration */
 import type { TurnEvent } from 'theorum';
-import { parseLiveServerEnvelope } from '$lib/types/live-messages';
+import { type LiveServerEnvelope, parseLiveServerEnvelope } from '$lib/types/live-messages';
 import { isPermissionDeniedError } from './live-errors';
+
+type LiveToolCall = {
+	id: string;
+	name: string;
+	arguments: Record<string, unknown>;
+	error?: string;
+};
+
+type MediaChunk = { data: string; mimeType?: string };
+
+type InboundTurnAccum = {
+	toolCalls: LiveToolCall[];
+	mediaChunks: MediaChunk[];
+	cancelledToolIds: Set<string>;
+};
+
+function emptyInboundTurnAccum(): InboundTurnAccum {
+	return {
+		toolCalls: [],
+		mediaChunks: [],
+		cancelledToolIds: new Set(),
+	};
+}
+
+/**
+ * While the model is playing audio, mic frames below this RMS are not forwarded.
+ * Speaker bleed / keyboard / room noise sit under this; intentional barge-in speech
+ * sits above it. Gemini VAD only offers LOW|HIGH start sensitivity — this is the
+ * fine-grained "less choppy barge-in" knob.
+ */
+const BARGE_IN_RMS_WHILE_SPEAKING = 0.05;
 
 export type LiveSessionStatus =
 	| 'disconnected'
@@ -29,11 +61,15 @@ export type LiveConnectPhase = 'socket' | 'microphone';
 export interface LiveClientOptions {
 	profile?: string;
 	relayUrl?: string;
+	/** When false, skip microphone capture; session still receives model audio. */
+	voiceIngress?: boolean;
 	onStatusChange?: (status: LiveSessionStatus) => void;
 	onConnectPhase?: (phase: LiveConnectPhase | null) => void;
-	onTranscript?: (text: string, isUser: boolean) => void;
+	onTranscript?: (text: string, isUser: boolean, meta?: { interim?: boolean }) => void;
 	onTurnEvent?: (event: TurnEvent) => void;
 	onError?: (error: string) => void;
+	/** Provider signalled the upstream session is draining (e.g. goAway). */
+	onSessionClosing?: (timeLeftMs?: number) => void;
 	onToolCall?: (
 		name: string,
 		args: Record<string, unknown>,
@@ -108,6 +144,12 @@ export class LiveSessionClient {
 	private connectTimeout: ReturnType<typeof setTimeout> | null = null;
 	private isMuted = false;
 	private options: LiveClientOptions;
+	/** Serialize control-plane handling (tools / status) without waiting on audio decode. */
+	private inboundChain: Promise<void> = Promise.resolve();
+	/** Ordered model-audio playback queue (separate so tools are not stuck behind decode). */
+	private audioChain: Promise<void> = Promise.resolve();
+	/** Bumped on barge-in / cancel so stale audioChain work is skipped. */
+	private audioEpoch = 0;
 
 	constructor(options: LiveClientOptions = {}) {
 		this.options = options;
@@ -190,7 +232,7 @@ export class LiveSessionClient {
 			}, 20_000);
 
 			this.ws.onmessage = (event: MessageEvent<string | ArrayBuffer | Blob>) => {
-				void this.handleServerMessage(event.data);
+				this.enqueueServerMessage(event.data);
 			};
 
 			this.ws.onclose = () => {
@@ -273,6 +315,11 @@ export class LiveSessionClient {
 			const rms = Math.sqrt(sum / inputFloat32.length);
 			this.options.onVolumeLevel?.(Math.min(1, rms * 5), true);
 
+			// Hold back quiet mic frames during model playback so speaker bleed does not
+			// trip START_OF_ACTIVITY_INTERRUPTS. Loud user speech still passes for barge-in.
+			const modelPlaying = this.playbackNodes.length > 0 || this.status === 'speaking';
+			if (modelPlaying && rms < BARGE_IN_RMS_WHILE_SPEAKING) return;
+
 			const pcm16 = downsampleAndConvertToInt16(inputFloat32, sampleRate, 16000);
 			const base64 = bytesToBase64(new Uint8Array(pcm16.buffer));
 
@@ -284,85 +331,167 @@ export class LiveSessionClient {
 		silent.connect(this.audioContext.destination);
 	}
 
-	private async handleServerMessage(data: string | ArrayBuffer | Blob): Promise<void> {
-		if (typeof data !== 'string') return;
+	private enqueueServerMessage(data: string | ArrayBuffer | Blob): void {
+		this.inboundChain = this.inboundChain
+			.then(async () => {
+				if (typeof data !== 'string') return;
 
-		try {
-			const payload = parseLiveServerEnvelope(JSON.parse(data) as unknown);
-			if (!payload) return;
+				try {
+					const payload = parseLiveServerEnvelope(JSON.parse(data) as unknown);
+					if (!payload) return;
+					if (await this.tryHandleControlEnvelope(payload)) return;
+					if (payload.type !== 'events') return;
 
-			if (payload.type === 'ready') {
-				await this.activateMicrophone();
-				return;
-			}
-
-			if (payload.type === 'error') {
-				this.options.onError?.(payload.error);
-				this.setStatus('error');
-				return;
-			}
-
-			if (payload.type === 'interrupted') {
-				this.cancelPlayback();
-				this.setStatus('listening');
-				return;
-			}
-
-			const toolCalls: Array<{
-				id: string;
-				name: string;
-				arguments: Record<string, unknown>;
-			}> = [];
-
-			for (const event of payload.events) {
-				this.options.onTurnEvent?.(event);
-
-				if (event.type === 'evidence' && event.evidence?.kind === 'input_transcription') {
-					if (event.text) {
-						this.options.onTranscript?.(event.text, true);
+					const accum = this.collectInboundTurn(payload.events);
+					const runnableTools = accum.toolCalls.filter(
+						(call) => !accum.cancelledToolIds.has(call.id),
+					);
+					if (runnableTools.length > 0) {
+						await this.handleToolExecutions(runnableTools);
 					}
-				} else if (event.type === 'text' && event.text) {
-					this.options.onTranscript?.(event.text, false);
-				} else if (event.type === 'media' && event.media?.data) {
-					// Model audio chunk
-					this.setStatus('speaking');
-					await this.enqueueAudioChunk(event.media.data, event.media.mimeType);
-				} else if (event.type === 'tool' && event.tool?.name) {
-					toolCalls.push({
-						id: event.tool.id ?? '',
-						name: event.tool.name,
-						arguments: event.tool.arguments ?? {},
-					});
-				} else if (event.type === 'done') {
-					if (event.interrupted) {
-						this.cancelPlayback();
-					}
-					this.setStatus('listening');
+					this.scheduleMediaChunks(accum.mediaChunks);
+				} catch (err) {
+					this.options.onError?.((err as Error).message || 'Failed to parse live server event');
 				}
-			}
+			})
+			.catch((err: unknown) => {
+				this.options.onError?.(
+					err instanceof Error ? err.message : 'Failed to handle live server event',
+				);
+			});
+	}
 
-			if (toolCalls.length > 0) {
-				await this.handleToolExecutions(toolCalls);
+	private async tryHandleControlEnvelope(payload: LiveServerEnvelope): Promise<boolean> {
+		if (payload.type === 'ready') {
+			if (this.options.voiceIngress === false) {
+				this.setConnectPhase(null);
+				this.setStatus('listening');
+			} else {
+				await this.activateMicrophone();
 			}
-		} catch (err) {
-			this.options.onError?.((err as Error).message || 'Failed to parse live server event');
+			return true;
+		}
+		if (payload.type === 'error') {
+			this.options.onError?.(payload.error);
+			this.setStatus('error');
+			return true;
+		}
+		return false;
+	}
+
+	private collectInboundTurn(events: TurnEvent[]): InboundTurnAccum {
+		const accum = emptyInboundTurnAccum();
+		for (const event of events) {
+			this.processTurnEvent(event, accum);
+		}
+		return accum;
+	}
+
+	private processTurnEvent(event: TurnEvent, accum: InboundTurnAccum): void {
+		this.options.onTurnEvent?.(event);
+		switch (event.type) {
+			case 'evidence':
+				this.handleEvidenceTurnEvent(event);
+				break;
+			case 'session':
+				this.handleSessionTurnEvent(event);
+				break;
+			case 'media':
+				this.collectMediaTurnEvent(event, accum);
+				break;
+			case 'tool':
+				this.collectToolTurnEvent(event, accum);
+				break;
+			case 'done':
+				this.handleDoneTurnEvent(event);
+				break;
 		}
 	}
 
-	private async handleToolExecutions(
-		calls: Array<{ id: string; name: string; arguments: Record<string, unknown> }>,
-	): Promise<void> {
+	private handleEvidenceTurnEvent(event: TurnEvent): void {
+		if (event.type !== 'evidence' || !event.text) return;
+		const interim = event.evidence?.interim === true;
+		const kind = event.evidence?.kind;
+		if (kind === 'input_transcription') {
+			this.options.onTranscript?.(event.text, true, { interim });
+			return;
+		}
+		if (kind === 'output_transcription') {
+			this.options.onTranscript?.(event.text, false, { interim });
+		}
+	}
+
+	private handleSessionTurnEvent(event: TurnEvent): void {
+		if (event.type === 'session' && event.session?.kind === 'closing_soon') {
+			this.options.onSessionClosing?.(event.session.timeLeftMs);
+		}
+	}
+
+	private collectMediaTurnEvent(event: TurnEvent, accum: InboundTurnAccum): void {
+		if (event.type !== 'media' || !event.media?.data) return;
+		this.setStatus('speaking');
+		accum.mediaChunks.push({ data: event.media.data, mimeType: event.media.mimeType });
+	}
+
+	private collectToolTurnEvent(event: TurnEvent, accum: InboundTurnAccum): void {
+		if (event.type !== 'tool' || !event.tool) return;
+		const tool = event.tool;
+		if (tool.phase === 'cancel') {
+			if (tool.id) accum.cancelledToolIds.add(tool.id);
+			return;
+		}
+		if (!tool.name) return;
+		const failure =
+			tool.phase === 'error' && tool.failure?.message ? tool.failure.message : undefined;
+		accum.toolCalls.push({
+			id: tool.id ?? '',
+			name: tool.name,
+			arguments: tool.arguments ?? {},
+			error: failure,
+		});
+	}
+
+	private handleDoneTurnEvent(event: TurnEvent): void {
+		if (event.type !== 'done') return;
+		if (event.interrupted) {
+			this.cancelPlayback();
+		}
+		if (event.stop?.kind !== 'generation_complete') {
+			this.setStatus('listening');
+		}
+	}
+
+	private scheduleMediaChunks(mediaChunks: MediaChunk[]): void {
+		if (mediaChunks.length === 0) return;
+		const epoch = this.audioEpoch;
+		for (const chunk of mediaChunks) {
+			this.audioChain = this.audioChain
+				.then(async () => {
+					if (epoch !== this.audioEpoch) return;
+					await this.enqueueAudioChunk(chunk.data, chunk.mimeType);
+				})
+				.catch((err: unknown) => {
+					this.options.onError?.(err instanceof Error ? err.message : 'Failed to play audio chunk');
+				});
+		}
+	}
+
+	private async handleToolExecutions(calls: LiveToolCall[]): Promise<void> {
 		const responses: Array<{ id: string; name: string; output: unknown }> = [];
 
 		for (const call of calls) {
-			let output: Record<string, unknown> = { success: true };
+			let output: Record<string, unknown>;
 
-			if (this.options.onToolCall) {
+			if (call.error) {
+				output = { error: call.error };
+			} else if (this.options.onToolCall) {
 				try {
 					output = await this.options.onToolCall(call.name, call.arguments);
 				} catch (err) {
 					output = { error: (err as Error).message || 'Tool execution failed' };
 				}
+			} else {
+				output = { success: true };
 			}
 
 			responses.push({ id: call.id, name: call.name, output });
@@ -428,6 +557,8 @@ export class LiveSessionClient {
 	}
 
 	public cancelPlayback(): void {
+		this.audioEpoch += 1;
+		this.audioChain = Promise.resolve();
 		for (const node of this.playbackNodes) {
 			try {
 				node.stop();
@@ -450,6 +581,12 @@ export class LiveSessionClient {
 	public sendText(text: string): void {
 		if (this.ws && this.ws.readyState === WebSocket.OPEN) {
 			this.ws.send(JSON.stringify({ type: 'text', text }));
+		}
+	}
+
+	public sendVideo(data: string, mimeType = 'image/jpeg'): void {
+		if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+			this.ws.send(JSON.stringify({ type: 'video', data, mimeType }));
 		}
 	}
 

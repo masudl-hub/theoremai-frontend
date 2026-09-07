@@ -1,0 +1,436 @@
+/* Playground-aligned grid + chat rail (~60% width). Orchid motion: ease [0.22, 1, 0.36, 1], 300ms. */
+
+.iface-stage {
+	--iface-rail-width: min(60vw, 42rem);
+	--iface-ease: cubic-bezier(0.22, 1, 0.36, 1);
+	--iface-duration: 0.3s;
+
+	display: flex;
+	flex-direction: column;
+	height: 100dvh;
+	min-height: 0;
+	background-color: var(--color-paper);
+	background-image:
+		linear-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+	background-size: 56px 56px;
+}
+
+.iface-rail {
+	display: flex;
+	flex-direction: column;
+	width: var(--iface-rail-width);
+	max-width: 100%;
+	height: 100%;
+	min-height: 0;
+	margin: 0 auto;
+	padding: 0 1.25rem;
+	transition: justify-content var(--iface-duration) var(--iface-ease);
+}
+
+.iface-stage--landing .iface-rail {
+	justify-content: center;
+}
+
+.iface-stage--chat .iface-rail {
+	justify-content: flex-end;
+}
+
+.iface-head {
+	flex-shrink: 0;
+	padding: 0 0.15rem;
+	text-align: left;
+	transition:
+		opacity var(--iface-duration) var(--iface-ease),
+		transform var(--iface-duration) var(--iface-ease);
+}
+
+.iface-head__handle {
+	margin: 0;
+	font-size: 0.72rem;
+	font-weight: 800;
+	letter-spacing: 0.12em;
+	text-transform: lowercase;
+	color: var(--color-mute);
+}
+
+.iface-head__system {
+	margin: 0.35rem 0 0;
+	max-width: 36ch;
+	font-size: 0.75rem;
+	line-height: 1.5;
+	color: var(--color-mute);
+}
+
+.iface-transcript {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: auto;
+	padding: 2.75rem 0 1.25rem;
+	scroll-behavior: smooth;
+}
+
+.iface-transcript__list {
+	display: flex;
+	flex-direction: column;
+	gap: 1.25rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.iface-transcript__item {
+	margin: 0;
+}
+
+.iface-composer-slot {
+	flex-shrink: 0;
+	width: 100%;
+	padding: 1.5rem 0 max(2rem, env(safe-area-inset-bottom));
+	transition:
+		padding var(--iface-duration) var(--iface-ease),
+		transform var(--iface-duration) var(--iface-ease);
+}
+
+.iface-composer-slot--landing {
+	display: flex;
+	flex-direction: column;
+	gap: 0.65rem;
+}
+
+.iface-composer {
+	width: 100%;
+}
+
+.iface-composer__shell {
+	box-sizing: border-box;
+	overflow: hidden;
+	background: rgba(0, 0, 0, 0.035);
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	transition: height var(--iface-duration) var(--iface-ease);
+}
+
+.iface-composer__inner {
+	box-sizing: border-box;
+	display: grid;
+	width: 100%;
+	gap: 0.25rem;
+	padding: 0.25rem;
+	transition:
+		grid-template-rows var(--iface-duration) var(--iface-ease),
+		grid-template-columns var(--iface-duration) var(--iface-ease);
+}
+
+.iface-composer__inner--collapsed {
+	grid-template-columns: auto 1fr auto;
+	grid-template-rows: auto;
+	align-items: center;
+}
+
+.iface-composer__inner--expanded {
+	grid-template-columns: auto 1fr auto;
+	grid-template-rows: auto auto;
+	align-items: stretch;
+}
+
+.iface-composer__issues {
+	margin: 0 0 0.35rem;
+	padding: 0;
+	list-style: none;
+	font-size: 0.72rem;
+	color: #8b0000;
+}
+
+.iface-composer__attach {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.25rem;
+	height: 2.25rem;
+	cursor: pointer;
+	color: var(--color-mute);
+	opacity: 0.5;
+	transition:
+		opacity var(--iface-duration) var(--iface-ease),
+		color var(--iface-duration) var(--iface-ease);
+}
+
+.iface-composer__attach:hover {
+	opacity: 1;
+	color: var(--color-ink);
+}
+
+.iface-composer__inner--collapsed .iface-composer__attach {
+	grid-column: 1;
+	grid-row: 1;
+}
+
+.iface-composer__inner--expanded .iface-composer__attach {
+	grid-column: 1;
+	grid-row: 2;
+	align-self: center;
+}
+
+.iface-composer__file {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	cursor: pointer;
+}
+
+.iface-composer__input {
+	box-sizing: border-box;
+	display: block;
+	width: 100%;
+	padding: 0.5rem 0.75rem;
+	font-family: var(--font-mono);
+	font-size: 0.875rem;
+	line-height: 1.45;
+	color: var(--color-ink);
+	background: transparent;
+	border: none;
+	outline: none;
+	resize: none;
+	transition: padding var(--iface-duration) var(--iface-ease);
+}
+
+.iface-composer__inner--collapsed .iface-composer__input {
+	grid-column: 2;
+	grid-row: 1;
+	padding: 0.4rem 0.5rem;
+	min-width: 0;
+}
+
+.iface-composer__inner--expanded .iface-composer__input {
+	grid-column: 1 / -1;
+	grid-row: 1;
+}
+
+.iface-composer__actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 0.25rem;
+}
+
+.iface-composer__inner--collapsed .iface-composer__actions {
+	grid-column: 3;
+	grid-row: 1;
+}
+
+.iface-composer__inner--expanded .iface-composer__actions {
+	grid-column: 2 / 4;
+	grid-row: 2;
+	padding-right: 0.15rem;
+}
+
+.iface-composer__send {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.25rem;
+	height: 2.25rem;
+	padding: 0;
+	color: var(--color-ink);
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	opacity: 0.5;
+	transition: opacity var(--iface-duration) var(--iface-ease);
+}
+
+.iface-composer__send:not(:disabled):hover {
+	opacity: 1;
+}
+
+.iface-composer__send:disabled {
+	opacity: 0.3;
+	cursor: default;
+}
+
+.iface-composer__send-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.iface-composer__send-icon--spin {
+	animation: iface-send-spin 0.9s linear infinite;
+}
+
+@keyframes iface-send-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+.iface-msg {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	max-width: 85%;
+}
+
+.iface-msg--user {
+	margin-left: auto;
+	align-items: flex-end;
+}
+
+.iface-msg--assistant {
+	margin-right: auto;
+	align-items: flex-start;
+}
+
+.iface-msg--thought {
+	margin-right: auto;
+	max-width: 90%;
+	color: var(--color-mute);
+}
+
+.iface-msg__handle {
+	margin: 0;
+	font-size: 0.68rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	color: var(--color-mute);
+}
+
+.iface-msg__bubble {
+	padding: 0.65rem 0.85rem;
+	font-size: 0.875rem;
+	line-height: 1.55;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.iface-msg--user .iface-msg__bubble {
+	background: rgba(0, 0, 0, 0.06);
+	color: var(--color-ink);
+}
+
+.iface-msg--assistant .iface-msg__bubble {
+	padding-left: 0;
+	padding-right: 0;
+	color: var(--color-ink);
+}
+
+.iface-msg__meta {
+	margin: 0;
+	font-size: 0.68rem;
+	color: var(--color-mute);
+}
+
+.iface-msg__code {
+	margin: 0;
+	padding: 0.65rem 0.75rem;
+	overflow: auto;
+	font-size: 0.72rem;
+	line-height: 1.45;
+	background: rgba(0, 0, 0, 0.04);
+	color: var(--color-ink);
+}
+
+.iface-msg__image {
+	display: block;
+	max-width: min(100%, 24rem);
+	margin-top: 0.25rem;
+}
+
+.iface-msg__audio {
+	display: block;
+	width: min(100%, 20rem);
+	margin-top: 0.25rem;
+}
+
+.iface-msg--error .iface-msg__bubble {
+	color: #8b0000;
+}
+
+.iface-msg--streaming .iface-msg__bubble::after {
+	content: "▍";
+	margin-left: 0.1em;
+	animation: iface-caret 0.9s step-end infinite;
+}
+
+@keyframes iface-caret {
+	50% {
+		opacity: 0;
+	}
+}
+
+.iface-run-link {
+	position: fixed;
+	top: 0.75rem;
+	left: 0.75rem;
+	z-index: 2;
+	font-size: 0.68rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--color-mute);
+	text-decoration: none;
+}
+
+.iface-run-link:hover {
+	color: var(--color-ink);
+}
+
+.iface-run-error {
+	margin: 0;
+	padding: 0.5rem 0;
+	font-size: 0.72rem;
+	color: #8b0000;
+	text-align: center;
+}
+
+.iface-run-loading {
+	margin: 0;
+	padding: 1.5rem 0;
+	font-size: 0.72rem;
+	color: var(--color-mute);
+	text-align: center;
+}
+
+.iface-pending {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.35rem;
+	margin: 0 0 0.5rem;
+	padding: 0;
+	list-style: none;
+	font-size: 0.68rem;
+	color: var(--color-mute);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.iface-rail,
+	.iface-composer-slot,
+	.iface-composer__shell,
+	.iface-composer__inner,
+	.iface-composer__input,
+	.iface-composer__attach,
+	.iface-composer__send,
+	.iface-head,
+	.iface-composer__send-icon--spin {
+		transition: none;
+		animation: none;
+	}
+
+	.iface-transcript {
+		scroll-behavior: auto;
+	}
+}

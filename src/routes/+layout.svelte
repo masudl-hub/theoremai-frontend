@@ -1,9 +1,12 @@
 <script lang="ts">
 import '../app.css';
+import { page } from '$app/state';
 import favicon from '$lib/assets/favicon.svg';
 import Th30Widget from '$lib/components/Th30Widget.svelte';
 
 let { children } = $props();
+
+const showTh30 = $derived(!page.url.pathname.endsWith('/playground/run'));
 </script>
 
 <svelte:head>
@@ -17,4 +20,6 @@ let { children } = $props();
 </svelte:head>
 
 {@render children()}
-<Th30Widget />
+{#if showTh30}
+	<Th30Widget />
+{/if}

@@ -18,25 +18,27 @@ let {
 } = $props();
 </script>
 
-<label class="facet-check text-xs">
-	<Checkbox checked={data.canary} onchange={(v) => patch({ canary: v })} />
-	<FacetFieldLabel path="guardrails.canary" />
-</label>
-<label class="facet-check text-xs">
-	<Checkbox checked={data.sanitizeInput} onchange={(v) => patch({ sanitizeInput: v })} />
-	<FacetFieldLabel path="guardrails.sanitizeInput" />
-</label>
-<label class="facet-check text-xs">
-	<Checkbox checked={data.redactSensitive} onchange={(v) => patch({ redactSensitive: v })} />
-	<FacetFieldLabel path="guardrails.redactSensitive" />
-</label>
-<label class="facet-check text-xs">
-	<Checkbox checked={data.quotaEnabled} onchange={(v) => patch({ quotaEnabled: v })} />
-	<FacetFieldLabel path="guardrails.quota" text="guardrails.quota (optional)" />
-</label>
+<div class="facet-check-grid">
+	<label class="facet-check">
+		<Checkbox checked={data.canary} onchange={(v) => patch({ canary: v })} />
+		<FacetFieldLabel path="guardrails.canary" />
+	</label>
+	<label class="facet-check">
+		<Checkbox checked={data.sanitizeInput} onchange={(v) => patch({ sanitizeInput: v })} />
+		<FacetFieldLabel path="guardrails.sanitizeInput" />
+	</label>
+	<label class="facet-check">
+		<Checkbox checked={data.redactSensitive} onchange={(v) => patch({ redactSensitive: v })} />
+		<FacetFieldLabel path="guardrails.redactSensitive" />
+	</label>
+	<label class="facet-check">
+		<Checkbox checked={data.quotaEnabled} onchange={(v) => patch({ quotaEnabled: v })} />
+		<FacetFieldLabel path="guardrails.quota" />
+	</label>
+</div>
 {#if data.quotaEnabled}
 	<label class="facet-field">
-		<FacetFieldLabel path="guardrails.quota.perDay" text="quota.perDay" />
+		<FacetFieldLabel path="guardrails.quota.perDay" />
 		<input
 			class="field"
 			min="1"
@@ -56,7 +58,7 @@ let {
 </label>
 {#if data.egressMode === 'default'}
 	<label class="facet-field">
-		<FacetFieldLabel path="guardrails.egress.onBlock" text="egress.onBlock" />
+		<FacetFieldLabel path="guardrails.egress.onBlock" />
 		<Select
 			onchange={(v) => patch({ onBlock: v as 'reject_to_agent' | 'refuse_to_user' })}
 			options={onBlockOptions}
@@ -64,7 +66,7 @@ let {
 		/>
 	</label>
 	<label class="facet-field">
-		<FacetFieldLabel path="guardrails.egress.maxRetries" text="egress.maxRetries" />
+		<FacetFieldLabel path="guardrails.egress.maxRetries" />
 		<input
 			class="field"
 			min="0"
@@ -73,9 +75,4 @@ let {
 			value={data.egressMaxRetries}
 		>
 	</label>
-	<p class="facet-hint">
-		Uses kernel <code>standardEgressEnforce</code> — canary leak, sensitive spans, injection echo,
-		and system-boundary checks. Wire your own <code>enforce</code> in exported code if you need
-		host-specific policy.
-	</p>
 {/if}
