@@ -1,9 +1,11 @@
 /* Live voice shell — paper canvas, ink waveform, flat-bottom bars. */
 
+@import "./ink-controls.css";
+
 .live-stage {
-	--live-rail-width: min(60vw, 42rem);
-	--live-ease: cubic-bezier(0.22, 1, 0.36, 1);
-	--live-duration: 0.3s;
+	--live-rail-width: min(78vw, 56rem);
+	--live-ease: var(--ink-ease);
+	--live-duration: var(--ink-duration);
 
 	display: flex;
 	flex-direction: column;
@@ -25,6 +27,7 @@
 	min-height: 0;
 	margin: 0 auto;
 	padding: 2.5rem 1.25rem max(2rem, env(safe-area-inset-bottom));
+	overflow: hidden;
 }
 
 .live-head {
@@ -33,7 +36,9 @@
 	gap: 1rem 1.5rem;
 	align-items: start;
 	flex-shrink: 0;
-	margin-bottom: 1rem;
+	min-height: 0;
+	max-height: min(28vh, 12rem);
+	margin-bottom: 0.75rem;
 }
 
 .live-head__main {
@@ -62,11 +67,12 @@
 	display: flex;
 	flex-direction: column;
 	gap: 0.65rem;
-	max-height: min(40vh, 16rem);
+	max-height: min(24vh, 11rem);
 	overflow: auto;
 	margin: 0;
 	padding: 0;
 	text-align: right;
+	scrollbar-width: thin;
 }
 
 .live-captions__line {
@@ -89,6 +95,10 @@
 
 .live-captions__line--focused {
 	opacity: 1;
+}
+
+.live-captions__line--latest {
+	opacity: 0.82;
 }
 
 .live-captions__line:hover {
@@ -121,129 +131,50 @@
 	opacity: 0.35;
 }
 
-.live-wave-slot {
-	flex: 1 1 auto;
-	display: flex;
-	align-items: flex-end;
-	justify-content: center;
-	min-height: min(52vh, 22rem);
-	margin-bottom: 1.5rem;
-	padding: 0 0.5rem;
-}
-
-.ink-wave {
-	display: block;
-	width: min(100%, 36rem);
-	height: min(52vh, 22rem);
-	color: var(--color-ink);
-}
-
-.ink-wave__bar {
-	stroke: currentcolor;
-	stroke-linecap: square;
-}
-
-.live-divider {
-	flex-shrink: 0;
-	width: 100%;
-	height: 0;
-	margin: 0 0 1.5rem;
-	border: none;
-	border-top: 1px solid rgba(0, 0, 0, 0.14);
-}
-
 .live-error {
-	margin: 0 0 1rem;
+	margin: 0 0 0.75rem;
 	font-size: 0.72rem;
 	color: #8b0000;
 }
 
-.live-text-compose {
-	display: flex;
-	align-items: flex-end;
-	gap: 0.5rem;
+.live-footer {
 	flex-shrink: 0;
-	margin: 0 0 1rem;
+	margin-top: auto;
 }
 
-.live-text-compose__label {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	padding: 0;
-	margin: -1px;
-	overflow: hidden;
-	clip: rect(0, 0, 0, 0);
-	white-space: nowrap;
-	border: 0;
+.live-footer__divider {
+	margin-bottom: 1rem;
 }
 
-.live-text-compose__input {
-	flex: 1 1 auto;
-	min-width: 0;
-	padding: 0.45rem 0;
-	font-family: var(--font-mono);
-	font-size: 0.72rem;
-	color: var(--color-ink);
-	background: transparent;
-	border: none;
-	border-bottom: 1px solid rgba(0, 0, 0, 0.18);
+.live-composer-slot {
+	margin-bottom: 0.75rem;
 }
 
-.live-text-compose__input:focus {
-	outline: none;
-	border-bottom-color: var(--color-ink);
-}
-
-.live-text-compose__input:disabled {
-	opacity: 0.35;
-}
-
-.live-text-compose__send {
-	flex-shrink: 0;
-}
-
-.live-controls {
+.live-wave-slot {
+	flex: 1 1 0;
 	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 1rem;
-	flex-shrink: 0;
-}
-
-.live-controls__left,
-.live-controls__right {
-	display: flex;
-	align-items: center;
-	gap: 0.65rem;
-}
-
-.live-control {
-	display: inline-flex;
-	align-items: center;
+	align-items: stretch;
 	justify-content: center;
-	width: 2.5rem;
-	height: 2.5rem;
+	width: 100%;
+	min-height: 40dvh;
+	margin-bottom: 1rem;
 	padding: 0;
-	color: var(--color-ink);
-	background: transparent;
-	border: none;
-	cursor: pointer;
-	opacity: 0.55;
-	transition: opacity var(--live-duration) var(--live-ease);
+	overflow: hidden;
 }
 
-.live-control:not(:disabled):hover {
-	opacity: 1;
+.live-wave-slot .ink-wave {
+	width: 100%;
+	height: 100%;
+	min-height: 0;
+	max-height: none;
 }
 
-.live-control:disabled {
-	opacity: 0.22;
-	cursor: default;
-}
-
-.live-control--active {
-	opacity: 0.9;
+.live-wave-slot .ink-wave--hero {
+	width: 100%;
+	max-width: none;
+	height: 100%;
+	min-height: 0;
+	max-height: none;
 }
 
 @media (max-width: 40rem) {
@@ -261,8 +192,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.live-captions__line,
-	.live-control {
+	.live-captions__line {
 		transition: none;
 	}
+}
+
+.site-main .live-stage {
+	height: 100%;
 }

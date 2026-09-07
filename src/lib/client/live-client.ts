@@ -12,8 +12,9 @@
  * @module
  */
 
-/* eslint-disable @typescript-eslint/no-deprecated -- ScriptProcessorNode until AudioWorklet migration */
 import type { TurnEvent } from 'theorum';
+import micCaptureWorkletUrl from '$lib/client/mic-capture.worklet?worker&url';
+import { float32Rms, float32RmsToLevel, timeDomainBytesToLevel } from '$lib/interface/audio-level';
 import { type LiveServerEnvelope, parseLiveServerEnvelope } from '$lib/types/live-messages';
 import { isPermissionDeniedError } from './live-errors';
 
@@ -136,8 +137,13 @@ export class LiveSessionClient {
 	private audioContext: AudioContext | null = null;
 	private micStream: MediaStream | null = null;
 	private micSource: MediaStreamAudioSourceNode | null = null;
-	private micProcessor: ScriptProcessorNode | null = null;
+	private micWorklet: AudioWorkletNode | null = null;
+	private micWorkletModuleLoaded = false;
 	private playbackNodes: AudioBufferSourceNode[] = [];
+	private playbackBus: GainNode | null = null;
+	private playbackAnalyser: AnalyserNode | null = null;
+	private playbackMeterFrame = 0;
+	private playbackMeterBuffer: Uint8Array | null = null;
 	private nextPlaybackTime = 0;
 	private status: LiveSessionStatus = 'disconnected';
 	private micActivating = false;
@@ -279,7 +285,7 @@ export class LiveSessionClient {
 				},
 			});
 
-			this.setupMicrophonePipeline();
+			await this.setupMicrophonePipeline();
 			this.setConnectPhase(null);
 			this.setStatus('listening');
 		} catch (err) {
@@ -293,27 +299,22 @@ export class LiveSessionClient {
 		}
 	}
 
-	private setupMicrophonePipeline(): void {
+	private async setupMicrophonePipeline(): Promise<void> {
 		if (!this.micStream || !this.audioContext) return;
 
 		this.micSource = this.audioContext.createMediaStreamSource(this.micStream);
-		this.micProcessor = this.audioContext.createScriptProcessor(4096, 1, 1);
 		const silent = this.audioContext.createGain();
 		silent.gain.value = 0;
 
-		this.micProcessor.onaudioprocess = (e) => {
+		const forwardMicFrame = (inputFloat32: Float32Array) => {
+			if (!this.isMuted) {
+				this.options.onVolumeLevel?.(float32RmsToLevel(inputFloat32), true);
+			}
+
 			if (this.isMuted || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
-			const inputFloat32 = e.inputBuffer.getChannelData(0);
 			const sampleRate = this.audioContext?.sampleRate ?? 48000;
-
-			let sum = 0;
-			for (let i = 0; i < inputFloat32.length; i++) {
-				const val = inputFloat32[i] ?? 0;
-				sum += val * val;
-			}
-			const rms = Math.sqrt(sum / inputFloat32.length);
-			this.options.onVolumeLevel?.(Math.min(1, rms * 5), true);
+			const rms = float32Rms(inputFloat32);
 
 			// Hold back quiet mic frames during model playback so speaker bleed does not
 			// trip START_OF_ACTIVITY_INTERRUPTS. Loud user speech still passes for barge-in.
@@ -322,13 +323,60 @@ export class LiveSessionClient {
 
 			const pcm16 = downsampleAndConvertToInt16(inputFloat32, sampleRate, 16000);
 			const base64 = bytesToBase64(new Uint8Array(pcm16.buffer));
-
 			this.ws.send(JSON.stringify({ type: 'audio', data: base64 }));
 		};
 
-		this.micSource.connect(this.micProcessor);
-		this.micProcessor.connect(silent);
+		if (!this.micWorkletModuleLoaded) {
+			await this.audioContext.audioWorklet.addModule(micCaptureWorkletUrl);
+			this.micWorkletModuleLoaded = true;
+		}
+
+		this.micWorklet = new AudioWorkletNode(this.audioContext, 'mic-capture-processor');
+		this.micWorklet.port.onmessage = (event: MessageEvent<ArrayBuffer>) => {
+			const inputFloat32 = new Float32Array(event.data);
+			forwardMicFrame(inputFloat32);
+		};
+
+		this.micSource.connect(this.micWorklet);
+		this.micWorklet.connect(silent);
 		silent.connect(this.audioContext.destination);
+	}
+
+	private ensurePlaybackBus(): void {
+		if (!this.audioContext || this.playbackBus) return;
+
+		this.playbackBus = this.audioContext.createGain();
+		this.playbackAnalyser = this.audioContext.createAnalyser();
+		this.playbackAnalyser.fftSize = 512;
+		this.playbackAnalyser.smoothingTimeConstant = 0.35;
+		this.playbackBus.connect(this.playbackAnalyser);
+		this.playbackAnalyser.connect(this.audioContext.destination);
+		this.playbackMeterBuffer = new Uint8Array(this.playbackAnalyser.fftSize);
+	}
+
+	private stopPlaybackMeter(): void {
+		if (this.playbackMeterFrame) {
+			cancelAnimationFrame(this.playbackMeterFrame);
+			this.playbackMeterFrame = 0;
+		}
+		this.options.onVolumeLevel?.(0, false);
+	}
+
+	private startPlaybackMeter(): void {
+		if (this.playbackMeterFrame) return;
+
+		const tick = () => {
+			if (this.playbackNodes.length === 0 || !this.playbackAnalyser || !this.playbackMeterBuffer) {
+				this.stopPlaybackMeter();
+				return;
+			}
+
+			this.playbackAnalyser.getByteTimeDomainData(this.playbackMeterBuffer);
+			this.options.onVolumeLevel?.(timeDomainBytesToLevel(this.playbackMeterBuffer), false);
+			this.playbackMeterFrame = requestAnimationFrame(tick);
+		};
+
+		this.playbackMeterFrame = requestAnimationFrame(tick);
 	}
 
 	private enqueueServerMessage(data: string | ArrayBuffer | Blob): void {
@@ -506,6 +554,9 @@ export class LiveSessionClient {
 		if (!this.audioContext) return;
 
 		try {
+			this.ensurePlaybackBus();
+			if (!this.playbackBus) return;
+
 			const bytes = base64ToBytes(base64Data);
 			let audioBuffer: AudioBuffer;
 
@@ -524,18 +575,9 @@ export class LiveSessionClient {
 				audioBuffer.getChannelData(0).set(float32);
 			}
 
-			const channel = audioBuffer.getChannelData(0);
-			let sum = 0;
-			for (let i = 0; i < channel.length; i++) {
-				const val = channel[i] ?? 0;
-				sum += val * val;
-			}
-			const rms = Math.sqrt(sum / Math.max(1, channel.length));
-			this.options.onVolumeLevel?.(Math.min(1, rms * 4), false);
-
 			const source = this.audioContext.createBufferSource();
 			source.buffer = audioBuffer;
-			source.connect(this.audioContext.destination);
+			source.connect(this.playbackBus);
 
 			const now = this.audioContext.currentTime;
 			const startTime = Math.max(now, this.nextPlaybackTime);
@@ -543,12 +585,16 @@ export class LiveSessionClient {
 
 			this.nextPlaybackTime = startTime + audioBuffer.duration;
 			this.playbackNodes.push(source);
+			this.startPlaybackMeter();
 
 			source.onended = () => {
 				const idx = this.playbackNodes.indexOf(source);
 				if (idx !== -1) this.playbackNodes.splice(idx, 1);
-				if (this.playbackNodes.length === 0 && this.status === 'speaking') {
-					this.setStatus('listening');
+				if (this.playbackNodes.length === 0) {
+					this.stopPlaybackMeter();
+					if (this.status === 'speaking') {
+						this.setStatus('listening');
+					}
 				}
 			};
 		} catch (err) {
@@ -568,6 +614,7 @@ export class LiveSessionClient {
 			}
 		}
 		this.playbackNodes = [];
+		this.stopPlaybackMeter();
 		if (this.audioContext) {
 			this.nextPlaybackTime = this.audioContext.currentTime;
 		}
@@ -597,14 +644,27 @@ export class LiveSessionClient {
 
 	private cleanupAudio(): void {
 		this.cancelPlayback();
+		this.stopPlaybackMeter();
 
-		if (this.micProcessor) {
+		if (this.playbackBus) {
 			try {
-				this.micProcessor.disconnect();
+				this.playbackBus.disconnect();
 			} catch {
 				/* ignore */
 			}
-			this.micProcessor = null;
+			this.playbackBus = null;
+		}
+		this.playbackAnalyser = null;
+		this.playbackMeterBuffer = null;
+
+		if (this.micWorklet) {
+			try {
+				this.micWorklet.port.onmessage = null;
+				this.micWorklet.disconnect();
+			} catch {
+				/* ignore */
+			}
+			this.micWorklet = null;
 		}
 
 		if (this.micSource) {

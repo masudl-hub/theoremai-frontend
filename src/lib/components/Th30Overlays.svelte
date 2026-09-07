@@ -1,31 +1,12 @@
 <script lang="ts">
-type StatusLineMode = 'connecting' | 'listening' | 'speaking' | 'thinking' | 'muted';
-
 interface Props {
-	statusLineMode: StatusLineMode | null;
 	navFrameActive: boolean;
 	showBye: boolean;
 	activeActionLabel: string | null;
 }
 
-let { statusLineMode, navFrameActive, showBye, activeActionLabel }: Props = $props();
+let { navFrameActive, showBye, activeActionLabel }: Props = $props();
 </script>
-
-{#if statusLineMode}
-	<div
-		class="th30-status-line"
-		class:connecting={statusLineMode === 'connecting'}
-		class:listening={statusLineMode === 'listening'}
-		class:speaking={statusLineMode === 'speaking'}
-		class:thinking={statusLineMode === 'thinking'}
-		class:muted={statusLineMode === 'muted'}
-		aria-hidden="true"
-	>
-		{#if statusLineMode === 'thinking' || statusLineMode === 'connecting'}
-			<span class="th30-status-segment"></span>
-		{/if}
-	</div>
-{/if}
 
 {#if navFrameActive}
 	<div class="th30-nav-frame" aria-hidden="true"></div>
@@ -42,77 +23,6 @@ let { statusLineMode, navFrameActive, showBye, activeActionLabel }: Props = $pro
 {/if}
 
 <style>
-/* Top status line — orchidcare developer loader idiom, state-driven. */
-.th30-status-line {
-	pointer-events: none;
-	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	height: 2px;
-	z-index: 70;
-	overflow: hidden;
-	background: var(--color-ink);
-}
-
-.th30-status-line.listening {
-	background: repeating-linear-gradient(
-		90deg,
-		var(--color-ink) 0,
-		var(--color-ink) 5px,
-		transparent 5px,
-		transparent 13px
-	);
-	background-size: 26px 100%;
-	animation: th30-status-dash 1.4s linear infinite;
-}
-
-.th30-status-line.speaking {
-	background: repeating-linear-gradient(
-		90deg,
-		var(--color-ink) 0,
-		var(--color-ink) 7px,
-		transparent 7px,
-		transparent 11px
-	);
-	background-size: 22px 100%;
-	animation: th30-status-dash 0.35s linear infinite;
-}
-
-.th30-status-line.muted {
-	background: var(--color-ink);
-	animation: none;
-}
-
-.th30-status-line.thinking,
-.th30-status-line.connecting {
-	background: transparent;
-	animation: none;
-}
-
-.th30-status-segment {
-	display: block;
-	height: 100%;
-	width: 28%;
-	background: var(--color-ink);
-	animation: th30-status-sweep 1.3s ease-in-out infinite;
-}
-
-@keyframes th30-status-dash {
-	to {
-		background-position: 26px 0;
-	}
-}
-
-@keyframes th30-status-sweep {
-	0% {
-		transform: translateX(-120%);
-	}
-	100% {
-		transform: translateX(420%);
-	}
-}
-
 .th30-nav-frame {
 	pointer-events: none;
 	position: fixed;

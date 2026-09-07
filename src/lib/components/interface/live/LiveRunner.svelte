@@ -1,5 +1,7 @@
 <script lang="ts">
 import { onDestroy, onMount } from 'svelte';
+import type { TurnEvent } from 'theorum';
+import { liveIngressEnabledFromSpec } from 'theorum';
 import type { LiveProfileInterface } from 'theorum/interface';
 import {
 	type LiveConnectPhase,
@@ -7,22 +9,22 @@ import {
 	type LiveSessionStatus,
 } from '$lib/client/live-client';
 import LiveStage from '$lib/components/interface/live/LiveStage.svelte';
+import LiveToolPausePanel from '$lib/components/interface/live/LiveToolPausePanel.svelte';
 import type { CaptionFocus } from '$lib/interface/live/caption-focus';
 import {
 	applyLiveTranscript,
+	clearLiveCaptionInterim,
 	emptyLiveCaptionState,
 	type LiveCaptionState,
+	latestLiveCaptionTurnId,
 } from '$lib/interface/live/live-captions';
-import {
-	liveTextEnabled,
-	liveVideoEnabled,
-	liveVoiceEnabled,
-} from '$lib/interface/live/live-inputs';
 import { registerPlaygroundLiveProfile } from '$lib/interface/live/live-session';
 import { liveStateLabel } from '$lib/interface/live/live-state';
+import { invokePlaygroundLiveTool, type LiveToolPausePrompt } from '$lib/interface/live/live-tool';
 import type { LiveVideoCapture } from '$lib/interface/live/live-video';
 import { startLiveVideoCapture } from '$lib/interface/live/live-video';
 import type { PlaygroundRunPayload } from '$lib/interface/run-payload';
+import type { ToolPauseResolution } from '$lib/interface/tool-resume';
 
 let {
 	iface,
@@ -43,19 +45,24 @@ let captions = $state<LiveCaptionState>(emptyLiveCaptionState());
 let captionFocus = $state<CaptionFocus>(null);
 let error = $state('');
 let textDraft = $state('');
+let textComposerOpen = $state(false);
 let sessionActive = $state(false);
+let sessionPermissions = $state<string[]>([]);
+let pausePrompt = $state<LiveToolPausePrompt | null>(null);
 
 let everConnected = $state(false);
 let client: LiveSessionClient | null = null;
 let videoCapture: LiveVideoCapture | null = null;
+let pauseResolver: ((resolution: ToolPauseResolution) => void) | null = null;
+let pauseReject: ((reason: Error) => void) | null = null;
 
 $effect(() => {
 	if (sessionActive) everConnected = true;
 });
 
-const voiceEnabled = $derived(liveVoiceEnabled(iface));
-const videoEnabled = $derived(liveVideoEnabled(iface));
-const textEnabled = $derived(liveTextEnabled(iface));
+const voiceAvailable = $derived(liveIngressEnabledFromSpec(iface.live.ingress, 'audio'));
+const videoAvailable = $derived(liveIngressEnabledFromSpec(iface.live.ingress, 'video'));
+const textAvailable = $derived(liveIngressEnabledFromSpec(iface.live.ingress, 'text'));
 
 const stateLabel = $derived(
 	liveStateLabel({
@@ -63,11 +70,73 @@ const stateLabel = $derived(
 		connectPhase,
 		toolName: activeTool,
 		isMuted,
-		voiceEnabled,
+		voiceEnabled: voiceAvailable,
 	}),
 );
 
-const toolActive = $derived(activeTool !== null);
+const toolActive = $derived(activeTool !== null || pausePrompt !== null);
+
+function focusLatestCaption(next: LiveCaptionState) {
+	const latestId = latestLiveCaptionTurnId(next);
+	if (latestId) captionFocus = latestId;
+}
+
+function toolFailureMessage(tool: NonNullable<TurnEvent['tool']>): string {
+	if (tool.failure?.message) return tool.failure.message;
+	if (tool.name) return `Tool '${tool.name}' failed`;
+	return 'Tool call failed';
+}
+
+function handleLiveTurnEvent(event: TurnEvent) {
+	if (event.type === 'done') {
+		captions = clearLiveCaptionInterim(captions);
+		if (!pausePrompt) activeTool = null;
+		return;
+	}
+	if (event.type !== 'tool' || !event.tool) return;
+
+	const tool = event.tool;
+	if (tool.phase === 'cancel') {
+		if (!pausePrompt) activeTool = null;
+		return;
+	}
+	if (tool.phase === 'error') {
+		error = toolFailureMessage(tool);
+		if (!pausePrompt) activeTool = null;
+		return;
+	}
+	if (tool.phase === 'complete') {
+		if (!pausePrompt) activeTool = null;
+		return;
+	}
+	if (tool.name) {
+		activeTool = tool.name;
+	}
+}
+
+function waitForPauseDecision(prompt: LiveToolPausePrompt): Promise<ToolPauseResolution> {
+	return new Promise((resolve, reject) => {
+		pausePrompt = prompt;
+		pauseResolver = resolve;
+		pauseReject = reject;
+	});
+}
+
+function resolvePauseDecision(resolution: ToolPauseResolution) {
+	pauseResolver?.(resolution);
+	pauseResolver = null;
+	pauseReject = null;
+	pausePrompt = null;
+}
+
+function cancelPauseDecision(reason = 'Live session ended') {
+	if (pauseReject) {
+		pauseReject(new Error(reason));
+	}
+	pauseResolver = null;
+	pauseReject = null;
+	pausePrompt = null;
+}
 
 function resetCaptions() {
 	captions = emptyLiveCaptionState();
@@ -79,7 +148,7 @@ async function ensureClient(profileId: string) {
 
 	client = new LiveSessionClient({
 		profile: profileId,
-		voiceIngress: voiceEnabled,
+		voiceIngress: voiceAvailable,
 		onConnectPhase: (phase) => {
 			connectPhase = phase;
 		},
@@ -95,21 +164,43 @@ async function ensureClient(profileId: string) {
 			}
 		},
 		onTranscript: (text, isUser, meta) => {
-			captions = applyLiveTranscript(captions, text, isUser, meta?.interim);
+			const next = applyLiveTranscript(captions, text, isUser, meta?.interim);
+			captions = next;
+			if (!meta?.interim) focusLatestCaption(next);
 		},
+		onTurnEvent: handleLiveTurnEvent,
 		onVolumeLevel: (level, isUser) => {
-			if (isUser) inputLevel = level;
-			else outputLevel = level;
+			if (isUser) {
+				inputLevel = isMuted ? 0 : level;
+			} else {
+				outputLevel = level;
+			}
 		},
 		onError: (message) => {
 			error = message;
 		},
-		onToolCall: async (name) => {
+		onToolCall: async (name, args) => {
 			activeTool = name;
+			error = '';
 			try {
-				return { success: true, playground: true };
+				const result = await invokePlaygroundLiveTool({
+					payload,
+					name,
+					input: args,
+					sessionPermissions,
+					onPause: waitForPauseDecision,
+				});
+				sessionPermissions = result.sessionPermissions;
+				const outputError =
+					typeof result.output.error === 'string' ? result.output.error : undefined;
+				if (outputError) error = outputError;
+				return result.output;
+			} catch (err) {
+				const message = err instanceof Error ? err.message : String(err);
+				error = message;
+				return { error: message };
 			} finally {
-				activeTool = null;
+				if (!pausePrompt) activeTool = null;
 			}
 		},
 	});
@@ -140,13 +231,16 @@ function stopVideo() {
 }
 
 function teardownSession() {
+	cancelPauseDecision();
 	if (client) {
 		client.disconnect();
 		client = null;
 	}
 	stopVideo();
 	isMuted = false;
+	textComposerOpen = false;
 	sessionActive = false;
+	sessionPermissions = [];
 	status = 'disconnected';
 	connectPhase = null;
 	inputLevel = 0;
@@ -155,14 +249,21 @@ function teardownSession() {
 
 function handleSendText() {
 	const text = textDraft.trim();
-	if (!text || !client || !sessionActive || !textEnabled) return;
+	if (!text || !client || !sessionActive || !textAvailable) return;
 	client.sendText(text);
 	textDraft = '';
-	captions = applyLiveTranscript(captions, text, true, { interim: false });
+	const next = applyLiveTranscript(captions, text, true, false, { forceNew: true });
+	captions = next;
+	focusLatestCaption(next);
+}
+
+function handleToggleTextComposer() {
+	if (!textAvailable) return;
+	textComposerOpen = !textComposerOpen;
 }
 
 async function handleToggleVideo() {
-	if (!client || !sessionActive || !videoEnabled) return;
+	if (!client || !sessionActive || !videoAvailable) return;
 	if (isVideoOn) {
 		stopVideo();
 		return;
@@ -179,7 +280,7 @@ async function handleToggleVideo() {
 }
 
 function handleToggleMic() {
-	if (!client || !sessionActive || !voiceEnabled) return;
+	if (!client || !sessionActive || !voiceAvailable) return;
 	isMuted = client.toggleMute();
 }
 
@@ -201,35 +302,50 @@ onDestroy(() => {
 });
 </script>
 
-<LiveStage
-	{captionFocus}
-	captionTurns={captions.turns}
-	{error}
-	handle={iface.identity.handle}
-	{inputLevel}
-	interimAgent={captions.interimAgent}
-	interimUser={captions.interimUser}
-	{isMuted}
-	{isVideoOn}
-	onCaptionFocusChange={(focus) => {
-		captionFocus = focus;
-	}}
-	onEnd={handleEnd}
-	onRestart={handleRestart}
-	onSendText={handleSendText}
-	onTextDraftChange={(value) => {
-		textDraft = value;
-	}}
-	onToggleMic={handleToggleMic}
-	onToggleVideo={handleToggleVideo}
-	{outputLevel}
-	{sessionActive}
-	{stateLabel}
-	{status}
-	{textDraft}
-	{textEnabled}
-	{toolActive}
-	{voiceEnabled}
-	{videoEnabled}
-	canRestart={!sessionActive && everConnected && status !== 'connecting'}
-/>
+<div class="live-runner">
+	<LiveStage
+		{captionFocus}
+		captionTurns={captions.turns}
+		{error}
+		handle={iface.identity.handle}
+		{inputLevel}
+		interimAgent={captions.interimAgent}
+		interimUser={captions.interimUser}
+		{isMuted}
+		{isVideoOn}
+		onCaptionFocusChange={(focus) => {
+			captionFocus = focus;
+		}}
+		onEnd={handleEnd}
+		onRestart={handleRestart}
+		onSendText={handleSendText}
+		onTextDraftChange={(value) => {
+			textDraft = value;
+		}}
+		onToggleMic={handleToggleMic}
+		onToggleTextComposer={handleToggleTextComposer}
+		onToggleVideo={handleToggleVideo}
+		{outputLevel}
+		{sessionActive}
+		{stateLabel}
+		{status}
+		{textAvailable}
+		{textComposerOpen}
+		{textDraft}
+		{toolActive}
+		{videoAvailable}
+		{voiceAvailable}
+		canRestart={!sessionActive && everConnected && status !== 'connecting'}
+	/>
+
+	{#if pausePrompt}
+		<LiveToolPausePanel pause={pausePrompt.pause} onResolve={resolvePauseDecision} />
+	{/if}
+</div>
+
+<style>
+.live-runner {
+	position: relative;
+	height: 100%;
+}
+</style>

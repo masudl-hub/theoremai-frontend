@@ -25,8 +25,8 @@ export const NAVIGABLE_TARGETS: NavigableTarget[] = [
 			{ id: 'hero-title', name: 'Title', description: 'THEORUM title & version badge' },
 			{
 				id: 'th30-dock',
-				name: 'Th30 Cloud',
-				description: 'Fixed top-right Th30 voice assistant cloud',
+				name: 'Th30',
+				description: 'Voice assistant for site navigation and docs',
 			},
 		],
 	},
@@ -314,7 +314,7 @@ export const SITE_DOC_SECTIONS: DocSectionContent[] = [
 			'- Inputs & Outputs: text/voice, streaming, structured schemas, speech, live.',
 			'- Guardrails: canary, sanitization, egress.',
 			'',
-			'Run / Export compiles TypeScript source (defineProfile + registerTool). geminiLive profiles wire T0/T1 only at session start — T2 loaders do not apply on Live.',
+			'Run / Export compiles TypeScript source (defineProfile + registerTool). geminiLive profiles accept T0 tools only — declarations are fixed at session setup; T1/T2 and tools.t2Loader do not apply.',
 		],
 	},
 	{
@@ -354,7 +354,7 @@ export const SITE_DOC_SECTIONS: DocSectionContent[] = [
 			'## Tool system (docs/contracts/kernel.md + tool registry)',
 			'- registerTool at startup — single catalog. No defineTool export.',
 			'- type: "builtin" (provider-native, on model builtInTools) vs type: "function" (Zod handler, on tools.allow).',
-			'- Load tiers: T0 at turn start; T1 via tools.t1Policy; T2 via tools.t2Loader returning { loaded: string[] } (turn-local promotion).',
+			'- Load tiers: T0 at turn start; T1 via tools.t1Policy; T2 via tools.t2Loader returning { loaded: string[] } (turn-local promotion). Live profiles are T0-only — declarations fixed at session setup.',
 			'- invokeTool for host-initiated execution; optional promoted[] and snapshot (cloned).',
 			'',
 			'## Kernel contract (docs/contracts/kernel.md)',

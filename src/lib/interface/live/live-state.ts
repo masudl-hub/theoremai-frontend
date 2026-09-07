@@ -7,7 +7,7 @@ export function liveStateLabel(args: {
 	isMuted: boolean;
 	voiceEnabled?: boolean;
 }): string {
-	if (args.toolName) return args.toolName;
+	if (args.toolName) return `calling ${args.toolName}`;
 	if (args.connectPhase === 'socket') return 'connecting';
 	if (args.connectPhase === 'microphone') return 'requesting mic';
 	if (args.status === 'speaking') return 'speaking';

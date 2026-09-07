@@ -31,4 +31,9 @@ interface ImportMeta {
 	readonly env: ImportMetaEnv;
 }
 
+declare module '*?worker&url' {
+	const url: string;
+	export default url;
+}
+
 export {};

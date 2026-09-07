@@ -1,11 +1,12 @@
 import {
 	defineProfile,
+	type LiveProfileToolsSpec,
+	liveIngressChannelDefault,
 	type ProfileDefinition,
 	type ProfileDefinitionBase,
 	type ProfileGuardrailsSpec,
 	type ProfileInputsSpec,
 	type ProfileLiveSpec,
-	type ProfileModelSpec,
 	type ProfileOutputsSpec,
 	type ProfileToolsSpec,
 	type ProfileTurnResumptionSpec,
@@ -20,39 +21,45 @@ import type {
 	ImageData,
 	InputsData,
 	LiveData,
-	ModelSpecData,
+	ModelBindingData,
 	OutputsData,
 	PlaygroundNode,
 	SpeechData,
 	StructuredRegistration,
 } from './types';
 
-function buildModelConfig(specs: Array<{ id: string; data: ModelSpecData }>): {
-	allow: string[];
-	config: ProfileModelSpec['config'];
-	select: Record<string, string>;
-} {
-	const allow = specs.map((s) => s.data.modelId.trim());
-	const config: ProfileModelSpec['config'] = {};
-	const select: Record<string, string> = {};
+type ModelBinding = ProfileDefinition['models'][string];
+
+function buildModelsRecord(
+	specs: Array<{ id: string; data: ModelBindingData }>,
+): Record<string, ModelBinding> {
+	const models: Record<string, ModelBinding> = {};
 
 	for (const { data } of specs) {
 		const mid = data.modelId.trim();
-		config[mid] = {
+		const builtInTools = parseList(data.builtInTools);
+		const efforts = Object.fromEntries(
+			Object.entries(data.efforts).filter(([alias]) => alias.trim()),
+		);
+		const defaultEffort = data.defaultEffort.trim();
+
+		models[mid] = {
+			protocol: data.protocol,
+			provider: data.provider,
 			apiId: data.apiId.trim(),
-			thinking: { on: data.thinkingOn, off: data.thinkingOff },
-			thinkingLevels: data.thinkingLevels.length
-				? data.thinkingLevels
-				: ['minimal', 'low', 'medium', 'high'],
-			summaries: { on: data.summariesOn, off: data.summariesOff },
+			...(Object.keys(efforts).length ? { efforts } : {}),
+			...(defaultEffort ? { defaultEffort } : {}),
+			...(data.allowEffortSelect ? { allowEffortSelect: true } : {}),
+			...(data.summaries ? { summaries: true } : {}),
 			maxOutputTokens: data.maxOutputTokens,
-			temperature: data.temperature,
-			builtInTools: parseList(data.builtInTools),
+			...(typeof data.temperature === 'number' && Number.isFinite(data.temperature)
+				? { temperature: data.temperature }
+				: {}),
+			...(builtInTools.length ? { builtInTools } : {}),
 		};
-		const label = data.selectLabel.trim() || mid;
-		select[label] = mid;
 	}
-	return { allow, config, select };
+
+	return models;
 }
 
 function buildInputsPayload(inputs?: InputsData): ProfileInputsSpec {
@@ -130,37 +137,13 @@ function buildStructuredRegistration(outputs?: OutputsData): {
 type AssembleProfileParams = {
 	profileType: 'text' | 'image' | 'speech' | 'live';
 	base: ProfileDefinitionBase;
-	toolsSpec: ProfileToolsSpec;
+	toolsSpec: ProfileToolsSpec | LiveProfileToolsSpec;
 	inputsPayload: ProfileInputsSpec;
 	image?: ImageData;
 	speech?: SpeechData;
 	live?: LiveData;
 	outputs?: OutputsData;
 };
-
-type InteractionsModel = AssembleProfileParams['base']['model'] & {
-	protocol: 'geminiInteractions' | 'openAi';
-};
-
-type LiveModel = AssembleProfileParams['base']['model'] & {
-	protocol: 'geminiLive';
-};
-
-function withInteractionsModel(base: ProfileDefinitionBase): ProfileDefinitionBase & {
-	model: InteractionsModel;
-} {
-	return {
-		...base,
-		model: base.model as InteractionsModel,
-	};
-}
-
-function withLiveModel(base: ProfileDefinitionBase): ProfileDefinitionBase & { model: LiveModel } {
-	return {
-		...base,
-		model: base.model as LiveModel,
-	};
-}
 
 function buildTurnResumption(
 	outputs?: OutputsData,
@@ -216,17 +199,16 @@ function buildLiveIngress(live?: LiveData) {
 	if (!live) return undefined;
 	const ingress: NonNullable<ProfileLiveSpec['ingress']> = {};
 	let wired = false;
-	if (!live.ingressAudio) {
-		ingress.audio = false;
-		wired = true;
-	}
-	if (live.ingressVideo) {
-		ingress.video = true;
-		wired = true;
-	}
-	if (!live.ingressText) {
-		ingress.text = false;
-		wired = true;
+	const channels: Array<{ key: keyof NonNullable<ProfileLiveSpec['ingress']>; value: boolean }> = [
+		{ key: 'audio', value: live.ingressAudio },
+		{ key: 'video', value: live.ingressVideo },
+		{ key: 'text', value: live.ingressText },
+	];
+	for (const { key, value } of channels) {
+		if (value !== liveIngressChannelDefault(key)) {
+			ingress[key] = value;
+			wired = true;
+		}
 	}
 	return wired ? ingress : undefined;
 }
@@ -253,7 +235,7 @@ function buildLiveSpec(live?: LiveData) {
 function assembleTextProfile(params: AssembleProfileParams): ProfileDefinition {
 	const turnResumption = buildTurnResumption(params.outputs, params.profileType);
 	return {
-		...withInteractionsModel(params.base),
+		...params.base,
 		type: 'text',
 		tools: params.toolsSpec,
 		inputs: params.inputsPayload,
@@ -264,7 +246,7 @@ function assembleTextProfile(params: AssembleProfileParams): ProfileDefinition {
 function assembleImageProfile(params: AssembleProfileParams): ProfileDefinition {
 	const turnResumption = buildTurnResumption(params.outputs, params.profileType);
 	return {
-		...withInteractionsModel(params.base),
+		...params.base,
 		type: 'image',
 		image: buildImageSpec(params.image),
 		tools: params.toolsSpec,
@@ -276,7 +258,7 @@ function assembleImageProfile(params: AssembleProfileParams): ProfileDefinition 
 function assembleSpeechProfile(params: AssembleProfileParams): ProfileDefinition {
 	const turnResumption = buildTurnResumption(params.outputs, params.profileType);
 	return {
-		...withInteractionsModel(params.base),
+		...params.base,
 		type: 'speech',
 		speech: buildSpeechSpec(params.speech),
 		...(turnResumption ? { turnResumption } : {}),
@@ -285,10 +267,10 @@ function assembleSpeechProfile(params: AssembleProfileParams): ProfileDefinition
 
 function assembleLiveProfile(params: AssembleProfileParams): ProfileDefinition {
 	return {
-		...withLiveModel(params.base),
+		...params.base,
 		type: 'live',
 		live: buildLiveSpec(params.live),
-		tools: params.toolsSpec,
+		tools: { allow: params.toolsSpec.allow } satisfies LiveProfileToolsSpec,
 	};
 }
 
@@ -332,41 +314,18 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 	} = validated.value;
 	const issues: CompileIssue[] = [];
 
-	const { allow, config, select } = buildModelConfig(specs);
-	const controls = models.thinkingControl ? (['thinking'] as const) : [];
+	const modelsRecord = buildModelsRecord(specs);
 	const profileType = identity.profileType || 'text';
 	const allowTools = customTools.map((t) => t.name);
-	const toolsSpec: ProfileToolsSpec =
+	const toolsSpec: ProfileToolsSpec | LiveProfileToolsSpec =
 		profileType === 'live'
-			? { allow: allowTools }
+			? ({ allow: allowTools } satisfies LiveProfileToolsSpec)
 			: {
 					allow: allowTools,
 					...(tools?.t2Loader.trim() ? { t2Loader: tools.t2Loader.trim() } : {}),
 				};
 
-	const modelSpec: ProfileModelSpec =
-		profileType === 'live'
-			? {
-					protocol: models.protocol,
-					provider: models.provider,
-					allow,
-					config,
-					select,
-					thinking: models.thinking,
-					...(models.key ? { key: models.key } : {}),
-				}
-			: {
-					protocol: models.protocol,
-					provider: models.provider,
-					allow,
-					config,
-					select,
-					thinking: models.thinking,
-					maxSteps: models.maxSteps,
-					...(controls.length ? { controls: [...controls] } : {}),
-					...(models.key ? { key: models.key } : {}),
-				};
-
+	const defaultModel = models.defaultModel.trim();
 	const { payload: guardrailsPayload, egressMode } = buildGuardrailsPayload(guardrails);
 	const outputsPayload =
 		profileType !== 'live' && outputs ? (buildOutputs(outputs) as ProfileOutputsSpec) : undefined;
@@ -378,7 +337,11 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 			system: identity.system.trim(),
 			...(identity.chat ? { chat: true } : {}),
 		},
-		model: modelSpec,
+		models: modelsRecord,
+		...(defaultModel ? { defaultModel } : {}),
+		...(models.allowModelSelect ? { allowModelSelect: true } : {}),
+		...(profileType !== 'live' ? { maxSteps: models.maxSteps } : {}),
+		...(models.key ? { key: models.key } : {}),
 		...(outputsPayload ? { outputs: outputsPayload } : {}),
 		...(guardrailsPayload ? { guardrails: guardrailsPayload } : {}),
 	};

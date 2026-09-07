@@ -1,17 +1,30 @@
 <script lang="ts">
 import { onMount } from 'svelte';
 import { defineProfile } from 'theorum';
-import { interfaceFromProfile, type TranscriptBlock } from 'theorum/interface';
+import {
+	branchInterfaceTurnSession,
+	defaultInterfaceEffort,
+	defaultInterfaceModel,
+	emptyInterfaceTurnSession,
+	type InterfaceTurnSession,
+	interfaceFromProfile,
+	type TranscriptBlock,
+} from 'theorum/interface';
+import type { ToolCredential } from 'theorum/kernel';
 import { base, resolve } from '$app/paths';
 import InterfaceRunner from '$lib/components/interface/InterfaceRunner.svelte';
 import LiveRunner from '$lib/components/interface/live/LiveRunner.svelte';
-import { filesToPending } from '$lib/interface/encode-files';
 import {
 	clearPlaygroundRunPayload,
 	loadPlaygroundRunPayload,
 	type PlaygroundRunPayload,
 } from '$lib/interface/run-payload';
-import { prepareInterfaceDraft, streamInterfaceTurn } from '$lib/interface/run-session';
+import {
+	applyTurnResultToTranscript,
+	resumeInterfaceTool,
+	streamInterfaceTurn,
+} from '$lib/interface/run-session';
+import type { ToolDecisionAction } from '$lib/interface/tool-resume';
 
 let payload = $state<PlaygroundRunPayload | null>(null);
 let ready = $state(false);
@@ -19,26 +32,33 @@ let blocks = $state<TranscriptBlock[]>([]);
 let streamBlocks = $state<TranscriptBlock[]>([]);
 let draftText = $state('');
 let pendingFiles = $state<File[]>([]);
+let pendingVoice = $state<File[]>([]);
 let issues = $state<string[]>([]);
 let error = $state('');
 let busy = $state(false);
 let chatStarted = $state(false);
 let streaming = $state(false);
+let session = $state<InterfaceTurnSession>(emptyInterfaceTurnSession());
 
 const isLive = $derived(payload?.profile.type === 'live');
-const iface = $derived(
-	payload && !isLive ? interfaceFromProfile(defineProfile(payload.profile)) : null,
-);
-const liveIface = $derived(
-	payload && isLive ? interfaceFromProfile(defineProfile(payload.profile)) : null,
-);
-const pendingLabels = $derived(filesToPending(pendingFiles).map((file) => file.name));
+const iface = $derived.by(() => {
+	if (!payload || payload.profile.type === 'live') return null;
+	return interfaceFromProfile(defineProfile(payload.profile));
+});
+const liveIface = $derived.by(() => {
+	if (payload?.profile.type !== 'live') return null;
+	return interfaceFromProfile(defineProfile(payload.profile));
+});
+const playgroundHref = $derived(`${resolve('/', {})}#playground`);
+const paused = $derived(session.pausedTool !== null);
 
 const canSubmit = $derived(
 	!busy &&
+		!paused &&
 		Boolean(
 			(iface?.inputs.text && draftText.trim().length > 0) ||
-				(iface?.inputs.attachments && pendingFiles.length > 0),
+				(iface?.inputs.attachments && pendingFiles.length > 0) ||
+				(iface?.inputs.voice && pendingVoice.length > 0),
 		),
 );
 
@@ -53,34 +73,51 @@ onMount(() => {
 	ready = true;
 });
 
-async function handleSubmit() {
-	if (!iface || !payload || busy) return;
-	issues = [];
-	error = '';
-
-	const prepared = prepareInterfaceDraft(iface, draftText, pendingFiles);
-	if (!prepared.ok) {
-		issues = prepared.issues;
-		return;
+$effect(() => {
+	const composer = iface;
+	if (!composer) return;
+	const model = session.selectedModel ?? defaultInterfaceModel(composer);
+	if (!model) return;
+	const effort = defaultInterfaceEffort(composer, model);
+	if (!session.selectedModel || (effort && !session.selectedEffort)) {
+		session = {
+			...session,
+			selectedModel: session.selectedModel ?? model,
+			...(effort ? { selectedEffort: session.selectedEffort ?? effort } : {}),
+		};
 	}
+});
 
-	chatStarted = true;
-	blocks = [...blocks, ...prepared.blocks];
-	const pendingSnapshot = [...pendingFiles];
-	draftText = '';
-	pendingFiles = [];
+function handleGenerationChange(next: { modelId: string; effort?: string }) {
+	const composer = iface;
+	const effort =
+		next.effort ?? (composer ? defaultInterfaceEffort(composer, next.modelId) : undefined);
+	session = {
+		...session,
+		selectedModel: next.modelId,
+		...(effort ? { selectedEffort: effort } : { selectedEffort: undefined }),
+	};
+}
+
+type TurnOk = {
+	ok: true;
+	session: InterfaceTurnSession;
+	userBlocks?: TranscriptBlock[];
+	assistantBlocks: TranscriptBlock[];
+};
+
+async function runTurnStream(
+	run: (
+		onStream: (partial: TranscriptBlock[]) => void,
+	) => Promise<TurnOk | { ok: false; error: string; issues?: string[] }>,
+) {
+	if (!iface || !payload || busy) return;
+	error = '';
 	busy = true;
 	streaming = true;
-	streamBlocks = [];
 
-	const result = await streamInterfaceTurn({
-		iface,
-		payload,
-		text: prepared.draft.text ?? '',
-		pendingFiles: pendingSnapshot,
-		onStream: (partial) => {
-			streamBlocks = partial;
-		},
+	const result = await run((partial) => {
+		streamBlocks = partial;
 	});
 
 	busy = false;
@@ -88,12 +125,98 @@ async function handleSubmit() {
 
 	if (!result.ok) {
 		error = result.error;
+		if (result.issues) {
+			issues = result.issues;
+		}
 		streamBlocks = [];
 		return;
 	}
 
-	blocks = [...blocks, ...result.assistantBlocks];
+	const merged = applyTurnResultToTranscript({
+		blocks,
+		streamBlocks,
+		session: result.session,
+		userBlocks: result.userBlocks,
+		assistantBlocks: result.assistantBlocks,
+	});
+	blocks = merged.blocks;
+	streamBlocks = merged.streamBlocks;
+	session = merged.session;
+}
+
+async function handleSubmit() {
+	const composer = iface;
+	const runPayload = payload;
+	if (!composer || !runPayload || paused) return;
+	issues = [];
+
+	const textSnapshot = draftText;
+	const pendingSnapshot = [...pendingFiles];
+	const voiceSnapshot = [...pendingVoice];
+	chatStarted = true;
+	draftText = '';
+	pendingFiles = [];
+	pendingVoice = [];
+
+	await runTurnStream((onStream) =>
+		streamInterfaceTurn({
+			iface: composer,
+			payload: runPayload,
+			session,
+			text: textSnapshot,
+			pendingFiles: pendingSnapshot,
+			pendingVoice: voiceSnapshot,
+			onStream,
+		}),
+	);
+}
+
+async function handleToolDecision(
+	_index: number,
+	action: ToolDecisionAction,
+	interactiveValue?: unknown,
+) {
+	const composer = iface;
+	const runPayload = payload;
+	if (!composer || !runPayload) return;
+
+	await runTurnStream((onStream) =>
+		resumeInterfaceTool({
+			iface: composer,
+			payload: runPayload,
+			session,
+			action,
+			interactiveValue,
+			onStream,
+		}),
+	);
+}
+
+async function handleAuthCredential(_index: number, slot: string, credential: ToolCredential) {
+	const composer = iface;
+	const runPayload = payload;
+	if (!composer || !runPayload) return;
+
+	await runTurnStream((onStream) =>
+		resumeInterfaceTool({
+			iface: composer,
+			payload: runPayload,
+			session,
+			action: 'allow',
+			credentials: { [slot]: credential },
+			onStream,
+		}),
+	);
+}
+
+function handleBranch(index: number) {
+	const kept = [...blocks, ...streamBlocks].slice(0, index + 1);
+	blocks = kept;
 	streamBlocks = [];
+	streaming = false;
+	busy = false;
+	chatStarted = kept.length > 0;
+	session = branchInterfaceTurnSession(session, kept);
 }
 </script>
 
@@ -101,18 +224,14 @@ async function handleSubmit() {
 	<title>{(liveIface ?? iface)?.identity.handle ?? 'Run'} · Theorum Playground</title>
 </svelte:head>
 
-<a class="iface-run-link" href="{resolve('/')}#playground">← Playground</a>
+<a class="iface-run-link" href={playgroundHref}>← Playground</a>
 
 {#if error}
 	<p class="iface-run-error" role="alert">{error}</p>
 {/if}
 
-{#if pendingLabels.length && !chatStarted}
-	<ul class="iface-pending" aria-label="Pending attachments">
-		{#each pendingLabels as name (name)}
-			<li>{name}</li>
-		{/each}
-	</ul>
+{#if paused}
+	<p class="iface-run-hint" role="status">Waiting for tool approval before you can continue.</p>
 {/if}
 
 {#if !ready}
@@ -121,7 +240,6 @@ async function handleSubmit() {
 	<LiveRunner iface={liveIface} {payload} />
 {:else if iface && payload}
 	<InterfaceRunner
-		attachmentCount={pendingFiles.length}
 		{blocks}
 		{busy}
 		{canSubmit}
@@ -129,6 +247,8 @@ async function handleSubmit() {
 		{draftText}
 		{iface}
 		issues={[...issues]}
+		onAuthCredential={handleAuthCredential}
+		onBranch={handleBranch}
 		onDraftTextChange={(value) => {
 			draftText = value;
 		}}
@@ -136,7 +256,23 @@ async function handleSubmit() {
 			pendingFiles = [...pendingFiles, ...files];
 			issues = [];
 		}}
+		onAttachmentRemove={(index) => {
+			pendingFiles = pendingFiles.filter((_, i) => i !== index);
+		}}
+		onVoiceStaged={(file) => {
+			pendingVoice = [file];
+			issues = [];
+		}}
+		onVoiceClear={() => {
+			pendingVoice = [];
+		}}
 		onSubmit={handleSubmit}
+		onToolDecision={handleToolDecision}
+		onGenerationChange={handleGenerationChange}
+		{pendingFiles}
+		{pendingVoice}
+		selectedEffort={session.selectedEffort ?? ''}
+		selectedModel={session.selectedModel ?? ''}
 		{streamBlocks}
 		{streaming}
 	/>
@@ -160,5 +296,11 @@ async function handleSubmit() {
 :global(body:has(.live-stage)) {
 	height: 100dvh;
 	overflow: hidden;
+}
+
+.iface-run-hint {
+	margin: 0.5rem 1rem;
+	font-size: 0.82rem;
+	color: #555;
 }
 </style>

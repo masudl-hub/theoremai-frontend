@@ -76,10 +76,10 @@ const onBlockOptions = fieldEnumOptions('guardrails.egress.onBlock');
 			checked={Boolean(data.allowPrivateNetworks)}
 			onchange={(v) => patch({ allowPrivateNetworks: v })}
 		/>
-		<FacetFieldLabel path="guardrails.network" text="allow private networks" />
+		<FacetFieldLabel path="guardrails.network.allowPrivateNetworks" />
 	</label>
 	<label class="facet-field">
-		<FacetFieldLabel path="guardrails.network" text="allowed hosts" />
+		<FacetFieldLabel path="guardrails.network.allowedHosts" />
 		<input
 			class="field"
 			autocomplete="off"

@@ -7,31 +7,46 @@ import type {
 	ProfileType,
 } from 'theorum';
 import type {
+	AuthUnauthenticatedPolicy,
+	CustomToolType,
 	EgressOnBlock,
+	HttpMethod,
 	LiveActivityHandling,
 	LiveSpeechSensitivity,
 	OverflowKeySlot,
+	PlaygroundAuthType,
 	Protocol,
 	Provider,
 	SchemaEnforcement,
 	StreamMode,
-	SummaryMode,
 	ThinkingLevel,
+	ToolAccess,
+	ToolAuthType,
 	ToolLoadTier,
+	ToolPermission,
 	TurnStopKind,
 } from 'theorum/schema';
+import { TOOL_ACCESS, TOOL_LOAD_TIERS, TOOL_PERMISSION } from 'theorum/schema';
 import { DEFAULT_TOOL_INPUT_SCHEMA, DEFAULT_TOOL_OUTPUT_SCHEMA } from './tool-schema';
 
-export type { ProfileType };
+export type {
+	CustomToolType,
+	HttpMethod,
+	PlaygroundAuthType,
+	ProfileType,
+	ToolAccess,
+	ToolAuthType,
+	ToolPermission,
+};
 
 /**
  * Canvas node kinds.
- * Multiples nest as children (e.g. models → modelSpec, tools → toolSpec).
+ * Multiples nest as children (e.g. models → modelBinding, tools → toolSpec).
  */
 export type FacetKind =
 	| 'identity'
 	| 'models'
-	| 'modelSpec'
+	| 'modelBinding'
 	| 'tools'
 	| 'toolSpec'
 	| 'inputs'
@@ -55,38 +70,35 @@ export type IdentityData = {
 	includeGuardrails?: boolean;
 };
 
-/** Top-level `profile.model` — protocol/provider/allow/select/thinking/maxSteps. */
+/** Profile-level model policy — `defaultModel`, `allowModelSelect`, `maxSteps`, `key`. */
 export type ModelsData = {
 	kind: 'models';
 	expanded: boolean;
-	/** When true, hide model spec nodes on the canvas. */
+	/** When true, hide model binding nodes on the canvas. */
 	branchCollapsed: boolean;
-	protocol: Protocol;
-	provider: Provider;
-	thinking: ThinkingLevel;
+	defaultModel: string;
+	allowModelSelect: boolean;
 	maxSteps: number;
-	/** `model.controls` — only ControlId `'thinking'` today */
-	thinkingControl: boolean;
 	key: OverflowKeySlot | '';
 };
 
-/** One entry in `profile.model.config[id]` (+ allow/select). */
-export type ModelSpecData = {
-	kind: 'modelSpec';
+/** One entry in `profile.models[id]` — `ModelBinding`. */
+export type ModelBindingData = {
+	kind: 'modelBinding';
 	expanded: boolean;
 	modelId: string;
+	protocol: Protocol;
+	provider: Provider;
 	apiId: string;
-	temperature: number;
+	/** Effort alias → thinking level. */
+	efforts: Record<string, ThinkingLevel>;
+	defaultEffort: string;
+	allowEffortSelect: boolean;
+	summaries: boolean;
+	temperature?: number;
 	maxOutputTokens: number;
-	thinkingOn: ThinkingLevel;
-	thinkingOff: ThinkingLevel;
-	thinkingLevels: ThinkingLevel[];
-	summariesOn: SummaryMode;
-	summariesOff: SummaryMode;
 	builtInTools: string;
-	selectLabel: string;
 };
-
 /** Hub for custom tools — allow is derived from child toolSpec nodes. */
 export type ToolsData = {
 	kind: 'tools';
@@ -97,25 +109,16 @@ export type ToolsData = {
 	t2Loader: string;
 };
 
-export type PlaygroundToolType = 'function' | 'http' | 'mcp';
-
-export type HttpMethodValue = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-export type ToolAuthTypeValue = 'none' | 'bearer' | 'api_key' | 'oauth2';
-export type AuthUnauthenticatedPolicyValue = 'pause' | 'report_to_model';
-
-export type ToolAccessValue = 'read-only' | 'read-write' | 'destructive';
-export type ToolPermissionValue = 'auto' | 'session_consent' | 'always_confirm';
-
 /** One custom tool — compiles to registerTool + tools.allow entry. */
 export type ToolSpecData = {
 	kind: 'toolSpec';
 	expanded: boolean;
 	toolName: string;
-	toolType: PlaygroundToolType;
+	toolType: CustomToolType;
 	description: string;
 	category: string;
-	access: ToolAccessValue;
-	permission: ToolPermissionValue;
+	access: ToolAccess;
+	permission: ToolPermission;
 	loadTier: ToolLoadTier;
 	/** Comma-separated paths; `*` = all. */
 	paths: string;
@@ -128,7 +131,7 @@ export type ToolSpecData = {
 
 	// Declarative HTTP Tool properties
 	endpoint?: string;
-	method?: HttpMethodValue;
+	method?: HttpMethod;
 	headersJson?: string;
 	pathParams?: string;
 	queryParams?: string;
@@ -139,11 +142,11 @@ export type ToolSpecData = {
 	mcpToolName?: string;
 
 	// Shared Auth properties for HTTP and MCP tools
-	authType?: ToolAuthTypeValue;
+	authType?: PlaygroundAuthType;
 	authSlot?: string;
 	authHeaderName?: string;
 	authHeaderPrefix?: string;
-	authUnauthenticated?: AuthUnauthenticatedPolicyValue;
+	authUnauthenticated?: AuthUnauthenticatedPolicy;
 	authScopes?: string;
 	authClientId?: string;
 	authRedirectUri?: string;
@@ -246,7 +249,7 @@ export type LiveData = {
 export type FacetData =
 	| IdentityData
 	| ModelsData
-	| ModelSpecData
+	| ModelBindingData
 	| ToolsData
 	| ToolSpecData
 	| InputsData
@@ -279,8 +282,8 @@ export type FunctionToolRegistration = {
 	name: string;
 	description: string;
 	category: string;
-	access: ToolAccessValue;
-	permission: ToolPermissionValue;
+	access: ToolAccess;
+	permission: ToolPermission;
 	loadTier: ToolLoadTier;
 	paths: string[];
 	inputSchema: Record<string, unknown>;
@@ -294,12 +297,12 @@ export type HttpToolRegistration = {
 	name: string;
 	description: string;
 	category: string;
-	access: ToolAccessValue;
-	permission: ToolPermissionValue;
+	access: ToolAccess;
+	permission: ToolPermission;
 	loadTier: ToolLoadTier;
 	paths: string[];
 	endpoint: string;
-	method: HttpMethodValue;
+	method: HttpMethod;
 	headers?: Record<string, string>;
 	mapping?: {
 		pathParams?: string[];
@@ -308,10 +311,10 @@ export type HttpToolRegistration = {
 	};
 	auth?: {
 		slot: string;
-		type: 'bearer' | 'api_key' | 'oauth2';
+		type: ToolAuthType;
 		headerName?: string;
 		headerPrefix?: string;
-		onUnauthenticated?: AuthUnauthenticatedPolicyValue;
+		onUnauthenticated?: AuthUnauthenticatedPolicy;
 		scopes?: string[];
 		clientId?: string;
 		redirectUri?: string;
@@ -325,8 +328,8 @@ export type McpToolRegistration = {
 	name: string;
 	description: string;
 	category: string;
-	access: ToolAccessValue;
-	permission: ToolPermissionValue;
+	access: ToolAccess;
+	permission: ToolPermission;
 	loadTier: ToolLoadTier;
 	paths: string[];
 	serverUrl: string;
@@ -334,10 +337,10 @@ export type McpToolRegistration = {
 	headers?: Record<string, string>;
 	auth?: {
 		slot: string;
-		type: 'bearer' | 'api_key' | 'oauth2';
+		type: ToolAuthType;
 		headerName?: string;
 		headerPrefix?: string;
-		onUnauthenticated?: AuthUnauthenticatedPolicyValue;
+		onUnauthenticated?: AuthUnauthenticatedPolicy;
 		scopes?: string[];
 		clientId?: string;
 		redirectUri?: string;
@@ -370,7 +373,7 @@ export type CompileResult =
 export const FACET_LABEL: Record<FacetKind, string> = {
 	identity: 'Profile',
 	models: 'Models',
-	modelSpec: 'Model',
+	modelBinding: 'Model',
 	tools: 'Tools',
 	toolSpec: 'Tool',
 	inputs: 'Inputs',
@@ -411,8 +414,8 @@ export function defaultLiveSpec(partial?: Partial<LiveData>): LiveData {
 		kind: 'live',
 		expanded: false,
 		ingressAudio: true,
-		ingressVideo: false,
-		ingressText: true,
+		ingressVideo: true,
+		ingressText: false,
 		voice: '',
 		sessionResumption: false,
 		proactiveAudio: false,
@@ -429,25 +432,23 @@ export function defaultLiveSpec(partial?: Partial<LiveData>): LiveData {
 	};
 }
 
-export function defaultModelSpec(partial?: Partial<ModelSpecData>): ModelSpecData {
+export function defaultModelBinding(partial?: Partial<ModelBindingData>): ModelBindingData {
 	return {
-		kind: 'modelSpec',
+		kind: 'modelBinding',
 		expanded: false,
 		modelId: 'fast',
+		protocol: 'openAi',
+		provider: 'openrouter',
 		apiId: '',
-		temperature: 0.3,
+		efforts: { default: 'minimal' },
+		defaultEffort: 'default',
+		allowEffortSelect: false,
+		summaries: false,
 		maxOutputTokens: 2048,
-		thinkingOn: 'high',
-		thinkingOff: 'minimal',
-		thinkingLevels: ['minimal', 'low', 'medium', 'high'],
-		summariesOn: 'auto',
-		summariesOff: 'none',
 		builtInTools: '',
-		selectLabel: 'fast',
 		...partial,
 	};
 }
-
 export function defaultToolSpec(partial?: Partial<ToolSpecData>): ToolSpecData {
 	return {
 		kind: 'toolSpec',
@@ -456,9 +457,9 @@ export function defaultToolSpec(partial?: Partial<ToolSpecData>): ToolSpecData {
 		toolType: 'function',
 		description: 'Playground stub tool — returns a fixed result.',
 		category: 'playground',
-		access: 'read-only',
-		permission: 'auto',
-		loadTier: 'T0',
+		access: TOOL_ACCESS[0],
+		permission: TOOL_PERMISSION[0],
+		loadTier: TOOL_LOAD_TIERS[0],
 		paths: '*',
 		inputJson: DEFAULT_TOOL_INPUT_SCHEMA,
 		outputJson: DEFAULT_TOOL_OUTPUT_SCHEMA,

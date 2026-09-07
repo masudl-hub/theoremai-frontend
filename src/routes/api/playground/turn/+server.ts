@@ -7,6 +7,10 @@ type TurnBody = {
 	profile: import('theorum').ProfileDefinition;
 	customTools?: import('$lib/playground/types').ToolRegistration[];
 	structured?: import('$lib/playground/types').StructuredRegistration;
+	previousInteractionId?: string;
+	sessionPermissions?: string[];
+	model?: string;
+	effort?: string;
 	input: import('theorum').TurnInput;
 };
 
@@ -23,6 +27,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 						customTools: body.customTools ?? [],
 						structured: body.structured,
 						input: body.input,
+						previousInteractionId: body.previousInteractionId,
+						sessionPermissions: body.sessionPermissions,
+						model: body.model,
+						effort: body.effort,
 						env,
 					})) {
 						controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));

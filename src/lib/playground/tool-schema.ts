@@ -51,8 +51,11 @@ function propToZod(prop: Record<string, unknown>): ZodType {
 	return z.unknown();
 }
 
-/** Build a Zod object from a limited JSON Schema subset (object + primitives). */
+/** Build a Zod schema from a limited JSON Schema subset (object, array, primitives). */
 export function zodFromJsonSchema(schema: Record<string, unknown>): ZodType {
+	if (schema.type === 'array') {
+		return propToZod(schema);
+	}
 	const { props, required } = jsonSchemaFields(schema);
 	const shape: Record<string, ZodType> = {};
 	for (const [key, prop] of Object.entries(props)) {
@@ -60,9 +63,51 @@ export function zodFromJsonSchema(schema: Record<string, unknown>): ZodType {
 		shape[key] = required.has(key) ? field : field.optional();
 	}
 	if (Object.keys(shape).length === 0) {
-		return z.object({});
+		return z.looseObject({});
 	}
-	return z.object(shape);
+	return z.looseObject(shape);
+}
+
+const SAMPLE_STRINGS: Record<string, string> = {
+	name: 'paris',
+	q: 'Paris',
+	title: 'Paris',
+	from: 'USD',
+	to: 'EUR',
+	country: 'us',
+	postal: '90210',
+	repoName: 'sveltejs/kit',
+	question: 'What is this project?',
+};
+
+function sampleValueForProp(key: string, prop: Record<string, unknown>): unknown {
+	const t = prop.type;
+	if (t === 'number' || t === 'integer') {
+		if (key === 'limit') return 1;
+		if (key === 'amount') return 100;
+		if (key.startsWith('lat')) return 48.85;
+		if (key === 'lon' || key === 'lng' || key.endsWith('lon')) return 2.35;
+		return 1;
+	}
+	if (t === 'boolean') return true;
+	if (SAMPLE_STRINGS[key]) return SAMPLE_STRINGS[key];
+	return 'test';
+}
+
+/** Build a minimal object that satisfies required input schema fields for connection tests. */
+export function sampleInputFromJsonSchema(
+	schema: Record<string, unknown>,
+): Record<string, unknown> {
+	const required = Array.isArray(schema.required)
+		? schema.required.filter((k): k is string => typeof k === 'string')
+		: [];
+	const props = (schema.properties ?? {}) as Record<string, Record<string, unknown>>;
+	const out: Record<string, unknown> = {};
+	for (const key of required) {
+		if (!(key in props)) continue;
+		out[key] = sampleValueForProp(key, props[key]);
+	}
+	return out;
 }
 
 export function parseJsonSchema(

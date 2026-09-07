@@ -64,7 +64,7 @@ Update the preferred sibling kernel in place; re-run `npm run theorum:ensure` af
 - **Lazy adapters:** importing `@theorum/core` does not load OpenRouter, Google, or local adapter graphs — those load on the first `complete` for that transport.
 - **Free models only.** Keys enforce this at the provider — OpenRouter free keys can't reach paid models, Gemini keys are free-tier. The landing playground defaults to `openrouter/free` and validates apiIds at compile time.
 - **Google vault slots:** playground `model.key` must be `slotA` | `slotB` | `slotC` for Google transports — compile does not invent a key.
-- **Tools model:** `tools.allow` is custom function tools only; provider builtins go on `model.config.*.builtInTools`. T0/T1/T2 visibility follows `loadTier` + optional `tools.t1Policy` / `tools.t2Loader` (T2 promotion is turn-local). Live sessions open via `runSession` (T0/T1 expanded at session start).
+- **Tools model:** `tools.allow` is custom function tools only; provider builtins go on `model.config.*.builtInTools`. T0/T1/T2 visibility follows `loadTier` + optional `tools.t1Policy` / `tools.t2Loader` (T2 promotion is turn-local). Live sessions (`runSession`) are T0-only — function declarations are fixed at setup.
 - **Playground** compiles `defineProfile` + `registerTool` source — it does not execute `runTurn`.
 
 ## Guardrails on this site

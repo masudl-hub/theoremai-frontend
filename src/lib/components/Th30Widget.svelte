@@ -7,20 +7,19 @@ import {
 } from '$lib/client/live-client';
 import { playTh30ReadyChime } from '$lib/client/th30-chime';
 import { acceptTh30GeminiConsent, hasTh30GeminiConsent } from '$lib/client/th30-consent';
-import Th30Cloud from '$lib/components/Th30Cloud.svelte';
 import Th30ConsentModal from '$lib/components/Th30ConsentModal.svelte';
 import Th30Overlays from '$lib/components/Th30Overlays.svelte';
+import Th30StatusLine from '$lib/components/Th30StatusLine.svelte';
 import { readDocSection, searchDocumentation } from '$lib/docs/unified-docs';
 import {
 	highlightLines as applyLineHighlight,
 	clearLineHighlights,
 } from '$lib/th30/line-highlight';
 import { runTh30ToolCall } from '$lib/th30/tool-handlers';
-import type { Th30Caption, Th30CloudState } from '$lib/types/th30';
+import type { StatusLineMode } from '$lib/th30/ui-context';
+import type { Th30CloudState } from '$lib/types/th30';
 
 const GREETING_TRIGGER = '(call connected)';
-
-type StatusLineMode = 'connecting' | 'listening' | 'speaking' | 'thinking' | 'muted';
 
 let client: LiveSessionClient | null = null;
 let status = $state<LiveSessionStatus>('disconnected');
@@ -47,16 +46,6 @@ let navFrameTimer: ReturnType<typeof setTimeout> | null = null;
 let liveCaptionUser = $state('');
 let liveCaptionAgent = $state('');
 let liveCaptionVisible = $derived(liveCaptionUser.length > 0 || liveCaptionAgent.length > 0);
-
-const caption = $derived.by((): Th30Caption => {
-	if (sessionLive) return 'live';
-	if (permissionDenied) return 'denied';
-	if (status === 'connecting' || cloudState === 'connecting') {
-		if (connectPhase === 'microphone' && micPermission === 'prompt') return 'requesting';
-		return 'connecting';
-	}
-	return 'none';
-});
 
 const statusLineMode = $derived.by((): StatusLineMode | null => {
 	if (!sessionLive && status !== 'connecting') return null;
@@ -285,7 +274,11 @@ onDestroy(() => {
 });
 </script>
 
-<Th30Overlays {statusLineMode} {navFrameActive} {showBye} {activeActionLabel} />
+{#if statusLineMode}
+	<Th30StatusLine mode={statusLineMode} placement="viewport" />
+{/if}
+
+<Th30Overlays {navFrameActive} {showBye} {activeActionLabel} />
 
 {#if liveCaptionVisible}
 	<div class="th30-live-captions" aria-live="polite">
@@ -298,17 +291,6 @@ onDestroy(() => {
 	</div>
 {/if}
 
-<div id="th30-dock" class="th30-dock">
-	<Th30Cloud
-		mode={cloudState}
-		muted={isMuted}
-		{caption}
-		onActivate={handleCloudActivate}
-		onMute={handleMute}
-		onDisconnect={handleDisconnect}
-	/>
-</div>
-
 <Th30ConsentModal
 	open={showConsent}
 	onAccept={handleConsentAccept}
@@ -316,13 +298,6 @@ onDestroy(() => {
 />
 
 <style>
-.th30-dock {
-	position: fixed;
-	top: 16px;
-	right: 16px;
-	z-index: 60;
-}
-
 .th30-live-captions {
 	position: fixed;
 	left: 16px;
@@ -352,11 +327,6 @@ onDestroy(() => {
 }
 
 @media (min-width: 768px) {
-	.th30-dock {
-		top: 24px;
-		right: 24px;
-	}
-
 	.th30-live-captions {
 		left: 24px;
 		right: auto;

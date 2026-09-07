@@ -1,13 +1,14 @@
 <script lang="ts">
 import { onMount } from 'svelte';
-import type { LiveSessionStatus } from '$lib/client/live-client';
 import {
 	computeInkBarTargets,
 	INK_WAVE_BAR_COUNT,
-	INK_WAVE_PHASES,
+	INK_WAVE_HERO_BAR_COUNT,
+	type InkWaveStatus,
 	inkWaveDriver,
+	inkWavePhases,
 	stepInkBarHeights,
-} from '$lib/interface/live/ink-waveform';
+} from '$lib/interface/ink-waveform';
 
 let {
 	status = 'disconnected',
@@ -15,25 +16,28 @@ let {
 	outputLevel = 0,
 	toolActive = false,
 	frozen = false,
+	variant = 'default',
 }: {
-	status?: LiveSessionStatus;
+	status?: InkWaveStatus;
 	inputLevel?: number;
 	outputLevel?: number;
 	toolActive?: boolean;
 	frozen?: boolean;
+	variant?: 'default' | 'hero';
 } = $props();
 
-const viewWidth = 480;
-const viewHeight = 320;
+const viewWidth = $derived(variant === 'hero' ? 960 : 480);
+const viewHeight = $derived(variant === 'hero' ? 720 : 320);
+const preserveAspect = $derived(variant === 'hero' ? 'xMidYMax slice' : 'xMidYMax meet');
 const strokeWidth = 2;
-const barCount = INK_WAVE_BAR_COUNT;
-const gap = (viewWidth - strokeWidth * barCount) / (barCount + 1);
-const phases = INK_WAVE_PHASES;
+const barCount = $derived(variant === 'hero' ? INK_WAVE_HERO_BAR_COUNT : INK_WAVE_BAR_COUNT);
+const gap = $derived((viewWidth - strokeWidth * barCount) / (barCount + 1));
+const phases = $derived(inkWavePhases(barCount));
 
-let heights = $state<number[]>(Array.from({ length: barCount }, () => 0.06));
+let heights = $state<number[]>([]);
 
 type Snap = {
-	status: LiveSessionStatus;
+	status: InkWaveStatus;
 	inputLevel: number;
 	outputLevel: number;
 	toolActive: boolean;
@@ -66,7 +70,11 @@ const bars = $derived(
 
 onMount(() => {
 	let frame = 0;
+	heights = Array.from({ length: barCount }, () => 0.06);
 	const tick = (time: number) => {
+		if (heights.length !== barCount) {
+			heights = Array.from({ length: barCount }, () => 0.06);
+		}
 		const targets = computeInkBarTargets({
 			phases,
 			timeMs: time,
@@ -91,9 +99,10 @@ onMount(() => {
 
 <svg
 	class="ink-wave"
+	class:ink-wave--hero={variant === 'hero'}
 	aria-hidden="true"
 	viewBox="0 0 {viewWidth} {viewHeight}"
-	preserveAspectRatio="xMidYMax meet"
+	preserveAspectRatio={preserveAspect}
 >
 	{#each bars as bar, index (index)}
 		<line

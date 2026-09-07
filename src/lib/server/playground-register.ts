@@ -7,6 +7,7 @@ import {
 	registerTool,
 	standardEgressEnforce,
 } from 'theorum';
+import { playgroundDemoHandler, stubOutputFromSchema } from 'theorum/playground';
 import { registerGooglePreset } from 'theorum/presets/google';
 import { zodFromJsonSchema } from '$lib/playground/tool-schema';
 import type { StructuredRegistration, ToolRegistration } from '$lib/playground/types';
@@ -17,21 +18,6 @@ function ensurePlaygroundPreset(): void {
 	if (playgroundPresetReady) return;
 	registerGooglePreset();
 	playgroundPresetReady = true;
-}
-
-function stubOutput(schema: Record<string, unknown>): Record<string, unknown> {
-	const stub: Record<string, unknown> = {};
-	const props = (schema.properties ?? {}) as Record<string, Record<string, unknown>>;
-	for (const [key, prop] of Object.entries(props)) {
-		const t = prop.type;
-		if (t === 'number' || t === 'integer') stub[key] = 0;
-		else if (t === 'boolean') stub[key] = false;
-		else if (t === 'array') stub[key] = [];
-		else if (t === 'object') stub[key] = {};
-		else stub[key] = `playground:${key}`;
-	}
-	if (!Object.keys(stub).length) stub.result = 'playground stub';
-	return stub;
 }
 
 function registerPlaygroundTools(tools: readonly ToolRegistration[]): void {
@@ -72,7 +58,8 @@ function registerPlaygroundTools(tools: readonly ToolRegistration[]): void {
 				output: zodFromJsonSchema(tool.outputSchema),
 			});
 		} else {
-			const stub = tool.stubResponse ?? stubOutput(tool.outputSchema);
+			const demoHandler = playgroundDemoHandler(tool.name);
+			const stub = tool.stubResponse ?? stubOutputFromSchema(tool.outputSchema);
 			registerTool({
 				type: 'function',
 				name: tool.name,
@@ -84,7 +71,15 @@ function registerPlaygroundTools(tools: readonly ToolRegistration[]): void {
 				permission: tool.permission,
 				input: zodFromJsonSchema(tool.inputSchema),
 				output: zodFromJsonSchema(tool.outputSchema),
-				handler: () => Promise.resolve(stub),
+				handler: demoHandler
+					? (input) => {
+							try {
+								return Promise.resolve(demoHandler(input as Record<string, unknown>));
+							} catch (err) {
+								return Promise.reject(err instanceof Error ? err : new Error(String(err)));
+							}
+						}
+					: () => Promise.resolve(stub),
 			});
 		}
 	}

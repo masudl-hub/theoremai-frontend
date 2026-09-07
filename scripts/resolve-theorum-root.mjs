@@ -42,6 +42,12 @@ export function theorumStaleReason(candidate) {
 	if (!schema.includes('KEY_SLOTS') || !schema.includes('OVERFLOW_KEY_SLOTS')) {
 		return 'schema missing KEY_SLOTS / OVERFLOW_KEY_SLOTS';
 	}
+	if (schema.includes('ProfileModelSpec') || schema.includes('interface ModelSpec')) {
+		return 'schema still defines ProfileModelSpec / ModelSpec (expected flat models + ModelBinding)';
+	}
+	if (schema.includes('model: field(') && schema.includes('ProfileModelSpec')) {
+		return 'schema catalog still documents nested model block (expected models.*. ModelBinding)';
+	}
 	return null;
 }
 

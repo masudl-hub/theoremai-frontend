@@ -1,9 +1,10 @@
+import { HTTP_METHODS, LIVE_TOOL_LOAD_TIERS } from 'theorum/schema';
 import { isValidProfileProtocol, protocolsForProfileType } from './compat';
 import {
 	parseList,
 	validateCustomToolsAllow,
-	validateGeminiModelSpec,
-	validateOpenRouterModelSpec,
+	validateGeminiModelBinding,
+	validateOpenRouterModelBinding,
 } from './playground-policy';
 import { parseJsonSchema, zodExprFromJsonSchema } from './tool-schema';
 import type {
@@ -15,7 +16,7 @@ import type {
 	ImageData,
 	InputsData,
 	LiveData,
-	ModelSpecData,
+	ModelBindingData,
 	ModelsData,
 	OutputsData,
 	PlaygroundNode,
@@ -66,7 +67,7 @@ export type ValidatedPlayground = {
 	image?: ImageData;
 	speech?: SpeechData;
 	live?: LiveData;
-	specs: Array<{ id: string; data: ModelSpecData }>;
+	specs: Array<{ id: string; data: ModelBindingData }>;
 	customTools: ToolRegistration[];
 };
 
@@ -189,7 +190,7 @@ function compileToolSpec(
 			loadTier: data.loadTier,
 			paths: paths.length ? paths : ['*'],
 			endpoint,
-			method: data.method ?? 'GET',
+			method: data.method ?? HTTP_METHODS[0],
 			headers,
 			mapping: {
 				pathParams: pathParams.length ? pathParams : undefined,
@@ -214,6 +215,20 @@ function compileToolSpec(
 			return null;
 		}
 
+		let headers: Record<string, string> | undefined;
+		if (data.headersJson?.trim()) {
+			const parsedHeaders = parseHeadersJson(data.headersJson);
+			if (!parsedHeaders) {
+				issues.push({
+					nodeId: id,
+					facet: 'toolSpec',
+					message: 'MCP headers must be valid JSON object.',
+				});
+				return null;
+			}
+			headers = parsedHeaders;
+		}
+
 		const auth = buildRemoteToolAuth(data);
 
 		return {
@@ -227,6 +242,7 @@ function compileToolSpec(
 			paths: paths.length ? paths : ['*'],
 			serverUrl,
 			mcpToolName,
+			headers,
 			auth,
 			inputSchema: inputParsed.schema,
 			outputSchema: outputParsed.schema,
@@ -286,7 +302,7 @@ function validateIdentity(identity: IdentityData | undefined, issues: CompileIss
 function validateModels(
 	identity: IdentityData | undefined,
 	models: ModelsData | undefined,
-	specs: Array<{ id: string; data: ModelSpecData }>,
+	specs: Array<{ id: string; data: ModelBindingData }>,
 	issues: CompileIssue[],
 ): void {
 	if (!models) {
@@ -298,33 +314,11 @@ function validateModels(
 		return;
 	}
 
-	if (identity?.profileType) {
-		if (!isValidProfileProtocol(identity.profileType, models.protocol)) {
-			const valid = protocolsForProfileType(identity.profileType).join(', ');
-			issues.push({
-				nodeId: 'models',
-				facet: 'models',
-				message: `Profile type "${identity.profileType}" cannot use protocol "${models.protocol}". Supported protocols: ${valid}.`,
-			});
-		}
-	}
-
 	if (!specs.length) {
 		issues.push({
 			nodeId: 'models',
 			facet: 'models',
-			message: 'Add at least one model config node.',
-		});
-	}
-
-	const googleTransport =
-		models.provider === 'google' &&
-		(models.protocol === 'geminiInteractions' || models.protocol === 'geminiLive');
-	if (googleTransport && !models.key) {
-		issues.push({
-			nodeId: 'models',
-			facet: 'models',
-			message: 'model.key is required for Google transports (slotA, slotB, or slotC).',
+			message: 'Add at least one model binding node.',
 		});
 	}
 
@@ -332,34 +326,99 @@ function validateModels(
 	for (const { id, data } of specs) {
 		const mid = data.modelId.trim();
 		if (!mid) {
-			issues.push({ nodeId: id, facet: 'modelSpec', message: 'model id is required.' });
+			issues.push({ nodeId: id, facet: 'modelBinding', message: 'model id is required.' });
 		} else if (seenIds.has(mid)) {
 			issues.push({
 				nodeId: id,
-				facet: 'modelSpec',
+				facet: 'modelBinding',
 				message: `Duplicate model id '${mid}'.`,
 			});
 		} else {
 			seenIds.add(mid);
 		}
+
+		if (identity?.profileType) {
+			if (!isValidProfileProtocol(identity.profileType, data.protocol)) {
+				const valid = protocolsForProfileType(identity.profileType).join(', ');
+				issues.push({
+					nodeId: id,
+					facet: 'modelBinding',
+					message: `Profile type "${identity.profileType}" cannot use protocol "${data.protocol}". Supported protocols: ${valid}.`,
+				});
+			}
+		}
+
 		if (!data.apiId.trim()) {
 			issues.push({
 				nodeId: id,
-				facet: 'modelSpec',
+				facet: 'modelBinding',
 				message: 'Model wire id is required.',
 			});
 		} else {
 			const err =
-				models.protocol === 'openAi' && models.provider === 'openrouter'
-					? validateOpenRouterModelSpec(data.apiId)
-					: (models.protocol === 'geminiInteractions' || models.protocol === 'geminiLive') &&
-							models.provider === 'google'
-						? validateGeminiModelSpec(data.apiId, data.builtInTools, models.protocol)
+				data.protocol === 'openAi' && data.provider === 'openrouter'
+					? validateOpenRouterModelBinding(data.apiId)
+					: (data.protocol === 'geminiInteractions' || data.protocol === 'geminiLive') &&
+							data.provider === 'google'
+						? validateGeminiModelBinding(data.apiId, data.builtInTools, data.protocol)
 						: null;
 			if (err) {
-				issues.push({ nodeId: id, facet: 'modelSpec', message: err });
+				issues.push({ nodeId: id, facet: 'modelBinding', message: err });
 			}
 		}
+
+		const effortKeys = Object.keys(data.efforts).filter((k) => k.trim());
+		if (data.allowEffortSelect && effortKeys.length < 2) {
+			issues.push({
+				nodeId: id,
+				facet: 'modelBinding',
+				message: 'allowEffortSelect requires at least two effort aliases.',
+			});
+		}
+		const defaultEffort = data.defaultEffort.trim();
+		if (defaultEffort && !effortKeys.includes(defaultEffort)) {
+			issues.push({
+				nodeId: id,
+				facet: 'modelBinding',
+				message: `defaultEffort '${defaultEffort}' is not declared in efforts.`,
+			});
+		}
+	}
+
+	const defaultModel = models.defaultModel.trim();
+	if (specs.length > 1 && !defaultModel) {
+		issues.push({
+			nodeId: 'models',
+			facet: 'models',
+			message: 'defaultModel is required when more than one model is declared.',
+		});
+	}
+	if (defaultModel && !seenIds.has(defaultModel)) {
+		issues.push({
+			nodeId: 'models',
+			facet: 'models',
+			message: `defaultModel '${defaultModel}' is not declared.`,
+		});
+	}
+	if (models.allowModelSelect && specs.length < 2) {
+		issues.push({
+			nodeId: 'models',
+			facet: 'models',
+			message: 'allowModelSelect requires at least two models.',
+		});
+	}
+
+	const hasGoogleTransport = specs.some(
+		({ data }) =>
+			data.provider === 'google' &&
+			(data.protocol === 'geminiInteractions' || data.protocol === 'geminiLive'),
+	);
+	if (hasGoogleTransport && !models.key) {
+		issues.push({
+			nodeId: 'models',
+			facet: 'models',
+			message: 'profile.key is required for Google transports (slotA, slotB, or slotC).',
+		});
 	}
 }
 
@@ -374,6 +433,16 @@ function validateToolsAndCustom(
 
 	const seenToolNames = new Set<string>();
 	for (const { id, data } of toolSpecs) {
+		if (
+			identity?.profileType === 'live' &&
+			!(LIVE_TOOL_LOAD_TIERS as readonly string[]).includes(data.loadTier)
+		) {
+			issues.push({
+				nodeId: id,
+				facet: 'toolSpec',
+				message: `Live profiles only support loadTier T0 (Gemini Live fixes function declarations at session setup) — '${data.toolName || id}' is ${data.loadTier}.`,
+			});
+		}
 		const reg = compileToolSpec(id, data, issues);
 		if (!reg) continue;
 		if (seenToolNames.has(reg.name)) {
@@ -388,7 +457,14 @@ function validateToolsAndCustom(
 		customTools.push(reg);
 	}
 
-	if (tools.t2Loader.trim() && identity?.profileType !== 'live') {
+	if (tools.t2Loader.trim() && identity?.profileType === 'live') {
+		issues.push({
+			nodeId: 'tools',
+			facet: 'tools',
+			message:
+				'tools.t2Loader is not supported on live — function declarations are fixed at session setup.',
+		});
+	} else if (tools.t2Loader.trim() && identity?.profileType !== 'live') {
 		const loaderId = tools.t2Loader.trim();
 		if (!customTools.some((t) => t.name === loaderId)) {
 			issues.push({
@@ -464,7 +540,7 @@ export function validatePlaygroundGraph(
 
 	const identity = asKind(nodes, 'identity');
 	const models = asKind(nodes, 'models');
-	const specs = allOfKind(nodes, 'modelSpec');
+	const specs = allOfKind(nodes, 'modelBinding');
 	const tools = asKind(nodes, 'tools');
 	const toolSpecs = allOfKind(nodes, 'toolSpec');
 	const inputs = asKind(nodes, 'inputs');

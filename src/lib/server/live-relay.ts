@@ -97,7 +97,7 @@ function pipeBrowserToSession(serverWs: WebSocket, session: LiveSession): void {
 			serverWs.send(
 				JSON.stringify({
 					type: 'error',
-					error: (err as Error).message || 'Invalid client message format',
+					error: publicError(err),
 				}),
 			);
 		}

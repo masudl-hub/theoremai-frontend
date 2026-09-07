@@ -5,7 +5,6 @@ import {
 	IconBroadcast,
 	IconChevronDown,
 	IconChevronRight,
-	IconCode,
 	IconCpu,
 	IconMessage,
 	IconPaperclip,
@@ -16,6 +15,7 @@ import {
 } from '@tabler/icons-svelte';
 import { Handle, type NodeProps, Position } from '@xyflow/svelte';
 import { getContext } from 'svelte';
+import ToolSpecTypeIcon from '$lib/components/playground/icons/ToolSpecTypeIcon.svelte';
 import { PLAYGROUND_CTX, type PlaygroundCtx } from '$lib/playground/context';
 import { facetChips, facetTitle } from '$lib/playground/facet-ui';
 import { spineFacetKinds } from '$lib/playground/graph-layout';
@@ -64,12 +64,12 @@ const IconComponent = $derived.by(() => {
 		}
 		case 'models':
 			return IconCpu;
-		case 'modelSpec':
+		case 'modelBinding':
 			return IconAdjustments;
 		case 'tools':
 			return IconTools;
 		case 'toolSpec':
-			return IconCode;
+			return null;
 		case 'inputs':
 			return IconPaperclip;
 		case 'outputs':
@@ -151,7 +151,11 @@ function onBranchAdd(e: MouseEvent) {
 		tabindex="0"
 	>
 		<div class="facet-head__label">
-			<IconComponent size={14} stroke={1.75} class="facet-head__icon" />
+			{#if kind === 'toolSpec' && data.kind === 'toolSpec'}
+				<ToolSpecTypeIcon toolType={data.toolType} size={14} class="facet-head__icon" />
+			{:else if IconComponent}
+				<IconComponent size={14} stroke={1.75} class="facet-head__icon" />
+			{/if}
 			<span class="facet-head__title">{title}</span>
 		</div>
 		<div class="facet-head__actions">
@@ -190,7 +194,7 @@ function onBranchAdd(e: MouseEvent) {
 			tabindex="0"
 		>
 			{#each chips as chip, idx (chip + String(idx))}
-				<span class="facet-chip">{chip}</span>
+				<span class="facet-chip" class:facet-chip--meta={chip.startsWith('+')}>{chip}</span>
 			{/each}
 		</div>
 	{/if}

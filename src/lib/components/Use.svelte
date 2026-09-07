@@ -101,35 +101,35 @@ const modelsBlock = $derived.by(() => {
         },`
 		: '';
 
-	return `  model: {
-    protocol: "geminiInteractions",
-    provider: "google",
-    allow: ["fast", "capable"],
-    config: {
-      fast: {
-        apiId: "gemini-3.5-flash-lite",
-        thinking: { on: "medium", off: "minimal" },
-        thinkingLevels: ["minimal", "low", "medium", "high"],
-        summaries: { on: "auto", off: "none" },
-        maxOutputTokens: 8192,
-        temperature: 1,
-        builtInTools: ["googleMaps", "urlContext"],${compactBlock}
-      },
-      capable: {
-        apiId: "gemini-2.5-flash",
-        thinking: { on: "high", off: "low" },
-        thinkingLevels: ["low", "medium", "high"],
-        summaries: { on: "auto", off: "auto" },
-        maxOutputTokens: 8192,
-        temperature: 1,
-        builtInTools: ["googleSearch"],${compactBlock}
-      },
+	return `  models: {
+    fast: {
+      protocol: "geminiInteractions",
+      provider: "google",
+      apiId: "gemini-3.5-flash-lite",
+      efforts: { normal: "minimal", deep: "medium" },
+      defaultEffort: "normal",
+      allowEffortSelect: true,
+      summaries: true,
+      maxOutputTokens: 8192,
+      temperature: 1,
+      builtInTools: ["googleMaps", "urlContext"],${compactBlock}
     },
-    select: { fast: "fast", smart: "capable" },
-    thinking: { fast: "low", smart: "high" },
-    controls: ["thinking"],
-    maxSteps: 1,
-  },`;
+    capable: {
+      protocol: "geminiInteractions",
+      provider: "google",
+      apiId: "gemini-2.5-flash",
+      efforts: { normal: "low", deep: "high" },
+      defaultEffort: "normal",
+      allowEffortSelect: true,
+      summaries: true,
+      maxOutputTokens: 8192,
+      temperature: 1,
+      builtInTools: ["googleSearch"],${compactBlock}
+    },
+  },
+  defaultModel: "fast",
+  allowModelSelect: true,
+  maxSteps: 1,`;
 });
 
 const profileToolsBlock = $derived.by(() => {
@@ -404,27 +404,15 @@ async function copySnippet(id: SnippetId, text: string) {
 				</div>
 				<UseArt id="tools" />
 				<p class="max-w-2xl text-xs leading-relaxed text-mute md:text-sm">
-					<code class="font-bold text-black">tools.allow</code>
-					lists custom function tools only — register them once at startup with
-					<code class="font-bold text-black">registerTool</code>. Provider builtins belong on each
-					model (<code class="font-bold text-black">builtInTools</code>) and are on whenever that
-					model is selected. Optional on the profile:
-					<code class="font-bold text-black">tools.t1Policy</code>
-					(T1) and
-					<code class="font-bold text-black">tools.t2Loader</code>
-					(designated loader returning
-					<code class="font-bold text-black">{'{ loaded: string[] }'}</code>
-					). T2 promotion is turn-local — the kernel does not remember it on the next turn unless
-					the host restores visibility via
-					<code class="font-bold text-black">invokeTool</code>
-					(<code class="font-bold text-black">promoted</code>
-					/ snapshot) or policy on load. Visibility otherwise follows
-					<code class="font-bold text-black">loadTier</code>
-					on each registered tool.
+					Register custom function tools once at startup, then list their ids in
+					<code class="font-bold text-black">tools.allow</code>.
 				</p>
 				<div class="relative">
 					<div class="absolute top-0 right-0 z-10">{@render copyBtn('tools', toolsBlock)}</div>
-					<ProfileCode source={toolsBlock} />
+					{#if customTools}
+						<ProfileCode source={registerToolSnippet} toolRegistration />
+					{/if}
+					<ProfileCode source={profileToolsBlock} />
 				</div>
 			</section>
 

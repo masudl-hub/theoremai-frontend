@@ -10,7 +10,7 @@ import {
 	type Protocol,
 	protocolsForProfileType,
 } from 'theorum/schema';
-import { fieldEnumOptions, schemaEnumOptions } from './field-controls';
+import { fieldEnumOptions } from './field-controls';
 
 export { isValidProfileProtocol, protocolsForProfileType };
 
@@ -39,11 +39,11 @@ export const PLAYGROUND_TOOL_TYPE_OPTIONS = fieldEnumOptions('registerTool.type'
 	(opt) => opt.value !== 'builtin',
 );
 
-export const HTTP_METHOD_OPTIONS = schemaEnumOptions(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
+export const HTTP_METHOD_OPTIONS = fieldEnumOptions('method');
 
-export const TOOL_AUTH_TYPE_OPTIONS = schemaEnumOptions(['none', 'bearer', 'api_key', 'oauth2']);
+export const TOOL_AUTH_TYPE_OPTIONS = fieldEnumOptions('playground.authType');
 
-export const AUTH_UNAUTHENTICATED_OPTIONS = schemaEnumOptions(['pause', 'report_to_model']);
+export const AUTH_UNAUTHENTICATED_OPTIONS = fieldEnumOptions('auth.onUnauthenticated');
 
 export function toggleList<T extends string>(list: T[], value: T, on: boolean): T[] {
 	if (on) return list.includes(value) ? list : [...list, value];

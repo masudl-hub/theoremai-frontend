@@ -13,7 +13,7 @@ export function appendChildSpecNode(
 	},
 ): { nodes: PlaygroundNode[]; edges: PlaygroundEdge[]; id: string } {
 	const id = `${opts.idPrefix}-${crypto.randomUUID().slice(0, 8)}`;
-	const position = nextBranchSpecPosition(opts.hubPosition, opts.specs.length);
+	const position = nextBranchSpecPosition(opts.hubPosition, opts.specs);
 	const nextNodes: PlaygroundNode[] = [
 		...nodes,
 		{

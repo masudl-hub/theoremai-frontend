@@ -22,20 +22,37 @@ const handleLabel = $derived(`@${handle}`);
 
 const visible = $derived(turns.length > 0 || interimUser.length > 0 || interimAgent.length > 0);
 
+let captionsEl = $state<HTMLElement | null>(null);
+
+$effect(() => {
+	void turns.length;
+	void turns.at(-1)?.text;
+	void interimUser;
+	void interimAgent;
+
+	const el = captionsEl;
+	if (!el) return;
+
+	queueMicrotask(() => {
+		el.scrollTop = el.scrollHeight;
+	});
+});
+
 function roleLabel(role: LiveCaptionTurn['role']): string {
 	return role === 'user' ? 'you' : handleLabel;
 }
 </script>
 
 {#if visible}
-	<aside class="live-captions" aria-live="polite">
-		{#each turns as turn (turn.id)}
+	<aside bind:this={captionsEl} class="live-captions" aria-live="polite">
+		{#each turns as turn, index (turn.id)}
 			<button
 				type="button"
 				class="live-captions__line"
 				class:live-captions__line--user={turn.role === 'user'}
 				class:live-captions__line--agent={turn.role === 'agent'}
 				class:live-captions__line--focused={focus === turn.id}
+				class:live-captions__line--latest={index === turns.length - 1}
 				onclick={() => onFocusChange?.(focus === turn.id ? null : turn.id)}
 			>
 				<span class="live-captions__role">{roleLabel(turn.role)}</span>

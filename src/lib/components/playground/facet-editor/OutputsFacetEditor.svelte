@@ -1,5 +1,5 @@
 <script lang="ts">
-import { SCHEMA_ENFORCEMENTS } from 'theorum/schema';
+import { SCHEMA_ENFORCEMENTS, type TurnStopKind } from 'theorum/schema';
 import Checkbox from '$lib/components/playground/Checkbox.svelte';
 import Select from '$lib/components/Select.svelte';
 import { toggleList } from '$lib/playground/compat';
@@ -110,12 +110,12 @@ const autoContinueOptions = fieldEnumOptions('turnResumption.autoContinue');
 			{#each allowContinueOptions as opt (opt.value)}
 				<label class="facet-check">
 					<Checkbox
-						checked={data.allowContinue.includes(opt.value)}
+						checked={data.allowContinue.includes(opt.value as TurnStopKind)}
 						onchange={(v) =>
 							patch({
 								allowContinue: toggleList(
 									data.allowContinue,
-									opt.value,
+									opt.value as TurnStopKind,
 									v
 								)
 							})}
@@ -133,12 +133,12 @@ const autoContinueOptions = fieldEnumOptions('turnResumption.autoContinue');
 			{#each autoContinueOptions as opt (opt.value)}
 				<label class="facet-check">
 					<Checkbox
-						checked={data.autoContinue.includes(opt.value)}
+						checked={data.autoContinue.includes(opt.value as TurnStopKind)}
 						onchange={(v) =>
 							patch({
 								autoContinue: toggleList(
 									data.autoContinue,
-									opt.value,
+									opt.value as TurnStopKind,
 									v
 								)
 							})}

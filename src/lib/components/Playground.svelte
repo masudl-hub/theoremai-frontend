@@ -29,21 +29,21 @@ import PlaygroundFlowFit from '$lib/components/playground/PlaygroundFlowFit.svel
 import { savePlaygroundRunPayload } from '$lib/interface/run-payload';
 import { compilePlayground } from '$lib/playground/compile';
 import { PLAYGROUND_CTX, type PlaygroundCtx, type PlaygroundHub } from '$lib/playground/context';
-import {
-	createBlankGraph,
-	createExampleGraph,
-	createInitialGraph,
-	syncGraphForProfile,
-} from '$lib/playground/example';
+import { createBlankGraph, createExampleGraph, syncGraphForProfile } from '$lib/playground/example';
 import { appendChildSpecNode } from '$lib/playground/graph-mutations';
-import { PLAYGROUND_COL_PX, PLAYGROUND_ORIGIN } from '$lib/playground/layout';
+import {
+	PLAYGROUND_COL_PX,
+	PLAYGROUND_ORIGIN,
+	playgroundViewportForAnchor,
+} from '$lib/playground/layout';
 import {
 	type CompileIssue,
-	defaultModelSpec,
+	defaultModelBinding,
 	defaultToolSpec,
 	FACET_LABEL,
 	type FacetData,
 	type IdentityData,
+	type ModelBindingData,
 	type ModelsData,
 	type PlaygroundEdge,
 	type PlaygroundNode,
@@ -53,10 +53,10 @@ const nodeTypes: NodeTypes = {
 	facet: FacetNode,
 };
 
-const starter = createInitialGraph();
+const starter = createExampleGraph();
 let nodes = $state<PlaygroundNode[]>(starter.nodes);
 let edges = $state<PlaygroundEdge[]>(starter.edges);
-let viewport = $state.raw<Viewport>({ x: 0, y: 0, zoom: 1 });
+let viewport = $state.raw<Viewport>(playgroundViewportForAnchor());
 
 let running = $state(false);
 let banner = $state('');
@@ -77,13 +77,37 @@ const hub = $state<PlaygroundHub>({
 });
 
 $effect(() => {
-	const m = nodes.find((n) => n.data.kind === 'models')?.data as ModelsData | undefined;
-	if (!m) return;
-	if (hub.protocol !== m.protocol || hub.provider !== m.provider) {
-		hub.protocol = m.protocol;
-		hub.provider = m.provider;
+	const modelsData = nodes.find((n) => n.data.kind === 'models')?.data as ModelsData | undefined;
+	const specs = nodes.filter(
+		(n): n is PlaygroundNode & { data: ModelBindingData } => n.data.kind === 'modelBinding',
+	);
+	const defaultId = modelsData?.defaultModel?.trim();
+	const primary = specs.find((s) => s.data.modelId.trim() === defaultId) ?? specs[0];
+	if (primary?.data.kind !== 'modelBinding') return;
+	if (hub.protocol !== primary.data.protocol || hub.provider !== primary.data.provider) {
+		hub.protocol = primary.data.protocol;
+		hub.provider = primary.data.provider;
 	}
 });
+
+function setBranchCollapsed(hubId: 'models' | 'tools', collapsed: boolean) {
+	const childKind = hubId === 'models' ? 'modelBinding' : 'toolSpec';
+	nodes = nodes.map((n) => {
+		if (n.id === hubId && (n.data.kind === 'models' || n.data.kind === 'tools')) {
+			return {
+				...n,
+				data: { ...n.data, branchCollapsed: collapsed } as FacetData,
+			};
+		}
+		if (n.data.kind === childKind) {
+			return { ...n, hidden: collapsed };
+		}
+		return n;
+	});
+	edges = edges.map((e) =>
+		e.source === hubId && e.sourceHandle === 'branch' ? { ...e, hidden: collapsed } : e,
+	);
+}
 
 function ensureBranchExpanded(hubKind: 'models' | 'tools') {
 	const hub = nodes.find((n) => n.data.kind === hubKind);
@@ -92,14 +116,13 @@ function ensureBranchExpanded(hubKind: 'models' | 'tools') {
 		(hub.data.kind === 'models' || hub.data.kind === 'tools') &&
 		hub.data.branchCollapsed
 	) {
-		patchNode(hub.id, { branchCollapsed: false });
-		resyncGraph({ preservePositions: true });
+		setBranchCollapsed(hubKind, false);
 	}
 }
 
-function addModelSpec() {
+function addModelBinding() {
 	ensureBranchExpanded('models');
-	const specs = nodes.filter((n) => n.data.kind === 'modelSpec');
+	const specs = nodes.filter((n) => n.data.kind === 'modelBinding');
 	const modelsNode = nodes.find((n) => n.data.kind === 'models');
 	const label = `model${specs.length + 1}`;
 	const hubPosition = {
@@ -111,9 +134,8 @@ function addModelSpec() {
 		idPrefix: 'model',
 		hubPosition,
 		specs,
-		data: defaultModelSpec({
+		data: defaultModelBinding({
 			modelId: label,
-			selectLabel: label,
 			expanded: true,
 		}),
 	});
@@ -149,7 +171,7 @@ function addToolSpec() {
 function addBranchSpec(hubId: string) {
 	const hub = nodes.find((n) => n.id === hubId);
 	if (!hub) return;
-	if (hub.data.kind === 'models') addModelSpec();
+	if (hub.data.kind === 'models') addModelBinding();
 	else if (hub.data.kind === 'tools') addToolSpec();
 }
 
@@ -180,22 +202,10 @@ function togglePanel(id: string, open: boolean) {
 	else closePanel(id);
 }
 
-function resyncGraph(opts?: { preservePositions?: boolean }) {
-	const identity = nodes.find((n) => n.id === 'identity')?.data as IdentityData | undefined;
-	if (!identity?.profileType) return;
-	const synced = syncGraphForProfile(nodes, edges, identity, opts);
-	nodes = synced.nodes;
-	edges = synced.edges;
-	syncExpanded(ui.panelNodeId);
-	graphKey += 1;
-}
-
 function toggleBranchCollapsed(id: string) {
 	const node = nodes.find((n) => n.id === id);
 	if (!node || (node.data.kind !== 'models' && node.data.kind !== 'tools')) return;
-	const collapsed = node.data.branchCollapsed;
-	patchNode(id, { branchCollapsed: !collapsed });
-	resyncGraph({ preservePositions: true });
+	setBranchCollapsed(node.data.kind, !node.data.branchCollapsed);
 }
 
 function patchNode(id: string, partial: Partial<PlaygroundNode['data']>) {
@@ -230,7 +240,7 @@ function patchNode(id: string, partial: Partial<PlaygroundNode['data']>) {
 }
 
 setContext<PlaygroundCtx>(PLAYGROUND_CTX, {
-	addModelSpec,
+	addModelBinding,
 	addToolSpec,
 	addBranchSpec,
 	hub,
@@ -294,7 +304,7 @@ async function runCompile() {
 		structured: result.structured,
 	});
 	running = false;
-	window.open(`${resolve('/playground/run')}`, '_blank', 'noopener,noreferrer');
+	window.open(`${resolve('/playground/run', {})}`, '_blank', 'noopener,noreferrer');
 }
 
 async function copySource() {
@@ -340,7 +350,7 @@ function onCompileLogAction(id: string) {
 const CHROME_TIPS: Record<string, { title: string; body: string }> = {
 	example: {
 		title: 'EXAMPLE',
-		body: 'Load the travel concierge demo — live HTTP tools, T2 discovery, and multi-step turns.',
+		body: 'Travel concierge demo — inputs, HTTP, MCP, function tools, and T2 discovery.',
 	},
 	new: {
 		title: 'NEW',
@@ -425,7 +435,7 @@ function playgroundTip(el: HTMLElement): string | null {
 							preventScrolling={false}
 							proOptions={{ hideAttribution: true }}
 						>
-							<PlaygroundFlowFit {graphKey} {panelOpen} />
+							<PlaygroundFlowFit {graphKey} />
 							<Background
 								bgColor="var(--color-paper)"
 								gap={56}
@@ -535,28 +545,23 @@ function playgroundTip(el: HTMLElement): string | null {
 	inset: 0;
 	height: 100%;
 	width: 100%;
-	background: var(--color-paper);
+	background: transparent;
 }
 
 .playground-workspace {
-	display: flex;
-	flex-direction: row;
-	align-items: stretch;
+	position: relative;
 	height: 100%;
 	width: 100%;
-}
-
-.playground-flow-pane,
-.playground-panel-pane {
-	height: 100%;
-	min-width: 0;
-	flex-shrink: 0;
-	overflow: hidden;
-	transition: width 320ms cubic-bezier(0.33, 1, 0.68, 1);
 }
 
 .playground-flow-pane {
+	position: absolute;
+	inset: 0;
+	height: 100%;
 	width: 100%;
+	min-width: 0;
+	overflow: hidden;
+	background: var(--color-paper);
 }
 
 .playground-flow-pane :global(.playground-flow-hover) {
@@ -566,21 +571,22 @@ function playgroundTip(el: HTMLElement): string | null {
 }
 
 .playground-panel-pane {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 5;
+	box-sizing: border-box;
 	width: 0;
-}
-
-.playground-shell--panel-open .playground-flow-pane {
-	width: 66.666%;
+	padding: var(--pg-space-3);
+	overflow: hidden;
+	background: transparent;
+	pointer-events: none;
+	transition: width 320ms cubic-bezier(0.33, 1, 0.68, 1);
 }
 
 .playground-shell--panel-open .playground-panel-pane {
-	width: 33.333%;
-}
-
-.playground-panel-pane {
-	box-sizing: border-box;
-	padding: var(--pg-space-3);
-	overflow: hidden;
-	background: var(--color-paper);
+	width: calc(100% * var(--pg-panel-width-ratio, 0.333333));
+	pointer-events: auto;
 }
 </style>

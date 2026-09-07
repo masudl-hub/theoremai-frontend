@@ -1,19 +1,23 @@
 <script lang="ts">
 import {
+	IconMessage,
 	IconMicrophone,
 	IconMicrophoneOff,
 	IconPhone,
 	IconPhoneOff,
-	IconSend,
 	IconVideo,
 	IconVideoOff,
 } from '@tabler/icons-svelte';
 import type { LiveSessionStatus } from '$lib/client/live-client';
-import InkWaveform from '$lib/components/interface/live/InkWaveform.svelte';
+import InkWaveform from '$lib/components/interface/InkWaveform.svelte';
+import InterfaceComposer from '$lib/components/interface/InterfaceComposer.svelte';
 import LiveCaptionRail from '$lib/components/interface/live/LiveCaptionRail.svelte';
 import type { CaptionFocus } from '$lib/interface/live/caption-focus';
 import type { LiveCaptionTurn } from '$lib/interface/live/live-captions';
 import '$lib/styles/live-stage.css';
+import '$lib/styles/interface-runner.css';
+
+const liveTextInputs = { text: true, attachments: null, voice: null };
 
 let {
 	handle,
@@ -28,9 +32,10 @@ let {
 	captionFocus = null,
 	isMuted = false,
 	isVideoOn = false,
-	voiceEnabled = false,
-	videoEnabled = false,
-	textEnabled = false,
+	voiceAvailable = false,
+	videoAvailable = false,
+	textAvailable = false,
+	textComposerOpen = false,
 	textDraft = '',
 	sessionActive = false,
 	canRestart = false,
@@ -38,6 +43,7 @@ let {
 	onCaptionFocusChange,
 	onToggleMic,
 	onToggleVideo,
+	onToggleTextComposer,
 	onTextDraftChange,
 	onSendText,
 	onRestart,
@@ -55,9 +61,10 @@ let {
 	captionFocus?: CaptionFocus;
 	isMuted?: boolean;
 	isVideoOn?: boolean;
-	voiceEnabled?: boolean;
-	videoEnabled?: boolean;
-	textEnabled?: boolean;
+	voiceAvailable?: boolean;
+	videoAvailable?: boolean;
+	textAvailable?: boolean;
+	textComposerOpen?: boolean;
 	textDraft?: string;
 	sessionActive?: boolean;
 	canRestart?: boolean;
@@ -65,6 +72,7 @@ let {
 	onCaptionFocusChange?: (focus: CaptionFocus) => void;
 	onToggleMic?: () => void;
 	onToggleVideo?: () => void;
+	onToggleTextComposer?: () => void;
 	onTextDraftChange?: (value: string) => void;
 	onSendText?: () => void;
 	onRestart?: () => void;
@@ -72,6 +80,7 @@ let {
 } = $props();
 
 const handleLabel = $derived(`@${handle}`);
+const canSendText = $derived(sessionActive && textDraft.trim().length > 0);
 </script>
 
 <section class="live-stage">
@@ -92,98 +101,95 @@ const handleLabel = $derived(`@${handle}`);
 		</header>
 
 		<div class="live-wave-slot">
-			<InkWaveform frozen={isMuted} {inputLevel} {outputLevel} {status} {toolActive} />
+			<InkWaveform {inputLevel} {outputLevel} {status} {toolActive} variant="hero" />
 		</div>
 
-		<hr class="live-divider">
+		<footer class="live-footer">
+			{#if error}
+				<p class="live-error" role="alert">{error}</p>
+			{/if}
 
-		{#if error}
-			<p class="live-error" role="alert">{error}</p>
-		{/if}
+			{#if textComposerOpen && textAvailable}
+				<div class="live-composer-slot">
+					<InterfaceComposer
+						busy={!sessionActive}
+						canSubmit={canSendText}
+						inputs={liveTextInputs}
+						issues={[]}
+						onSubmit={onSendText}
+						onTextChange={onTextDraftChange}
+						text={textDraft}
+					/>
+				</div>
+			{/if}
 
-		{#if textEnabled}
-			<form
-				class="live-text-compose"
-				onsubmit={(e) => {
-					e.preventDefault();
-					onSendText?.();
-				}}
-			>
-				<label class="live-text-compose__label" for="live-text-input">Message</label>
-				<input
-					id="live-text-input"
-					class="live-text-compose__input"
-					autocomplete="off"
-					disabled={!sessionActive}
-					oninput={(e) => onTextDraftChange?.(e.currentTarget.value)}
-					placeholder="type to send…"
-					value={textDraft}
-				>
-				<button
-					class="live-control live-text-compose__send"
-					aria-label="Send text"
-					disabled={!sessionActive || !textDraft.trim()}
-					type="submit"
-				>
-					<IconSend size={20} stroke={1.75} />
-				</button>
-			</form>
-		{/if}
+			<hr class="ink-divider live-footer__divider">
 
-		<footer class="live-controls">
-			<div class="live-controls__left">
-				{#if voiceEnabled}
-					<button
-						class="live-control"
-						aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
-						disabled={!sessionActive}
-						onclick={onToggleMic}
-						type="button"
-					>
-						{#if isMuted}
-							<IconMicrophoneOff size={20} stroke={1.75} />
-						{:else}
-							<IconMicrophone size={20} stroke={1.75} />
-						{/if}
-					</button>
-				{/if}
-				{#if videoEnabled}
-					<button
-						class="live-control"
-						class:live-control--active={isVideoOn}
-						aria-label={isVideoOn ? 'Turn off video' : 'Turn on video'}
-						disabled={!sessionActive}
-						onclick={onToggleVideo}
-						type="button"
-					>
-						{#if isVideoOn}
-							<IconVideoOff size={20} stroke={1.75} />
-						{:else}
-							<IconVideo size={20} stroke={1.75} />
-						{/if}
-					</button>
-				{/if}
-			</div>
-			<div class="live-controls__right">
-				{#if canRestart}
-					<button
-						class="live-control live-control--restart"
-						aria-label="Restart live session"
-						onclick={onRestart}
-						type="button"
-					>
-						<IconPhone size={20} stroke={1.75} />
-					</button>
-				{:else}
-					<button
-						class="live-control live-control--end"
-						aria-label="End live session"
-						onclick={onEnd}
-						type="button"
-					>
-						<IconPhoneOff size={20} stroke={1.75} />
-					</button>
-				{/if}
+			<div class="ink-controls">
+				<div class="ink-controls__left">
+					{#if voiceAvailable}
+						<button
+							class="ink-control"
+							aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+							aria-pressed={!isMuted}
+							disabled={!sessionActive}
+							onclick={onToggleMic}
+							type="button"
+						>
+							{#if isMuted}
+								<IconMicrophoneOff size={20} stroke={1.75} />
+							{:else}
+								<IconMicrophone size={20} stroke={1.75} />
+							{/if}
+						</button>
+					{/if}
+					{#if videoAvailable}
+						<button
+							class="ink-control"
+							class:ink-control--active={isVideoOn}
+							aria-label={isVideoOn ? 'Turn off video' : 'Turn on video'}
+							aria-pressed={isVideoOn}
+							disabled={!sessionActive}
+							onclick={onToggleVideo}
+							type="button"
+						>
+							{#if isVideoOn}
+								<IconVideoOff size={20} stroke={1.75} />
+							{:else}
+								<IconVideo size={20} stroke={1.75} />
+							{/if}
+						</button>
+					{/if}
+					{#if textAvailable}
+						<button
+							class="ink-control"
+							class:ink-control--active={textComposerOpen}
+							aria-label={textComposerOpen ? 'Hide text composer' : 'Show text composer'}
+							aria-pressed={textComposerOpen}
+							disabled={!sessionActive}
+							onclick={onToggleTextComposer}
+							type="button"
+						>
+							<IconMessage size={20} stroke={1.75} />
+						</button>
+					{/if}
+				</div>
+				<div class="ink-controls__right">
+					{#if canRestart}
+						<button
+							class="ink-control"
+							aria-label="Restart live session"
+							onclick={onRestart}
+							type="button"
+						>
+							<IconPhone size={20} stroke={1.75} />
+						</button>
+					{:else}
+						<button class="ink-control" aria-label="End live session" onclick={onEnd} type="button">
+							<IconPhoneOff size={20} stroke={1.75} />
+						</button>
+					{/if}
+				</div>
 			</div>
 		</footer>
 	</div>

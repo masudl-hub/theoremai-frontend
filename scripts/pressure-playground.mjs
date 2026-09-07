@@ -24,14 +24,27 @@ function identityFrom(nodes, patch = {}) {
 
 function forceProtocol(nodes, protocol, provider) {
 	return nodes.map((n) => {
-		if (n.data.kind !== 'models') return n;
+		if (n.data.kind !== 'modelBinding') return n;
 		return { ...n, data: { ...n.data, protocol, provider } };
 	});
 }
 
+function modelBindings(nodes) {
+	return nodes.filter((n) => n.data.kind === 'modelBinding');
+}
+
+function expectedDefaultProtocol(type) {
+	return type === 'live' ? 'geminiLive' : 'openAi';
+}
+
 function graphFor(type) {
 	const initial = createInitialGraph();
-	const identity = identityFrom(initial.nodes, { profileType: type });
+	const identity = identityFrom(initial.nodes, {
+		profileType: type,
+		agentId: `pressure.${type}`,
+		handle: `pressure-${type}`,
+		system: 'Pressure test profile.',
+	});
 	return syncGraphForProfile(initial.nodes, [], identity);
 }
 
@@ -75,7 +88,7 @@ for (const type of PROFILE_TYPES) {
 	const { nodes, edges } = graphFor(type);
 	assert.ok(nodes.some((n) => n.data.kind === 'identity'));
 	assert.ok(nodes.some((n) => n.data.kind === 'models'));
-	assert.ok(nodes.some((n) => n.data.kind === 'modelSpec'));
+	assert.ok(nodes.some((n) => n.data.kind === 'modelBinding'));
 	assert.ok(edges.length > 0);
 
 	if (type === 'image') assert.ok(nodes.some((n) => n.data.kind === 'image'));
@@ -87,9 +100,20 @@ for (const type of PROFILE_TYPES) {
 		assert.ok(!nodes.some((n) => n.data.kind === 'live'));
 	}
 
-	const models = nodes.find((n) => n.data.kind === 'models')?.data;
-	assert.ok(models);
-	assert.equal(isValidProfileProtocol(type, models.protocol), true, `${type} default protocol`);
+	const bindings = modelBindings(nodes);
+	assert.ok(bindings.length > 0, `${type} needs at least one model binding`);
+	for (const binding of bindings) {
+		assert.equal(
+			isValidProfileProtocol(type, binding.data.protocol),
+			true,
+			`${type} default protocol on ${binding.data.modelId}`,
+		);
+		assert.equal(
+			binding.data.protocol,
+			expectedDefaultProtocol(type),
+			`${type} default protocol`,
+		);
+	}
 	ok(`syncGraphForProfile(${type}) shape + legal protocol`);
 }
 
@@ -99,7 +123,9 @@ for (const type of PROFILE_TYPES) {
 	const result = compilePlayground(nodes);
 	assert.equal(result.ok, true, `${type} compile: ${result.ok ? '' : result.message}\n${result.ok ? '' : JSON.stringify(result.issues, null, 2)}`);
 	assert.equal(result.profile.type, type);
-	assert.equal(isValidProfileProtocol(type, result.profile.model.protocol), true);
+	for (const binding of Object.values(result.profile.models)) {
+		assert.equal(isValidProfileProtocol(type, binding.protocol), true);
+	}
 	if (type === 'image') assert.ok(result.profile.image);
 	if (type === 'speech') assert.ok(result.profile.speech);
 	if (type === 'live') assert.ok(result.profile.live);
@@ -125,7 +151,7 @@ for (const [type, protocol] of illegal) {
 	assert.ok(
 		result.issues.some(
 			(i) =>
-				i.facet === 'models' &&
+				i.facet === 'modelBinding' &&
 				i.message.includes(`cannot use protocol "${protocol}"`) &&
 				i.message.includes(`Profile type "${type}"`),
 		),

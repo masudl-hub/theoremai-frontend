@@ -13,7 +13,7 @@ export type PlaygroundUi = {
 };
 
 export type PlaygroundCtx = {
-	addModelSpec: () => void;
+	addModelBinding: () => void;
 	addToolSpec: () => void;
 	addBranchSpec: (hubId: string) => void;
 	/** Live Models hub pairing — reactive when read in components */

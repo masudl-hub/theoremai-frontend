@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
-import { assertSafeUrl } from 'theorum';
+import { assertSafeUrl, buildHttpToolTarget, parseMcpRpcResponse } from 'theorum';
+import type { HttpMethod } from 'theorum/schema';
 import type { RequestHandler } from './$types';
 
 type TestConnectionRequest =
@@ -8,6 +9,10 @@ type TestConnectionRequest =
 			endpoint: string;
 			method?: string;
 			headers?: Record<string, string>;
+			pathParams?: string[];
+			queryParams?: string[];
+			bodyParam?: string;
+			sampleInput?: Record<string, unknown>;
 			auth?: {
 				slot?: string;
 				type?: 'bearer' | 'api_key' | 'oauth2';
@@ -88,7 +93,43 @@ export const POST: RequestHandler = async ({ request }) => {
 				headers[headerName] = `${prefix}${body.testCredential}`;
 			}
 
-			const method = body.method?.toUpperCase() || 'GET';
+			const method = (body.method?.toUpperCase() || 'GET') as HttpMethod;
+			const sampleInput = body.sampleInput ?? {};
+			let requestUrl = body.endpoint;
+			let requestBody: string | undefined;
+
+			try {
+				const target = buildHttpToolTarget(body.endpoint, method, sampleInput, {
+					pathParams: body.pathParams,
+					queryParams: body.queryParams,
+					bodyParam: body.bodyParam,
+				});
+				requestUrl = target.url;
+				requestBody = target.body;
+			} catch (buildErr) {
+				const message = buildErr instanceof Error ? buildErr.message : String(buildErr);
+				return json({
+					ok: false,
+					code: 'invalid_mapping',
+					error: message,
+					elapsedMs: Date.now() - start,
+				});
+			}
+
+			try {
+				assertSafeUrl(requestUrl, {
+					allowPrivateNetworks,
+					allowedHosts,
+				});
+			} catch (guardErr) {
+				const message = guardErr instanceof Error ? guardErr.message : String(guardErr);
+				return json({
+					ok: false,
+					code: 'ssrf_blocked',
+					error: message,
+					elapsedMs: Date.now() - start,
+				});
+			}
 
 			// Make the test HTTP request with a 10s timeout
 			const controller = new AbortController();
@@ -97,9 +138,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			}, 10000);
 
 			try {
-				const res = await fetch(body.endpoint, {
+				const res = await fetch(requestUrl, {
 					method,
 					headers,
+					body: method === 'GET' ? undefined : requestBody,
 					signal: controller.signal,
 				});
 				clearTimeout(timeout);
@@ -162,7 +204,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Format headers for MCP JSON-RPC
 		const headers: Record<string, string> = {
 			'Content-Type': 'application/json',
-			Accept: 'application/json',
+			Accept: 'application/json, text/event-stream',
 			'MCP-Protocol-Version': '2026-07-28',
 			...(body.headers ?? {}),
 		};
@@ -205,7 +247,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 			let rpcData: McpRpcResponse;
 			try {
-				rpcData = JSON.parse(text) as McpRpcResponse;
+				rpcData = parseMcpRpcResponse(text);
 			} catch {
 				return json({
 					ok: false,

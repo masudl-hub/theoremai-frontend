@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { ToolPause } from 'theorum/kernel';
+import type { ToolCredential, ToolPause } from 'theorum/kernel';
 
 let {
 	pause,
@@ -8,7 +8,7 @@ let {
 }: {
 	pause: ToolPause;
 	toolName: string;
-	onSubmitCredential?: (slot: string, credential: { token?: string; apiKey?: string }) => void;
+	onSubmitCredential?: (slot: string, credential: ToolCredential) => void;
 } = $props();
 
 const challenge = $derived(pause.authChallenge);
@@ -23,9 +23,9 @@ function handleSubmit() {
 	if (!secretInput.trim()) return;
 	submitted = true;
 	if (authType === 'api_key') {
-		onSubmitCredential?.(slot, { apiKey: secretInput.trim() });
+		onSubmitCredential?.(slot, { type: 'api_key', key: secretInput.trim() });
 	} else {
-		onSubmitCredential?.(slot, { token: secretInput.trim() });
+		onSubmitCredential?.(slot, { type: 'bearer', token: secretInput.trim() });
 	}
 }
 

@@ -1,16 +1,24 @@
-import { PLAYGROUND_NODE_HEIGHT_PX, PLAYGROUND_NODE_WIDTH_PX } from './layout';
-import type { PlaygroundNode } from './types';
+import { estimateFacetNodeHeight } from './facet-ui.ts';
+import { PLAYGROUND_NODE_WIDTH_PX } from './layout.ts';
+import type { PlaygroundNode } from './types.ts';
 
-const NODE_W = PLAYGROUND_NODE_WIDTH_PX;
-const NODE_H = PLAYGROUND_NODE_HEIGHT_PX;
 /** Only separate when boxes overlap by more than this many pixels on both axes. */
 const MIN_OVERLAP_PX = 24;
 
+function nodeSize(node: PlaygroundNode): { w: number; h: number } {
+	return {
+		w: PLAYGROUND_NODE_WIDTH_PX,
+		h: estimateFacetNodeHeight(node.data),
+	};
+}
+
 function overlapAmount(a: PlaygroundNode, b: PlaygroundNode): { x: number; y: number } {
+	const aSize = nodeSize(a);
+	const bSize = nodeSize(b);
 	const overlapX =
-		Math.min(a.position.x + NODE_W, b.position.x + NODE_W) - Math.max(a.position.x, b.position.x);
+		Math.min(a.position.x + aSize.w, b.position.x + bSize.w) - Math.max(a.position.x, b.position.x);
 	const overlapY =
-		Math.min(a.position.y + NODE_H, b.position.y + NODE_H) - Math.max(a.position.y, b.position.y);
+		Math.min(a.position.y + aSize.h, b.position.y + bSize.h) - Math.max(a.position.y, b.position.y);
 	return { x: overlapX, y: overlapY };
 }
 

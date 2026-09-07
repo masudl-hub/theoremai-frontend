@@ -272,7 +272,7 @@ THEORUM Architectural Principles you know deeply:
 1. Flatness & Zero-Bloat: Single runner loop, direct provider adapters, zero framework overhead (no LangChain abstractions).
 2. Deterministic Guardrails: Injected prompt canaries, egress filtering, rate limits, sensitive data scrubbing.
 3. Strict Typed Contracts: registerTool with Zod; tools.allow (custom) vs model builtInTools (provider natives); T2 promotion is turn-local.
-4. Multi-Engine Agnosticism: Gemini Live (T0/T1 at session start), Gemini Interactions (multi-step + in-turn T2), OpenRouter, Local Ollama.
+4. Multi-Engine Agnosticism: Gemini Live (T0 tools only at session setup), Gemini Interactions (multi-step + in-turn T2), OpenRouter, Local Ollama.
 
 Tool system (when users ask):
 - registerTool at startup — no defineTool export.
@@ -312,23 +312,19 @@ export function ensureTh30ProfileRegistered(): void {
 			handle: 'th30',
 			system: TH30_SYSTEM_PROMPT,
 		},
-		model: {
-			protocol: 'geminiLive',
-			provider: 'google',
-			allow: ['gemini31FlashLive'],
-			key: 'slotA',
-			config: {
-				gemini31FlashLive: {
-					apiId: 'gemini-3.1-flash-live-preview',
-					temperature: 0.7,
-					maxOutputTokens: 2048,
-					thinking: { on: 'low', off: 'none' },
-					thinkingLevels: ['none', 'low', 'medium', 'high'],
-					summaries: { on: 'none', off: 'none' },
-					builtInTools: ['googleSearch'],
-				},
+		models: {
+			gemini31FlashLive: {
+				protocol: 'geminiLive',
+				provider: 'google',
+				apiId: 'gemini-3.1-flash-live-preview',
+				efforts: { normal: 'low' },
+				summaries: false,
+				temperature: 0.7,
+				maxOutputTokens: 2048,
+				builtInTools: ['googleSearch'],
 			},
 		},
+		key: 'slotA',
 		live: {
 			voice: 'Aoede',
 			vad: {
@@ -349,13 +345,6 @@ export function ensureTh30ProfileRegistered(): void {
 		},
 		tools: {
 			allow: [...TH30_TOOL_IDS],
-		},
-		inputs: {
-			text: true,
-			voice: { accept: ['audio/pcm', 'audio/wav'] },
-			maxFiles: 5,
-			maxBytes: 10 * 1024 * 1024,
-			maxTurnBytes: 25 * 1024 * 1024,
 		},
 		guardrails: {
 			canary: true,

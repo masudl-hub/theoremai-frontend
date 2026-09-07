@@ -210,7 +210,7 @@ export function allowedBuiltinsForGemini(apiId: string): GoogleBuiltinId[] {
 	return out;
 }
 
-/** Reject provider builtins in profile.tools.allow — they belong on model.config.*.builtInTools. */
+/** Reject provider builtins in profile.tools.allow — they belong on models.*.builtInTools. */
 export function validateCustomToolsAllow(toolsAllowRaw: string): string | null {
 	for (const id of parseList(toolsAllowRaw)) {
 		if (GOOGLE_BUILTIN_IDS.has(id)) {
@@ -221,7 +221,7 @@ export function validateCustomToolsAllow(toolsAllowRaw: string): string | null {
 }
 
 /** Validate one model spec's apiId + builtInTools for playground free tier. */
-export function validateGeminiModelSpec(
+export function validateGeminiModelBinding(
 	apiId: string,
 	builtInToolsRaw: string,
 	protocol?: string,
@@ -262,7 +262,7 @@ export function validateGeminiModelSpec(
 	return null;
 }
 
-export function validateOpenRouterModelSpec(apiId: string): string | null {
+export function validateOpenRouterModelBinding(apiId: string): string | null {
 	const id = apiId.trim();
 	if (id !== OPENROUTER_PLAYGROUND_API_ID) {
 		return `Playground OpenRouter profiles must use ${OPENROUTER_PLAYGROUND_API_ID}.`;
@@ -271,32 +271,28 @@ export function validateOpenRouterModelSpec(apiId: string): string | null {
 }
 
 export type ProfileLike = {
-	model: {
-		protocol: string;
-		provider: string;
-		allow: string[];
-		config: Record<
-			string,
-			{
-				apiId?: string;
-				key?: string;
-				builtInTools?: string[];
-			}
-		>;
-	};
+	models: Record<
+		string,
+		{
+			protocol: string;
+			provider: string;
+			apiId?: string;
+			builtInTools?: string[];
+		}
+	>;
+	key?: string;
 	tools?: { allow?: string[]; t2Loader?: string };
 };
 
 /** Compile-time gate for the full profile graph. */
 export function playgroundPolicyViolation(profile: ProfileLike): string | null {
-	const { protocol, provider, allow, config } = profile.model;
-
 	const customErr = validateCustomToolsAllow((profile.tools?.allow ?? []).join(', '));
 	if (customErr) return customErr;
 
-	if (profile.model.protocol === 'geminiLive') {
+	const hasLive = Object.values(profile.models).some((m) => m.protocol === 'geminiLive');
+	if (hasLive) {
 		if (profile.tools?.t2Loader?.trim()) {
-			return 'tools.t2Loader is not supported on geminiLive — function declarations are fixed at session setup.';
+			return 'tools.t2Loader is not supported on geminiLive — function declarations are fixed at session setup (T0 tools only).';
 		}
 		const tools = profile.tools as { t1Policy?: unknown };
 		if (tools.t1Policy !== undefined) {
@@ -304,25 +300,19 @@ export function playgroundPolicyViolation(profile: ProfileLike): string | null {
 		}
 	}
 
-	if (isOpenRouterTransport(protocol, provider)) {
-		for (const id of allow) {
-			const err = validateOpenRouterModelSpec(config[id].apiId ?? '');
-			if (err) return err;
+	for (const [id, spec] of Object.entries(profile.models)) {
+		if (isOpenRouterTransport(spec.protocol, spec.provider)) {
+			const err = validateOpenRouterModelBinding(spec.apiId ?? '');
+			if (err) return `Model "${id}": ${err}`;
 		}
-		return null;
-	}
-
-	if (isGoogleTransport(protocol, provider)) {
-		for (const id of allow) {
-			const spec = config[id];
-			const err = validateGeminiModelSpec(
+		if (isGoogleTransport(spec.protocol, spec.provider)) {
+			const err = validateGeminiModelBinding(
 				spec.apiId ?? '',
 				(spec.builtInTools ?? []).join(', '),
-				protocol,
+				spec.protocol,
 			);
 			if (err) return `Model "${id}": ${err}`;
 		}
-		return null;
 	}
 
 	return null;
@@ -360,20 +350,34 @@ export function sanitizeBuiltInsForApiId(apiId: string, builtInToolsRaw: string)
 		.join(', ');
 }
 
-/** After hub transport changes, coerce every modelSpec on the canvas. */
-export function syncModelSpecsForTransport(
-	modelSpecs: Array<{ id: string; apiId: string; builtInTools: string }>,
+/** After binding transport changes, coerce every model binding on the canvas. */
+export function syncModelBindingsForTransport(
+	modelBindings: Array<{
+		id: string;
+		protocol: string;
+		provider: string;
+		apiId: string;
+		builtInTools: string;
+	}>,
 	protocol: string,
 	provider: string,
-): Map<string, { apiId: string; builtInTools: string }> {
-	const updates = new Map<string, { apiId: string; builtInTools: string }>();
-	for (const spec of modelSpecs) {
+): Map<string, { protocol: string; provider: string; apiId: string; builtInTools: string }> {
+	const updates = new Map<
+		string,
+		{ protocol: string; provider: string; apiId: string; builtInTools: string }
+	>();
+	for (const spec of modelBindings) {
 		const apiId = coerceApiIdForTransport(spec.apiId, protocol, provider);
 		const builtInTools = isGoogleTransport(protocol, provider)
 			? sanitizeBuiltInsForApiId(apiId, spec.builtInTools)
 			: spec.builtInTools;
-		if (apiId !== spec.apiId || builtInTools !== spec.builtInTools) {
-			updates.set(spec.id, { apiId, builtInTools });
+		if (
+			protocol !== spec.protocol ||
+			provider !== spec.provider ||
+			apiId !== spec.apiId ||
+			builtInTools !== spec.builtInTools
+		) {
+			updates.set(spec.id, { protocol, provider, apiId, builtInTools });
 		}
 	}
 	return updates;

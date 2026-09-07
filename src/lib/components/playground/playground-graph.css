@@ -20,6 +20,17 @@
 	--pg-node-width: 15rem;
 	--pg-node-width-hub: 16.5rem;
 	--pg-control-size: 1.6rem;
+
+	/* Shared shell tokens (nodes + facet panel) */
+	--pg-shell-bg: rgba(0, 0, 0, 0.035);
+	--pg-shell-bg-hover: rgba(0, 0, 0, 0.05);
+	--pg-shell-bg-active: rgba(0, 0, 0, 0.055);
+	--pg-shell-border: rgba(0, 0, 0, 0.1);
+	--pg-shell-border-strong: rgba(0, 0, 0, 0.25);
+	--pg-chip-bg: rgba(0, 0, 0, 0.06);
+	--pg-chip-bg-hover: rgba(0, 0, 0, 0.09);
+	/* Keep in sync with PLAYGROUND_PANEL_WIDTH_RATIO in layout.ts */
+	--pg-panel-width-ratio: 0.333333;
 }
 
 /* ── XYFlow canvas ─────────────────────────────────────────────── */
@@ -192,8 +203,8 @@
 	width: var(--pg-node-width);
 	padding: 0.35rem;
 	gap: 0.35rem;
-	background: rgba(0, 0, 0, 0.035);
-	border: 1px solid rgba(0, 0, 0, 0.1);
+	background: var(--pg-shell-bg);
+	border: 1px solid var(--pg-shell-border);
 	border-radius: 0;
 	box-shadow: none;
 	font-family: var(--font-mono);
@@ -205,13 +216,13 @@
 }
 
 .playground-shell .facet:hover {
-	background: rgba(0, 0, 0, 0.05);
+	background: var(--pg-shell-bg-hover);
 	border-color: rgba(0, 0, 0, 0.16);
 }
 
 .playground-shell .facet-active {
-	background: rgba(0, 0, 0, 0.055);
-	border-color: rgba(0, 0, 0, 0.25);
+	background: var(--pg-shell-bg-active);
+	border-color: var(--pg-shell-border-strong);
 }
 
 .playground-shell .facet-hub {
@@ -322,7 +333,7 @@
 	padding: 0.2rem 0.5rem;
 	border: none;
 	border-radius: 0;
-	background: rgba(0, 0, 0, 0.06);
+	background: var(--pg-chip-bg);
 	color: var(--color-ink);
 	font-size: var(--pg-font-caption);
 	font-weight: 600;
@@ -332,6 +343,11 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	transition: background-color 0.15s ease;
+}
+
+.playground-shell .facet-chip--meta {
+	color: var(--color-mute);
+	font-weight: 500;
 }
 
 .playground-shell .facet-chips:hover .facet-chip,

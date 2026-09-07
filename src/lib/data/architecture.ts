@@ -562,11 +562,11 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_registry_catalog',
 		title: 'catalog.ts',
 		type: 'CORE',
-		usage: "import { requireModelSpec, mimeAllowed, clampThinkingLevel } from 'theorum'",
-		desc: 'Model spec lookup and MIME helpers for profile validation.',
+		usage: "import { requireModelBinding, mimeAllowed, clampThinkingLevel } from 'theorum'",
+		desc: 'Model binding lookup and MIME helpers for profile validation.',
 		specs: [
 			['path', 'src/kernel/registry/catalog.ts'],
-			['api', 'requireModelSpec · modelEntryByApiId'],
+			['api', 'requireModelBinding · modelEntryByApiId'],
 			['mime', 'mimeAllowed · mediaKindForMime'],
 		],
 		copyable: true,
@@ -580,7 +580,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		specs: [
 			['path', 'src/kernel/registry/profiles.ts'],
 			['api', 'defineProfile · registerProfile · getProfile'],
-			['fields', 'model · tools · inputs · outputs · guardrails'],
+			['fields', 'models · tools · inputs · outputs · guardrails'],
 		],
 		copyable: true,
 	},

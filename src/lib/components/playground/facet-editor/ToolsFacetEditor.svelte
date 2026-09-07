@@ -29,6 +29,6 @@ let {
 		>
 	</label>
 {/if}
-<button class="btn btn-ghost facet-action" onclick={() => playground.addToolSpec()} type="button">
-	[ + Tool ]
+<button class="facet-action" onclick={() => playground.addToolSpec()} type="button">
+	+ Add tool
 </button>

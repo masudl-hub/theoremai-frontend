@@ -1,7 +1,22 @@
-import { DEMO_CONCIERGE_SYSTEM, demoToolSeeds } from './demo-example';
+import {
+	DEMO_ALLOWED_HOSTS,
+	DEMO_CONCIERGE_SYSTEM,
+	demoInputsSeed,
+	demoToolSeeds,
+} from './demo-example';
 import { layoutPlaygroundGraph } from './graph-layout';
 import { PLAYGROUND_IDENTITY_X, PLAYGROUND_ORIGIN } from './layout';
-import { DRAG_HANDLE, type IdentityData, type PlaygroundEdge, type PlaygroundNode } from './types';
+import {
+	GEMINI_PLAYGROUND_DEFAULT_API_ID,
+	OPENROUTER_PLAYGROUND_API_ID,
+} from './playground-policy';
+import {
+	DRAG_HANDLE,
+	defaultModelBinding,
+	type IdentityData,
+	type PlaygroundEdge,
+	type PlaygroundNode,
+} from './types';
 
 export { branchEdge, spineEdge } from './graph-layout';
 
@@ -42,6 +57,58 @@ export function syncGraphForProfile(
 	return layoutPlaygroundGraph(currentNodes, identity, DRAG_HANDLE, opts);
 }
 
+function demoModelBindingNodes(): PlaygroundNode[] {
+	return [
+		{
+			id: 'model-fast',
+			type: 'facet',
+			position: { x: 0, y: 0 },
+			dragHandle: DRAG_HANDLE,
+			data: defaultModelBinding({
+				modelId: 'fast',
+				protocol: 'geminiInteractions',
+				provider: 'google',
+				apiId: GEMINI_PLAYGROUND_DEFAULT_API_ID,
+				efforts: { fast: 'minimal', deep: 'high' },
+				defaultEffort: 'fast',
+				allowEffortSelect: true,
+				summaries: true,
+			}),
+		},
+		{
+			id: 'model-smart',
+			type: 'facet',
+			position: { x: 0, y: 0 },
+			dragHandle: DRAG_HANDLE,
+			data: defaultModelBinding({
+				modelId: 'smart',
+				protocol: 'geminiInteractions',
+				provider: 'google',
+				apiId: 'gemini-3.5-flash-lite',
+				efforts: { normal: 'low', deep: 'high' },
+				defaultEffort: 'normal',
+				allowEffortSelect: true,
+				summaries: true,
+			}),
+		},
+		{
+			id: 'model-open',
+			type: 'facet',
+			position: { x: 0, y: 0 },
+			dragHandle: DRAG_HANDLE,
+			data: defaultModelBinding({
+				modelId: 'open',
+				protocol: 'openAi',
+				provider: 'openrouter',
+				apiId: OPENROUTER_PLAYGROUND_API_ID,
+				efforts: { default: 'minimal' },
+				defaultEffort: 'default',
+				allowEffortSelect: false,
+			}),
+		},
+	];
+}
+
 function demoSeedNodes(): PlaygroundNode[] {
 	const toolNodes: PlaygroundNode[] = demoToolSeeds().map((seed) => ({
 		id: seed.id,
@@ -53,6 +120,13 @@ function demoSeedNodes(): PlaygroundNode[] {
 
 	return [
 		{
+			id: 'inputs',
+			type: 'facet',
+			position: { x: 0, y: 0 },
+			dragHandle: DRAG_HANDLE,
+			data: demoInputsSeed(),
+		},
+		{
 			id: 'models',
 			type: 'facet',
 			position: { x: 0, y: 0 },
@@ -60,12 +134,11 @@ function demoSeedNodes(): PlaygroundNode[] {
 			data: {
 				kind: 'models',
 				expanded: false,
-				protocol: 'openAi',
-				provider: 'openrouter',
-				thinking: 'minimal',
-				maxSteps: 8,
-				thinkingControl: false,
-				key: '',
+				branchCollapsed: false,
+				defaultModel: 'fast',
+				allowModelSelect: true,
+				maxSteps: 12,
+				key: 'slotA',
 			},
 		},
 		{
@@ -76,6 +149,7 @@ function demoSeedNodes(): PlaygroundNode[] {
 			data: {
 				kind: 'tools',
 				expanded: false,
+				branchCollapsed: false,
 				t2Loader: 'discover_tools',
 			},
 		},
@@ -95,10 +169,10 @@ function demoSeedNodes(): PlaygroundNode[] {
 				egressMode: 'default',
 				onBlock: 'refuse_to_user',
 				egressMaxRetries: 2,
-				allowedHosts:
-					'api.open-meteo.com, geocoding-api.open-meteo.com, api.frankfurter.app, pokeapi.co, catfact.ninja, official-joke-api.appspot.com',
+				allowedHosts: DEMO_ALLOWED_HOSTS,
 			},
 		},
+		...demoModelBindingNodes(),
 		...toolNodes,
 	];
 }

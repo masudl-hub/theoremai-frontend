@@ -1,5 +1,10 @@
-export function isComposerExpanded(textLength: number, attachmentCount: number): boolean {
-	return textLength > 0 || attachmentCount > 0;
+export function isComposerExpanded(
+	textLength: number,
+	attachmentCount: number,
+	voiceCount = 0,
+	voiceMode = false,
+): boolean {
+	return textLength > 0 || attachmentCount > 0 || voiceCount > 0 || voiceMode;
 }
 
 export function measureComposerTextareaHeight(args: {

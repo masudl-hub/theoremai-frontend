@@ -8,10 +8,17 @@ let {
 }: {
 	pause: ToolPause;
 	toolName: string;
-	onDecision?: (action: 'allow' | 'allow_session' | 'deny') => void;
+	onDecision?: (action: 'allow' | 'allow_session' | 'deny', interactiveValue?: unknown) => void;
 } = $props();
 
 const accessKind = $derived(pause.permission ?? 'session_consent');
+const isInteractive = $derived(pause.kind === 'interactive');
+const interactiveOptions = $derived(pause.render?.options ?? []);
+const interactiveKind = $derived(
+	isInteractive
+		? (pause.render?.kind ?? (interactiveOptions.length > 0 ? 'choice' : 'text'))
+		: null,
+);
 const inputFormatted = $derived(
 	typeof pause.input === 'object' && pause.input !== null
 		? JSON.stringify(pause.input, null, 2)
@@ -19,23 +26,51 @@ const inputFormatted = $derived(
 );
 
 let decided = $state<'allowed' | 'allowed_session' | 'denied' | null>(null);
+let selectedOption = $state<string | null>(null);
+let textDraft = $state('');
+let submittedValue = $state<unknown>(undefined);
 
-function handleAction(action: 'allow' | 'allow_session' | 'deny') {
+function handleAction(action: 'allow' | 'allow_session' | 'deny', interactiveValue?: unknown) {
 	if (action === 'allow') decided = 'allowed';
 	else if (action === 'allow_session') decided = 'allowed_session';
 	else decided = 'denied';
 
-	onDecision?.(action);
+	if (interactiveValue !== undefined) {
+		submittedValue = interactiveValue;
+	}
+
+	onDecision?.(action, interactiveValue);
+}
+
+function chooseInteractive(option: string) {
+	selectedOption = option;
+	handleAction('allow', option);
+}
+
+function submitText() {
+	const trimmed = textDraft.trim();
+	if (!trimmed) return;
+	handleAction('allow', trimmed);
 }
 </script>
 
 <article class="renderable-card approval-card" class:approval-card--decided={decided !== null}>
 	<header class="card-header">
 		<div class="card-title-group">
-			<span class="card-badge card-badge--shield">🛡 Approval Required</span>
-			<h4 class="card-title">Tool Execution: <code>{toolName}</code></h4>
+			<span
+				class="card-badge"
+				class:card-badge--shield={!isInteractive}
+				class:card-badge--interactive={isInteractive}
+			>
+				{isInteractive ? '✎ Response Required' : '🛡 Approval Required'}
+			</span>
+			<h4 class="card-title">
+				{isInteractive ? 'Input' : 'Tool Execution'}: <code>{toolName}</code>
+			</h4>
 		</div>
-		<span class="card-badge card-badge--tier">{accessKind}</span>
+		{#if !isInteractive}
+			<span class="card-badge card-badge--tier">{accessKind}</span>
+		{/if}
 	</header>
 
 	{#if pause.summary}
@@ -45,12 +80,34 @@ function handleAction(action: 'allow' | 'allow_session' | 'deny') {
 	{#if pause.render}
 		<div class="card-interactive-view">
 			<p class="interactive-prompt">{pause.render.prompt}</p>
-			{#if pause.render.options?.length}
+			{#if interactiveKind === 'choice' && interactiveOptions.length}
 				<div class="interactive-options">
-					{#each pause.render.options as opt (opt)}
-						<span class="interactive-option-pill">{opt}</span>
+					{#each interactiveOptions as opt (opt)}
+						<button
+							class="interactive-option-pill"
+							class:interactive-option-pill--selected={selectedOption === opt}
+							disabled={decided !== null}
+							onclick={() => chooseInteractive(opt)}
+							type="button"
+						>
+							{opt}
+						</button>
 					{/each}
 				</div>
+			{:else if interactiveKind === 'text'}
+				<label class="interactive-text-field">
+					<span class="interactive-text-label">Your answer</span>
+					<input
+						bind:value={textDraft}
+						class="interactive-text-input"
+						disabled={decided !== null}
+						onkeydown={(event) => {
+							if (event.key === 'Enter') submitText();
+						}}
+						placeholder="Type your response"
+						type="text"
+					>
+				</label>
 			{/if}
 		</div>
 	{/if}
@@ -63,36 +120,78 @@ function handleAction(action: 'allow' | 'allow_session' | 'deny') {
 	<footer class="card-footer">
 		{#if decided === null}
 			<div class="action-buttons">
-				<button
-					class="btn-action btn-action--deny"
-					onclick={() => handleAction('deny')}
-					type="button"
-				>
-					Deny
-				</button>
-				<button
-					class="btn-action btn-action--allow"
-					onclick={() => handleAction('allow')}
-					type="button"
-				>
-					Approve
-				</button>
-				<button
-					class="btn-action btn-action--always"
-					onclick={() => handleAction('allow_session')}
-					type="button"
-				>
-					Always Allow this Session
-				</button>
+				{#if isInteractive && interactiveKind === 'confirm'}
+					<button
+						class="btn-action btn-action--deny"
+						onclick={() => handleAction('deny')}
+						type="button"
+					>
+						Cancel
+					</button>
+					<button
+						class="btn-action btn-action--allow"
+						onclick={() => handleAction('allow', true)}
+						type="button"
+					>
+						Confirm
+					</button>
+				{:else}
+					{#if !isInteractive || interactiveKind !== 'choice' || interactiveOptions.length === 0}
+						<button
+							class="btn-action btn-action--deny"
+							onclick={() => handleAction('deny')}
+							type="button"
+						>
+							{isInteractive ? 'Cancel' : 'Deny'}
+						</button>
+					{/if}
+					{#if interactiveKind === 'text'}
+						<button
+							class="btn-action btn-action--allow"
+							disabled={!textDraft.trim()}
+							onclick={submitText}
+							type="button"
+						>
+							Submit
+						</button>
+					{:else if !isInteractive || (interactiveKind !== 'choice' && interactiveKind !== 'confirm')}
+						<button
+							class="btn-action btn-action--allow"
+							onclick={() => handleAction('allow')}
+							type="button"
+						>
+							Approve
+						</button>
+					{:else if isInteractive && interactiveKind === 'choice'}
+						<button
+							class="btn-action btn-action--deny"
+							onclick={() => handleAction('deny')}
+							type="button"
+						>
+							Cancel
+						</button>
+					{/if}
+					{#if !isInteractive}
+						<button
+							class="btn-action btn-action--always"
+							onclick={() => handleAction('allow_session')}
+							type="button"
+						>
+							Always Allow this Session
+						</button>
+					{/if}
+				{/if}
 			</div>
 		{:else}
 			<div class="decision-outcome" class:decision-outcome--denied={decided === 'denied'}>
-				{#if decided === 'allowed'}
-					<span>✓ Approved for single execution</span>
+				{#if decided === 'denied'}
+					<span>✗ {isInteractive ? 'Cancelled' : 'Execution Denied'}</span>
 				{:else if decided === 'allowed_session'}
 					<span>✓ Approved for entire session</span>
+				{:else if submittedValue !== undefined}
+					<span>✓ {String(submittedValue)}</span>
 				{:else}
-					<span>✗ Execution Denied</span>
+					<span>✓ Approved for single execution</span>
 				{/if}
 			</div>
 		{/if}
@@ -155,6 +254,12 @@ function handleAction(action: 'allow' | 'allow_session' | 'deny') {
 	border: 1px solid #ffeeba;
 }
 
+.card-badge--interactive {
+	background: #e8f0fe;
+	color: #1a4f9c;
+	border: 1px solid #c5d9f7;
+}
+
 .card-badge--tier {
 	background: rgba(0, 0, 0, 0.06);
 	color: #555;
@@ -191,6 +296,45 @@ function handleAction(action: 'allow' | 'allow_session' | 'deny') {
 	border-radius: 3px;
 	background: #fff;
 	font-size: 0.7rem;
+	font-family: inherit;
+	cursor: pointer;
+}
+
+.interactive-option-pill--selected {
+	background: #000;
+	color: #fff;
+}
+
+.interactive-option-pill:disabled {
+	cursor: default;
+	opacity: 0.7;
+}
+
+.interactive-text-field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.interactive-text-label {
+	font-size: 0.65rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: #555;
+}
+
+.interactive-text-input {
+	padding: 0.35rem 0.5rem;
+	border: 1px solid #000;
+	border-radius: 3px;
+	font-family: inherit;
+	font-size: 0.75rem;
+	background: #fff;
+}
+
+.interactive-text-input:disabled {
+	opacity: 0.7;
 }
 
 .card-details {
@@ -239,13 +383,18 @@ function handleAction(action: 'allow' | 'allow_session' | 'deny') {
 	transition: all 120ms ease;
 }
 
+.btn-action:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
 .btn-action--deny {
 	background: #fff;
 	color: #b31d1d;
 	border-color: #b31d1d;
 }
 
-.btn-action--deny:hover {
+.btn-action--deny:hover:not(:disabled) {
 	background: #fff5f5;
 }
 
@@ -254,7 +403,7 @@ function handleAction(action: 'allow' | 'allow_session' | 'deny') {
 	color: #fff;
 }
 
-.btn-action--allow:hover {
+.btn-action--allow:hover:not(:disabled) {
 	opacity: 0.85;
 }
 
@@ -264,7 +413,7 @@ function handleAction(action: 'allow' | 'allow_session' | 'deny') {
 	border-color: #0b6b34;
 }
 
-.btn-action--always:hover {
+.btn-action--always:hover:not(:disabled) {
 	background: #d2ecd9;
 }
 

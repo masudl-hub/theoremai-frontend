@@ -1,75 +1,79 @@
 /**
- * Playground facet panel — typography and spacing tokens.
+ * Playground facet panel — matches canvas node shell tokens.
  * Scoped to .facet-panel only.
  */
 .facet-panel {
-	--fe-font-label: 0.75rem; /* 12px — field + section titles */
-	--fe-font-body: 0.75rem; /* 12px — inputs, checkbox labels */
-	--fe-font-caption: 0.6875rem; /* 11px — meta copy */
-	--fe-weight-label: 800;
-	--fe-weight-body: 600;
-	--fe-weight-strong: 700;
-	--fe-track-label: 0.1em;
-	--fe-line-body: 1.35;
+	--fe-font-label: 0.6875rem; /* 11px — field labels */
+	--fe-font-body: 0.75rem; /* 12px — controls */
+	--fe-font-caption: 0.6875rem; /* 11px — hints */
+	--fe-weight-label: 600;
+	--fe-weight-body: 500;
+	--fe-weight-strong: 600;
+	--fe-line-body: 1.45;
 	--fe-line-caption: 1.5;
 
-	--fe-space-1: 0.25rem; /* 4px */
-	--fe-space-2: 0.5rem; /* 8px */
-	--fe-space-3: 0.75rem; /* 12px */
-	--fe-space-4: 1rem; /* 16px */
-	--fe-space-section: 1.25rem; /* 20px — above field / section titles */
-	--fe-space-list: 0.25rem; /* 4px — between rows in a checkbox list */
-	--fe-space-field: var(--fe-space-2); /* label → control within one field */
+	--fe-space-1: 0.25rem;
+	--fe-space-2: 0.5rem;
+	--fe-space-3: 0.75rem;
+	--fe-space-4: 1rem;
+	--fe-space-section: 1rem;
+	--fe-space-field: 0.35rem;
+	--fe-space-list: 0.2rem;
 
 	display: flex;
 	flex-direction: column;
 	width: 100%;
 	height: 100%;
 	min-width: 16rem;
-	border: 1.5px solid #000;
-	background: var(--color-paper);
-	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.07);
+	border: 1px solid var(--pg-shell-border, rgba(0, 0, 0, 0.1));
+	background: var(--pg-shell-bg, rgba(0, 0, 0, 0.035));
+	box-shadow: none;
 	font-family: var(--font-mono);
 	color: var(--color-ink);
 }
 
-/* ── Panel chrome ──────────────────────────────────────────────── */
-
 .facet-panel-head {
-	display: grid;
-	grid-template-columns: auto 1fr;
+	display: flex;
 	align-items: center;
 	gap: var(--fe-space-2);
 	flex-shrink: 0;
 	padding: var(--fe-space-3);
-	border-bottom: 1px solid #000;
+	/* Th30 dock sits top-right — keep title clear, close is on the left */
+	padding-right: 4.5rem;
+	border-bottom: 1px solid var(--pg-shell-border, rgba(0, 0, 0, 0.1));
+	background: transparent;
 }
 
 .facet-panel-title {
 	margin: 0;
 	min-width: 0;
+	flex: 1 1 auto;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	font-size: var(--fe-font-label);
-	font-weight: var(--fe-weight-label);
-	letter-spacing: var(--fe-track-label);
-	text-transform: uppercase;
+	font-size: var(--fe-font-body);
+	font-weight: 700;
+	letter-spacing: 0.04em;
 }
 
 .facet-panel-close {
 	appearance: none;
+	flex-shrink: 0;
 	border: 0;
+	border-radius: 0;
 	background: transparent;
-	color: inherit;
-	font-size: 0.875rem;
+	color: var(--color-mute);
+	font-size: 1.125rem;
 	line-height: 1;
-	padding: var(--fe-space-1);
+	padding: 0.1rem 0.25rem;
 	cursor: pointer;
+	opacity: 0.7;
+	transition: opacity 0.15s ease;
 }
 
 .facet-panel-close:hover {
-	background: rgba(0, 0, 0, 0.06);
+	opacity: 1;
+	background: transparent;
 }
 
 .facet-panel-body {
@@ -79,6 +83,7 @@
 	flex: 1 1 auto;
 	padding: var(--fe-space-3);
 	overflow: hidden;
+	background: transparent;
 }
 
 /* ── Editor shell ──────────────────────────────────────────────── */
@@ -95,7 +100,6 @@
 	color: var(--color-ink);
 }
 
-/* Field blocks render inside TypeTip's hover host — section rhythm lives here. */
 .facet-panel .facet-editor > .ascii-hover-host {
 	display: flex;
 	flex-direction: column;
@@ -103,35 +107,68 @@
 	flex: 1 1 auto;
 	overflow-x: hidden;
 	overflow-y: auto;
+	gap: var(--fe-space-section);
 }
 
-.facet-panel .facet-editor > .ascii-hover-host > * + * {
-	margin-top: var(--fe-space-section);
+.facet-panel .facet-editor > .ascii-hover-host > * {
+	margin-top: 0;
 }
 
+/* Controls — same shell as canvas nodes */
 .facet-panel .facet-editor .field {
+	width: 100%;
+	border: 1px solid var(--pg-shell-border, rgba(0, 0, 0, 0.1));
+	border-radius: 0;
+	background: var(--pg-chip-bg, rgba(0, 0, 0, 0.06));
+	padding: 0.45rem 0.55rem;
+	font: inherit;
 	font-size: var(--fe-font-body);
-	padding: var(--fe-space-2) var(--fe-space-3);
+	font-weight: var(--fe-weight-body);
+	outline: none;
+	transition:
+		background-color 0.15s ease,
+		border-color 0.15s ease;
+}
+
+.facet-panel .facet-editor .field:focus,
+.facet-panel .facet-editor .field:focus-visible {
+	background: var(--pg-shell-bg-hover, rgba(0, 0, 0, 0.05));
+	color: var(--color-ink);
+	border-color: var(--pg-shell-border-strong, rgba(0, 0, 0, 0.25));
 }
 
 .facet-panel .facet-editor .select-trigger {
 	font-size: var(--fe-font-body);
-	padding: var(--fe-space-2) var(--fe-space-3);
-}
-
-.facet-panel .facet-editor .field:focus {
-	background: transparent;
-	color: inherit;
+	font-weight: var(--fe-weight-body);
+	padding: 0.45rem 0.55rem;
 }
 
 .facet-panel .facet-editor .select-trigger:focus,
 .facet-panel .facet-editor .select-trigger:focus-visible {
-	background: transparent;
-	color: inherit;
+	background: var(--pg-shell-bg-hover, rgba(0, 0, 0, 0.05));
+	color: var(--color-ink);
+	border-color: var(--pg-shell-border-strong, rgba(0, 0, 0, 0.25));
 }
 
-.facet-panel .facet-editor .btn-ghost:hover {
-	background: rgba(0, 0, 0, 0.05);
+.facet-panel .facet-editor .facet-action {
+	align-self: flex-start;
+	margin-top: 0.15rem;
+	padding: 0.25rem 0.55rem;
+	border: none;
+	border-radius: 0;
+	background: var(--pg-chip-bg, rgba(0, 0, 0, 0.06));
+	color: var(--color-ink);
+	font-family: var(--font-mono);
+	font-size: var(--fe-font-caption);
+	font-weight: var(--fe-weight-strong);
+	letter-spacing: normal;
+	text-transform: none;
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+}
+
+.facet-panel .facet-editor .facet-action:hover {
+	background: var(--pg-chip-bg-hover, rgba(0, 0, 0, 0.09));
 	color: var(--color-ink);
 }
 
@@ -140,8 +177,8 @@
 .facet-panel .facet-field-label {
 	font-size: var(--fe-font-label);
 	font-weight: var(--fe-weight-label);
-	letter-spacing: var(--fe-track-label);
-	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	text-transform: none;
 	color: var(--color-mute);
 }
 
@@ -156,21 +193,26 @@
 	min-height: 4rem;
 }
 
-/* ── Section sets (legend + list) ──────────────────────────────── */
+/* ── Section sets (soft nested shells) ─────────────────────────── */
 
 .facet-panel .facet-set {
 	margin: 0;
-	padding: var(--fe-space-3) 0 0;
-	border: 0;
-	border-top: 1px solid var(--color-ink);
+	padding: var(--fe-space-3);
+	border: 1px solid var(--pg-shell-border, rgba(0, 0, 0, 0.1));
+	background: transparent;
 	display: flex;
 	flex-direction: column;
-	gap: var(--fe-space-field);
+	gap: var(--fe-space-3);
 }
 
 .facet-panel .facet-set legend {
 	padding: 0;
 	margin: 0;
+	font-size: var(--fe-font-label);
+	font-weight: var(--fe-weight-strong);
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--color-mute);
 }
 
 .facet-panel .facet-check-grid,
@@ -189,7 +231,7 @@
 	align-items: flex-start;
 	gap: var(--fe-space-2);
 	margin: 0;
-	padding: var(--fe-space-list) 0;
+	padding: 0.15rem 0;
 	font-size: var(--fe-font-body);
 	font-weight: var(--fe-weight-body);
 	line-height: var(--fe-line-body);
@@ -210,7 +252,7 @@
 }
 
 .facet-panel .facet-check:hover {
-	background: rgba(0, 0, 0, 0.04);
+	background: transparent;
 }
 
 .facet-panel .facet-check .type-label {
@@ -239,15 +281,9 @@
 	opacity: 0.45;
 }
 
-.facet-panel .facet-action {
-	align-self: flex-start;
-	padding: var(--fe-space-1) var(--fe-space-2);
-	font-size: var(--fe-font-caption);
-}
-
 .facet-panel .facet-textarea {
 	resize: vertical;
-	min-height: 3.5rem;
+	min-height: 3rem;
 	line-height: var(--fe-line-body);
 }
 
@@ -265,7 +301,7 @@
 }
 
 .facet-panel .bracket-check:focus-visible {
-	outline: 2px solid #000;
+	outline: 1px solid var(--pg-shell-border-strong, rgba(0, 0, 0, 0.25));
 	outline-offset: 1px;
 }
 
@@ -275,7 +311,7 @@
 	margin: var(--fe-space-field) 0 0;
 	font-size: var(--fe-font-caption);
 	font-weight: var(--fe-weight-body);
-	line-height: var(--fe-line-body);
+	line-height: var(--fe-line-caption);
 	color: var(--color-mute);
 }
 
@@ -290,60 +326,76 @@
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start;
-	padding: var(--fe-space-2) var(--fe-space-3);
-	border: 1.5px solid #000;
-	border-radius: var(--radius-md);
-	background: var(--color-paper);
+	gap: 0.2rem;
+	padding: 0.35rem 0.55rem;
+	border: 1px solid var(--pg-shell-border, rgba(0, 0, 0, 0.1));
+	border-radius: 0;
+	background: var(--pg-shell-bg, rgba(0, 0, 0, 0.035));
 	text-align: left;
 	cursor: pointer;
 	font-family: var(--font-mono);
 	transition:
-		background 150ms ease,
-		color 150ms ease;
+		background-color 0.15s ease,
+		border-color 0.15s ease;
 }
 
 .facet-panel .modality-card:hover {
-	background: rgba(0, 0, 0, 0.05);
+	background: var(--pg-shell-bg-hover, rgba(0, 0, 0, 0.05));
+	border-color: rgba(0, 0, 0, 0.16);
 }
 
 .facet-panel .modality-name {
-	font-size: var(--fe-font-label);
-	font-weight: var(--fe-weight-label);
-	letter-spacing: var(--fe-track-label);
-	text-transform: uppercase;
+	font-size: var(--fe-font-caption);
+	font-weight: var(--fe-weight-strong);
+	letter-spacing: 0.04em;
+	text-transform: none;
+}
+
+.facet-panel .modality-icon {
+	flex-shrink: 0;
+	opacity: 0.45;
+}
+
+.facet-panel .modality-card--active .modality-icon {
+	opacity: 0.7;
 }
 
 .facet-panel .modality-desc {
 	font-size: var(--fe-font-caption);
-	opacity: 0.75;
-	margin-top: var(--fe-space-1);
-	line-height: var(--fe-line-body);
+	color: var(--color-mute);
+	margin-top: 0.15rem;
+	line-height: var(--fe-line-caption);
 }
 
 .facet-panel .modality-card--active {
-	background: var(--color-ink);
-	color: var(--color-paper-bright);
+	background: var(--pg-shell-bg-active, rgba(0, 0, 0, 0.055));
+	border-color: var(--pg-shell-border-strong, rgba(0, 0, 0, 0.25));
+	color: var(--color-ink);
 }
 
 .facet-panel .modality-card--active:hover {
-	background: var(--color-ink);
+	background: var(--pg-shell-bg-active, rgba(0, 0, 0, 0.055));
 }
 
 .facet-panel .modality-card--active .modality-desc {
-	opacity: 0.85;
+	color: var(--color-mute);
 }
 
 .facet-panel .facet-subgroup {
-	padding-top: var(--fe-space-3);
-	border-top: 1px solid rgba(0, 0, 0, 0.15);
+	display: flex;
+	flex-direction: column;
+	gap: var(--fe-space-3);
+	padding: var(--fe-space-3);
+	border: 1px solid var(--pg-shell-border, rgba(0, 0, 0, 0.1));
+	background: transparent;
 }
 
 .facet-panel .facet-subgroup-title {
 	font-size: var(--fe-font-label);
-	font-weight: var(--fe-weight-label);
-	letter-spacing: var(--fe-track-label);
+	font-weight: var(--fe-weight-strong);
+	letter-spacing: 0.06em;
 	text-transform: uppercase;
-	display: block;
+	color: var(--color-mute);
 }
 
 .facet-panel .facet-checks-list {
@@ -356,16 +408,17 @@
 	gap: var(--fe-space-2);
 	font-size: var(--fe-font-body);
 	font-weight: var(--fe-weight-body);
-	opacity: 0.85;
+	color: var(--color-mute);
 	min-width: 0;
 	max-width: 100%;
 }
 
 .facet-panel .check-fixed {
 	flex-shrink: 0;
-	font-weight: var(--fe-weight-label);
+	font-weight: var(--fe-weight-strong);
 	width: 1.75rem;
 	text-align: center;
+	color: var(--color-mute);
 }
 
 .facet-panel .check-label {
@@ -373,4 +426,17 @@
 	letter-spacing: normal;
 	min-width: 0;
 	overflow-wrap: anywhere;
+}
+
+.facet-panel .facet-effort-row {
+	display: grid;
+	grid-template-columns: minmax(4rem, 1fr) minmax(6rem, 1.25fr) auto;
+	gap: var(--fe-space-2);
+	align-items: center;
+	margin-bottom: var(--fe-space-2);
+}
+
+.facet-panel .facet-action-inline {
+	padding: 0.2rem 0.45rem;
+	font-size: var(--fe-font-caption);
 }

@@ -23,6 +23,7 @@ function theorumAliases(theorumRoot: string) {
 		'theorum/presets/google/speech-voices': theorumGoogleSpeechVoices,
 		'theorum/presets/google': path.resolve(theorumRoot, 'src/presets/google.ts'),
 		'theorum/interface': path.resolve(theorumRoot, 'src/interface/mod.ts'),
+		'theorum/playground': path.resolve(theorumRoot, 'src/playground/mod.ts'),
 		'theorum/providers/google/live': path.resolve(theorumRoot, 'src/providers/google/live/mod.ts'),
 		theorum: path.resolve(theorumRoot, 'mod.ts'),
 		// Legacy aliases kept for any remaining @theorum imports.
@@ -91,6 +92,7 @@ export default defineConfig(() => {
 				'theorum/guardrails',
 				'theorum/presets/google',
 				'theorum/interface',
+				'theorum/playground',
 				'theorum/presets/google/speech-voices',
 				'theorum/providers/google/live',
 				'@theorum/core',

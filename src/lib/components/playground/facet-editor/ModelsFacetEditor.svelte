@@ -1,5 +1,4 @@
 <script lang="ts">
-import type { Protocol, Provider, ThinkingLevel } from 'theorum/schema';
 import Checkbox from '$lib/components/playground/Checkbox.svelte';
 import Select from '$lib/components/Select.svelte';
 import type { PlaygroundCtx } from '$lib/playground/context';
@@ -12,60 +11,45 @@ let {
 	data,
 	patch,
 	playground,
-	onProtocolChange,
-	onProviderChange,
-	providerOptions,
-	protocolOptions,
+	modelIds,
 	isLive = false,
 }: {
 	data: ModelsData;
 	patch: FacetPatch;
 	playground: PlaygroundCtx;
-	onProtocolChange: (next: Protocol) => void;
-	onProviderChange: (next: Provider) => void;
-	providerOptions: ReadonlyArray<{ value: string; label: string }>;
-	protocolOptions: ReadonlyArray<{ value: string; label: string }>;
+	modelIds: string[];
 	isLive?: boolean;
 } = $props();
 
-const thinkingOptions = fieldEnumOptions('model.thinking');
-const keyOptions = fieldEnumOptions('model.key', { allowOmit: true, omitLabel: '(omit)' });
+const keyOptions = fieldEnumOptions('key', { allowOmit: true, omitLabel: '(omit)' });
 </script>
 
-<label class="facet-field">
-	<FacetFieldLabel path="model.protocol" />
-	<Select
-		onchange={(v) => onProtocolChange(v as Protocol)}
-		options={protocolOptions}
-		value={data.protocol}
-	/>
-</label>
-<label class="facet-field">
-	<FacetFieldLabel path="model.provider" />
-	<Select
-		onchange={(v) => onProviderChange(v as Provider)}
-		options={providerOptions}
-		value={data.provider}
-	/>
-</label>
-<button class="btn btn-ghost facet-action" onclick={() => playground.addModelSpec()} type="button">
-	[ + Model ]
+<button class="facet-action" onclick={() => playground.addModelBinding()} type="button">
+	+ Add model
 </button>
 <label class="facet-field">
-	<FacetFieldLabel path="model.thinking" />
-	<Select
-		onchange={(v) => patch({ thinking: v as ThinkingLevel })}
-		options={thinkingOptions}
-		value={data.thinking}
-	/>
+	<FacetFieldLabel path="defaultModel" />
+	<input
+		class="field"
+		autocomplete="off"
+		list="playground-model-ids"
+		oninput={(e) => patch({ defaultModel: e.currentTarget.value })}
+		placeholder="fast"
+		value={data.defaultModel}
+	>
+	<datalist id="playground-model-ids">
+		{#each modelIds as id (id)}
+			<option value={id}></option>
+		{/each}
+	</datalist>
+</label>
+<label class="facet-check">
+	<Checkbox checked={data.allowModelSelect} onchange={(v) => patch({ allowModelSelect: v })} />
+	<FacetFieldLabel path="allowModelSelect" />
 </label>
 {#if !isLive}
-	<label class="facet-check">
-		<Checkbox checked={data.thinkingControl} onchange={(v) => patch({ thinkingControl: v })} />
-		<FacetFieldLabel path="model.controls" />
-	</label>
 	<label class="facet-field">
-		<FacetFieldLabel path="model.maxSteps" />
+		<FacetFieldLabel path="maxSteps" />
 		<input
 			class="field"
 			min="1"
@@ -76,7 +60,7 @@ const keyOptions = fieldEnumOptions('model.key', { allowOmit: true, omitLabel: '
 	</label>
 {/if}
 <label class="facet-field">
-	<FacetFieldLabel path="model.key" />
+	<FacetFieldLabel path="key" />
 	<Select
 		onchange={(v) =>
 			patch({

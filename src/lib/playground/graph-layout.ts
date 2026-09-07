@@ -1,19 +1,23 @@
+import type { Protocol, Provider } from 'theorum/schema';
+import { LIVE_TOOL_LOAD_TIERS } from 'theorum/schema';
+import { resolveNodeCollisions } from './graph-collision';
 import {
 	branchSpecPosition,
 	PLAYGROUND_FACET_X,
 	PLAYGROUND_IDENTITY_X,
 	PLAYGROUND_ORIGIN,
 	PLAYGROUND_ROW_PX,
+	stackBranchSpecPosition,
 } from './layout';
 import { OPENROUTER_PLAYGROUND_API_ID } from './playground-policy';
 import {
 	defaultImageSpec,
 	defaultLiveSpec,
-	defaultModelSpec,
+	defaultModelBinding,
 	defaultSpeechSpec,
 	type FacetData,
 	type IdentityData,
-	type ModelSpecData,
+	type ModelBindingData,
 	type PlaygroundEdge,
 	type PlaygroundNode,
 	type ToolSpecData,
@@ -83,22 +87,7 @@ function facetDataForKind(
 ): FacetData {
 	if (existing && existing.data.kind === colKind) {
 		if (existing.data.kind === 'models') {
-			const targetProtocol = type === 'live' ? 'geminiLive' : 'openAi';
-			const targetProvider = type === 'live' ? 'google' : 'openrouter';
-			const existingModels = existing.data;
-			const protocolMatch =
-				type === 'live'
-					? existingModels.protocol === 'geminiLive'
-					: existingModels.protocol !== 'geminiLive';
-			return protocolMatch
-				? { ...existingModels, expanded: false }
-				: {
-						...existingModels,
-						expanded: false,
-						protocol: targetProtocol,
-						provider: targetProvider,
-						key: type === 'live' ? 'slotA' : '',
-					};
+			return { ...existing.data, expanded: false };
 		}
 		if (existing.data.kind === 'live') {
 			return { ...defaultLiveSpec(), ...existing.data, expanded: false };
@@ -109,6 +98,13 @@ function facetDataForKind(
 		if (existing.data.kind === 'speech') {
 			return { ...defaultSpeechSpec(), ...existing.data, expanded: false };
 		}
+		if (existing.data.kind === 'tools') {
+			return {
+				...existing.data,
+				...(type === 'live' ? { t2Loader: '' } : {}),
+				expanded: false,
+			};
+		}
 		return { ...existing.data, expanded: false };
 	}
 
@@ -118,11 +114,9 @@ function facetDataForKind(
 				kind: 'models',
 				expanded: false,
 				branchCollapsed: false,
-				protocol: type === 'live' ? 'geminiLive' : 'openAi',
-				provider: type === 'live' ? 'google' : 'openrouter',
-				thinking: 'minimal',
+				defaultModel: type === 'live' ? 'live' : 'fast',
+				allowModelSelect: false,
 				maxSteps: 1,
-				thinkingControl: false,
 				key: type === 'live' ? 'slotA' : '',
 			};
 		case 'image':
@@ -246,8 +240,10 @@ export function layoutPlaygroundGraph(
 			(data.kind === 'models' || data.kind === 'tools') && data.branchCollapsed;
 
 		if (colKind === 'models') {
+			const targetProtocol: Protocol = type === 'live' ? 'geminiLive' : 'openAi';
+			const targetProvider: Provider = type === 'live' ? 'google' : 'openrouter';
 			const existingSpecs = currentNodes.filter(
-				(n): n is PlaygroundNode & { data: ModelSpecData } => n.data.kind === 'modelSpec',
+				(n): n is PlaygroundNode & { data: ModelBindingData } => n.data.kind === 'modelBinding',
 			);
 			const needsModelSwap =
 				(type === 'live' &&
@@ -266,27 +262,34 @@ export function layoutPlaygroundGraph(
 									type: 'facet' as const,
 									position: branchSpecPosition(colX, colY, 0),
 									dragHandle,
-									data: defaultModelSpec({
+									data: defaultModelBinding({
 										modelId: type === 'live' ? 'live' : 'fast',
+										protocol: targetProtocol,
+										provider: targetProvider,
 										apiId:
 											type === 'live'
 												? 'gemini-3.1-flash-live-preview'
 												: OPENROUTER_PLAYGROUND_API_ID,
-										selectLabel: type === 'live' ? 'live' : 'fast',
 									}),
 								},
 							];
 
-			specsToUse.forEach((specNode, sIdx) => {
+			const placedModelSpecs: PlaygroundNode[] = [];
+			specsToUse.forEach((specNode) => {
 				const specId = specNode.id;
 				const existingSpec = findNode(specId);
-				const defaultPos = branchSpecPosition(colX, colY, sIdx);
-				nodes.push({
+				const defaultPos =
+					preservePositions && existingSpec
+						? existingSpec.position
+						: stackBranchSpecPosition(colX, colY, placedModelSpecs);
+				const node: PlaygroundNode = {
 					...specNode,
-					position: preservePositions && existingSpec ? existingSpec.position : defaultPos,
+					position: defaultPos,
 					hidden: branchCollapsed,
 					data: { ...specNode.data, expanded: false },
-				});
+				};
+				nodes.push(node);
+				placedModelSpecs.push(node);
 				edges.push(branchEdge('models', specId, branchCollapsed));
 			});
 		}
@@ -297,16 +300,26 @@ export function layoutPlaygroundGraph(
 			);
 			const toolsToUse = existingTools.length ? existingTools : branchCollapsed ? [] : [];
 
-			toolsToUse.forEach((toolNode, tIdx) => {
+			const placedToolSpecs: PlaygroundNode[] = [];
+			toolsToUse.forEach((toolNode) => {
 				const toolId = toolNode.id;
 				const existingTool = findNode(toolId);
-				const defaultPos = branchSpecPosition(colX, colY, tIdx);
-				nodes.push({
+				const defaultPos =
+					preservePositions && existingTool
+						? existingTool.position
+						: stackBranchSpecPosition(colX, colY, placedToolSpecs);
+				const node: PlaygroundNode = {
 					...toolNode,
-					position: preservePositions && existingTool ? existingTool.position : defaultPos,
+					position: defaultPos,
 					hidden: branchCollapsed,
-					data: { ...toolNode.data, expanded: false },
-				});
+					data: {
+						...toolNode.data,
+						...(type === 'live' ? { loadTier: LIVE_TOOL_LOAD_TIERS[0] } : {}),
+						expanded: false,
+					},
+				};
+				nodes.push(node);
+				placedToolSpecs.push(node);
 				edges.push(branchEdge('tools', toolId, branchCollapsed));
 			});
 		}
@@ -314,5 +327,5 @@ export function layoutPlaygroundGraph(
 		spineY += PLAYGROUND_ROW_PX;
 	});
 
-	return { nodes, edges };
+	return { nodes: resolveNodeCollisions(nodes), edges };
 }

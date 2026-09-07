@@ -23,6 +23,10 @@
 		"lint:fallow": "fallow audit && fallow health && fallow dupes && fallow dead-code",
 		"lint": "npm run lint:eslint && npm run lint:biome && npm run lint:fallow",
 		"pressure:playground": "npx vite-node scripts/pressure-playground.mjs",
+		"pressure:demo": "npx vite-node scripts/pressure-demo-tools.mjs",
+		"test:tool-resume": "npx vite-node scripts/test-tool-resume.mjs",
+		"test:invoke-payload": "npx vite-node scripts/test-invoke-payload.mjs",
+		"pressure:interface-voice": "npx vite-node scripts/pressure-interface-voice.mjs",
 		"theorum:ensure": "node --experimental-strip-types scripts/ensure-theorum.mjs",
 		"theorum:sync": "git submodule update --init --recursive",
 		"theorum:pull": "git -C theorum pull --ff-only origin main || git -C ../theorum pull --ff-only origin main"
@@ -48,6 +52,7 @@
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@tailwindcss/vite": "^4.3.3",
 		"@types/node": "^22.19.15",
+		"@types/ws": "^8.18.1",
 		"eslint": "^9.39.5",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.23.0",

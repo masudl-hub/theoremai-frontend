@@ -18,7 +18,10 @@ const RELAY_PATH = '/api/live/relay';
 
 function loadLocalEnv() {
 	/** @type {Record<string, string>} */
-	const env = { ...process.env };
+	const env = {};
+	for (const [key, value] of Object.entries(process.env)) {
+		if (value !== undefined) env[key] = value;
+	}
 	for (const name of ['.env.local', '.env']) {
 		const filePath = path.join(FRONTEND_ROOT, name);
 		if (!existsSync(filePath)) continue;
@@ -62,13 +65,14 @@ export function liveRelayDevPlugin() {
 				const url = new URL(req.url || '/', `http://${host}`);
 				if (url.pathname !== RELAY_PATH) return;
 
-				wss.handleUpgrade(req, socket, head, (ws) => {
+				wss.handleUpgrade(req, socket, head, (/** @type {import('ws').WebSocket} */ ws) => {
 					void (async () => {
 						try {
 							const mod = await server.ssrLoadModule('/src/lib/server/live-relay.ts');
-							/** @type {{ handleNodeLiveRelay: (clientWs: import('ws').WebSocket, requestUrl: URL, env: object) => Promise<void> }} */
-							const { handleNodeLiveRelay } = mod;
-							await handleNodeLiveRelay(ws, url, env);
+							if (typeof mod.handleNodeLiveRelay !== 'function') {
+								throw new Error('live-relay module missing handleNodeLiveRelay');
+							}
+							await mod.handleNodeLiveRelay(ws, url, env);
 						} catch (err) {
 							const message = err instanceof Error ? err.message : 'Live relay failed';
 							try {

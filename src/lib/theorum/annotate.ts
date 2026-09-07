@@ -12,9 +12,9 @@ function wrapKey(path: string, text: string): string {
 const KEY_LINE = /^(\s*)(["']?[A-Za-z_][\w.-]*["']?)(\s*:)(\s*)(.*)$/;
 
 /**
- * Annotate `defineProfile` source — only keys hover; values stay plain text.
+ * Annotate `defineProfile` or `registerTool` source — only keys hover; values stay plain text.
  */
-export function annotateProfileCode(source: string): string {
+export function annotateProfileCode(source: string, opts?: { toolRegistration?: boolean }): string {
 	const stack: string[] = [];
 	const lines = source.split('\n');
 	const out: string[] = [];
@@ -53,7 +53,10 @@ export function annotateProfileCode(source: string): string {
 			out.push(`<span class="code-line" data-line="${lineNum}">${inner}</span>`);
 			return;
 		}
-		const path = catalogPathFor([...stack, cleanKey]);
+		const path =
+			opts?.toolRegistration && cleanKey === 'type' && stack.length === 0
+				? 'registerTool.type'
+				: catalogPathFor([...stack, cleanKey]);
 		const meta = fieldMeta(path);
 		const keyHtml = meta ? wrapKey(path, rawKey) : escapeHtml(rawKey);
 
