@@ -1,4 +1,4 @@
-import { nextChildSpecY } from './layout';
+import { nextBranchSpecPosition } from './layout';
 import { DRAG_HANDLE, type FacetData, type PlaygroundEdge, type PlaygroundNode } from './types';
 
 export function appendChildSpecNode(
@@ -13,16 +13,13 @@ export function appendChildSpecNode(
 	},
 ): { nodes: PlaygroundNode[]; edges: PlaygroundEdge[]; id: string } {
 	const id = `${opts.idPrefix}-${crypto.randomUUID().slice(0, 8)}`;
-	const y = nextChildSpecY(
-		opts.specs.map((s) => s.position),
-		opts.hubPosition.y,
-	);
+	const position = nextBranchSpecPosition(opts.hubPosition, opts.specs.length);
 	const nextNodes: PlaygroundNode[] = [
 		...nodes,
 		{
 			id,
 			type: 'facet',
-			position: { x: opts.hubPosition.x, y },
+			position,
 			dragHandle: DRAG_HANDLE,
 			data: opts.data,
 		},
@@ -33,9 +30,9 @@ export function appendChildSpecNode(
 			id: `e-${opts.parentId}-${id}`,
 			source: opts.parentId,
 			target: id,
-			sourceHandle: 'out',
-			targetHandle: 'in',
-			type: 'default',
+			sourceHandle: 'branch',
+			targetHandle: 'in-left',
+			type: 'smoothstep',
 		},
 	];
 	const expanded = nextNodes.map((n) =>

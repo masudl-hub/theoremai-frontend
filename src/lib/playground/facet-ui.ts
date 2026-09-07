@@ -42,10 +42,7 @@ export function facetChips(data: FacetData, toolChildren: string[] = []): string
 			return chips.length ? chips : ['image'];
 		}
 		case 'speech':
-			return [
-				...(data.voice.trim() ? [data.voice.trim()] : []),
-				data.format,
-			];
+			return [...(data.voice.trim() ? [data.voice.trim()] : []), data.format];
 		case 'live': {
 			const ingress: string[] = [];
 			if (data.ingressAudio) ingress.push('mic');

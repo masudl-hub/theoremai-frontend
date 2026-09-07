@@ -1,9 +1,25 @@
 <script lang="ts">
+import {
+	IconAdjustments,
+	IconBox,
+	IconBroadcast,
+	IconChevronDown,
+	IconChevronRight,
+	IconCode,
+	IconCpu,
+	IconMessage,
+	IconPaperclip,
+	IconPhoto,
+	IconShield,
+	IconTools,
+	IconVolume,
+} from '@tabler/icons-svelte';
 import { Handle, type NodeProps, Position } from '@xyflow/svelte';
 import { getContext } from 'svelte';
 import { PLAYGROUND_CTX, type PlaygroundCtx } from '$lib/playground/context';
 import { facetChips, facetTitle } from '$lib/playground/facet-ui';
-import type { FacetKind, PlaygroundNode } from '$lib/playground/types';
+import { spineFacetKinds } from '$lib/playground/graph-layout';
+import type { FacetKind, IdentityData, PlaygroundNode } from '$lib/playground/types';
 
 let { id, data }: NodeProps<PlaygroundNode> = $props();
 
@@ -12,11 +28,18 @@ const playground = getContext<PlaygroundCtx>(PLAYGROUND_CTX);
 const kind = $derived(data.kind as FacetKind);
 const isHub = $derived(kind === 'identity');
 const isBranchHub = $derived(kind === 'models' || kind === 'tools');
-const isBranchLeaf = $derived(kind === 'modelSpec' || kind === 'toolSpec');
-const hasSpineTarget = $derived(!isHub && !isBranchLeaf);
 const isActive = $derived(playground.ui.panelNodeId === id);
 
 const title = $derived(facetTitle(data));
+
+const identityData = $derived(
+	playground.getNodes().find((n) => n.id === 'identity')?.data as IdentityData | undefined,
+);
+const spineIds = $derived(identityData ? spineFacetKinds(identityData) : []);
+
+const branchCollapsed = $derived(
+	isBranchHub && (data.kind === 'models' || data.kind === 'tools') && data.branchCollapsed,
+);
 
 const toolChildren = $derived(
 	kind === 'tools'
@@ -30,39 +53,80 @@ const toolChildren = $derived(
 
 const chips = $derived(facetChips(data, toolChildren));
 
-function setExpanded(opening: boolean) {
-	playground.togglePanel(id, opening);
+const IconComponent = $derived.by(() => {
+	switch (kind) {
+		case 'identity': {
+			const pt = (data as IdentityData).profileType;
+			if (pt === 'live') return IconBroadcast;
+			if (pt === 'speech') return IconVolume;
+			if (pt === 'image') return IconPhoto;
+			return IconMessage;
+		}
+		case 'models':
+			return IconCpu;
+		case 'modelSpec':
+			return IconAdjustments;
+		case 'tools':
+			return IconTools;
+		case 'toolSpec':
+			return IconCode;
+		case 'inputs':
+			return IconPaperclip;
+		case 'outputs':
+			return IconBox;
+		case 'guardrails':
+			return IconShield;
+		case 'image':
+			return IconPhoto;
+		case 'speech':
+			return IconVolume;
+		case 'live':
+			return IconBroadcast;
+		default:
+			return IconBox;
+	}
+});
+
+function toggle() {
+	playground.togglePanel(id, !isActive);
 }
 
-function toggle(e: MouseEvent) {
+function toggleBranch(e: MouseEvent) {
 	e.stopPropagation();
-	setExpanded(!isActive);
+	playground.toggleBranchCollapsed(id);
 }
 
-let headMoved = false;
-function onHeadPointerDown() {
-	headMoved = false;
+let startX = 0;
+let startY = 0;
+let moved = false;
+
+function onHeadPointerDown(e: PointerEvent) {
+	startX = e.clientX;
+	startY = e.clientY;
+	moved = false;
 }
+
 function onHeadPointerMove(e: PointerEvent) {
-	if (e.buttons) headMoved = true;
+	if (e.buttons) {
+		const dx = Math.abs(e.clientX - startX);
+		const dy = Math.abs(e.clientY - startY);
+		if (dx > 3 || dy > 3) moved = true;
+	}
 }
-function onHeadClick(e: MouseEvent) {
-	if (headMoved) return;
-	if ((e.target as HTMLElement | null)?.closest('.facet-chevron')) return;
-	toggle(e);
+
+function onHeadClick() {
+	if (moved) return;
+	toggle();
+}
+
+function onBranchAdd(e: MouseEvent) {
+	e.stopPropagation();
+	playground.addBranchSpec(id);
 }
 </script>
 
 <div class="facet" class:facet-hub={isHub} class:facet-active={isActive}>
-	{#if hasSpineTarget}
-		<Handle
-			id="in"
-			class="facet-handle facet-handle--spine"
-			position={Position.Top}
-			type="target"
-		/>
-	{/if}
-	{#if isBranchLeaf}
+	{#if !isHub}
 		<Handle
 			id="in-left"
 			class="facet-handle facet-handle--branch"
@@ -78,7 +142,7 @@ function onHeadClick(e: MouseEvent) {
 		onkeydown={(e) => {
 			if (e.key === 'Enter' || e.key === ' ') {
 				e.preventDefault();
-				setExpanded(!isActive);
+				toggle();
 			}
 		}}
 		onpointerdown={onHeadPointerDown}
@@ -86,42 +150,75 @@ function onHeadClick(e: MouseEvent) {
 		role="button"
 		tabindex="0"
 	>
-		<span class="facet-title">{title}</span>
-		<button
-			class="facet-chevron nodrag"
-			aria-expanded={isActive}
-			aria-label={isActive ? 'Close panel' : 'Open panel'}
-			onclick={toggle}
-			type="button"
-		>
-			{isActive ? '−' : '+'}
-		</button>
+		<div class="facet-head__label">
+			<IconComponent size={14} stroke={1.75} class="facet-head__icon" />
+			<span class="facet-head__title">{title}</span>
+		</div>
+		<div class="facet-head__actions">
+			{#if isBranchHub}
+				<button
+					class="facet-branch-toggle nodrag"
+					type="button"
+					aria-label={branchCollapsed ? 'Expand branch' : 'Collapse branch'}
+					aria-expanded={!branchCollapsed}
+					onclick={toggleBranch}
+				>
+					{#if branchCollapsed}
+						<IconChevronRight size={14} stroke={1.75} aria-hidden="true" />
+					{:else}
+						<IconChevronDown size={14} stroke={1.75} aria-hidden="true" />
+					{/if}
+				</button>
+			{/if}
+			{#if isActive}
+				<span class="facet-head__dot" aria-hidden="true"></span>
+			{/if}
+		</div>
 	</div>
 
-	<button class="facet-body nodrag" onclick={toggle} type="button">
-		<div class="facet-chips">
+	{#if chips.length}
+		<div
+			class="facet-chips nodrag"
+			onclick={toggle}
+			onkeydown={(e) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
+					toggle();
+				}
+			}}
+			role="button"
+			tabindex="0"
+		>
 			{#each chips as chip, idx (chip + String(idx))}
 				<span class="facet-chip">{chip}</span>
 			{/each}
 		</div>
-	</button>
+	{/if}
 
-	{#if isHub || isBranchHub}
-		{#if isHub}
-			<Handle
-				id="out"
-				class="facet-handle facet-handle--spine"
-				position={Position.Bottom}
-				type="source"
-			/>
-		{/if}
-		{#if isBranchHub}
-			<Handle
-				id="branch"
-				class="facet-handle facet-handle--branch"
-				position={Position.Right}
-				type="source"
-			/>
-		{/if}
+	{#if isHub && spineIds.length > 0}
+		<Handle
+			id="out"
+			class="facet-handle facet-handle--spine"
+			position={Position.Bottom}
+			type="source"
+		/>
+	{/if}
+	{#if isBranchHub}
+		<div class="facet-branch-port nodrag nopan">
+			<button
+				type="button"
+				class="facet-branch-add"
+				aria-label={kind === 'models' ? 'Add model' : 'Add tool'}
+				onclick={onBranchAdd}
+			></button>
+			{#if !branchCollapsed}
+				<Handle
+					id="branch"
+					class="facet-handle facet-handle--branch facet-handle--branch-source"
+					position={Position.Right}
+					type="source"
+				/>
+			{/if}
+		</div>
 	{/if}
 </div>

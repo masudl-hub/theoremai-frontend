@@ -1,13 +1,15 @@
-import type {
-	ProfileDefinition,
-	ProfileDefinitionBase,
-	ProfileGuardrailsSpec,
-	ProfileInputsSpec,
-	ProfileLiveSpec,
-	ProfileModelSpec,
-	ProfileOutputsSpec,
-	ProfileToolsSpec,
-	ProfileTurnResumptionSpec,
+import {
+	defineProfile,
+	type ProfileDefinition,
+	type ProfileDefinitionBase,
+	type ProfileGuardrailsSpec,
+	type ProfileInputsSpec,
+	type ProfileLiveSpec,
+	type ProfileModelSpec,
+	type ProfileOutputsSpec,
+	type ProfileToolsSpec,
+	type ProfileTurnResumptionSpec,
+	TheorumError,
 } from 'theorum';
 import { emitRegisterToolSource, validatePlaygroundGraph } from './compile-validate';
 import { parseList, playgroundPolicyViolation } from './playground-policy';
@@ -78,6 +80,14 @@ function buildGuardrailsPayload(guardrails?: GuardrailsData): {
 		sanitizeInput: guardrails.sanitizeInput,
 		redactSensitive: guardrails.redactSensitive,
 		...(guardrails.quotaEnabled ? { quota: { perDay: guardrails.perDay } } : {}),
+		...(guardrails.allowPrivateNetworks || guardrails.allowedHosts
+			? {
+					network: {
+						allowPrivateNetworks: guardrails.allowPrivateNetworks,
+						allowedHosts: guardrails.allowedHosts ? parseList(guardrails.allowedHosts) : undefined,
+					},
+				}
+			: {}),
 	};
 	if (egressMode === 'default') {
 		guardrailsOut.egress = {
@@ -387,6 +397,18 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 	const tierMsg = playgroundPolicyViolation(profile);
 	if (tierMsg) {
 		issues.push({ nodeId: 'models', facet: 'models', message: tierMsg });
+		return {
+			ok: false,
+			issues,
+			message: `Compile failed · ${String(issues.length)} issue${issues.length === 1 ? '' : 's'}`,
+		};
+	}
+
+	try {
+		defineProfile(profile);
+	} catch (err) {
+		const message = err instanceof TheorumError ? err.message : String(err);
+		issues.push({ nodeId: 'identity', facet: 'identity', message });
 		return {
 			ok: false,
 			issues,

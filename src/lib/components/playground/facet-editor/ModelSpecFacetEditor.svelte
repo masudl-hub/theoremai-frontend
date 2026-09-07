@@ -1,12 +1,9 @@
 <script lang="ts">
+import type { ThinkingLevel } from 'theorum/schema';
 import Checkbox from '$lib/components/playground/Checkbox.svelte';
 import Select from '$lib/components/Select.svelte';
-import {
-	PLAYGROUND_THINKING_LEVELS,
-	SUMMARY_MODE_OPTIONS,
-	type ThinkingLevelValue,
-	toggleList,
-} from '$lib/playground/compat';
+import { toggleList } from '$lib/playground/compat';
+import { fieldEnumOptions } from '$lib/playground/field-controls';
 import {
 	GOOGLE_BUILTIN_OPTIONS,
 	type GoogleBuiltinId,
@@ -28,7 +25,6 @@ let {
 	apiIdPlaceholder,
 	onGeminiApiIdChange,
 	onGeminiBuiltinToggle,
-	thinkingOptions,
 }: {
 	data: ModelSpecData;
 	patch: FacetPatch;
@@ -41,10 +37,11 @@ let {
 	apiIdPlaceholder: string;
 	onGeminiApiIdChange: (next: string) => void;
 	onGeminiBuiltinToggle: (builtin: GoogleBuiltinId, on: boolean) => void;
-	thinkingOptions: ReadonlyArray<{ value: string; label: string }>;
 } = $props();
 
-const summaryOptions = SUMMARY_MODE_OPTIONS;
+const thinkingOptions = fieldEnumOptions('model.config.*.thinking.on');
+const thinkingLevelOptions = fieldEnumOptions('model.config.*.thinkingLevels');
+const summaryOptions = fieldEnumOptions('model.config.*.summaries.on');
 
 function geminiBuiltinAllowed(builtin: GoogleBuiltinId): boolean {
 	return allowedGeminiBuiltins.includes(builtin);
@@ -93,7 +90,7 @@ function geminiBuiltinAllowed(builtin: GoogleBuiltinId): boolean {
 <label class="facet-field">
 	<FacetFieldLabel path="model.config.*.thinking.on" />
 	<Select
-		onchange={(v) => patch({ thinkingOn: v as ThinkingLevelValue })}
+		onchange={(v) => patch({ thinkingOn: v as ThinkingLevel })}
 		options={thinkingOptions}
 		value={data.thinkingOn}
 	/>
@@ -101,7 +98,7 @@ function geminiBuiltinAllowed(builtin: GoogleBuiltinId): boolean {
 <label class="facet-field">
 	<FacetFieldLabel path="model.config.*.thinking.off" />
 	<Select
-		onchange={(v) => patch({ thinkingOff: v as ThinkingLevelValue })}
+		onchange={(v) => patch({ thinkingOff: v as ThinkingLevel })}
 		options={thinkingOptions}
 		value={data.thinkingOff}
 	/>
@@ -111,17 +108,17 @@ function geminiBuiltinAllowed(builtin: GoogleBuiltinId): boolean {
 		<FacetFieldLabel path="model.config.*.thinkingLevels" />
 	</legend>
 	<div class="facet-check-grid">
-		{#each PLAYGROUND_THINKING_LEVELS as opt (opt.value)}
+		{#each thinkingLevelOptions as opt (opt.value)}
 			<label class="facet-check">
 				<Checkbox
-					checked={data.thinkingLevels.includes(opt.value)}
+					checked={data.thinkingLevels.includes(opt.value as ThinkingLevel)}
 					onchange={(v) =>
 						patch({
 							thinkingLevels: toggleList(
 								data.thinkingLevels,
-								opt.value,
+								opt.value as ThinkingLevel,
 								v
-							) as ThinkingLevelValue[]
+							) as ThinkingLevel[]
 						})}
 				/>
 				<span>{opt.label}</span>

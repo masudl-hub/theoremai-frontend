@@ -10,6 +10,7 @@ import type {
 	CompileIssue,
 	FacetData,
 	GuardrailsData,
+	HttpToolRegistration,
 	IdentityData,
 	ImageData,
 	InputsData,
@@ -23,6 +24,37 @@ import type {
 	ToolSpecData,
 	ToolsData,
 } from './types';
+
+type RemoteToolAuth = NonNullable<HttpToolRegistration['auth']>;
+
+function parseHeadersJson(raw: string): Record<string, string> | null {
+	try {
+		const parsed: unknown = JSON.parse(raw);
+		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+		const out: Record<string, string> = {};
+		for (const [key, value] of Object.entries(parsed)) {
+			if (typeof value !== 'string') return null;
+			out[key] = value;
+		}
+		return out;
+	} catch {
+		return null;
+	}
+}
+
+function buildRemoteToolAuth(data: ToolSpecData): RemoteToolAuth | undefined {
+	if (!data.authType || data.authType === 'none') return undefined;
+	return {
+		slot: data.authSlot?.trim() || 'default',
+		type: data.authType,
+		headerName: data.authHeaderName?.trim() || undefined,
+		headerPrefix: data.authHeaderPrefix !== undefined ? data.authHeaderPrefix : undefined,
+		onUnauthenticated: data.authUnauthenticated ?? 'pause',
+		scopes: data.authScopes ? parseList(data.authScopes) : undefined,
+		clientId: data.authClientId?.trim() || undefined,
+		redirectUri: data.authRedirectUri?.trim() || undefined,
+	};
+}
 
 export type ValidatedPlayground = {
 	identity: IdentityData;
@@ -95,6 +127,112 @@ function compileToolSpec(
 	}
 
 	const paths = parseList(data.paths);
+	const toolType = data.toolType;
+
+	let stubResponse: Record<string, unknown> | undefined;
+	if (toolType === 'function' && data.stubOutputJson?.trim()) {
+		try {
+			const parsed = JSON.parse(data.stubOutputJson) as unknown;
+			if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+				issues.push({
+					nodeId: id,
+					facet: 'toolSpec',
+					message: 'stub output must be a JSON object.',
+				});
+				return null;
+			}
+			stubResponse = parsed as Record<string, unknown>;
+		} catch {
+			issues.push({
+				nodeId: id,
+				facet: 'toolSpec',
+				message: 'stub output is not valid JSON.',
+			});
+			return null;
+		}
+	}
+
+	if (toolType === 'http') {
+		const endpoint = data.endpoint?.trim() ?? '';
+		if (!endpoint) {
+			issues.push({ nodeId: id, facet: 'toolSpec', message: 'HTTP endpoint URL is required.' });
+			return null;
+		}
+
+		let headers: Record<string, string> | undefined;
+		if (data.headersJson?.trim()) {
+			const parsedHeaders = parseHeadersJson(data.headersJson);
+			if (!parsedHeaders) {
+				issues.push({
+					nodeId: id,
+					facet: 'toolSpec',
+					message: 'HTTP headers must be valid JSON object.',
+				});
+				return null;
+			}
+			headers = parsedHeaders;
+		}
+
+		const pathParams = parseList(data.pathParams ?? '');
+		const queryParams = parseList(data.queryParams ?? '');
+		const bodyParam = data.bodyParam?.trim() || undefined;
+
+		const auth = buildRemoteToolAuth(data);
+
+		return {
+			type: 'http',
+			name,
+			description: data.description.trim(),
+			category: data.category.trim() || 'playground',
+			access: data.access,
+			permission: data.permission,
+			loadTier: data.loadTier,
+			paths: paths.length ? paths : ['*'],
+			endpoint,
+			method: data.method ?? 'GET',
+			headers,
+			mapping: {
+				pathParams: pathParams.length ? pathParams : undefined,
+				queryParams: queryParams.length ? queryParams : undefined,
+				bodyParam,
+			},
+			auth,
+			inputSchema: inputParsed.schema,
+			outputSchema: outputParsed.schema,
+		};
+	}
+
+	if (toolType === 'mcp') {
+		const serverUrl = data.serverUrl?.trim() ?? '';
+		if (!serverUrl) {
+			issues.push({ nodeId: id, facet: 'toolSpec', message: 'MCP server URL is required.' });
+			return null;
+		}
+		const mcpToolName = data.mcpToolName?.trim() ?? '';
+		if (!mcpToolName) {
+			issues.push({ nodeId: id, facet: 'toolSpec', message: 'MCP tool name is required.' });
+			return null;
+		}
+
+		const auth = buildRemoteToolAuth(data);
+
+		return {
+			type: 'mcp',
+			name,
+			description: data.description.trim(),
+			category: data.category.trim() || 'playground',
+			access: data.access,
+			permission: data.permission,
+			loadTier: data.loadTier,
+			paths: paths.length ? paths : ['*'],
+			serverUrl,
+			mcpToolName,
+			auth,
+			inputSchema: inputParsed.schema,
+			outputSchema: outputParsed.schema,
+		};
+	}
+
 	return {
 		type: 'function',
 		name,
@@ -106,6 +244,7 @@ function compileToolSpec(
 		paths: paths.length ? paths : ['*'],
 		inputSchema: inputParsed.schema,
 		outputSchema: outputParsed.schema,
+		stubResponse,
 	};
 }
 
@@ -295,17 +434,6 @@ function validateModalityAndOutputs(
 		});
 	}
 
-	if (identity?.profileType === 'live' && live) {
-		const anyIngress = live.ingressAudio || live.ingressVideo || live.ingressText;
-		if (!anyIngress) {
-			issues.push({
-				nodeId: 'live',
-				facet: 'live',
-				message: 'At least one live.ingress channel (audio, video, text) must be enabled.',
-			});
-		}
-	}
-
 	if (
 		identity?.profileType !== 'live' &&
 		outputs &&
@@ -385,6 +513,50 @@ export function emitRegisterToolSource(tool: ToolRegistration): string {
   permission: ${JSON.stringify(tool.permission)},
   input: ${inputZod},
   output: ${outputZod},`;
+
+	if (tool.type === 'http') {
+		const extra = [
+			`  endpoint: ${JSON.stringify(tool.endpoint)},`,
+			`  method: ${JSON.stringify(tool.method)},`,
+		];
+		if (tool.headers && Object.keys(tool.headers).length) {
+			extra.push(`  headers: ${JSON.stringify(tool.headers, null, 2)},`);
+		}
+		if (
+			tool.mapping &&
+			(tool.mapping.pathParams || tool.mapping.queryParams || tool.mapping.bodyParam)
+		) {
+			extra.push(`  mapping: ${JSON.stringify(tool.mapping, null, 2)},`);
+		}
+		if (tool.auth) {
+			extra.push(`  auth: ${JSON.stringify(tool.auth, null, 2)},`);
+		}
+		return `registerTool({
+  type: "http",
+${common}
+${extra.join('\n')}
+});
+`;
+	}
+
+	if (tool.type === 'mcp') {
+		const extra = [
+			`  serverUrl: ${JSON.stringify(tool.serverUrl)},`,
+			`  mcpToolName: ${JSON.stringify(tool.mcpToolName)},`,
+		];
+		if (tool.headers && Object.keys(tool.headers).length) {
+			extra.push(`  headers: ${JSON.stringify(tool.headers, null, 2)},`);
+		}
+		if (tool.auth) {
+			extra.push(`  auth: ${JSON.stringify(tool.auth, null, 2)},`);
+		}
+		return `registerTool({
+  type: "mcp",
+${common}
+${extra.join('\n')}
+});
+`;
+	}
 
 	const stub: Record<string, unknown> = {};
 	const props = (tool.outputSchema.properties ?? {}) as Record<string, Record<string, unknown>>;

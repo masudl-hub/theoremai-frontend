@@ -3,20 +3,11 @@ import { getContext } from 'svelte';
 import type { Protocol, Provider } from 'theorum/schema';
 import { coerceProtocol, coerceProvider, providersFor } from 'theorum/schema';
 import TypeTip from '$lib/components/TypeTip.svelte';
-import {
-	KEY_SLOT_OPTIONS,
-	ON_BLOCK_OPTIONS,
-	PLAYGROUND_PROVIDERS,
-	PLAYGROUND_THINKING_LEVELS,
-	protocolsForModality,
-	SCHEMA_ENFORCEMENT_OPTIONS,
-	STREAM_MODE_OPTIONS,
-	toggleList,
-} from '$lib/playground/compat';
+import { PLAYGROUND_PROVIDERS, protocolsForModality, toggleList } from '$lib/playground/compat';
 import { PLAYGROUND_CTX, type PlaygroundCtx } from '$lib/playground/context';
+import { coerceSpeechFormat } from '$lib/playground/field-controls';
 import {
 	allowedBuiltinsForGemini,
-	clearMp3SpeechOnGeminiInteractions,
 	defaultApiIdForTransport,
 	defaultGeminiApiId,
 	type GoogleBuiltinId,
@@ -63,17 +54,8 @@ const identityProfileType = $derived(
 
 const protocolOptions = $derived(protocolsForModality(identityProfileType as ProfileType));
 
-const thinkingOptions = PLAYGROUND_THINKING_LEVELS;
-const keyOptions = KEY_SLOT_OPTIONS;
-const streamModeOptions = STREAM_MODE_OPTIONS;
-const enforcedOptions = SCHEMA_ENFORCEMENT_OPTIONS;
-const egressModeOptions = [
-	{ value: 'default', label: 'default (standardEgressEnforce)' },
-	{ value: 'none', label: 'none (omit explicitly)' },
-];
-const geminiModelOptions = $derived(
-	geminiModelSelectOptions(modelsHub.protocol ?? 'geminiInteractions'),
-);
+const hubProtocol = $derived(modelsHub.protocol ?? 'geminiInteractions');
+const geminiModelOptions = $derived(geminiModelSelectOptions(hubProtocol));
 
 const hubOpenRouter = $derived(
 	modelsHub ? isOpenRouterTransport(modelsHub.protocol, modelsHub.provider) : false,
@@ -107,7 +89,14 @@ const apiIdPlaceholder = $derived.by(() => {
 	return defaultApiIdForTransport(protocol, provider);
 });
 
-const onBlockOptions = ON_BLOCK_OPTIONS;
+function syncSpeechFormats(protocol: Protocol) {
+	if (!playground) return;
+	for (const n of playground.getNodes()) {
+		if (n.data.kind !== 'speech') continue;
+		const legal = coerceSpeechFormat(protocol, n.data.format);
+		if (legal !== n.data.format) playground.patchNode(n.id, { format: legal });
+	}
+}
 
 function syncHubModelSpecs(protocol: string, provider: string) {
 	if (!playground) return;
@@ -165,11 +154,7 @@ function setProtocol(next: Protocol) {
 		...(google && !data.key ? { key: 'slotA' as const } : {}),
 	});
 	syncHubModelSpecs(next, provider);
-	clearMp3SpeechOnGeminiInteractions(
-		() => playground.getNodes(),
-		(id, partial) => playground.patchNode(id, partial),
-		next,
-	);
+	syncSpeechFormats(next);
 }
 
 function setProvider(next: Provider) {
@@ -183,11 +168,7 @@ function setProvider(next: Provider) {
 		...(google && !data.key ? { key: 'slotA' as const } : {}),
 	});
 	syncHubModelSpecs(protocol, next);
-	clearMp3SpeechOnGeminiInteractions(
-		() => playground.getNodes(),
-		(id, partial) => playground.patchNode(id, partial),
-		protocol,
-	);
+	syncSpeechFormats(protocol);
 }
 
 const onProtocolChange = setProtocol;
@@ -201,7 +182,7 @@ const onProviderChange = setProvider;
 		{:else if data.kind === 'image'}
 			<ImageFacetEditor {data} {patch} />
 		{:else if data.kind === 'speech'}
-			<SpeechFacetEditor {data} {patch} />
+			<SpeechFacetEditor {data} {patch} protocol={hubProtocol} />
 		{:else if data.kind === 'live'}
 			<LiveFacetEditor {data} {patch} />
 		{:else if data.kind === 'models'}
@@ -213,8 +194,6 @@ const onProviderChange = setProvider;
 				{onProviderChange}
 				{providerOptions}
 				{protocolOptions}
-				{thinkingOptions}
-				{keyOptions}
 				isLive={identityProfileType === 'live'}
 			/>
 		{:else if data.kind === 'modelSpec'}
@@ -230,7 +209,6 @@ const onProviderChange = setProvider;
 				{apiIdPlaceholder}
 				{onGeminiApiIdChange}
 				{onGeminiBuiltinToggle}
-				{thinkingOptions}
 			/>
 		{:else if data.kind === 'tools'}
 			<ToolsFacetEditor {data} {patch} {playground} isLive={identityProfileType === 'live'} />
@@ -239,9 +217,9 @@ const onProviderChange = setProvider;
 		{:else if data.kind === 'inputs'}
 			<InputsFacetEditor {data} {patch} />
 		{:else if data.kind === 'outputs'}
-			<OutputsFacetEditor {data} {patch} {enforcedOptions} {streamModeOptions} />
+			<OutputsFacetEditor {data} {patch} />
 		{:else if data.kind === 'guardrails'}
-			<GuardrailsFacetEditor {data} {patch} {onBlockOptions} {egressModeOptions} />
+			<GuardrailsFacetEditor {data} {patch} />
 		{/if}
 	</TypeTip>
 </div>

@@ -85,7 +85,20 @@ $effect(() => {
 	}
 });
 
+function ensureBranchExpanded(hubKind: 'models' | 'tools') {
+	const hub = nodes.find((n) => n.data.kind === hubKind);
+	if (
+		hub &&
+		(hub.data.kind === 'models' || hub.data.kind === 'tools') &&
+		hub.data.branchCollapsed
+	) {
+		patchNode(hub.id, { branchCollapsed: false });
+		resyncGraph({ preservePositions: true });
+	}
+}
+
 function addModelSpec() {
+	ensureBranchExpanded('models');
 	const specs = nodes.filter((n) => n.data.kind === 'modelSpec');
 	const modelsNode = nodes.find((n) => n.data.kind === 'models');
 	const label = `model${specs.length + 1}`;
@@ -110,6 +123,7 @@ function addModelSpec() {
 }
 
 function addToolSpec() {
+	ensureBranchExpanded('tools');
 	const specs = nodes.filter((n) => n.data.kind === 'toolSpec');
 	const toolsNode = nodes.find((n) => n.data.kind === 'tools');
 	const label = `tool_${specs.length + 1}`;
@@ -130,6 +144,13 @@ function addToolSpec() {
 	nodes = appended.nodes;
 	edges = appended.edges;
 	openPanel(appended.id);
+}
+
+function addBranchSpec(hubId: string) {
+	const hub = nodes.find((n) => n.id === hubId);
+	if (!hub) return;
+	if (hub.data.kind === 'models') addModelSpec();
+	else if (hub.data.kind === 'tools') addToolSpec();
 }
 
 function syncExpanded(activeId: string | null) {
@@ -159,6 +180,24 @@ function togglePanel(id: string, open: boolean) {
 	else closePanel(id);
 }
 
+function resyncGraph(opts?: { preservePositions?: boolean }) {
+	const identity = nodes.find((n) => n.id === 'identity')?.data as IdentityData | undefined;
+	if (!identity?.profileType) return;
+	const synced = syncGraphForProfile(nodes, edges, identity, opts);
+	nodes = synced.nodes;
+	edges = synced.edges;
+	syncExpanded(ui.panelNodeId);
+	graphKey += 1;
+}
+
+function toggleBranchCollapsed(id: string) {
+	const node = nodes.find((n) => n.id === id);
+	if (!node || (node.data.kind !== 'models' && node.data.kind !== 'tools')) return;
+	const collapsed = node.data.branchCollapsed;
+	patchNode(id, { branchCollapsed: !collapsed });
+	resyncGraph({ preservePositions: true });
+}
+
 function patchNode(id: string, partial: Partial<PlaygroundNode['data']>) {
 	const prevNode = nodes.find((n) => n.id === id);
 	nodes = nodes.map((n) =>
@@ -178,7 +217,9 @@ function patchNode(id: string, partial: Partial<PlaygroundNode['data']>) {
 				prevIdentity?.includeGuardrails !== updatedIdentity.includeGuardrails;
 
 			if (typeChanged || facetsChanged) {
-				const synced = syncGraphForProfile(nodes, edges, updatedIdentity);
+				const synced = syncGraphForProfile(nodes, edges, updatedIdentity, {
+					preservePositions: false,
+				});
 				nodes = synced.nodes;
 				edges = synced.edges;
 				syncExpanded(ui.panelNodeId);
@@ -191,11 +232,13 @@ function patchNode(id: string, partial: Partial<PlaygroundNode['data']>) {
 setContext<PlaygroundCtx>(PLAYGROUND_CTX, {
 	addModelSpec,
 	addToolSpec,
+	addBranchSpec,
 	hub,
 	ui,
 	patchNode,
 	togglePanel,
 	closePanel,
+	toggleBranchCollapsed,
 	getNodes: () => nodes,
 });
 
@@ -297,7 +340,7 @@ function onCompileLogAction(id: string) {
 const CHROME_TIPS: Record<string, { title: string; body: string }> = {
 	example: {
 		title: 'EXAMPLE',
-		body: 'Load the demo sales-agent graph.',
+		body: 'Load the travel concierge demo — live HTTP tools, T2 discovery, and multi-step turns.',
 	},
 	new: {
 		title: 'NEW',

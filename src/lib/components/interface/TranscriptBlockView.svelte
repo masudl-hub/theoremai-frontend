@@ -1,5 +1,7 @@
 <script lang="ts">
 import type { TranscriptBlock } from 'theorum/interface';
+import ApprovalCard from './ApprovalCard.svelte';
+import AuthChallengeCard from './AuthChallengeCard.svelte';
 
 let {
 	block,
@@ -32,9 +34,19 @@ const handleLabel = $derived(`@${handle}`);
 {:else if block.kind === 'tool'}
 	<article class="iface-msg iface-msg--assistant">
 		<p class="iface-msg__handle">{handleLabel}</p>
-		<p class="iface-msg__meta">Tool · {block.tool.name}</p>
-		{#if block.tool.output !== undefined}
+		<p class="iface-msg__meta">Tool · {block.tool.name} [{block.tool.phase ?? 'invoked'}]</p>
+		{#if block.tool.phase === 'pause' && block.tool.pause}
+			{#if block.tool.pause.kind === 'auth'}
+				<AuthChallengeCard pause={block.tool.pause} toolName={block.tool.name} />
+			{:else}
+				<ApprovalCard pause={block.tool.pause} toolName={block.tool.name} />
+			{/if}
+		{:else if block.tool.output !== undefined}
 			<pre class="iface-msg__code">{JSON.stringify(block.tool.output, null, 2)}</pre>
+		{:else if block.tool.failure !== undefined}
+			<pre
+				class="iface-msg__code iface-msg__code--error"
+			>{JSON.stringify(block.tool.failure, null, 2)}</pre>
 		{/if}
 	</article>
 {:else if block.kind === 'structured'}

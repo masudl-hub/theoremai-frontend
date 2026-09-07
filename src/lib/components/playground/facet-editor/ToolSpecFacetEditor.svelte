@@ -1,16 +1,144 @@
 <script lang="ts">
+import { getContext } from 'svelte';
 import type { ToolLoadTier } from 'theorum/schema';
 import Select from '$lib/components/Select.svelte';
 import {
-	TOOL_ACCESS_OPTIONS,
-	TOOL_LOAD_TIER_OPTIONS,
-	TOOL_PERMISSION_OPTIONS,
+	AUTH_UNAUTHENTICATED_OPTIONS,
+	HTTP_METHOD_OPTIONS,
+	PLAYGROUND_TOOL_TYPE_OPTIONS,
+	TOOL_AUTH_TYPE_OPTIONS,
 } from '$lib/playground/compat';
-import type { ToolAccessValue, ToolPermissionValue, ToolSpecData } from '$lib/playground/types';
+import { PLAYGROUND_CTX, type PlaygroundCtx } from '$lib/playground/context';
+import { fieldEnumOptions } from '$lib/playground/field-controls';
+import { parseList } from '$lib/playground/playground-policy';
+import type {
+	AuthUnauthenticatedPolicyValue,
+	HttpMethodValue,
+	PlaygroundToolType,
+	ToolAccessValue,
+	ToolAuthTypeValue,
+	ToolPermissionValue,
+	ToolSpecData,
+} from '$lib/playground/types';
 import FacetFieldLabel from './FacetFieldLabel.svelte';
 import type { FacetPatch } from './types';
 
 let { data, patch }: { data: ToolSpecData; patch: FacetPatch } = $props();
+
+const playground = getContext<PlaygroundCtx>(PLAYGROUND_CTX);
+
+const accessOptions = fieldEnumOptions('access');
+const permissionOptions = fieldEnumOptions('permission');
+const loadTierOptions = fieldEnumOptions('loadTier');
+
+const isRemote = $derived(data.toolType === 'http' || data.toolType === 'mcp');
+const showAuthFields = $derived(isRemote && data.authType && data.authType !== 'none');
+const showOAuthFields = $derived(showAuthFields && data.authType === 'oauth2');
+
+let testCredentialInput = $state('');
+let testLoading = $state(false);
+let testResult = $state<Record<string, unknown> | null>(null);
+
+const guardrails = $derived(playground.getNodes().find((n) => n.data.kind === 'guardrails')?.data);
+
+function parseHeadersJson(raw: string): Record<string, string> | undefined {
+	const trimmed = raw.trim();
+	if (!trimmed) return undefined;
+	try {
+		const parsed: unknown = JSON.parse(trimmed);
+		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined;
+		const out: Record<string, string> = {};
+		for (const [key, value] of Object.entries(parsed)) {
+			if (typeof value !== 'string') return undefined;
+			out[key] = value;
+		}
+		return out;
+	} catch {
+		return undefined;
+	}
+}
+
+function buildTestAuth():
+	| {
+			slot?: string;
+			type?: 'bearer' | 'api_key' | 'oauth2';
+			headerName?: string;
+			headerPrefix?: string;
+	  }
+	| undefined {
+	if (!data.authType || data.authType === 'none') return undefined;
+	return {
+		slot: data.authSlot?.trim() || 'default',
+		type: data.authType,
+		headerName: data.authHeaderName?.trim() || undefined,
+		headerPrefix: data.authHeaderPrefix !== undefined ? data.authHeaderPrefix : undefined,
+	};
+}
+
+async function testConnection(): Promise<void> {
+	testLoading = true;
+	testResult = null;
+
+	const allowPrivateNetworks = Boolean(guardrails?.allowPrivateNetworks);
+	const allowedHosts = guardrails?.allowedHosts ? parseList(guardrails.allowedHosts) : [];
+	const headers = data.headersJson ? parseHeadersJson(data.headersJson) : undefined;
+	const auth = buildTestAuth();
+	const testCredential = testCredentialInput.trim() || undefined;
+
+	try {
+		if (data.toolType === 'http') {
+			const endpoint = data.endpoint?.trim() ?? '';
+			if (!endpoint) {
+				testResult = { ok: false, error: 'Endpoint URL is required.' };
+				return;
+			}
+			const res = await fetch('/api/playground/test-connection', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					type: 'http',
+					endpoint,
+					method: data.method ?? 'GET',
+					headers,
+					auth,
+					testCredential,
+					allowPrivateNetworks,
+					allowedHosts,
+				}),
+			});
+			testResult = (await res.json()) as Record<string, unknown>;
+			return;
+		}
+
+		if (data.toolType === 'mcp') {
+			const serverUrl = data.serverUrl?.trim() ?? '';
+			if (!serverUrl) {
+				testResult = { ok: false, error: 'MCP server URL is required.' };
+				return;
+			}
+			const res = await fetch('/api/playground/test-connection', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					type: 'mcp',
+					serverUrl,
+					mcpToolName: data.mcpToolName?.trim() || undefined,
+					headers,
+					auth,
+					testCredential,
+					allowPrivateNetworks,
+					allowedHosts,
+				}),
+			});
+			testResult = (await res.json()) as Record<string, unknown>;
+		}
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		testResult = { ok: false, error: message };
+	} finally {
+		testLoading = false;
+	}
+}
 </script>
 
 <label class="facet-field">
@@ -23,10 +151,23 @@ let { data, patch }: { data: ToolSpecData; patch: FacetPatch } = $props();
 		value={data.toolName}
 	>
 </label>
-<label class="facet-field">
-	<FacetFieldLabel path="type" />
-	<input class="field" disabled readonly value="function">
-</label>
+
+<div class="facet-field">
+	<FacetFieldLabel path="registerTool.type" text="type" />
+	<div class="modality-grid tool-type-grid">
+		{#each PLAYGROUND_TOOL_TYPE_OPTIONS as opt (opt.value)}
+			<button
+				class="modality-card"
+				class:modality-card--active={data.toolType === opt.value}
+				onclick={() => patch({ toolType: opt.value as PlaygroundToolType })}
+				type="button"
+			>
+				<span class="modality-name">{opt.label}</span>
+			</button>
+		{/each}
+	</div>
+</div>
+
 <label class="facet-field">
 	<FacetFieldLabel path="description" />
 	<textarea
@@ -36,6 +177,7 @@ let { data, patch }: { data: ToolSpecData; patch: FacetPatch } = $props();
 		value={data.description}
 	></textarea>
 </label>
+
 <label class="facet-field">
 	<FacetFieldLabel path="category" />
 	<input
@@ -45,11 +187,230 @@ let { data, patch }: { data: ToolSpecData; patch: FacetPatch } = $props();
 		value={data.category}
 	>
 </label>
+
+{#if data.toolType === 'http'}
+	<label class="facet-field">
+		<FacetFieldLabel path="endpoint" text="endpoint" />
+		<input
+			class="field"
+			autocomplete="off"
+			oninput={(e) => patch({ endpoint: e.currentTarget.value })}
+			placeholder="https://api.example.com/v1/items"
+			value={data.endpoint ?? ''}
+		>
+	</label>
+	<label class="facet-field">
+		<FacetFieldLabel path="method" text="method" />
+		<Select
+			onchange={(v) => patch({ method: v as HttpMethodValue })}
+			options={HTTP_METHOD_OPTIONS}
+			value={data.method ?? 'GET'}
+		/>
+	</label>
+	<label class="facet-field">
+		<FacetFieldLabel path="headers" text="headers (JSON)" />
+		<textarea
+			class="field facet-textarea facet-code"
+			oninput={(e) => patch({ headersJson: e.currentTarget.value })}
+			placeholder={'{ "X-Api-Version": "2024-01-01" }'}
+			rows="3"
+			spellcheck="false"
+			value={data.headersJson ?? ''}
+		></textarea>
+	</label>
+	<label class="facet-field">
+		<FacetFieldLabel path="mapping" text="path params" />
+		<input
+			class="field"
+			autocomplete="off"
+			oninput={(e) => patch({ pathParams: e.currentTarget.value })}
+			placeholder="id, accountId"
+			value={data.pathParams ?? ''}
+		>
+	</label>
+	<label class="facet-field">
+		<FacetFieldLabel path="mapping" text="query params" />
+		<input
+			class="field"
+			autocomplete="off"
+			oninput={(e) => patch({ queryParams: e.currentTarget.value })}
+			placeholder="q, limit"
+			value={data.queryParams ?? ''}
+		>
+	</label>
+	<label class="facet-field">
+		<FacetFieldLabel path="mapping" text="body param" />
+		<input
+			class="field"
+			autocomplete="off"
+			oninput={(e) => patch({ bodyParam: e.currentTarget.value })}
+			placeholder="payload"
+			value={data.bodyParam ?? ''}
+		>
+	</label>
+{:else if data.toolType === 'mcp'}
+	<label class="facet-field">
+		<FacetFieldLabel path="serverUrl" text="server URL" />
+		<input
+			class="field"
+			autocomplete="off"
+			oninput={(e) => patch({ serverUrl: e.currentTarget.value })}
+			placeholder="https://mcp.example.com/mcp"
+			value={data.serverUrl ?? ''}
+		>
+	</label>
+	<label class="facet-field">
+		<FacetFieldLabel path="mcpToolName" text="MCP tool name" />
+		<input
+			class="field"
+			autocomplete="off"
+			oninput={(e) => patch({ mcpToolName: e.currentTarget.value })}
+			placeholder="search"
+			value={data.mcpToolName ?? ''}
+		>
+	</label>
+	<label class="facet-field">
+		<FacetFieldLabel path="headers" text="headers (JSON)" />
+		<textarea
+			class="field facet-textarea facet-code"
+			oninput={(e) => patch({ headersJson: e.currentTarget.value })}
+			placeholder={'{ "MCP-Protocol-Version": "2025-06-18" }'}
+			rows="3"
+			spellcheck="false"
+			value={data.headersJson ?? ''}
+		></textarea>
+	</label>
+{/if}
+
+{#if isRemote}
+	<div class="facet-subgroup">
+		<span class="facet-subgroup-title">Authentication</span>
+		<label class="facet-field">
+			<FacetFieldLabel path="auth" text="auth type" />
+			<Select
+				onchange={(v) => patch({ authType: v as ToolAuthTypeValue })}
+				options={TOOL_AUTH_TYPE_OPTIONS}
+				value={data.authType ?? 'none'}
+			/>
+		</label>
+		{#if showAuthFields}
+			<label class="facet-field">
+				<FacetFieldLabel path="auth" text="credential slot" />
+				<input
+					class="field"
+					autocomplete="off"
+					oninput={(e) => patch({ authSlot: e.currentTarget.value })}
+					placeholder="default"
+					value={data.authSlot ?? ''}
+				>
+			</label>
+			<label class="facet-field">
+				<FacetFieldLabel path="auth" text="header name" />
+				<input
+					class="field"
+					autocomplete="off"
+					oninput={(e) => patch({ authHeaderName: e.currentTarget.value })}
+					placeholder="Authorization"
+					value={data.authHeaderName ?? ''}
+				>
+			</label>
+			<label class="facet-field">
+				<FacetFieldLabel path="auth" text="header prefix" />
+				<input
+					class="field"
+					autocomplete="off"
+					oninput={(e) => patch({ authHeaderPrefix: e.currentTarget.value })}
+					placeholder="Bearer "
+					value={data.authHeaderPrefix ?? ''}
+				>
+			</label>
+			<label class="facet-field">
+				<FacetFieldLabel path="auth" text="when unauthenticated" />
+				<Select
+					onchange={(v) => patch({ authUnauthenticated: v as AuthUnauthenticatedPolicyValue })}
+					options={AUTH_UNAUTHENTICATED_OPTIONS}
+					value={data.authUnauthenticated ?? 'pause'}
+				/>
+			</label>
+			{#if showOAuthFields}
+				<label class="facet-field">
+					<FacetFieldLabel path="auth" text="OAuth scopes" />
+					<input
+						class="field"
+						autocomplete="off"
+						oninput={(e) => patch({ authScopes: e.currentTarget.value })}
+						placeholder="read, write"
+						value={data.authScopes ?? ''}
+					>
+				</label>
+				<label class="facet-field">
+					<FacetFieldLabel path="auth" text="OAuth client ID" />
+					<input
+						class="field"
+						autocomplete="off"
+						oninput={(e) => patch({ authClientId: e.currentTarget.value })}
+						placeholder="your-client-id"
+						value={data.authClientId ?? ''}
+					>
+				</label>
+				<label class="facet-field">
+					<FacetFieldLabel path="auth" text="OAuth redirect URI" />
+					<input
+						class="field"
+						autocomplete="off"
+						oninput={(e) => patch({ authRedirectUri: e.currentTarget.value })}
+						placeholder="https://app.example.com/oauth/callback"
+						value={data.authRedirectUri ?? ''}
+					>
+				</label>
+			{/if}
+		{/if}
+	</div>
+
+	<div class="facet-subgroup">
+		<span class="facet-subgroup-title">Pre-run connectivity check</span>
+		<p class="facet-field-hint">
+			Verify the endpoint or MCP server responds before running the agent. Uses guardrails network
+			policy from the Guardrails facet.
+		</p>
+		{#if showAuthFields}
+			<label class="facet-field">
+				<FacetFieldLabel path="auth" text="test credential" />
+				<input
+					class="field"
+					autocomplete="off"
+					oninput={(e) => {
+						testCredentialInput = e.currentTarget.value;
+					}}
+					placeholder="Bearer token or API key for this test only"
+					type="password"
+					value={testCredentialInput}
+				>
+			</label>
+		{/if}
+		<button
+			class="field facet-test-btn"
+			disabled={testLoading}
+			onclick={() => {
+				void testConnection();
+			}}
+			type="button"
+		>
+			{testLoading ? 'Testing…' : 'Test connection'}
+		</button>
+		{#if testResult}
+			<pre
+				class="field facet-textarea facet-code facet-test-result"
+			>{JSON.stringify(testResult, null, 2)}</pre>
+		{/if}
+	</div>
+{/if}
+
 <label class="facet-field">
 	<FacetFieldLabel path="access" />
 	<Select
 		onchange={(v) => patch({ access: v as ToolAccessValue })}
-		options={TOOL_ACCESS_OPTIONS}
+		options={accessOptions}
 		value={data.access}
 	/>
 </label>
@@ -57,7 +418,7 @@ let { data, patch }: { data: ToolSpecData; patch: FacetPatch } = $props();
 	<FacetFieldLabel path="permission" />
 	<Select
 		onchange={(v) => patch({ permission: v as ToolPermissionValue })}
-		options={TOOL_PERMISSION_OPTIONS}
+		options={permissionOptions}
 		value={data.permission}
 	/>
 </label>
@@ -65,7 +426,7 @@ let { data, patch }: { data: ToolSpecData; patch: FacetPatch } = $props();
 	<FacetFieldLabel path="loadTier" />
 	<Select
 		onchange={(v) => patch({ loadTier: v as ToolLoadTier })}
-		options={TOOL_LOAD_TIER_OPTIONS}
+		options={loadTierOptions}
 		value={data.loadTier}
 	/>
 </label>
@@ -99,3 +460,26 @@ let { data, patch }: { data: ToolSpecData; patch: FacetPatch } = $props();
 		value={data.outputJson}
 	></textarea>
 </label>
+
+<style>
+.tool-type-grid {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.facet-test-btn {
+	cursor: pointer;
+	font-family: var(--font-mono);
+	text-align: center;
+}
+
+.facet-test-btn:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.facet-test-result {
+	margin-top: var(--fe-space-field);
+	max-height: 12rem;
+	overflow: auto;
+}
+</style>

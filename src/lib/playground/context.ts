@@ -15,6 +15,7 @@ export type PlaygroundUi = {
 export type PlaygroundCtx = {
 	addModelSpec: () => void;
 	addToolSpec: () => void;
+	addBranchSpec: (hubId: string) => void;
 	/** Live Models hub pairing — reactive when read in components */
 	hub: PlaygroundHub;
 	/** Reactive UI shell state (panel open/close). */
@@ -22,5 +23,6 @@ export type PlaygroundCtx = {
 	patchNode: (id: string, partial: Partial<PlaygroundNode['data']>) => void;
 	togglePanel: (id: string, open: boolean) => void;
 	closePanel: (id: string) => void;
+	toggleBranchCollapsed: (id: string) => void;
 	getNodes: () => PlaygroundNode[];
 };

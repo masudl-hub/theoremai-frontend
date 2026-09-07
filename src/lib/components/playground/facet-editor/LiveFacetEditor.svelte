@@ -1,18 +1,22 @@
 <script lang="ts">
 import Checkbox from '$lib/components/playground/Checkbox.svelte';
 import Select from '$lib/components/Select.svelte';
-import { fieldSelectOptions, fieldVocabulary } from '$lib/playground/field-controls';
+import { fieldEnumOptions } from '$lib/playground/field-controls';
 import type { LiveData } from '$lib/playground/types';
 import FacetFieldLabel from './FacetFieldLabel.svelte';
 import type { FacetPatch } from './types';
 
 let { data, patch }: { data: LiveData; patch: FacetPatch } = $props();
 
-const liveVoiceVocabulary = fieldVocabulary('live.voice');
-const compressionOptions = fieldSelectOptions('live.contextCompression', { allowOmit: true });
-const activityHandlingOptions = fieldSelectOptions('live.vad.activityHandling', { allowOmit: true });
-const startSensitivityOptions = fieldSelectOptions('live.vad.startSensitivity', { allowOmit: true });
-const endSensitivityOptions = fieldSelectOptions('live.vad.endSensitivity', { allowOmit: true });
+const voiceOptions = fieldEnumOptions('live.voice', { allowOmit: true });
+const compressionOptions = fieldEnumOptions('live.contextCompression', { allowOmit: true });
+const activityHandlingOptions = fieldEnumOptions('live.vad.activityHandling', {
+	allowOmit: true,
+});
+const startSensitivityOptions = fieldEnumOptions('live.vad.startSensitivity', {
+	allowOmit: true,
+});
+const endSensitivityOptions = fieldEnumOptions('live.vad.endSensitivity', { allowOmit: true });
 
 function patchMs(key: 'vadPrefixPaddingMs' | 'vadSilenceDurationMs', raw: string): void {
 	const trimmed = raw.trim();
@@ -45,21 +49,7 @@ function patchMs(key: 'vadPrefixPaddingMs' | 'vadSilenceDurationMs', raw: string
 
 <label class="facet-field">
 	<FacetFieldLabel path="live.voice" />
-	<input
-		class="field"
-		autocomplete="off"
-		list="live-voice-vocabulary"
-		oninput={(e) => patch({ voice: e.currentTarget.value })}
-		placeholder="omit"
-		value={data.voice}
-	>
-	{#if liveVoiceVocabulary.length}
-		<datalist id="live-voice-vocabulary">
-			{#each liveVoiceVocabulary as voice (voice)}
-				<option value={voice}></option>
-			{/each}
-		</datalist>
-	{/if}
+	<Select onchange={(v) => patch({ voice: v })} options={voiceOptions} value={data.voice} />
 </label>
 
 <div class="facet-check-grid">

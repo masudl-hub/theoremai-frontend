@@ -7,8 +7,7 @@
  * - Map grounding (Tools): per-model 0/500 or 0/0 (see mapGrounding flags below).
  */
 
-import type { Protocol } from 'theorum/schema';
-import type { PlaygroundNode } from './types';
+import { GOOGLE_BUILTIN_TOOLS } from 'theorum/presets/google';
 
 export const OPENROUTER_PLAYGROUND_API_ID = 'openrouter/free';
 
@@ -149,23 +148,15 @@ export const GEMINI_PLAYGROUND_MODELS: readonly GeminiPlaygroundModel[] = [
 
 export type GoogleBuiltinId = 'googleSearch' | 'googleMaps' | 'urlContext' | 'codeExecution';
 
-export const GOOGLE_BUILTIN_OPTIONS: { value: GoogleBuiltinId; label: string }[] = [
-	{ value: 'googleSearch', label: 'googleSearch' },
-	{ value: 'googleMaps', label: 'googleMaps' },
-	{ value: 'urlContext', label: 'urlContext' },
-	{ value: 'codeExecution', label: 'codeExecution' },
-];
+export const GOOGLE_BUILTIN_OPTIONS: { value: GoogleBuiltinId; label: string }[] =
+	GOOGLE_BUILTIN_TOOLS.map((tool) => ({
+		value: tool.name as GoogleBuiltinId,
+		label: tool.name,
+	}));
 
 const GOOGLE_BUILTIN_IDS = new Set<string>(GOOGLE_BUILTIN_OPTIONS.map((o) => o.value));
 
 const GEMINI_BY_ID = new Map(GEMINI_PLAYGROUND_MODELS.map((m) => [m.id, m]));
-
-/** Builtins that cannot be combined on the same model (Google preset conflicts). */
-const BUILTIN_MUTEX: Partial<Record<GoogleBuiltinId, GoogleBuiltinId[]>> = {
-	googleMaps: ['googleSearch', 'urlContext'],
-	googleSearch: ['googleMaps'],
-	urlContext: ['googleMaps'],
-};
 
 export function normalizeApiId(apiId: string): string {
 	return apiId.trim();
@@ -219,18 +210,6 @@ export function allowedBuiltinsForGemini(apiId: string): GoogleBuiltinId[] {
 	return out;
 }
 
-function builtinMutexViolation(builtins: GoogleBuiltinId[]): string | null {
-	for (const id of builtins) {
-		const blocked = BUILTIN_MUTEX[id] ?? [];
-		for (const other of builtins) {
-			if (blocked.includes(other)) {
-				return `${id} and ${other} cannot be used together.`;
-			}
-		}
-	}
-	return null;
-}
-
 /** Reject provider builtins in profile.tools.allow — they belong on model.config.*.builtInTools. */
 export function validateCustomToolsAllow(toolsAllowRaw: string): string | null {
 	for (const id of parseList(toolsAllowRaw)) {
@@ -280,7 +259,7 @@ export function validateGeminiModelSpec(
 		}
 	}
 
-	return builtinMutexViolation(builtInTools);
+	return null;
 }
 
 export function validateOpenRouterModelSpec(apiId: string): string | null {
@@ -398,19 +377,4 @@ export function syncModelSpecsForTransport(
 		}
 	}
 	return updates;
-}
-
-/** Gemini Interactions speech must be PCM — reset legacy mp3 on the outputs facet. */
-export function clearMp3SpeechOnGeminiInteractions(
-	getNodes: () => PlaygroundNode[] | undefined,
-	patchNode: (id: string, partial: Partial<PlaygroundNode['data']>) => void,
-	protocol: Protocol,
-): void {
-	if (protocol !== 'geminiInteractions') return;
-	for (const n of getNodes() ?? []) {
-		if (n.data.kind !== 'outputs') continue;
-		if (n.data.speechFormat === 'mp3') {
-			patchNode(n.id, { speechFormat: 'pcm' });
-		}
-	}
 }

@@ -36,19 +36,57 @@ function stubOutput(schema: Record<string, unknown>): Record<string, unknown> {
 
 function registerPlaygroundTools(tools: readonly ToolRegistration[]): void {
 	for (const tool of tools) {
-		registerTool({
-			type: 'function',
-			name: tool.name,
-			description: tool.description,
-			category: tool.category,
-			access: tool.access,
-			paths: tool.paths,
-			loadTier: tool.loadTier,
-			permission: tool.permission,
-			input: zodFromJsonSchema(tool.inputSchema),
-			output: zodFromJsonSchema(tool.outputSchema),
-			handler: async () => stubOutput(tool.outputSchema),
-		});
+		if (tool.type === 'http') {
+			registerTool({
+				type: 'http',
+				name: tool.name,
+				description: tool.description,
+				category: tool.category,
+				access: tool.access,
+				paths: tool.paths,
+				loadTier: tool.loadTier,
+				permission: tool.permission,
+				endpoint: tool.endpoint,
+				method: tool.method,
+				headers: tool.headers,
+				mapping: tool.mapping,
+				auth: tool.auth,
+				input: zodFromJsonSchema(tool.inputSchema),
+				output: zodFromJsonSchema(tool.outputSchema),
+			});
+		} else if (tool.type === 'mcp') {
+			registerTool({
+				type: 'mcp',
+				name: tool.name,
+				description: tool.description,
+				category: tool.category,
+				access: tool.access,
+				paths: tool.paths,
+				loadTier: tool.loadTier,
+				permission: tool.permission,
+				serverUrl: tool.serverUrl,
+				mcpToolName: tool.mcpToolName,
+				headers: tool.headers,
+				auth: tool.auth,
+				input: zodFromJsonSchema(tool.inputSchema),
+				output: zodFromJsonSchema(tool.outputSchema),
+			});
+		} else {
+			const stub = tool.stubResponse ?? stubOutput(tool.outputSchema);
+			registerTool({
+				type: 'function',
+				name: tool.name,
+				description: tool.description,
+				category: tool.category,
+				access: tool.access,
+				paths: tool.paths,
+				loadTier: tool.loadTier,
+				permission: tool.permission,
+				input: zodFromJsonSchema(tool.inputSchema),
+				output: zodFromJsonSchema(tool.outputSchema),
+				handler: () => Promise.resolve(stub),
+			});
+		}
 	}
 }
 

@@ -1,9 +1,9 @@
 <script lang="ts">
-import type { Protocol, Provider } from 'theorum/schema';
+import type { Protocol, Provider, ThinkingLevel } from 'theorum/schema';
 import Checkbox from '$lib/components/playground/Checkbox.svelte';
 import Select from '$lib/components/Select.svelte';
-import type { ThinkingLevelValue } from '$lib/playground/compat';
 import type { PlaygroundCtx } from '$lib/playground/context';
+import { fieldEnumOptions } from '$lib/playground/field-controls';
 import type { ModelsData } from '$lib/playground/types';
 import FacetFieldLabel from './FacetFieldLabel.svelte';
 import type { FacetPatch } from './types';
@@ -16,8 +16,6 @@ let {
 	onProviderChange,
 	providerOptions,
 	protocolOptions,
-	thinkingOptions,
-	keyOptions,
 	isLive = false,
 }: {
 	data: ModelsData;
@@ -27,10 +25,11 @@ let {
 	onProviderChange: (next: Provider) => void;
 	providerOptions: ReadonlyArray<{ value: string; label: string }>;
 	protocolOptions: ReadonlyArray<{ value: string; label: string }>;
-	thinkingOptions: ReadonlyArray<{ value: string; label: string }>;
-	keyOptions: ReadonlyArray<{ value: string; label: string }>;
 	isLive?: boolean;
 } = $props();
+
+const thinkingOptions = fieldEnumOptions('model.thinking');
+const keyOptions = fieldEnumOptions('model.key', { allowOmit: true, omitLabel: '(omit)' });
 </script>
 
 <label class="facet-field">
@@ -55,7 +54,7 @@ let {
 <label class="facet-field">
 	<FacetFieldLabel path="model.thinking" />
 	<Select
-		onchange={(v) => patch({ thinking: v as ThinkingLevelValue })}
+		onchange={(v) => patch({ thinking: v as ThinkingLevel })}
 		options={thinkingOptions}
 		value={data.thinking}
 	/>

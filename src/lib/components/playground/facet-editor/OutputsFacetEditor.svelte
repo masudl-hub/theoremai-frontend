@@ -1,36 +1,27 @@
 <script lang="ts">
+import { SCHEMA_ENFORCEMENTS } from 'theorum/schema';
 import Checkbox from '$lib/components/playground/Checkbox.svelte';
 import Select from '$lib/components/Select.svelte';
-import { PLAYGROUND_TURN_STOP_KINDS, toggleList } from '$lib/playground/compat';
+import { toggleList } from '$lib/playground/compat';
+import { fieldEnumOptions, schemaEnumOptions } from '$lib/playground/field-controls';
 import type { OutputsData } from '$lib/playground/types';
 import FacetFieldLabel from './FacetFieldLabel.svelte';
 import type { FacetPatch } from './types';
 
-let {
-	data,
-	patch,
-	enforcedOptions,
-	streamModeOptions,
-}: {
-	data: OutputsData;
-	patch: FacetPatch;
-	enforcedOptions: ReadonlyArray<{ value: string; label: string }>;
-	streamModeOptions: ReadonlyArray<{ value: string; label: string }>;
-} = $props();
+let { data, patch }: { data: OutputsData; patch: FacetPatch } = $props();
 
-const OUTPUT_MODE_OPTIONS = [
-	{ value: 'text', label: 'Free text / streaming' },
-	{ value: 'structured', label: 'Structured JSON schema' },
-];
+const streamModeOptions = fieldEnumOptions('outputs.streaming.mode');
+const enforcedOptions = schemaEnumOptions(SCHEMA_ENFORCEMENTS);
+const allowContinueOptions = fieldEnumOptions('turnResumption.allowContinue');
+const autoContinueOptions = fieldEnumOptions('turnResumption.autoContinue');
 </script>
 
-<label class="facet-field">
-	<FacetFieldLabel path="outputs.format" />
-	<Select
-		onchange={(v) => patch({ mode: v as 'text' | 'structured' })}
-		options={OUTPUT_MODE_OPTIONS}
-		value={data.mode}
+<label class="facet-check">
+	<Checkbox
+		checked={data.mode === 'structured'}
+		onchange={(v) => patch({ mode: v ? 'structured' : 'text' })}
 	/>
+	<FacetFieldLabel path="outputs.structured" />
 </label>
 
 {#if data.mode === 'structured'}
@@ -116,7 +107,7 @@ const OUTPUT_MODE_OPTIONS = [
 			<FacetFieldLabel path="turnResumption.allowContinue" />
 		</legend>
 		<div class="facet-check-grid">
-			{#each PLAYGROUND_TURN_STOP_KINDS as opt (opt.value)}
+			{#each allowContinueOptions as opt (opt.value)}
 				<label class="facet-check">
 					<Checkbox
 						checked={data.allowContinue.includes(opt.value)}
@@ -139,7 +130,7 @@ const OUTPUT_MODE_OPTIONS = [
 			<FacetFieldLabel path="turnResumption.autoContinue" />
 		</legend>
 		<div class="facet-check-grid">
-			{#each PLAYGROUND_TURN_STOP_KINDS as opt (opt.value)}
+			{#each autoContinueOptions as opt (opt.value)}
 				<label class="facet-check">
 					<Checkbox
 						checked={data.autoContinue.includes(opt.value)}

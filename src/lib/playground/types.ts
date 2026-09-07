@@ -14,7 +14,6 @@ import type {
 	Protocol,
 	Provider,
 	SchemaEnforcement,
-	SpeechAudioFormat,
 	StreamMode,
 	SummaryMode,
 	ThinkingLevel,
@@ -60,6 +59,8 @@ export type IdentityData = {
 export type ModelsData = {
 	kind: 'models';
 	expanded: boolean;
+	/** When true, hide model spec nodes on the canvas. */
+	branchCollapsed: boolean;
 	protocol: Protocol;
 	provider: Provider;
 	thinking: ThinkingLevel;
@@ -90,11 +91,17 @@ export type ModelSpecData = {
 export type ToolsData = {
 	kind: 'tools';
 	expanded: boolean;
+	/** When true, hide tool spec nodes on the canvas. */
+	branchCollapsed: boolean;
 	/** Designated function tool id for T2 promotion (must return { loaded: string[] }). */
 	t2Loader: string;
 };
 
-export type PlaygroundToolType = 'function';
+export type PlaygroundToolType = 'function' | 'http' | 'mcp';
+
+export type HttpMethodValue = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+export type ToolAuthTypeValue = 'none' | 'bearer' | 'api_key' | 'oauth2';
+export type AuthUnauthenticatedPolicyValue = 'pause' | 'report_to_model';
 
 export type ToolAccessValue = 'read-only' | 'read-write' | 'destructive';
 export type ToolPermissionValue = 'auto' | 'session_consent' | 'always_confirm';
@@ -115,6 +122,31 @@ export type ToolSpecData = {
 	/** JSON Schema object as text. */
 	inputJson: string;
 	outputJson: string;
+
+	/** Playground-only: fixed JSON object returned by function tool stubs. */
+	stubOutputJson?: string;
+
+	// Declarative HTTP Tool properties
+	endpoint?: string;
+	method?: HttpMethodValue;
+	headersJson?: string;
+	pathParams?: string;
+	queryParams?: string;
+	bodyParam?: string;
+
+	// Remote MCP Tool properties
+	serverUrl?: string;
+	mcpToolName?: string;
+
+	// Shared Auth properties for HTTP and MCP tools
+	authType?: ToolAuthTypeValue;
+	authSlot?: string;
+	authHeaderName?: string;
+	authHeaderPrefix?: string;
+	authUnauthenticated?: AuthUnauthenticatedPolicyValue;
+	authScopes?: string;
+	authClientId?: string;
+	authRedirectUri?: string;
 };
 
 export type InputsData = {
@@ -145,16 +177,6 @@ export type OutputsData = {
 	validationEnabled: boolean;
 	maxRetries: number;
 	repairGuidance: string;
-	imageEnabled: boolean;
-	imageAspectRatio: string;
-	imageSize: string;
-	imageMimeType: string;
-	imageMaxInputImages: number;
-	/** When true, request interleaved assistant text alongside generated images. */
-	imageIncludeText: boolean;
-	speechEnabled: boolean;
-	speechVoice: string;
-	speechFormat: SpeechAudioFormat;
 	resumeEnabled: boolean;
 	allowContinue: TurnStopKind[];
 	autoContinue: TurnStopKind[];
@@ -168,9 +190,11 @@ export type GuardrailsData = {
 	redactSensitive: boolean;
 	quotaEnabled: boolean;
 	perDay: number;
-	egressMode: 'default' | 'none' | 'custom';
+	egressMode: 'default' | 'none';
 	onBlock: EgressOnBlock;
 	egressMaxRetries: number;
+	allowPrivateNetworks?: boolean;
+	allowedHosts?: string;
 };
 
 export type ImageData = {
@@ -250,8 +274,8 @@ export type StructuredRegistration = {
 };
 
 /** Compiled custom tool ready for host registerTool + export source. */
-export type ToolRegistration = {
-	type: PlaygroundToolType;
+export type FunctionToolRegistration = {
+	type: 'function';
 	name: string;
 	description: string;
 	category: string;
@@ -261,7 +285,71 @@ export type ToolRegistration = {
 	paths: string[];
 	inputSchema: Record<string, unknown>;
 	outputSchema: Record<string, unknown>;
+	/** Playground function stub payload when set (overrides generic stub). */
+	stubResponse?: Record<string, unknown>;
 };
+
+export type HttpToolRegistration = {
+	type: 'http';
+	name: string;
+	description: string;
+	category: string;
+	access: ToolAccessValue;
+	permission: ToolPermissionValue;
+	loadTier: ToolLoadTier;
+	paths: string[];
+	endpoint: string;
+	method: HttpMethodValue;
+	headers?: Record<string, string>;
+	mapping?: {
+		pathParams?: string[];
+		queryParams?: string[];
+		bodyParam?: string;
+	};
+	auth?: {
+		slot: string;
+		type: 'bearer' | 'api_key' | 'oauth2';
+		headerName?: string;
+		headerPrefix?: string;
+		onUnauthenticated?: AuthUnauthenticatedPolicyValue;
+		scopes?: string[];
+		clientId?: string;
+		redirectUri?: string;
+	};
+	inputSchema: Record<string, unknown>;
+	outputSchema: Record<string, unknown>;
+};
+
+export type McpToolRegistration = {
+	type: 'mcp';
+	name: string;
+	description: string;
+	category: string;
+	access: ToolAccessValue;
+	permission: ToolPermissionValue;
+	loadTier: ToolLoadTier;
+	paths: string[];
+	serverUrl: string;
+	mcpToolName: string;
+	headers?: Record<string, string>;
+	auth?: {
+		slot: string;
+		type: 'bearer' | 'api_key' | 'oauth2';
+		headerName?: string;
+		headerPrefix?: string;
+		onUnauthenticated?: AuthUnauthenticatedPolicyValue;
+		scopes?: string[];
+		clientId?: string;
+		redirectUri?: string;
+	};
+	inputSchema: Record<string, unknown>;
+	outputSchema: Record<string, unknown>;
+};
+
+export type ToolRegistration =
+	| FunctionToolRegistration
+	| HttpToolRegistration
+	| McpToolRegistration;
 
 export type CompileResult =
 	| {
@@ -361,12 +449,11 @@ export function defaultModelSpec(partial?: Partial<ModelSpecData>): ModelSpecDat
 }
 
 export function defaultToolSpec(partial?: Partial<ToolSpecData>): ToolSpecData {
-	const toolType: PlaygroundToolType = 'function';
-	const base: ToolSpecData = {
+	return {
 		kind: 'toolSpec',
 		expanded: false,
-		toolName: 'lookup_crm',
-		toolType,
+		toolName: 'my_tool',
+		toolType: 'function',
 		description: 'Playground stub tool — returns a fixed result.',
 		category: 'playground',
 		access: 'read-only',
@@ -375,11 +462,6 @@ export function defaultToolSpec(partial?: Partial<ToolSpecData>): ToolSpecData {
 		paths: '*',
 		inputJson: DEFAULT_TOOL_INPUT_SCHEMA,
 		outputJson: DEFAULT_TOOL_OUTPUT_SCHEMA,
-	};
-	return {
-		...base,
 		...partial,
-		toolType,
-		loadTier: partial?.loadTier ?? base.loadTier,
 	};
 }

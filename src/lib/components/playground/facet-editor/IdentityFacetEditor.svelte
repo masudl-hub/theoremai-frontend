@@ -34,7 +34,6 @@ function selectType(t: ProfileType) {
 				type="button"
 			>
 				<span class="modality-name">{opt.label}</span>
-				<span class="modality-desc">{opt.desc}</span>
 			</button>
 		{/each}
 	</div>

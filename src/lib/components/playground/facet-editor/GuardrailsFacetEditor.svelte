@@ -1,21 +1,14 @@
 <script lang="ts">
 import Checkbox from '$lib/components/playground/Checkbox.svelte';
 import Select from '$lib/components/Select.svelte';
+import { fieldEnumOptions } from '$lib/playground/field-controls';
 import type { GuardrailsData } from '$lib/playground/types';
 import FacetFieldLabel from './FacetFieldLabel.svelte';
 import type { FacetPatch } from './types';
 
-let {
-	data,
-	patch,
-	onBlockOptions,
-	egressModeOptions,
-}: {
-	data: GuardrailsData;
-	patch: FacetPatch;
-	onBlockOptions: ReadonlyArray<{ value: string; label: string }>;
-	egressModeOptions: ReadonlyArray<{ value: string; label: string }>;
-} = $props();
+let { data, patch }: { data: GuardrailsData; patch: FacetPatch } = $props();
+
+const onBlockOptions = fieldEnumOptions('guardrails.egress.onBlock');
 </script>
 
 <div class="facet-check-grid">
@@ -48,15 +41,14 @@ let {
 		>
 	</label>
 {/if}
-<label class="facet-field">
-	<FacetFieldLabel path="guardrails.egress" />
-	<Select
-		onchange={(v) => patch({ egressMode: v as 'default' | 'none' })}
-		options={egressModeOptions}
-		value={data.egressMode}
+<label class="facet-check">
+	<Checkbox
+		checked={data.egressMode !== 'none'}
+		onchange={(v) => patch({ egressMode: v ? 'default' : 'none' })}
 	/>
+	<FacetFieldLabel path="guardrails.egress.enforce" />
 </label>
-{#if data.egressMode === 'default'}
+{#if data.egressMode !== 'none'}
 	<label class="facet-field">
 		<FacetFieldLabel path="guardrails.egress.onBlock" />
 		<Select
@@ -76,3 +68,28 @@ let {
 		>
 	</label>
 {/if}
+
+<div class="facet-subgroup">
+	<span class="facet-subgroup-title">Network (HTTP / MCP tools)</span>
+	<label class="facet-check">
+		<Checkbox
+			checked={Boolean(data.allowPrivateNetworks)}
+			onchange={(v) => patch({ allowPrivateNetworks: v })}
+		/>
+		<FacetFieldLabel path="guardrails.network" text="allow private networks" />
+	</label>
+	<label class="facet-field">
+		<FacetFieldLabel path="guardrails.network" text="allowed hosts" />
+		<input
+			class="field"
+			autocomplete="off"
+			oninput={(e) => patch({ allowedHosts: e.currentTarget.value })}
+			placeholder="api.example.com, mcp.example.com"
+			value={data.allowedHosts ?? ''}
+		>
+	</label>
+	<p class="facet-field-hint">
+		Comma-separated host allowlist for declarative HTTP and MCP tools. Private/loopback targets are
+		blocked unless allowed above.
+	</p>
+</div>

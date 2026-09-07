@@ -5,12 +5,12 @@
 #playground {
 	/* Type ladder (3 steps) */
 	--pg-font-label: 0.75rem; /* 12px — node + chrome titles */
-	--pg-font-caption: 0.6875rem; /* 11px — summaries, status */
-	--pg-font-control: 0.875rem; /* 14px — chevrons */
+	--pg-font-caption: 0.6875rem; /* 11px — summaries, status, chips */
+	--pg-font-control: 0.875rem; /* 14px — controls */
 	--pg-weight-label: 800;
 	--pg-weight-caption: 600;
 	--pg-weight-strong: 700;
-	--pg-track-label: 0.12em;
+	--pg-track-label: 0.08em;
 	--pg-line-caption: 1.35;
 
 	/* Spacing ladder (4px base) */
@@ -30,10 +30,10 @@
 	--xy-node-border-radius: 0;
 	--xy-node-boxshadow-default: none;
 	--xy-node-boxshadow-selected: none;
-	--xy-edge-stroke: #000;
-	--xy-edge-stroke-width: 1.25;
-	--xy-edge-stroke-selected: #000;
-	--xy-connectionline-stroke: #000;
+	--xy-edge-stroke: rgba(0, 0, 0, 0.35);
+	--xy-edge-stroke-width: 1.5;
+	--xy-edge-stroke-selected: rgba(0, 0, 0, 0.55);
+	--xy-connectionline-stroke: rgba(0, 0, 0, 0.35);
 	background: var(--color-paper);
 }
 
@@ -58,6 +58,8 @@
 
 .playground-shell .svelte-flow__edge-path {
 	stroke-linecap: round;
+	stroke: var(--xy-edge-stroke);
+	stroke-width: var(--xy-edge-stroke-width);
 }
 
 .playground-shell .svelte-flow__controls {
@@ -75,14 +77,12 @@
 	width: var(--pg-control-size);
 	height: var(--pg-control-size);
 	color: var(--color-ink);
-}
-
-.playground-shell .svelte-flow__controls-button:last-child {
-	border-bottom: none;
+	margin-bottom: 2px;
+	transition: opacity 0.15s ease;
 }
 
 .playground-shell .svelte-flow__controls-button:hover {
-	background: rgba(0, 0, 0, 0.06);
+	opacity: 0.55;
 	color: var(--color-ink);
 }
 
@@ -118,22 +118,16 @@
 	background: transparent;
 	color: var(--color-ink);
 	cursor: pointer;
-	transition:
-		background-color 0.1s ease,
-		color 0.1s ease;
+	transition: opacity 0.1s ease;
 }
 
 .playground-shell .chrome-icon-btn:hover:not(:disabled) {
-	background: rgba(0, 0, 0, 0.06);
+	opacity: 0.55;
 	color: var(--color-ink);
 }
 
-.playground-shell .chrome-icon-btn[data-chrome-tip="run"] {
-	background: transparent;
-}
-
 .playground-shell .chrome-icon-btn:disabled {
-	opacity: 0.45;
+	opacity: 0.35;
 	cursor: not-allowed;
 }
 
@@ -189,120 +183,230 @@
 	font-weight: var(--pg-weight-label);
 }
 
-/* ── Facet nodes ───────────────────────────────────────────────── */
+/* ── Facet nodes (composer shell container + user message chip tokens) ── */
 
 .playground-shell .facet {
+	box-sizing: border-box;
 	display: flex;
 	flex-direction: column;
 	width: var(--pg-node-width);
-	border: 1.5px solid #000;
+	padding: 0.35rem;
+	gap: 0.35rem;
+	background: rgba(0, 0, 0, 0.035);
+	border: 1px solid rgba(0, 0, 0, 0.1);
 	border-radius: 0;
-	background: var(--color-paper);
 	box-shadow: none;
 	font-family: var(--font-mono);
 	color: var(--color-ink);
-	overflow: hidden;
+	user-select: none;
+	transition:
+		background-color 0.15s ease,
+		border-color 0.15s ease;
+}
+
+.playground-shell .facet:hover {
+	background: rgba(0, 0, 0, 0.05);
+	border-color: rgba(0, 0, 0, 0.16);
+}
+
+.playground-shell .facet-active {
+	background: rgba(0, 0, 0, 0.055);
+	border-color: rgba(0, 0, 0, 0.25);
 }
 
 .playground-shell .facet-hub {
 	width: var(--pg-node-width-hub);
 }
 
+/* ID / title header at top of node */
 .playground-shell .facet-head {
-	display: grid;
-	grid-template-columns: 1fr auto;
+	display: flex;
 	align-items: center;
-	gap: var(--pg-space-2);
-	flex-shrink: 0;
-	padding: var(--pg-space-2) var(--pg-space-3);
-	border-bottom: 1px solid #000;
+	justify-content: space-between;
+	gap: 0.4rem;
+	width: 100%;
+	box-sizing: border-box;
+	padding: 0.25rem 0.4rem;
+	border: none;
+	border-radius: 0;
+	background: transparent;
+	color: var(--color-ink);
 	font-size: var(--pg-font-caption);
-	font-weight: var(--pg-weight-label);
-	letter-spacing: var(--pg-track-label);
-	text-transform: uppercase;
+	font-weight: 700;
+	letter-spacing: 0.06em;
 	cursor: grab;
+	transition: opacity 0.15s ease;
 }
 
 .playground-shell .facet-head:active {
 	cursor: grabbing;
 }
 
-.playground-shell .facet-title {
+.playground-shell .facet-head__label {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	min-width: 0;
+	overflow: hidden;
+}
+
+.playground-shell .facet-head__icon {
+	flex-shrink: 0;
+	opacity: 0.65;
+}
+
+.playground-shell .facet:hover .facet-head__icon,
+.playground-shell .facet-active .facet-head__icon {
+	opacity: 1;
+}
+
+.playground-shell .facet-head__title {
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	pointer-events: none;
+	font-weight: 700;
 }
 
-.playground-shell .facet-chevron {
-	appearance: none;
-	border: 0;
+.playground-shell .facet-head__dot {
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background: var(--color-ink);
+	flex-shrink: 0;
+	opacity: 0.6;
+}
+
+.playground-shell .facet-head__actions {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.2rem;
+	flex-shrink: 0;
+}
+
+.playground-shell .facet-branch-toggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border: none;
+	border-radius: 0;
 	background: transparent;
-	color: inherit;
-	font: inherit;
-	font-size: 0.95rem;
-	line-height: 1;
-	padding: 0.15rem 0.35rem;
-	cursor: pointer;
-}
-
-.playground-shell .facet-summary,
-.playground-shell .facet-body {
-	display: block;
-	width: 100%;
-	margin: 0;
-	padding: var(--pg-space-2) var(--pg-space-3) var(--pg-space-3);
-	border: 0;
-	background: transparent;
-	color: var(--color-mute);
-	font: inherit;
-	font-size: var(--pg-font-caption);
-	font-weight: var(--pg-weight-caption);
-	line-height: var(--pg-line-caption);
-	text-align: left;
-	cursor: pointer;
-}
-
-.playground-shell .facet-body:hover,
-.playground-shell .facet-summary:hover {
 	color: var(--color-ink);
+	cursor: pointer;
+	opacity: 0.55;
+	transition: opacity 0.15s ease;
 }
 
+.playground-shell .facet-branch-toggle:hover {
+	opacity: 1;
+}
+
+/* Chips inside container — using exact user message token: rgba(0, 0, 0, 0.06) */
 .playground-shell .facet-chips {
 	display: flex;
 	flex-wrap: wrap;
-	gap: var(--pg-space-1);
+	align-items: center;
+	gap: 0.25rem;
+	width: 100%;
+	padding: 0;
+	border: none;
+	background: transparent;
+	cursor: pointer;
 }
 
 .playground-shell .facet-chip {
-	display: inline;
+	display: inline-flex;
+	align-items: center;
 	max-width: 100%;
-	padding: 0;
+	padding: 0.2rem 0.5rem;
+	border: none;
 	border-radius: 0;
-	background: transparent;
-	color: inherit;
-	font-size: inherit;
-	font-weight: inherit;
-	line-height: inherit;
+	background: rgba(0, 0, 0, 0.06);
+	color: var(--color-ink);
+	font-size: var(--pg-font-caption);
+	font-weight: 600;
+	line-height: 1.35;
 	letter-spacing: normal;
-	text-transform: none;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	transition: background-color 0.15s ease;
 }
 
-.playground-shell .facet-chip:not(:last-child)::after {
-	content: " · ";
-	color: var(--color-mute);
+.playground-shell .facet-chips:hover .facet-chip,
+.playground-shell .facet:hover .facet-chip {
+	background: rgba(0, 0, 0, 0.09);
 }
 
+.playground-shell .facet-active .facet-chip {
+	background: rgba(0, 0, 0, 0.08);
+}
+
+/* Subtle, clean connection handles — never override xyflow translate positioning */
 .playground-shell .facet-handle {
-	width: 8px;
-	height: 8px;
-	border: 1.5px solid #000;
-	background: var(--color-paper);
-	border-radius: 0;
+	width: 6px;
+	height: 6px;
+	border: none;
+	background: rgba(0, 0, 0, 0.28);
+	border-radius: 50%;
+	transition: background-color 0.15s ease;
+}
+
+.playground-shell .facet-handle--branch {
+	background: rgba(0, 0, 0, 0.22);
+}
+
+.playground-shell .facet-branch-port {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+
+.playground-shell .facet-branch-add {
+	position: absolute;
+	right: -9px;
+	top: 50%;
+	z-index: 2;
+	width: 18px;
+	height: 18px;
+	padding: 0;
+	border: none;
+	border-radius: 50%;
+	background: rgba(0, 0, 0, 0.28);
+	cursor: pointer;
+	pointer-events: auto;
+	transform: translateY(-50%);
+	transition:
+		background-color 0.15s ease,
+		transform 0.15s ease;
+}
+
+.playground-shell .facet-branch-add:hover {
+	background: rgba(0, 0, 0, 0.65);
+	transform: translateY(-50%) scale(1.3);
+}
+
+.playground-shell .facet-handle--branch-source {
+	pointer-events: none;
+}
+
+.playground-shell .facet-active .svelte-flow__handle-left.facet-handle,
+.playground-shell .facet:hover .svelte-flow__handle-left.facet-handle {
+	background: rgba(0, 0, 0, 0.65);
+	transform: translate(-50%, -50%) scale(1.3);
+}
+
+.playground-shell .facet-active .svelte-flow__handle-right.facet-handle,
+.playground-shell .facet:hover .svelte-flow__handle-right.facet-handle {
+	background: rgba(0, 0, 0, 0.65);
+	transform: translate(50%, -50%) scale(1.3);
+}
+
+.playground-shell .facet-active .svelte-flow__handle-bottom.facet-handle,
+.playground-shell .facet:hover .svelte-flow__handle-bottom.facet-handle {
+	background: rgba(0, 0, 0, 0.65);
+	transform: translate(-50%, 50%) scale(1.3);
 }
 
 /* ── Loading placeholder ───────────────────────────────────────── */
