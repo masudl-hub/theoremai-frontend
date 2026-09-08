@@ -69,18 +69,18 @@ const handleLabel = $derived(`@${iface.identity.handle}`);
 	class:iface-stage--landing={!chatStarted}
 	class:iface-stage--chat={chatStarted}
 >
-	<div class="iface-rail">
-		{#if chatStarted}
-			<InterfaceTranscript
-				blocks={displayBlocks}
-				handle={iface.identity.handle}
-				{onAuthCredential}
-				{onBranch}
-				{onToolDecision}
-				{streaming}
-			/>
-		{/if}
+	{#if chatStarted}
+		<InterfaceTranscript
+			blocks={displayBlocks}
+			handle={iface.identity.handle}
+			{onAuthCredential}
+			{onBranch}
+			{onToolDecision}
+			{streaming}
+		/>
+	{/if}
 
+	<div class="iface-rail">
 		<div class="iface-composer-slot" class:iface-composer-slot--landing={!chatStarted}>
 			{#if !chatStarted}
 				<header class="iface-head">

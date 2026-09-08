@@ -1,4 +1,4 @@
-import type { PendingAttachment } from 'theorum/interface';
+import type { PendingAttachment, TranscriptBlock } from 'theorum/interface';
 
 export function filesToPending(files: readonly File[]): PendingAttachment[] {
 	return files.map((file) => ({
@@ -30,4 +30,27 @@ export async function encodeFiles(
 		});
 	}
 	return out;
+}
+
+/** Copy encoded base64 onto matching user attachment/voice transcript blocks for UI preview. */
+export function attachPreviewData(
+	blocks: readonly TranscriptBlock[],
+	attachments?: ReadonlyArray<{ data: string }>,
+	voice?: ReadonlyArray<{ data: string }>,
+): TranscriptBlock[] {
+	let attachmentIndex = 0;
+	let voiceIndex = 0;
+	return blocks.map((block) => {
+		if (block.kind === 'user-attachment') {
+			const data = attachments?.[attachmentIndex]?.data;
+			attachmentIndex += 1;
+			return data !== undefined ? { ...block, data } : block;
+		}
+		if (block.kind === 'user-voice') {
+			const data = voice?.[voiceIndex]?.data;
+			voiceIndex += 1;
+			return data !== undefined ? { ...block, data } : block;
+		}
+		return block;
+	});
 }

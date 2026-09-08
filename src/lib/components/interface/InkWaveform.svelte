@@ -23,13 +23,15 @@ let {
 	outputLevel?: number;
 	toolActive?: boolean;
 	frozen?: boolean;
-	variant?: 'default' | 'hero';
+	variant?: 'default' | 'hero' | 'pill';
 } = $props();
 
 const viewWidth = $derived(variant === 'hero' ? 960 : 480);
-const viewHeight = $derived(variant === 'hero' ? 720 : 320);
-const preserveAspect = $derived(variant === 'hero' ? 'xMidYMax slice' : 'xMidYMax meet');
-const strokeWidth = 2;
+const viewHeight = $derived(variant === 'hero' ? 720 : variant === 'pill' ? 120 : 320);
+const preserveAspect = $derived(
+	variant === 'hero' ? 'xMidYMax slice' : variant === 'pill' ? 'none' : 'xMidYMax meet',
+);
+const strokeWidth = $derived(variant === 'pill' ? 3 : 2);
 const barCount = $derived(variant === 'hero' ? INK_WAVE_HERO_BAR_COUNT : INK_WAVE_BAR_COUNT);
 const gap = $derived((viewWidth - strokeWidth * barCount) / (barCount + 1));
 const phases = $derived(inkWavePhases(barCount));
@@ -100,6 +102,7 @@ onMount(() => {
 <svg
 	class="ink-wave"
 	class:ink-wave--hero={variant === 'hero'}
+	class:ink-wave--pill={variant === 'pill'}
 	aria-hidden="true"
 	viewBox="0 0 {viewWidth} {viewHeight}"
 	preserveAspectRatio={preserveAspect}

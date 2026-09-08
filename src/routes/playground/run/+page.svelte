@@ -110,6 +110,7 @@ async function runTurnStream(
 	run: (
 		onStream: (partial: TranscriptBlock[]) => void,
 	) => Promise<TurnOk | { ok: false; error: string; issues?: string[] }>,
+	options: { userBlocksAlreadyApplied?: boolean } = {},
 ) {
 	if (!iface || !payload || busy) return;
 	error = '';
@@ -136,7 +137,7 @@ async function runTurnStream(
 		blocks,
 		streamBlocks,
 		session: result.session,
-		userBlocks: result.userBlocks,
+		userBlocks: options.userBlocksAlreadyApplied ? undefined : result.userBlocks,
 		assistantBlocks: result.assistantBlocks,
 	});
 	blocks = merged.blocks;
@@ -153,21 +154,26 @@ async function handleSubmit() {
 	const textSnapshot = draftText;
 	const pendingSnapshot = [...pendingFiles];
 	const voiceSnapshot = [...pendingVoice];
-	chatStarted = true;
-	draftText = '';
-	pendingFiles = [];
-	pendingVoice = [];
 
-	await runTurnStream((onStream) =>
-		streamInterfaceTurn({
-			iface: composer,
-			payload: runPayload,
-			session,
-			text: textSnapshot,
-			pendingFiles: pendingSnapshot,
-			pendingVoice: voiceSnapshot,
-			onStream,
-		}),
+	await runTurnStream(
+		(onStream) =>
+			streamInterfaceTurn({
+				iface: composer,
+				payload: runPayload,
+				session,
+				text: textSnapshot,
+				pendingFiles: pendingSnapshot,
+				pendingVoice: voiceSnapshot,
+				onStream,
+				onUserBlocks: (userBlocks) => {
+					blocks = [...blocks, ...userBlocks];
+					chatStarted = true;
+					draftText = '';
+					pendingFiles = [];
+					pendingVoice = [];
+				},
+			}),
+		{ userBlocksAlreadyApplied: true },
 	);
 }
 

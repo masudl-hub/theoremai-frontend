@@ -8,7 +8,7 @@ import {
 	type TranscriptBlock,
 } from 'theorum/interface';
 import type { ToolCredential } from 'theorum/kernel';
-import { encodeFiles } from './encode-files';
+import { attachPreviewData, encodeFiles } from './encode-files';
 import { continueAfterTool, finalizeTurnStream, streamFoldedTurn, toTurnMedia } from './run-commit';
 import type { PlaygroundRunPayload } from './run-payload';
 import {
@@ -34,6 +34,8 @@ export async function streamInterfaceTurn(args: {
 	pendingFiles: readonly File[];
 	pendingVoice: readonly File[];
 	onStream: (blocks: TranscriptBlock[]) => void;
+	/** Fires once user blocks are ready (with media preview data) before the assistant stream. */
+	onUserBlocks?: (blocks: TranscriptBlock[]) => void;
 }): Promise<
 	| {
 			ok: true;
@@ -65,6 +67,8 @@ export async function streamInterfaceTurn(args: {
 			? await encodeFiles(args.pendingVoice)
 			: undefined;
 		const media = toTurnMedia(encodedAttachments, encodedVoice);
+		const userBlocks = attachPreviewData(prepared.blocks, encodedAttachments, encodedVoice);
+		args.onUserBlocks?.(userBlocks);
 
 		const input = turnInputFromSession(args.session, {
 			...(prepared.draft.text ? { text: prepared.draft.text } : {}),
@@ -95,7 +99,7 @@ export async function streamInterfaceTurn(args: {
 		return {
 			ok: true,
 			session,
-			userBlocks: prepared.blocks,
+			userBlocks,
 			assistantBlocks: foldAssistantTurn(args.iface, events),
 		};
 	} catch (err) {

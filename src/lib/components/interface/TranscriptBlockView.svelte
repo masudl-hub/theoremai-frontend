@@ -5,6 +5,7 @@ import { transcriptBlockCopyText } from '$lib/interface/transcript-block-text';
 import ApprovalCard from './ApprovalCard.svelte';
 import AuthChallengeCard from './AuthChallengeCard.svelte';
 import TranscriptMessageShell from './TranscriptMessageShell.svelte';
+import VoiceNotePill from './VoiceNotePill.svelte';
 
 let {
 	block,
@@ -42,8 +43,22 @@ const copyText = $derived(transcriptBlockCopyText(block));
 		</article>
 	{:else if block.kind === 'user-attachment' || block.kind === 'user-voice'}
 		<article class="iface-msg iface-msg--user">
-			<p class="iface-msg__bubble">{block.name}</p>
-			<p class="iface-msg__meta">{block.mimeType}</p>
+			{#if block.data && block.mimeType.startsWith('image/')}
+				<img
+					class="iface-msg__image"
+					alt={block.name}
+					src="data:{block.mimeType};base64,{block.data}"
+				>
+			{:else if block.data && block.mimeType.startsWith('audio/')}
+				<VoiceNotePill
+					label={block.name}
+					mimeType={block.mimeType}
+					src="data:{block.mimeType};base64,{block.data}"
+				/>
+			{:else}
+				<p class="iface-msg__bubble">{block.name}</p>
+				<p class="iface-msg__meta">{block.mimeType}</p>
+			{/if}
 		</article>
 	{:else if block.kind === 'thought'}
 		<article class="iface-msg iface-msg--thought">
@@ -96,11 +111,7 @@ const copyText = $derived(transcriptBlockCopyText(block));
 					src="data:{block.mimeType};base64,{block.data}"
 				>
 			{:else if block.mimeType.startsWith('audio/')}
-				<audio
-					class="iface-msg__audio"
-					controls
-					src="data:{block.mimeType};base64,{block.data}"
-				></audio>
+				<VoiceNotePill mimeType={block.mimeType} src="data:{block.mimeType};base64,{block.data}" />
 			{:else}
 				<p class="iface-msg__meta">{block.mimeType}</p>
 			{/if}

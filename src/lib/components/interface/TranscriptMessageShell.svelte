@@ -1,4 +1,5 @@
 <script lang="ts">
+import { IconCheck, IconCopy, IconGitBranch } from '@tabler/icons-svelte';
 import type { Snippet } from 'svelte';
 import { formatRelativeTime, msUntilRelativeTimeChange } from '$lib/interface/relative-time';
 
@@ -66,12 +67,30 @@ async function copy() {
 				</time>
 			{/if}
 			{#if canCopy}
-				<button type="button" class="iface-msg__chrome-btn" onclick={copy}>
-					{copied ? 'Copied' : 'Copy'}
+				<button
+					type="button"
+					class="iface-msg__chrome-btn"
+					aria-label={copied ? 'Copied' : 'Copy'}
+					title={copied ? 'Copied' : 'Copy'}
+					onclick={copy}
+				>
+					{#if copied}
+						<IconCheck size={12} stroke={1.8} aria-hidden="true" />
+					{:else}
+						<IconCopy size={12} stroke={1.7} aria-hidden="true" />
+					{/if}
 				</button>
 			{/if}
 			{#if onBranch}
-				<button type="button" class="iface-msg__chrome-btn" onclick={onBranch}>Branch</button>
+				<button
+					type="button"
+					class="iface-msg__chrome-btn"
+					aria-label="Branch"
+					title="Branch"
+					onclick={onBranch}
+				>
+					<IconGitBranch size={12} stroke={1.9} aria-hidden="true" />
+				</button>
 			{/if}
 		</div>
 	{/if}
