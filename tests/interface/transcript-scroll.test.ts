@@ -11,7 +11,7 @@ import {
 	resolvePinBottomToTopScrollTop,
 	resolveScrollToBottomScrollTop,
 	resolveTranscriptRunwayHeight,
-} from '../../src/lib/interface/transcript-scroll.ts';
+} from '../../../theorum/react/src/client/transcript-scroll.ts';
 
 function ok(label: string) {
 	console.log(`  ✓ ${label}`);

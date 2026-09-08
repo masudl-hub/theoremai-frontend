@@ -6,7 +6,7 @@ import Th30Widget from '$lib/components/Th30Widget.svelte';
 
 let { children } = $props();
 
-const showTh30 = $derived(!page.url.pathname.endsWith('/playground/run'));
+const showTh30 = $derived(!page.url.pathname.includes('/playground/run'));
 </script>
 
 <svelte:head>

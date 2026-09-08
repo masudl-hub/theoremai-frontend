@@ -7,30 +7,16 @@ import assert from 'node:assert/strict';
 import {
 	parsePlaygroundLiveToolResult,
 	toolInvokeResultFromEvents,
-} from '../src/lib/interface/playground-tool-result.ts';
+} from '../../theorum/react/src/client/playground-tool-result.ts';
 import {
 	applyToolDecisionToSessionPermissions,
 	buildInvokeToolResume,
 	continuePausedToolInvocation,
-} from '../src/lib/interface/tool-resume.ts';
+} from '../../theorum/react/src/client/tool-resume.ts';
 
-function ok(label) {
-	console.log(`  ✓ ${label}`);
-}
+import { createTestRunner } from './_test-harness.mjs';
 
-let failed = 0;
-
-function test(label, fn) {
-	try {
-		fn();
-		ok(label);
-	} catch (err) {
-		failed += 1;
-		const message = err instanceof Error ? err.message : String(err);
-		console.error(`  ✗ ${label}: ${message}`);
-	}
-}
-
+const { test, exit } = createTestRunner();
 test('buildInvokeToolResume requires explicit interactive value', () => {
 	assert.deepEqual(buildInvokeToolResume('interactive', 'picked'), { value: 'picked' });
 	assert.deepEqual(buildInvokeToolResume('interactive', true), { value: true });
@@ -126,9 +112,4 @@ test('toolInvokeResultFromEvents maps pause events', () => {
 	assert.equal(result.pause.kind, 'permission');
 });
 
-if (failed > 0) {
-	console.error(`\n${String(failed)} test(s) failed`);
-	process.exit(1);
-}
-
-console.log('\nAll checks passed.');
+exit();

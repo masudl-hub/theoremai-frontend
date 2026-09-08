@@ -10,9 +10,9 @@ function isTheorumRoot(candidate) {
 }
 
 /**
- * Nested submodule copies go stale. Refuse them when they still expose
- * pre-slot vault ids (`freeA`) or Gemini-named slot constants so hosts cannot
- * silently compile against an obsolete kernel while a sibling checkout exists.
+ * Refuse a checkout that still exposes pre-slot vault ids (`freeA`) or
+ * Gemini-named slot constants so hosts cannot silently compile against an
+ * obsolete kernel.
  *
  * @param {string} candidate
  * @returns {string | null} human-readable reason when stale, else null
@@ -53,43 +53,30 @@ export function theorumStaleReason(candidate) {
 
 /**
  * Resolve the kernel checkout the frontend should use.
- * Prefers the sibling clone at ../theorum (local side-by-side layout),
- * then falls back to the nested git submodule at ./theorum — but only when
- * that submodule is not detectably stale.
+ * Requires the sibling clone at ../theorum (side-by-side with theorum-frontend).
  */
 export function resolveTheorumRoot(frontendRoot = FRONTEND_ROOT) {
 	const sibling = path.resolve(frontendRoot, '../theorum');
-	const nested = path.resolve(frontendRoot, 'theorum');
 
-	if (isTheorumRoot(sibling)) {
-		const stale = theorumStaleReason(sibling);
-		if (stale) {
-			throw new Error(
-				`Sibling theorum at ${sibling} looks stale: ${stale}\n` +
-					'Update the sibling checkout before running the frontend.',
-			);
-		}
-		return { root: sibling, source: 'sibling' };
+	if (!isTheorumRoot(sibling)) {
+		throw new Error(
+			'Could not find theorum kernel.\n' +
+				`  expected sibling: ${sibling}\n` +
+				'Clone theorum next to theorum-frontend:\n' +
+				'  Development/theorum\n' +
+				'  Development/theorum-frontend',
+		);
 	}
 
-	if (isTheorumRoot(nested)) {
-		const stale = theorumStaleReason(nested);
-		if (stale) {
-			throw new Error(
-				`Nested theorum submodule at ${nested} is not authoritative and is stale: ${stale}\n` +
-					`Clone or update the sibling kernel at ${sibling} (preferred), or bump the submodule to a revision with slotA/slotB/slotC vault ids.\n` +
-					'See README.md § Kernel checkout.',
-			);
-		}
-		return { root: nested, source: 'submodule' };
+	const stale = theorumStaleReason(sibling);
+	if (stale) {
+		throw new Error(
+			`Sibling theorum at ${sibling} looks stale: ${stale}\n` +
+				'Update the sibling checkout before running the frontend.',
+		);
 	}
 
-	throw new Error(
-		'Could not find theorum kernel.\n' +
-			`  checked sibling: ${sibling}\n` +
-			`  checked submodule: ${nested}\n` +
-			'Clone theorum next to theorum-frontend, or run: npm run theorum:sync',
-	);
+	return { root: sibling, source: 'sibling' };
 }
 
 export { FRONTEND_ROOT };

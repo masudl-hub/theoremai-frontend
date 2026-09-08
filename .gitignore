@@ -13,6 +13,8 @@ stryker.log
 .wrangler
 /.svelte-kit
 /build
+apps/run/dist
+static/playground/run
 
 # OS
 .DS_Store
@@ -30,3 +32,4 @@ vite.config.ts.timestamp-*
 
 # Scratch
 tmp/
+*.tsbuildinfo

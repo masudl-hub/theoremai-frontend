@@ -2,26 +2,23 @@
 
 Interactive site for [THEORUM](https://github.com/masudl-hub/theorum) — docs, traces, and live kernel experiments.
 
-Built with **SvelteKit**.
+Built with **SvelteKit** (marketing + playground author) and **React** (`@theorum/react` run SPA at `/playground/run/`).
 
 ## Kernel checkout
 
-The frontend does **not** treat the nested `theorum/` git submodule as the live package when a sibling clone exists.
+Requires a sibling clone at `../theorum` (side-by-side with this repo).
 
-Resolution order (`scripts/resolve-theorum-root.mjs` + `npm run theorum:ensure`):
-
-1. **Sibling** `../theorum` (preferred for local side-by-side work)
-2. **Nested submodule** `./theorum` — only if sibling is missing **and** the submodule is not detectably stale
-
-Vite aliases and `node_modules/theorum` both follow that resolution. A stale nested tree (still advertising `freeA` / `GEMINI_FREE_BUCKETS`) is rejected with an error — see `theorum/NOT_AUTHORITATIVE.md`.
+`scripts/resolve-theorum-root.mjs` + `npm run theorum:ensure` resolve that path and symlink `node_modules/theorum` → it. Stale sibling checkouts (still advertising `freeA` / `GEMINI_FREE_BUCKETS`) are rejected.
 
 ## Layout
 
 ```text
+../theorum/                # sibling kernel + @theorum/react at react/
 theorum-frontend/
-  theorum/                 # git submodule fallback (not preferred when ../theorum exists)
+  apps/run/                # Vite React host for /playground/run/ (consumes @theorum/react)
   scripts/
     vite-live-relay-plugin.mjs # local vite WebSocket upgrade for /api/live/relay
+    sync-run-static.mjs    # copy apps/run/dist → static/playground/run
   src/
     lib/server/theorum.ts  # kernel version label helpers for the site
     lib/server/live-relay.ts # Gemini Live WebSocket relay (CF + local Node paths)
@@ -34,7 +31,7 @@ theorum-frontend/
 ## Setup
 
 ```bash
-# Preferred: sibling kernel + this repo
+# Sibling layout:
 #   ../theorum
 #   ./theorum-frontend
 git clone <this-repo>
@@ -44,22 +41,16 @@ cp .env.example .env.local  # free-tier OPENROUTER + GEMINI keys
 npm run dev
 ```
 
-Fallback without a sibling (submodule must be current):
-
-```bash
-git clone --recurse-submodules <this-repo>
-npm run theorum:sync
-npm install
-```
-
-Update the preferred sibling kernel in place; re-run `npm run theorum:ensure` after pulls.
+Update the sibling kernel in place; re-run `npm run theorum:ensure` after pulls.
 
 ## Development notes
 
+- **`npm run dev`** builds the React run SPA into `static/playground/run/` then starts SvelteKit. Playground “Run” opens `/playground/run/` on the same origin (no second server).
+- **`npm run dev:run`** — optional Vite HMR for `@theorum/react` alone on `:5174` while iterating on the run UI.
 - **Th30 / Live WebSocket:** production uses Cloudflare `WebSocketPair` in `/api/live/relay`. Local `npm run dev` serves the same path through `scripts/vite-live-relay-plugin.mjs` (Node `ws` + standard upstream WebSocket). Requires `GEMINI_API_KEY` in `.env.local`.
 - **Kernel runtime is server-only.** Client components should talk to `/api/*` routes, not import `@theorum/core` directly.
 - **Schema vocab is client-safe.** `import { PROTOCOLS, fieldMeta } from '@theorum/schema'` (Vite alias via `resolveTheorumRoot`) — closed unions and profile field tips, no Deno or provider graph.
-- Vite aliases `@theorum/core` (and related paths) through `resolveTheorumRoot()` — sibling first, submodule only as a non-stale fallback.
+- Vite aliases `@theorum/core` (and related paths) through `resolveTheorumRoot()` → sibling `../theorum`.
 - **Provider wiring:** server routes call `createProvider(profile, { openAiGateway, gemini, local })`. OpenRouter credentials live under `openAiGateway` (not `openRouter`). Local adapters are available via `theorum/providers/local` if you bypass the factory.
 - **Lazy adapters:** importing `@theorum/core` does not load OpenRouter, Google, or local adapter graphs — those load on the first `complete` for that transport.
 - **Free models only.** Keys enforce this at the provider — OpenRouter free keys can't reach paid models, Gemini keys are free-tier. The landing playground defaults to `openrouter/free` and validates apiIds at compile time.
@@ -80,13 +71,12 @@ Egress is **opt-in per profile** — set `guardrails.egress.enforce` (the landin
 
 | Command | Description |
 | --- | --- |
-| `npm run dev` | Start SvelteKit dev server |
-| `npm run build` | Production build |
+| `npm run dev` | Build React run into `static/`, then start the site |
+| `npm run build` | Build React run into `static/`, then SvelteKit |
 | `npm run check` | Typecheck |
-| `npm run theorum:ensure` | Symlink `node_modules/theorum` → resolved kernel (sibling preferred) |
-| `npm run theorum:sync` | Init/update submodule |
-| `npm run theorum:pull` | Fast-forward submodule to `origin/main` |
+| `npm run theorum:ensure` | Symlink `node_modules/theorum` → sibling `../theorum` |
+| `npm run theorum:pull` | Fast-forward sibling `../theorum` to `origin/main` |
 
 ## License
 
-MIT — site code. Kernel license follows `theorum/LICENSE`.
+MIT — site code. Kernel license follows `../theorum/LICENSE`.

@@ -18,8 +18,6 @@ import {
 	type PlaygroundNode,
 } from './types';
 
-export { branchEdge, spineEdge } from './graph-layout';
-
 /** Initial graph shown on playground load — only the profile box, panel open. */
 export function createInitialGraph(): { nodes: PlaygroundNode[]; edges: PlaygroundEdge[] } {
 	const nodes: PlaygroundNode[] = [

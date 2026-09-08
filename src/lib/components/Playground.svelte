@@ -20,13 +20,13 @@ import { resolve } from '$app/paths';
 import '@xyflow/svelte/dist/style.css';
 import '$lib/components/playground/playground-graph.css';
 
+import { savePlaygroundRunPayload } from '@theorum/react/client';
 import AsciiCardSegments from '$lib/ascii/AsciiCardSegments.svelte';
 import { parseAsciiCardSegments, renderAsciiCard } from '$lib/ascii/tip-card';
 import AsciiHover from '$lib/components/AsciiHover.svelte';
 import FacetNode from '$lib/components/playground/FacetNode.svelte';
 import FacetPanel from '$lib/components/playground/FacetPanel.svelte';
 import PlaygroundFlowFit from '$lib/components/playground/PlaygroundFlowFit.svelte';
-import { savePlaygroundRunPayload } from '$lib/interface/run-payload';
 import { compilePlayground } from '$lib/playground/compile';
 import { PLAYGROUND_CTX, type PlaygroundCtx, type PlaygroundHub } from '$lib/playground/context';
 import { createBlankGraph, createExampleGraph, syncGraphForProfile } from '$lib/playground/example';
@@ -304,7 +304,7 @@ async function runCompile() {
 		structured: result.structured,
 	});
 	running = false;
-	window.open(`${resolve('/playground/run', {})}`, '_blank', 'noopener,noreferrer');
+	window.open(`${resolve('/playground/run/', {})}`, '_blank', 'noopener,noreferrer');
 }
 
 async function copySource() {

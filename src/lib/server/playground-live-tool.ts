@@ -1,10 +1,7 @@
+import { type PlaygroundLiveToolResult, toolInvokeResultFromEvents } from '@theorum/react/client';
 import type { ProfileDefinition, TurnEvent } from 'theorum';
 import { invokeTool } from 'theorum';
 import type { ToolCredential } from 'theorum/kernel';
-import {
-	type PlaygroundLiveToolResult,
-	toolInvokeResultFromEvents,
-} from '$lib/interface/playground-tool-result';
 import type { ToolRegistration } from '$lib/playground/types';
 import { registerPlaygroundProfile } from './playground-register';
 

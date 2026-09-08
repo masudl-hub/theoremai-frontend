@@ -9,25 +9,11 @@ import {
 	buildInvokeRequestBody,
 	buildTurnRequestBody,
 	turnInputFromSession,
-} from '../src/lib/interface/turn-client.ts';
+} from '../../theorum/react/src/client/turn-client.ts';
 
-function ok(label) {
-	console.log(`  ✓ ${label}`);
-}
+import { createTestRunner } from './_test-harness.mjs';
 
-let failed = 0;
-
-function test(label, fn) {
-	try {
-		fn();
-		ok(label);
-	} catch (err) {
-		failed += 1;
-		const message = err instanceof Error ? err.message : String(err);
-		console.error(`  ✗ ${label}: ${message}`);
-	}
-}
-
+const { test, exit } = createTestRunner();
 const payload = {
 	profile: {
 		type: 'text',
@@ -148,9 +134,4 @@ test('buildInvokeRequestBody forwards snapshot, promoted, and model', () => {
 	assert.deepEqual(body.turnInput?.history, []);
 });
 
-if (failed > 0) {
-	console.error(`\n${String(failed)} test(s) failed`);
-	process.exit(1);
-}
-
-console.log('\nAll checks passed.');
+exit();

@@ -22,6 +22,10 @@ import {
 import { PLAYGROUND_CTX, type PlaygroundCtx } from '$lib/playground/context';
 import { fieldEnumOptions } from '$lib/playground/field-controls';
 import { parseList } from '$lib/playground/playground-policy';
+import {
+	buildTestConnectionAuth,
+	parseHeadersJson as parseHeadersJsonStrict,
+} from '$lib/playground/remote-tool-auth';
 import { parseJsonSchema, sampleInputFromJsonSchema } from '$lib/playground/tool-schema';
 import type { GuardrailsData, ToolSpecData } from '$lib/playground/types';
 import FacetFieldLabel from './FacetFieldLabel.svelte';
@@ -76,37 +80,7 @@ const guardrails = $derived.by((): GuardrailsData | undefined => {
 });
 
 function parseHeadersJson(raw: string): Record<string, string> | undefined {
-	const trimmed = raw.trim();
-	if (!trimmed) return undefined;
-	try {
-		const parsed: unknown = JSON.parse(trimmed);
-		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined;
-		const out: Record<string, string> = {};
-		for (const [key, value] of Object.entries(parsed)) {
-			if (typeof value !== 'string') return undefined;
-			out[key] = value;
-		}
-		return out;
-	} catch {
-		return undefined;
-	}
-}
-
-function buildTestAuth():
-	| {
-			slot?: string;
-			type?: 'bearer' | 'api_key' | 'oauth2';
-			headerName?: string;
-			headerPrefix?: string;
-	  }
-	| undefined {
-	if (!data.authType || data.authType === 'none') return undefined;
-	return {
-		slot: data.authSlot?.trim() || 'default',
-		type: data.authType,
-		headerName: data.authHeaderName?.trim() || undefined,
-		headerPrefix: data.authHeaderPrefix !== undefined ? data.authHeaderPrefix : undefined,
-	};
+	return parseHeadersJsonStrict(raw) ?? undefined;
 }
 
 function resolveHttpTestSampleInput(toolData: ToolSpecData): Record<string, unknown> {
@@ -124,7 +98,7 @@ async function testConnection(): Promise<void> {
 	const allowPrivateNetworks = Boolean(guardrails?.allowPrivateNetworks);
 	const allowedHosts = guardrails?.allowedHosts ? parseList(guardrails.allowedHosts) : [];
 	const headers = data.headersJson ? parseHeadersJson(data.headersJson) : undefined;
-	const auth = buildTestAuth();
+	const auth = buildTestConnectionAuth(data);
 	const testCredential = testCredentialInput.trim() || undefined;
 
 	try {

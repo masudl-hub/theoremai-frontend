@@ -46,17 +46,6 @@ export function fieldEnumOptions(
 	return options;
 }
 
-/**
- * Suggested vocabulary for open `string` fields (e.g. live.voice).
- * Kernel still accepts any string — use with `<datalist>`, not a closed select.
- */
-export function fieldVocabulary(path: string): readonly string[] {
-	const meta = fieldMeta(path);
-	if (!meta?.options?.length) return [];
-	if (meta.type.includes('|')) return [];
-	return meta.options;
-}
-
 /** Closed union exported from `theorum/schema` when no `fieldMeta` path exists. */
 export function schemaEnumOptions(
 	values: readonly string[],

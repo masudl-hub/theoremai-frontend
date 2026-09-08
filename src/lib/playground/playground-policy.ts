@@ -11,9 +11,6 @@ import { GOOGLE_BUILTIN_TOOLS } from 'theorum/presets/google';
 
 export const OPENROUTER_PLAYGROUND_API_ID = 'openrouter/free';
 
-export const OPENROUTER_PLAYGROUND_NOTE =
-	'Playground restriction: only the free router is allowed. OpenRouter picks a free model per request; some routed models may train on data.';
-
 /** Default Gemini wire id for geminiInteractions — highest free RPD in quota table. */
 export const GEMINI_PLAYGROUND_DEFAULT_API_ID = 'gemini-3.1-flash-lite';
 
@@ -331,54 +328,10 @@ export function geminiModelSelectOptions(protocol?: string) {
 	).map((m) => ({ value: m.id, label: `${m.label} (${m.id})` }));
 }
 
-/** Coerce apiId when transport changes in the facet editor. */
-export function coerceApiIdForTransport(apiId: string, protocol: string, provider: string): string {
-	if (isOpenRouterTransport(protocol, provider)) return OPENROUTER_PLAYGROUND_API_ID;
-	if (isGoogleTransport(protocol, provider)) {
-		const trimmed = apiId.trim();
-		if (isAllowedGeminiPlaygroundApiId(trimmed, protocol)) return trimmed;
-		return defaultGeminiApiId(protocol);
-	}
-	return apiId.trim();
-}
-
 /** Strip builtInTools that violate playground policy for the given apiId. */
 export function sanitizeBuiltInsForApiId(apiId: string, builtInToolsRaw: string): string {
 	const allowed = new Set(allowedBuiltinsForGemini(apiId));
 	return parseList(builtInToolsRaw)
 		.filter((b) => allowed.has(b as GoogleBuiltinId))
 		.join(', ');
-}
-
-/** After binding transport changes, coerce every model binding on the canvas. */
-export function syncModelBindingsForTransport(
-	modelBindings: Array<{
-		id: string;
-		protocol: string;
-		provider: string;
-		apiId: string;
-		builtInTools: string;
-	}>,
-	protocol: string,
-	provider: string,
-): Map<string, { protocol: string; provider: string; apiId: string; builtInTools: string }> {
-	const updates = new Map<
-		string,
-		{ protocol: string; provider: string; apiId: string; builtInTools: string }
-	>();
-	for (const spec of modelBindings) {
-		const apiId = coerceApiIdForTransport(spec.apiId, protocol, provider);
-		const builtInTools = isGoogleTransport(protocol, provider)
-			? sanitizeBuiltInsForApiId(apiId, spec.builtInTools)
-			: spec.builtInTools;
-		if (
-			protocol !== spec.protocol ||
-			provider !== spec.provider ||
-			apiId !== spec.apiId ||
-			builtInTools !== spec.builtInTools
-		) {
-			updates.set(spec.id, { protocol, provider, apiId, builtInTools });
-		}
-	}
-	return updates;
 }

@@ -131,7 +131,9 @@
 }
 
 .facet-panel .facet-editor .field:focus,
-.facet-panel .facet-editor .field:focus-visible {
+.facet-panel .facet-editor .field:focus-visible,
+.facet-panel .facet-editor .select-trigger:focus,
+.facet-panel .facet-editor .select-trigger:focus-visible {
 	background: var(--pg-shell-bg-hover, rgba(0, 0, 0, 0.05));
 	color: var(--color-ink);
 	border-color: var(--pg-shell-border-strong, rgba(0, 0, 0, 0.25));
@@ -141,13 +143,6 @@
 	font-size: var(--fe-font-body);
 	font-weight: var(--fe-weight-body);
 	padding: 0.45rem 0.55rem;
-}
-
-.facet-panel .facet-editor .select-trigger:focus,
-.facet-panel .facet-editor .select-trigger:focus-visible {
-	background: var(--pg-shell-bg-hover, rgba(0, 0, 0, 0.05));
-	color: var(--color-ink);
-	border-color: var(--pg-shell-border-strong, rgba(0, 0, 0, 0.25));
 }
 
 .facet-panel .facet-editor .facet-action {

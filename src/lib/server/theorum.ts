@@ -1,5 +1,5 @@
 /**
- * Server-only kernel metadata for site routes (version label, submodule head).
+ * Server-only kernel metadata for site routes (version label, kernel HEAD).
  * Live relay and Th30 import `theorum` package subpaths directly — no re-export barrel.
  */
 

@@ -31,6 +31,12 @@ function openRouterVault(env: PlaygroundTurnEnv) {
 	return { apiKey: key };
 }
 
+function assertNotLiveProfile(profileType: string, action: string): void {
+	if (profileType === 'live') {
+		throw new Error(`Playground ${action} does not support live profiles.`);
+	}
+}
+
 function createPlaygroundProvider(
 	profile: ReturnType<typeof registerPlaygroundProfile>,
 	env: PlaygroundTurnEnv,
@@ -55,9 +61,7 @@ export async function* streamPlaygroundTurn(args: {
 	env?: PlaygroundTurnEnv;
 }): AsyncGenerator<TurnEvent> {
 	const profile = registerPlaygroundProfile(args.profile, args.customTools, args.structured);
-	if (profile.type === 'live') {
-		throw new Error('Playground turn runner does not support live profiles — use runSession.');
-	}
+	assertNotLiveProfile(profile.type, 'turn runner — use runSession');
 
 	const provider = createPlaygroundProvider(profile, args.env ?? {});
 
@@ -84,9 +88,7 @@ export async function* streamPlaygroundInvoke(args: {
 	env?: PlaygroundTurnEnv;
 }): AsyncGenerator<TurnEvent> {
 	const profile = registerPlaygroundProfile(args.profile, args.customTools, args.structured);
-	if (profile.type === 'live') {
-		throw new Error('Playground invoke does not support live profiles.');
-	}
+	assertNotLiveProfile(profile.type, 'invoke');
 
 	for await (const event of invokeTool({
 		profile: profile.id,
@@ -94,20 +96,4 @@ export async function* streamPlaygroundInvoke(args: {
 	})) {
 		yield event;
 	}
-}
-
-export async function executePlaygroundTurn(args: {
-	profile: ProfileDefinition;
-	customTools: ToolRegistration[];
-	structured?: StructuredRegistration;
-	input: TurnInput;
-	previousInteractionId?: string;
-	sessionPermissions?: string[];
-	env?: PlaygroundTurnEnv;
-}): Promise<TurnEvent[]> {
-	const events: TurnEvent[] = [];
-	for await (const event of streamPlaygroundTurn(args)) {
-		events.push(event);
-	}
-	return events;
 }

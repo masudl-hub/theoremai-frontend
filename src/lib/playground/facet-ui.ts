@@ -48,91 +48,111 @@ function limitChips(chips: string[], max = FACET_CHIP_LIMIT): string[] {
 	return kept;
 }
 
+function identityChips(data: Extract<FacetData, { kind: 'identity' }>): string[] {
+	const chips: string[] = [];
+	chips.push(data.profileType || 'type?');
+	if (data.handle.trim()) chips.push(`@${data.handle.trim()}`);
+	const sys = clip(data.system, 24);
+	if (sys) chips.push(sys);
+	return chips;
+}
+
+function imageChips(data: Extract<FacetData, { kind: 'image' }>): string[] {
+	const chips: string[] = [];
+	if (data.aspectRatio.trim()) chips.push(data.aspectRatio.trim());
+	if (data.size.trim()) chips.push(data.size.trim());
+	if (data.mimeType.trim()) chips.push(data.mimeType.trim());
+	if (data.includeText) chips.push('text+img');
+	if (!chips.length) chips.push('image');
+	return chips;
+}
+
+function speechChips(data: Extract<FacetData, { kind: 'speech' }>): string[] {
+	return [...(data.voice.trim() ? [data.voice.trim()] : []), data.format];
+}
+
+function liveChips(data: Extract<FacetData, { kind: 'live' }>): string[] {
+	const ingress: string[] = [];
+	if (data.ingressAudio) ingress.push('mic');
+	if (data.ingressVideo) ingress.push('camera');
+	if (data.ingressText) ingress.push('text');
+	return [
+		...(data.voice.trim() ? [data.voice.trim()] : []),
+		ingress.length ? `ingress: ${ingress.join('+')}` : 'ingress: none',
+		data.sessionResumption ? 'resumption' : 'standard',
+		...(data.transcriptionInput ? ['asr in'] : []),
+		...(data.transcriptionOutput ? ['asr out'] : []),
+	];
+}
+
+function modelsChips(data: Extract<FacetData, { kind: 'models' }>): string[] {
+	return [
+		data.defaultModel.trim() ? `default: ${data.defaultModel.trim()}` : 'default?',
+		...(data.allowModelSelect ? ['selectable'] : []),
+		`steps ${String(data.maxSteps)}`,
+	];
+}
+
+function modelBindingChips(data: Extract<FacetData, { kind: 'modelBinding' }>): string[] {
+	const chips = [`${data.provider}/${data.protocol}`, data.apiId || '—'];
+	if (data.temperature !== undefined) chips.push(`t=${String(data.temperature)}`);
+	if (data.builtInTools.trim()) chips.push(`builtins[${data.builtInTools}]`);
+	return chips;
+}
+
+function inputsChips(data: Extract<FacetData, { kind: 'inputs' }>): string[] {
+	const chips: string[] = [];
+	if (data.text) chips.push('text');
+	if (data.attachmentsAccept.length) chips.push(`attach ×${String(data.attachmentsAccept.length)}`);
+	if (data.voiceAccept.length) chips.push(`voice ×${String(data.voiceAccept.length)}`);
+	if (!chips.length) chips.push('none');
+	return chips;
+}
+
+function outputsChips(data: Extract<FacetData, { kind: 'outputs' }>): string[] {
+	const chips = [
+		data.mode === 'structured' ? `schema: ${data.schemaId.trim() || '—'}` : 'text',
+		data.streamMode,
+	];
+	if (data.validationEnabled) chips.push('validated');
+	if (data.resumeEnabled) chips.push('resume');
+	return chips;
+}
+
+function guardrailsChips(data: Extract<FacetData, { kind: 'guardrails' }>): string[] {
+	return [
+		data.canary ? 'canary' : 'no canary',
+		data.sanitizeInput ? 'sanitize' : 'raw in',
+		`egress ${data.egressMode}`,
+	];
+}
+
 /** Compact chip labels for collapsed facet cards on the canvas. */
 export function facetChips(data: FacetData, toolChildren: string[] = []): string[] {
-	let chips: string[];
 	switch (data.kind) {
-		case 'identity': {
-			chips = [];
-			if (data.profileType) chips.push(data.profileType);
-			else chips.push('type?');
-			if (data.handle.trim()) chips.push(`@${data.handle.trim()}`);
-			const sys = clip(data.system, 24);
-			if (sys) chips.push(sys);
-			break;
-		}
-		case 'image': {
-			chips = [];
-			if (data.aspectRatio.trim()) chips.push(data.aspectRatio.trim());
-			if (data.size.trim()) chips.push(data.size.trim());
-			if (data.mimeType.trim()) chips.push(data.mimeType.trim());
-			if (data.includeText) chips.push('text+img');
-			if (!chips.length) chips.push('image');
-			break;
-		}
+		case 'identity':
+			return limitChips(identityChips(data));
+		case 'image':
+			return limitChips(imageChips(data));
 		case 'speech':
-			chips = [...(data.voice.trim() ? [data.voice.trim()] : []), data.format];
-			break;
-		case 'live': {
-			const ingress: string[] = [];
-			if (data.ingressAudio) ingress.push('mic');
-			if (data.ingressVideo) ingress.push('camera');
-			if (data.ingressText) ingress.push('text');
-			chips = [
-				...(data.voice.trim() ? [data.voice.trim()] : []),
-				ingress.length ? `ingress: ${ingress.join('+')}` : 'ingress: none',
-				data.sessionResumption ? 'resumption' : 'standard',
-				...(data.transcriptionInput ? ['asr in'] : []),
-				...(data.transcriptionOutput ? ['asr out'] : []),
-			];
-			break;
-		}
+			return limitChips(speechChips(data));
+		case 'live':
+			return limitChips(liveChips(data));
 		case 'models':
-			chips = [
-				data.defaultModel.trim() ? `default: ${data.defaultModel.trim()}` : 'default?',
-				...(data.allowModelSelect ? ['selectable'] : []),
-				`steps ${String(data.maxSteps)}`,
-			];
-			break;
-		case 'modelBinding': {
-			chips = [`${data.provider}/${data.protocol}`, data.apiId || '—'];
-			if (data.temperature !== undefined) chips.push(`t=${String(data.temperature)}`);
-			if (data.builtInTools.trim()) chips.push(`builtins[${data.builtInTools}]`);
-			break;
-		}
+			return limitChips(modelsChips(data));
+		case 'modelBinding':
+			return limitChips(modelBindingChips(data));
 		case 'tools':
-			chips = toolChildren.length ? toolChildren.map((n) => clip(n, 22)) : ['+ tool'];
-			break;
+			return limitChips(toolChildren.length ? toolChildren.map((n) => clip(n, 22)) : ['+ tool']);
 		case 'toolSpec':
-			chips = [data.toolType, data.loadTier];
-			break;
-		case 'inputs': {
-			chips = [];
-			if (data.text) chips.push('text');
-			if (data.attachmentsAccept.length)
-				chips.push(`attach ×${String(data.attachmentsAccept.length)}`);
-			if (data.voiceAccept.length) chips.push(`voice ×${String(data.voiceAccept.length)}`);
-			if (!chips.length) chips.push('none');
-			break;
-		}
-		case 'outputs': {
-			chips = [
-				data.mode === 'structured' ? `schema: ${data.schemaId.trim() || '—'}` : 'text',
-				data.streamMode,
-			];
-			if (data.validationEnabled) chips.push('validated');
-			if (data.resumeEnabled) chips.push('resume');
-			break;
-		}
+			return limitChips([data.toolType, data.loadTier]);
+		case 'inputs':
+			return limitChips(inputsChips(data));
+		case 'outputs':
+			return limitChips(outputsChips(data));
 		case 'guardrails':
-			chips = [
-				data.canary ? 'canary' : 'no canary',
-				data.sanitizeInput ? 'sanitize' : 'raw in',
-				`egress ${data.egressMode}`,
-			];
-			break;
+			return limitChips(guardrailsChips(data));
 		default:
-			chips = [];
+			return limitChips([]);
 	}
-	return limitChips(chips);
 }

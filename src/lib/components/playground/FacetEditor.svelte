@@ -17,7 +17,12 @@ import {
 	OPENROUTER_PLAYGROUND_API_ID,
 	sanitizeBuiltInsForApiId,
 } from '$lib/playground/playground-policy';
-import type { FacetData, ModelBindingData, PlaygroundNode, ProfileType } from '$lib/playground/types';
+import type {
+	FacetData,
+	ModelBindingData,
+	PlaygroundNode,
+	ProfileType,
+} from '$lib/playground/types';
 import './facet-editor/facet-editor.css';
 import GuardrailsFacetEditor from './facet-editor/GuardrailsFacetEditor.svelte';
 import IdentityFacetEditor from './facet-editor/IdentityFacetEditor.svelte';
@@ -65,9 +70,7 @@ const bindingTransport = $derived.by(() => {
 	const spec = nodes.find(
 		(n) =>
 			n.data.kind === 'modelBinding' &&
-			(defaultId
-				? (n.data as ModelBindingData).modelId.trim() === defaultId
-				: true),
+			(defaultId ? (n.data as ModelBindingData).modelId.trim() === defaultId : true),
 	)?.data as ModelBindingData | undefined;
 	return {
 		protocol: spec?.protocol ?? playground.hub.protocol,
@@ -122,7 +125,7 @@ function syncSpeechFormats(protocol: Protocol) {
 
 function ensureProfileKeyForGoogle() {
 	const modelsNode = playground.getNodes().find((n) => n.data.kind === 'models');
-	if (!modelsNode || modelsNode.data.kind !== 'models' || modelsNode.data.key) return;
+	if (modelsNode?.data.kind !== 'models' || modelsNode.data.key) return;
 	playground.patchNode(modelsNode.id, { key: 'slotA' });
 }
 

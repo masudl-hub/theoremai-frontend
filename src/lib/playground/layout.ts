@@ -1,9 +1,6 @@
 import { estimateFacetNodeHeight } from './facet-ui.ts';
 import type { FacetData } from './types.ts';
 
-/** Fraction of workspace width used by the facet panel when open. */
-export const PLAYGROUND_PANEL_WIDTH_RATIO = 1 / 3;
-
 export const PLAYGROUND_ORIGIN = { x: 40, y: 40 };
 
 /** Vertical trunk line — facets branch horizontally from here. */
@@ -39,9 +36,6 @@ export function playgroundViewportForAnchor(
 
 /** Spine facet cards sit to the right of the trunk line. */
 export const PLAYGROUND_FACET_X = PLAYGROUND_SPINE_LINE_X + 72;
-
-/** @deprecated Use PLAYGROUND_FACET_X */
-export const PLAYGROUND_SPINE_X = PLAYGROUND_FACET_X;
 
 /** X for the branch column immediately right of a hub. */
 export function branchColumnX(hubX: number): number {
@@ -79,14 +73,6 @@ export function nextBranchSpecPosition(
 	existingSpecs: ReadonlyArray<{ data: FacetData; position: { y: number } }>,
 ): { x: number; y: number } {
 	return stackBranchSpecPosition(hubPosition.x, hubPosition.y, existingSpecs);
-}
-
-/** Vertical position for the next child spec under a hub node. */
-export function nextChildSpecY(specPositions: Array<{ y: number }>, hubY: number): number {
-	const baseY = hubY + PLAYGROUND_BRANCH_ROW_PX;
-	if (specPositions.length === 0) return baseY;
-	const lastSpecY = Math.max(...specPositions.map((p) => p.y));
-	return lastSpecY + PLAYGROUND_BRANCH_ROW_PX;
 }
 
 /** Facet node width (15rem) plus breathing room between columns. */

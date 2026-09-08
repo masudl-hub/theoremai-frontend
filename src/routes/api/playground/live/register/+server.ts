@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import { badRequestJson } from '$lib/server/ndjson-stream';
 import { registerPlaygroundProfile } from '$lib/server/playground-register';
 import type { RequestHandler } from './$types';
 
@@ -16,7 +17,6 @@ export const POST: RequestHandler = async ({ request }) => {
 		const profile = registerPlaygroundProfile(body.profile, body.customTools ?? []);
 		return json({ profileId: profile.id });
 	} catch (err) {
-		const message = err instanceof Error ? err.message : String(err);
-		return json({ error: message }, { status: 400 });
+		return badRequestJson(err);
 	}
 };

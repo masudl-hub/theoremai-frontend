@@ -7,6 +7,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 import { resolveTheorumRoot } from './scripts/resolve-theorum-root.mjs';
 import { liveRelayDevPlugin } from './scripts/vite-live-relay-plugin.mjs';
+import { runSpaIndexPlugin } from './scripts/vite-run-spa-index-plugin.mjs';
 
 function theorumAliases(theorumRoot: string) {
 	const theorumSchema = path.resolve(theorumRoot, 'src/kernel/schema.ts');
@@ -34,6 +35,9 @@ function theorumAliases(theorumRoot: string) {
 		'@theorum/guardrails': path.resolve(theorumRoot, 'src/guardrails/mod.ts'),
 		'@theorum/presets/google': path.resolve(theorumRoot, 'src/presets/google.ts'),
 		'@theorum/providers/google/live': path.resolve(theorumRoot, 'src/providers/google/live/mod.ts'),
+		// Shared run handoff + React package — lives in sibling ../theorum/react.
+		'@theorum/react/client': path.resolve(theorumRoot, 'react/src/client/index.ts'),
+		'@theorum/react': path.resolve(theorumRoot, 'react/src/index.ts'),
 	};
 }
 
@@ -68,6 +72,7 @@ export default defineConfig(() => {
 		},
 		plugins: [
 			tailwindcss(),
+			runSpaIndexPlugin(),
 			// Before sveltekit so /api/live/relay upgrades are claimed (Vite otherwise
 			// never completes the handshake; Workers WebSocketPair is absent in Node).
 			liveRelayDevPlugin(),
@@ -100,6 +105,8 @@ export default defineConfig(() => {
 				'@theorum/guardrails',
 				'@theorum/presets/google',
 				'@theorum/providers/google/live',
+				'@theorum/react',
+				'@theorum/react/client',
 				'@xyflow/svelte',
 				'@xyflow/system',
 			],

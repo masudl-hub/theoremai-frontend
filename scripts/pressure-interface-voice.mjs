@@ -6,8 +6,12 @@
 import assert from 'node:assert/strict';
 import { defineProfile } from 'theorum';
 import { interfaceFromProfile, prepareUserTurn } from 'theorum/interface';
-import { filesToPending } from '../src/lib/interface/encode-files.ts';
-import { float32RmsToLevel, INPUT_LEVEL_GAIN, timeDomainBytesToLevel } from '../src/lib/interface/audio-level.ts';
+import { filesToPending } from '../../theorum/react/src/client/encode-files.ts';
+import {
+	float32RmsToLevel,
+	INPUT_LEVEL_GAIN,
+	timeDomainBytesToLevel,
+} from '../../theorum/react/src/client/audio-level.ts';
 
 const profile = defineProfile({
 	id: 'pressure.voice.composer',

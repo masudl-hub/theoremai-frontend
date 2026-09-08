@@ -6,12 +6,12 @@ import {
 	validateGeminiModelBinding,
 	validateOpenRouterModelBinding,
 } from './playground-policy';
+import { buildRemoteToolAuth, parseHeadersJson } from './remote-tool-auth';
 import { parseJsonSchema, zodExprFromJsonSchema } from './tool-schema';
 import type {
 	CompileIssue,
 	FacetData,
 	GuardrailsData,
-	HttpToolRegistration,
 	IdentityData,
 	ImageData,
 	InputsData,
@@ -26,35 +26,43 @@ import type {
 	ToolsData,
 } from './types';
 
-type RemoteToolAuth = NonNullable<HttpToolRegistration['auth']>;
-
-function parseHeadersJson(raw: string): Record<string, string> | null {
-	try {
-		const parsed: unknown = JSON.parse(raw);
-		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-		const out: Record<string, string> = {};
-		for (const [key, value] of Object.entries(parsed)) {
-			if (typeof value !== 'string') return null;
-			out[key] = value;
-		}
-		return out;
-	} catch {
-		return null;
-	}
+function toolRegistrationBase(
+	data: ToolSpecData,
+	name: string,
+	paths: string[],
+	inputSchema: ToolRegistration['inputSchema'],
+	outputSchema: ToolRegistration['outputSchema'],
+) {
+	return {
+		name,
+		description: data.description.trim(),
+		category: data.category.trim() || 'playground',
+		access: data.access,
+		permission: data.permission,
+		loadTier: data.loadTier,
+		paths: paths.length ? paths : ['*'],
+		inputSchema,
+		outputSchema,
+	};
 }
 
-function buildRemoteToolAuth(data: ToolSpecData): RemoteToolAuth | undefined {
-	if (!data.authType || data.authType === 'none') return undefined;
-	return {
-		slot: data.authSlot?.trim() || 'default',
-		type: data.authType,
-		headerName: data.authHeaderName?.trim() || undefined,
-		headerPrefix: data.authHeaderPrefix !== undefined ? data.authHeaderPrefix : undefined,
-		onUnauthenticated: data.authUnauthenticated ?? 'pause',
-		scopes: data.authScopes ? parseList(data.authScopes) : undefined,
-		clientId: data.authClientId?.trim() || undefined,
-		redirectUri: data.authRedirectUri?.trim() || undefined,
-	};
+function parseOptionalHeadersJson(
+	raw: string | undefined,
+	issues: CompileIssue[],
+	id: string,
+	label: string,
+): Record<string, string> | undefined | null {
+	if (!raw?.trim()) return undefined;
+	const parsedHeaders = parseHeadersJson(raw);
+	if (!parsedHeaders) {
+		issues.push({
+			nodeId: id,
+			facet: 'toolSpec',
+			message: `${label} headers must be valid JSON object.`,
+		});
+		return null;
+	}
+	return parsedHeaders;
 }
 
 export type ValidatedPlayground = {
@@ -160,35 +168,16 @@ function compileToolSpec(
 			return null;
 		}
 
-		let headers: Record<string, string> | undefined;
-		if (data.headersJson?.trim()) {
-			const parsedHeaders = parseHeadersJson(data.headersJson);
-			if (!parsedHeaders) {
-				issues.push({
-					nodeId: id,
-					facet: 'toolSpec',
-					message: 'HTTP headers must be valid JSON object.',
-				});
-				return null;
-			}
-			headers = parsedHeaders;
-		}
+		const headers = parseOptionalHeadersJson(data.headersJson, issues, id, 'HTTP');
+		if (headers === null) return null;
 
 		const pathParams = parseList(data.pathParams ?? '');
 		const queryParams = parseList(data.queryParams ?? '');
 		const bodyParam = data.bodyParam?.trim() || undefined;
 
-		const auth = buildRemoteToolAuth(data);
-
 		return {
 			type: 'http',
-			name,
-			description: data.description.trim(),
-			category: data.category.trim() || 'playground',
-			access: data.access,
-			permission: data.permission,
-			loadTier: data.loadTier,
-			paths: paths.length ? paths : ['*'],
+			...toolRegistrationBase(data, name, paths, inputParsed.schema, outputParsed.schema),
 			endpoint,
 			method: data.method ?? HTTP_METHODS[0],
 			headers,
@@ -197,9 +186,7 @@ function compileToolSpec(
 				queryParams: queryParams.length ? queryParams : undefined,
 				bodyParam,
 			},
-			auth,
-			inputSchema: inputParsed.schema,
-			outputSchema: outputParsed.schema,
+			auth: buildRemoteToolAuth(data),
 		};
 	}
 
@@ -215,51 +202,22 @@ function compileToolSpec(
 			return null;
 		}
 
-		let headers: Record<string, string> | undefined;
-		if (data.headersJson?.trim()) {
-			const parsedHeaders = parseHeadersJson(data.headersJson);
-			if (!parsedHeaders) {
-				issues.push({
-					nodeId: id,
-					facet: 'toolSpec',
-					message: 'MCP headers must be valid JSON object.',
-				});
-				return null;
-			}
-			headers = parsedHeaders;
-		}
-
-		const auth = buildRemoteToolAuth(data);
+		const headers = parseOptionalHeadersJson(data.headersJson, issues, id, 'MCP');
+		if (headers === null) return null;
 
 		return {
 			type: 'mcp',
-			name,
-			description: data.description.trim(),
-			category: data.category.trim() || 'playground',
-			access: data.access,
-			permission: data.permission,
-			loadTier: data.loadTier,
-			paths: paths.length ? paths : ['*'],
+			...toolRegistrationBase(data, name, paths, inputParsed.schema, outputParsed.schema),
 			serverUrl,
 			mcpToolName,
 			headers,
-			auth,
-			inputSchema: inputParsed.schema,
-			outputSchema: outputParsed.schema,
+			auth: buildRemoteToolAuth(data),
 		};
 	}
 
 	return {
 		type: 'function',
-		name,
-		description: data.description.trim(),
-		category: data.category.trim() || 'playground',
-		access: data.access,
-		permission: data.permission,
-		loadTier: data.loadTier,
-		paths: paths.length ? paths : ['*'],
-		inputSchema: inputParsed.schema,
-		outputSchema: outputParsed.schema,
+		...toolRegistrationBase(data, name, paths, inputParsed.schema, outputParsed.schema),
 		stubResponse,
 	};
 }

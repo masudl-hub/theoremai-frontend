@@ -25,7 +25,6 @@ export function protocolsForModality(
 	return labeled(protocolsForProfileType(type));
 }
 
-export const PLAYGROUND_PROTOCOLS = labeled(PROTOCOL_VALUES);
 export const PLAYGROUND_PROVIDERS = labeled(PROVIDER_VALUES);
 
 /** Profile archetype cards — labels from kernel profile `type` field catalog. */

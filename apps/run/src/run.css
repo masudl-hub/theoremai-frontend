@@ -1,0 +1,61 @@
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap");
+
+:root {
+	--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	--color-ink: #000000;
+	--color-paper: #f7f5f0;
+	--color-paper-bright: #ffffff;
+	--color-mute: #464646;
+	--ink-ease: cubic-bezier(0.22, 1, 0.36, 1);
+	--ink-duration: 0.3s;
+}
+
+html {
+	height: 100%;
+}
+
+body {
+	margin: 0;
+	min-height: 100dvh;
+	font-family: var(--font-mono);
+	color: var(--color-ink);
+	background: var(--color-paper);
+	-webkit-font-smoothing: antialiased;
+}
+
+body:has(.iface-stage),
+body:has(.live-stage) {
+	height: 100dvh;
+	overflow: hidden;
+}
+
+.iface-run-inline-error {
+	margin: 2rem auto;
+	max-width: 28rem;
+	padding: 0 1.25rem;
+	font-size: 0.82rem;
+	line-height: 1.4;
+	color: #8b0000;
+	text-align: left;
+}
+
+.iface-run-loading {
+	margin: 2rem auto;
+	padding: 0 1.25rem;
+	font-size: 0.82rem;
+}
+
+.iface-run-link {
+	position: fixed;
+	top: 0.75rem;
+	left: 1rem;
+	z-index: 20;
+	font-size: 0.75rem;
+	color: inherit;
+	opacity: 0.55;
+	text-decoration: none;
+}
+
+.iface-run-link:hover {
+	opacity: 0.9;
+}
