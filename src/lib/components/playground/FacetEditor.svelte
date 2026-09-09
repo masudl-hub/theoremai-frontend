@@ -31,10 +31,12 @@ import InputsFacetEditor from './facet-editor/InputsFacetEditor.svelte';
 import LiveFacetEditor from './facet-editor/LiveFacetEditor.svelte';
 import ModelBindingFacetEditor from './facet-editor/ModelBindingFacetEditor.svelte';
 import ModelsFacetEditor from './facet-editor/ModelsFacetEditor.svelte';
+import ObservabilityFacetEditor from './facet-editor/ObservabilityFacetEditor.svelte';
 import OutputsFacetEditor from './facet-editor/OutputsFacetEditor.svelte';
 import SpeechFacetEditor from './facet-editor/SpeechFacetEditor.svelte';
 import ToolSpecFacetEditor from './facet-editor/ToolSpecFacetEditor.svelte';
 import ToolsFacetEditor from './facet-editor/ToolsFacetEditor.svelte';
+import TurnBehaviourFacetEditor from './facet-editor/TurnBehaviourFacetEditor.svelte';
 
 let { id, data }: { id: string; data: PlaygroundNode['data'] } = $props();
 
@@ -118,6 +120,7 @@ const apiIdPlaceholder = $derived.by(() => {
 function syncSpeechFormats(protocol: Protocol) {
 	for (const n of playground.getNodes()) {
 		if (n.data.kind !== 'speech') continue;
+		if (!n.data.format) continue;
 		const legal = coerceSpeechFormat(protocol, n.data.format);
 		if (legal !== n.data.format) playground.patchNode(n.id, { format: legal });
 	}
@@ -239,8 +242,14 @@ const onProviderChange = setBindingProvider;
 			<InputsFacetEditor {data} {patch} />
 		{:else if data.kind === 'outputs'}
 			<OutputsFacetEditor {data} {patch} />
+		{:else if data.kind === 'turnBehaviour'}
+			<TurnBehaviourFacetEditor {data} {patch} />
 		{:else if data.kind === 'guardrails'}
 			<GuardrailsFacetEditor {data} {patch} />
+		{:else if data.kind === 'observability'}
+			<ObservabilityFacetEditor {data} {patch} />
+		{:else}
+			<p class="facet-editor-error">No editor available for this facet.</p>
 		{/if}
 	</TypeTip>
 </div>

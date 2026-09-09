@@ -68,7 +68,7 @@ function imageChips(data: Extract<FacetData, { kind: 'image' }>): string[] {
 }
 
 function speechChips(data: Extract<FacetData, { kind: 'speech' }>): string[] {
-	return [...(data.voice.trim() ? [data.voice.trim()] : []), data.format];
+	return [...(data.voice.trim() ? [data.voice.trim()] : []), ...(data.format ? [data.format] : [])];
 }
 
 function liveChips(data: Extract<FacetData, { kind: 'live' }>): string[] {
@@ -89,7 +89,9 @@ function modelsChips(data: Extract<FacetData, { kind: 'models' }>): string[] {
 	return [
 		data.defaultModel.trim() ? `default: ${data.defaultModel.trim()}` : 'default?',
 		...(data.allowModelSelect ? ['selectable'] : []),
-		`steps ${String(data.maxSteps)}`,
+		...(typeof data.maxSteps === 'number' && data.maxSteps > 0
+			? [`steps ${String(data.maxSteps)}`]
+			: []),
 	];
 }
 
@@ -102,29 +104,51 @@ function modelBindingChips(data: Extract<FacetData, { kind: 'modelBinding' }>): 
 
 function inputsChips(data: Extract<FacetData, { kind: 'inputs' }>): string[] {
 	const chips: string[] = [];
-	if (data.text) chips.push('text');
+	if (data.text === true) chips.push('text');
+	else if (data.text === false) chips.push('no text');
+	else chips.push('text (default)');
 	if (data.attachmentsAccept.length) chips.push(`attach ×${String(data.attachmentsAccept.length)}`);
 	if (data.voiceAccept.length) chips.push(`voice ×${String(data.voiceAccept.length)}`);
-	if (!chips.length) chips.push('none');
 	return chips;
 }
 
 function outputsChips(data: Extract<FacetData, { kind: 'outputs' }>): string[] {
-	const chips = [
-		data.mode === 'structured' ? `schema: ${data.schemaId.trim() || '—'}` : 'text',
-		data.streamMode,
-	];
+	const chips = [data.mode === 'structured' ? `schema: ${data.schemaId.trim() || '—'}` : 'text'];
+	if (data.streamMode) chips.push(data.streamMode);
+	if (data.streamThoughts) chips.push('thoughts');
 	if (data.validationEnabled) chips.push('validated');
-	if (data.resumeEnabled) chips.push('resume');
 	return chips;
 }
 
 function guardrailsChips(data: Extract<FacetData, { kind: 'guardrails' }>): string[] {
-	return [
-		data.canary ? 'canary' : 'no canary',
-		data.sanitizeInput ? 'sanitize' : 'raw in',
-		`egress ${data.egressMode}`,
-	];
+	const canary =
+		data.canary === true ? 'canary' : data.canary === false ? 'no canary' : 'canary (default)';
+	const sanitize =
+		data.sanitizeInput === true
+			? 'sanitize'
+			: data.sanitizeInput === false
+				? 'raw in'
+				: 'sanitize (default)';
+	return [canary, sanitize, data.hasEgress === true ? 'egress on' : 'egress off'];
+}
+
+function turnBehaviourChips(data: Extract<FacetData, { kind: 'turnBehaviour' }>): string[] {
+	const chips: string[] = [];
+	if (data.resumeEnabled) chips.push('resume');
+	if (data.allowSteering === false) chips.push('no steering');
+	else if (data.allowSteering === true) chips.push('steering');
+	if (!chips.length) chips.push('defaults');
+	return chips;
+}
+
+function observabilityChips(data: Extract<FacetData, { kind: 'observability' }>): string[] {
+	const chips: string[] = [];
+	if (data.writeTo === false) chips.push('off');
+	else if (data.writeTo) chips.push(clip(data.writeTo, 20));
+	else chips.push('default');
+	if (data.sampleRate !== undefined && data.sampleRate !== 1)
+		chips.push(`${String(data.sampleRate * 100)}%`);
+	return chips;
 }
 
 /** Compact chip labels for collapsed facet cards on the canvas. */
@@ -150,8 +174,12 @@ export function facetChips(data: FacetData, toolChildren: string[] = []): string
 			return limitChips(inputsChips(data));
 		case 'outputs':
 			return limitChips(outputsChips(data));
+		case 'turnBehaviour':
+			return limitChips(turnBehaviourChips(data));
 		case 'guardrails':
 			return limitChips(guardrailsChips(data));
+		case 'observability':
+			return limitChips(observabilityChips(data));
 		default:
 			return limitChips([]);
 	}

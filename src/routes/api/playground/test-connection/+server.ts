@@ -1,5 +1,11 @@
 import { json } from '@sveltejs/kit';
-import { assertSafeUrl, buildHttpToolTarget, parseMcpRpcResponse } from 'theorum';
+import {
+	assertSafeUrl,
+	buildHttpToolTarget,
+	isUnsupportedMcpProtocolError,
+	MCP_PROTOCOL_VERSIONS,
+	parseMcpRpcResponse,
+} from 'theorum';
 import type { HttpMethod } from 'theorum/schema';
 import type { RequestHandler } from './$types';
 
@@ -197,70 +203,100 @@ async function handleMcpProbe(
 	const blocked = assertUrlOrBlocked(body.serverUrl, policy, start);
 	if (blocked) return blocked;
 
-	const headers: Record<string, string> = {
+	const baseHeaders: Record<string, string> = {
 		'Content-Type': 'application/json',
 		Accept: 'application/json, text/event-stream',
-		'MCP-Protocol-Version': '2026-07-28',
 		...(body.headers ?? {}),
 	};
-	applyAuthHeaders(headers, body.auth, body.testCredential);
-
-	const rpcPayload = {
-		jsonrpc: '2.0',
-		id: 'test-ping-1',
-		method: 'tools/list',
-		params: {
-			_meta: {
-				'io.modelcontextprotocol/protocolVersion': '2026-07-28',
-			},
-		},
-	};
+	applyAuthHeaders(baseHeaders, body.auth, body.testCredential);
 
 	try {
-		const res = await fetchWithTimeout(body.serverUrl, {
-			method: 'POST',
-			headers,
-			body: JSON.stringify(rpcPayload),
-		});
-		const elapsedMs = elapsedSince(start);
-		const status = res.status;
-		const text = await res.text();
+		let lastStatus = 0;
+		let lastProtocolError: McpRpcResponse['error'];
 
-		let rpcData: McpRpcResponse;
-		try {
-			rpcData = parseMcpRpcResponse(text);
-		} catch {
+		for (const protocolVersion of MCP_PROTOCOL_VERSIONS) {
+			const headers = {
+				...baseHeaders,
+				'MCP-Protocol-Version': protocolVersion,
+			};
+			const rpcPayload = {
+				jsonrpc: '2.0',
+				id: 'test-ping-1',
+				method: 'tools/list',
+				params: {
+					_meta: {
+						'io.modelcontextprotocol/protocolVersion': protocolVersion,
+					},
+				},
+			};
+
+			const res = await fetchWithTimeout(body.serverUrl, {
+				method: 'POST',
+				headers,
+				body: JSON.stringify(rpcPayload),
+			});
+			lastStatus = res.status;
+			const text = await res.text();
+
+			let rpcData: McpRpcResponse;
+			try {
+				rpcData = parseMcpRpcResponse(text);
+			} catch {
+				if (
+					!res.ok &&
+					text.toLowerCase().includes('unsupported protocol version') &&
+					protocolVersion !== MCP_PROTOCOL_VERSIONS.at(-1)
+				) {
+					lastProtocolError = { code: -32600, message: text.slice(0, 300) };
+					continue;
+				}
+				return json({
+					ok: false,
+					status: lastStatus,
+					code: 'invalid_json',
+					error: `MCP server returned non-JSON response: ${text.slice(0, 200)}`,
+					elapsedMs: elapsedSince(start),
+				});
+			}
+
+			if (rpcData.error && isUnsupportedMcpProtocolError(rpcData.error)) {
+				lastProtocolError = rpcData.error;
+				continue;
+			}
+
+			if (rpcData.error) {
+				return json({
+					ok: false,
+					status: lastStatus,
+					code: `mcp_error_${String(rpcData.error.code)}`,
+					error: rpcData.error.message,
+					elapsedMs: elapsedSince(start),
+				});
+			}
+
+			const tools = rpcData.result?.tools ?? [];
+			const toolNames = tools.map((t) => t.name);
+			const targetName = body.mcpToolName?.trim();
 			return json({
-				ok: false,
-				status,
-				code: 'invalid_json',
-				error: `MCP server returned non-JSON response: ${text.slice(0, 200)}`,
-				elapsedMs,
+				ok: res.ok,
+				status: lastStatus,
+				protocolVersion,
+				toolCount: tools.length,
+				tools: toolNames,
+				targetToolFound: targetName ? toolNames.includes(targetName) : undefined,
+				preview: JSON.stringify(rpcData.result ?? rpcData, null, 2).slice(0, 300),
+				elapsedMs: elapsedSince(start),
 			});
 		}
 
-		if (rpcData.error) {
-			return json({
-				ok: false,
-				status,
-				code: `mcp_error_${String(rpcData.error.code)}`,
-				error: rpcData.error.message,
-				elapsedMs,
-			});
-		}
-
-		const tools = rpcData.result?.tools ?? [];
-		const toolNames = tools.map((t) => t.name);
-		const targetName = body.mcpToolName?.trim();
 		return json({
-			ok: res.ok,
-			status,
-			protocolVersion: '2026-07-28',
-			toolCount: tools.length,
-			tools: toolNames,
-			targetToolFound: targetName ? toolNames.includes(targetName) : undefined,
-			preview: JSON.stringify(rpcData.result ?? rpcData, null, 2).slice(0, 300),
-			elapsedMs,
+			ok: false,
+			status: lastStatus || 400,
+			code: lastProtocolError
+				? `mcp_error_${String(lastProtocolError.code)}`
+				: 'mcp_protocol_error',
+			error: lastProtocolError?.message ?? 'MCP protocol negotiation failed',
+			elapsedMs: elapsedSince(start),
 		});
 	} catch (fetchErr) {
 		return networkErrorResponse(start, fetchErr);

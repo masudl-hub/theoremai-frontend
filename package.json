@@ -28,6 +28,7 @@
 		"lint:fallow": "node --experimental-strip-types scripts/ensure-theorum.mjs && fallow audit && fallow health && fallow dupes && fallow dead-code",
 		"lint": "npm run lint:eslint && npm run lint:biome && npm run lint:fallow",
 		"pressure:playground": "npx vite-node scripts/pressure-playground.mjs",
+		"pressure:projection": "npx vite-node scripts/pressure-projection.mjs",
 		"pressure:demo": "npx vite-node scripts/pressure-demo-tools.mjs",
 		"test:tool-resume": "npx vite-node scripts/test-tool-resume.mjs",
 		"test:invoke-payload": "npx vite-node scripts/test-invoke-payload.mjs",

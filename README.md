@@ -45,7 +45,7 @@ Update the sibling kernel in place; re-run `npm run theorum:ensure` after pulls.
 
 ## Development notes
 
-- **`npm run dev`** builds the React run SPA into `static/playground/run/` then starts SvelteKit. Playground “Run” opens `/playground/run/` on the same origin (no second server).
+- **`npm run dev`** builds the React run SPA into `static/playground/run/` then starts SvelteKit. Playground “Run” opens `/playground/run/?run=<id>` on the same origin (no second server). Refresh keeps that run id’s payload in localStorage.
 - **`npm run dev:run`** — optional Vite HMR for `@theorum/react` alone on `:5174` while iterating on the run UI.
 - **Th30 / Live WebSocket:** production uses Cloudflare `WebSocketPair` in `/api/live/relay`. Local `npm run dev` serves the same path through `scripts/vite-live-relay-plugin.mjs` (Node `ws` + standard upstream WebSocket). Requires `GEMINI_API_KEY` in `.env.local`.
 - **Kernel runtime is server-only.** Client components should talk to `/api/*` routes, not import `@theorum/core` directly.

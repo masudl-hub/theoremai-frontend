@@ -186,9 +186,13 @@ function addEffort() {
 	<input
 		class="field"
 		min="1"
-		oninput={(e) => patch({ maxOutputTokens: Number(e.currentTarget.value) })}
+		oninput={(e) => {
+			const raw = e.currentTarget.value.trim();
+			patch({ maxOutputTokens: raw === '' ? '' : Number(raw) });
+		}}
+		placeholder="provider default"
 		type="number"
-		value={data.maxOutputTokens}
+		value={data.maxOutputTokens === '' ? '' : data.maxOutputTokens}
 	>
 </label>
 <label class="facet-field">

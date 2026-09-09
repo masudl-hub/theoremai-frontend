@@ -1,8 +1,13 @@
-import type { ProfileDefinition, TurnEvent, TurnInput } from 'theorum';
+import type { ProfileDefinition, TurnEvent, TurnHistoryMessage, TurnInput } from 'theorum';
 import { createProvider, invokeTool, runTurn } from 'theorum';
 import type { InvokeToolRequest } from 'theorum/kernel';
 import type { StructuredRegistration, ToolRegistration } from '$lib/playground/types';
 import { registerPlaygroundProfile } from './playground-register';
+import {
+	closePlaygroundSteerInbox,
+	consumePlaygroundSteer,
+	openPlaygroundSteerInbox,
+} from './playground-steer';
 
 type PlaygroundTurnEnv = {
 	GEMINI_API_KEY?: string;
@@ -58,25 +63,42 @@ export async function* streamPlaygroundTurn(args: {
 	sessionPermissions?: string[];
 	model?: string;
 	effort?: string;
+	turnId?: string;
+	signal?: AbortSignal;
 	env?: PlaygroundTurnEnv;
 }): AsyncGenerator<TurnEvent> {
 	const profile = registerPlaygroundProfile(args.profile, args.customTools, args.structured);
 	assertNotLiveProfile(profile.type, 'turn runner — use runSession');
 
 	const provider = createPlaygroundProvider(profile, args.env ?? {});
+	const turnId = args.turnId;
+	if (turnId) openPlaygroundSteerInbox(turnId);
 
-	for await (const event of runTurn(
-		{
-			profile: profile.id,
-			input: args.input,
-			previousInteractionId: args.previousInteractionId,
-			sessionPermissions: args.sessionPermissions,
-			...(args.model ? { model: args.model } : {}),
-			...(args.effort ? { effort: args.effort } : {}),
-		},
-		provider,
-	)) {
-		yield event;
+	try {
+		for await (const event of runTurn(
+			{
+				profile: profile.id,
+				input: args.input,
+				previousInteractionId: args.previousInteractionId,
+				sessionPermissions: args.sessionPermissions,
+				signal: args.signal,
+				...(args.model ? { model: args.model } : {}),
+				...(args.effort ? { effort: args.effort } : {}),
+				...(turnId
+					? {
+							onSteer: () => {
+								const inject = consumePlaygroundSteer(turnId);
+								return inject?.length ? { inject } : undefined;
+							},
+						}
+					: {}),
+			},
+			provider,
+		)) {
+			yield event;
+		}
+	} finally {
+		if (turnId) closePlaygroundSteerInbox(turnId);
 	}
 }
 
@@ -97,3 +119,5 @@ export async function* streamPlaygroundInvoke(args: {
 		yield event;
 	}
 }
+
+export type { TurnHistoryMessage };

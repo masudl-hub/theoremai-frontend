@@ -59,8 +59,11 @@ export function schemaEnumOptions(
 }
 
 /** `speech.format` options allowed for the hub protocol (kernel `speechFormatsForProtocol`). */
-export function speechFormatOptions(protocol: Protocol): SelectOption[] {
-	return schemaEnumOptions(speechFormatsForProtocol(protocol));
+export function speechFormatOptions(
+	protocol: Protocol,
+	opts?: { allowOmit?: boolean; omitLabel?: string },
+): SelectOption[] {
+	return schemaEnumOptions(speechFormatsForProtocol(protocol), opts);
 }
 
 export { coerceSpeechFormat };

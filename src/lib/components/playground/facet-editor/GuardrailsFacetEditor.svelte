@@ -13,15 +13,24 @@ const onBlockOptions = fieldEnumOptions('guardrails.egress.onBlock');
 
 <div class="facet-check-grid">
 	<label class="facet-check">
-		<Checkbox checked={data.canary} onchange={(v) => patch({ canary: v })} />
+		<Checkbox
+			checked={data.canary !== false}
+			onchange={(v) => patch({ canary: v ? undefined : false })}
+		/>
 		<FacetFieldLabel path="guardrails.canary" />
 	</label>
 	<label class="facet-check">
-		<Checkbox checked={data.sanitizeInput} onchange={(v) => patch({ sanitizeInput: v })} />
+		<Checkbox
+			checked={data.sanitizeInput !== false}
+			onchange={(v) => patch({ sanitizeInput: v ? undefined : false })}
+		/>
 		<FacetFieldLabel path="guardrails.sanitizeInput" />
 	</label>
 	<label class="facet-check">
-		<Checkbox checked={data.redactSensitive} onchange={(v) => patch({ redactSensitive: v })} />
+		<Checkbox
+			checked={data.redactSensitive !== false}
+			onchange={(v) => patch({ redactSensitive: v ? undefined : false })}
+		/>
 		<FacetFieldLabel path="guardrails.redactSensitive" />
 	</label>
 	<label class="facet-check">
@@ -37,24 +46,24 @@ const onBlockOptions = fieldEnumOptions('guardrails.egress.onBlock');
 			min="1"
 			oninput={(e) => patch({ perDay: Number(e.currentTarget.value) })}
 			type="number"
-			value={data.perDay}
+			value={data.perDay ?? ''}
 		>
 	</label>
 {/if}
 <label class="facet-check">
 	<Checkbox
-		checked={data.egressMode !== 'none'}
-		onchange={(v) => patch({ egressMode: v ? 'default' : 'none' })}
+		checked={data.hasEgress === true}
+		onchange={(v) => patch({ hasEgress: v ? true : undefined, onBlock: v ? data.onBlock : undefined })}
 	/>
 	<FacetFieldLabel path="guardrails.egress.enforce" />
 </label>
-{#if data.egressMode !== 'none'}
+{#if data.hasEgress === true}
 	<label class="facet-field">
 		<FacetFieldLabel path="guardrails.egress.onBlock" />
 		<Select
 			onchange={(v) => patch({ onBlock: v as 'reject_to_agent' | 'refuse_to_user' })}
 			options={onBlockOptions}
-			value={data.onBlock}
+			value={data.onBlock ?? ''}
 		/>
 	</label>
 	<label class="facet-field">
@@ -64,7 +73,7 @@ const onBlockOptions = fieldEnumOptions('guardrails.egress.onBlock');
 			min="0"
 			oninput={(e) => patch({ egressMaxRetries: Number(e.currentTarget.value) })}
 			type="number"
-			value={data.egressMaxRetries}
+			value={data.egressMaxRetries ?? ''}
 		>
 	</label>
 {/if}

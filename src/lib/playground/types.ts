@@ -1,13 +1,8 @@
 import type { Edge, Node } from '@xyflow/svelte';
-import type {
-	ProfileDefinition,
-	ProfileImageSpec,
-	ProfileLiveSpec,
-	ProfileSpeechSpec,
-	ProfileType,
-} from 'theorum';
+import type { ProfileDefinition, ProfileLiveSpec, ProfileSpeechSpec, ProfileType } from 'theorum';
 import type {
 	AuthUnauthenticatedPolicy,
+	ContinueStopKind,
 	CustomToolType,
 	EgressOnBlock,
 	HttpMethod,
@@ -15,6 +10,7 @@ import type {
 	LiveSpeechSensitivity,
 	OverflowKeySlot,
 	PlaygroundAuthType,
+	ProfileGraphFacetId,
 	Protocol,
 	Provider,
 	SchemaEnforcement,
@@ -24,9 +20,8 @@ import type {
 	ToolAuthType,
 	ToolLoadTier,
 	ToolPermission,
-	TurnStopKind,
 } from 'theorum/schema';
-import { TOOL_ACCESS, TOOL_LOAD_TIERS, TOOL_PERMISSION } from 'theorum/schema';
+import { PROFILE_GRAPH, TOOL_ACCESS, TOOL_LOAD_TIERS, TOOL_PERMISSION } from 'theorum/schema';
 import { DEFAULT_TOOL_INPUT_SCHEMA, DEFAULT_TOOL_OUTPUT_SCHEMA } from './tool-schema';
 
 export type {
@@ -40,21 +35,9 @@ export type {
 };
 
 /**
- * Canvas node kinds.
- * Multiples nest as children (e.g. models → modelBinding, tools → toolSpec).
+ * Canvas node kinds — imported from the kernel profile-graph catalog.
+ * Use `ProfileGraphFacetId` from `theorum/schema` directly; do not define aliases.
  */
-export type FacetKind =
-	| 'identity'
-	| 'models'
-	| 'modelBinding'
-	| 'tools'
-	| 'toolSpec'
-	| 'inputs'
-	| 'outputs'
-	| 'guardrails'
-	| 'image'
-	| 'speech'
-	| 'live';
 
 export type IdentityData = {
 	kind: 'identity';
@@ -63,11 +46,12 @@ export type IdentityData = {
 	profileType: ProfileType | '';
 	handle: string;
 	system: string;
-	chat: boolean;
-	includeTools?: boolean;
-	includeInputs?: boolean;
-	includeOutputs?: boolean;
-	includeGuardrails?: boolean;
+	/**
+	 * Optional spine facets the user has explicitly included on the graph.
+	 * Driven by PROFILE_GRAPH optional facets. When a facet id is present,
+	 * the spine node is shown; when absent, the section is omitted from compile.
+	 */
+	includedOptionalFacets: ProfileGraphFacetId[];
 };
 
 /** Profile-level model policy — `defaultModel`, `allowModelSelect`, `maxSteps`, `key`. */
@@ -78,7 +62,8 @@ export type ModelsData = {
 	branchCollapsed: boolean;
 	defaultModel: string;
 	allowModelSelect: boolean;
-	maxSteps: number;
+	/** Omit (empty string / undefined) → kernel unbounded. Positive number = ceiling. */
+	maxSteps: number | '';
 	key: OverflowKeySlot | '';
 };
 
@@ -96,7 +81,8 @@ export type ModelBindingData = {
 	allowEffortSelect: boolean;
 	summaries: boolean;
 	temperature?: number;
-	maxOutputTokens: number;
+	/** Empty = omit (provider default). */
+	maxOutputTokens: number | '';
 	builtInTools: string;
 };
 /** Hub for custom tools — allow is derived from child toolSpec nodes. */
@@ -155,7 +141,8 @@ export type ToolSpecData = {
 export type InputsData = {
 	kind: 'inputs';
 	expanded: boolean;
-	text: boolean;
+	/** Omit → kernel enables text (`inputs?.text !== false`). Explicit false opts out. */
+	text?: boolean;
 	attachmentsAccept: string[];
 	voiceAccept: string[];
 	maxFiles: number;
@@ -166,6 +153,7 @@ export type InputsData = {
 /**
  * Profile `outputs` — structured is a registered schema id (or null).
  * Schema bodies live in `registerStructured`, not on the profile.
+ * Resume / continue fields live on `TurnBehaviourData`, not here.
  */
 export type OutputsData = {
 	kind: 'outputs';
@@ -175,27 +163,29 @@ export type OutputsData = {
 	/** Optional body for export: emits registerStructured(schemaId, …) */
 	schemaEnforced: SchemaEnforcement;
 	schemaJson: string;
-	streamMode: StreamMode;
+	/** Empty = omit streaming from profile (kernel defaults to SSE). */
+	streamMode: '' | StreamMode;
 	streamThoughts: boolean;
 	validationEnabled: boolean;
 	maxRetries: number;
 	repairGuidance: string;
-	resumeEnabled: boolean;
-	allowContinue: TurnStopKind[];
-	autoContinue: TurnStopKind[];
 };
 
 export type GuardrailsData = {
 	kind: 'guardrails';
 	expanded: boolean;
-	canary: boolean;
-	sanitizeInput: boolean;
-	redactSensitive: boolean;
+	/** Omit → kernel defaults true. Explicit false opts out. */
+	canary?: boolean;
+	/** Omit → kernel defaults true. Explicit false opts out. */
+	sanitizeInput?: boolean;
+	/** Omit → kernel defaults true. Explicit false opts out. */
+	redactSensitive?: boolean;
 	quotaEnabled: boolean;
-	perDay: number;
-	egressMode: 'default' | 'none';
-	onBlock: EgressOnBlock;
-	egressMaxRetries: number;
+	perDay?: number;
+	/** When true, compile wires `standardEgressEnforce`. When false/omit, egress section omitted. */
+	hasEgress?: boolean;
+	onBlock?: EgressOnBlock;
+	egressMaxRetries?: number;
 	allowPrivateNetworks?: boolean;
 	allowedHosts?: string;
 };
@@ -203,18 +193,23 @@ export type GuardrailsData = {
 export type ImageData = {
 	kind: 'image';
 	expanded: boolean;
-	aspectRatio: NonNullable<ProfileImageSpec['aspectRatio']>;
-	size: NonNullable<ProfileImageSpec['size']>;
-	mimeType: NonNullable<ProfileImageSpec['mimeType']>;
-	maxInputImages: NonNullable<ProfileImageSpec['maxInputImages']>;
-	includeText: NonNullable<ProfileImageSpec['includeText']>;
+	/** Empty = omit (provider default). */
+	aspectRatio: string;
+	/** Empty = omit (provider default). */
+	size: string;
+	/** Empty = omit (provider default). */
+	mimeType: string;
+	/** 0 = omit. */
+	maxInputImages: number;
+	includeText: boolean;
 };
 
 export type SpeechData = {
 	kind: 'speech';
 	expanded: boolean;
-	voice: NonNullable<ProfileSpeechSpec['voice']>;
-	format: NonNullable<ProfileSpeechSpec['format']>;
+	voice: string;
+	/** Empty = omit (provider default). */
+	format: '' | NonNullable<ProfileSpeechSpec['format']>;
 };
 
 export type LiveData = {
@@ -246,6 +241,48 @@ export type LiveData = {
 	vadSilenceDurationMs: number | '';
 };
 
+/**
+ * Turn behaviour — resume/continue policy and steering.
+ * Serializable subset of `ProfileTurnBehaviourSpec`; host-only flags omitted.
+ */
+export type TurnBehaviourData = {
+	kind: 'turnBehaviour';
+	expanded: boolean;
+	resumeEnabled: boolean;
+	allowContinue: ContinueStopKind[];
+	autoContinue: ContinueStopKind[];
+	/** Text only. Omit → default true. Explicit false disables steering. */
+	allowSteering?: boolean;
+};
+
+/**
+ * Observability — trace destination, sampling, include, scrub.
+ * Matches the nested `ProfileObservabilitySpec` shape; host-only fields
+ * (`onWriteError`, `TraceSink`) are not representable in the playground.
+ */
+export type ObservabilityData = {
+	kind: 'observability';
+	expanded: boolean;
+	/** false = off; non-empty string = registered destination id; empty = omit (kernel default). */
+	writeTo: false | string;
+	sampleRate?: number;
+	include?: {
+		upstreamLog?: boolean;
+		outboundWire?: boolean;
+		evidenceRaw?: boolean;
+		usage?: boolean;
+		guardrailDecisions?: boolean;
+		guardrailMatchPreview?: boolean;
+	};
+	scrub?: {
+		sensitive?: boolean;
+		injection?: boolean;
+		canary?: boolean;
+	};
+	retainForDays?: number;
+	rotateAfterMiB?: number;
+};
+
 export type FacetData =
 	| IdentityData
 	| ModelsData
@@ -255,6 +292,8 @@ export type FacetData =
 	| InputsData
 	| OutputsData
 	| GuardrailsData
+	| TurnBehaviourData
+	| ObservabilityData
 	| ImageData
 	| SpeechData
 	| LiveData;
@@ -264,7 +303,7 @@ export type PlaygroundEdge = Edge;
 
 export type CompileIssue = {
 	nodeId: string;
-	facet: FacetKind;
+	facet: ProfileGraphFacetId;
 	message: string;
 };
 
@@ -370,19 +409,10 @@ export type CompileResult =
 			message: string;
 	  };
 
-export const FACET_LABEL: Record<FacetKind, string> = {
-	identity: 'Profile',
-	models: 'Models',
-	modelBinding: 'Model',
-	tools: 'Tools',
-	toolSpec: 'Tool',
-	inputs: 'Inputs',
-	outputs: 'Outputs',
-	guardrails: 'Guardrails',
-	image: 'Image',
-	speech: 'Speech',
-	live: 'Live',
-};
+/** Labels derived from the kernel profile-graph catalog. */
+export const FACET_LABEL: Record<ProfileGraphFacetId, string> = Object.fromEntries(
+	PROFILE_GRAPH.map((facet) => [facet.id, facet.label]),
+) as Record<ProfileGraphFacetId, string>;
 
 export const DRAG_HANDLE = '.facet-head';
 
@@ -392,8 +422,8 @@ export function defaultImageSpec(partial?: Partial<ImageData>): ImageData {
 		expanded: false,
 		aspectRatio: '',
 		size: '',
-		mimeType: 'image/png',
-		maxInputImages: 3,
+		mimeType: '',
+		maxInputImages: 0,
 		includeText: false,
 		...partial,
 	};
@@ -404,7 +434,7 @@ export function defaultSpeechSpec(partial?: Partial<SpeechData>): SpeechData {
 		kind: 'speech',
 		expanded: false,
 		voice: '',
-		format: 'pcm',
+		format: '',
 		...partial,
 	};
 }
@@ -440,11 +470,11 @@ export function defaultModelBinding(partial?: Partial<ModelBindingData>): ModelB
 		protocol: 'openAi',
 		provider: 'openrouter',
 		apiId: '',
-		efforts: { default: 'minimal' },
-		defaultEffort: 'default',
+		efforts: {},
+		defaultEffort: '',
 		allowEffortSelect: false,
 		summaries: false,
-		maxOutputTokens: 2048,
+		maxOutputTokens: '',
 		builtInTools: '',
 		...partial,
 	};
@@ -463,6 +493,26 @@ export function defaultToolSpec(partial?: Partial<ToolSpecData>): ToolSpecData {
 		paths: '*',
 		inputJson: DEFAULT_TOOL_INPUT_SCHEMA,
 		outputJson: DEFAULT_TOOL_OUTPUT_SCHEMA,
+		...partial,
+	};
+}
+
+export function defaultTurnBehaviourData(partial?: Partial<TurnBehaviourData>): TurnBehaviourData {
+	return {
+		kind: 'turnBehaviour',
+		expanded: false,
+		resumeEnabled: false,
+		allowContinue: [],
+		autoContinue: [],
+		...partial,
+	};
+}
+
+export function defaultObservabilityData(partial?: Partial<ObservabilityData>): ObservabilityData {
+	return {
+		kind: 'observability',
+		expanded: false,
+		writeTo: '',
 		...partial,
 	};
 }

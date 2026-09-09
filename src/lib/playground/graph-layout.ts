@@ -1,5 +1,5 @@
-import type { Protocol, Provider } from 'theorum/schema';
-import { LIVE_TOOL_LOAD_TIERS } from 'theorum/schema';
+import type { ProfileGraphFacetId, ProfileType, Protocol, Provider } from 'theorum/schema';
+import { LIVE_TOOL_LOAD_TIERS, spineFacetsForProfileType } from 'theorum/schema';
 import { resolveNodeCollisions } from './graph-collision';
 import {
 	branchSpecPosition,
@@ -14,7 +14,9 @@ import {
 	defaultImageSpec,
 	defaultLiveSpec,
 	defaultModelBinding,
+	defaultObservabilityData,
 	defaultSpeechSpec,
+	defaultTurnBehaviourData,
 	type FacetData,
 	type IdentityData,
 	type ModelBindingData,
@@ -23,15 +25,10 @@ import {
 	type ToolSpecData,
 } from './types';
 
-export type SpineFacetKind =
-	| 'models'
-	| 'image'
-	| 'speech'
-	| 'live'
-	| 'tools'
-	| 'inputs'
-	| 'outputs'
-	| 'guardrails';
+/**
+ * Spine facet kinds derived from the kernel profile-graph catalog.
+ * Use `ProfileGraphFacetId` directly — do not define local aliases.
+ */
 
 export function spineEdge(source: string, target: string): PlaygroundEdge {
 	return {
@@ -56,24 +53,21 @@ export function branchEdge(source: string, target: string, hidden = false): Play
 	};
 }
 
-/** Facet column order on the vertical spine below identity. */
-export function spineFacetKinds(identity: IdentityData): SpineFacetKind[] {
+/**
+ * Spine facet ids visible for a profile type, in catalog order.
+ * Required facets always appear; optional facets appear when the user
+ * included them in `identity.includedOptionalFacets`.
+ */
+export function spineFacetKinds(identity: IdentityData): ProfileGraphFacetId[] {
 	const type = identity.profileType;
 	if (!type) return [];
 
-	const kinds: SpineFacetKind[] = ['models'];
-
-	if (type === 'image') kinds.push('image');
-	else if (type === 'speech') kinds.push('speech');
-	else if (type === 'live') kinds.push('live');
-
-	if (type !== 'speech' && identity.includeTools !== false) kinds.push('tools');
-	if (type !== 'speech' && type !== 'live' && identity.includeInputs !== false)
-		kinds.push('inputs');
-	if (type !== 'live' && identity.includeOutputs !== false) kinds.push('outputs');
-	if (identity.includeGuardrails !== false) kinds.push('guardrails');
-
-	return kinds;
+	const included = new Set(identity.includedOptionalFacets);
+	const profileType: ProfileType = type;
+	return spineFacetsForProfileType(profileType)
+		.filter((f) => f.role === 'spine')
+		.filter((f) => !f.optional || included.has(f.id))
+		.map((f) => f.id);
 }
 
 function identityPosition(): { x: number; y: number } {
@@ -81,7 +75,7 @@ function identityPosition(): { x: number; y: number } {
 }
 
 function facetDataForKind(
-	colKind: SpineFacetKind,
+	colKind: ProfileGraphFacetId,
 	type: IdentityData['profileType'],
 	existing: PlaygroundNode | undefined,
 ): FacetData {
@@ -114,9 +108,9 @@ function facetDataForKind(
 				kind: 'models',
 				expanded: false,
 				branchCollapsed: false,
-				defaultModel: type === 'live' ? 'live' : 'fast',
+				defaultModel: '',
 				allowModelSelect: false,
-				maxSteps: 1,
+				maxSteps: '',
 				key: type === 'live' ? 'slotA' : '',
 			};
 		case 'image':
@@ -136,10 +130,9 @@ function facetDataForKind(
 			return {
 				kind: 'inputs',
 				expanded: false,
-				text: true,
-				attachmentsAccept: type === 'image' ? ['image/png', 'image/jpeg'] : [],
+				attachmentsAccept: [],
 				voiceAccept: [],
-				maxFiles: type === 'image' ? 3 : 0,
+				maxFiles: 0,
 				maxBytes: 0,
 				maxTurnBytes: 0,
 			};
@@ -151,28 +144,30 @@ function facetDataForKind(
 				schemaId: '',
 				schemaEnforced: 'responseFormat',
 				schemaJson: '',
-				streamMode: 'sse',
+				streamMode: '',
 				streamThoughts: false,
 				validationEnabled: false,
 				maxRetries: 2,
 				repairGuidance: '',
-				resumeEnabled: false,
-				allowContinue: ['length', 'stream_incomplete', 'provider_error'],
-				autoContinue: ['length', 'stream_incomplete'],
 			};
+		case 'turnBehaviour':
+			return defaultTurnBehaviourData();
 		case 'guardrails':
 			return {
 				kind: 'guardrails',
 				expanded: false,
-				canary: true,
-				sanitizeInput: true,
-				redactSensitive: true,
 				quotaEnabled: false,
-				perDay: 100,
-				egressMode: 'default',
-				onBlock: 'refuse_to_user',
-				egressMaxRetries: 2,
 			};
+		case 'observability':
+			return defaultObservabilityData();
+		case 'identity':
+		case 'modelBinding':
+		case 'toolSpec':
+			throw new Error(`facetDataForKind: '${colKind}' is not a spine facet`);
+		default: {
+			const _exhaustive: never = colKind;
+			throw new Error(`Unknown facet kind: ${String(_exhaustive)}`);
+		}
 	}
 }
 

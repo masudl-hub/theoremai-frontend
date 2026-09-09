@@ -11,6 +11,7 @@ type TurnBody = {
 	sessionPermissions?: string[];
 	model?: string;
 	effort?: string;
+	turnId?: string;
 	input: import('theorum').TurnInput;
 };
 
@@ -28,6 +29,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 				sessionPermissions: body.sessionPermissions,
 				model: body.model,
 				effort: body.effort,
+				turnId: body.turnId,
+				signal: request.signal,
 				env,
 			}),
 		);

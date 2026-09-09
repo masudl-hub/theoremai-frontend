@@ -1,4 +1,6 @@
 <script lang="ts">
+import type { ProfileType as KernelProfileType, ProfileGraphFacetId } from 'theorum/schema';
+import { spineFacetsForProfileType } from 'theorum/schema';
 import Checkbox from '$lib/components/playground/Checkbox.svelte';
 import { MODALITY_OPTIONS } from '$lib/playground/compat';
 import type { IdentityData, ProfileType } from '$lib/playground/types';
@@ -9,6 +11,17 @@ let { data, patch }: { data: IdentityData; patch: FacetPatch } = $props();
 
 function selectType(t: ProfileType) {
 	patch({ profileType: t });
+}
+
+const optionalFacets = $derived.by(() => {
+	if (!data.profileType) return [];
+	return spineFacetsForProfileType(data.profileType as KernelProfileType).filter((f) => f.optional);
+});
+
+function toggleOptionalFacet(id: ProfileGraphFacetId, on: boolean) {
+	const current = data.includedOptionalFacets;
+	const next = on ? [...current.filter((f) => f !== id), id] : current.filter((f) => f !== id);
+	patch({ includedOptionalFacets: next });
 }
 </script>
 
@@ -64,70 +77,23 @@ function selectType(t: ProfileType) {
 	></textarea>
 </label>
 
-{#if data.profileType}
+{#if data.profileType && optionalFacets.length}
 	<div class="facet-subgroup">
-		<span class="facet-subgroup-title">Nested Nodes on Canvas</span>
+		<span class="facet-subgroup-title">Optional Sections</span>
+		<p class="facet-field-hint">
+			Toggle optional profile sections. Required facets (models, modality spec) always appear.
+		</p>
 
 		<div class="facet-checks-list">
-			<div class="facet-check-row">
-				<span class="check-fixed">✓</span>
-				<span class="check-label">Models (spec & wire configs)</span>
-			</div>
-
-			{#if data.profileType === 'image'}
-				<div class="facet-check-row">
-					<span class="check-fixed">✓</span>
-					<span class="check-label">Image specification (ratio, size, MIME)</span>
-				</div>
-			{:else if data.profileType === 'speech'}
-				<div class="facet-check-row">
-					<span class="check-fixed">✓</span>
-					<span class="check-label">Speech specification (voice, format)</span>
-				</div>
-			{:else if data.profileType === 'live'}
-				<div class="facet-check-row">
-					<span class="check-fixed">✓</span>
-					<span class="check-label">Live streaming specification</span>
-				</div>
-			{/if}
-
-			{#if data.profileType !== 'speech'}
+			{#each optionalFacets as facet (facet.id)}
 				<label class="facet-check">
 					<Checkbox
-						checked={data.includeTools !== false}
-						onchange={(v) => patch({ includeTools: v })}
+						checked={data.includedOptionalFacets.includes(facet.id)}
+						onchange={(v) => toggleOptionalFacet(facet.id, v)}
 					/>
-					<span class="check-label">Tools (custom function registry)</span>
+					<span class="check-label">{facet.label}</span>
 				</label>
-
-				{#if data.profileType !== 'live'}
-					<label class="facet-check">
-						<Checkbox
-							checked={data.includeInputs !== false}
-							onchange={(v) => patch({ includeInputs: v })}
-						/>
-						<span class="check-label">Inputs (attachments & voice rules)</span>
-					</label>
-				{/if}
-			{/if}
-
-			{#if data.profileType !== 'live'}
-				<label class="facet-check">
-					<Checkbox
-						checked={data.includeOutputs !== false}
-						onchange={(v) => patch({ includeOutputs: v })}
-					/>
-					<span class="check-label">Outputs (schemas & streaming)</span>
-				</label>
-			{/if}
-
-			<label class="facet-check">
-				<Checkbox
-					checked={data.includeGuardrails !== false}
-					onchange={(v) => patch({ includeGuardrails: v })}
-				/>
-				<span class="check-label">Guardrails (canary, sanitize, quota, egress)</span>
-			</label>
+			{/each}
 		</div>
 	</div>
 {/if}

@@ -17,7 +17,10 @@ let { data, patch }: { data: InputsData; patch: FacetPatch } = $props();
 {/snippet}
 
 <label class="facet-check">
-	<Checkbox checked={data.text} onchange={(v) => patch({ text: v })} />
+	<Checkbox
+		checked={data.text !== false}
+		onchange={(v) => patch({ text: v ? undefined : false })}
+	/>
 	<FacetFieldLabel path="inputs.text" />
 </label>
 <MimeAcceptGrid

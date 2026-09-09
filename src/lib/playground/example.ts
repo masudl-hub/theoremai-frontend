@@ -34,11 +34,7 @@ export function createInitialGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 				profileType: '',
 				handle: '',
 				system: '',
-				chat: false,
-				includeTools: true,
-				includeInputs: true,
-				includeOutputs: true,
-				includeGuardrails: true,
+				includedOptionalFacets: [],
 			},
 		},
 	];
@@ -159,14 +155,9 @@ function demoSeedNodes(): PlaygroundNode[] {
 			data: {
 				kind: 'guardrails',
 				expanded: false,
-				canary: true,
-				sanitizeInput: true,
-				redactSensitive: true,
 				quotaEnabled: false,
-				perDay: 100,
-				egressMode: 'default',
+				hasEgress: true,
 				onBlock: 'refuse_to_user',
-				egressMaxRetries: 2,
 				allowedHosts: DEMO_ALLOWED_HOSTS,
 			},
 		},
@@ -184,7 +175,7 @@ export function createExampleGraph(): { nodes: PlaygroundNode[]; edges: Playgrou
 		agentId: 'travel.concierge',
 		handle: 'concierge',
 		system: DEMO_CONCIERGE_SYSTEM,
-		chat: true,
+		includedOptionalFacets: ['outputs', 'turnBehaviour', 'guardrails', 'observability'],
 	};
 
 	const nodes: PlaygroundNode[] = [{ ...initial.nodes[0], data: identity }, ...demoSeedNodes()];

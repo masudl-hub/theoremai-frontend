@@ -35,7 +35,7 @@ let { data, patch }: { data: ImageData; patch: FacetPatch } = $props();
 		class="field"
 		autocomplete="off"
 		oninput={(e) => patch({ mimeType: e.currentTarget.value })}
-		placeholder="image/png"
+		placeholder="omit — provider default"
 		value={data.mimeType}
 	>
 </label>

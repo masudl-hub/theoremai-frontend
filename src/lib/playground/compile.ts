@@ -7,8 +7,10 @@ import {
 	type ProfileGuardrailsSpec,
 	type ProfileInputsSpec,
 	type ProfileLiveSpec,
+	type ProfileObservabilitySpec,
 	type ProfileOutputsSpec,
 	type ProfileToolsSpec,
+	type ProfileTurnBehaviourSpec,
 	type ProfileTurnResumptionSpec,
 	TheorumError,
 } from 'theorum';
@@ -22,16 +24,19 @@ import type {
 	InputsData,
 	LiveData,
 	ModelBindingData,
+	ObservabilityData,
 	OutputsData,
 	PlaygroundNode,
 	SpeechData,
 	StructuredRegistration,
+	TurnBehaviourData,
 } from './types';
 
 type ModelBinding = ProfileDefinition['models'][string];
 
 function buildModelsRecord(
 	specs: Array<{ id: string; data: ModelBindingData }>,
+	opts: { forceSummaries?: boolean } = {},
 ): Record<string, ModelBinding> {
 	const models: Record<string, ModelBinding> = {};
 
@@ -43,6 +48,13 @@ function buildModelsRecord(
 		);
 		const defaultEffort = data.defaultEffort.trim();
 
+		const maxOutputTokens =
+			typeof data.maxOutputTokens === 'number' && data.maxOutputTokens > 0
+				? data.maxOutputTokens
+				: undefined;
+
+		const wantSummaries = data.summaries || Boolean(opts.forceSummaries);
+
 		models[mid] = {
 			protocol: data.protocol,
 			provider: data.provider,
@@ -50,8 +62,8 @@ function buildModelsRecord(
 			...(Object.keys(efforts).length ? { efforts } : {}),
 			...(defaultEffort ? { defaultEffort } : {}),
 			...(data.allowEffortSelect ? { allowEffortSelect: true } : {}),
-			...(data.summaries ? { summaries: true } : {}),
-			maxOutputTokens: data.maxOutputTokens,
+			...(wantSummaries ? { summaries: true } : {}),
+			...(maxOutputTokens !== undefined ? { maxOutputTokens } : {}),
 			...(typeof data.temperature === 'number' && Number.isFinite(data.temperature)
 				? { temperature: data.temperature }
 				: {}),
@@ -62,10 +74,10 @@ function buildModelsRecord(
 	return models;
 }
 
-function buildInputsPayload(inputs?: InputsData): ProfileInputsSpec {
-	if (!inputs) return { text: true };
-	return {
-		text: inputs.text,
+function buildInputsPayload(inputs?: InputsData): ProfileInputsSpec | undefined {
+	if (!inputs) return undefined;
+	const out: ProfileInputsSpec = {
+		...(typeof inputs.text === 'boolean' ? { text: inputs.text } : {}),
 		...(inputs.attachmentsAccept.length
 			? { attachments: { accept: inputs.attachmentsAccept } }
 			: {}),
@@ -74,19 +86,26 @@ function buildInputsPayload(inputs?: InputsData): ProfileInputsSpec {
 		...(inputs.maxBytes > 0 ? { maxBytes: inputs.maxBytes } : {}),
 		...(inputs.maxTurnBytes > 0 ? { maxTurnBytes: inputs.maxTurnBytes } : {}),
 	};
+	return Object.keys(out).length ? out : {};
 }
 
 function buildGuardrailsPayload(guardrails?: GuardrailsData): {
 	payload?: ProfileGuardrailsSpec;
-	egressMode: 'default' | 'none';
+	hasEgress: boolean;
 } {
-	if (!guardrails) return { egressMode: 'default' };
-	const egressMode = guardrails.egressMode === 'none' ? 'none' : 'default';
+	if (!guardrails) return { hasEgress: false };
+	const hasEgress = guardrails.hasEgress === true;
 	const guardrailsOut: ProfileGuardrailsSpec = {
-		canary: guardrails.canary,
-		sanitizeInput: guardrails.sanitizeInput,
-		redactSensitive: guardrails.redactSensitive,
-		...(guardrails.quotaEnabled ? { quota: { perDay: guardrails.perDay } } : {}),
+		...(typeof guardrails.canary === 'boolean' ? { canary: guardrails.canary } : {}),
+		...(typeof guardrails.sanitizeInput === 'boolean'
+			? { sanitizeInput: guardrails.sanitizeInput }
+			: {}),
+		...(typeof guardrails.redactSensitive === 'boolean'
+			? { redactSensitive: guardrails.redactSensitive }
+			: {}),
+		...(guardrails.quotaEnabled && guardrails.perDay
+			? { quota: { perDay: guardrails.perDay } }
+			: {}),
 		...(guardrails.allowPrivateNetworks || guardrails.allowedHosts
 			? {
 					network: {
@@ -96,10 +115,10 @@ function buildGuardrailsPayload(guardrails?: GuardrailsData): {
 				}
 			: {}),
 	};
-	if (egressMode === 'default') {
+	if (hasEgress && guardrails.onBlock) {
 		guardrailsOut.egress = {
 			onBlock: guardrails.onBlock,
-			maxRetries: guardrails.egressMaxRetries,
+			...(guardrails.egressMaxRetries ? { maxRetries: guardrails.egressMaxRetries } : {}),
 			enforce: '__STANDARD_EGRESS__' as unknown as ProfileGuardrailsSpec extends {
 				egress?: { enforce: infer E };
 			}
@@ -107,7 +126,7 @@ function buildGuardrailsPayload(guardrails?: GuardrailsData): {
 				: never,
 		};
 	}
-	return { payload: guardrailsOut, egressMode };
+	return { payload: Object.keys(guardrailsOut).length ? guardrailsOut : undefined, hasEgress };
 }
 
 function buildStructuredRegistration(outputs?: OutputsData): {
@@ -138,22 +157,76 @@ type AssembleProfileParams = {
 	profileType: 'text' | 'image' | 'speech' | 'live';
 	base: ProfileDefinitionBase;
 	toolsSpec: ProfileToolsSpec | LiveProfileToolsSpec;
-	inputsPayload: ProfileInputsSpec;
+	inputsPayload?: ProfileInputsSpec;
 	image?: ImageData;
 	speech?: SpeechData;
 	live?: LiveData;
 	outputs?: OutputsData;
+	turnBehaviour?: TurnBehaviourData;
 };
 
-function buildTurnResumption(
-	outputs?: OutputsData,
+function buildTurnBehaviourPayload(
+	tb?: TurnBehaviourData,
 	profileType?: AssembleProfileParams['profileType'],
-): ProfileTurnResumptionSpec | undefined {
-	if (!outputs?.resumeEnabled || profileType === 'live') return undefined;
-	return {
-		...(outputs.allowContinue.length ? { allowContinue: outputs.allowContinue } : {}),
-		...(outputs.autoContinue.length ? { autoContinue: outputs.autoContinue } : {}),
-	};
+): ProfileTurnBehaviourSpec | undefined {
+	if (!tb || profileType === 'live') return undefined;
+	const out: ProfileTurnBehaviourSpec = {};
+
+	if (tb.resumeEnabled) {
+		/* Empty lists omit keys — kernel resolve applies DEFAULT_* at runtime. */
+		const resumption: ProfileTurnResumptionSpec = {
+			...(tb.allowContinue.length ? { allowContinue: tb.allowContinue } : {}),
+			...(tb.autoContinue.length ? { autoContinue: tb.autoContinue } : {}),
+		};
+		out.resumption = resumption;
+	}
+
+	if (tb.allowSteering === false) {
+		out.allowSteering = false;
+	}
+
+	if (!Object.keys(out).length) return undefined;
+	return out;
+}
+
+function buildObservabilityPayload(obs?: ObservabilityData): ProfileObservabilitySpec | undefined {
+	if (!obs) return undefined;
+
+	const out: ProfileObservabilitySpec = {};
+	if (obs.writeTo === false) out.writeTo = false;
+	else if (obs.writeTo) out.writeTo = obs.writeTo;
+	if (obs.sampleRate !== undefined && obs.sampleRate !== 1) out.sampleRate = obs.sampleRate;
+
+	if (obs.include) {
+		const include: NonNullable<ProfileObservabilitySpec['include']> = {
+			...(obs.include.upstreamLog !== undefined ? { upstreamLog: obs.include.upstreamLog } : {}),
+			...(obs.include.outboundWire !== undefined ? { outboundWire: obs.include.outboundWire } : {}),
+			...(obs.include.evidenceRaw !== undefined ? { evidenceRaw: obs.include.evidenceRaw } : {}),
+			...(obs.include.usage !== undefined ? { usage: obs.include.usage } : {}),
+			...(obs.include.guardrailDecisions !== undefined
+				? { guardrailDecisions: obs.include.guardrailDecisions }
+				: {}),
+			...(obs.include.guardrailMatchPreview !== undefined
+				? { guardrailMatchPreview: obs.include.guardrailMatchPreview }
+				: {}),
+		};
+		if (Object.keys(include).length) out.include = include;
+	}
+
+	if (obs.scrub) {
+		const scrub: NonNullable<ProfileObservabilitySpec['scrub']> = {
+			...(obs.scrub.sensitive !== undefined ? { sensitive: obs.scrub.sensitive } : {}),
+			...(obs.scrub.injection !== undefined ? { injection: obs.scrub.injection } : {}),
+			...(obs.scrub.canary !== undefined ? { canary: obs.scrub.canary } : {}),
+		};
+		if (Object.keys(scrub).length) out.scrub = scrub;
+	}
+
+	if (obs.retainForDays !== undefined) out.retainForDays = obs.retainForDays;
+	if (obs.rotateAfterMiB !== undefined) out.rotateAfterMiB = obs.rotateAfterMiB;
+
+	if (!Object.keys(out).length) return undefined;
+	return out;
 }
 
 function buildImageSpec(image?: ImageData) {
@@ -233,35 +306,45 @@ function buildLiveSpec(live?: LiveData) {
 }
 
 function assembleTextProfile(params: AssembleProfileParams): ProfileDefinition {
-	const turnResumption = buildTurnResumption(params.outputs, params.profileType);
+	if (!params.inputsPayload) {
+		throw new TheorumError(
+			'inputs is required for text profiles — inputs facet must be on the graph',
+		);
+	}
+	const turnBehaviour = buildTurnBehaviourPayload(params.turnBehaviour, params.profileType);
 	return {
 		...params.base,
 		type: 'text',
 		tools: params.toolsSpec,
 		inputs: params.inputsPayload,
-		...(turnResumption ? { turnResumption } : {}),
+		...(turnBehaviour ? { turnBehaviour } : {}),
 	};
 }
 
 function assembleImageProfile(params: AssembleProfileParams): ProfileDefinition {
-	const turnResumption = buildTurnResumption(params.outputs, params.profileType);
+	if (!params.inputsPayload) {
+		throw new TheorumError(
+			'inputs is required for image profiles — inputs facet must be on the graph',
+		);
+	}
+	const turnBehaviour = buildTurnBehaviourPayload(params.turnBehaviour, params.profileType);
 	return {
 		...params.base,
 		type: 'image',
 		image: buildImageSpec(params.image),
 		tools: params.toolsSpec,
 		inputs: params.inputsPayload,
-		...(turnResumption ? { turnResumption } : {}),
+		...(turnBehaviour ? { turnBehaviour } : {}),
 	};
 }
 
 function assembleSpeechProfile(params: AssembleProfileParams): ProfileDefinition {
-	const turnResumption = buildTurnResumption(params.outputs, params.profileType);
+	const turnBehaviour = buildTurnBehaviourPayload(params.turnBehaviour, params.profileType);
 	return {
 		...params.base,
 		type: 'speech',
 		speech: buildSpeechSpec(params.speech),
-		...(turnResumption ? { turnResumption } : {}),
+		...(turnBehaviour ? { turnBehaviour } : {}),
 	};
 }
 
@@ -305,7 +388,9 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 		tools,
 		inputs,
 		outputs,
+		turnBehaviour,
 		guardrails,
+		observability,
 		image,
 		speech,
 		live,
@@ -314,7 +399,9 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 	} = validated.value;
 	const issues: CompileIssue[] = [];
 
-	const modelsRecord = buildModelsRecord(specs);
+	const modelsRecord = buildModelsRecord(specs, {
+		forceSummaries: outputs?.streamThoughts === true,
+	});
 	const profileType = identity.profileType || 'text';
 	const allowTools = customTools.map((t) => t.name);
 	const toolsSpec: ProfileToolsSpec | LiveProfileToolsSpec =
@@ -326,24 +413,26 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 				};
 
 	const defaultModel = models.defaultModel.trim();
-	const { payload: guardrailsPayload, egressMode } = buildGuardrailsPayload(guardrails);
-	const outputsPayload =
-		profileType !== 'live' && outputs ? (buildOutputs(outputs) as ProfileOutputsSpec) : undefined;
+	const { payload: guardrailsPayload, hasEgress } = buildGuardrailsPayload(guardrails);
+	const outputsPayload = profileType !== 'live' && outputs ? buildOutputs(outputs) : undefined;
+	const observabilityPayload = buildObservabilityPayload(observability);
+	const maxSteps =
+		typeof models.maxSteps === 'number' && models.maxSteps > 0 ? models.maxSteps : undefined;
 
 	const base: ProfileDefinitionBase = {
 		id: identity.agentId.trim(),
 		identity: {
 			handle: identity.handle.trim(),
-			system: identity.system.trim(),
-			...(identity.chat ? { chat: true } : {}),
+			...(identity.system.trim() ? { system: identity.system.trim() } : {}),
 		},
 		models: modelsRecord,
 		...(defaultModel ? { defaultModel } : {}),
 		...(models.allowModelSelect ? { allowModelSelect: true } : {}),
-		...(profileType !== 'live' ? { maxSteps: models.maxSteps } : {}),
+		...(maxSteps !== undefined && profileType !== 'live' ? { maxSteps } : {}),
 		...(models.key ? { key: models.key } : {}),
 		...(outputsPayload ? { outputs: outputsPayload } : {}),
 		...(guardrailsPayload ? { guardrails: guardrailsPayload } : {}),
+		...(observabilityPayload ? { observability: observabilityPayload } : {}),
 	};
 
 	const profile: ProfileDefinition = assembleProfileDefinition({
@@ -355,6 +444,7 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 		speech,
 		live,
 		outputs,
+		turnBehaviour,
 	});
 
 	const tierMsg = playgroundPolicyViolation(profile);
@@ -387,7 +477,7 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 	const importNames = ['defineProfile', 'registerProfile'];
 	if (structured) importNames.push('registerStructured');
 	if (customTools.length) importNames.push('registerTool');
-	if (egressMode === 'default' && guardrails) importNames.push('standardEgressEnforce');
+	if (hasEgress && guardrails) importNames.push('standardEgressEnforce');
 
 	const toolRegister = customTools.map(emitRegisterToolSource).join('\n');
 	const zodImport = customTools.length ? `import { z } from "zod";\n` : '';
@@ -417,15 +507,19 @@ registerProfile(profile);
 	};
 }
 
-function buildOutputs(outputs: OutputsData): Record<string, unknown> {
-	const out: Record<string, unknown> = {
-		structured:
-			outputs.mode === 'structured' && outputs.schemaId.trim() ? outputs.schemaId.trim() : null,
-		streaming: {
-			mode: outputs.streamMode,
-			streamThoughts: outputs.streamThoughts,
-		},
-	};
+function buildOutputs(outputs: OutputsData): ProfileOutputsSpec | undefined {
+	const out: ProfileOutputsSpec = {};
+
+	if (outputs.mode === 'structured' && outputs.schemaId.trim()) {
+		out.structured = outputs.schemaId.trim();
+	}
+
+	if (outputs.streamMode || outputs.streamThoughts) {
+		out.streaming = {
+			...(outputs.streamMode ? { mode: outputs.streamMode } : {}),
+			...(outputs.streamThoughts ? { streamThoughts: true } : {}),
+		};
+	}
 
 	if (outputs.validationEnabled) {
 		out.validation = {
@@ -434,5 +528,5 @@ function buildOutputs(outputs: OutputsData): Record<string, unknown> {
 		};
 	}
 
-	return out;
+	return Object.keys(out).length ? out : undefined;
 }

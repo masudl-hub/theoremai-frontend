@@ -22,6 +22,11 @@ let {
 } = $props();
 
 const keyOptions = fieldEnumOptions('key', { allowOmit: true, omitLabel: '(omit)' });
+
+function onMaxStepsInput(e: Event & { currentTarget: HTMLInputElement }) {
+	const raw = e.currentTarget.value.trim();
+	patch({ maxSteps: raw === '' ? '' : Number(raw) });
+}
 </script>
 
 <button class="facet-action" onclick={() => playground.addModelBinding()} type="button">
@@ -53,7 +58,8 @@ const keyOptions = fieldEnumOptions('key', { allowOmit: true, omitLabel: '(omit)
 		<input
 			class="field"
 			min="1"
-			oninput={(e) => patch({ maxSteps: Number(e.currentTarget.value) })}
+			oninput={onMaxStepsInput}
+			placeholder="(omit — unbounded)"
 			type="number"
 			value={data.maxSteps}
 		>

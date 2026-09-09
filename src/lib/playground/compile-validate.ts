@@ -18,12 +18,14 @@ import type {
 	LiveData,
 	ModelBindingData,
 	ModelsData,
+	ObservabilityData,
 	OutputsData,
 	PlaygroundNode,
 	SpeechData,
 	ToolRegistration,
 	ToolSpecData,
 	ToolsData,
+	TurnBehaviourData,
 } from './types';
 
 function toolRegistrationBase(
@@ -71,7 +73,9 @@ export type ValidatedPlayground = {
 	tools?: ToolsData;
 	inputs?: InputsData;
 	outputs?: OutputsData;
+	turnBehaviour?: TurnBehaviourData;
 	guardrails?: GuardrailsData;
+	observability?: ObservabilityData;
 	image?: ImageData;
 	speech?: SpeechData;
 	live?: LiveData;
@@ -248,13 +252,7 @@ function validateIdentity(identity: IdentityData | undefined, issues: CompileIss
 			message: 'identity.handle is required.',
 		});
 	}
-	if (!identity.system.trim()) {
-		issues.push({
-			nodeId: 'identity',
-			facet: 'identity',
-			message: 'identity.system is required.',
-		});
-	}
+	/* system is optional in the kernel; omit validation — an empty agent is unusual but legal. */
 }
 
 function validateModels(
@@ -481,11 +479,22 @@ function validateModalityAndOutputs(
 		});
 	}
 
-	if (guardrails?.quotaEnabled && (!Number.isFinite(guardrails.perDay) || guardrails.perDay < 1)) {
+	if (
+		guardrails?.quotaEnabled &&
+		(!Number.isFinite(guardrails.perDay ?? 0) || (guardrails.perDay ?? 0) < 1)
+	) {
 		issues.push({
 			nodeId: 'guardrails',
 			facet: 'guardrails',
 			message: 'guardrails.quota.perDay must be ≥ 1 when quota is enabled.',
+		});
+	}
+
+	if (guardrails?.hasEgress === true && !guardrails.onBlock) {
+		issues.push({
+			nodeId: 'guardrails',
+			facet: 'guardrails',
+			message: 'guardrails.egress.onBlock is required when egress is enabled.',
 		});
 	}
 }
@@ -503,7 +512,9 @@ export function validatePlaygroundGraph(
 	const toolSpecs = allOfKind(nodes, 'toolSpec');
 	const inputs = asKind(nodes, 'inputs');
 	const outputs = asKind(nodes, 'outputs');
+	const turnBehaviour = asKind(nodes, 'turnBehaviour');
 	const guardrails = asKind(nodes, 'guardrails');
+	const observability = asKind(nodes, 'observability');
 	const image = asKind(nodes, 'image');
 	const speech = asKind(nodes, 'speech');
 	const live = asKind(nodes, 'live');
@@ -525,7 +536,9 @@ export function validatePlaygroundGraph(
 			tools,
 			inputs,
 			outputs,
+			turnBehaviour,
 			guardrails,
+			observability,
 			image,
 			speech,
 			live,

@@ -1,0 +1,30 @@
+---
+description: Playground must project theorum; no invented profile truths
+alwaysApply: true
+---
+
+# Playground ↔ theorum projection
+
+The web playground (`theorum-frontend`) is a **projection** of theorum. It must not invent profile, schema, protocol, tool, guardrail, or observability truths.
+
+## Allowed frontend-owned policy
+
+Only free-tier / host wiring in `src/lib/playground/playground-policy.ts` (free keys, free model ids, vault env). Canvas chrome (`expanded`, stubs) is UI-only.
+
+## Must import from theorum
+
+- Graph topology: `PROFILE_GRAPH`, `spineFacetsForProfileType`, `ProfileGraphFacetId`
+- Field catalogs: `PROFILE_FIELDS`, `fieldMeta`, closed unions from `theorum/schema`
+- Defaults: omit empty optionals; rely on `resolveGuardrailPolicy` / `resolveObservabilityPolicy` / `defineProfile` (canary / sanitize / redact default **on**)
+- Continue kinds: `CONTINUE_STOP_KINDS` / `ContinueStopKind` (not full `TURN_STOP_KINDS`); defaults `DEFAULT_ALLOW_CONTINUE`, `DEFAULT_AUTO_CONTINUE`
+
+## Forbidden
+
+- `FacetKind` / `SpineFacetKind` aliases are **forbidden**; use `ProfileGraphFacetId` from `theorum/schema` directly — no local type aliases that duplicate the catalog
+- Local spine lists that duplicate `PROFILE_GRAPH`
+- Inventing `maxSteps`, `canary`, `sanitizeInput`, `redactSensitive`, `hasEgress`, inputs, or pin defaults that disagree with kernel omit semantics
+- Seeding blank sync with `inputs.text: true`, `streamMode: 'sse'`, `maxOutputTokens`, `efforts`, image MIME lists, or speech `format: 'pcm'`
+- Materializing `DEFAULT_ALLOW_CONTINUE` / `DEFAULT_AUTO_CONTINUE` into compiled profiles — empty UI lists omit those keys
+- Painting omit as authored-on in chips (label `(default)` when unresolved)
+- Porting playground convenience into kernel policy to "match the UI"
+- Adding a profile section only in the frontend — add `PROFILE_FIELDS` + `PROFILE_GRAPH` in theorum first

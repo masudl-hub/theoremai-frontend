@@ -5,13 +5,18 @@
 			"src/**/*.ts",
 			"src/**/*.svelte",
 			"src/**/*.css",
+			"apps/run/src/**/*.ts",
+			"apps/run/src/**/*.tsx",
+			"apps/run/src/**/*.css",
 			"vite.config.ts",
+			"apps/run/vite.config.ts",
 			"biome.json",
 			"package.json",
+			"apps/run/package.json",
 			".fallowrc.jsonc",
 			"eslint.config.js",
-			"!theorum",
 			"!node_modules",
+			"!apps/run/dist",
 			"!.svelte-kit",
 			"!.output",
 			"!build",
@@ -54,7 +59,7 @@
 		"rules": {
 			"preset": "recommended",
 			"complexity": {
-				"noImportantStyles": "warn"
+				"noImportantStyles": "error"
 			},
 			"correctness": {
 				"noUnusedVariables": "error",

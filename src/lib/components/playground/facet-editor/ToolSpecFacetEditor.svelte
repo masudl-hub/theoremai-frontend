@@ -295,7 +295,7 @@ async function testConnection(): Promise<void> {
 		<textarea
 			class="field facet-textarea facet-code"
 			oninput={(e) => patch({ headersJson: e.currentTarget.value })}
-			placeholder={'{ "MCP-Protocol-Version": "2025-06-18" }'}
+			placeholder={'{ "X-Custom-Header": "value" }'}
 			rows="3"
 			spellcheck="false"
 			value={data.headersJson ?? ''}

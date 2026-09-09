@@ -1,8 +1,7 @@
 <script lang="ts">
-import { SCHEMA_ENFORCEMENTS, type TurnStopKind } from 'theorum/schema';
+import { SCHEMA_ENFORCEMENTS } from 'theorum/schema';
 import Checkbox from '$lib/components/playground/Checkbox.svelte';
 import Select from '$lib/components/Select.svelte';
-import { toggleList } from '$lib/playground/compat';
 import { fieldEnumOptions, schemaEnumOptions } from '$lib/playground/field-controls';
 import type { OutputsData } from '$lib/playground/types';
 import FacetFieldLabel from './FacetFieldLabel.svelte';
@@ -10,10 +9,8 @@ import type { FacetPatch } from './types';
 
 let { data, patch }: { data: OutputsData; patch: FacetPatch } = $props();
 
-const streamModeOptions = fieldEnumOptions('outputs.streaming.mode');
+const streamModeOptions = fieldEnumOptions('outputs.streaming.mode', { allowOmit: true });
 const enforcedOptions = schemaEnumOptions(SCHEMA_ENFORCEMENTS);
-const allowContinueOptions = fieldEnumOptions('turnResumption.allowContinue');
-const autoContinueOptions = fieldEnumOptions('turnResumption.autoContinue');
 </script>
 
 <label class="facet-check">
@@ -84,7 +81,7 @@ const autoContinueOptions = fieldEnumOptions('turnResumption.autoContinue');
 <label class="facet-field">
 	<FacetFieldLabel path="outputs.streaming.mode" />
 	<Select
-		onchange={(v) => patch({ streamMode: v as 'sse' | 'buffered' })}
+		onchange={(v) => patch({ streamMode: v as '' | 'sse' | 'buffered' })}
 		options={streamModeOptions}
 		value={data.streamMode}
 	/>
@@ -96,56 +93,3 @@ const autoContinueOptions = fieldEnumOptions('turnResumption.autoContinue');
 		<FacetFieldLabel path="outputs.streaming.streamThoughts" />
 	</label>
 </div>
-
-<label class="facet-check">
-	<Checkbox checked={data.resumeEnabled} onchange={(v) => patch({ resumeEnabled: v })} />
-	<FacetFieldLabel path="turnResumption" />
-</label>
-{#if data.resumeEnabled}
-	<fieldset class="facet-set">
-		<legend>
-			<FacetFieldLabel path="turnResumption.allowContinue" />
-		</legend>
-		<div class="facet-check-grid">
-			{#each allowContinueOptions as opt (opt.value)}
-				<label class="facet-check">
-					<Checkbox
-						checked={data.allowContinue.includes(opt.value as TurnStopKind)}
-						onchange={(v) =>
-							patch({
-								allowContinue: toggleList(
-									data.allowContinue,
-									opt.value as TurnStopKind,
-									v
-								)
-							})}
-					/>
-					<span>{opt.label}</span>
-				</label>
-			{/each}
-		</div>
-	</fieldset>
-	<fieldset class="facet-set">
-		<legend>
-			<FacetFieldLabel path="turnResumption.autoContinue" />
-		</legend>
-		<div class="facet-check-grid">
-			{#each autoContinueOptions as opt (opt.value)}
-				<label class="facet-check">
-					<Checkbox
-						checked={data.autoContinue.includes(opt.value as TurnStopKind)}
-						onchange={(v) =>
-							patch({
-								autoContinue: toggleList(
-									data.autoContinue,
-									opt.value as TurnStopKind,
-									v
-								)
-							})}
-					/>
-					<span>{opt.label}</span>
-				</label>
-			{/each}
-		</div>
-	</fieldset>
-{/if}

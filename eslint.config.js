@@ -14,7 +14,7 @@ const svelteConfig = {
 	},
 };
 
-const tsFiles = ['src/**/*.ts'];
+const tsFiles = ['src/**/*.ts', 'apps/run/src/**/*.ts', 'apps/run/src/**/*.tsx'];
 const svelteFiles = ['src/**/*.svelte', 'src/**/*.svelte.ts', 'src/**/*.svelte.js'];
 const cursorHookFiles = ['.cursor/hooks/**/*.mjs'];
 

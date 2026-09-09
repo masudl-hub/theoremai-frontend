@@ -19,13 +19,14 @@ import ToolSpecTypeIcon from '$lib/components/playground/icons/ToolSpecTypeIcon.
 import { PLAYGROUND_CTX, type PlaygroundCtx } from '$lib/playground/context';
 import { facetChips, facetTitle } from '$lib/playground/facet-ui';
 import { spineFacetKinds } from '$lib/playground/graph-layout';
-import type { FacetKind, IdentityData, PlaygroundNode } from '$lib/playground/types';
+import type { IdentityData, PlaygroundNode } from '$lib/playground/types';
+import type { ProfileGraphFacetId } from 'theorum/schema';
 
 let { id, data }: NodeProps<PlaygroundNode> = $props();
 
 const playground = getContext<PlaygroundCtx>(PLAYGROUND_CTX);
 
-const kind = $derived(data.kind as FacetKind);
+const kind = $derived(data.kind as ProfileGraphFacetId);
 const isHub = $derived(kind === 'identity');
 const isBranchHub = $derived(kind === 'models' || kind === 'tools');
 const isActive = $derived(playground.ui.panelNodeId === id);

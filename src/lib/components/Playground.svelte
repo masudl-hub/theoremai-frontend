@@ -20,7 +20,7 @@ import { resolve } from '$app/paths';
 import '@xyflow/svelte/dist/style.css';
 import '$lib/components/playground/playground-graph.css';
 
-import { savePlaygroundRunPayload } from '@theorum/react/client';
+import { createPlaygroundRunId, savePlaygroundRunPayload } from '@theorum/react/client';
 import AsciiCardSegments from '$lib/ascii/AsciiCardSegments.svelte';
 import { parseAsciiCardSegments, renderAsciiCard } from '$lib/ascii/tip-card';
 import AsciiHover from '$lib/components/AsciiHover.svelte';
@@ -220,11 +220,10 @@ function patchNode(id: string, partial: Partial<PlaygroundNode['data']>) {
 		if (updatedIdentity) {
 			const prevIdentity = prevNode?.data as IdentityData | undefined;
 			const typeChanged = prevIdentity?.profileType !== updatedIdentity.profileType;
+			const prevFacets = prevIdentity?.includedOptionalFacets ?? [];
+			const nextFacets = updatedIdentity.includedOptionalFacets;
 			const facetsChanged =
-				prevIdentity?.includeTools !== updatedIdentity.includeTools ||
-				prevIdentity?.includeInputs !== updatedIdentity.includeInputs ||
-				prevIdentity?.includeOutputs !== updatedIdentity.includeOutputs ||
-				prevIdentity?.includeGuardrails !== updatedIdentity.includeGuardrails;
+				prevFacets.length !== nextFacets.length || prevFacets.some((f, i) => f !== nextFacets[i]);
 
 			if (typeChanged || facetsChanged) {
 				const synced = syncGraphForProfile(nodes, edges, updatedIdentity, {
@@ -297,14 +296,22 @@ async function runCompile() {
 		running = false;
 		return;
 	}
-	savePlaygroundRunPayload({
-		agentId: result.agentId,
-		profile: result.profile,
-		customTools: result.customTools,
-		structured: result.structured,
-	});
+	const runId = createPlaygroundRunId();
+	savePlaygroundRunPayload(
+		{
+			agentId: result.agentId,
+			profile: result.profile,
+			customTools: result.customTools,
+			structured: result.structured,
+		},
+		runId,
+	);
 	running = false;
-	window.open(`${resolve('/playground/run/', {})}`, '_blank', 'noopener,noreferrer');
+	window.open(
+		`${resolve('/playground/run/', {})}?run=${encodeURIComponent(runId)}`,
+		'_blank',
+		'noopener,noreferrer',
+	);
 }
 
 async function copySource() {

@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { Protocol } from 'theorum/schema';
+import type { Protocol, SpeechAudioFormat } from 'theorum/schema';
 import Select from '$lib/components/Select.svelte';
 import { coerceSpeechFormat, speechFormatOptions } from '$lib/playground/field-controls';
 import type { SpeechData } from '$lib/playground/types';
@@ -16,9 +16,10 @@ let {
 	protocol: Protocol;
 } = $props();
 
-const formatOptions = $derived(speechFormatOptions(protocol));
+const formatOptions = $derived(speechFormatOptions(protocol, { allowOmit: true }));
 
 $effect(() => {
+	if (!data.format) return;
 	const legal = coerceSpeechFormat(protocol, data.format);
 	if (legal !== data.format) patch({ format: legal });
 });
@@ -38,7 +39,7 @@ $effect(() => {
 <label class="facet-field">
 	<FacetFieldLabel path="speech.format" />
 	<Select
-		onchange={(v) => patch({ format: v as 'pcm' | 'mp3' })}
+		onchange={(v) => patch({ format: v as '' | SpeechAudioFormat })}
 		options={formatOptions}
 		value={data.format}
 	/>
