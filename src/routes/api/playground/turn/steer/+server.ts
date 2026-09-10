@@ -18,8 +18,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		if (!Array.isArray(body.inject) || body.inject.length === 0) {
 			return json({ error: 'inject must be a non-empty array' }, { status: 400 });
 		}
-		openPlaygroundSteerInbox(turnId);
-		enqueuePlaygroundSteer(turnId, body.inject);
+		await openPlaygroundSteerInbox(turnId);
+		await enqueuePlaygroundSteer(turnId, body.inject);
 		return json({ ok: true });
 	} catch (err) {
 		return json({ error: err instanceof Error ? err.message : String(err) }, { status: 400 });

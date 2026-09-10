@@ -5,7 +5,7 @@ import type { StructuredRegistration, ToolRegistration } from '$lib/playground/t
 import { registerPlaygroundProfile } from './playground-register';
 import {
 	closePlaygroundSteerInbox,
-	consumePlaygroundSteer,
+	consumePlaygroundSteerWithRetry,
 	openPlaygroundSteerInbox,
 } from './playground-steer';
 
@@ -72,7 +72,7 @@ export async function* streamPlaygroundTurn(args: {
 
 	const provider = createPlaygroundProvider(profile, args.env ?? {});
 	const turnId = args.turnId;
-	if (turnId) openPlaygroundSteerInbox(turnId);
+	if (turnId) await openPlaygroundSteerInbox(turnId);
 
 	try {
 		for await (const event of runTurn(
@@ -86,8 +86,8 @@ export async function* streamPlaygroundTurn(args: {
 				...(args.effort ? { effort: args.effort } : {}),
 				...(turnId
 					? {
-							onSteer: () => {
-								const inject = consumePlaygroundSteer(turnId);
+							onSteer: async () => {
+								const inject = await consumePlaygroundSteerWithRetry(turnId);
 								return inject?.length ? { inject } : undefined;
 							},
 						}
@@ -98,7 +98,7 @@ export async function* streamPlaygroundTurn(args: {
 			yield event;
 		}
 	} finally {
-		if (turnId) closePlaygroundSteerInbox(turnId);
+		if (turnId) await closePlaygroundSteerInbox(turnId);
 	}
 }
 
