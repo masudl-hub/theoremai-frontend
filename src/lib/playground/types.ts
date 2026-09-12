@@ -251,7 +251,7 @@ export type TurnBehaviourData = {
 	resumeEnabled: boolean;
 	allowContinue: ContinueStopKind[];
 	autoContinue: ContinueStopKind[];
-	/** Text only. Omit → default true. Explicit false disables steering. */
+	/** Text and live. Omit → default true. Explicit false disables stage inject. */
 	allowSteering?: boolean;
 };
 

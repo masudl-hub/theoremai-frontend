@@ -169,7 +169,14 @@ function buildTurnBehaviourPayload(
 	tb?: TurnBehaviourData,
 	profileType?: AssembleProfileParams['profileType'],
 ): ProfileTurnBehaviourSpec | undefined {
-	if (!tb || profileType === 'live') return undefined;
+	if (!tb) return undefined;
+
+	// Live: allowSteering only — no resumption (sessionResumption is under live).
+	if (profileType === 'live') {
+		if (tb.allowSteering === false) return { allowSteering: false };
+		return undefined;
+	}
+
 	const out: ProfileTurnBehaviourSpec = {};
 
 	if (tb.resumeEnabled) {
@@ -349,11 +356,13 @@ function assembleSpeechProfile(params: AssembleProfileParams): ProfileDefinition
 }
 
 function assembleLiveProfile(params: AssembleProfileParams): ProfileDefinition {
+	const turnBehaviour = buildTurnBehaviourPayload(params.turnBehaviour, params.profileType);
 	return {
 		...params.base,
 		type: 'live',
 		live: buildLiveSpec(params.live),
 		tools: { allow: params.toolsSpec.allow } satisfies LiveProfileToolsSpec,
+		...(turnBehaviour ? { turnBehaviour } : {}),
 	};
 }
 

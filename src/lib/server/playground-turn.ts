@@ -86,7 +86,10 @@ export async function* streamPlaygroundTurn(args: {
 				...(args.effort ? { effort: args.effort } : {}),
 				...(turnId
 					? {
-							onSteer: async () => {
+							onStage: async ({ stage }) => {
+								if (stage !== 'pre_turn' && stage !== 'post_tool' && stage !== 'before_end') {
+									return;
+								}
 								const inject = await consumePlaygroundSteerWithRetry(turnId);
 								return inject?.length ? { inject } : undefined;
 							},

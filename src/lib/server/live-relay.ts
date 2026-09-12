@@ -2,16 +2,22 @@
  * Cloudflare Worker WebSocket relay for Gemini Live via THEORUM `runSession`.
  *
  * Bridges the browser client WebSocket (PCM mic stream + UI tools)
- * to a gated live session. Outbound canary/egress and inbound text prep
- * are owned by `runSession` — this host only pipes sockets and tool replies.
+ * to a gated live session. Prefers `LiveSession.executeTool` for registry
+ * tools; `sendToolResponse(s)` remain an escape hatch for non-registry relays.
  *
  * @module
  */
 
 import { getProfile, type LiveSession, publicError, runSession } from 'theorum';
 import { forClientEvents } from 'theorum/host';
+import type { ToolCredential } from 'theorum/kernel';
 import { parseLiveRelayClientMessage } from '$lib/types/live-messages';
 import { ensureKernelInitialized } from './kernel-init';
+import {
+	closePlaygroundSteerInbox,
+	consumePlaygroundSteerWithRetry,
+	openPlaygroundSteerInbox,
+} from './playground-steer';
 import { TH30_PROFILE_ID } from './th30';
 
 export type LiveRelayEnv = {
@@ -58,27 +64,77 @@ function resolveGeminiApiKey(env: LiveRelayEnv): string | undefined {
 	);
 }
 
+function newLiveSessionId(): string {
+	return globalThis.crypto.randomUUID();
+}
+
 function pipeBrowserToSession(serverWs: WebSocket, session: LiveSession): void {
 	serverWs.addEventListener('message', (event: MessageEvent) => {
 		try {
 			if (typeof event.data === 'string') {
 				const msg = parseLiveRelayClientMessage(JSON.parse(event.data) as unknown);
 				if (msg?.type === 'audio') {
-					session.sendAudio({ data: msg.data, mimeType: 'audio/pcm;rate=16000' });
+					void session.sendAudio({ data: msg.data, mimeType: 'audio/pcm;rate=16000' });
 					return;
 				}
 				if (msg?.type === 'video') {
-					session.sendVideo({
+					void session.sendVideo({
 						data: msg.data,
 						mimeType: msg.mimeType ?? 'image/jpeg',
 					});
 					return;
 				}
 				if (msg?.type === 'text') {
-					session.sendText(msg.text);
+					void session.sendText(msg.text);
+					return;
+				}
+				if (msg?.type === 'executeTool') {
+					void (async () => {
+						try {
+							const result = await session.executeTool({
+								name: msg.name,
+								callId: msg.callId,
+								input: msg.input,
+								resume: msg.resume,
+								credentials: msg.credentials as Record<string, ToolCredential> | undefined,
+							});
+							serverWs.send(
+								JSON.stringify({
+									type: 'executeToolResult',
+									callId: msg.callId,
+									name: msg.name,
+									...(result.gated
+										? { status: 'gated', gate: result.gated }
+										: {
+												status: 'complete',
+												output:
+													result.outputRaw ??
+													result.outputModel?.data ??
+													result.outputModel ??
+													(result.failure
+														? { error: result.failure.message, code: result.failure.code }
+														: { success: true }),
+												awaiting: result.awaiting,
+												failure: result.failure,
+											}),
+								}),
+							);
+						} catch (err) {
+							serverWs.send(
+								JSON.stringify({
+									type: 'executeToolResult',
+									callId: msg.callId,
+									name: msg.name,
+									status: 'complete',
+									output: { error: publicError(err) },
+								}),
+							);
+						}
+					})();
 					return;
 				}
 				if (msg?.type === 'toolResponse') {
+					// Escape hatch — skips session stages; prefer executeTool.
 					session.sendToolResponse(msg.id, msg.name, msg.output);
 					return;
 				}
@@ -88,7 +144,7 @@ function pipeBrowserToSession(serverWs: WebSocket, session: LiveSession): void {
 				return;
 			}
 			if (event.data instanceof ArrayBuffer || event.data instanceof Uint8Array) {
-				session.sendAudio({
+				void session.sendAudio({
 					data: bufferToBase64(event.data),
 					mimeType: 'audio/pcm;rate=16000',
 				});
@@ -108,8 +164,9 @@ async function pipeSessionToBrowser(
 	serverWs: WebSocket,
 	session: LiveSession,
 	profileId: string,
+	sessionId: string,
 ): Promise<void> {
-	serverWs.send(JSON.stringify({ type: 'ready', profile: profileId }));
+	serverWs.send(JSON.stringify({ type: 'ready', profile: profileId, sessionId }));
 	try {
 		for await (const event of session.events()) {
 			if (event.type === 'error') {
@@ -136,6 +193,7 @@ async function pipeSessionToBrowser(
 			}),
 		);
 	} finally {
+		await closePlaygroundSteerInbox(sessionId);
 		try {
 			serverWs.close(1000, 'session ended');
 		} catch {
@@ -144,14 +202,25 @@ async function pipeSessionToBrowser(
 	}
 }
 
-function openLiveSession(
+async function openLiveSession(
 	profileId: string,
 	env: LiveRelayEnv,
 	apiKey: string,
+	sessionId: string,
 	openWebSocket?: (url: string) => Promise<WebSocket>,
 ): Promise<LiveSession> {
+	await openPlaygroundSteerInbox(sessionId);
 	return runSession(
-		{ profile: profileId },
+		{
+			profile: profileId,
+			onStage: async ({ stage }) => {
+				if (stage !== 'pre_turn' && stage !== 'post_tool' && stage !== 'before_end') {
+					return;
+				}
+				const inject = await consumePlaygroundSteerWithRetry(sessionId);
+				return inject?.length ? { inject } : undefined;
+			},
+		},
 		{
 			gemini: {
 				vault: {
@@ -203,10 +272,12 @@ export async function handleNodeLiveRelay(
 		return;
 	}
 
+	const sessionId = newLiveSessionId();
 	let session: LiveSession;
 	try {
-		session = await openLiveSession(profileId, env, apiKey);
+		session = await openLiveSession(profileId, env, apiKey, sessionId);
 	} catch (err) {
+		await closePlaygroundSteerInbox(sessionId);
 		try {
 			clientWs.send(JSON.stringify({ type: 'error', error: publicError(err) }));
 			clientWs.close(1011, 'relay failed');
@@ -219,8 +290,9 @@ export async function handleNodeLiveRelay(
 	pipeBrowserToSession(clientWs, session);
 	clientWs.addEventListener('close', () => {
 		void session.close('client disconnected');
+		void closePlaygroundSteerInbox(sessionId);
 	});
-	await pipeSessionToBrowser(clientWs, session, profileId);
+	await pipeSessionToBrowser(clientWs, session, profileId, sessionId);
 }
 
 /** Handle incoming WebSocket upgrade request and spawn duplex relay pipe. */
@@ -252,18 +324,27 @@ export async function handleLiveRelay(request: Request, env: LiveRelayEnv): Prom
 	const [clientWs, serverWs] = new WebSocketPair() as unknown as [WebSocket, WebSocket];
 	(serverWs as unknown as { accept: () => void }).accept();
 
+	const sessionId = newLiveSessionId();
 	let session: LiveSession;
 	try {
-		session = await openLiveSession(profileId, env, apiKey, openCloudflareUpstreamWebSocket);
+		session = await openLiveSession(
+			profileId,
+			env,
+			apiKey,
+			sessionId,
+			openCloudflareUpstreamWebSocket,
+		);
 	} catch (err) {
+		await closePlaygroundSteerInbox(sessionId);
 		return new Response(`Failed to open live session: ${publicError(err)}`, { status: 502 });
 	}
 
 	pipeBrowserToSession(serverWs, session);
 	serverWs.addEventListener('close', () => {
 		void session.close('client disconnected');
+		void closePlaygroundSteerInbox(sessionId);
 	});
-	void pipeSessionToBrowser(serverWs, session, profileId);
+	void pipeSessionToBrowser(serverWs, session, profileId, sessionId);
 
 	return new Response(null, {
 		status: 101,

@@ -1,9 +1,9 @@
 /**
- * Playground mid-turn steer inbox.
+ * Playground mid-turn / live-cycle inject inbox.
  *
- * Prefer the Cache API when available (Cloudflare Pages / Workers share
- * `caches.default` across isolates). Fall back to process memory for local
- * Vite/Node where Cache is absent — same process, Map is correct.
+ * Keyed by turn id (text) or session id (live). Prefer the Cache API when
+ * available (Cloudflare Pages / Workers share `caches.default` across isolates).
+ * Fall back to process memory for local Vite/Node.
  */
 
 import type { TurnHistoryMessage } from 'theorum';
@@ -20,8 +20,9 @@ const MEMORY = new Map<string, SteerUnit[]>();
 const CACHE_PREFIX = 'https://theorum.local/playground/steer/';
 const CACHE_TTL_SECONDS = 60 * 15;
 
-function steerRequest(turnId: string): Request {
-	return new Request(`${CACHE_PREFIX}${encodeURIComponent(turnId)}`);
+/** Inbox key — turn id (text) or session id (live). */
+function steerRequest(inboxId: string): Request {
+	return new Request(`${CACHE_PREFIX}${encodeURIComponent(inboxId)}`);
 }
 
 function sharedCache(): CacheLike | null {
@@ -86,40 +87,40 @@ export async function enqueuePlaygroundSteer(
 	}
 }
 
-/** One pending steer unit per barrier (FIFO). */
+/** One pending inject unit per inject-capable stage fire (FIFO). */
 export async function consumePlaygroundSteer(
-	turnId: string,
+	inboxId: string,
 ): Promise<TurnHistoryMessage[] | undefined> {
-	const memoryQueue = MEMORY.get(turnId);
+	const memoryQueue = MEMORY.get(inboxId);
 	if (memoryQueue?.length) {
 		const next = memoryQueue.shift();
 		if (sharedCache()) {
-			await writeCacheQueue(turnId, memoryQueue);
+			await writeCacheQueue(inboxId, memoryQueue);
 		}
 		return next;
 	}
 
 	if (!sharedCache()) return undefined;
 
-	const cacheQueue = await readCacheQueue(turnId);
+	const cacheQueue = await readCacheQueue(inboxId);
 	if (!cacheQueue.length) return undefined;
 	const next = cacheQueue.shift();
-	await writeCacheQueue(turnId, cacheQueue);
+	await writeCacheQueue(inboxId, cacheQueue);
 	return next;
 }
 
 /**
- * Barrier consume with a short retry so a steer POST that lands in another
- * isolate just as the barrier fires still delivers.
+ * Stage consume with a short retry so a steer POST that lands in another
+ * isolate just as the stage fires still delivers.
  */
 export async function consumePlaygroundSteerWithRetry(
-	turnId: string,
+	inboxId: string,
 	options: { retries?: number; delayMs?: number } = {},
 ): Promise<TurnHistoryMessage[] | undefined> {
 	const retries = options.retries ?? 1;
 	const delayMs = options.delayMs ?? 25;
 	for (let attempt = 0; attempt <= retries; attempt += 1) {
-		const inject = await consumePlaygroundSteer(turnId);
+		const inject = await consumePlaygroundSteer(inboxId);
 		if (inject?.length) return inject;
 		if (attempt < retries) {
 			await new Promise((resolve) => setTimeout(resolve, delayMs));

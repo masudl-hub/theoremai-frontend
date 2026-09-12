@@ -4,6 +4,14 @@ export type LiveRelayClientMessage =
 	| { type: 'audio'; data: string }
 	| { type: 'video'; data: string; mimeType?: string }
 	| { type: 'text'; text: string }
+	| {
+			type: 'executeTool';
+			name: string;
+			callId: string;
+			input?: unknown;
+			resume?: { value?: unknown; granted?: boolean };
+			credentials?: Record<string, unknown>;
+	  }
 	| { type: 'toolResponse'; id: string; name: string; output: unknown }
 	| { type: 'toolResponses'; responses: LiveToolResponse[] };
 
@@ -23,6 +31,25 @@ export function parseLiveRelayClientMessage(raw: unknown): LiveRelayClientMessag
 				: null;
 		case 'text':
 			return typeof record.text === 'string' ? { type: 'text', text: record.text } : null;
+		case 'executeTool': {
+			if (typeof record.name !== 'string' || typeof record.callId !== 'string') return null;
+			const resumeRaw = record.resume;
+			const credentialsRaw = record.credentials;
+			return {
+				type: 'executeTool',
+				name: record.name,
+				callId: record.callId,
+				input: record.input,
+				resume:
+					resumeRaw && typeof resumeRaw === 'object' && !Array.isArray(resumeRaw)
+						? resumeRaw
+						: undefined,
+				credentials:
+					credentialsRaw && typeof credentialsRaw === 'object' && !Array.isArray(credentialsRaw)
+						? Object.fromEntries(Object.entries(credentialsRaw))
+						: undefined,
+			};
+		}
 		case 'toolResponse':
 			return typeof record.id === 'string' && typeof record.name === 'string'
 				? {
