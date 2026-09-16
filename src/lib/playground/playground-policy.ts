@@ -17,6 +17,12 @@ export const GEMINI_PLAYGROUND_DEFAULT_API_ID = 'gemini-3.1-flash-lite';
 /** Default wire id for geminiLive on free tier. */
 export const GEMINI_PLAYGROUND_LIVE_DEFAULT_API_ID = 'gemini-3.1-flash-live-preview';
 
+/**
+ * Live sessions fix function declarations at setup — T0 only.
+ * Host-side constraint (kernel removed `LIVE_TOOL_LOAD_TIERS`; use `TOOL_LOAD_TIERS` for the full set).
+ */
+export const LIVE_TOOL_LOAD_TIERS = ['T0'] as const;
+
 export type PlaygroundHubProtocol = 'geminiInteractions' | 'geminiLive';
 
 export type PlaygroundModelKind = 'chat' | 'tts' | 'live';
@@ -136,6 +142,22 @@ export const GEMINI_PLAYGROUND_MODELS: readonly GeminiPlaygroundModel[] = [
 	{
 		id: 'gemini-3.1-flash-live-preview',
 		label: '3 Flash Live',
+		kind: 'live',
+		protocols: ['geminiLive'],
+		mapGrounding: false,
+		searchGrounding: false,
+	},
+	{
+		id: 'gemini-3.8-live',
+		label: '3.8 Live',
+		kind: 'live',
+		protocols: ['geminiLive'],
+		mapGrounding: false,
+		searchGrounding: false,
+	},
+	{
+		id: 'gemini-3.8-live-extended-thinking',
+		label: '3.8 Live Extended Thinking',
 		kind: 'live',
 		protocols: ['geminiLive'],
 		mapGrounding: false,

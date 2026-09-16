@@ -1,5 +1,5 @@
 import type { ProfileGraphFacetId, ProfileType, Protocol, Provider } from 'theorum/schema';
-import { LIVE_TOOL_LOAD_TIERS, spineFacetsForProfileType } from 'theorum/schema';
+import { spineFacetsForProfileType } from 'theorum/schema';
 import { resolveNodeCollisions } from './graph-collision';
 import {
 	branchSpecPosition,
@@ -9,7 +9,7 @@ import {
 	PLAYGROUND_ROW_PX,
 	stackBranchSpecPosition,
 } from './layout';
-import { OPENROUTER_PLAYGROUND_API_ID } from './playground-policy';
+import { LIVE_TOOL_LOAD_TIERS, OPENROUTER_PLAYGROUND_API_ID } from './playground-policy';
 import {
 	defaultImageSpec,
 	defaultLiveSpec,

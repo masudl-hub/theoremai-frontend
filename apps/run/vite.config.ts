@@ -13,7 +13,7 @@ const theorumAliases = {
 	'theorum/host': path.resolve(theorumRoot, 'src/host/mod.ts'),
 	'theorum/guardrails': path.resolve(theorumRoot, 'src/guardrails/mod.ts'),
 	'theorum/interface': path.resolve(theorumRoot, 'src/interface/mod.ts'),
-	'theorum/playground': path.resolve(theorumRoot, 'src/playground/mod.ts'),
+	'@theorum/playground': path.resolve(theorumRoot, 'playground/mod.ts'),
 	'theorum/kernel': path.resolve(theorumRoot, 'src/kernel/mod.ts'),
 	'theorum/presets/google/speech-voices': path.resolve(
 		theorumRoot,

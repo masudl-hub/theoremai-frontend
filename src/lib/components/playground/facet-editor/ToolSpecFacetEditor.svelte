@@ -1,6 +1,6 @@
 <script lang="ts">
 import { getContext } from 'svelte';
-import { demoHttpSampleInput } from 'theorum/playground';
+import { demoHttpSampleInput } from '@theorum/playground';
 import type {
 	AuthUnauthenticatedPolicy,
 	CustomToolType,
@@ -10,7 +10,6 @@ import type {
 	ToolLoadTier,
 	ToolPermission,
 } from 'theorum/schema';
-import { LIVE_TOOL_LOAD_TIERS } from 'theorum/schema';
 import ToolSpecTypeIcon from '$lib/components/playground/icons/ToolSpecTypeIcon.svelte';
 import Select from '$lib/components/Select.svelte';
 import {
@@ -21,7 +20,7 @@ import {
 } from '$lib/playground/compat';
 import { PLAYGROUND_CTX, type PlaygroundCtx } from '$lib/playground/context';
 import { fieldEnumOptions } from '$lib/playground/field-controls';
-import { parseList } from '$lib/playground/playground-policy';
+import { LIVE_TOOL_LOAD_TIERS, parseList } from '$lib/playground/playground-policy';
 import {
 	buildTestConnectionAuth,
 	parseHeadersJson as parseHeadersJsonStrict,

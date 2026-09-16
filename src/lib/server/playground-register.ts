@@ -7,7 +7,7 @@ import {
 	registerTool,
 	standardEgressEnforce,
 } from 'theorum';
-import { playgroundDemoHandler, stubOutputFromSchema } from 'theorum/playground';
+import { playgroundDemoHandler, stubOutputFromSchema } from '@theorum/playground';
 import { registerGooglePreset } from 'theorum/presets/google';
 import { zodFromJsonSchema } from '$lib/playground/tool-schema';
 import type { StructuredRegistration, ToolRegistration } from '$lib/playground/types';

@@ -41,6 +41,7 @@
 		"@sveltejs/kit": "^2.63.0",
 		"@tabler/icons-svelte": "^3.46.0",
 		"@theorum/react": "file:../theorum/react",
+		"@theorum/playground": "file:../theorum/playground",
 		"@xyflow/svelte": "^1.6.5",
 		"ai": "^7.0.0",
 		"gpt-tokenizer": "^4.0.0",

@@ -7,7 +7,7 @@
  */
 import assert from 'node:assert/strict';
 import { compilePlayground } from '../src/lib/playground/compile.ts';
-import { playgroundDemoHandler } from 'theorum/playground';
+import { playgroundDemoHandler } from '@theorum/playground';
 import { createExampleGraph } from '../src/lib/playground/example.ts';
 
 const NOMINATIM_UA = 'TheorumPlayground/1.0 (travel demo smoke test)';
@@ -89,8 +89,8 @@ const HTTP_SMOKE = [
 		url: 'https://en.wikipedia.org/api/rest_v1/page/summary/Paris',
 	},
 	{
-		name: 'openlibrary_search',
-		url: 'https://openlibrary.org/search.json?q=travel&limit=1',
+		name: 'archive_text_search',
+		url: 'https://archive.org/advancedsearch.php?q=mediatype:texts%20AND%20travel&rows=1&output=json&fl[]=identifier&fl[]=title&fl[]=creator',
 	},
 	{
 		name: 'lookup_postal_code',

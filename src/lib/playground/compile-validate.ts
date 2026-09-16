@@ -1,6 +1,7 @@
-import { HTTP_METHODS, LIVE_TOOL_LOAD_TIERS } from 'theorum/schema';
+import { HTTP_METHODS } from 'theorum/schema';
 import { isValidProfileProtocol, protocolsForProfileType } from './compat';
 import {
+	LIVE_TOOL_LOAD_TIERS,
 	parseList,
 	validateCustomToolsAllow,
 	validateGeminiModelBinding,
