@@ -4,14 +4,14 @@
  * Run: npx vite-node scripts/pressure-interface-voice.mjs
  */
 import assert from 'node:assert/strict';
-import { defineProfile } from 'theorum';
-import { interfaceFromProfile, prepareUserTurn } from 'theorum/interface';
-import { filesToPending } from '../../theorum/react/src/client/encode-files.ts';
+import { defineProfile } from '@theoremai/agents';
+import { interfaceFromProfile, prepareUserTurn } from '@theoremai/agents/interface';
+import { filesToPending } from '../../theoremai/react/src/client/encode-files.ts';
 import {
 	float32RmsToLevel,
 	INPUT_LEVEL_GAIN,
 	timeDomainBytesToLevel,
-} from '../../theorum/react/src/client/audio-level.ts';
+} from '../../theoremai/react/src/client/audio-level.ts';
 
 const profile = defineProfile({
 	id: 'pressure.voice.composer',

@@ -1,5 +1,5 @@
 /**
- * Playground field widgets derive options from kernel `fieldMeta` and `theorum/schema`
+ * Playground field widgets derive options from kernel `fieldMeta` and `@theoremai/agents/schema`
  * exports only. Playground policy (free-tier keys) lives in playground-policy.ts.
  */
 import {
@@ -7,7 +7,7 @@ import {
 	fieldMeta,
 	type Protocol,
 	speechFormatsForProtocol,
-} from 'theorum/schema';
+} from '@theoremai/agents/schema';
 
 export type SelectOption = { value: string; label: string };
 
@@ -46,7 +46,7 @@ export function fieldEnumOptions(
 	return options;
 }
 
-/** Closed union exported from `theorum/schema` when no `fieldMeta` path exists. */
+/** Closed union exported from `@theoremai/agents/schema` when no `fieldMeta` path exists. */
 export function schemaEnumOptions(
 	values: readonly string[],
 	opts?: { allowOmit?: boolean; omitLabel?: string },

@@ -17,9 +17,9 @@ function defaultNode(node: PackageNode): ArchNode {
 	if (node.kind === 'package') {
 		return {
 			id: node.id,
-			title: 'Theorum',
+			title: 'Theorem',
 			type: 'PACKAGE',
-			usage: "import { defineProfile, runTurn } from 'theorum'",
+			usage: "import { defineProfile, runTurn } from '@theoremai/agents'",
 			desc: 'Published npm/JSR package — root barrel plus every module under src/.',
 			specs: [
 				['root', 'mod.ts'],
@@ -46,16 +46,16 @@ function defaultNode(node: PackageNode): ArchNode {
 	}
 
 	const exportPaths: Record<string, string> = {
-		'mod.ts': 'theorum',
-		'src/kernel/mod.ts': 'theorum/kernel',
-		'src/providers/mod.ts': 'theorum/providers',
-		'src/providers/local/mod.ts': 'theorum/providers/local',
-		'src/guardrails/mod.ts': 'theorum/guardrails',
-		'src/observability/mod.ts': 'theorum/observability',
-		'src/host/mod.ts': 'theorum/host',
-		'src/cli/index.ts': 'theorum/cli',
-		'src/presets/mod.ts': 'theorum/presets',
-		'src/presets/google.ts': 'theorum/presets/google',
+		'mod.ts': '@theoremai/agents',
+		'src/kernel/mod.ts': '@theoremai/agents/kernel',
+		'src/providers/mod.ts': '@theoremai/agents/providers',
+		'src/providers/local/mod.ts': '@theoremai/agents/providers/local',
+		'src/guardrails/mod.ts': '@theoremai/agents/guardrails',
+		'src/observability/mod.ts': '@theoremai/agents/observability',
+		'src/host/mod.ts': '@theoremai/agents/host',
+		'src/cli/index.ts': '@theoremai/agents/cli',
+		'src/presets/mod.ts': '@theoremai/agents/presets',
+		'src/presets/google.ts': '@theoremai/agents/presets/google',
 	};
 	const entry = exportPaths[node.path];
 
@@ -82,12 +82,12 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'mod',
 		title: 'mod.ts',
 		type: 'BARREL',
-		usage: "import { defineProfile, runTurn, createProvider } from 'theorum'",
+		usage: "import { defineProfile, runTurn, createProvider } from '@theoremai/agents'",
 		desc: 'Root public API — profiles, turns, guardrails, compaction, tools, and provider factory re-exports.',
 		specs: [
-			['entry', 'theorum'],
+			['entry', '@theoremai/agents'],
 			['path', 'mod.ts'],
-			['also', 'theorum/kernel · /providers · /guardrails · …'],
+			['also', '@theoremai/agents/kernel · /providers · /guardrails · …'],
 		],
 		copyable: true,
 	},
@@ -95,12 +95,12 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'cli',
 		title: 'cli',
 		type: 'TOOLING',
-		usage: 'npx theorum --help',
+		usage: 'npx @theoremai/agents --help',
 		desc: 'Command-line entry — profile inspection, manual turns, matrix stress tests.',
 		specs: [
-			['entry', 'theorum/cli'],
+			['entry', '@theoremai/agents/cli'],
 			['path', 'src/cli/'],
-			['bin', 'theorum'],
+			['bin', '@theoremai/agents'],
 		],
 		copyable: true,
 	},
@@ -108,11 +108,11 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'cli_index',
 		title: 'index.ts',
 		type: 'BARREL',
-		usage: 'npx theorum --help',
+		usage: 'npx @theoremai/agents --help',
 		desc: 'CLI router — dispatches to commands/ and wires matrix/ for `test --matrix`.',
 		specs: [
 			['path', 'src/cli/index.ts'],
-			['entry', 'theorum/cli'],
+			['entry', '@theoremai/agents/cli'],
 			['cmds', 'run · test · profile · bench · fuzz'],
 		],
 		copyable: true,
@@ -133,7 +133,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'cli_commands_run',
 		title: 'run.ts',
 		type: 'COMMAND',
-		usage: 'npx theorum run --profile <id> --prompt "…"',
+		usage: 'npx @theoremai/agents run --profile <id> --prompt "…"',
 		desc: 'Send one prompt through a registered profile and watch tokens stream.',
 		specs: [
 			['path', 'src/cli/commands/run.ts'],
@@ -146,7 +146,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'cli_commands_test',
 		title: 'test.ts',
 		type: 'COMMAND',
-		usage: 'npx theorum test --profile <id> --matrix',
+		usage: 'npx @theoremai/agents test --profile <id> --matrix',
 		desc: 'Connectivity ping or full permutation sweep via matrix/.',
 		specs: [
 			['path', 'src/cli/commands/test.ts'],
@@ -159,7 +159,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'cli_commands_profile',
 		title: 'profile.ts',
 		type: 'COMMAND',
-		usage: 'npx theorum profile show <id>',
+		usage: 'npx @theoremai/agents profile show <id>',
 		desc: 'List or dump profile blueprints as JSON.',
 		specs: [
 			['path', 'src/cli/commands/profile.ts'],
@@ -172,7 +172,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'cli_commands_bench',
 		title: 'bench.ts',
 		type: 'COMMAND',
-		usage: 'npx theorum bench',
+		usage: 'npx @theoremai/agents bench',
 		desc: 'Synthetic kernel throughput benchmark — mock streams, not model quality.',
 		specs: [
 			['path', 'src/cli/commands/bench.ts'],
@@ -185,7 +185,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'cli_commands_fuzz',
 		title: 'fuzz-guardrails.ts',
 		type: 'COMMAND',
-		usage: 'npx theorum fuzz',
+		usage: 'npx @theoremai/agents fuzz',
 		desc: 'Adversarial corpus against injectionSpans and related guardrails.',
 		specs: [
 			['path', 'src/cli/commands/fuzz-guardrails.ts'],
@@ -198,11 +198,11 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'cli_matrix',
 		title: 'matrix',
 		type: 'FOLDER',
-		usage: '// Internal — used by: theorum test --matrix',
+		usage: '// Internal — used by: theorem test --matrix',
 		desc: 'Turn-shape permutations for `test --matrix` — fixtures + synthesizer.',
 		specs: [
 			['path', 'src/cli/matrix/'],
-			['via', 'theorum test --matrix'],
+			['via', 'theorem test --matrix'],
 			['export', 'none'],
 		],
 	},
@@ -234,10 +234,10 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel',
 		title: 'kernel',
 		type: 'RUNTIME',
-		usage: "import { runTurn, defineProfile } from 'theorum/kernel'",
+		usage: "import { runTurn, defineProfile } from '@theoremai/agents/kernel'",
 		desc: 'Typed execution kernel — profiles, turns, tools, compaction, stop/resume.',
 		specs: [
-			['entry', 'theorum/kernel'],
+			['entry', '@theoremai/agents/kernel'],
 			['path', 'src/kernel/'],
 			['door', 'runTurn'],
 		],
@@ -247,12 +247,12 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_mod',
 		title: 'mod.ts',
 		type: 'BARREL',
-		usage: "import { runTurn, defineProfile } from 'theorum/kernel'",
+		usage: "import { runTurn, defineProfile } from '@theoremai/agents/kernel'",
 		desc: 'Kernel public barrel — runner, profiles, tools, schema vocab, compaction, stop helpers.',
 		specs: [
-			['entry', 'theorum/kernel'],
+			['entry', '@theoremai/agents/kernel'],
 			['path', 'src/kernel/mod.ts'],
-			['also', 're-exported on theorum'],
+			['also', 're-exported on theorem'],
 		],
 		copyable: true,
 	},
@@ -260,7 +260,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_types',
 		title: 'types.ts',
 		type: 'CONTRACTS',
-		usage: "import type { Profile, TurnRequest, TurnEvent } from 'theorum/kernel'",
+		usage: "import type { Profile, TurnRequest, TurnEvent } from '@theoremai/agents/kernel'",
 		desc: 'Behavioral type contracts — Profile, TurnRequest, TurnEvent, tool envelopes, provider shapes.',
 		specs: [
 			['path', 'src/kernel/types.ts'],
@@ -273,7 +273,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_schema',
 		title: 'schema.ts',
 		type: 'CONTRACTS',
-		usage: "import { PROTOCOLS, fieldMeta, isValidPair, providersFor } from 'theorum'",
+		usage: "import { PROTOCOLS, fieldMeta, isValidPair, providersFor } from '@theoremai/agents'",
 		desc: 'Closed unions and profile field metadata — protocol/provider pairs, thinking levels, tool tiers.',
 		specs: [
 			['path', 'src/kernel/schema.ts'],
@@ -286,7 +286,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_stop',
 		title: 'stop.ts',
 		type: 'CORE',
-		usage: "import { isResumeableStop, shouldAutoContinue } from 'theorum'",
+		usage: "import { isResumeableStop, shouldAutoContinue } from '@theoremai/agents'",
 		desc: 'Turn stop kinds, resume/auto-continue helpers, and provider finish-reason mapping.',
 		specs: [
 			['path', 'src/kernel/stop.ts'],
@@ -312,10 +312,10 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		title: 'assert.ts',
 		type: 'INTERNAL',
 		usage: '// Internal',
-		desc: 'Engine invariants — failures surface as TheorumError, not raw throws.',
+		desc: 'Engine invariants — failures surface as TheoremError, not raw throws.',
 		specs: [
 			['path', 'src/kernel/engine/assert.ts'],
-			['surfaces', 'TheorumError · publicError'],
+			['surfaces', 'TheoremError · publicError'],
 			['export', 'none'],
 		],
 	},
@@ -323,7 +323,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_engine_compaction',
 		title: 'compaction.ts',
 		type: 'CORE',
-		usage: "import { shouldCompact, splitForCompaction } from 'theorum'",
+		usage: "import { shouldCompact, splitForCompaction } from '@theoremai/agents'",
 		desc: 'History trimming before context overflow — meters, splits, and token estimates.',
 		specs: [
 			['path', 'src/kernel/engine/compaction.ts'],
@@ -371,7 +371,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_engine_live_inbound',
 		title: 'live-inbound.ts',
 		type: 'SECURITY',
-		usage: "import { prepareLiveInboundText } from 'theorum'",
+		usage: "import { prepareLiveInboundText } from '@theoremai/agents'",
 		desc: 'Live client text path — sanitizeTurnRequest plus `<user_data>` fence before upstream send.',
 		specs: [
 			['path', 'src/kernel/engine/live-inbound.ts'],
@@ -407,7 +407,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_engine_runner',
 		title: 'runner.ts',
 		type: 'RUNTIME',
-		usage: "import { runTurn } from 'theorum'",
+		usage: "import { runTurn } from '@theoremai/agents'",
 		desc: 'Public runTurn export — thin re-export of engine/runner/mod.ts.',
 		specs: [
 			['path', 'src/kernel/engine/runner.ts'],
@@ -420,7 +420,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_engine_session',
 		title: 'session/',
 		type: 'RUNTIME',
-		usage: "import { runSession } from 'theorum'",
+		usage: "import { runSession } from '@theoremai/agents'",
 		desc: 'Live session door — long-lived Gemini Live with shared resolve/tools/gates.',
 		specs: [
 			['path', 'src/kernel/engine/session/mod.ts'],
@@ -433,7 +433,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_engine_session_mod',
 		title: 'mod.ts',
 		type: 'RUNTIME',
-		usage: "import { runSession } from 'theorum'",
+		usage: "import { runSession } from '@theoremai/agents'",
 		desc: 'runSession implementation.',
 		specs: [
 			['path', 'src/kernel/engine/session/mod.ts'],
@@ -549,7 +549,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_registry',
 		title: 'registry',
 		type: 'CORE',
-		usage: "import { registerProfile, registerStructured } from 'theorum'",
+		usage: "import { registerProfile, registerStructured } from '@theoremai/agents'",
 		desc: 'Profiles, structured schemas, ingress, and vault — not the tool registry (see tools/).',
 		specs: [
 			['path', 'src/kernel/registry/'],
@@ -562,7 +562,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_registry_catalog',
 		title: 'catalog.ts',
 		type: 'CORE',
-		usage: "import { requireModelBinding, mimeAllowed, clampThinkingLevel } from 'theorum'",
+		usage: "import { requireModelBinding, mimeAllowed, clampThinkingLevel } from '@theoremai/agents'",
 		desc: 'Model binding lookup and MIME helpers for profile validation.',
 		specs: [
 			['path', 'src/kernel/registry/catalog.ts'],
@@ -575,7 +575,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_registry_profiles',
 		title: 'profiles.ts',
 		type: 'CORE',
-		usage: "import { defineProfile, registerProfile, getProfile } from 'theorum'",
+		usage: "import { defineProfile, registerProfile, getProfile } from '@theoremai/agents'",
 		desc: 'defineProfile / registerProfile and in-memory profile registry.',
 		specs: [
 			['path', 'src/kernel/registry/profiles.ts'],
@@ -588,7 +588,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_registry_resolve',
 		title: 'resolve.ts',
 		type: 'CORE',
-		usage: "import { resolveTurn, projectProfile } from 'theorum'",
+		usage: "import { resolveTurn, projectProfile } from '@theoremai/agents'",
 		desc: 'Combines profile + TurnRequest into ResolvedGeneration for the runner.',
 		specs: [
 			['path', 'src/kernel/registry/resolve.ts'],
@@ -601,7 +601,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_registry_schemas',
 		title: 'schemas.ts',
 		type: 'CONTRACTS',
-		usage: "import { registerStructured, getStructured } from 'theorum'",
+		usage: "import { registerStructured, getStructured } from '@theoremai/agents'",
 		desc: 'Structured output schema registry — enforced at runner gates.',
 		specs: [
 			['path', 'src/kernel/registry/schemas.ts'],
@@ -660,7 +660,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_tools',
 		title: 'tools',
 		type: 'CORE',
-		usage: "import { registerTool, getTool, invokeTool } from 'theorum'",
+		usage: "import { registerTool, getTool, invokeTool } from '@theoremai/agents'",
 		desc: 'Process-local tool registry — registerTool at startup. Custom tools: tools.allow. Builtins: model builtInTools (+ registerGooglePreset).',
 		specs: [
 			['path', 'src/kernel/tools/'],
@@ -673,8 +673,8 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_tools_mod',
 		title: 'mod.ts',
 		type: 'BARREL',
-		usage: "import { registerTool, invokeTool, prepareTurnToolSnapshot } from 'theorum'",
-		desc: 'Tool registry public surface — also re-exported from theorum/kernel and mod.ts.',
+		usage: "import { registerTool, invokeTool, prepareTurnToolSnapshot } from '@theoremai/agents'",
+		desc: 'Tool registry public surface — also re-exported from @theoremai/agents/kernel and mod.ts.',
 		specs: [
 			['path', 'src/kernel/tools/mod.ts'],
 			['api', 'registerTool · invokeTool · prepareTurnToolSnapshot · cloneTurnToolSnapshot'],
@@ -708,7 +708,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_tools_invoke',
 		title: 'invoke.ts',
 		type: 'CORE',
-		usage: "import { invokeTool } from 'theorum'",
+		usage: "import { invokeTool } from '@theoremai/agents'",
 		desc: 'Direct tool invocation outside a full turn — same executor as the runner.',
 		specs: [
 			['path', 'src/kernel/tools/invoke.ts'],
@@ -743,7 +743,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_tools_resolve',
 		title: 'resolve.ts',
 		type: 'CORE',
-		usage: "import { prepareTurnToolSnapshot, cloneTurnToolSnapshot } from 'theorum'",
+		usage: "import { prepareTurnToolSnapshot, cloneTurnToolSnapshot } from '@theoremai/agents'",
 		desc: 'TurnToolSnapshot — T0 resolve, expandT1Policy, promoteLoadedTools (turn-local T2), clone for concurrent invoke.',
 		specs: [
 			['path', 'src/kernel/tools/resolve.ts'],
@@ -767,7 +767,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_tools_types',
 		title: 'types.ts',
 		type: 'CONTRACTS',
-		usage: "import type { ToolDefinition, ToolEnvelope } from 'theorum/kernel'",
+		usage: "import type { ToolDefinition, ToolEnvelope } from '@theoremai/agents/kernel'",
 		desc: 'Tool registry type contracts — ToolDefinition, ToolEnvelope, tiers.',
 		specs: [
 			['path', 'src/kernel/tools/types.ts'],
@@ -779,10 +779,10 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'providers',
 		title: 'providers',
 		type: 'INTEGRATION',
-		usage: "import { createProvider } from 'theorum/providers'",
+		usage: "import { createProvider } from '@theoremai/agents/providers'",
 		desc: 'Provider adapters — lazy-loaded on first complete via create-provider.ts.',
 		specs: [
-			['entry', 'theorum/providers'],
+			['entry', '@theoremai/agents/providers'],
 			['path', 'src/providers/'],
 			['folders', 'google/ · openrouter/ · local/ · shared/'],
 		],
@@ -792,10 +792,10 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'providers_mod',
 		title: 'mod.ts',
 		type: 'BARREL',
-		usage: "import { createProvider } from 'theorum/providers'",
+		usage: "import { createProvider } from '@theoremai/agents/providers'",
 		desc: 'Thin providers barrel — createProvider is the only public door.',
 		specs: [
-			['entry', 'theorum/providers'],
+			['entry', '@theoremai/agents/providers'],
 			['path', 'src/providers/mod.ts'],
 			['lazy', 'adapter folders on first complete'],
 		],
@@ -819,7 +819,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'providers_types',
 		title: 'types.ts',
 		type: 'CONTRACTS',
-		usage: "import type { ModelProvider } from 'theorum/providers'",
+		usage: "import type { ModelProvider } from '@theoremai/agents/providers'",
 		desc: 'Provider adapter interfaces — ModelProvider, complete request/response shapes.',
 		specs: [
 			['path', 'src/providers/types.ts'],
@@ -923,7 +923,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'providers_google_live',
 		title: 'live',
 		type: 'FOLDER',
-		usage: "import { runSession } from 'theorum'",
+		usage: "import { runSession } from '@theoremai/agents'",
 		desc: 'Gemini Live session transport — runSession door; framing + openGoogleLiveSession.',
 		specs: [
 			['path', 'src/providers/google/live/'],
@@ -1062,11 +1062,11 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'providers_local',
 		title: 'local',
 		type: 'FOLDER',
-		usage: "import { createLocalProvider } from 'theorum/providers/local'",
+		usage: "import { createLocalProvider } from '@theoremai/agents/providers/local'",
 		desc: 'Local OpenAI-compatible server adapter (Ollama, LM Studio, etc.).',
 		specs: [
 			['path', 'src/providers/local/'],
-			['entry', 'theorum/providers/local'],
+			['entry', '@theoremai/agents/providers/local'],
 			['files', 'local.ts · mod.ts'],
 		],
 		copyable: true,
@@ -1086,10 +1086,10 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'providers_local_mod',
 		title: 'mod.ts',
 		type: 'BARREL',
-		usage: "import { createLocalProvider } from 'theorum/providers/local'",
+		usage: "import { createLocalProvider } from '@theoremai/agents/providers/local'",
 		desc: 'Local provider subpath export.',
 		specs: [
-			['entry', 'theorum/providers/local'],
+			['entry', '@theoremai/agents/providers/local'],
 			['path', 'src/providers/local/mod.ts'],
 			['default', 'http://127.0.0.1:11434'],
 		],
@@ -1155,10 +1155,10 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'guardrails',
 		title: 'guardrails',
 		type: 'SECURITY',
-		usage: "import { sanitizeTurnRequest, injectionSpans } from 'theorum/guardrails'",
+		usage: "import { sanitizeTurnRequest, injectionSpans } from '@theoremai/agents/guardrails'",
 		desc: 'Inbound safety toolkit — scrub inputs, detect injections/secrets, standard egress enforce, Live outbound gate.',
 		specs: [
-			['entry', 'theorum/guardrails'],
+			['entry', '@theoremai/agents/guardrails'],
 			['path', 'src/guardrails/'],
 			[
 				'modules',
@@ -1171,10 +1171,10 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'guardrails_mod',
 		title: 'mod.ts',
 		type: 'BARREL',
-		usage: "import { sanitizeTurnRequest, injectionSpans } from 'theorum/guardrails'",
+		usage: "import { sanitizeTurnRequest, injectionSpans } from '@theoremai/agents/guardrails'",
 		desc: 'Guardrails public barrel — also partially re-exported from mod.ts.',
 		specs: [
-			['entry', 'theorum/guardrails'],
+			['entry', '@theoremai/agents/guardrails'],
 			['path', 'src/guardrails/mod.ts'],
 			['policy', 'host-owned'],
 		],
@@ -1184,11 +1184,11 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'guardrails_error',
 		title: 'error.ts',
 		type: 'SECURITY',
-		usage: "import { publicError, TheorumError } from 'theorum'",
-		desc: 'TheorumError and publicError mapping for safe client responses.',
+		usage: "import { publicError, TheoremError } from '@theoremai/agents'",
+		desc: 'TheoremError and publicError mapping for safe client responses.',
 		specs: [
 			['path', 'src/guardrails/error.ts'],
-			['api', 'publicError · TheorumError'],
+			['api', 'publicError · TheoremError'],
 			['also', 'toErrorEvent · throwIfAborted'],
 		],
 		copyable: true,
@@ -1197,7 +1197,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'guardrails_injection',
 		title: 'injection.ts',
 		type: 'SECURITY',
-		usage: "import { injectionSpans } from 'theorum/guardrails'",
+		usage: "import { injectionSpans } from '@theoremai/agents/guardrails'",
 		desc: 'Prompt-injection span detection on inbound text.',
 		specs: [
 			['path', 'src/guardrails/injection.ts'],
@@ -1210,7 +1210,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'guardrails_canary',
 		title: 'canary.ts',
 		type: 'SECURITY',
-		usage: "import { mintCanary, bindCanary, createCanaryStreamGate } from 'theorum'",
+		usage: "import { mintCanary, bindCanary, createCanaryStreamGate } from '@theoremai/agents'",
 		desc: 'Canary mint/bind, `<user_data>` fence, and rolling stream gate for outbound leak detection.',
 		specs: [
 			['path', 'src/guardrails/canary.ts'],
@@ -1223,7 +1223,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'guardrails_canary_gate',
 		title: 'canary-gate.ts',
 		type: 'SECURITY',
-		usage: "import { createCanaryGateSession, filterCanaryGatedEvents } from 'theorum'",
+		usage: "import { createCanaryGateSession, filterCanaryGatedEvents } from '@theoremai/agents'",
 		desc: 'Batch event canary gate — used by fuzz tooling and older host paths; live uses live-outbound-gate inside runSession.',
 		specs: [
 			['path', 'src/guardrails/canary-gate.ts'],
@@ -1236,7 +1236,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'guardrails_egress',
 		title: 'egress.ts',
 		type: 'SECURITY',
-		usage: "import { standardEgressEnforce } from 'theorum'",
+		usage: "import { standardEgressEnforce } from '@theoremai/agents'",
 		desc: 'Default egress enforce — canary leak, sensitive spans, injection echo, system-boundary blocks.',
 		specs: [
 			['path', 'src/guardrails/egress.ts'],
@@ -1249,7 +1249,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'guardrails_live_outbound_gate',
 		title: 'live-outbound-gate.ts',
 		type: 'SECURITY',
-		usage: "import { createLiveOutboundGateSession } from 'theorum'",
+		usage: "import { createLiveOutboundGateSession } from '@theoremai/agents'",
 		desc: 'Live outbound session — used inside runSession; canary gate + egress at turnComplete.',
 		specs: [
 			['path', 'src/guardrails/live-outbound-gate.ts'],
@@ -1265,7 +1265,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'guardrails_sensitive',
 		title: 'sensitive.ts',
 		type: 'SECURITY',
-		usage: "import { sensitiveSpans } from 'theorum/guardrails'",
+		usage: "import { sensitiveSpans } from '@theoremai/agents/guardrails'",
 		desc: 'Credential and PII-like pattern detection.',
 		specs: [
 			['path', 'src/guardrails/sensitive.ts'],
@@ -1290,7 +1290,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'guardrails_quota',
 		title: 'quota.ts',
 		type: 'SECURITY',
-		usage: "import { takeSlot, releaseSlot } from 'theorum'",
+		usage: "import { takeSlot, releaseSlot } from '@theoremai/agents'",
 		desc: 'In-memory daily quota slots for HTTP demos.',
 		specs: [
 			['path', 'src/guardrails/quota.ts'],
@@ -1303,7 +1303,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'guardrails_sanitize',
 		title: 'sanitize.ts',
 		type: 'SECURITY',
-		usage: "import { sanitizeTurnRequest } from 'theorum'",
+		usage: "import { sanitizeTurnRequest } from '@theoremai/agents'",
 		desc: 'Turn input sanitization — fences, ids, risky field stripping.',
 		specs: [
 			['path', 'src/guardrails/sanitize.ts'],
@@ -1316,10 +1316,10 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'observability',
 		title: 'observability',
 		type: 'TELEMETRY',
-		usage: "import { writeTrace, jsonlSink, noopSink } from 'theorum/observability'",
+		usage: "import { writeTrace, jsonlSink, noopSink } from '@theoremai/agents/observability'",
 		desc: 'Trace sinks and record helpers — host-injected, never ambient.',
 		specs: [
-			['entry', 'theorum/observability'],
+			['entry', '@theoremai/agents/observability'],
 			['path', 'src/observability/'],
 			['write', 'writeTrace'],
 		],
@@ -1329,10 +1329,10 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'observability_mod',
 		title: 'mod.ts',
 		type: 'BARREL',
-		usage: "import { jsonlSink, writeTrace } from 'theorum/observability'",
+		usage: "import { jsonlSink, writeTrace } from '@theoremai/agents/observability'",
 		desc: 'Observability public barrel — sinks and TraceRecord type.',
 		specs: [
-			['entry', 'theorum/observability'],
+			['entry', '@theoremai/agents/observability'],
 			['path', 'src/observability/mod.ts'],
 			['sinks', 'jsonl · memory · noop · dir'],
 		],
@@ -1342,7 +1342,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'observability_trace',
 		title: 'trace.ts',
 		type: 'TELEMETRY',
-		usage: "import { jsonlSink, memorySink, noopSink, writeTrace } from 'theorum/observability'",
+		usage: "import { jsonlSink, memorySink, noopSink, writeTrace } from '@theoremai/agents/observability'",
 		desc: 'Sink implementations and writeTrace — pass to runTurn as third argument.',
 		specs: [
 			['path', 'src/observability/trace.ts'],
@@ -1355,7 +1355,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'observability_trace_record',
 		title: 'trace-record.ts',
 		type: 'TELEMETRY',
-		usage: "import type { TraceRecord } from 'theorum/observability'",
+		usage: "import type { TraceRecord } from '@theoremai/agents/observability'",
 		desc: 'TraceRecord shape — timings, usage, stop reason for analytics pipelines.',
 		specs: [
 			['path', 'src/observability/trace-record.ts'],
@@ -1401,10 +1401,10 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'host',
 		title: 'host',
 		type: 'HOST',
-		usage: "import { json, caughtStatus, flushMintTrace } from 'theorum/host'",
+		usage: "import { json, caughtStatus, flushMintTrace } from '@theoremai/agents/host'",
 		desc: 'Optional Deno HTTP helpers — replies, cutout traces, streaming JSON preview.',
 		specs: [
-			['entry', 'theorum/host'],
+			['entry', '@theoremai/agents/host'],
 			['path', 'src/host/'],
 			['runtime', 'Deno-oriented'],
 		],
@@ -1414,10 +1414,10 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'host_mod',
 		title: 'mod.ts',
 		type: 'BARREL',
-		usage: "import { json, flushMintTrace, readStreamingJsonStringField } from 'theorum/host'",
+		usage: "import { json, flushMintTrace, readStreamingJsonStringField } from '@theoremai/agents/host'",
 		desc: 'Host public barrel.',
 		specs: [
-			['entry', 'theorum/host'],
+			['entry', '@theoremai/agents/host'],
 			['path', 'src/host/mod.ts'],
 			['modules', 'reply · mint-trace · readStreamingJsonStringField'],
 		],
@@ -1427,7 +1427,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'host_reply',
 		title: 'reply.ts',
 		type: 'HOST',
-		usage: "import { json, caughtStatus } from 'theorum/host'",
+		usage: "import { json, caughtStatus } from '@theoremai/agents/host'",
 		desc: 'HTTP reply helpers — JSON bodies and status constants.',
 		specs: [
 			['path', 'src/host/reply.ts'],
@@ -1440,7 +1440,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'host_mint_trace',
 		title: 'mint-trace.ts',
 		type: 'HOST',
-		usage: "import { flushMintTrace } from 'theorum/host'",
+		usage: "import { flushMintTrace } from '@theoremai/agents/host'",
 		desc: 'Flush cutout trace tapes after a turn.',
 		specs: [
 			['path', 'src/host/mint-trace.ts'],
@@ -1453,7 +1453,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'host_read_streaming_json',
 		title: 'readStreamingJsonStringField.ts',
 		type: 'HOST',
-		usage: "import { readStreamingJsonStringField } from 'theorum/host'",
+		usage: "import { readStreamingJsonStringField } from '@theoremai/agents/host'",
 		desc: 'Peek at a string field while structured JSON is still streaming.',
 		specs: [
 			['path', 'src/host/readStreamingJsonStringField.ts'],
@@ -1466,10 +1466,10 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'presets',
 		title: 'presets',
 		type: 'PRESET',
-		usage: "import { registerGooglePreset } from 'theorum/presets'",
+		usage: "import { registerGooglePreset } from '@theoremai/agents/presets'",
 		desc: 'Optional convenience packs — Google builtins and media vocab.',
 		specs: [
-			['entry', 'theorum/presets'],
+			['entry', '@theoremai/agents/presets'],
 			['path', 'src/presets/'],
 			['kernel', 'no product opinions'],
 		],
@@ -1479,10 +1479,10 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'presets_mod',
 		title: 'mod.ts',
 		type: 'BARREL',
-		usage: "import { registerGooglePreset } from 'theorum/presets'",
+		usage: "import { registerGooglePreset } from '@theoremai/agents/presets'",
 		desc: 'Presets barrel — re-exports Google preset symbols.',
 		specs: [
-			['entry', 'theorum/presets'],
+			['entry', '@theoremai/agents/presets'],
 			['path', 'src/presets/mod.ts'],
 			['packs', 'google'],
 		],
@@ -1492,10 +1492,10 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'presets_google',
 		title: 'google.ts',
 		type: 'PRESET',
-		usage: "import { registerGooglePreset, GOOGLE_BUILTIN_TOOLS } from 'theorum/presets/google'",
+		usage: "import { registerGooglePreset, GOOGLE_BUILTIN_TOOLS } from '@theoremai/agents/presets/google'",
 		desc: 'Registers Google Search, Maps, URL context, code execution builtins into the tool registry. Profiles declare them on model.config.*.builtInTools.',
 		specs: [
-			['entry', 'theorum/presets/google'],
+			['entry', '@theoremai/agents/presets/google'],
 			['path', 'src/presets/google.ts'],
 			['tools', 'search · maps · urlContext · codeExecution'],
 			['profile', 'model.config.*.builtInTools'],
@@ -1536,7 +1536,7 @@ function buildArchitectureMap(): Record<string, ArchNode> {
 }
 
 /**
- * Architecture map for theorum@1.0.0.
+ * Architecture map for theorem@1.0.0.
  * copyable = real CLI string or package import a host should use.
  * Non-copyable nodes are internals — shipped, but not on public barrels.
  */

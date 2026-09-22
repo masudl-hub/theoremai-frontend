@@ -2,7 +2,7 @@
 // for information about these interfaces
 /// <reference types="@sveltejs/kit" />
 /// <reference path="../.svelte-kit/ambient.d.ts" />
-/// <reference path="../theorum-deno-shim.d.ts" />
+/// <reference path="../theoremai-deno-shim.d.ts" />
 
 declare global {
 	namespace App {

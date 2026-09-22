@@ -15,7 +15,7 @@ const npmPad = $derived(variant === 'hero' ? 'px-1.5 py-1.5' : 'px-0.5 py-0.5');
 <a
 	class="invert-link {linkPad}"
 	aria-label="GitHub"
-	href="https://github.com/masudl-hub/theorum"
+	href="https://github.com/masudl-hub/theoremai"
 	rel="noopener noreferrer"
 	target="_blank"
 >
@@ -28,7 +28,7 @@ const npmPad = $derived(variant === 'hero' ? 'px-1.5 py-1.5' : 'px-0.5 py-0.5');
 <a
 	class="invert-link inline-flex items-center justify-center {linkPad}"
 	aria-label="JSR"
-	href="https://jsr.io/@theorum/core"
+	href="https://jsr.io/@theoremai/agents"
 	rel="noopener noreferrer"
 	target="_blank"
 >
@@ -37,7 +37,7 @@ const npmPad = $derived(variant === 'hero' ? 'px-1.5 py-1.5' : 'px-0.5 py-0.5');
 <a
 	class="invert-link {npmPad}"
 	aria-label="npm"
-	href="https://www.npmjs.com/package/theorum"
+	href="https://www.npmjs.com/package/@theoremai%2Fagents"
 	rel="noopener noreferrer"
 	target="_blank"
 >

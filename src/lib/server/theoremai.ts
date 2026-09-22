@@ -1,6 +1,6 @@
 /**
  * Server-only kernel metadata for site routes (version label, kernel HEAD).
- * Live relay and Th30 import `theorum` package subpaths directly — no re-export barrel.
+ * Live relay and Th30 import `theorem` package subpaths directly — no re-export barrel.
  */
 
 const envHead = import.meta.env.KERNEL_SUBMODULE_HEAD as string | boolean | undefined;

@@ -7,7 +7,7 @@
  * - Map grounding (Tools): per-model 0/500 or 0/0 (see mapGrounding flags below).
  */
 
-import { GOOGLE_BUILTIN_TOOLS } from 'theorum/presets/google';
+import { GOOGLE_BUILTIN_TOOLS } from '@theoremai/agents/presets/google';
 
 export const OPENROUTER_PLAYGROUND_API_ID = 'openrouter/free';
 

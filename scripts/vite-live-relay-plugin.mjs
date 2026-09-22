@@ -55,7 +55,7 @@ function loadLocalEnv() {
  */
 export function liveRelayDevPlugin() {
 	return {
-		name: 'theorum-live-relay-dev',
+		name: 'theorem-live-relay-dev',
 		configureServer(server) {
 			const wss = new WebSocketServer({ noServer: true });
 			const env = loadLocalEnv();

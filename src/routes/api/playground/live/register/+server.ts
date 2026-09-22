@@ -4,7 +4,7 @@ import { registerPlaygroundProfile } from '$lib/server/playground-register';
 import type { RequestHandler } from './$types';
 
 type RegisterBody = {
-	profile: import('theorum').ProfileDefinition;
+	profile: import('@theoremai/agents').ProfileDefinition;
 	customTools?: import('$lib/playground/types').ToolRegistration[];
 };
 

@@ -6,7 +6,7 @@
  * Fall back to process memory for local Vite/Node.
  */
 
-import type { TurnHistoryMessage } from 'theorum';
+import type { TurnHistoryMessage } from '@theoremai/agents';
 
 type SteerUnit = TurnHistoryMessage[];
 
@@ -17,7 +17,7 @@ type CacheLike = {
 };
 
 const MEMORY = new Map<string, SteerUnit[]>();
-const CACHE_PREFIX = 'https://theorum.local/playground/steer/';
+const CACHE_PREFIX = 'https://theorem.local/playground/steer/';
 const CACHE_TTL_SECONDS = 60 * 15;
 
 /** Inbox key — turn id (text) or session id (live). */

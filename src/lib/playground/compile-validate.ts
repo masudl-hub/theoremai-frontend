@@ -1,4 +1,4 @@
-import { HTTP_METHODS } from 'theorum/schema';
+import { HTTP_METHODS } from '@theoremai/agents/schema';
 import { isValidProfileProtocol, protocolsForProfileType } from './compat';
 import {
 	LIVE_TOOL_LOAD_TIERS,

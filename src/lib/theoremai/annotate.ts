@@ -1,4 +1,4 @@
-import { catalogPathFor, fieldMeta } from 'theorum/schema';
+import { catalogPathFor, fieldMeta } from '@theoremai/agents/schema';
 import { renderAsciiCard } from '$lib/ascii/tip-card';
 
 function escapeHtml(s: string): string {

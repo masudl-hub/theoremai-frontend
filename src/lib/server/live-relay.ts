@@ -1,5 +1,5 @@
 /**
- * Cloudflare Worker WebSocket relay for Gemini Live via THEORUM `runSession`.
+ * Cloudflare Worker WebSocket relay for Gemini Live via THEOREM `runSession`.
  *
  * Bridges the browser client WebSocket (PCM mic stream + UI tools)
  * to a gated live session. Prefers `LiveSession.executeTool` for registry
@@ -8,9 +8,9 @@
  * @module
  */
 
-import { getProfile, type LiveSession, publicError, runSession } from 'theorum';
-import { forClientEvents } from 'theorum/host';
-import type { ToolCredential } from 'theorum/kernel';
+import { getProfile, type LiveSession, publicError, runSession } from '@theoremai/agents';
+import { forClientEvents } from '@theoremai/agents/host';
+import type { ToolCredential } from '@theoremai/agents/kernel';
 import { parseLiveRelayClientMessage } from '$lib/types/live-messages';
 import { ensureKernelInitialized } from './kernel-init';
 import {

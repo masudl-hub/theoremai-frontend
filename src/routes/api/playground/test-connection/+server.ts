@@ -5,8 +5,8 @@ import {
 	isUnsupportedMcpProtocolError,
 	MCP_PROTOCOL_VERSIONS,
 	parseMcpRpcResponse,
-} from 'theorum';
-import type { HttpMethod } from 'theorum/schema';
+} from '@theoremai/agents';
+import type { HttpMethod } from '@theoremai/agents/schema';
 import type { RequestHandler } from './$types';
 
 type AuthProbe = {

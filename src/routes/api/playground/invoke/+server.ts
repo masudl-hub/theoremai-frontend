@@ -4,16 +4,16 @@ import { streamPlaygroundInvoke } from '$lib/server/playground-turn';
 import type { RequestHandler } from './$types';
 
 type InvokeBody = {
-	profile: import('theorum').ProfileDefinition;
+	profile: import('@theoremai/agents').ProfileDefinition;
 	customTools?: import('$lib/playground/types').ToolRegistration[];
 	structured?: import('$lib/playground/types').StructuredRegistration;
 	name: string;
 	input: unknown;
 	resume?: { value?: unknown; granted?: boolean };
 	sessionPermissions?: string[];
-	credentials?: import('theorum').TurnRequest['credentials'];
-	turnInput?: import('theorum').TurnInput;
-	snapshot?: import('theorum/kernel').TurnToolSnapshot;
+	credentials?: import('@theoremai/agents').TurnRequest['credentials'];
+	turnInput?: import('@theoremai/agents').TurnInput;
+	snapshot?: import('@theoremai/agents/kernel').TurnToolSnapshot;
 	promoted?: string[];
 	model?: string;
 	path?: string;

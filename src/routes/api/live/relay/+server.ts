@@ -8,7 +8,7 @@ export const GET: RequestHandler = async ({ request, platform }) => {
 		return handleLiveRelay(request, liveEnv);
 	}
 
-	return new Response('WebSocket upgrade endpoint for THEORUM Gemini Live relay.', {
+	return new Response('WebSocket upgrade endpoint for THEOREM Gemini Live relay.', {
 		status: 426,
 		headers: {
 			'content-type': 'text/plain',

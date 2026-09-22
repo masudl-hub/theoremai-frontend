@@ -8,7 +8,7 @@ import {
 	applyLiveTranscript,
 	clearLiveCaptionInterim,
 	emptyLiveCaptionState,
-} from '../../../theorum/react/src/client/live/live-captions.ts';
+} from '../../../theoremai/react/src/client/live/live-captions.ts';
 
 function ok(label: string) {
 	console.log(`  ✓ ${label}`);

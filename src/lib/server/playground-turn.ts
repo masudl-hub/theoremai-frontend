@@ -1,6 +1,6 @@
-import type { ProfileDefinition, TurnEvent, TurnHistoryMessage, TurnInput } from 'theorum';
-import { createProvider, invokeTool, runTurn } from 'theorum';
-import type { InvokeToolRequest } from 'theorum/kernel';
+import type { ProfileDefinition, TurnEvent, TurnHistoryMessage, TurnInput } from '@theoremai/agents';
+import { createProvider, invokeTool, runTurn } from '@theoremai/agents';
+import type { InvokeToolRequest } from '@theoremai/agents/kernel';
 import type { StructuredRegistration, ToolRegistration } from '$lib/playground/types';
 import { registerPlaygroundProfile } from './playground-register';
 import {

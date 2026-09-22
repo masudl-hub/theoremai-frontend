@@ -4,12 +4,12 @@
  * Run: npm run test:invoke-payload
  */
 import assert from 'node:assert/strict';
-import { emptyInterfaceTurnSession } from 'theorum/interface';
+import { emptyInterfaceTurnSession } from '@theoremai/agents/interface';
 import {
 	buildInvokeRequestBody,
 	buildTurnRequestBody,
 	turnInputFromSession,
-} from '../../theorum/react/src/client/turn-client.ts';
+} from '../../theoremai/react/src/client/turn-client.ts';
 
 import { createTestRunner } from './_test-harness.mjs';
 

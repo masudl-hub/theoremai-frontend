@@ -8,7 +8,7 @@ import {
 	clampAttachPreviewLeft,
 	formatAttachmentSize,
 	resolveAttachPreviewStyle,
-} from '../../../theorum/react/src/client/attachment-hover-preview.ts';
+} from '../../../theoremai/react/src/client/attachment-hover-preview.ts';
 
 function ok(label: string) {
 	console.log(`  ✓ ${label}`);

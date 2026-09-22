@@ -1,6 +1,6 @@
-export const PLAYGROUND_CTX = 'theorum-playground';
+export const PLAYGROUND_CTX = 'theorem-playground';
 
-import type { Protocol, Provider } from 'theorum/schema';
+import type { Protocol, Provider } from '@theoremai/agents/schema';
 import type { PlaygroundNode } from './types';
 
 export type PlaygroundHub = {

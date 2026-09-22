@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'theorum.th30.gemini-consent';
+const STORAGE_KEY = 'theorem.th30.gemini-consent';
 
 export function hasTh30GeminiConsent(): boolean {
 	try {

@@ -1,6 +1,6 @@
 <script lang="ts">
 import { getContext } from 'svelte';
-import { demoHttpSampleInput } from '@theorum/playground';
+import { demoHttpSampleInput } from '@theoremai/playground';
 import type {
 	AuthUnauthenticatedPolicy,
 	CustomToolType,
@@ -9,7 +9,7 @@ import type {
 	ToolAccess,
 	ToolLoadTier,
 	ToolPermission,
-} from 'theorum/schema';
+} from '@theoremai/agents/schema';
 import ToolSpecTypeIcon from '$lib/components/playground/icons/ToolSpecTypeIcon.svelte';
 import Select from '$lib/components/Select.svelte';
 import {

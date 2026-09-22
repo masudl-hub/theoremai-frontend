@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { Protocol, Provider, ThinkingLevel } from 'theorum/schema';
+import type { Protocol, Provider, ThinkingLevel } from '@theoremai/agents/schema';
 import Checkbox from '$lib/components/playground/Checkbox.svelte';
 import Select from '$lib/components/Select.svelte';
 import { fieldEnumOptions } from '$lib/playground/field-controls';

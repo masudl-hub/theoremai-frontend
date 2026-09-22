@@ -18,7 +18,7 @@ let { versionLabel }: { versionLabel: string } = $props();
 				{versionLabel}
 			</p>
 			<h1 class="hero-title anim-brand font-extrabold tracking-tighter text-black uppercase">
-				Theorum
+				Theorem
 			</h1>
 			<p class="hero-lead anim-rise-d2 mt-4 text-sm font-bold text-black md:mt-5 md:text-xl">
 				A TypeScript kernel for typed agent profiles and deterministic turns.

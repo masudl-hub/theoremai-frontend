@@ -1,6 +1,6 @@
 <script lang="ts">
 import { IconApi, IconCode } from '@tabler/icons-svelte';
-import type { CustomToolType } from 'theorum/schema';
+import type { CustomToolType } from '@theoremai/agents/schema';
 import McpMark from './McpMark.svelte';
 
 let {

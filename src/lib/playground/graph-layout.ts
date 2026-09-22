@@ -1,5 +1,5 @@
-import type { ProfileGraphFacetId, ProfileType, Protocol, Provider } from 'theorum/schema';
-import { spineFacetsForProfileType } from 'theorum/schema';
+import type { ProfileGraphFacetId, ProfileType, Protocol, Provider } from '@theoremai/agents/schema';
+import { spineFacetsForProfileType } from '@theoremai/agents/schema';
 import { resolveNodeCollisions } from './graph-collision';
 import {
 	branchSpecPosition,

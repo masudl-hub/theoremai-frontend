@@ -1,5 +1,5 @@
 <script lang="ts">
-import { SCHEMA_ENFORCEMENTS } from 'theorum/schema';
+import { SCHEMA_ENFORCEMENTS } from '@theoremai/agents/schema';
 import Checkbox from '$lib/components/playground/Checkbox.svelte';
 import Select from '$lib/components/Select.svelte';
 import { fieldEnumOptions, schemaEnumOptions } from '$lib/playground/field-controls';

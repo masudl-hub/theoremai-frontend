@@ -1,6 +1,6 @@
 <script lang="ts">
-import type { ProfileType as KernelProfileType, ProfileGraphFacetId } from 'theorum/schema';
-import { spineFacetsForProfileType } from 'theorum/schema';
+import type { ProfileType as KernelProfileType, ProfileGraphFacetId } from '@theoremai/agents/schema';
+import { spineFacetsForProfileType } from '@theoremai/agents/schema';
 import Checkbox from '$lib/components/playground/Checkbox.svelte';
 import { MODALITY_OPTIONS } from '$lib/playground/compat';
 import type { IdentityData, ProfileType } from '$lib/playground/types';

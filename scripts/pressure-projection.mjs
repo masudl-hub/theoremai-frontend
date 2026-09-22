@@ -8,7 +8,7 @@ import {
 	PROFILE_TYPES,
 	resolveGuardrailPolicy,
 	spineFacetsForProfileType,
-} from 'theorum';
+} from '@theoremai/agents';
 import { compilePlayground } from '../src/lib/playground/compile.ts';
 import {
 	createExampleGraph,

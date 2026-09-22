@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { ContinueStopKind } from 'theorum/schema';
+import type { ContinueStopKind } from '@theoremai/agents/schema';
 import Checkbox from '$lib/components/playground/Checkbox.svelte';
 import { toggleList } from '$lib/playground/compat';
 import { fieldEnumOptions } from '$lib/playground/field-controls';

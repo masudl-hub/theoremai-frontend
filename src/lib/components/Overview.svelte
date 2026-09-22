@@ -19,7 +19,7 @@ import { cloudParadeSparse } from '$lib/data/clouds';
 			A unified runtime<br>for agentic execution.
 		</h2>
 		<p class="mx-auto max-w-2xl text-base leading-relaxed font-bold md:text-xl">
-			Theorum turns ad-hoc agent scripts into a typed execution kernel. One contract per agent —
+			Theorem turns ad-hoc agent scripts into a typed execution kernel. One contract per agent —
 			predictable at every boundary.
 		</p>
 	</div>

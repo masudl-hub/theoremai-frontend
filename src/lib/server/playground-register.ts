@@ -6,9 +6,9 @@ import {
 	registerStructured,
 	registerTool,
 	standardEgressEnforce,
-} from 'theorum';
-import { playgroundDemoHandler, stubOutputFromSchema } from '@theorum/playground';
-import { registerGooglePreset } from 'theorum/presets/google';
+} from '@theoremai/agents';
+import { playgroundDemoHandler, stubOutputFromSchema } from '@theoremai/playground';
+import { registerGooglePreset } from '@theoremai/agents/presets/google';
 import { zodFromJsonSchema } from '$lib/playground/tool-schema';
 import type { StructuredRegistration, ToolRegistration } from '$lib/playground/types';
 

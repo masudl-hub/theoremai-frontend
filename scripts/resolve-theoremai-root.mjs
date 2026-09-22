@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const FRONTEND_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 /** @param {string} candidate */
-function isTheorumRoot(candidate) {
+function isTheoremRoot(candidate) {
 	return existsSync(path.join(candidate, 'mod.ts'));
 }
 
@@ -17,7 +17,7 @@ function isTheorumRoot(candidate) {
  * @param {string} candidate
  * @returns {string | null} human-readable reason when stale, else null
  */
-export function theorumStaleReason(candidate) {
+export function theoremaiStaleReason(candidate) {
 	const schemaPath = path.join(candidate, 'src/kernel/schema.ts');
 	if (!existsSync(schemaPath)) {
 		return `missing ${schemaPath}`;
@@ -53,25 +53,24 @@ export function theorumStaleReason(candidate) {
 
 /**
  * Resolve the kernel checkout the frontend should use.
- * Requires the sibling clone at ../theorum (side-by-side with theorum-frontend).
+ * Requires the sibling clone at ../theoremai.
  */
-export function resolveTheorumRoot(frontendRoot = FRONTEND_ROOT) {
-	const sibling = path.resolve(frontendRoot, '../theorum');
+export function resolveTheoremaiRoot(frontendRoot = FRONTEND_ROOT) {
+	const sibling = path.resolve(frontendRoot, '../theoremai');
 
-	if (!isTheorumRoot(sibling)) {
+	if (!isTheoremRoot(sibling)) {
 		throw new Error(
-			'Could not find theorum kernel.\n' +
+			'Could not find theorem kernel.\n' +
 				`  expected sibling: ${sibling}\n` +
-				'Clone theorum next to theorum-frontend:\n' +
-				'  Development/theorum\n' +
-				'  Development/theorum-frontend',
+				'Clone theoremai next to this frontend checkout:\n' +
+				'  Development/theoremai',
 		);
 	}
 
-	const stale = theorumStaleReason(sibling);
+	const stale = theoremaiStaleReason(sibling);
 	if (stale) {
 		throw new Error(
-			`Sibling theorum at ${sibling} looks stale: ${stale}\n` +
+			`Sibling theoremai checkout at ${sibling} looks stale: ${stale}\n` +
 				'Update the sibling checkout before running the frontend.',
 		);
 	}

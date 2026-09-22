@@ -1,5 +1,5 @@
 /**
- * THEORUM sky — cumulus piles + stratocumulus banks.
+ * THEOREM sky — cumulus piles + stratocumulus banks.
  * Light overlap only; lowest bases sit on the brand baseline.
  */
 
@@ -129,7 +129,7 @@ export const STRATO_WIDE = [
 
 /**
  * Spaced sky seats — light edge kisses only.
- * Lowest banks use bottom:0 so their base meets the Theorum baseline.
+ * Lowest banks use bottom:0 so their base meets the Theorem baseline.
  */
 export const cloudParade: CloudSpec[] = [
 	/* upper — open cumulus */

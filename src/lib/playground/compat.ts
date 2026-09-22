@@ -9,7 +9,7 @@ import {
 	type ProfileType,
 	type Protocol,
 	protocolsForProfileType,
-} from 'theorum/schema';
+} from '@theoremai/agents/schema';
 import { fieldEnumOptions } from './field-controls';
 
 export { isValidProfileProtocol, protocolsForProfileType };

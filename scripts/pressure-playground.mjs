@@ -11,7 +11,7 @@ import {
 	PROFILE_TYPE_PROTOCOLS,
 	PROTOCOLS,
 	protocolsForProfileType,
-} from 'theorum';
+} from '@theoremai/agents';
 import { protocolsForModality } from '../src/lib/playground/compat.ts';
 import { compilePlayground } from '../src/lib/playground/compile.ts';
 import { createInitialGraph, syncGraphForProfile } from '../src/lib/playground/example.ts';

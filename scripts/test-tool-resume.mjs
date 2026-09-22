@@ -7,12 +7,12 @@ import assert from 'node:assert/strict';
 import {
 	parsePlaygroundLiveToolResult,
 	toolInvokeResultFromEvents,
-} from '../../theorum/react/src/client/playground-tool-result.ts';
+} from '../../theoremai/react/src/client/playground-tool-result.ts';
 import {
 	applyToolDecisionToSessionPermissions,
 	buildInvokeToolResume,
 	continuePausedToolInvocation,
-} from '../../theorum/react/src/client/tool-resume.ts';
+} from '../../theoremai/react/src/client/tool-resume.ts';
 
 import { createTestRunner } from './_test-harness.mjs';
 

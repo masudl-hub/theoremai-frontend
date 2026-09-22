@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import type { TurnHistoryMessage } from 'theorum';
+import type { TurnHistoryMessage } from '@theoremai/agents';
 import { enqueuePlaygroundSteer, openPlaygroundSteerInbox } from '$lib/server/playground-steer';
 import type { RequestHandler } from './$types';
 

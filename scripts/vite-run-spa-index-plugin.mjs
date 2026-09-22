@@ -5,7 +5,7 @@
  */
 export function runSpaIndexPlugin() {
 	return {
-		name: 'theorum-run-spa-index',
+		name: 'theorem-run-spa-index',
 		configureServer(server) {
 			server.middlewares.use((req, _res, next) => {
 				const raw = req.url ?? '';

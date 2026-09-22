@@ -27,10 +27,10 @@ const installSnippet = $derived.by(() => {
 	const importNames = ['defineProfile', 'registerProfile'];
 	if (customTools) importNames.push('registerTool');
 	if (egress) importNames.push('standardEgressEnforce');
-	const importLine = `import { ${importNames.join(', ')} } from "theorum";`;
+	const importLine = `import { ${importNames.join(', ')} } from "@theoremai/agents";`;
 	const zodImport = customTools ? `\nimport { z } from "zod";` : '';
 
-	return `npm install theorum
+	return `npm install @theoremai/agents
 
 ${importLine}${zodImport}`;
 });
@@ -319,7 +319,7 @@ async function copySnippet(id: SnippetId, text: string) {
 				</div>
 				<UseArt id="install" />
 				<p class="max-w-2xl text-xs leading-relaxed text-mute md:text-sm">
-					Add theorum to your project, then import the profile APIs.
+					Add theorem to your project, then import the profile APIs.
 				</p>
 				<div class="relative">
 					<div class="absolute top-0 right-0 z-10">

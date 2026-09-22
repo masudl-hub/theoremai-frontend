@@ -25,7 +25,7 @@ let { data }: { data: PageData } = $props();
 			class="mx-auto flex w-full max-w-6xl flex-col gap-6 md:flex-row md:items-end md:justify-between"
 		>
 			<div>
-				<p class="text-xs font-extrabold tracking-section uppercase md:text-sm">Theorum</p>
+				<p class="text-xs font-extrabold tracking-section uppercase md:text-sm">Theorem</p>
 				<p class="mt-2 max-w-sm text-xs leading-relaxed text-mute md:text-sm">
 					The flat TypeScript agent kernel. Host-owned profiles, one runner, injected traces.
 				</p>
@@ -33,21 +33,21 @@ let { data }: { data: PageData } = $props();
 			<nav class="flex flex-wrap gap-4 text-xs font-bold md:text-sm" aria-label="Footer">
 				<a
 					class="invert-link px-1"
-					href="https://github.com/masudl-hub/theorum"
+					href="https://github.com/masudl-hub/theoremai"
 					rel="noopener noreferrer"
 					target="_blank"
 					>GitHub</a
 				>
 				<a
 					class="invert-link px-1"
-					href="https://jsr.io/@theorum/core"
+					href="https://jsr.io/@theoremai/agents"
 					rel="noopener noreferrer"
 					target="_blank"
 					>JSR</a
 				>
 				<a
 					class="invert-link px-1"
-					href="https://www.npmjs.com/package/theorum"
+					href="https://www.npmjs.com/package/@theoremai%2Fagents"
 					rel="noopener noreferrer"
 					target="_blank"
 					>npm</a

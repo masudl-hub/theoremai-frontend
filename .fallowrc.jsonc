@@ -25,7 +25,7 @@
 		"scripts/vite-run-spa-index-plugin.mjs",
 		"tests/interface/**/*.ts"
 	],
-	"publicPackages": ["@theorum/react"],
+	"publicPackages": ["@theoremai/react"],
 	"ignorePatterns": [
 		"node_modules/**",
 		"apps/run/dist/**",

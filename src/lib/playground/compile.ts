@@ -12,8 +12,8 @@ import {
 	type ProfileToolsSpec,
 	type ProfileTurnBehaviourSpec,
 	type ProfileTurnResumptionSpec,
-	TheorumError,
-} from 'theorum';
+	TheoremError,
+} from '@theoremai/agents';
 import { emitRegisterToolSource, validatePlaygroundGraph } from './compile-validate';
 import { parseList, playgroundPolicyViolation } from './playground-policy';
 import type {
@@ -314,7 +314,7 @@ function buildLiveSpec(live?: LiveData) {
 
 function assembleTextProfile(params: AssembleProfileParams): ProfileDefinition {
 	if (!params.inputsPayload) {
-		throw new TheorumError(
+		throw new TheoremError(
 			'inputs is required for text profiles — inputs facet must be on the graph',
 		);
 	}
@@ -330,7 +330,7 @@ function assembleTextProfile(params: AssembleProfileParams): ProfileDefinition {
 
 function assembleImageProfile(params: AssembleProfileParams): ProfileDefinition {
 	if (!params.inputsPayload) {
-		throw new TheorumError(
+		throw new TheoremError(
 			'inputs is required for image profiles — inputs facet must be on the graph',
 		);
 	}
@@ -469,7 +469,7 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 	try {
 		defineProfile(profile);
 	} catch (err) {
-		const message = err instanceof TheorumError ? err.message : String(err);
+		const message = err instanceof TheoremError ? err.message : String(err);
 		issues.push({ nodeId: 'identity', facet: 'identity', message });
 		return {
 			ok: false,
@@ -498,7 +498,7 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 
 	const source = `${zodImport}import {
   ${importNames.join(',\n  ')},
-} from "theorum";
+} from "@theoremai/agents";
 ${toolRegister}${schemaRegister}
 const profile = defineProfile(${profileJson});
 

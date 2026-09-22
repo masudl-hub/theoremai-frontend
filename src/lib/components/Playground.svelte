@@ -20,7 +20,7 @@ import { resolve } from '$app/paths';
 import '@xyflow/svelte/dist/style.css';
 import '$lib/components/playground/playground-graph.css';
 
-import { createPlaygroundRunId, savePlaygroundRunPayload } from '@theorum/react/client';
+import { createPlaygroundRunId, savePlaygroundRunPayload } from '@theoremai/react/client';
 import AsciiCardSegments from '$lib/ascii/AsciiCardSegments.svelte';
 import { parseAsciiCardSegments, renderAsciiCard } from '$lib/ascii/tip-card';
 import AsciiHover from '$lib/components/AsciiHover.svelte';
@@ -454,7 +454,7 @@ function playgroundTip(el: HTMLElement): string | null {
 
 							<Panel class="playground-chrome" position="top-left">
 								<div class="chrome">
-									<span class="chrome-title">Theorum Builder</span>
+									<span class="chrome-title">Theorem Builder</span>
 									<button
 										class="chrome-icon-btn"
 										data-chrome-tip="example"

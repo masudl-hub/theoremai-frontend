@@ -1,4 +1,4 @@
-/** Minimal Deno surface used by sibling theorum source under Node/Vite typechecking. */
+/** Minimal Deno surface used by sibling theorem source under Node/Vite typechecking. */
 declare namespace Deno {
 	function cwd(): string;
 	function mkdir(path: string, options?: { recursive?: boolean }): Promise<void>;

@@ -3,7 +3,7 @@ import {
 	type LiveConnectPhase,
 	LiveSessionClient,
 	type LiveSessionStatus,
-} from '@theorum/react/client';
+} from '@theoremai/react/client';
 import { onDestroy, onMount } from 'svelte';
 import { playTh30ReadyChime } from '$lib/client/th30-chime';
 import { acceptTh30GeminiConsent, hasTh30GeminiConsent } from '$lib/client/th30-consent';
@@ -121,7 +121,7 @@ function initClient() {
 	if (client) return;
 
 	client = new LiveSessionClient({
-		profile: 'theorum.site.th30',
+		profile: 'theorem.site.th30',
 		onConnectPhase: (phase) => {
 			connectPhase = phase;
 		},

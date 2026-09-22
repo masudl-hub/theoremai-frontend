@@ -20,7 +20,7 @@ import { PLAYGROUND_CTX, type PlaygroundCtx } from '$lib/playground/context';
 import { facetChips, facetTitle } from '$lib/playground/facet-ui';
 import { spineFacetKinds } from '$lib/playground/graph-layout';
 import type { IdentityData, PlaygroundNode } from '$lib/playground/types';
-import type { ProfileGraphFacetId } from 'theorum/schema';
+import type { ProfileGraphFacetId } from '@theoremai/agents/schema';
 
 let { id, data }: NodeProps<PlaygroundNode> = $props();
 

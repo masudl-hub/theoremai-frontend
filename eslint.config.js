@@ -92,7 +92,7 @@ export default ts.config(
 			'**/.fallow/**',
 			'**/.wrangler/**',
 			'scripts/**',
-			'theorum/**',
+			'@theoremai/agents/**',
 			'vite.config.ts',
 			'src/app.d.ts',
 		],

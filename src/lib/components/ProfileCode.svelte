@@ -1,6 +1,6 @@
 <script lang="ts">
 /* eslint-disable svelte/no-at-html-tags, svelte/no-inline-styles -- annotateProfileCode escapes HTML before render; height transition requires dynamic style */
-import { annotateProfileCode } from '$lib/theorum/annotate';
+import { annotateProfileCode } from '$lib/theoremai/annotate';
 
 let { source, toolRegistration = false }: { source: string; toolRegistration?: boolean } = $props();
 

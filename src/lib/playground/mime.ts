@@ -1,4 +1,4 @@
-import { ATTACHMENT_ACCEPT_MIMES, VOICE_ACCEPT_MIMES } from 'theorum/schema';
+import { ATTACHMENT_ACCEPT_MIMES, VOICE_ACCEPT_MIMES } from '@theoremai/agents/schema';
 
 /** Kernel-known attachment MIME rules (schema catalog + wildcards). */
 export const ATTACHMENT_ACCEPT_OPTIONS = ATTACHMENT_ACCEPT_MIMES.map((value) => ({

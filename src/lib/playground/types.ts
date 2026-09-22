@@ -1,5 +1,5 @@
 import type { Edge, Node } from '@xyflow/svelte';
-import type { ProfileDefinition, ProfileLiveSpec, ProfileSpeechSpec, ProfileType } from 'theorum';
+import type { ProfileDefinition, ProfileLiveSpec, ProfileSpeechSpec, ProfileType } from '@theoremai/agents';
 import type {
 	AuthUnauthenticatedPolicy,
 	ContinueStopKind,
@@ -20,8 +20,8 @@ import type {
 	ToolAuthType,
 	ToolLoadTier,
 	ToolPermission,
-} from 'theorum/schema';
-import { PROFILE_GRAPH, TOOL_ACCESS, TOOL_LOAD_TIERS, TOOL_PERMISSION } from 'theorum/schema';
+} from '@theoremai/agents/schema';
+import { PROFILE_GRAPH, TOOL_ACCESS, TOOL_LOAD_TIERS, TOOL_PERMISSION } from '@theoremai/agents/schema';
 import { DEFAULT_TOOL_INPUT_SCHEMA, DEFAULT_TOOL_OUTPUT_SCHEMA } from './tool-schema';
 
 export type {
@@ -36,7 +36,7 @@ export type {
 
 /**
  * Canvas node kinds — imported from the kernel profile-graph catalog.
- * Use `ProfileGraphFacetId` from `theorum/schema` directly; do not define aliases.
+ * Use `ProfileGraphFacetId` from `@theoremai/agents/schema` directly; do not define aliases.
  */
 
 export type IdentityData = {

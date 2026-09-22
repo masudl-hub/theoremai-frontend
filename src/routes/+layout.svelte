@@ -11,7 +11,7 @@ const showTh30 = $derived(!page.url.pathname.includes('/playground/run'));
 
 <svelte:head>
 	<link href={favicon} rel="icon">
-	<title>THEORUM</title>
+	<title>THEOREM</title>
 	<meta
 		name="description"
 		content="A TypeScript kernel for typed agent profiles and deterministic turns."

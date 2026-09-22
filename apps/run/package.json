@@ -1,19 +1,19 @@
 {
-	"name": "@theorum/run",
+	"name": "@theoremai/run",
 	"version": "0.0.1",
 	"private": true,
 	"type": "module",
-	"description": "React host for theorum playground run — reference app for @theorum/react.",
+	"description": "React host for theorem playground run — reference app for @theoremai/react.",
 	"scripts": {
 		"dev": "vite",
 		"build": "vite build",
 		"preview": "vite preview"
 	},
 	"dependencies": {
-		"@theorum/react": "file:../../../theorum/react",
+		"@theoremai/react": "file:../../../theoremai/react",
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0",
-		"theorum": "file:../../../theorum"
+		"@theoremai/agents": "file:../../../theoremai"
 	},
 	"devDependencies": {
 		"@types/react": "^19.0.0",

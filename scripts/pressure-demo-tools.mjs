@@ -7,10 +7,10 @@
  */
 import assert from 'node:assert/strict';
 import { compilePlayground } from '../src/lib/playground/compile.ts';
-import { playgroundDemoHandler } from '@theorum/playground';
+import { playgroundDemoHandler } from '@theoremai/playground';
 import { createExampleGraph } from '../src/lib/playground/example.ts';
 
-const NOMINATIM_UA = 'TheorumPlayground/1.0 (travel demo smoke test)';
+const NOMINATIM_UA = 'TheoremPlayground/1.0 (travel demo smoke test)';
 const NOMINATIM_GAP_MS = 1100;
 
 const args = new Set(process.argv.slice(2));

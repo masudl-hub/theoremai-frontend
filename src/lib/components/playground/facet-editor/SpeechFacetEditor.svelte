@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { Protocol, SpeechAudioFormat } from 'theorum/schema';
+import type { Protocol, SpeechAudioFormat } from '@theoremai/agents/schema';
 import Select from '$lib/components/Select.svelte';
 import { coerceSpeechFormat, speechFormatOptions } from '$lib/playground/field-controls';
 import type { SpeechData } from '$lib/playground/types';

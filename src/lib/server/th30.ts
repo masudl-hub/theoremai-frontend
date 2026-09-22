@@ -1,16 +1,16 @@
 /**
- * Th30 ("T H 3 O" / "T H thirty") — The live, grounded site assistant for THEORUM.
+ * Th30 ("T H 3 O" / "T H thirty") — The live, grounded site assistant for THEOREM.
  *
  * Configured as a real-time Gemini 3.1 Flash Live voice/speech agent with
  * client-side UI navigation, precise line/element highlighting,
  * real-time line-numbered document reading, multi-source search, and Google Search grounding.
  *
- * Built on the THEORUM tool system (registerTool / Zod contracts).
+ * Built on the THEOREM tool system (registerTool / Zod contracts).
  *
  * @module
  */
 
-import { defineProfile, registerProfile, registerTool, standardEgressEnforce } from 'theorum';
+import { defineProfile, registerProfile, registerTool, standardEgressEnforce } from '@theoremai/agents';
 import { z } from 'zod';
 import {
 	formatNavigablePathsForPrompt,
@@ -19,7 +19,7 @@ import {
 	searchDocumentation,
 } from '$lib/docs/unified-docs';
 
-export const TH30_PROFILE_ID = 'theorum.site.th30';
+export const TH30_PROFILE_ID = 'theorem.site.th30';
 
 /* -------------------------------------------------------------------------- */
 /* Tool Schemas (Strict Zod Contracts)                                        */
@@ -157,7 +157,7 @@ type SearchDocsInput = z.infer<typeof SearchDocsInputSchema>;
 export const th30NavigateTool = {
 	type: 'function' as const,
 	name: 'navigate',
-	description: `Navigate the user to a section on the THEORUM website (${formatNavigablePathsForPrompt()}).`,
+	description: `Navigate the user to a section on the THEOREM website (${formatNavigablePathsForPrompt()}).`,
 	category: 'ui',
 	access: 'read-only' as const,
 	paths: ['*'],
@@ -206,7 +206,7 @@ export const th30ReadTool = {
 	type: 'function' as const,
 	name: 'read',
 	description:
-		'Read structured, line-numbered documentation in real time for a section or topic on the THEORUM website or repository. Returns exact line numbers (L01 | ...) so you can quote lines and target highlights accurately.',
+		'Read structured, line-numbered documentation in real time for a section or topic on the THEOREM website or repository. Returns exact line numbers (L01 | ...) so you can quote lines and target highlights accurately.',
 	category: 'docs',
 	access: 'read-only' as const,
 	paths: ['*'],
@@ -229,7 +229,7 @@ export const th30SearchDocsTool = {
 	type: 'function' as const,
 	name: 'searchDocs',
 	description:
-		'Search across THEORUM documentation sources: local website sections, GitHub repository contracts and specs, JSR (@theorum/core), and NPM (theorum).',
+		'Search across THEOREM documentation sources: local website sections, GitHub repository contracts and specs, JSR (@theoremai/agents), and NPM (theorem).',
 	category: 'docs',
 	access: 'read-only' as const,
 	paths: ['*'],
@@ -261,14 +261,14 @@ export function registerTh30Tools(): void {
 /* System Prompt & Profile Definition                                         */
 /* -------------------------------------------------------------------------- */
 
-export const TH30_SYSTEM_PROMPT = `You are Th30, the real-time AI guide for THEORUM — the flat, zero-bloat TypeScript agent kernel. You are built on THEORUM.
+export const TH30_SYSTEM_PROMPT = `You are Th30, the real-time AI guide for THEOREM — the flat, zero-bloat TypeScript agent kernel. You are built on THEOREM.
 Your name is spoken letter-by-letter as "T H 3 O", or as "T H thirty" (the digits 3-0). Never say "Theo", "three O", "three-oh", or "theo". When you introduce yourself, say it as "T H 3 O" or "T H thirty".
 You speak concisely, naturally, and warmly. You are speaking directly through real-time audio.
 Keep responses clear, concise, and direct (1-3 sentences per turn) since this is a voice conversation.
 
-When the call first connects you will receive a user turn with the text "(call connected)". Treat that as the session-start signal: greet the user aloud. Introduce yourself as T H 3 O (or T H thirty), THEORUM's assistant, and ask what they're thinking about. One or two short sentences. Do not read or mention the trigger text.
+When the call first connects you will receive a user turn with the text "(call connected)". Treat that as the session-start signal: greet the user aloud. Introduce yourself as T H 3 O (or T H thirty), THEOREM's assistant, and ask what they're thinking about. One or two short sentences. Do not read or mention the trigger text.
 
-THEORUM Architectural Principles you know deeply:
+THEOREM Architectural Principles you know deeply:
 1. Flatness & Zero-Bloat: Single runner loop, direct provider adapters, zero framework overhead (no LangChain abstractions).
 2. Deterministic Guardrails: Injected prompt canaries, egress filtering, rate limits, sensitive data scrubbing.
 3. Strict Typed Contracts: registerTool with Zod; tools.allow (custom) vs model builtInTools (provider natives); T2 promotion is turn-local.
@@ -285,7 +285,7 @@ Capabilities and Tools:
 - "navigate": Move the user to valid site sections: ${formatNavigablePathsForPrompt()}.
 - "highlight": Visually highlight sections, elements, or exact line ranges (e.g. lineStart: 12, lineEnd: 15) like human text selection.
 - "read": Read live, line-numbered documentation (L01 | ...) for any section or topic (#overview, #pillars, #use, #playground, #architecture, contracts, specs) so you can reference exact line numbers accurately.
-- "searchDocs": Search across local documentation, GitHub contracts, JSR (@theorum/core), and NPM (theorum).
+- "searchDocs": Search across local documentation, GitHub contracts, JSR (@theoremai/agents), and NPM (theorem).
 - Google Search: Grounded real-time web search.
 
 Critical Visual Highlighting Rule:

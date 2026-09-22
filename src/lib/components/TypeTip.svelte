@@ -1,7 +1,7 @@
 <script lang="ts">
 import type { Snippet } from 'svelte';
 import AsciiHover from '$lib/components/AsciiHover.svelte';
-import { fieldTipArt } from '$lib/theorum/annotate';
+import { fieldTipArt } from '$lib/theoremai/annotate';
 
 let {
 	children,

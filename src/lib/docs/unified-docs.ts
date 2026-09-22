@@ -1,5 +1,5 @@
 /**
- * Unified Documentation and Site Knowledge Source for THEORUM.
+ * Unified Documentation and Site Knowledge Source for THEOREM.
  *
  * Single source of truth for:
  * 1. Live page navigation routes & anchors
@@ -22,7 +22,7 @@ export const NAVIGABLE_TARGETS: NavigableTarget[] = [
 		title: 'Hero / Header',
 		description: 'The top hero section with kernel version, live status, and core proposition.',
 		subTargets: [
-			{ id: 'hero-title', name: 'Title', description: 'THEORUM title & version badge' },
+			{ id: 'hero-title', name: 'Title', description: 'THEOREM title & version badge' },
 			{
 				id: 'th30-dock',
 				name: 'Th30',
@@ -34,12 +34,12 @@ export const NAVIGABLE_TARGETS: NavigableTarget[] = [
 		path: '/#overview',
 		title: 'Overview: The Flat Kernel',
 		description:
-			'Core overview and thesis of THEORUM: flat runtime, zero bloat, single runner loop, deterministic boundaries.',
+			'Core overview and thesis of THEOREM: flat runtime, zero bloat, single runner loop, deterministic boundaries.',
 	},
 	{
 		path: '/#pillars',
 		title: 'Pillars: Core Architecture Pillars',
-		description: 'The 5 foundational pillars of THEORUM architecture.',
+		description: 'The 5 foundational pillars of THEOREM architecture.',
 		subTargets: [
 			{
 				id: 'profile',
@@ -78,7 +78,7 @@ export const NAVIGABLE_TARGETS: NavigableTarget[] = [
 			{
 				id: 'install',
 				name: 'Install Snippet',
-				description: 'npm install theorum and jsr add @theorum/core',
+				description: 'npm install @theoremai/agents and jsr add @theoremai/agents',
 			},
 			{
 				id: 'agent',
@@ -112,9 +112,9 @@ export const NAVIGABLE_TARGETS: NavigableTarget[] = [
 	{
 		path: '/#architecture',
 		title: 'Architecture / Package Map',
-		description: 'Complete interactive package tree and module breakdown of @theorum/core.',
+		description: 'Complete interactive package tree and module breakdown of @theoremai/agents.',
 		subTargets: [
-			{ id: 'theorum', name: 'Root Package', description: 'theorum root barrel' },
+			{ id: '@theoremai/agents', name: 'Root Package', description: 'theorem root barrel' },
 			{ id: 'kernel', name: 'Kernel Module', description: 'src/kernel runner and tool registry' },
 			{
 				id: 'guardrails',
@@ -155,16 +155,16 @@ export interface DocSectionContent {
 export const SITE_DOC_SECTIONS: DocSectionContent[] = [
 	{
 		id: '#hero',
-		title: 'THEORUM Hero & Mission',
+		title: 'THEOREM Hero & Mission',
 		path: '/#hero',
 		source: 'local',
 		tags: ['hero', 'version', 'runtime', 'live', 'introduction', 'mission'],
 		lines: [
-			'# THEORUM — The Flat TypeScript Agent Kernel',
+			'# THEOREM — The Flat TypeScript Agent Kernel',
 			'Version: @1.0.0',
 			'',
 			'## Mission & Core Value',
-			'THEORUM is a flat, zero-bloat TypeScript agent kernel built around 4 core principles:',
+			'THEOREM is a flat, zero-bloat TypeScript agent kernel built around 4 core principles:',
 			'1. Flatness & Zero-Bloat: Single runner loop, direct provider adapters, zero framework overhead.',
 			'2. Deterministic Guardrails: Injected prompt canaries, egress filtering, rate limits, sensitive data scrubbing.',
 			'3. Strict Typed Contracts: Pure Zod tool schemas, clean type-safe profiles, separate wire framing from network transport.',
@@ -180,7 +180,7 @@ export const SITE_DOC_SECTIONS: DocSectionContent[] = [
 		lines: [
 			'# Overview: A Unified Runtime for Agentic Execution',
 			'',
-			'THEORUM turns ad-hoc agent scripts into a typed execution kernel.',
+			'THEOREM turns ad-hoc agent scripts into a typed execution kernel.',
 			'One contract per agent — predictable at every boundary.',
 			'',
 			'## Key Characteristics',
@@ -229,12 +229,12 @@ export const SITE_DOC_SECTIONS: DocSectionContent[] = [
 			'# Quickstart & Usage',
 			'',
 			'## Installation',
-			'npm install theorum',
+			'npm install @theoremai/agents',
 			'# or for Deno / JSR:',
-			'jsr add @theorum/core',
+			'jsr add @theoremai/agents',
 			'',
 			'## Minimal Profile & Execution',
-			'import { defineProfile, registerProfile, runTurn, registerTool, createProvider } from "theorum";',
+			'import { defineProfile, registerProfile, runTurn, registerTool, createProvider } from "@theoremai/agents";',
 			'import { z } from "zod";',
 			'',
 			'registerTool({',
@@ -327,13 +327,13 @@ export const SITE_DOC_SECTIONS: DocSectionContent[] = [
 			'# Package Architecture Breakdown',
 			'',
 			'## Module Tree',
-			'- theorum (mod.ts): Root package barrel.',
-			'- theorum/kernel: runTurn runner, runSession live door, registerTool registry, invokeTool, prepareTurnToolSnapshot.',
-			'- theorum/guardrails: Canary token generation, inbound sanitization, egress filtering.',
-			'- theorum/providers: Google Gemini Live & Interactions, OpenRouter, Local Ollama.',
-			'- theorum/presets/google: Builtin registrations (googleSearch, googleMaps, urlContext, codeExecution).',
-			'- theorum/observability: Trace recording and sinks.',
-			'- theorum/host: Client event projection and stream helpers.',
+			'- theorem (mod.ts): Root package barrel.',
+			'- @theoremai/agents/kernel: runTurn runner, runSession live door, registerTool registry, invokeTool, prepareTurnToolSnapshot.',
+			'- @theoremai/agents/guardrails: Canary token generation, inbound sanitization, egress filtering.',
+			'- @theoremai/agents/providers: Google Gemini Live & Interactions, OpenRouter, Local Ollama.',
+			'- @theoremai/agents/presets/google: Builtin registrations (googleSearch, googleMaps, urlContext, codeExecution).',
+			'- @theoremai/agents/observability: Trace recording and sinks.',
+			'- @theoremai/agents/host: Client event projection and stream helpers.',
 			'',
 			'## Tool modules (src/kernel/tools/)',
 			'- registry.ts: process-local catalog — register at startup.',
@@ -344,12 +344,12 @@ export const SITE_DOC_SECTIONS: DocSectionContent[] = [
 	},
 	{
 		id: 'contracts',
-		title: 'THEORUM Contracts & Specifications',
-		path: 'https://github.com/masudl-hub/theorum/tree/main/docs/contracts',
+		title: 'THEOREM Contracts & Specifications',
+		path: 'https://github.com/masudl-hub/theoremai/tree/main/docs/contracts',
 		source: 'github',
 		tags: ['contracts', 'specs', 'tool-system', 'kernel', 'guardrails', 'providers', 'presets'],
 		lines: [
-			'# THEORUM Contracts & Specifications',
+			'# THEOREM Contracts & Specifications',
 			'',
 			'## Tool system (docs/contracts/kernel.md + tool registry)',
 			'- registerTool at startup — single catalog. No defineTool export.',
@@ -367,46 +367,46 @@ export const SITE_DOC_SECTIONS: DocSectionContent[] = [
 	},
 	{
 		id: 'jsr',
-		title: 'JSR Package: @theorum/core',
-		path: 'https://jsr.io/@theorum/core',
+		title: 'JSR Package: @theoremai/agents',
+		path: 'https://jsr.io/@theoremai/agents',
 		source: 'jsr',
 		tags: ['jsr', 'deno', 'package', 'typescript', 'core'],
 		lines: [
-			'# JSR Registry: @theorum/core',
+			'# JSR Registry: @theoremai/agents',
 			'',
-			'URL: https://jsr.io/@theorum/core',
-			'Install: jsr add @theorum/core',
+			'URL: https://jsr.io/@theoremai/agents',
+			'Install: jsr add @theoremai/agents',
 			'',
 			'Exported entrypoints:',
-			'- @theorum/core: defineProfile, registerProfile, runTurn, runSession, registerTool, invokeTool, createProvider, prepareTurnToolSnapshot.',
+			'- @theoremai/agents: defineProfile, registerProfile, runTurn, runSession, registerTool, invokeTool, createProvider, prepareTurnToolSnapshot.',
 			'- Native TypeScript publication with zero transpile required for Deno, Bun, and modern bundlers.',
 		],
 	},
 	{
 		id: 'npm',
-		title: 'NPM Package: theorum',
-		path: 'https://www.npmjs.com/package/theorum',
+		title: 'NPM Package: theorem',
+		path: 'https://www.npmjs.com/package/@theoremai%2Fagents',
 		source: 'npm',
-		tags: ['npm', 'node', 'package', 'theorum'],
+		tags: ['npm', 'node', 'package', '@theoremai/agents'],
 		lines: [
-			'# NPM Registry: theorum',
+			'# NPM Registry: theorem',
 			'',
-			'URL: https://www.npmjs.com/package/theorum',
-			'Install: npm install theorum',
+			'URL: https://www.npmjs.com/package/@theoremai%2Fagents',
+			'Install: npm install @theoremai/agents',
 			'',
 			'Full ESM & CommonJS support with TypeScript declaration files.',
 		],
 	},
 	{
 		id: 'github',
-		title: 'GitHub Repository: masudl-hub/theorum',
-		path: 'https://github.com/masudl-hub/theorum',
+		title: 'GitHub Repository: masudl-hub/theorem',
+		path: 'https://github.com/masudl-hub/theoremai',
 		source: 'github',
 		tags: ['github', 'repository', 'open-source', 'code', 'tests', 'ci'],
 		lines: [
-			'# GitHub Repository: masudl-hub/theorum',
+			'# GitHub Repository: masudl-hub/theorem',
 			'',
-			'Repository: https://github.com/masudl-hub/theorum',
+			'Repository: https://github.com/masudl-hub/theoremai',
 			'Architecture: Flat TypeScript agent kernel with contract tests and Stryker mutation testing on guardrails and tool modules.',
 			'Key directories: src/kernel, src/guardrails, src/providers, src/presets, docs/contracts.',
 		],
@@ -443,7 +443,7 @@ export function readDocSection(
 			allLines.push(...sec.lines);
 			allLines.push('');
 		}
-		const formatted = formatWithLineNumbers('THEORUM Full Page Documentation', allLines);
+		const formatted = formatWithLineNumbers('THEOREM Full Page Documentation', allLines);
 		return {
 			target: 'full_page',
 			title: 'Full Page Documentation',

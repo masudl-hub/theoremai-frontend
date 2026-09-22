@@ -4,7 +4,7 @@ import { streamPlaygroundTurn } from '$lib/server/playground-turn';
 import type { RequestHandler } from './$types';
 
 type TurnBody = {
-	profile: import('theorum').ProfileDefinition;
+	profile: import('@theoremai/agents').ProfileDefinition;
 	customTools?: import('$lib/playground/types').ToolRegistration[];
 	structured?: import('$lib/playground/types').StructuredRegistration;
 	previousInteractionId?: string;
@@ -12,7 +12,7 @@ type TurnBody = {
 	model?: string;
 	effort?: string;
 	turnId?: string;
-	input: import('theorum').TurnInput;
+	input: import('@theoremai/agents').TurnInput;
 };
 
 export const POST: RequestHandler = async ({ request, platform }) => {

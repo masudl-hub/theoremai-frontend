@@ -6,11 +6,11 @@ export type PackageNode = {
 	children?: PackageNode[];
 };
 
-/** Complete src/ tree for theorum@1.0.0 — every folder and file under src/, plus root mod.ts. */
+/** Complete src/ tree for theorem@1.0.0 — every folder and file under src/, plus root mod.ts. */
 export const packageTree: PackageNode = {
-	id: 'theorum',
-	label: 'Theorum',
-	path: 'theorum',
+	id: '@theoremai/agents',
+	label: 'Theorem',
+	path: '@theoremai/agents',
 	kind: 'package',
 	children: [
 		{ id: 'mod', label: 'mod.ts', path: 'mod.ts', kind: 'file' },
@@ -270,7 +270,7 @@ function s(v: string): Seg {
 const WIDE_MAP_LINES: Seg[][] = [
 	// SECTION 1: KERNEL
 	[
-		n('theorum', 'Theorum'),
+		n('@theoremai/agents', 'Theorem'),
 		s(' ──┬── '),
 		n('kernel', 'Kernel'),
 		s(' ─────────┬── '),

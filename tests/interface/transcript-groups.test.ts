@@ -4,14 +4,14 @@
  * Run: npx vite-node tests/interface/transcript-groups.test.ts
  */
 import assert from 'node:assert/strict';
-import type { TranscriptBlock } from 'theorum/interface';
+import type { TranscriptBlock } from '@theoremai/agents/interface';
 import {
 	assistantTurnTools,
 	composeAssistantTurn,
 	formatWorkDuration,
 	groupTranscriptBlocks,
 	workStatusLabel,
-} from '../../../theorum/react/src/client/transcript-groups.ts';
+} from '../../../theoremai/react/src/client/transcript-groups.ts';
 
 function ok(label: string) {
 	console.log(`  ✓ ${label}`);
