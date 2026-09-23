@@ -20,7 +20,7 @@ import { resolve } from '$app/paths';
 import '@xyflow/svelte/dist/style.css';
 import '$lib/components/playground/playground-graph.css';
 
-import { createPlaygroundRunId, savePlaygroundRunPayload } from '@theoremai/react/client';
+import { createPlaygroundRunId, savePlaygroundRunPayload } from '@theoremai/playground';
 import AsciiCardSegments from '$lib/ascii/AsciiCardSegments.svelte';
 import { parseAsciiCardSegments, renderAsciiCard } from '$lib/ascii/tip-card';
 import AsciiHover from '$lib/components/AsciiHover.svelte';

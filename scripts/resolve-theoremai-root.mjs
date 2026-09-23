@@ -53,10 +53,11 @@ export function theoremaiStaleReason(candidate) {
 
 /**
  * Resolve the kernel checkout the frontend should use.
- * Requires the sibling clone at ../theoremai.
+ * `THEOREMAI_ROOT` overrides the sibling clone at ../theoremai (e.g. a branch worktree).
  */
 export function resolveTheoremaiRoot(frontendRoot = FRONTEND_ROOT) {
-	const sibling = path.resolve(frontendRoot, '../theoremai');
+	const override = process.env.THEOREMAI_ROOT?.trim();
+	const sibling = override ? path.resolve(override) : path.resolve(frontendRoot, '../theoremai');
 
 	if (!isTheoremRoot(sibling)) {
 		throw new Error(
@@ -75,7 +76,7 @@ export function resolveTheoremaiRoot(frontendRoot = FRONTEND_ROOT) {
 		);
 	}
 
-	return { root: sibling, source: 'sibling' };
+	return { root: sibling, source: override ? 'env' : 'sibling' };
 }
 
 export { FRONTEND_ROOT };

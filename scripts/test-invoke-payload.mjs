@@ -6,14 +6,17 @@
 import assert from 'node:assert/strict';
 import { emptyInterfaceTurnSession } from '@theoremai/agents/interface';
 import {
-	buildInvokeRequestBody,
-	buildTurnRequestBody,
+	buildInvokeRequest,
+	buildTurnRequest,
 	turnInputFromSession,
 } from '../../theoremai/react/src/client/turn-client.ts';
 
 import { createTestRunner } from './_test-harness.mjs';
 
 const { test, exit } = createTestRunner();
+// The builders only read the model/effort selection fields of the interface.
+const ifaceOf = (p) => p.profile;
+
 const payload = {
 	profile: {
 		type: 'text',
@@ -39,20 +42,20 @@ test('turnInputFromSession carries history and token counters', () => {
 	assert.equal(input.historyTokens, 12);
 });
 
-test('buildTurnRequestBody includes session permissions and interaction id', () => {
+test('buildTurnRequest includes session permissions and interaction id', () => {
 	const session = {
 		...emptyInterfaceTurnSession(),
 		previousInteractionId: 'ix-1',
 		sessionPermissions: ['search'],
 	};
-	const body = buildTurnRequestBody(payload, session, { text: 'hello' });
+	const body = buildTurnRequest(ifaceOf(payload), session, { text: 'hello' });
 	assert.equal(body.previousInteractionId, 'ix-1');
 	assert.deepEqual(body.sessionPermissions, ['search']);
 	assert.equal(body.input.text, 'hello');
 	assert.equal(body.model, undefined);
 });
 
-test('buildTurnRequestBody forwards selected model when allowModelSelect is set', () => {
+test('buildTurnRequest forwards selected model when allowModelSelect is set', () => {
 	const selectablePayload = {
 		...payload,
 		profile: {
@@ -69,11 +72,11 @@ test('buildTurnRequestBody forwards selected model when allowModelSelect is set'
 		...emptyInterfaceTurnSession(),
 		selectedModel: 'smart',
 	};
-	const body = buildTurnRequestBody(selectablePayload, session, { text: 'hello' });
+	const body = buildTurnRequest(ifaceOf(selectablePayload), session, { text: 'hello' });
 	assert.equal(body.model, 'smart');
 });
 
-test('buildTurnRequestBody forwards selected effort when model allows effort select', () => {
+test('buildTurnRequest forwards selected effort when model allows effort select', () => {
 	const selectablePayload = {
 		...payload,
 		profile: {
@@ -96,11 +99,11 @@ test('buildTurnRequestBody forwards selected effort when model allows effort sel
 		selectedModel: 'fast',
 		selectedEffort: 'deep',
 	};
-	const body = buildTurnRequestBody(selectablePayload, session, { text: 'hello' });
+	const body = buildTurnRequest(ifaceOf(selectablePayload), session, { text: 'hello' });
 	assert.equal(body.effort, 'deep');
 });
 
-test('buildInvokeRequestBody forwards snapshot, promoted, and model', () => {
+test('buildInvokeRequest forwards snapshot, promoted, and model', () => {
 	const selectablePayload = {
 		...payload,
 		profile: {
@@ -122,7 +125,7 @@ test('buildInvokeRequestBody forwards snapshot, promoted, and model', () => {
 			tools: [{ name: 'search', phase: 'complete' }],
 		},
 	};
-	const body = buildInvokeRequestBody(selectablePayload, session, {
+	const body = buildInvokeRequest(ifaceOf(selectablePayload), session, {
 		name: 'search',
 		input: { q: 'hotels' },
 		resume: { granted: true },

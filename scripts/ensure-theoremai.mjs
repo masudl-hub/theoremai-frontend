@@ -28,5 +28,12 @@ if (existsSync(nodeModulesAgents)) {
 
 mkdirSync(path.dirname(nodeModulesAgents), { recursive: true });
 symlinkSync(root, nodeModulesAgents, 'dir');
-
 console.log(`@theoremai/agents → ${root} (${source})`);
+
+// file: deps are pinned to the sibling path; follow the resolved root instead.
+for (const pkg of ['react', 'playground']) {
+	const link = path.join(frontendRoot, 'node_modules/@theoremai', pkg);
+	if (existsSync(link) || lstatSync(link, { throwIfNoEntry: false })) rmSync(link, { recursive: true, force: true });
+	symlinkSync(path.join(root, pkg), link, 'dir');
+	console.log(`@theoremai/${pkg} → ${path.join(root, pkg)}`);
+}
