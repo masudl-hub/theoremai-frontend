@@ -562,7 +562,8 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'kernel_registry_catalog',
 		title: 'catalog.ts',
 		type: 'CORE',
-		usage: "import { requireModelBinding, mimeAllowed, clampThinkingLevel } from '@theoremai/agents'",
+		usage:
+			"import { requireModelBinding, mimeAllowed, clampThinkingLevel } from '@theoremai/agents'",
 		desc: 'Model binding lookup and MIME helpers for profile validation.',
 		specs: [
 			['path', 'src/kernel/registry/catalog.ts'],
@@ -1342,7 +1343,8 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'observability_trace',
 		title: 'trace.ts',
 		type: 'TELEMETRY',
-		usage: "import { jsonlSink, memorySink, noopSink, writeTrace } from '@theoremai/agents/observability'",
+		usage:
+			"import { jsonlSink, memorySink, noopSink, writeTrace } from '@theoremai/agents/observability'",
 		desc: 'Sink implementations and writeTrace — pass to runTurn as third argument.',
 		specs: [
 			['path', 'src/observability/trace.ts'],
@@ -1414,7 +1416,8 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'host_mod',
 		title: 'mod.ts',
 		type: 'BARREL',
-		usage: "import { json, flushMintTrace, readStreamingJsonStringField } from '@theoremai/agents/host'",
+		usage:
+			"import { json, flushMintTrace, readStreamingJsonStringField } from '@theoremai/agents/host'",
 		desc: 'Host public barrel.',
 		specs: [
 			['entry', '@theoremai/agents/host'],
@@ -1492,7 +1495,8 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		id: 'presets_google',
 		title: 'google.ts',
 		type: 'PRESET',
-		usage: "import { registerGooglePreset, GOOGLE_BUILTIN_TOOLS } from '@theoremai/agents/presets/google'",
+		usage:
+			"import { registerGooglePreset, GOOGLE_BUILTIN_TOOLS } from '@theoremai/agents/presets/google'",
 		desc: 'Registers Google Search, Maps, URL context, code execution builtins into the tool registry. Profiles declare them on model.config.*.builtInTools.',
 		specs: [
 			['entry', '@theoremai/agents/presets/google'],

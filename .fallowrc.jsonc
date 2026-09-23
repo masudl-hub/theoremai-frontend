@@ -18,12 +18,8 @@
 		"apps/run/vite.config.ts",
 		"scripts/pressure-playground.mjs",
 		"scripts/pressure-demo-tools.mjs",
-		"scripts/pressure-interface-voice.mjs",
-		"scripts/test-tool-resume.mjs",
-		"scripts/test-invoke-payload.mjs",
 		"scripts/sync-run-static.mjs",
-		"scripts/vite-run-spa-index-plugin.mjs",
-		"tests/interface/**/*.ts"
+		"scripts/vite-run-spa-index-plugin.mjs"
 	],
 	"publicPackages": ["@theoremai/react"],
 	"ignorePatterns": [
@@ -36,7 +32,16 @@
 		"coverage/**",
 		".fallow/**"
 	],
-	"ignoreDependencies": ["@openrouter/ai-sdk-provider", "ai", "gpt-tokenizer", "zod"],
+	"ignoreDependencies": [
+		"@openrouter/ai-sdk-provider",
+		"ai",
+		"gpt-tokenizer",
+		"zod",
+		// apps/run: peerDependencies of @theoremai/react, which the host app must supply.
+		"@astryxdesign/core",
+		"@astryxdesign/theme-neutral",
+		"@stylexjs/stylex"
+	],
 	"ignoreExportsUsedInFile": true,
 	"rules": {
 		"unused-files": "error",

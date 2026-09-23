@@ -1,5 +1,9 @@
-import type { Edge, Node } from '@xyflow/svelte';
-import type { ProfileDefinition, ProfileLiveSpec, ProfileSpeechSpec, ProfileType } from '@theoremai/agents';
+import type {
+	ProfileDefinition,
+	ProfileLiveSpec,
+	ProfileSpeechSpec,
+	ProfileType,
+} from '@theoremai/agents';
 import type {
 	AuthUnauthenticatedPolicy,
 	ContinueStopKind,
@@ -21,7 +25,13 @@ import type {
 	ToolLoadTier,
 	ToolPermission,
 } from '@theoremai/agents/schema';
-import { PROFILE_GRAPH, TOOL_ACCESS, TOOL_LOAD_TIERS, TOOL_PERMISSION } from '@theoremai/agents/schema';
+import {
+	PROFILE_GRAPH,
+	TOOL_ACCESS,
+	TOOL_LOAD_TIERS,
+	TOOL_PERMISSION,
+} from '@theoremai/agents/schema';
+import type { Edge, Node } from '@xyflow/svelte';
 import { DEFAULT_TOOL_INPUT_SCHEMA, DEFAULT_TOOL_OUTPUT_SCHEMA } from './tool-schema';
 
 export type {

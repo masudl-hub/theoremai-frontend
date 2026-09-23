@@ -10,7 +10,12 @@
  * @module
  */
 
-import { defineProfile, registerProfile, registerTool, standardEgressEnforce } from '@theoremai/agents';
+import {
+	defineProfile,
+	registerProfile,
+	registerTool,
+	standardEgressEnforce,
+} from '@theoremai/agents';
 import { z } from 'zod';
 import {
 	formatNavigablePathsForPrompt,

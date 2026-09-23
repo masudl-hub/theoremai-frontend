@@ -36,10 +36,7 @@ function RunApp({ payload }: { payload: PlaygroundRunPayload }) {
 				← Playground
 			</a>
 			{iface.type === 'live' ? (
-				<LiveRunner
-					iface={iface}
-					registerProfile={() => registerPlaygroundLiveProfile(payload)}
-				/>
+				<LiveRunner iface={iface} registerProfile={() => registerPlaygroundLiveProfile(payload)} />
 			) : (
 				<TheoremChat transport={transport} className="run-chat" />
 			)}

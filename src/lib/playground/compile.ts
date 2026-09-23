@@ -14,6 +14,7 @@ import {
 	type ProfileTurnResumptionSpec,
 	TheoremError,
 } from '@theoremai/agents';
+import type { PLAYGROUND_EXCLUDED_TYPES } from './compat';
 import { emitRegisterToolSource, validatePlaygroundGraph } from './compile-validate';
 import { parseList, playgroundPolicyViolation } from './playground-policy';
 import type {
@@ -34,8 +35,11 @@ import type {
 
 type ModelBinding = ProfileDefinitionBase['models'][string];
 
-/** The playground authors turn profiles; `host` profiles have no model to run. */
-type PlaygroundProfileDefinition = Exclude<ProfileDefinition, { type: 'host' }>;
+/** The playground authors turn profiles (see PLAYGROUND_EXCLUDED_TYPES). */
+type PlaygroundProfileDefinition = Exclude<
+	ProfileDefinition,
+	{ type: (typeof PLAYGROUND_EXCLUDED_TYPES)[number] }
+>;
 
 function buildModelsRecord(
 	specs: Array<{ id: string; data: ModelBindingData }>,
@@ -415,10 +419,16 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 		forceSummaries: outputs?.streamThoughts === true,
 	});
 	const profileType = identity.profileType || 'text';
-	if (profileType === 'host') {
+	if (profileType === 'host' || profileType === 'decision') {
 		return {
 			ok: false,
-			issues: [{ nodeId: 'identity', facet: 'identity', message: 'Host profiles have no model to run in the playground.' }],
+			issues: [
+				{
+					nodeId: 'identity',
+					facet: 'identity',
+					message: `${profileType} profiles can't run in the playground.`,
+				},
+			],
 			message: 'Compile failed · 1 issue',
 		};
 	}

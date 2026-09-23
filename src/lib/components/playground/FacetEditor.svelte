@@ -1,7 +1,7 @@
 <script lang="ts">
-import { getContext } from 'svelte';
 import type { Protocol, Provider } from '@theoremai/agents/schema';
 import { coerceProtocol, coerceProvider, providersFor } from '@theoremai/agents/schema';
+import { getContext } from 'svelte';
 import TypeTip from '$lib/components/TypeTip.svelte';
 import { PLAYGROUND_PROVIDERS, protocolsForModality, toggleList } from '$lib/playground/compat';
 import { PLAYGROUND_CTX, type PlaygroundCtx } from '$lib/playground/context';

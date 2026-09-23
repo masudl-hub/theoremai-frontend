@@ -28,11 +28,17 @@ export function protocolsForModality(
 export const PLAYGROUND_PROVIDERS = labeled(PROVIDER_VALUES);
 
 /**
- * Profile archetype cards — labels from kernel profile `type` field catalog.
- * `host` is left out: it has no model to run, so there is nothing to chat with.
+ * Profile types the playground can't author: `host` has no model to run, and
+ * `decision` answers structured questions over host state rather than chatting.
  */
+export const PLAYGROUND_EXCLUDED_TYPES = [
+	'host',
+	'decision',
+] as const satisfies readonly ProfileType[];
+
+/** Profile archetype cards — labels from kernel profile `type` field catalog. */
 export const MODALITY_OPTIONS = fieldEnumOptions('type')
-	.filter((opt) => opt.value !== 'host')
+	.filter((opt) => !(PLAYGROUND_EXCLUDED_TYPES as readonly string[]).includes(opt.value))
 	.map((opt) => ({
 		value: opt.value as ProfileType,
 		label: opt.label,

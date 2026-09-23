@@ -1,6 +1,4 @@
 <script lang="ts">
-import { getContext } from 'svelte';
-import { demoHttpSampleInput } from '@theoremai/playground';
 import type {
 	AuthUnauthenticatedPolicy,
 	CustomToolType,
@@ -10,6 +8,8 @@ import type {
 	ToolLoadTier,
 	ToolPermission,
 } from '@theoremai/agents/schema';
+import { demoHttpSampleInput } from '@theoremai/playground';
+import { getContext } from 'svelte';
 import ToolSpecTypeIcon from '$lib/components/playground/icons/ToolSpecTypeIcon.svelte';
 import Select from '$lib/components/Select.svelte';
 import {
@@ -160,6 +160,20 @@ async function testConnection(): Promise<void> {
 }
 </script>
 
+{#snippet headersField(placeholder: string)}
+	<label class="facet-field">
+		<FacetFieldLabel path="headers" />
+		<textarea
+			class="field facet-textarea facet-code"
+			oninput={(e) => patch({ headersJson: e.currentTarget.value })}
+			{placeholder}
+			rows="3"
+			spellcheck="false"
+			value={data.headersJson ?? ''}
+		></textarea>
+	</label>
+{/snippet}
+
 <label class="facet-field">
 	<FacetFieldLabel path="name" />
 	<input
@@ -227,17 +241,7 @@ async function testConnection(): Promise<void> {
 			value={data.method ?? 'GET'}
 		/>
 	</label>
-	<label class="facet-field">
-		<FacetFieldLabel path="headers" />
-		<textarea
-			class="field facet-textarea facet-code"
-			oninput={(e) => patch({ headersJson: e.currentTarget.value })}
-			placeholder={'{ "X-Api-Version": "2024-01-01" }'}
-			rows="3"
-			spellcheck="false"
-			value={data.headersJson ?? ''}
-		></textarea>
-	</label>
+	{@render headersField('{ "X-Api-Version": "2024-01-01" }')}
 	<label class="facet-field">
 		<FacetFieldLabel path="mapping.pathParams" text="path params" />
 		<input
@@ -289,17 +293,7 @@ async function testConnection(): Promise<void> {
 			value={data.mcpToolName ?? ''}
 		>
 	</label>
-	<label class="facet-field">
-		<FacetFieldLabel path="headers" />
-		<textarea
-			class="field facet-textarea facet-code"
-			oninput={(e) => patch({ headersJson: e.currentTarget.value })}
-			placeholder={'{ "X-Custom-Header": "value" }'}
-			rows="3"
-			spellcheck="false"
-			value={data.headersJson ?? ''}
-		></textarea>
-	</label>
+	{@render headersField('{ "X-Custom-Header": "value" }')}
 {/if}
 
 {#if isRemote}

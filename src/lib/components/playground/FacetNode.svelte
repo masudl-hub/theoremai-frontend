@@ -13,6 +13,7 @@ import {
 	IconTools,
 	IconVolume,
 } from '@tabler/icons-svelte';
+import type { ProfileGraphFacetId } from '@theoremai/agents/schema';
 import { Handle, type NodeProps, Position } from '@xyflow/svelte';
 import { getContext } from 'svelte';
 import ToolSpecTypeIcon from '$lib/components/playground/icons/ToolSpecTypeIcon.svelte';
@@ -20,7 +21,6 @@ import { PLAYGROUND_CTX, type PlaygroundCtx } from '$lib/playground/context';
 import { facetChips, facetTitle } from '$lib/playground/facet-ui';
 import { spineFacetKinds } from '$lib/playground/graph-layout';
 import type { IdentityData, PlaygroundNode } from '$lib/playground/types';
-import type { ProfileGraphFacetId } from '@theoremai/agents/schema';
 
 let { id, data }: NodeProps<PlaygroundNode> = $props();
 
@@ -92,6 +92,13 @@ function toggle() {
 	playground.togglePanel(id, !isActive);
 }
 
+/** Enter and Space toggle the panel, as a click would. */
+function onToggleKey(e: KeyboardEvent) {
+	if (e.key !== 'Enter' && e.key !== ' ') return;
+	e.preventDefault();
+	toggle();
+}
+
 function toggleBranch(e: MouseEvent) {
 	e.stopPropagation();
 	playground.toggleBranchCollapsed(id);
@@ -140,12 +147,7 @@ function onBranchAdd(e: MouseEvent) {
 		class="facet-head"
 		aria-expanded={isActive}
 		onclick={onHeadClick}
-		onkeydown={(e) => {
-			if (e.key === 'Enter' || e.key === ' ') {
-				e.preventDefault();
-				toggle();
-			}
-		}}
+		onkeydown={onToggleKey}
 		onpointerdown={onHeadPointerDown}
 		onpointermove={onHeadPointerMove}
 		role="button"
@@ -185,12 +187,7 @@ function onBranchAdd(e: MouseEvent) {
 		<div
 			class="facet-chips nodrag"
 			onclick={toggle}
-			onkeydown={(e) => {
-				if (e.key === 'Enter' || e.key === ' ') {
-					e.preventDefault();
-					toggle();
-				}
-			}}
+			onkeydown={onToggleKey}
 			role="button"
 			tabindex="0"
 		>

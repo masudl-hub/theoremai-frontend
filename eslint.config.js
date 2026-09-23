@@ -91,6 +91,9 @@ export default ts.config(
 			'**/coverage/**',
 			'**/.fallow/**',
 			'**/.wrangler/**',
+			// Built run SPA bundles (gitignored).
+			'apps/run/dist/**',
+			'static/playground/run/**',
 			'scripts/**',
 			'@theoremai/agents/**',
 			'vite.config.ts',

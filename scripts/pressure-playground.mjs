@@ -12,7 +12,11 @@ import {
 	PROTOCOLS,
 	protocolsForProfileType,
 } from '@theoremai/agents';
-import { protocolsForModality } from '../src/lib/playground/compat.ts';
+import {
+	MODALITY_OPTIONS,
+	PLAYGROUND_EXCLUDED_TYPES,
+	protocolsForModality,
+} from '../src/lib/playground/compat.ts';
 import { compilePlayground } from '../src/lib/playground/compile.ts';
 import { createInitialGraph, syncGraphForProfile } from '../src/lib/playground/example.ts';
 
@@ -48,6 +52,9 @@ function graphFor(type) {
 	return syncGraphForProfile(initial.nodes, [], identity);
 }
 
+/** Types the playground offers; `host` and `decision` are kernel-only. */
+const PLAYGROUND_TYPES = MODALITY_OPTIONS.map((o) => o.value);
+
 let passed = 0;
 function ok(label) {
 	passed += 1;
@@ -75,6 +82,13 @@ assert.deepEqual(
 );
 ok('protocolsForModality(empty) returns all protocols');
 
+console.log('playground profile types');
+assert.deepEqual(
+	PLAYGROUND_TYPES,
+	PROFILE_TYPES.filter((t) => !PLAYGROUND_EXCLUDED_TYPES.includes(t)),
+);
+ok(`playground offers ${PLAYGROUND_TYPES.join(', ')}`);
+
 console.log('graph sync shapes');
 {
 	const blank = createInitialGraph();
@@ -84,7 +98,7 @@ console.log('graph sync shapes');
 	ok('initial graph is identity-only');
 }
 
-for (const type of PROFILE_TYPES) {
+for (const type of PLAYGROUND_TYPES) {
 	const { nodes, edges } = graphFor(type);
 	assert.ok(nodes.some((n) => n.data.kind === 'identity'));
 	assert.ok(nodes.some((n) => n.data.kind === 'models'));
@@ -118,7 +132,7 @@ for (const type of PROFILE_TYPES) {
 }
 
 console.log('compile happy paths');
-for (const type of PROFILE_TYPES) {
+for (const type of PLAYGROUND_TYPES) {
 	const { nodes } = graphFor(type);
 	const result = compilePlayground(nodes);
 	assert.equal(result.ok, true, `${type} compile: ${result.ok ? '' : result.message}\n${result.ok ? '' : JSON.stringify(result.issues, null, 2)}`);
@@ -134,7 +148,7 @@ for (const type of PROFILE_TYPES) {
 
 console.log('illegal type/protocol pairs rejected at validate');
 const illegal = [];
-for (const type of PROFILE_TYPES) {
+for (const type of PLAYGROUND_TYPES) {
 	for (const protocol of PROTOCOLS) {
 		if (isValidProfileProtocol(type, protocol)) continue;
 		illegal.push([type, protocol]);

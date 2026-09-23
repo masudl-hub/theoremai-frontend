@@ -549,6 +549,28 @@ export function validatePlaygroundGraph(
 	};
 }
 
+function hasEntries(record: Record<string, string> | undefined): boolean {
+	return record !== undefined && Object.keys(record).length > 0;
+}
+
+/** A pretty-printed `key: value,` source line, or none when the value is absent. */
+function jsonFieldLine(key: string, value: unknown): string[] {
+	return value ? [`  ${key}: ${JSON.stringify(value, null, 2)},`] : [];
+}
+
+function registerToolSource(
+	type: ToolRegistration['type'],
+	common: string,
+	extra: string[],
+): string {
+	return `registerTool({
+  type: "${type}",
+${common}
+${extra.join('\n')}
+});
+`;
+}
+
 export function emitRegisterToolSource(tool: ToolRegistration): string {
 	const inputZod = zodExprFromJsonSchema(tool.inputSchema);
 	const outputZod = zodExprFromJsonSchema(tool.outputSchema);
@@ -563,47 +585,25 @@ export function emitRegisterToolSource(tool: ToolRegistration): string {
   output: ${outputZod},`;
 
 	if (tool.type === 'http') {
-		const extra = [
+		const hasMapping = Boolean(
+			tool.mapping?.pathParams || tool.mapping?.queryParams || tool.mapping?.bodyParam,
+		);
+		return registerToolSource('http', common, [
 			`  endpoint: ${JSON.stringify(tool.endpoint)},`,
 			`  method: ${JSON.stringify(tool.method)},`,
-		];
-		if (tool.headers && Object.keys(tool.headers).length) {
-			extra.push(`  headers: ${JSON.stringify(tool.headers, null, 2)},`);
-		}
-		if (
-			tool.mapping &&
-			(tool.mapping.pathParams || tool.mapping.queryParams || tool.mapping.bodyParam)
-		) {
-			extra.push(`  mapping: ${JSON.stringify(tool.mapping, null, 2)},`);
-		}
-		if (tool.auth) {
-			extra.push(`  auth: ${JSON.stringify(tool.auth, null, 2)},`);
-		}
-		return `registerTool({
-  type: "http",
-${common}
-${extra.join('\n')}
-});
-`;
+			...jsonFieldLine('headers', hasEntries(tool.headers) ? tool.headers : undefined),
+			...jsonFieldLine('mapping', hasMapping ? tool.mapping : undefined),
+			...jsonFieldLine('auth', tool.auth),
+		]);
 	}
 
 	if (tool.type === 'mcp') {
-		const extra = [
+		return registerToolSource('mcp', common, [
 			`  serverUrl: ${JSON.stringify(tool.serverUrl)},`,
 			`  mcpToolName: ${JSON.stringify(tool.mcpToolName)},`,
-		];
-		if (tool.headers && Object.keys(tool.headers).length) {
-			extra.push(`  headers: ${JSON.stringify(tool.headers, null, 2)},`);
-		}
-		if (tool.auth) {
-			extra.push(`  auth: ${JSON.stringify(tool.auth, null, 2)},`);
-		}
-		return `registerTool({
-  type: "mcp",
-${common}
-${extra.join('\n')}
-});
-`;
+			...jsonFieldLine('headers', hasEntries(tool.headers) ? tool.headers : undefined),
+			...jsonFieldLine('auth', tool.auth),
+		]);
 	}
 
 	const stub: Record<string, unknown> = {};
@@ -618,10 +618,7 @@ ${extra.join('\n')}
 	}
 	if (!Object.keys(stub).length) stub.result = 'playground stub';
 
-	return `registerTool({
-  type: "function",
-${common}
-  handler: async () => (${JSON.stringify(stub)}),
-});
-`;
+	return registerToolSource('function', common, [
+		`  handler: async () => (${JSON.stringify(stub)}),`,
+	]);
 }

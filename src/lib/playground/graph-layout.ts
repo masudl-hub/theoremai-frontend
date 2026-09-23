@@ -1,4 +1,9 @@
-import type { ProfileGraphFacetId, ProfileType, Protocol, Provider } from '@theoremai/agents/schema';
+import type {
+	ProfileGraphFacetId,
+	ProfileType,
+	Protocol,
+	Provider,
+} from '@theoremai/agents/schema';
 import { spineFacetsForProfileType } from '@theoremai/agents/schema';
 import { resolveNodeCollisions } from './graph-collision';
 import {
@@ -164,6 +169,8 @@ function facetDataForKind(
 		case 'modelBinding':
 		case 'toolSpec':
 			throw new Error(`facetDataForKind: '${colKind}' is not a spine facet`);
+		case 'decision':
+			throw new Error('facetDataForKind: decision profiles are not authored in the playground');
 		default: {
 			const _exhaustive: never = colKind;
 			throw new Error(`Unknown facet kind: ${String(_exhaustive)}`);

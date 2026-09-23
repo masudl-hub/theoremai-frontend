@@ -7,8 +7,8 @@ import {
 	registerTool,
 	standardEgressEnforce,
 } from '@theoremai/agents';
-import { playgroundDemoHandler, stubOutputFromSchema } from '@theoremai/playground';
 import { registerGooglePreset } from '@theoremai/agents/presets/google';
+import { playgroundDemoHandler, stubOutputFromSchema } from '@theoremai/playground';
 import { zodFromJsonSchema } from '$lib/playground/tool-schema';
 import type { StructuredRegistration, ToolRegistration } from '$lib/playground/types';
 

@@ -1,5 +1,11 @@
-import type { ProfileDefinition, TurnEvent, TurnHistoryMessage, TurnInput } from '@theoremai/agents';
-import { createProvider, invokeTool, noopSink, registerTraceDestination, runTurn } from '@theoremai/agents';
+import type { ProfileDefinition, TurnEvent, TurnInput } from '@theoremai/agents';
+import {
+	createProvider,
+	invokeTool,
+	noopSink,
+	registerTraceDestination,
+	runTurn,
+} from '@theoremai/agents';
 import type { InvokeToolRequest } from '@theoremai/agents/kernel';
 import { PLAYGROUND_TRACE_DESTINATION } from '$lib/playground/playground-policy';
 import type { StructuredRegistration, ToolRegistration } from '$lib/playground/types';
@@ -126,5 +132,3 @@ export async function* streamPlaygroundInvoke(args: {
 		yield event;
 	}
 }
-
-export type { TurnHistoryMessage };

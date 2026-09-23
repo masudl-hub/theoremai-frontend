@@ -10,7 +10,14 @@
 		"noEmit": true,
 		"isolatedModules": true,
 		"resolveJsonModule": true,
-		"types": ["vite/client"]
+		"allowImportingTsExtensions": true,
+		"types": ["vite/client"],
+		"paths": {
+			"react": ["../../node_modules/@types/react"],
+			"react/*": ["../../node_modules/@types/react/*"],
+			"react-dom": ["../../node_modules/@types/react-dom"],
+			"react-dom/*": ["../../node_modules/@types/react-dom/*"]
+		}
 	},
-	"include": ["src/**/*.ts", "src/**/*.tsx"]
+	"include": ["src/**/*.ts", "src/**/*.tsx", "../../theoremai-deno-shim.d.ts"]
 }
