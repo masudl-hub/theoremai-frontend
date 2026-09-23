@@ -129,7 +129,7 @@ export const NAVIGABLE_TARGETS: NavigableTarget[] = [
 			{
 				id: 'observability',
 				name: 'Observability Module',
-				description: 'src/observability trace sinks',
+				description: 'src/observability span traces, sinks and OTLP export',
 			},
 			{ id: 'presets', name: 'Presets Module', description: 'src/presets/google built-in tools' },
 		],
@@ -187,7 +187,7 @@ export const SITE_DOC_SECTIONS: DocSectionContent[] = [
 			'- Single Turn Loop: resolve tool snapshot → stream provider → execute function tools → continue or done.',
 			'- Stateless kernel: no cross-turn tool visibility memory — hosts own persistence (t1Policy on load, invokeTool promoted[], session state).',
 			'- No Hidden Prompts: What you write in defineProfile is what reaches the model.',
-			'- Pluggable Sinks: Traces write to your chosen sink (memory, jsonl, or directory).',
+			'- Pluggable Sinks: Traces write to your chosen sink (memory, JSONL, or your own) and export to any OpenTelemetry backend.',
 		],
 	},
 	{
@@ -216,7 +216,7 @@ export const SITE_DOC_SECTIONS: DocSectionContent[] = [
 			'Canary tokens detect prompt leakage deterministically, and egress enforcement inspects outbound payloads.',
 			'',
 			'## Pillar 5: Observability (Structured Traces)',
-			'Every turn writes a structured TraceRecord to a destination you control (memorySink, jsonlSink, dirSink).',
+			'Every turn writes a span-tree TraceRecord to a destination you control (memorySink, jsonlSink, or your own TraceSink); toOtlpJson exports it to any OpenTelemetry backend.',
 		],
 	},
 	{
@@ -332,7 +332,8 @@ export const SITE_DOC_SECTIONS: DocSectionContent[] = [
 			'- @theoremai/agents/guardrails: Canary token generation, inbound sanitization, egress filtering.',
 			'- @theoremai/agents/providers: Google Gemini Live & Interactions, OpenRouter, Local Ollama.',
 			'- @theoremai/agents/presets/google: Builtin registrations (googleSearch, googleMaps, urlContext, codeExecution).',
-			'- @theoremai/agents/observability: Trace recording and sinks.',
+			'- @theoremai/agents/observability: Trace recording, sinks and OTLP export.',
+			'- @theoremai/agents/observability/openinference: OpenInference usage attributes for viewers such as Phoenix.',
 			'- @theoremai/agents/host: Client event projection and stream helpers.',
 			'',
 			'## Tool modules (src/kernel/tools/)',
