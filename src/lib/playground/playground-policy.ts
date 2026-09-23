@@ -14,6 +14,12 @@ export const OPENROUTER_PLAYGROUND_API_ID = 'openrouter/free';
 /** Default Gemini wire id for geminiInteractions — highest free RPD in quota table. */
 export const GEMINI_PLAYGROUND_DEFAULT_API_ID = 'gemini-3.1-flash-lite';
 
+/**
+ * Trace destination the playground server registers for `observability.writeTo`.
+ * It keeps nothing yet; turn traces will be delivered to the run tab's inspector.
+ */
+export const PLAYGROUND_TRACE_DESTINATION = 'playground';
+
 /** Default wire id for geminiLive on free tier. */
 export const GEMINI_PLAYGROUND_LIVE_DEFAULT_API_ID = 'gemini-3.1-flash-live-preview';
 

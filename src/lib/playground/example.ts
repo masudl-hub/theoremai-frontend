@@ -9,10 +9,12 @@ import { PLAYGROUND_IDENTITY_X, PLAYGROUND_ORIGIN } from './layout';
 import {
 	GEMINI_PLAYGROUND_DEFAULT_API_ID,
 	OPENROUTER_PLAYGROUND_API_ID,
+	PLAYGROUND_TRACE_DESTINATION,
 } from './playground-policy';
 import {
 	DRAG_HANDLE,
 	defaultModelBinding,
+	defaultObservabilityData,
 	type IdentityData,
 	type PlaygroundEdge,
 	type PlaygroundNode,
@@ -148,6 +150,25 @@ function demoSeedNodes(): PlaygroundNode[] {
 			},
 		},
 		{
+			id: 'outputs',
+			type: 'facet',
+			position: { x: 0, y: 0 },
+			dragHandle: DRAG_HANDLE,
+			data: {
+				kind: 'outputs',
+				expanded: false,
+				mode: 'text',
+				schemaId: '',
+				schemaEnforced: 'responseFormat',
+				schemaJson: '',
+				streamMode: '',
+				streamThoughts: true,
+				validationEnabled: false,
+				maxRetries: 2,
+				repairGuidance: '',
+			},
+		},
+		{
 			id: 'guardrails',
 			type: 'facet',
 			position: { x: 0, y: 0 },
@@ -160,6 +181,13 @@ function demoSeedNodes(): PlaygroundNode[] {
 				onBlock: 'refuse_to_user',
 				allowedHosts: DEMO_ALLOWED_HOSTS,
 			},
+		},
+		{
+			id: 'observability',
+			type: 'facet',
+			position: { x: 0, y: 0 },
+			dragHandle: DRAG_HANDLE,
+			data: defaultObservabilityData({ writeTo: PLAYGROUND_TRACE_DESTINATION }),
 		},
 		...demoModelBindingNodes(),
 		...toolNodes,

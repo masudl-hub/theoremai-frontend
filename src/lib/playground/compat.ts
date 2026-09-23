@@ -27,11 +27,16 @@ export function protocolsForModality(
 
 export const PLAYGROUND_PROVIDERS = labeled(PROVIDER_VALUES);
 
-/** Profile archetype cards — labels from kernel profile `type` field catalog. */
-export const MODALITY_OPTIONS = fieldEnumOptions('type').map((opt) => ({
-	value: opt.value as ProfileType,
-	label: opt.label,
-}));
+/**
+ * Profile archetype cards — labels from kernel profile `type` field catalog.
+ * `host` is left out: it has no model to run, so there is nothing to chat with.
+ */
+export const MODALITY_OPTIONS = fieldEnumOptions('type')
+	.filter((opt) => opt.value !== 'host')
+	.map((opt) => ({
+		value: opt.value as ProfileType,
+		label: opt.label,
+	}));
 
 /** Custom tool discriminants available in the playground (excludes provider builtins). */
 export const PLAYGROUND_TOOL_TYPE_OPTIONS = fieldEnumOptions('registerTool.type').filter(

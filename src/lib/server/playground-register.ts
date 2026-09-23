@@ -91,7 +91,7 @@ function registerPlaygroundStructured(structured?: StructuredRegistration): void
 }
 
 function runtimeProfileDefinition(def: ProfileDefinition): ProfileDefinition {
-	if (!def.guardrails?.egress) return def;
+	if (def.type === 'host' || !def.guardrails?.egress) return def;
 	return {
 		...def,
 		guardrails: {

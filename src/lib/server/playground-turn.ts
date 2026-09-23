@@ -1,6 +1,7 @@
 import type { ProfileDefinition, TurnEvent, TurnHistoryMessage, TurnInput } from '@theoremai/agents';
-import { createProvider, invokeTool, runTurn } from '@theoremai/agents';
+import { createProvider, invokeTool, noopSink, registerTraceDestination, runTurn } from '@theoremai/agents';
 import type { InvokeToolRequest } from '@theoremai/agents/kernel';
+import { PLAYGROUND_TRACE_DESTINATION } from '$lib/playground/playground-policy';
 import type { StructuredRegistration, ToolRegistration } from '$lib/playground/types';
 import { registerPlaygroundProfile } from './playground-register';
 import {
@@ -18,6 +19,9 @@ type PlaygroundTurnEnv = {
 };
 
 export type { PlaygroundTurnEnv };
+
+// Profiles may write traces to the playground destination. Nothing is kept yet.
+registerTraceDestination(PLAYGROUND_TRACE_DESTINATION, noopSink());
 
 function geminiVault(env: PlaygroundTurnEnv) {
 	const slotA = env.GEMINI_API_KEY_FREE_A?.trim() ?? env.GEMINI_API_KEY?.trim();

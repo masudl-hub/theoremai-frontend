@@ -32,7 +32,10 @@ import type {
 	TurnBehaviourData,
 } from './types';
 
-type ModelBinding = ProfileDefinition['models'][string];
+type ModelBinding = ProfileDefinitionBase['models'][string];
+
+/** The playground authors turn profiles; `host` profiles have no model to run. */
+type PlaygroundProfileDefinition = Exclude<ProfileDefinition, { type: 'host' }>;
 
 function buildModelsRecord(
 	specs: Array<{ id: string; data: ModelBindingData }>,
@@ -312,7 +315,7 @@ function buildLiveSpec(live?: LiveData) {
 	};
 }
 
-function assembleTextProfile(params: AssembleProfileParams): ProfileDefinition {
+function assembleTextProfile(params: AssembleProfileParams): PlaygroundProfileDefinition {
 	if (!params.inputsPayload) {
 		throw new TheoremError(
 			'inputs is required for text profiles — inputs facet must be on the graph',
@@ -328,7 +331,7 @@ function assembleTextProfile(params: AssembleProfileParams): ProfileDefinition {
 	};
 }
 
-function assembleImageProfile(params: AssembleProfileParams): ProfileDefinition {
+function assembleImageProfile(params: AssembleProfileParams): PlaygroundProfileDefinition {
 	if (!params.inputsPayload) {
 		throw new TheoremError(
 			'inputs is required for image profiles — inputs facet must be on the graph',
@@ -345,7 +348,7 @@ function assembleImageProfile(params: AssembleProfileParams): ProfileDefinition 
 	};
 }
 
-function assembleSpeechProfile(params: AssembleProfileParams): ProfileDefinition {
+function assembleSpeechProfile(params: AssembleProfileParams): PlaygroundProfileDefinition {
 	const turnBehaviour = buildTurnBehaviourPayload(params.turnBehaviour, params.profileType);
 	return {
 		...params.base,
@@ -355,7 +358,7 @@ function assembleSpeechProfile(params: AssembleProfileParams): ProfileDefinition
 	};
 }
 
-function assembleLiveProfile(params: AssembleProfileParams): ProfileDefinition {
+function assembleLiveProfile(params: AssembleProfileParams): PlaygroundProfileDefinition {
 	const turnBehaviour = buildTurnBehaviourPayload(params.turnBehaviour, params.profileType);
 	return {
 		...params.base,
@@ -366,7 +369,7 @@ function assembleLiveProfile(params: AssembleProfileParams): ProfileDefinition {
 	};
 }
 
-function assembleProfileDefinition(params: AssembleProfileParams): ProfileDefinition {
+function assembleProfileDefinition(params: AssembleProfileParams): PlaygroundProfileDefinition {
 	switch (params.profileType) {
 		case 'text':
 			return assembleTextProfile(params);
@@ -412,6 +415,13 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 		forceSummaries: outputs?.streamThoughts === true,
 	});
 	const profileType = identity.profileType || 'text';
+	if (profileType === 'host') {
+		return {
+			ok: false,
+			issues: [{ nodeId: 'identity', facet: 'identity', message: 'Host profiles have no model to run in the playground.' }],
+			message: 'Compile failed · 1 issue',
+		};
+	}
 	const allowTools = customTools.map((t) => t.name);
 	const toolsSpec: ProfileToolsSpec | LiveProfileToolsSpec =
 		profileType === 'live'
@@ -444,7 +454,7 @@ export function compilePlayground(nodes: PlaygroundNode[]): CompileResult {
 		...(observabilityPayload ? { observability: observabilityPayload } : {}),
 	};
 
-	const profile: ProfileDefinition = assembleProfileDefinition({
+	const profile = assembleProfileDefinition({
 		profileType,
 		base,
 		toolsSpec,
