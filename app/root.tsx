@@ -9,11 +9,8 @@ import {
 	ScrollRestoration,
 } from 'react-router';
 import type { Route } from './+types/root';
-// Figtree is the neutral theme's font; Astryx names it but ships no files. Self-hosted, Latin, the four theme weights.
-import '@fontsource/figtree/latin-400.css';
-import '@fontsource/figtree/latin-500.css';
-import '@fontsource/figtree/latin-600.css';
-import '@fontsource/figtree/latin-700.css';
+// Figtree is the neutral theme's font; Astryx names it but ships no files. Self-hosted, with its metrics rebalanced.
+import './figtree.css';
 // Astryx's documented order: reset → components → theme.
 import '@astryxdesign/core/reset.css';
 import '@astryxdesign/core/astryx.css';

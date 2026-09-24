@@ -1,4 +1,3 @@
-import { Badge } from '@astryxdesign/core/Badge';
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { Heading } from '@astryxdesign/core/Heading';
@@ -13,6 +12,7 @@ import { Section } from '@astryxdesign/core/Section';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { StackItem } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
+import { Token } from '@astryxdesign/core/Token';
 import { TreeList, type TreeListItemData } from '@astryxdesign/core/TreeList';
 import { VStack } from '@astryxdesign/core/VStack';
 import {
@@ -48,6 +48,7 @@ import {
 	createPlaygroundRunId,
 	createPlaygroundTransport,
 	type PlaygroundDraft,
+	type PlaygroundIssue,
 	type PlaygroundNodeRef,
 	type PlaygroundRunPayload,
 	type PlaygroundTreeNode,
@@ -61,7 +62,9 @@ import {
 import { LiveRunner } from '@theoremai/react/live';
 import { TheoremChat } from '@theoremai/react/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ISSUE_ROW_ATTRIBUTE } from '../components/inspector';
 import { IconMcp } from '../components/mcp-icon';
+import { ProfileEditor } from '../components/profile-editor';
 import type { Route } from './+types/playground';
 import type { ShellHandle } from './shell';
 
@@ -239,10 +242,24 @@ function useMeasure<T>(measure: (node: HTMLElement) => T) {
 	return [ref, value] as const;
 }
 
+/** The first node, top to bottom in the tree, that has an issue. */
+function firstIssueNode(
+	node: PlaygroundTreeNode,
+	issues: readonly PlaygroundIssue[],
+): string | undefined {
+	if (issues.some((issue) => issue.nodeId === node.id)) return node.id;
+	for (const child of node.children) {
+		const id = firstIssueNode(child, issues);
+		if (id !== undefined) return id;
+	}
+	return undefined;
+}
+
 /**
  * CodeBlock scrolls its code area through `maxHeight`, and a percentage there resolves against
  * the block's own auto height, so the space under the view switch is measured and passed in
- * pixels, less the block's header. The code area is the block's `role="group"` scroll container.
+ * pixels, less everything around the code: the wrapper's padding and the block's own chrome.
+ * The code area is the block's `role="group"` scroll container.
  */
 const measureHeight = (node: HTMLElement) => node.getBoundingClientRect().height;
 const measureCodeChrome = (node: HTMLElement) =>
@@ -284,6 +301,15 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 		autoSaveId: 'playground.editor',
 	});
 	const [selectedId, setSelectedId] = useState('identity');
+	const editorRef = useRef<HTMLDivElement>(null);
+	/** Bumped by the issue pill; once the editor shows the node, its first failing row is revealed. */
+	const [issueReveal, setIssueReveal] = useState(0);
+	useEffect(() => {
+		if (!issueReveal) return;
+		const row = editorRef.current?.querySelector(`[${ISSUE_ROW_ATTRIBUTE}]`);
+		row?.scrollIntoView({ block: 'center' });
+		row?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus({ preventScroll: true });
+	}, [issueReveal]);
 	const [bodyRef, bodyHeight] = useMeasure(measureHeight);
 	const [codeRef, codeChrome] = useMeasure(measureCodeChrome);
 	const codeHeight = bodyHeight === undefined ? undefined : bodyHeight - (codeChrome ?? 0);
@@ -408,58 +434,86 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 						label="Editor"
 						isScrollable={false}
 					>
-						<Section variant="raised" height="100%" padding={4}>
-							<VStack gap={4} height="100%">
-								<HStack gap={1} vAlign="center">
-									<StackItem size="fill">{title && <Heading level={4}>{title}</Heading>}</StackItem>
-									{issues && <Badge variant="warning" label={issues} />}
-									<IconButton
-										label={editorView === 'editor' ? 'Code' : 'Editor'}
-										variant="ghost"
-										icon={
-											<Icon
-												icon={editorView === 'editor' ? IconCode : IconAdjustmentsHorizontal}
-												size="sm"
+						<Section variant="raised" height="100%" padding={0}>
+							<VStack height="100%">
+								<Section variant="transparent" padding={3} dividers={['bottom']}>
+									<HStack gap={1} vAlign="center">
+										<StackItem size="fill">
+											{title && <Heading level={4}>{title}</Heading>}
+										</StackItem>
+										{issues && !compiled.ok && (
+											<Token
+												label={issues}
+												color="orange"
+												description="Go to the next issue"
+												onClick={() => {
+													setSelectedId(
+														firstIssueNode(playgroundTree(draft), compiled.issues) ?? selected,
+													);
+													setPanel('profile');
+													setEditorView('editor');
+													setIssueReveal((count) => count + 1);
+												}}
 											/>
-										}
-										tooltip={editorView === 'editor' ? 'Show the code' : 'Show the editor'}
-										onClick={() => {
-											setEditorView(editorView === 'editor' ? 'code' : 'editor');
-										}}
-									/>
-									<IconButton
-										label="Export"
-										variant="ghost"
-										icon={<Icon icon={IconDownload} size="sm" />}
-										isDisabled={!compiled.ok}
-										tooltip={blocked ?? 'Download the TypeScript'}
-										onClick={() => {
-											if (compiled.ok && source) download(compiled.agentId, source);
-										}}
-									/>
-									<IconButton
-										label="Run"
-										variant="ghost"
-										icon={<Icon icon={IconPlayerPlay} size="sm" />}
-										isDisabled={!compiled.ok}
-										tooltip={blocked ?? 'Open the agent in a new tab'}
-										onClick={() => {
-											if (compiled.ok) openInNewTab(runPayload(compiled));
-										}}
-									/>
-								</HStack>
-								<StackItem size="fill" ref={bodyRef}>
-									{editorView === 'editor' ? null : source && compiled.ok ? (
-										<CodeBlock
-											code={source}
-											language="typescript"
-											ref={codeRef}
-											hasLanguageLabel={false}
-											hasLineNumbers
-											isWrapped
-											width="100%"
-											maxHeight={codeHeight}
+										)}
+										<IconButton
+											label={editorView === 'editor' ? 'Code' : 'Editor'}
+											variant="ghost"
+											icon={
+												<Icon
+													icon={editorView === 'editor' ? IconCode : IconAdjustmentsHorizontal}
+													size="sm"
+												/>
+											}
+											tooltip={editorView === 'editor' ? 'Show the code' : 'Show the editor'}
+											onClick={() => {
+												setEditorView(editorView === 'editor' ? 'code' : 'editor');
+											}}
 										/>
+										<IconButton
+											label="Export"
+											variant="ghost"
+											icon={<Icon icon={IconDownload} size="sm" />}
+											isDisabled={!compiled.ok}
+											tooltip={blocked ?? 'Download the TypeScript'}
+											onClick={() => {
+												if (compiled.ok && source) download(compiled.agentId, source);
+											}}
+										/>
+										<IconButton
+											label="Run"
+											variant="ghost"
+											icon={<Icon icon={IconPlayerPlay} size="sm" />}
+											isDisabled={!compiled.ok}
+											tooltip={blocked ?? 'Open the agent in a new tab'}
+											onClick={() => {
+												if (compiled.ok) openInNewTab(runPayload(compiled));
+											}}
+										/>
+									</HStack>
+								</Section>
+								<StackItem size="fill" ref={bodyRef}>
+									{editorView === 'editor' ? (
+										<ScrollableArea label="Editor" height="100%" ref={editorRef}>
+											<ProfileEditor
+												draft={draft}
+												setDraft={setDraft}
+												selectedId={selected}
+												issues={compiled.ok ? [] : compiled.issues}
+											/>
+										</ScrollableArea>
+									) : source && compiled.ok ? (
+										<Section variant="transparent" padding={3} ref={codeRef}>
+											<CodeBlock
+												code={source}
+												language="typescript"
+												hasLanguageLabel={false}
+												hasLineNumbers
+												isWrapped
+												width="100%"
+												maxHeight={codeHeight}
+											/>
+										</Section>
 									) : (
 										<EmptyState
 											icon={<Icon icon={IconAlertTriangle} />}
