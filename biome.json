@@ -2,32 +2,20 @@
 	"$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
 	"files": {
 		"includes": [
-			"src/**/*.ts",
-			"src/**/*.svelte",
-			"src/**/*.css",
-			"apps/run/src/**/*.ts",
-			"apps/run/src/**/*.tsx",
-			"apps/run/src/**/*.css",
-			"apps/site/app/**/*.ts",
-			"apps/site/app/**/*.tsx",
-			"apps/site/workers/**/*.ts",
-			"apps/site/*.ts",
-			"apps/site/package.json",
-			"apps/site/tsconfig.json",
-			"apps/site/wrangler.jsonc",
+			"app/**/*.ts",
+			"app/**/*.tsx",
+			"app/**/*.css",
+			"workers/**/*.ts",
 			"vite.config.ts",
-			"apps/run/vite.config.ts",
+			"react-router.config.ts",
 			"biome.json",
 			"package.json",
-			"apps/run/package.json",
+			"tsconfig.json",
+			"wrangler.jsonc",
 			".fallowrc.jsonc",
 			"eslint.config.js",
 			"!node_modules",
-			"!apps/run/dist",
-			"!apps/site/build",
 			"!**/.react-router",
-			"!.svelte-kit",
-			"!.output",
 			"!build",
 			"!coverage",
 			"!.fallow"
@@ -47,19 +35,10 @@
 		}
 	},
 	"css": {
-		"parser": {
-			"tailwindDirectives": true
-		},
 		"formatter": {
 			"enabled": true
 		},
 		"linter": {
-			"enabled": true
-		}
-	},
-	"html": {
-		"experimentalFullSupportEnabled": true,
-		"formatter": {
 			"enabled": true
 		}
 	},
@@ -98,31 +77,6 @@
 			}
 		}
 	},
-	"overrides": [
-		{
-			"includes": ["**/*.svelte"],
-			"linter": {
-				"rules": {
-					"correctness": {
-						"noUnusedVariables": "off"
-					},
-					"a11y": {
-						"recommended": false
-					}
-				}
-			}
-		},
-		{
-			"includes": ["src/app.d.ts"],
-			"linter": {
-				"rules": {
-					"correctness": {
-						"noUnusedVariables": "off"
-					}
-				}
-			}
-		}
-	],
 	"assist": {
 		"actions": {
 			"source": {

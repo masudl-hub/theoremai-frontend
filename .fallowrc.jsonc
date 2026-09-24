@@ -1,41 +1,22 @@
 {
 	"$schema": "./node_modules/fallow/schema.json",
-	"entry": [
-		"src/routes/**/+page.{ts,svelte}",
-		"src/routes/**/+layout.{ts,svelte}",
-		"src/routes/**/+server.ts",
-		"src/routes/**/+page.server.ts",
-		"src/routes/**/+layout.server.ts",
-		"src/hooks.server.ts",
-		"src/hooks.client.ts",
-		"src/lib/server/live-relay.ts",
-		"src/lib/server/th30.ts",
-		"src/lib/server/kernel-init.ts",
-		"src/lib/components/Playground.svelte",
-		"src/app.html",
-		"vite.config.ts",
-		"apps/run/src/main.tsx",
-		"apps/run/vite.config.ts",
-		"apps/site/app/root.tsx",
-		"apps/site/app/routes.ts",
-		"apps/site/app/routes/*.ts",
-		"apps/site/workers/app.ts",
-		"apps/site/vite.config.ts",
-		"apps/site/react-router.config.ts",
-		"scripts/pressure-playground.mjs",
-		"scripts/pressure-demo-tools.mjs",
-		"scripts/sync-run-static.mjs",
-		"scripts/vite-run-spa-index-plugin.mjs"
+	// React Router framework mode: route modules and the Worker are runtime roots;
+	// routes.ts and react-router.config.ts are read by @react-router/dev at build time.
+	"framework": [
+		{
+			"name": "react-router-cloudflare",
+			"enablers": ["@react-router/dev"],
+			"entryPoints": ["app/root.tsx", "app/routes/*.{ts,tsx}", "workers/app.ts"],
+			"entryPointRole": "runtime",
+			"configPatterns": ["app/routes.ts", "react-router.config.ts", "vite.config.ts"],
+			"toolingDependencies": ["@react-router/dev"]
+		}
 	],
 	"publicPackages": ["@theoremai/react"],
 	"ignorePatterns": [
 		"node_modules/**",
-		"apps/run/dist/**",
-		"apps/site/build/**",
 		"**/.react-router/**",
-		"static/playground/run/**",
-		".svelte-kit/**",
-		".output/**",
+		".wrangler/**",
 		"build/**",
 		"coverage/**",
 		".fallow/**"
@@ -45,12 +26,15 @@
 		"ai",
 		"gpt-tokenizer",
 		"zod",
-		// apps/run: peerDependencies of @theoremai/react, which the host app must supply.
+		// peerDependencies of @theoremai/react, which the host app must supply.
 		"@astryxdesign/core",
 		"@astryxdesign/theme-neutral",
 		"@stylexjs/stylex",
-		// apps/site: imported by @react-router/dev's default server entry, not our code.
-		"isbot"
+		// Imported by @react-router/dev's default server entry, not our code.
+		"isbot",
+		// Build tooling: app/routes.ts imports its route helpers, but the build reads
+		// that file and never ships it; fallow counts everything under app/ as runtime.
+		"@react-router/dev"
 	],
 	"ignoreExportsUsedInFile": true,
 	"rules": {

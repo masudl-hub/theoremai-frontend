@@ -1,16 +1,28 @@
 {
-	"extends": "./.svelte-kit/tsconfig.json",
+	"include": [".react-router/types/**/*", "app/**/*", "workers/**/*", "theoremai-deno-shim.d.ts"],
 	"compilerOptions": {
-		"rewriteRelativeImportExtensions": true,
-		"allowJs": true,
-		"checkJs": true,
-		"esModuleInterop": true,
-		"forceConsistentCasingInFileNames": true,
-		"resolveJsonModule": true,
-		"skipLibCheck": true,
-		"sourceMap": true,
+		"target": "ES2022",
+		"lib": ["ES2023", "DOM", "DOM.Iterable"],
+		"types": ["@cloudflare/workers-types", "vite/client"],
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"jsx": "react-jsx",
 		"strict": true,
-		"moduleResolution": "bundler"
-	},
-	"exclude": [".svelte-kit/**", "node_modules/**"]
+		"skipLibCheck": true,
+		"noEmit": true,
+		"isolatedModules": true,
+		"verbatimModuleSyntax": true,
+		"resolveJsonModule": true,
+		"allowImportingTsExtensions": true,
+		"forceConsistentCasingInFileNames": true,
+		"rootDirs": [".", "./.react-router/types"],
+		// @theoremai/react is compiled from source and ships its own @types/react;
+		// resolve both to this install so their types unify.
+		"paths": {
+			"react": ["./node_modules/@types/react"],
+			"react/*": ["./node_modules/@types/react/*"],
+			"react-dom": ["./node_modules/@types/react-dom"],
+			"react-dom/*": ["./node_modules/@types/react-dom/*"]
+		}
+	}
 }

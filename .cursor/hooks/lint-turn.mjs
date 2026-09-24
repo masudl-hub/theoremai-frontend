@@ -244,7 +244,7 @@ async function lintEditedFiles(root, relFiles, pkg) {
 	const scripts = pkg?.scripts ?? {};
 
 	const biomeCandidates = relFiles.filter((file) =>
-		/\.(?:[cm]?[jt]s|tsx|jsx|json|jsonc|css|svelte|md|mdx)$/i.test(file),
+		/\.(?:[cm]?[jt]s|tsx|jsx|json|jsonc|css|md|mdx)$/i.test(file),
 	);
 	const biomeTargets = filterBiomeTargets(root, biomeCandidates);
 	if (
@@ -271,7 +271,7 @@ async function lintEditedFiles(root, relFiles, pkg) {
 	}
 
 	const eslintTargets = relFiles.filter((file) =>
-		/\.(?:[cm]?[jt]s|tsx|jsx|svelte)$/i.test(file),
+		/\.(?:[cm]?[jt]s|tsx|jsx)$/i.test(file),
 	);
 	const hasEslint =
 		existsSync(path.join(root, 'eslint.config.js')) ||

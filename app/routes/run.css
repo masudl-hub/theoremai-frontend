@@ -1,0 +1,48 @@
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap");
+
+/* Live stage still uses the pre-Astryx ink/paper look. */
+:root {
+	--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	--color-ink: #000000;
+	--color-paper: #f7f5f0;
+	--color-paper-bright: #ffffff;
+	--color-mute: #464646;
+	--ink-ease: cubic-bezier(0.22, 1, 0.36, 1);
+	--ink-duration: 0.3s;
+}
+
+html,
+body {
+	height: 100%;
+}
+
+/* The chat scrolls inside Astryx's ChatLayout; stop macOS elastic overscroll
+   from rubber-banding the whole page (composer included) at the edges. */
+html,
+body {
+	overscroll-behavior: none;
+}
+
+body {
+	margin: 0;
+	-webkit-font-smoothing: antialiased;
+}
+
+.run-chat {
+	height: 100dvh;
+}
+
+.iface-run-link {
+	position: fixed;
+	top: 0.75rem;
+	left: 1rem;
+	z-index: 20;
+	font-size: 0.75rem;
+	color: inherit;
+	opacity: 0.55;
+	text-decoration: none;
+}
+
+.iface-run-link:hover {
+	opacity: 0.9;
+}

@@ -9,7 +9,7 @@ The web playground (`theoremai-frontend`) is a **projection** of theorem. It mus
 
 ## Allowed frontend-owned policy
 
-Only free-tier / host wiring in `src/lib/playground/playground-policy.ts` (free keys, free model ids, vault env). Canvas chrome (`expanded`, stubs) is UI-only.
+Only free-tier / host wiring in `app/lib/playground/playground-policy.ts` (free keys, free model ids, vault env; restored from `svelte-final` with the playground port). Canvas chrome (`expanded`, stubs) is UI-only.
 
 ## Must import from theorem
 
