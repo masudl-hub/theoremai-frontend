@@ -56,6 +56,11 @@ function defaultNode(node: PackageNode): ArchNode {
 		'src/cli/index.ts': '@theoremai/agents/cli',
 		'src/presets/mod.ts': '@theoremai/agents/presets',
 		'src/presets/google.ts': '@theoremai/agents/presets/google',
+		'src/presets/google/speech-voices.ts': '@theoremai/agents/presets/google/speech-voices',
+		'src/kernel/schema.ts': '@theoremai/agents/schema',
+		'src/providers/google/live/mod.ts': '@theoremai/agents/providers/google/live',
+		'src/guardrails/testing.ts': '@theoremai/agents/guardrails/testing',
+		'src/observability/openinference.ts': '@theoremai/agents/observability/openinference',
 	};
 	const entry = exportPaths[node.path];
 
@@ -276,6 +281,7 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 		usage: "import { PROTOCOLS, fieldMeta, isValidPair, providersFor } from '@theoremai/agents'",
 		desc: 'Closed unions and profile field metadata — protocol/provider pairs, thinking levels, tool tiers.',
 		specs: [
+			['entry', '@theoremai/agents/schema'],
 			['path', 'src/kernel/schema.ts'],
 			['pairs', 'PROTOCOLS · PROVIDERS · PROTOCOL_PROVIDERS'],
 			['ui', 'fieldMeta · PROFILE_FIELDS · EXTRA_FIELDS'],
@@ -937,13 +943,15 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 	providers_google_live_mod: {
 		id: 'providers_google_live_mod',
 		title: 'mod.ts',
-		type: 'INTERNAL',
-		usage: '// Internal',
-		desc: 'Live module barrel — framing, session open, transport helpers.',
+		type: 'BARREL',
+		usage: "import { openGoogleLiveSession } from '@theoremai/agents/providers/google/live'",
+		desc: 'Live transport subpath export — the socket runSession opens; applies no guardrails of its own.',
 		specs: [
+			['entry', '@theoremai/agents/providers/google/live'],
 			['path', 'src/providers/google/live/mod.ts'],
-			['export', 'openGoogleLiveSession · framing'],
+			['export', 'openGoogleLiveSession · GoogleLiveConnection · OpenLiveWebSocket'],
 		],
+		copyable: true,
 	},
 	providers_google_live_stream: {
 		id: 'providers_google_live_stream',
@@ -1520,10 +1528,11 @@ const ARCH_OVERRIDES: Record<string, ArchNode> = {
 	presets_google_speech_voices: {
 		id: 'presets_google_speech_voices',
 		title: 'speech-voices.ts',
-		type: 'INTERNAL',
-		usage: '// Internal — src/presets/google/speech-voices.ts',
-		desc: 'Closed GOOGLE_SPEECH_VOICES list consumed by presets/google.ts.',
+		type: 'BARREL',
+		usage: "import { GOOGLE_SPEECH_VOICES } from '@theoremai/agents/presets/google/speech-voices'",
+		desc: 'Closed GOOGLE_SPEECH_VOICES list consumed by presets/google.ts; its own subpath imports no registry wiring.',
 		specs: [
+			['entry', '@theoremai/agents/presets/google/speech-voices'],
 			['path', 'src/presets/google/speech-voices.ts'],
 			['export', 'GOOGLE_SPEECH_VOICES'],
 			['used', 'presets/google.ts'],
