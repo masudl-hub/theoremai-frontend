@@ -15,6 +15,7 @@ import {
 	type LiveSession,
 	publicError,
 	runSession,
+	TheoremError,
 } from '@theoremai/agents';
 import { forClient, forClientEvents } from '@theoremai/agents/host';
 import type { ToolCredential } from '@theoremai/agents/kernel';
@@ -242,39 +243,39 @@ async function openLiveSession(
 	);
 }
 
-/** Handle incoming WebSocket upgrade request and spawn duplex relay pipe. */
-export async function handleLiveRelay(request: Request, env: LiveRelayEnv): Promise<Response> {
-	if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') {
-		return new Response('WebSocket upgrade endpoint for THEOREM Gemini Live relay.', {
-			status: 426,
-			headers: { 'content-type': 'text/plain', Upgrade: 'websocket' },
-		});
+/** Setup failures reach the browser like session failures: over the socket, worded, with their kind. */
+function failRelay(serverWs: WebSocket, err: unknown, lexicon?: LexiconOverrides): void {
+	serverWs.send(errorEnvelope(err, lexicon));
+	try {
+		serverWs.close(1011, 'session error');
+	} catch {
+		/* ignore */
 	}
+}
 
-	ensureKernelInitialized();
-
-	const apiKey = resolveGeminiApiKey(env);
-	if (!apiKey) {
-		return new Response(
-			'No Gemini API key configured (GEMINI_API_KEY or GEMINI_API_KEY_FREE_A/B/C)',
-			{ status: 500 },
-		);
-	}
-
-	const url = new URL(request.url);
-	const profileId = url.searchParams.get('profile') || TH30_PROFILE_ID;
-	const profile = getProfile(profileId);
-	if (profile.type !== 'live') {
-		return new Response(`Profile '${profileId}' is not type 'live'`, { status: 400 });
-	}
-
-	// Cloudflare Workers duplex pair for browser ↔ worker relay
-	const [clientWs, serverWs] = Object.values(new WebSocketPair());
-	serverWs.accept();
-
+async function relayLiveSession(
+	serverWs: WebSocket,
+	profileId: string,
+	env: LiveRelayEnv,
+): Promise<void> {
 	const sessionId = newLiveSessionId();
+	let lexicon: LexiconOverrides | undefined;
 	let session: LiveSession;
 	try {
+		const profile = getProfile(profileId);
+		lexicon = profile.lexicon;
+		if (profile.type !== 'live') {
+			// lexicon-exempt: internal diagnostic; the user reads error.config
+			throw new TheoremError('config', `Profile '${profileId}' is not type 'live'`);
+		}
+		const apiKey = resolveGeminiApiKey(env);
+		if (!apiKey) {
+			throw new TheoremError(
+				'config',
+				// lexicon-exempt: internal diagnostic; the user reads error.config
+				'No Gemini API key configured (GEMINI_API_KEY or GEMINI_API_KEY_FREE_A/B/C)',
+			);
+		}
 		session = await openLiveSession(
 			profileId,
 			env,
@@ -284,17 +285,41 @@ export async function handleLiveRelay(request: Request, env: LiveRelayEnv): Prom
 		);
 	} catch (err) {
 		await closePlaygroundSteerInbox(sessionId);
-		return new Response(`Failed to open live session: ${publicError(err, profile.lexicon)}`, {
-			status: 502,
-		});
+		failRelay(serverWs, err, lexicon);
+		return;
 	}
 
-	pipeBrowserToSession(serverWs, session, profile.lexicon);
+	// The browser may have left while the session opened; its close event has already fired.
+	if (serverWs.readyState !== WebSocket.OPEN) {
+		await session.close('client disconnected');
+		await closePlaygroundSteerInbox(sessionId);
+		return;
+	}
+	pipeBrowserToSession(serverWs, session, lexicon);
 	serverWs.addEventListener('close', () => {
 		void session.close('client disconnected');
 		void closePlaygroundSteerInbox(sessionId);
 	});
-	void pipeSessionToBrowser(serverWs, session, profileId, sessionId, profile.lexicon);
+	void pipeSessionToBrowser(serverWs, session, profileId, sessionId, lexicon);
+}
+
+/** Handle incoming WebSocket upgrade request and spawn duplex relay pipe. */
+export function handleLiveRelay(request: Request, env: LiveRelayEnv): Response {
+	if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') {
+		return new Response('WebSocket upgrade endpoint for THEOREM Gemini Live relay.', {
+			status: 426,
+			headers: { 'content-type': 'text/plain', Upgrade: 'websocket' },
+		});
+	}
+
+	ensureKernelInitialized();
+
+	// Cloudflare Workers duplex pair for browser ↔ worker relay. Upgrade first: a browser
+	// WebSocket never reads an HTTP error body, so every failure travels as an error envelope.
+	const [clientWs, serverWs] = Object.values(new WebSocketPair());
+	serverWs.accept();
+	const profileId = new URL(request.url).searchParams.get('profile') || TH30_PROFILE_ID;
+	void relayLiveSession(serverWs, profileId, env);
 
 	return new Response(null, { status: 101, webSocket: clientWs });
 }
