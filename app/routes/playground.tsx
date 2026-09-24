@@ -1,23 +1,24 @@
-import { Button } from '@astryxdesign/core/Button';
+import { Badge } from '@astryxdesign/core/Badge';
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { Heading } from '@astryxdesign/core/Heading';
+import { HStack } from '@astryxdesign/core/HStack';
 import { Icon } from '@astryxdesign/core/Icon';
+import { IconButton } from '@astryxdesign/core/IconButton';
 import { Layout, LayoutContent, LayoutPanel } from '@astryxdesign/core/Layout';
 import { List, ListItem } from '@astryxdesign/core/List';
+import { ResizeHandle, useResizable } from '@astryxdesign/core/Resizable';
 import { ScrollableArea } from '@astryxdesign/core/ScrollableArea';
 import { Section } from '@astryxdesign/core/Section';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { StackItem } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
-import { Toolbar } from '@astryxdesign/core/Toolbar';
 import { TreeList, type TreeListItemData } from '@astryxdesign/core/TreeList';
 import { VStack } from '@astryxdesign/core/VStack';
 import {
 	IconActivity,
 	IconAdjustmentsHorizontal,
 	IconAlertTriangle,
-	IconBinaryTree,
 	IconBook,
 	IconBrain,
 	IconCode,
@@ -26,6 +27,7 @@ import {
 	IconFileImport,
 	IconGitBranch,
 	IconId,
+	IconListTree,
 	IconMathFunction,
 	IconMicrophone,
 	IconPhoto,
@@ -37,22 +39,28 @@ import {
 	IconVolume,
 	IconWorld,
 } from '@tabler/icons-react';
-import type { CustomToolType } from '@theoremai/agents';
+import { type CustomToolType, profileGraphFacet } from '@theoremai/agents';
 import {
 	type CompiledPlayground,
 	compilePlayground,
 	createBlankDraft,
 	createExampleDraft,
 	createPlaygroundRunId,
+	createPlaygroundTransport,
 	type PlaygroundDraft,
 	type PlaygroundNodeRef,
+	type PlaygroundRunPayload,
 	type PlaygroundTreeNode,
+	playgroundInterface,
 	playgroundNodeRef,
 	playgroundSource,
 	playgroundTree,
+	registerPlaygroundLiveProfile,
 	savePlaygroundRunPayload,
 } from '@theoremai/playground';
-import { useCallback, useMemo, useState } from 'react';
+import { LiveRunner } from '@theoremai/react/live';
+import { TheoremChat } from '@theoremai/react/ui';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { IconMcp } from '../components/mcp-icon';
 import type { Route } from './+types/playground';
 import type { ShellHandle } from './shell';
@@ -147,11 +155,44 @@ function treeItems(
 	return [identity, ...root.children].map((node) => treeItem(draft, node, selectedId, onSelect));
 }
 
+/** The tree's label for a node, e.g. the agent's id for Identity. */
+function nodeLabel(node: PlaygroundTreeNode, id: string): string | undefined {
+	if (node.id === id) return node.label;
+	for (const child of node.children) {
+		const label = nodeLabel(child, id);
+		if (label !== undefined) return label;
+	}
+	return undefined;
+}
+
+/**
+ * The editor's title: the facet's name, e.g. Identity rather than the agent's id the tree shows;
+ * for a model or tool entry, that entry's own name.
+ */
+function editorTitle(draft: PlaygroundDraft, id: string): string | undefined {
+	const ref = playgroundNodeRef(draft, id);
+	if (!ref) return undefined;
+	if ('key' in ref) return nodeLabel(playgroundTree(draft), id);
+	return profileGraphFacet(ref.facet)?.label;
+}
+
+/** Waits before compiling after an edit, so typing doesn't recompile on every key. */
+const COMPILE_DEBOUNCE_MS = 300;
+
+/** The part of a compile the agent runs from: what the run tab and the preview both take. */
+function runPayload({
+	agentId,
+	profile,
+	customTools,
+	structured,
+}: CompiledPlayground): PlaygroundRunPayload {
+	return { agentId, profile, customTools, structured };
+}
+
 /** Hands the compiled agent to a new tab through this browser's storage; the run route reads it back. */
-function run(compiled: CompiledPlayground) {
+function openInNewTab(payload: PlaygroundRunPayload) {
 	const runId = createPlaygroundRunId();
-	const { agentId, profile, customTools, structured } = compiled;
-	savePlaygroundRunPayload({ agentId, profile, customTools, structured }, runId);
+	savePlaygroundRunPayload(payload, runId);
 	window.open(`/playground/run?run=${encodeURIComponent(runId)}`, '_blank', 'noopener');
 }
 
@@ -163,6 +204,20 @@ function download(agentId: string, source: string) {
 	link.download = `${agentId}.ts`;
 	link.click();
 	URL.revokeObjectURL(url);
+}
+
+/** `value`, once it has stopped changing for `ms`. */
+function useDebounced<T>(value: T, ms: number) {
+	const [settled, setSettled] = useState(value);
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setSettled(value);
+		}, ms);
+		return () => {
+			clearTimeout(timer);
+		};
+	}, [value, ms]);
+	return settled;
 }
 
 /** Calls `measure` with the node whenever it resizes; a callback ref, so it follows remounts. */
@@ -186,29 +241,67 @@ function useMeasure<T>(measure: (node: HTMLElement) => T) {
 
 /**
  * CodeBlock scrolls its code area through `maxHeight`, and a percentage there resolves against
- * the block's own auto height, so the space under the toolbar is measured and passed in pixels,
- * less the block's header. The code area is the block's `role="group"` scroll container.
+ * the block's own auto height, so the space under the view switch is measured and passed in
+ * pixels, less the block's header. The code area is the block's `role="group"` scroll container.
  */
 const measureHeight = (node: HTMLElement) => node.getBoundingClientRect().height;
 const measureCodeChrome = (node: HTMLElement) =>
 	node.getBoundingClientRect().height -
 	(node.querySelector('[role="group"]')?.getBoundingClientRect().height ?? 0);
 
-/** The profile tree on the left; the editor or code for the draft beside it. */
+/** The agent compiled from the draft, running live; a new compile swaps in its profile. */
+function AgentPreview({ payload }: { payload: PlaygroundRunPayload }) {
+	const iface = useMemo(() => playgroundInterface(payload), [payload]);
+	const transport = useMemo(() => createPlaygroundTransport(payload), [payload]);
+	if (iface.type === 'live') {
+		return (
+			<LiveRunner iface={iface} registerProfile={() => registerPlaygroundLiveProfile(payload)} />
+		);
+	}
+	return <TheoremChat transport={transport} />;
+}
+
+/**
+ * The profile tree on the left, the compiled agent in the middle, and the editor or code for the
+ * draft on the right. The draft compiles as it changes; while it doesn't compile, the middle keeps
+ * the last agent that did.
+ */
 export default function Playground({ loaderData }: Route.ComponentProps) {
 	const [draft, setDraft] = useState<PlaygroundDraft>(loaderData.draft);
 	const [panel, setPanel] = useState('profile');
-	const [editorView, setEditorView] = useState('editor');
+	const [editorView, setEditorView] = useState<'editor' | 'code'>('editor');
+	const layoutRef = useRef<HTMLDivElement>(null);
+	const treePanel = useResizable({
+		defaultSize: '20%',
+		minSize: 240,
+		containerRef: layoutRef,
+		autoSaveId: 'playground.tree',
+	});
+	const editorPanel = useResizable({
+		defaultSize: '33.2%',
+		minSize: 320,
+		containerRef: layoutRef,
+		autoSaveId: 'playground.editor',
+	});
 	const [selectedId, setSelectedId] = useState('identity');
 	const [bodyRef, bodyHeight] = useMeasure(measureHeight);
 	const [codeRef, codeChrome] = useMeasure(measureCodeChrome);
 	const codeHeight = bodyHeight === undefined ? undefined : bodyHeight - (codeChrome ?? 0);
 	const selected = playgroundNodeRef(draft, selectedId) ? selectedId : 'identity';
-	const compiled = useMemo(() => compilePlayground(draft), [draft]);
+	const settledDraft = useDebounced(draft, COMPILE_DEBOUNCE_MS);
+	const compiled = useMemo(() => compilePlayground(settledDraft), [settledDraft]);
+	const [lastGood, setLastGood] = useState(compiled.ok ? compiled : null);
+	if (compiled.ok && compiled !== lastGood) setLastGood(compiled);
+	const payload = useMemo(() => (lastGood ? runPayload(lastGood) : null), [lastGood]);
 	const source = useMemo(() => (compiled.ok ? playgroundSource(compiled) : null), [compiled]);
-	const blocked = compiled.ok
+	const issues = compiled.ok
 		? undefined
-		: `Fix ${compiled.issues.length === 1 ? '1 issue' : `${String(compiled.issues.length)} issues`} first`;
+		: compiled.issues.length === 1
+			? '1 issue'
+			: `${String(compiled.issues.length)} issues`;
+	const blocked = issues && `Fix ${issues} first`;
+
+	const title = editorTitle(draft, selected);
 
 	function load(create: () => PlaygroundDraft) {
 		setDraft(create());
@@ -218,88 +311,125 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 
 	return (
 		<Layout
+			ref={layoutRef}
 			padding={0}
 			start={
-				<LayoutPanel
-					width={296}
-					padding={0}
-					role="navigation"
-					label="Playground"
-					isScrollable={false}
-				>
-					<Section variant="raised" height="100%" padding={4}>
-						<VStack gap={4} height="100%">
-							<VStack gap={1}>
-								<Heading level={3}>Theorem Playground</Heading>
-								<Text type="supporting" color="secondary">
-									Configure an agent's profile, then run it to test.
-								</Text>
-							</VStack>
-							<SegmentedControl label="Panel" value={panel} onChange={setPanel} layout="fill">
-								<SegmentedControlItem
-									value="profile"
-									label="Profile"
-									icon={<Icon icon={IconBinaryTree} size="sm" />}
-								/>
-								<SegmentedControlItem
-									value="examples"
-									label="Examples"
-									icon={<Icon icon={IconBook} size="sm" />}
-								/>
-							</SegmentedControl>
-							<StackItem size="fill">
-								<ScrollableArea label={panel === 'profile' ? 'Profile' : 'Examples'} height="100%">
-									{panel === 'profile' ? (
-										<TreeList
-											density="compact"
-											aria-label="Profile"
-											items={treeItems(draft, selected, setSelectedId)}
-										/>
-									) : (
-										<List aria-label="Examples">
-											{EXAMPLES.map((example) => (
-												<ListItem
-													key={example.id}
-													label={example.label}
-													description={example.description}
-													onClick={() => {
-														load(example.create);
-													}}
-												/>
-											))}
-										</List>
-									)}
-								</ScrollableArea>
-							</StackItem>
-						</VStack>
-					</Section>
-				</LayoutPanel>
-			}
-			content={
-				<LayoutContent isScrollable={false}>
-					<VStack gap={4} height="100%">
-						<Toolbar
-							label="Playground actions"
-							dividers={['bottom']}
-							startContent={
-								<SegmentedControl label="View" value={editorView} onChange={setEditorView}>
+				<>
+					<LayoutPanel
+						resizable={treePanel.props}
+						padding={0}
+						role="navigation"
+						label="Playground"
+						isScrollable={false}
+					>
+						<Section variant="raised" height="100%" padding={4}>
+							<VStack gap={4} height="100%">
+								<VStack gap={1}>
+									<Heading level={3}>Theorem Playground</Heading>
+									<Text type="supporting" color="secondary">
+										Configure an agent's profile, then run it to test.
+									</Text>
+								</VStack>
+								<SegmentedControl label="Panel" value={panel} onChange={setPanel} layout="fill">
 									<SegmentedControlItem
-										value="editor"
-										label="Editor"
-										icon={<Icon icon={IconAdjustmentsHorizontal} size="sm" />}
+										value="profile"
+										label="Profile"
+										icon={<Icon icon={IconListTree} size="sm" />}
 									/>
 									<SegmentedControlItem
-										value="code"
-										label="Code"
-										icon={<Icon icon={IconCode} size="sm" />}
+										value="examples"
+										label="Examples"
+										icon={<Icon icon={IconBook} size="sm" />}
 									/>
 								</SegmentedControl>
-							}
-							endContent={
-								<>
-									<Button
+								<StackItem size="fill">
+									<ScrollableArea
+										label={panel === 'profile' ? 'Profile' : 'Examples'}
+										height="100%"
+									>
+										{panel === 'profile' ? (
+											<TreeList
+												density="compact"
+												aria-label="Profile"
+												items={treeItems(draft, selected, setSelectedId)}
+											/>
+										) : (
+											<List aria-label="Examples">
+												{EXAMPLES.map((example) => (
+													<ListItem
+														key={example.id}
+														label={example.label}
+														description={example.description}
+														onClick={() => {
+															load(example.create);
+														}}
+													/>
+												))}
+											</List>
+										)}
+									</ScrollableArea>
+								</StackItem>
+							</VStack>
+						</Section>
+					</LayoutPanel>
+					<ResizeHandle
+						direction="horizontal"
+						isAlwaysVisible={false}
+						resizable={treePanel.props}
+						label="Resize profile"
+					/>
+				</>
+			}
+			content={
+				<LayoutContent isScrollable={false} padding={0}>
+					{payload ? (
+						<AgentPreview payload={payload} />
+					) : (
+						<EmptyState
+							icon={<Icon icon={IconAlertTriangle} />}
+							title="No agent yet"
+							description={`${blocked ?? ''} to run the agent.`}
+						/>
+					)}
+				</LayoutContent>
+			}
+			end={
+				<>
+					<ResizeHandle
+						direction="horizontal"
+						isReversed
+						isAlwaysVisible={false}
+						resizable={editorPanel.props}
+						label="Resize editor"
+					/>
+					<LayoutPanel
+						resizable={editorPanel.props}
+						padding={0}
+						label="Editor"
+						isScrollable={false}
+					>
+						<Section variant="raised" height="100%" padding={4}>
+							<VStack gap={4} height="100%">
+								<HStack gap={1} vAlign="center">
+									<StackItem size="fill">{title && <Heading level={4}>{title}</Heading>}</StackItem>
+									{issues && <Badge variant="warning" label={issues} />}
+									<IconButton
+										label={editorView === 'editor' ? 'Code' : 'Editor'}
+										variant="ghost"
+										icon={
+											<Icon
+												icon={editorView === 'editor' ? IconCode : IconAdjustmentsHorizontal}
+												size="sm"
+											/>
+										}
+										tooltip={editorView === 'editor' ? 'Show the code' : 'Show the editor'}
+										onClick={() => {
+											setEditorView(editorView === 'editor' ? 'code' : 'editor');
+										}}
+									/>
+									<IconButton
 										label="Export"
-										variant="secondary"
+										variant="ghost"
 										icon={<Icon icon={IconDownload} size="sm" />}
 										isDisabled={!compiled.ok}
 										tooltip={blocked ?? 'Download the TypeScript'}
@@ -307,43 +437,41 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 											if (compiled.ok && source) download(compiled.agentId, source);
 										}}
 									/>
-									<Button
+									<IconButton
 										label="Run"
-										variant="primary"
+										variant="ghost"
 										icon={<Icon icon={IconPlayerPlay} size="sm" />}
 										isDisabled={!compiled.ok}
 										tooltip={blocked ?? 'Open the agent in a new tab'}
 										onClick={() => {
-											if (compiled.ok) run(compiled);
+											if (compiled.ok) openInNewTab(runPayload(compiled));
 										}}
 									/>
-								</>
-							}
-						/>
-						<StackItem size="fill" ref={bodyRef}>
-							{editorView === 'editor' ? (
-								<Text type="label">{selected}</Text>
-							) : source && compiled.ok ? (
-								<CodeBlock
-									code={source}
-									language="typescript"
-									ref={codeRef}
-									title={`${compiled.agentId}.ts`}
-									hasLineNumbers
-									isWrapped
-									width="100%"
-									maxHeight={codeHeight}
-								/>
-							) : (
-								<EmptyState
-									icon={<Icon icon={IconAlertTriangle} />}
-									title="No code yet"
-									description={`${blocked ?? ''} to generate the TypeScript.`}
-								/>
-							)}
-						</StackItem>
-					</VStack>
-				</LayoutContent>
+								</HStack>
+								<StackItem size="fill" ref={bodyRef}>
+									{editorView === 'editor' ? null : source && compiled.ok ? (
+										<CodeBlock
+											code={source}
+											language="typescript"
+											ref={codeRef}
+											hasLanguageLabel={false}
+											hasLineNumbers
+											isWrapped
+											width="100%"
+											maxHeight={codeHeight}
+										/>
+									) : (
+										<EmptyState
+											icon={<Icon icon={IconAlertTriangle} />}
+											title="No code yet"
+											description={`${blocked ?? ''} to generate the TypeScript.`}
+										/>
+									)}
+								</StackItem>
+							</VStack>
+						</Section>
+					</LayoutPanel>
+				</>
 			}
 		/>
 	);
