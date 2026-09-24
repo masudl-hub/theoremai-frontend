@@ -17,6 +17,9 @@ import {
 	IconAntennaBarsOff,
 	IconBan,
 	IconBroadcast,
+	IconBulb,
+	IconBulbOff,
+	IconCircleDashed,
 	IconDeviceDesktop,
 	IconFlame,
 	IconLetterA,
@@ -30,6 +33,7 @@ import {
 } from '@tabler/icons-react';
 import {
 	ATTACHMENT_ACCEPT_MIMES,
+	fieldMeta,
 	type OverflowKeySlot,
 	PROFILE_TYPE_PROTOCOLS,
 	PROTOCOL_PROVIDERS,
@@ -41,13 +45,21 @@ import {
 	VOICE_ACCEPT_MIMES,
 } from '@theoremai/agents';
 import {
+	type AcceptSection,
+	acceptSections,
 	allowedBuiltinsForGemini,
 	defaultBindingForProfileType,
+	defaultEffortRequired,
+	defaultModelRequired,
+	expandAccept,
 	GEMINI_PLAYGROUND_DEFAULT_API_ID,
 	GEMINI_PLAYGROUND_MODELS,
+	inputLimitsRequired,
 	isGoogleTransport,
 	isOpenRouterTransport,
+	keySlotRequired,
 	type ModelBindingDraft,
+	nextAccept,
 	OPENROUTER_PLAYGROUND_API_ID,
 	type PlaygroundDraft,
 	type PlaygroundIssue,
@@ -128,8 +140,37 @@ const LEVEL_SEGMENTS: Segment<ThinkingLevel>[] = THINKING_LEVELS.map((value) => 
 	...LEVEL_SEGMENT[value],
 }));
 
-const ATTACHMENT_OPTIONS = [...ATTACHMENT_ACCEPT_MIMES];
-const VOICE_OPTIONS = [...VOICE_ACCEPT_MIMES];
+/** Thought summaries: on, off, or left to the provider (`null` in the draft). */
+const SUMMARIES_SEGMENTS: Segment<'default' | 'on' | 'off'>[] = [
+	{ value: 'default', label: 'Provider default', icon: IconCircleDashed },
+	{ value: 'on', label: 'On', icon: IconBulb },
+	{ value: 'off', label: 'Off', icon: IconBulbOff },
+];
+const SUMMARIES_SEGMENT = { default: null, on: true, off: false } as const;
+
+const KIND_TITLE: Record<AcceptSection['kind'], string> = {
+	image: 'Image',
+	video: 'Video',
+	document: 'Document',
+	audio: 'Audio',
+};
+
+/** A MIME allowlist's picker: a section per media kind, its wildcard first. */
+function acceptPicker(mimes: readonly string[]) {
+	const sections = acceptSections(mimes);
+	const options = sections.map(({ kind, wildcard, mimes: kindMimes }) => ({
+		type: 'section' as const,
+		title: KIND_TITLE[kind],
+		options: [
+			...(wildcard ? [{ value: wildcard, description: `Every ${kind} type` }] : []),
+			...kindMimes.map((value) => ({ value })),
+		],
+	}));
+	return { sections, options };
+}
+
+const ATTACHMENT_PICKER = acceptPicker(ATTACHMENT_ACCEPT_MIMES);
+const VOICE_PICKER = acceptPicker(VOICE_ACCEPT_MIMES);
 
 function runsInPlayground(protocol: Protocol, provider: Provider): boolean {
 	return isGoogleTransport(protocol, provider) || isOpenRouterTransport(protocol, provider);
@@ -205,6 +246,7 @@ function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 						size="sm"
 						rows={8}
 						value={identity.system}
+						placeholder={fieldMeta('identity.system')?.unset}
 						onChange={(system) => {
 							set({ system });
 						}}
@@ -225,7 +267,7 @@ function ModelsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 				path="defaultModel"
 				field="defaultModel"
 				value={models.defaultModel}
-				placeholder="First model"
+				isRequired={defaultModelRequired(draft)}
 				options={draft.modelBindings.map((binding) => binding.modelId)}
 				onChange={(defaultModel) => {
 					set({ defaultModel });
@@ -258,6 +300,7 @@ function ModelsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 				field="key"
 				value={models.key}
 				segments={KEY_SEGMENTS}
+				isRequired={keySlotRequired(draft)}
 				onChange={(key) => {
 					set({ key });
 				}}
@@ -316,6 +359,8 @@ function ModelBindingEditor({
 					label="Id"
 					path="models.*"
 					field="modelId"
+					// A model\'s id is its key in the profile\'s models, so it can\'t be left out.
+					isRequired
 					value={binding.modelId}
 					placeholder="fast"
 					onChange={(modelId) => {
@@ -382,7 +427,6 @@ function ModelBindingEditor({
 						field="builtInTools"
 						value={binding.builtInTools}
 						options={builtins}
-						placeholder="None"
 						onChange={(builtInTools) => {
 							set({ builtInTools });
 						}}
@@ -402,7 +446,7 @@ function ModelBindingEditor({
 					}}
 				/>
 				<NumberRow
-					label="Temp"
+					label="Temperature"
 					path="models.*.temperature"
 					field="temperature"
 					value={binding.temperature}
@@ -412,12 +456,13 @@ function ModelBindingEditor({
 						set({ temperature });
 					}}
 				/>
-				<SwitchRow
+				<SegmentedRow
 					label="Summaries"
 					path="models.*.summaries"
-					value={binding.summaries}
-					onChange={(summaries) => {
-						set({ summaries });
+					value={binding.summaries === null ? 'default' : binding.summaries ? 'on' : 'off'}
+					segments={SUMMARIES_SEGMENTS}
+					onChange={(segment) => {
+						set({ summaries: SUMMARIES_SEGMENT[segment] });
 					}}
 				/>
 			</InspectorSection>
@@ -484,7 +529,7 @@ function ModelBindingEditor({
 					path="models.*.defaultEffort"
 					field="defaultEffort"
 					value={binding.defaultEffort}
-					placeholder="None"
+					isRequired={defaultEffortRequired(binding)}
 					options={aliases}
 					onChange={(defaultEffort) => {
 						set({ defaultEffort });
@@ -508,6 +553,7 @@ function ModelBindingEditor({
 function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
 	const { inputs } = draft;
 	const set = patch(setDraft, 'inputs');
+	const limitsRequired = inputLimitsRequired(inputs);
 	return (
 		<>
 			<InspectorSection title="Accepts">
@@ -522,21 +568,25 @@ function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 				<ListRow
 					label="Attachments"
 					path="inputs.attachments.accept"
-					value={inputs.attachmentsAccept}
-					options={ATTACHMENT_OPTIONS}
-					placeholder="None"
-					onChange={(attachmentsAccept) => {
-						set({ attachmentsAccept });
+					value={expandAccept(inputs.attachmentsAccept, ATTACHMENT_PICKER.sections)}
+					options={ATTACHMENT_PICKER.options}
+					onChange={(selected) => {
+						set({
+							attachmentsAccept: nextAccept(
+								inputs.attachmentsAccept,
+								selected,
+								ATTACHMENT_PICKER.sections,
+							),
+						});
 					}}
 				/>
 				<ListRow
 					label="Voice"
 					path="inputs.voice.accept"
-					value={inputs.voiceAccept}
-					options={VOICE_OPTIONS}
-					placeholder="None"
-					onChange={(voiceAccept) => {
-						set({ voiceAccept });
+					value={expandAccept(inputs.voiceAccept, VOICE_PICKER.sections)}
+					options={VOICE_PICKER.options}
+					onChange={(selected) => {
+						set({ voiceAccept: nextAccept(inputs.voiceAccept, selected, VOICE_PICKER.sections) });
 					}}
 				/>
 			</InspectorSection>
@@ -545,6 +595,7 @@ function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 					label="Max files"
 					path="inputs.maxFiles"
 					field="maxFiles"
+					isRequired={limitsRequired}
 					value={inputs.maxFiles}
 					min={0}
 					isIntegerOnly
@@ -556,6 +607,7 @@ function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 					label="Max bytes"
 					path="inputs.maxBytes"
 					field="maxBytes"
+					isRequired={limitsRequired}
 					value={inputs.maxBytes}
 					min={0}
 					isIntegerOnly
@@ -567,6 +619,7 @@ function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 					label="Turn bytes"
 					path="inputs.maxTurnBytes"
 					field="maxTurnBytes"
+					isRequired={limitsRequired}
 					value={inputs.maxTurnBytes}
 					min={0}
 					isIntegerOnly

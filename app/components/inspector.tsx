@@ -1,4 +1,4 @@
-import type { InputStatus } from '@astryxdesign/core/Field';
+import { FieldLabel, type InputStatus } from '@astryxdesign/core/Field';
 import { FieldStatus } from '@astryxdesign/core/FieldStatus';
 import { HoverCard } from '@astryxdesign/core/HoverCard';
 import { HStack } from '@astryxdesign/core/HStack';
@@ -17,7 +17,7 @@ import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
 import { fieldMeta } from '@theoremai/agents';
 import { PLAYGROUND_PROFILE_TYPES, type PlaygroundIssue } from '@theoremai/playground';
-import { createContext, type ReactNode, useContext } from 'react';
+import { createContext, type ReactNode, useContext, useId } from 'react';
 
 /**
  * Inspector building blocks: captioned sections of label-and-control rows, after Astryx's
@@ -25,8 +25,11 @@ import { createContext, type ReactNode, useContext } from 'react';
  * label column names it; that column is one fixed width, so every control starts on one edge.
  */
 
-/** The template's label column. Row labels are kept to a word or two so they fit it. */
-const LABEL_COLUMN = 80;
+/**
+ * The label column, wide enough for the longest label ("Temperature", "Attachments") on one line.
+ * The template's is 80, which fits its shorter labels.
+ */
+const LABEL_COLUMN = 96;
 
 /** The compile issues for the node being edited; rows show the ones on their field. */
 export const NodeIssues = createContext<readonly PlaygroundIssue[]>([]);
@@ -44,6 +47,16 @@ export function useFieldStatus(): (field?: string, index?: number) => InputStatu
 			.map((issue) => issue.message);
 		return messages.length ? { type: 'error', message: messages.join(' ') } : undefined;
 	};
+}
+
+/**
+ * Whether the field at `path` must be set, and what leaving it out does, from the kernel's catalog.
+ * `isRequired` overrides it for a field required only in some cases, saying whether it is now.
+ */
+function presence(path: string, isRequired?: boolean) {
+	const meta = fieldMeta(path);
+	const required = isRequired ?? meta?.required === true;
+	return { required, unset: required ? undefined : meta?.unset };
 }
 
 /** Marks a row that has an issue, so the issue pill can scroll to it. */
@@ -67,19 +80,34 @@ export function InspectorSection({ title, children }: { title: string; children:
 }
 
 /**
- * A row's label, with the schema's entry for `path` on hover: what it does, then its options as
- * tokens (or its type, when it has none). The profile types that take it are only named when one
- * the playground offers can't.
+ * A row's label, with "Required" under it when `isRequired`, and the schema's entry for `path` on hover:
+ * what it does, then its options as tokens (or its type, when it has none), when it's required or
+ * what leaving it out does. The profile types that take it are only named when one the playground
+ * offers can't.
  */
-function RowLabel({ label, path }: { label: string; path: string }) {
+function RowLabel({
+	label,
+	path,
+	isRequired,
+}: {
+	label: string;
+	path: string;
+	isRequired: boolean;
+}) {
+	const id = useId();
 	const meta = fieldMeta(path);
 	const scope = meta?.profileTypes;
 	const takes = PLAYGROUND_PROFILE_TYPES.filter((type) => !scope || scope.includes(type));
 	const scoped = takes.length < PLAYGROUND_PROFILE_TYPES.length ? takes : undefined;
+	// A group label: it names the row rather than one control, since each control carries its own
+	// hidden label, so it points at no input.
 	const text = (
-		<Text type="label" color="secondary" maxLines={1}>
-			{label}
-		</Text>
+		<FieldLabel
+			label={label}
+			inputID={id}
+			isGroupLabel
+			description={isRequired ? 'Required' : undefined}
+		/>
 	);
 	if (!meta) return text;
 	return (
@@ -94,6 +122,10 @@ function RowLabel({ label, path }: { label: string; path: string }) {
 						))}
 					</HStack>
 					{meta.optionNote && <Text color="secondary">{meta.optionNote}</Text>}
+					{typeof meta.required === 'string' && (
+						<Text color="secondary">{`Required ${meta.required}.`}</Text>
+					)}
+					{meta.unset && <Text color="secondary">{`Left out: ${meta.unset}.`}</Text>}
 					{scoped && <Text color="secondary">{`Only on ${scoped.join(', ')} profiles.`}</Text>}
 				</VStack>
 			}
@@ -110,11 +142,14 @@ function RowLabel({ label, path }: { label: string; path: string }) {
 export function InspectorRow({
 	label,
 	path,
+	isRequired = false,
 	hasIssue,
 	children,
 }: {
 	label: string;
 	path: string;
+	/** Notes "Required" under the label. */
+	isRequired?: boolean;
 	hasIssue?: boolean;
 	children: ReactNode;
 }) {
@@ -122,7 +157,7 @@ export function InspectorRow({
 		<HStack gap={2} vAlign="center" {...{ [ISSUE_ROW_ATTRIBUTE]: hasIssue || undefined }}>
 			<StackItem size="static">
 				<HStack width={LABEL_COLUMN}>
-					<RowLabel label={label} path={path} />
+					<RowLabel label={label} path={path} isRequired={isRequired} />
 				</HStack>
 			</StackItem>
 			<StackItem size="fill">
@@ -134,12 +169,17 @@ export function InspectorRow({
 	);
 }
 
+/** Says whether the row's field is required now, for one required only in some cases. */
+type IsRequired = { isRequired?: boolean };
+
+/** Free text. An optional field left blank shows what leaving it out does, unless `placeholder` is an example. */
 export function TextRow({
 	label,
 	path,
 	field,
 	value,
 	placeholder,
+	isRequired,
 	onChange,
 }: {
 	label: string;
@@ -149,18 +189,20 @@ export function TextRow({
 	value: string;
 	placeholder?: string;
 	onChange: (next: string) => void;
-}) {
+} & IsRequired) {
 	const status = useFieldStatus()(field);
+	const { required, unset } = presence(path, isRequired);
 	return (
-		<InspectorRow label={label} path={path} hasIssue={status !== undefined}>
+		<InspectorRow label={label} path={path} isRequired={required} hasIssue={status !== undefined}>
 			<StackItem size="fill">
 				<TextInput
 					label={label}
 					status={status}
 					isLabelHidden
+					isRequired={required}
 					size="sm"
 					value={value}
-					placeholder={placeholder}
+					placeholder={placeholder ?? unset}
 					onChange={onChange}
 				/>
 			</StackItem>
@@ -168,7 +210,7 @@ export function TextRow({
 	);
 }
 
-/** A number the kernel defaults when unset: clearing it gives `null`, shown as "Default". */
+/** A number the kernel leaves unset when cleared: it gives `null`, shown as what leaving it out does. */
 export function NumberRow({
 	label,
 	path,
@@ -178,6 +220,7 @@ export function NumberRow({
 	max,
 	step,
 	isIntegerOnly,
+	isRequired,
 	onChange,
 }: {
 	label: string;
@@ -190,18 +233,20 @@ export function NumberRow({
 	step?: number;
 	isIntegerOnly?: boolean;
 	onChange: (next: number | null) => void;
-}) {
+} & IsRequired) {
 	const status = useFieldStatus()(field);
+	const { required, unset } = presence(path, isRequired);
 	return (
-		<InspectorRow label={label} path={path} hasIssue={status !== undefined}>
+		<InspectorRow label={label} path={path} isRequired={required} hasIssue={status !== undefined}>
 			<StackItem size="fill">
 				<NumberInput
 					label={label}
 					status={status}
 					isLabelHidden
+					isRequired={required}
 					size="sm"
 					value={value}
-					placeholder="Default"
+					placeholder={unset}
 					min={min}
 					max={max}
 					step={step}
@@ -215,6 +260,7 @@ export function NumberRow({
 	);
 }
 
+/** On or off. What leaving it out does shows on hover. */
 export function SwitchRow({
 	label,
 	path,
@@ -265,6 +311,7 @@ export function SegmentedRow<T extends string>({
 	value,
 	segments,
 	isDisabled,
+	isRequired,
 	onChange,
 }: {
 	label: string;
@@ -275,11 +322,12 @@ export function SegmentedRow<T extends string>({
 	segments: readonly Segment<T>[];
 	isDisabled?: boolean;
 	onChange: (next: T) => void;
-}) {
+} & IsRequired) {
 	const options = fieldMeta(path)?.optionDescriptions;
 	const status = useFieldStatus()(field);
+	const { required } = presence(path, isRequired);
 	return (
-		<InspectorRow label={label} path={path} hasIssue={status !== undefined}>
+		<InspectorRow label={label} path={path} isRequired={required} hasIssue={status !== undefined}>
 			<StackItem size="fill">
 				<SegmentedControl
 					label={label}
@@ -318,15 +366,18 @@ export function SegmentedRow<T extends string>({
 	);
 }
 
-/** A choice from a list the draft supplies (models, aliases). `''` is "not set" when `placeholder` is given, and the choice can be cleared. */
+/**
+ * A choice from a list the draft supplies (models, aliases), `''` when none is chosen. An optional
+ * one can be cleared, and shows what leaving it out does while blank.
+ */
 export function ChoiceRow({
 	label,
 	path,
 	field,
 	value,
 	options,
-	placeholder,
 	isDisabled,
+	isRequired,
 	onChange,
 }: {
 	label: string;
@@ -335,19 +386,20 @@ export function ChoiceRow({
 	field?: string;
 	value: string;
 	options: SelectorOptionType[];
-	placeholder?: string;
 	isDisabled?: boolean;
 	onChange: (next: string) => void;
-}) {
+} & IsRequired) {
 	const status = useFieldStatus()(field);
+	const { required, unset } = presence(path, isRequired);
 	return (
-		<InspectorRow label={label} path={path} hasIssue={status !== undefined}>
+		<InspectorRow label={label} path={path} isRequired={required} hasIssue={status !== undefined}>
 			<StackItem size="fill">
-				{placeholder === undefined ? (
+				{required ? (
 					<Selector
 						label={label}
 						status={status}
 						isLabelHidden
+						isRequired
 						size="sm"
 						value={value}
 						options={options}
@@ -364,7 +416,7 @@ export function ChoiceRow({
 						value={value || null}
 						options={options}
 						placement="below"
-						placeholder={placeholder}
+						placeholder={unset}
 						isDisabled={isDisabled}
 						hasClear
 						onChange={(next) => {
@@ -377,13 +429,16 @@ export function ChoiceRow({
 	);
 }
 
+/**
+ * Several choices from a list, the first as a badge and the rest counted: the trigger is one line
+ * tall, and Astryx wraps badges past it. Left empty, it shows what leaving it out does.
+ */
 export function ListRow({
 	label,
 	path,
 	field,
 	value,
 	options,
-	placeholder,
 	onChange,
 }: {
 	label: string;
@@ -392,10 +447,10 @@ export function ListRow({
 	field?: string;
 	value: string[];
 	options: SelectorOptionType[];
-	placeholder?: string;
 	onChange: (next: string[]) => void;
 }) {
 	const status = useFieldStatus()(field);
+	const { unset } = presence(path);
 	return (
 		<InspectorRow label={label} path={path} hasIssue={status !== undefined}>
 			<StackItem size="fill">
@@ -406,8 +461,10 @@ export function ListRow({
 					size="sm"
 					value={value}
 					options={options}
-					placeholder={placeholder}
+					placeholder={unset}
 					hasSearch
+					triggerDisplay="badges"
+					maxBadges={1}
 					onChange={onChange}
 				/>
 			</StackItem>
