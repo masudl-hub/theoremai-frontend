@@ -8,8 +8,15 @@
  * @module
  */
 
-import { getProfile, type LiveSession, publicError, runSession } from '@theoremai/agents';
-import { forClientEvents } from '@theoremai/agents/host';
+import {
+	errorKind,
+	getProfile,
+	type LexiconOverrides,
+	type LiveSession,
+	publicError,
+	runSession,
+} from '@theoremai/agents';
+import { forClient, forClientEvents } from '@theoremai/agents/host';
 import type { ToolCredential } from '@theoremai/agents/kernel';
 import { parseLiveRelayClientMessage } from '../types/live-messages';
 import { ensureKernelInitialized } from './kernel-init';
@@ -68,7 +75,20 @@ function newLiveSessionId(): string {
 	return globalThis.crypto.randomUUID();
 }
 
-function pipeBrowserToSession(serverWs: WebSocket, session: LiveSession): void {
+/** A relay failure as the browser reads it: the profile's wording and the kind, never the detail. */
+function errorEnvelope(err: unknown, lexicon?: LexiconOverrides): string {
+	return JSON.stringify({
+		type: 'error',
+		error: publicError(err, lexicon),
+		errorKind: errorKind(err),
+	});
+}
+
+function pipeBrowserToSession(
+	serverWs: WebSocket,
+	session: LiveSession,
+	lexicon?: LexiconOverrides,
+): void {
 	serverWs.addEventListener('message', (event: MessageEvent) => {
 		try {
 			if (typeof event.data === 'string') {
@@ -126,7 +146,7 @@ function pipeBrowserToSession(serverWs: WebSocket, session: LiveSession): void {
 									callId: msg.callId,
 									name: msg.name,
 									status: 'complete',
-									output: { error: publicError(err) },
+									output: { error: publicError(err, lexicon) },
 								}),
 							);
 						}
@@ -150,12 +170,7 @@ function pipeBrowserToSession(serverWs: WebSocket, session: LiveSession): void {
 				});
 			}
 		} catch (err) {
-			serverWs.send(
-				JSON.stringify({
-					type: 'error',
-					error: publicError(err),
-				}),
-			);
+			serverWs.send(errorEnvelope(err, lexicon));
 		}
 	});
 }
@@ -165,17 +180,14 @@ async function pipeSessionToBrowser(
 	session: LiveSession,
 	profileId: string,
 	sessionId: string,
+	lexicon?: LexiconOverrides,
 ): Promise<void> {
 	serverWs.send(JSON.stringify({ type: 'ready', profile: profileId, sessionId }));
 	try {
 		for await (const event of session.events()) {
 			if (event.type === 'error') {
-				serverWs.send(
-					JSON.stringify({
-						type: 'error',
-						error: event.error ?? 'Live session error',
-					}),
-				);
+				// The session worded it with the profile's lexicon; forClient drops the builder detail.
+				serverWs.send(JSON.stringify(forClient(event)));
 				try {
 					serverWs.close(1011, 'session error');
 				} catch {
@@ -186,12 +198,7 @@ async function pipeSessionToBrowser(
 			serverWs.send(JSON.stringify({ type: 'events', events: forClientEvents([event]) }));
 		}
 	} catch (err) {
-		serverWs.send(
-			JSON.stringify({
-				type: 'error',
-				error: publicError(err),
-			}),
-		);
+		serverWs.send(errorEnvelope(err, lexicon));
 	} finally {
 		await closePlaygroundSteerInbox(sessionId);
 		try {
@@ -277,15 +284,17 @@ export async function handleLiveRelay(request: Request, env: LiveRelayEnv): Prom
 		);
 	} catch (err) {
 		await closePlaygroundSteerInbox(sessionId);
-		return new Response(`Failed to open live session: ${publicError(err)}`, { status: 502 });
+		return new Response(`Failed to open live session: ${publicError(err, profile.lexicon)}`, {
+			status: 502,
+		});
 	}
 
-	pipeBrowserToSession(serverWs, session);
+	pipeBrowserToSession(serverWs, session, profile.lexicon);
 	serverWs.addEventListener('close', () => {
 		void session.close('client disconnected');
 		void closePlaygroundSteerInbox(sessionId);
 	});
-	void pipeSessionToBrowser(serverWs, session, profileId, sessionId);
+	void pipeSessionToBrowser(serverWs, session, profileId, sessionId, profile.lexicon);
 
 	return new Response(null, { status: 101, webSocket: clientWs });
 }
