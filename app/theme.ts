@@ -23,9 +23,9 @@ export const siteTheme = defineTheme({
 		'layout-content': {
 			base: {
 				':where([role="main"])': {
-					height: 'calc(100% - 2 * var(--spacing-2))',
-					marginBlock: 'var(--spacing-2)',
-					marginInlineEnd: 'var(--spacing-2)',
+					height: 'calc(100% - 2 * var(--spacing-4))',
+					marginBlock: 'var(--spacing-4)',
+					marginInlineEnd: 'var(--spacing-4)',
 					borderRadius: 'var(--radius-page)',
 				},
 			},
@@ -34,6 +34,21 @@ export const siteTheme = defineTheme({
 		'side-nav-section': {
 			base: {
 				paddingBlock: 'var(--spacing-3)',
+			},
+		},
+		// Neutral's selected fill (accent-muted) matches the dark page surface, so a selected row
+		// vanishes; the pressed overlay reads on any surface in either mode.
+		'tree-list-item': {
+			'selected:selected': {
+				backgroundColor: 'var(--color-overlay-pressed)',
+			},
+		},
+		// Same fill and corners as the elevated shell's page panel (surface + radius-page, no border),
+		// for pages that sit on the base and draw their own panels.
+		section: {
+			'variant:raised': {
+				backgroundColor: 'var(--color-background-surface)',
+				borderRadius: 'var(--radius-page)',
 			},
 		},
 		// The hero's scrim over its footage: a light dim, not Astryx's modal-strength overlay.

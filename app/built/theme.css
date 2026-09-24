@@ -649,6 +649,11 @@
     --astryx-section-padding: var(--spacing-3);
   }
 
+  .astryx-section[data-variant="raised"] {
+    background-color: var(--color-background-surface);
+    border-radius: var(--radius-page);
+  }
+
   .astryx-lightbox {
     padding: var(--spacing-12);
   }
@@ -679,14 +684,18 @@
   }
 
   .astryx-layout-content:where([role="main"]) {
-    height: calc(100% - 2 * var(--spacing-2));
-    margin-block: var(--spacing-2);
-    margin-inline-end: var(--spacing-2);
+    height: calc(100% - 2 * var(--spacing-4));
+    margin-block: var(--spacing-4);
+    margin-inline-end: var(--spacing-4);
     border-radius: var(--radius-page);
   }
 
   .astryx-side-nav-section {
     padding-block: var(--spacing-3);
+  }
+
+  .astryx-tree-list-item[data-selected="selected"] {
+    background-color: var(--color-overlay-pressed);
   }
 
   .astryx-overlay-scrim {

@@ -20,3 +20,9 @@ declare module '@astryxdesign/core/Badge' {
     'gray': true;
   }
 }
+
+declare module '@astryxdesign/core/Section' {
+  interface SectionVariantMap {
+    'raised': true;
+  }
+}

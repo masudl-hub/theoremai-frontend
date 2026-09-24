@@ -12,8 +12,8 @@ import { redirect } from 'react-router';
 import type { Route } from './+types/playground.run';
 import './run.css';
 
-/** Where the run tab returns to. The playground itself is not ported yet. */
-const PLAYGROUND_HREF = '/';
+/** Where the run tab returns to. */
+const PLAYGROUND_HREF = '/playground';
 
 /** The compiled draft lives in this browser's storage, so it only loads client-side. */
 export function clientLoader({ request }: Route.ClientLoaderArgs) {

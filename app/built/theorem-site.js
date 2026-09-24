@@ -496,6 +496,10 @@ export const theoremSiteTheme = {
     "section": {
       "base": {
         "padding": "var(--spacing-3)"
+      },
+      "variant:raised": {
+        "backgroundColor": "var(--color-background-surface)",
+        "borderRadius": "var(--radius-page)"
       }
     },
     "lightbox": {
@@ -532,9 +536,9 @@ export const theoremSiteTheme = {
     "layout-content": {
       "base": {
         ":where([role=\"main\"])": {
-          "height": "calc(100% - 2 * var(--spacing-2))",
-          "marginBlock": "var(--spacing-2)",
-          "marginInlineEnd": "var(--spacing-2)",
+          "height": "calc(100% - 2 * var(--spacing-4))",
+          "marginBlock": "var(--spacing-4)",
+          "marginInlineEnd": "var(--spacing-4)",
           "borderRadius": "var(--radius-page)"
         }
       }
@@ -542,6 +546,11 @@ export const theoremSiteTheme = {
     "side-nav-section": {
       "base": {
         "paddingBlock": "var(--spacing-3)"
+      }
+    },
+    "tree-list-item": {
+      "selected:selected": {
+        "backgroundColor": "var(--color-overlay-pressed)"
       }
     },
     "overlay-scrim": {

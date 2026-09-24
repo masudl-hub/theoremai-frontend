@@ -10,7 +10,7 @@ import {
 	IconCircle,
 	IconPlayerPlay,
 } from '@tabler/icons-react';
-import { Link, Outlet, useLocation } from 'react-router';
+import { Link, Outlet, useLocation, useMatches } from 'react-router';
 import { theoremSiteTheme } from '../built/theorem-site';
 import { IconJsr } from '../components/jsr-icon';
 import { NewTabLink } from '../components/links';
@@ -27,17 +27,29 @@ const PACKAGES = [
 	{ label: 'npm', href: 'https://www.npmjs.com/package/@theoremai%2Fagents', icon: IconBrandNpm },
 ] as const;
 
+/** Route `handle` a page exports to change how the shell frames it. */
+export type ShellHandle = {
+	/** Put the page on the black base beside the rail instead of in the elevated panel. */
+	isOnBase?: boolean;
+};
+
+function isOnBase(handle: unknown): boolean {
+	return typeof handle === 'object' && handle !== null && (handle as ShellHandle).isOnBase === true;
+}
+
 /**
  * The frame every page sits in: the icon rail on the black base, the page as a panel beside it.
- * The rail is always dark so its icons read on black in either mode.
+ * The rail is always dark so its icons read on black in either mode. A page whose handle sets
+ * `isOnBase` sits on the black base itself and draws its own panels.
  */
 export default function Shell() {
 	const { pathname } = useLocation();
+	const onBase = useMatches().some((match) => isOnBase(match.handle));
 
 	return (
 		<LinkProvider component={Link}>
 			<AppShell
-				variant="elevated"
+				variant={onBase ? 'wash' : 'elevated'}
 				sideNav={
 					<Theme theme={theoremSiteTheme} mode="dark">
 						<SideNav
