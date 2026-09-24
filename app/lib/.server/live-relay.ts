@@ -19,6 +19,7 @@ import {
 } from '@theoremai/agents';
 import { forClient, forClientEvents } from '@theoremai/agents/host';
 import type { ToolCredential } from '@theoremai/agents/kernel';
+import type { PlaygroundTraceLine, PlaygroundTraceRoute } from '@theoremai/playground';
 import { parseLiveRelayClientMessage } from '../types/live-messages';
 import { ensureKernelInitialized } from './kernel-init';
 import {
@@ -26,6 +27,7 @@ import {
 	consumePlaygroundSteerWithRetry,
 	openPlaygroundSteerInbox,
 } from './playground-steer';
+import { playgroundTraces } from './playground-turn';
 import { TH30_PROFILE_ID } from './th30';
 
 export type LiveRelayEnv = {
@@ -179,6 +181,7 @@ async function pipeSessionToBrowser(
 	session: LiveSession,
 	profileId: string,
 	sessionId: string,
+	traces: PlaygroundTraceRoute,
 	lexicon?: LexiconOverrides,
 ): Promise<void> {
 	serverWs.send(JSON.stringify({ type: 'ready', profile: profileId, sessionId }));
@@ -199,6 +202,8 @@ async function pipeSessionToBrowser(
 	} catch (err) {
 		serverWs.send(errorEnvelope(err, lexicon));
 	} finally {
+		// The events loop ends after the session's root record is written.
+		traces.close();
 		await closePlaygroundSteerInbox(sessionId);
 		try {
 			serverWs.close(1000, 'session ended');
@@ -213,12 +218,14 @@ async function openLiveSession(
 	env: LiveRelayEnv,
 	apiKey: string,
 	sessionId: string,
+	metadata: Record<string, string>,
 	openWebSocket: (url: string) => Promise<WebSocket>,
 ): Promise<LiveSession> {
 	await openPlaygroundSteerInbox(sessionId);
 	return runSession(
 		{
 			profile: profileId,
+			metadata,
 			onStage: async ({ stage }) => {
 				if (stage !== 'pre_turn' && stage !== 'post_tool' && stage !== 'before_end') {
 					return;
@@ -258,6 +265,12 @@ async function relayLiveSession(
 	env: LiveRelayEnv,
 ): Promise<void> {
 	const sessionId = newLiveSessionId();
+	// Each record goes to the browser as the session writes it.
+	const traces = playgroundTraces.route((record) => {
+		if (serverWs.readyState !== WebSocket.OPEN) return;
+		const line: PlaygroundTraceLine = { type: 'trace', record };
+		serverWs.send(JSON.stringify(line));
+	});
 	let lexicon: LexiconOverrides | undefined;
 	let session: LiveSession;
 	try {
@@ -280,9 +293,11 @@ async function relayLiveSession(
 			env,
 			apiKey,
 			sessionId,
+			traces.metadata,
 			openCloudflareUpstreamWebSocket,
 		);
 	} catch (err) {
+		traces.close();
 		await closePlaygroundSteerInbox(sessionId);
 		failRelay(serverWs, err, lexicon);
 		return;
@@ -291,6 +306,7 @@ async function relayLiveSession(
 	// The browser may have left while the session opened; its close event has already fired.
 	if (serverWs.readyState !== WebSocket.OPEN) {
 		await session.close('client disconnected');
+		traces.close();
 		await closePlaygroundSteerInbox(sessionId);
 		return;
 	}
@@ -299,7 +315,7 @@ async function relayLiveSession(
 		void session.close('client disconnected');
 		void closePlaygroundSteerInbox(sessionId);
 	});
-	void pipeSessionToBrowser(serverWs, session, profileId, sessionId, lexicon);
+	void pipeSessionToBrowser(serverWs, session, profileId, sessionId, traces, lexicon);
 }
 
 /** Handle incoming WebSocket upgrade request and spawn duplex relay pipe. */

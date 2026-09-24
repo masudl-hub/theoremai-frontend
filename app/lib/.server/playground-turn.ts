@@ -1,14 +1,10 @@
-import type { ProfileDefinition, TurnEvent, TurnInput } from '@theoremai/agents';
-import {
-	createProvider,
-	invokeTool,
-	noopSink,
-	registerTraceDestination,
-	runTurn,
-} from '@theoremai/agents';
+import type { ProfileDefinition, TraceRecord, TurnEvent, TurnInput } from '@theoremai/agents';
+import { createProvider, invokeTool, registerTraceDestination, runTurn } from '@theoremai/agents';
 import type { InvokeToolRequest } from '@theoremai/agents/kernel';
 import {
+	createPlaygroundTraceRouter,
 	PLAYGROUND_TRACE_DESTINATION,
+	type PlaygroundTraceLine,
 	type StructuredRegistration,
 	type ToolRegistration,
 } from '@theoremai/playground';
@@ -28,8 +24,31 @@ type PlaygroundTurnEnv = {
 
 export type { PlaygroundTurnEnv };
 
-// Profiles may write traces to the playground destination. Nothing is kept yet.
-registerTraceDestination(PLAYGROUND_TRACE_DESTINATION, noopSink());
+// Profiles that write to the playground destination get their records back on the run's own stream.
+export const playgroundTraces = createPlaygroundTraceRouter();
+registerTraceDestination(PLAYGROUND_TRACE_DESTINATION, playgroundTraces.sink);
+
+/**
+ * Streams one run's events, then the trace records it wrote. The kernel writes
+ * a run's records before the run returns or throws, so a failed run still
+ * delivers them ahead of its failure.
+ */
+async function* withRunTraces(
+	run: (metadata: Record<string, string>) => AsyncIterable<TurnEvent>,
+): AsyncGenerator<TurnEvent | PlaygroundTraceLine> {
+	const records: TraceRecord[] = [];
+	const traces = playgroundTraces.route((record) => records.push(record));
+	let failure: { error: unknown } | undefined;
+	try {
+		yield* run(traces.metadata);
+	} catch (error) {
+		failure = { error };
+	} finally {
+		traces.close();
+	}
+	for (const record of records) yield { type: 'trace', record };
+	if (failure) throw failure.error;
+}
 
 function geminiVault(env: PlaygroundTurnEnv) {
 	const slotA = env.GEMINI_API_KEY_FREE_A?.trim();
@@ -79,7 +98,7 @@ export async function* streamPlaygroundTurn(args: {
 	turnId?: string;
 	signal?: AbortSignal;
 	env?: PlaygroundTurnEnv;
-}): AsyncGenerator<TurnEvent> {
+}): AsyncGenerator<TurnEvent | PlaygroundTraceLine> {
 	const profile = registerPlaygroundProfile(args.profile, args.customTools, args.structured);
 	assertNotLiveProfile(profile.type, 'turn runner — use runSession');
 
@@ -88,31 +107,32 @@ export async function* streamPlaygroundTurn(args: {
 	if (turnId) await openPlaygroundSteerInbox(turnId);
 
 	try {
-		for await (const event of runTurn(
-			{
-				profile: profile.id,
-				input: args.input,
-				previousInteractionId: args.previousInteractionId,
-				sessionPermissions: args.sessionPermissions,
-				signal: args.signal,
-				...(args.model ? { model: args.model } : {}),
-				...(args.effort ? { effort: args.effort } : {}),
-				...(turnId
-					? {
-							onStage: async ({ stage }) => {
-								if (stage !== 'pre_turn' && stage !== 'post_tool' && stage !== 'before_end') {
-									return;
-								}
-								const inject = await consumePlaygroundSteerWithRetry(turnId);
-								return inject?.length ? { inject } : undefined;
-							},
-						}
-					: {}),
-			},
-			provider,
-		)) {
-			yield event;
-		}
+		yield* withRunTraces((metadata) =>
+			runTurn(
+				{
+					profile: profile.id,
+					metadata,
+					input: args.input,
+					previousInteractionId: args.previousInteractionId,
+					sessionPermissions: args.sessionPermissions,
+					signal: args.signal,
+					...(args.model ? { model: args.model } : {}),
+					...(args.effort ? { effort: args.effort } : {}),
+					...(turnId
+						? {
+								onStage: async ({ stage }) => {
+									if (stage !== 'pre_turn' && stage !== 'post_tool' && stage !== 'before_end') {
+										return;
+									}
+									const inject = await consumePlaygroundSteerWithRetry(turnId);
+									return inject?.length ? { inject } : undefined;
+								},
+							}
+						: {}),
+				},
+				provider,
+			),
+		);
 	} finally {
 		if (turnId) await closePlaygroundSteerInbox(turnId);
 	}
@@ -124,14 +144,15 @@ export async function* streamPlaygroundInvoke(args: {
 	structured?: StructuredRegistration;
 	request: Omit<InvokeToolRequest, 'profile'>;
 	env?: PlaygroundTurnEnv;
-}): AsyncGenerator<TurnEvent> {
+}): AsyncGenerator<TurnEvent | PlaygroundTraceLine> {
 	const profile = registerPlaygroundProfile(args.profile, args.customTools, args.structured);
 	assertNotLiveProfile(profile.type, 'invoke');
 
-	for await (const event of invokeTool({
-		profile: profile.id,
-		...args.request,
-	})) {
-		yield event;
-	}
+	yield* withRunTraces((metadata) =>
+		invokeTool({
+			profile: profile.id,
+			...args.request,
+			metadata: { ...args.request.metadata, ...metadata },
+		}),
+	);
 }

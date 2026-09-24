@@ -33,9 +33,11 @@ theoremai-frontend/
       .server/                  # server-only (React Router refuses to ship .server modules to the client)
         api.ts                  # framework-free Request → Response handlers
         live-relay.ts           # Gemini Live WebSocket relay (WebSocketPair)
+        playground-turn.ts      # playground turns and tool calls; the playground trace destination, whose records go back on each run's stream
+        playground-register.ts  # registers a compiled draft's profile, custom tools and structured spec
+        playground-steer.ts     # mid-turn steer inbox
         th30.ts                 # Th30 site assistant profile
         test-connection.ts      # SSRF-guarded tool connection test
-      playground/registrations.ts # turn wire contract: custom tools, structured spec, trace destination
   scripts/                      # kernel checkout resolution + build-time kernel metadata
 ```
 
