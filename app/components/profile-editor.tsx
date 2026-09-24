@@ -402,7 +402,7 @@ function ModelBindingEditor({
 					}}
 				/>
 				<NumberRow
-					label="Temperature"
+					label="Temp"
 					path="models.*.temperature"
 					field="temperature"
 					value={binding.temperature}

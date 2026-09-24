@@ -242,17 +242,10 @@ function useMeasure<T>(measure: (node: HTMLElement) => T) {
 	return [ref, value] as const;
 }
 
-/** The first node, top to bottom in the tree, that has an issue. */
-function firstIssueNode(
-	node: PlaygroundTreeNode,
-	issues: readonly PlaygroundIssue[],
-): string | undefined {
-	if (issues.some((issue) => issue.nodeId === node.id)) return node.id;
-	for (const child of node.children) {
-		const id = firstIssueNode(child, issues);
-		if (id !== undefined) return id;
-	}
-	return undefined;
+/** The next node with an issue after `selectedId`, wrapping, so repeated clicks walk through them. */
+function nextIssueNode(issues: readonly PlaygroundIssue[], selectedId: string): string {
+	const nodes = [...new Set(issues.map((issue) => issue.nodeId))];
+	return nodes[(nodes.indexOf(selectedId) + 1) % nodes.length] ?? selectedId;
 }
 
 /**
@@ -447,9 +440,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 												color="orange"
 												description="Go to the next issue"
 												onClick={() => {
-													setSelectedId(
-														firstIssueNode(playgroundTree(draft), compiled.issues) ?? selected,
-													);
+													setSelectedId(nextIssueNode(compiled.issues, selected));
 													setPanel('profile');
 													setEditorView('editor');
 													setIssueReveal((count) => count + 1);
