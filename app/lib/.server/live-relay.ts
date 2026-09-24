@@ -29,7 +29,6 @@ import {
 import { TH30_PROFILE_ID } from './th30';
 
 export type LiveRelayEnv = {
-	GEMINI_API_KEY?: string;
 	GEMINI_API_KEY_FREE_A?: string;
 	GEMINI_API_KEY_FREE_B?: string;
 	GEMINI_API_KEY_FREE_C?: string;
@@ -66,7 +65,6 @@ async function openCloudflareUpstreamWebSocket(url: string): Promise<WebSocket> 
 function resolveGeminiApiKey(env: LiveRelayEnv): string | undefined {
 	return (
 		env.GEMINI_API_KEY_FREE_A?.trim() ||
-		env.GEMINI_API_KEY?.trim() ||
 		env.GEMINI_API_KEY_FREE_B?.trim() ||
 		env.GEMINI_API_KEY_FREE_C?.trim()
 	);
@@ -235,7 +233,8 @@ async function openLiveSession(
 					slotA: apiKey,
 					slotB: env.GEMINI_API_KEY_FREE_B?.trim(),
 					slotC: env.GEMINI_API_KEY_FREE_C?.trim(),
-					paid: env.GEMINI_API_KEY?.trim(),
+					// The playground never spends on a paid key, so a quota refusal has nowhere to overflow.
+					paid: undefined,
 				},
 			},
 			openWebSocket,
@@ -273,7 +272,7 @@ async function relayLiveSession(
 			throw new TheoremError(
 				'config',
 				// lexicon-exempt: internal diagnostic; the user reads error.config
-				'No Gemini API key configured (GEMINI_API_KEY or GEMINI_API_KEY_FREE_A/B/C)',
+				'No Gemini API key configured (GEMINI_API_KEY_FREE_A/B/C)',
 			);
 		}
 		session = await openLiveSession(

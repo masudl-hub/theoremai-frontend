@@ -8,7 +8,7 @@
 	"compatibility_flags": ["nodejs_compat"],
 	"observability": { "enabled": true },
 	"upload_source_maps": true
-	// Secrets (wrangler secret put; .env.local in dev): GEMINI_API_KEY,
-	// GEMINI_API_KEY_FREE_A, GEMINI_API_KEY_FREE_B, GEMINI_API_KEY_FREE_C,
+	// Secrets (wrangler secret put; .env.local in dev): free-tier keys only,
+	// never a paid one — GEMINI_API_KEY_FREE_A, GEMINI_API_KEY_FREE_B, GEMINI_API_KEY_FREE_C,
 	// OPENROUTER_API_KEY.
 }

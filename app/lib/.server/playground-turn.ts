@@ -20,7 +20,6 @@ import {
 } from './playground-steer';
 
 type PlaygroundTurnEnv = {
-	GEMINI_API_KEY?: string;
 	GEMINI_API_KEY_FREE_A?: string;
 	GEMINI_API_KEY_FREE_B?: string;
 	GEMINI_API_KEY_FREE_C?: string;
@@ -33,13 +32,14 @@ export type { PlaygroundTurnEnv };
 registerTraceDestination(PLAYGROUND_TRACE_DESTINATION, noopSink());
 
 function geminiVault(env: PlaygroundTurnEnv) {
-	const slotA = env.GEMINI_API_KEY_FREE_A?.trim() ?? env.GEMINI_API_KEY?.trim();
+	const slotA = env.GEMINI_API_KEY_FREE_A?.trim();
 	if (!slotA) return undefined;
 	return {
 		slotA,
 		slotB: env.GEMINI_API_KEY_FREE_B?.trim(),
 		slotC: env.GEMINI_API_KEY_FREE_C?.trim(),
-		paid: env.GEMINI_API_KEY?.trim(),
+		// The playground never spends on a paid key, so a quota refusal has nowhere to overflow.
+		paid: undefined,
 	};
 }
 
