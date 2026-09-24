@@ -9,7 +9,7 @@ import type {
 	TurnRequest,
 } from '@theoremai/agents';
 import type { TurnToolSnapshot } from '@theoremai/agents/kernel';
-import type { StructuredRegistration, ToolRegistration } from '../playground/registrations';
+import type { StructuredRegistration, ToolRegistration } from '@theoremai/playground';
 import { badRequestJson, errorMessage, ndjsonEventStream } from './ndjson-stream';
 import { registerPlaygroundProfile } from './playground-register';
 import { enqueuePlaygroundSteer, openPlaygroundSteerInbox } from './playground-steer';

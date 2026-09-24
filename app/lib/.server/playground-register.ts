@@ -8,9 +8,13 @@ import {
 	standardEgressEnforce,
 } from '@theoremai/agents';
 import { registerGooglePreset } from '@theoremai/agents/presets/google';
-import { playgroundDemoHandler, stubOutputFromSchema } from '@theoremai/playground';
-import type { StructuredRegistration, ToolRegistration } from '../playground/registrations';
-import { zodFromJsonSchema } from '../playground/tool-schema';
+import {
+	playgroundDemoHandler,
+	type StructuredRegistration,
+	stubOutputFromSchema,
+	type ToolRegistration,
+	zodFromJsonSchema,
+} from '@theoremai/playground';
 
 let playgroundPresetReady = false;
 

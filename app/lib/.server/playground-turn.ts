@@ -7,8 +7,11 @@ import {
 	runTurn,
 } from '@theoremai/agents';
 import type { InvokeToolRequest } from '@theoremai/agents/kernel';
-import type { StructuredRegistration, ToolRegistration } from '../playground/registrations';
-import { PLAYGROUND_TRACE_DESTINATION } from '../playground/registrations';
+import {
+	PLAYGROUND_TRACE_DESTINATION,
+	type StructuredRegistration,
+	type ToolRegistration,
+} from '@theoremai/playground';
 import { registerPlaygroundProfile } from './playground-register';
 import {
 	closePlaygroundSteerInbox,
