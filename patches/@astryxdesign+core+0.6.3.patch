@@ -1,0 +1,24 @@
+diff --git a/node_modules/@astryxdesign/core/dist/SideNav/SideNavItem.js b/node_modules/@astryxdesign/core/dist/SideNav/SideNavItem.js
+index b56c9d5..1d1863b 100644
+--- a/node_modules/@astryxdesign/core/dist/SideNav/SideNavItem.js
++++ b/node_modules/@astryxdesign/core/dist/SideNav/SideNavItem.js
+@@ -412,10 +412,15 @@ export function SideNavItem({
+       ...collapsedItemStyles,
+       children: collapsedIcon
+     });
+-    return /*#__PURE__*/_jsxs("div", {
+-      ref: itemRef,
+-      ...stylex.props(styles.root, xstyle),
+-      children: [collapsedElement, /*#__PURE__*/_jsx(Tooltip, {
++    // The tooltip is the wrapper's sibling, not its child: React attaches a
++    // parent's ref after its children's layout effects, so as a child the
++    // tooltip read an empty anchorRef and never wired its hover listeners.
++    return /*#__PURE__*/_jsxs(_Fragment, {
++      children: [/*#__PURE__*/_jsx("div", {
++        ref: itemRef,
++        ...stylex.props(styles.root, xstyle),
++        children: collapsedElement
++      }), /*#__PURE__*/_jsx(Tooltip, {
+         content: label,
+         placement: "end",
+         anchorRef: itemRef

@@ -13,8 +13,15 @@ export default defineConfig({
 	define: kernelMetaDefine(theoremai),
 	plugins: [cloudflare({ viteEnvironment: { name: 'ssr' } }), reactRouter()],
 	resolve: {
-		// The kernel packages live outside this repo; pin React to the host install.
-		dedupe: ['react', 'react-dom'],
+		// The kernel packages live outside this repo; pin React, Astryx, and icons to the host
+		// install so the package and the site share one copy (and one ThemeContext).
+		dedupe: [
+			'react',
+			'react-dom',
+			'@astryxdesign/core',
+			'@astryxdesign/theme-neutral',
+			'@tabler/icons-react',
+		],
 	},
 	server: {
 		fs: { allow: [repoRoot, theoremai.root] },

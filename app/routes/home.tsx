@@ -1,4 +1,10 @@
-/** Placeholder until the shared shell lands; the marketing sections follow it. */
+import { Heading } from '@astryxdesign/core/Heading';
+import { Text } from '@astryxdesign/core/Text';
+import { VStack } from '@astryxdesign/core/VStack';
+import { HeroVideo } from '../components/hero-video';
+import { getKernelPackageVersion } from '../lib/.server/theoremai';
+import type { Route } from './+types/home';
+
 export function meta() {
 	return [
 		{ title: 'THEOREM' },
@@ -9,10 +15,23 @@ export function meta() {
 	];
 }
 
-export default function Home() {
+export function loader() {
+	return { version: getKernelPackageVersion() };
+}
+
+/** Landing hero: the wordmark over the valley footage. */
+export default function Home({ loaderData }: Route.ComponentProps) {
 	return (
-		<main>
-			<h1>THEOREM</h1>
-		</main>
+		<HeroVideo src="/hero/valley.mp4" poster="/hero/valley.webp">
+			<VStack height="100%" justify="end" gap={2} padding={10}>
+				<Text type="label">{loaderData.version}</Text>
+				<Heading level={1} type="wordmark" hasCapsize>
+					THEOREM
+				</Heading>
+				<Text type="large">
+					Typed, composable agents for text, image, speech, and live voice — guarded on every turn.
+				</Text>
+			</VStack>
+		</HeroVideo>
 	);
 }

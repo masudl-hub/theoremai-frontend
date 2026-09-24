@@ -39,6 +39,7 @@ export default ts.config(
 			'**/coverage/**',
 			'**/.fallow/**',
 			'**/.wrangler/**',
+			'app/built/**',
 			'scripts/**',
 			'vite.config.ts',
 			'react-router.config.ts',

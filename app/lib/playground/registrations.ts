@@ -5,7 +5,6 @@
 import type {
 	AuthUnauthenticatedPolicy,
 	HttpMethod,
-	SchemaEnforcement,
 	ToolAccess,
 	ToolAuthType,
 	ToolLoadTier,
@@ -21,8 +20,7 @@ export const PLAYGROUND_TRACE_DESTINATION = 'playground';
 export type StructuredRegistration = {
 	id: string;
 	spec: {
-		enforced: SchemaEnforcement;
-		jsonSchema?: Record<string, unknown>;
+		jsonSchema: Record<string, unknown>;
 	};
 };
 

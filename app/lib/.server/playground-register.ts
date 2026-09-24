@@ -90,18 +90,17 @@ function registerPlaygroundStructured(structured?: StructuredRegistration): void
 	registerStructured(structured.id, structured.spec);
 }
 
+/** Swaps the draft's egress enforcer for the standard one, keeping the guardrails' own type. */
+function withStandardEgress<G extends { egress?: { enforce: unknown } }>(guardrails: G): G {
+	if (!guardrails.egress) return guardrails;
+	return { ...guardrails, egress: { ...guardrails.egress, enforce: standardEgressEnforce } };
+}
+
 function runtimeProfileDefinition(def: ProfileDefinition): ProfileDefinition {
-	if (def.type === 'host' || !def.guardrails?.egress) return def;
-	return {
-		...def,
-		guardrails: {
-			...def.guardrails,
-			egress: {
-				...def.guardrails.egress,
-				enforce: standardEgressEnforce,
-			},
-		},
-	};
+	if (def.type === 'host' || !def.guardrails) return def;
+	// Speech narrows guardrails (no canary), so it is spread on its own to keep that type.
+	if (def.type === 'speech') return { ...def, guardrails: withStandardEgress(def.guardrails) };
+	return { ...def, guardrails: withStandardEgress(def.guardrails) };
 }
 
 export function registerPlaygroundProfile(

@@ -1,0 +1,16 @@
+/* Astryx has no background-media primitive. Overlay supplies the positioned
+   container and the scrim; these stretch it over the panel and cover-fit the
+   footage to whatever shape the panel takes. */
+.hero-video-frame {
+	overflow: hidden;
+	height: 100%;
+	border-radius: inherit;
+}
+
+.hero-video {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}

@@ -18,7 +18,8 @@
 			"!**/.react-router",
 			"!build",
 			"!coverage",
-			"!.fallow"
+			"!.fallow",
+			"!app/built"
 		]
 	},
 	"formatter": {
