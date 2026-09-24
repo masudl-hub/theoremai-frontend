@@ -1,10 +1,4 @@
-import { json } from '@sveltejs/kit';
-import { getKernelPackageVersion, getSubmoduleHead } from '$lib/server/theoremai';
+import { kernelInfo } from '$lib/server/api';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = () => {
-	return json({
-		version: getKernelPackageVersion(),
-		submoduleHead: getSubmoduleHead(),
-	});
-};
+export const GET: RequestHandler = () => kernelInfo();

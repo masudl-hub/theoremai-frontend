@@ -1,0 +1,14 @@
+{
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	// Workers target for the React Router site. Not deployed yet: the live site is
+	// still the Pages project `theorem` (root wrangler.toml) until cutover.
+	"name": "theorem-site",
+	"main": "./workers/app.ts",
+	"compatibility_date": "2026-09-01",
+	"compatibility_flags": ["nodejs_compat"],
+	"observability": { "enabled": true },
+	"upload_source_maps": true
+	// Secrets (wrangler secret put / .dev.vars): GEMINI_API_KEY,
+	// GEMINI_API_KEY_FREE_A, GEMINI_API_KEY_FREE_B, GEMINI_API_KEY_FREE_C,
+	// OPENROUTER_API_KEY.
+}

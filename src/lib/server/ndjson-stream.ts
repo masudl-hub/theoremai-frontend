@@ -1,11 +1,9 @@
-import { json } from '@sveltejs/kit';
-
 const NDJSON_HEADERS = {
 	'content-type': 'application/x-ndjson; charset=utf-8',
 	'cache-control': 'no-store',
 } as const;
 
-function errorMessage(err: unknown): string {
+export function errorMessage(err: unknown): string {
 	return err instanceof Error ? err.message : String(err);
 }
 
@@ -31,5 +29,5 @@ export function ndjsonEventStream(source: AsyncIterable<unknown>): Response {
 }
 
 export function badRequestJson(err: unknown): Response {
-	return json({ error: errorMessage(err) }, { status: 400 });
+	return Response.json({ error: errorMessage(err) }, { status: 400 });
 }

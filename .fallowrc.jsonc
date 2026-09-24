@@ -16,6 +16,12 @@
 		"vite.config.ts",
 		"apps/run/src/main.tsx",
 		"apps/run/vite.config.ts",
+		"apps/site/app/root.tsx",
+		"apps/site/app/routes.ts",
+		"apps/site/app/routes/*.ts",
+		"apps/site/workers/app.ts",
+		"apps/site/vite.config.ts",
+		"apps/site/react-router.config.ts",
 		"scripts/pressure-playground.mjs",
 		"scripts/pressure-demo-tools.mjs",
 		"scripts/sync-run-static.mjs",
@@ -25,6 +31,8 @@
 	"ignorePatterns": [
 		"node_modules/**",
 		"apps/run/dist/**",
+		"apps/site/build/**",
+		"**/.react-router/**",
 		"static/playground/run/**",
 		".svelte-kit/**",
 		".output/**",
@@ -40,7 +48,9 @@
 		// apps/run: peerDependencies of @theoremai/react, which the host app must supply.
 		"@astryxdesign/core",
 		"@astryxdesign/theme-neutral",
-		"@stylexjs/stylex"
+		"@stylexjs/stylex",
+		// apps/site: imported by @react-router/dev's default server entry, not our code.
+		"isbot"
 	],
 	"ignoreExportsUsedInFile": true,
 	"rules": {

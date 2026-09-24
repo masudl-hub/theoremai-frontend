@@ -37,6 +37,19 @@ function bufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
 	return btoa(binary);
 }
 
+/** Workers-runtime WebSocket: `accept()` starts a socket from a pair or a fetch upgrade. */
+type WorkersWebSocket = WebSocket & { accept(): void };
+
+/**
+ * Workers globals this module needs, typed here so it compiles against both the
+ * DOM lib (SvelteKit) and `@cloudflare/workers-types` (React Router app).
+ */
+function workersRuntime(): {
+	WebSocketPair: new () => { 0: WorkersWebSocket; 1: WorkersWebSocket };
+} {
+	return globalThis as unknown as ReturnType<typeof workersRuntime>;
+}
+
 /**
  * Cloudflare Workers outbound WebSocket via fetch upgrade
  * (preferred over `new WebSocket` on the Workers runtime).
@@ -46,7 +59,7 @@ async function openCloudflareUpstreamWebSocket(url: string): Promise<WebSocket> 
 	const upstreamResp = await fetch(httpsUpstreamUrl, {
 		headers: { Upgrade: 'websocket' },
 	});
-	const ws = (upstreamResp as unknown as { webSocket?: WebSocket & { accept(): void } }).webSocket;
+	const ws = (upstreamResp as unknown as { webSocket?: WorkersWebSocket | null }).webSocket;
 	if (!ws) {
 		throw new Error(`Upstream WebSocket upgrade failed with status ${String(upstreamResp.status)}`);
 	}
@@ -298,7 +311,10 @@ export async function handleNodeLiveRelay(
 /** Handle incoming WebSocket upgrade request and spawn duplex relay pipe. */
 export async function handleLiveRelay(request: Request, env: LiveRelayEnv): Promise<Response> {
 	if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') {
-		return new Response('Expected WebSocket upgrade', { status: 426 });
+		return new Response('WebSocket upgrade endpoint for THEOREM Gemini Live relay.', {
+			status: 426,
+			headers: { 'content-type': 'text/plain', Upgrade: 'websocket' },
+		});
 	}
 
 	ensureKernelInitialized();
@@ -319,10 +335,8 @@ export async function handleLiveRelay(request: Request, env: LiveRelayEnv): Prom
 	}
 
 	// Cloudflare Workers duplex pair for browser ↔ worker relay
-	// @ts-expect-error WebSocketPair is a Cloudflare Workers global
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-call -- WebSocketPair is a Workers runtime global
-	const [clientWs, serverWs] = new WebSocketPair() as unknown as [WebSocket, WebSocket];
-	(serverWs as unknown as { accept: () => void }).accept();
+	const [clientWs, serverWs] = Object.values(new (workersRuntime().WebSocketPair)());
+	serverWs.accept();
 
 	const sessionId = newLiveSessionId();
 	let session: LiveSession;
@@ -346,9 +360,5 @@ export async function handleLiveRelay(request: Request, env: LiveRelayEnv): Prom
 	});
 	void pipeSessionToBrowser(serverWs, session, profileId, sessionId);
 
-	return new Response(null, {
-		status: 101,
-		// @ts-expect-error webSocket property is standard on Cloudflare Response
-		webSocket: clientWs,
-	});
+	return new Response(null, { status: 101, webSocket: clientWs } as ResponseInit);
 }

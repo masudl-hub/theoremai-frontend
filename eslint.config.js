@@ -14,7 +14,14 @@ const svelteConfig = {
 	},
 };
 
-const tsFiles = ['src/**/*.ts', 'apps/run/src/**/*.ts', 'apps/run/src/**/*.tsx'];
+const tsFiles = [
+	'src/**/*.ts',
+	'apps/run/src/**/*.ts',
+	'apps/run/src/**/*.tsx',
+	'apps/site/app/**/*.ts',
+	'apps/site/app/**/*.tsx',
+	'apps/site/workers/**/*.ts',
+];
 const svelteFiles = ['src/**/*.svelte', 'src/**/*.svelte.ts', 'src/**/*.svelte.js'];
 const cursorHookFiles = ['.cursor/hooks/**/*.mjs'];
 
@@ -93,6 +100,10 @@ export default ts.config(
 			'**/.wrangler/**',
 			// Built run SPA bundles (gitignored).
 			'apps/run/dist/**',
+			'**/.react-router/**',
+			'apps/site/build/**',
+			'apps/site/vite.config.ts',
+			'apps/site/react-router.config.ts',
 			'static/playground/run/**',
 			'scripts/**',
 			'@theoremai/agents/**',

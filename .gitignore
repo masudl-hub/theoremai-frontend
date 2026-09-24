@@ -33,3 +33,8 @@ vite.config.ts.timestamp-*
 # Scratch
 tmp/
 *.tsbuildinfo
+
+# React Router site
+.react-router/
+apps/site/build
+.dev.vars*
