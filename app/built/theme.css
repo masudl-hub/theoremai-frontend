@@ -698,10 +698,6 @@
     background-color: var(--color-overlay-pressed);
   }
 
-  .astryx-overlay-scrim {
-    background-color: rgb(0 0 0 / 0.3);
-  }
-
   .astryx-text[data-color="primary"] { color: var(--color-text-primary); }
 
   .astryx-heading[data-color="primary"] { color: var(--color-text-primary); }

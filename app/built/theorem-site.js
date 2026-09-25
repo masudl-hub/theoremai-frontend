@@ -552,11 +552,6 @@ export const theoremSiteTheme = {
       "selected:selected": {
         "backgroundColor": "var(--color-overlay-pressed)"
       }
-    },
-    "overlay-scrim": {
-      "base": {
-        "backgroundColor": "rgb(0 0 0 / 0.3)"
-      }
     }
   },
   __onDark: {

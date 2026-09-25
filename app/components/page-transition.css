@@ -1,0 +1,40 @@
+/* The page panel crossfades on the black ground. The rail is outside this name,
+   and the root snapshot does not move, so the frame stays still. */
+[role="main"] {
+	view-transition-name: main;
+}
+
+::view-transition-group(root),
+::view-transition-old(root),
+::view-transition-new(root) {
+	animation: none;
+}
+
+::view-transition-old(main) {
+	animation: page-leave 280ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+::view-transition-new(main) {
+	animation: page-enter 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes page-leave {
+	to {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+}
+
+@keyframes page-enter {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	::view-transition-old(main),
+	::view-transition-new(main) {
+		animation: none;
+	}
+}

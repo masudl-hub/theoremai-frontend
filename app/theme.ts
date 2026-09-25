@@ -19,7 +19,9 @@ export const siteTheme = defineTheme({
 	},
 	components: {
 		// AppShell's elevated variant only rounds the panel when a TopNav is
-		// present; with the rail alone, inset its main content on every side.
+		// present; with the rail alone, inset top, bottom, and the trailing edge.
+		// The leading edge stays flush to the rail. The matching start inset
+		// is added in shell.css only below the drawer breakpoint.
 		'layout-content': {
 			base: {
 				':where([role="main"])': {
@@ -49,12 +51,6 @@ export const siteTheme = defineTheme({
 			'variant:raised': {
 				backgroundColor: 'var(--color-background-surface)',
 				borderRadius: 'var(--radius-page)',
-			},
-		},
-		// The hero's scrim over its footage: a light dim, not Astryx's modal-strength overlay.
-		'overlay-scrim': {
-			base: {
-				backgroundColor: 'rgb(0 0 0 / 0.3)',
 			},
 		},
 		// The landing wordmark: Astryx's heading type, set at poster scale.

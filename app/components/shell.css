@@ -1,0 +1,8 @@
+/* The rail is inline at md and up. Only when it yields to the drawer
+   should the page take the same start inset as top and right. */
+@media (width < 768px) {
+	[role="main"] {
+		margin-inline-start: var(--spacing-4);
+		width: calc(100% - 2 * var(--spacing-4));
+	}
+}

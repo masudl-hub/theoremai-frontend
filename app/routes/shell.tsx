@@ -1,7 +1,13 @@
 import { AppShell } from '@astryxdesign/core/AppShell';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { LinkProvider } from '@astryxdesign/core/Link';
-import { SideNav, SideNavHeading, SideNavItem, SideNavSection } from '@astryxdesign/core/SideNav';
+import {
+	SideNav,
+	SideNavHeading,
+	SideNavItem,
+	SideNavSection,
+	useSideNavRenderMode,
+} from '@astryxdesign/core/SideNav';
 import { Theme } from '@astryxdesign/core/theme';
 import {
 	IconBook2,
@@ -10,11 +16,14 @@ import {
 	IconCircle,
 	IconPlayerPlay,
 } from '@tabler/icons-react';
-import { Link, Outlet, useLocation, useMatches } from 'react-router';
+import { Link, type LinkProps, Outlet, useLocation, useMatches } from 'react-router';
 import { theoremSiteTheme } from '../built/theorem-site';
+import '../components/page-transition.css';
+import '../components/shell.css';
 import { IconJsr } from '../components/jsr-icon';
 import { NewTabLink } from '../components/links';
 import { LogoMark } from '../components/logo-mark';
+import { NavMark } from '../components/nav-mark';
 
 const SECTIONS = [
 	{ label: 'Playground', href: '/playground', icon: IconPlayerPlay },
@@ -37,6 +46,18 @@ function isOnBase(handle: unknown): boolean {
 	return typeof handle === 'object' && handle !== null && (handle as ShellHandle).isOnBase === true;
 }
 
+/** In-app links crossfade the page panel. The rail is not part of that snapshot. */
+function ShellLink(props: LinkProps) {
+	return <Link {...props} viewTransition />;
+}
+
+/** Rail and mobile top bar only. The drawer repeats footer icons, and this one does not belong there. */
+function Th30Button() {
+	const mode = useSideNavRenderMode();
+	if (mode === 'drawer' || mode === 'drawer-content') return null;
+	return <IconButton label="Talk to th30" icon={<IconCircle />} variant="ghost" isDisabled />;
+}
+
 /**
  * The frame every page sits in: the icon rail on the black base, the page as a panel beside it.
  * The rail is always dark so its icons read on black in either mode. A page whose handle sets
@@ -47,7 +68,7 @@ export default function Shell() {
 	const onBase = useMatches().some((match) => isOnBase(match.handle));
 
 	return (
-		<LinkProvider component={Link}>
+		<LinkProvider component={ShellLink}>
 			<AppShell
 				variant={onBase ? 'wash' : 'elevated'}
 				sideNav={
@@ -55,9 +76,7 @@ export default function Shell() {
 						<SideNav
 							collapsible={{ isCollapsed: true, hasButton: false }}
 							header={<SideNavHeading heading="Theorem" headingHref="/" icon={<LogoMark />} />}
-							footerIcons={
-								<IconButton label="Talk to th30" icon={<IconCircle />} variant="ghost" isDisabled />
-							}
+							footerIcons={<Th30Button />}
 						>
 							<SideNavSection title="Site" isHeaderHidden>
 								{SECTIONS.map(({ label, href, icon }) => (
@@ -80,6 +99,7 @@ export default function Shell() {
 				}
 			>
 				<Outlet />
+				<NavMark />
 			</AppShell>
 		</LinkProvider>
 	);

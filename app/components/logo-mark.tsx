@@ -1,7 +1,9 @@
 import type { SVGProps } from 'react';
+import { THEOREM_MARK } from './theorem-mark';
 
-/** Placeholder Theorem mark: an italic math x with a superscript dot (𝑥˙). */
+/** Theorem mark for the rail: same paths as the favicon, in the mark's own 24×24 box. */
 export function LogoMark(props: SVGProps<SVGSVGElement>) {
+	const { cx, cy, r } = THEOREM_MARK.dot;
 	return (
 		<svg
 			viewBox="0 0 24 24"
@@ -14,9 +16,9 @@ export function LogoMark(props: SVGProps<SVGSVGElement>) {
 			aria-hidden
 			{...props}
 		>
-			<path d="M4.5 18.5c2 0 3-1.2 4.2-3.4l2.6-5c1-1.9 2.1-3.1 4.2-3.1" />
-			<path d="M5.5 8.2c1.6-.9 3.2-.4 3.8 1.6l2.3 6.6c.6 1.7 2.1 2.4 3.9 1.7" />
-			<circle cx="19.5" cy="4.5" r="1.6" fill="currentColor" stroke="none" />
+			<path d={THEOREM_MARK.rise} />
+			<path d={THEOREM_MARK.fall} />
+			<circle cx={cx} cy={cy} r={r} fill="currentColor" stroke="none" />
 		</svg>
 	);
 }

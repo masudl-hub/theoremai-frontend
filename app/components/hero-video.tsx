@@ -1,5 +1,6 @@
-import { Overlay } from '@astryxdesign/core/Overlay';
-import { type ReactNode, useEffect, useRef } from 'react';
+import { MediaTheme } from '@astryxdesign/core/theme';
+import { type CSSProperties, type ReactNode, useEffect, useRef } from 'react';
+import { useNavigation } from 'react-router';
 import './hero-video.css';
 
 export interface HeroVideoProps {
@@ -11,22 +12,39 @@ export interface HeroVideoProps {
 }
 
 /**
- * Full-bleed background footage behind `children`, which sit on Astryx's dark
- * overlay scrim so they read on the footage in either mode.
- * Playback starts from script, and never under reduced motion, which keeps the still poster.
+ * Full-bleed background footage behind `children`. The dim is a plain layer in
+ * this component, present on the first frame. The still is the frame's own
+ * background, so an empty video never drops the picture to black.
+ * Playback starts from script, and never under reduced motion, which keeps the still.
  */
 export function HeroVideo({ src, poster, children }: HeroVideoProps) {
 	const videoRef = useRef<HTMLVideoElement>(null);
+	const navigation = useNavigation();
+	const still = { '--hero-still': `url("${poster}")` } as CSSProperties;
+
+	useEffect(() => {
+		const video = videoRef.current;
+		if (!video || navigation.state !== 'loading') return;
+		video.pause();
+	}, [navigation.state]);
 
 	useEffect(() => {
 		const video = videoRef.current;
 		if (!video || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-		// Autoplay can still be refused (e.g. data saver); the poster stays up.
-		video.play().catch(() => {});
+		const tryPlay = () => {
+			video.play().catch(() => {});
+		};
+		tryPlay();
+		video.addEventListener('loadeddata', tryPlay);
+		video.addEventListener('canplay', tryPlay);
+		return () => {
+			video.removeEventListener('loadeddata', tryPlay);
+			video.removeEventListener('canplay', tryPlay);
+		};
 	}, []);
 
 	return (
-		<Overlay className="hero-video-frame" content={children} align="start">
+		<div className="hero-video-frame" style={still}>
 			<video
 				ref={videoRef}
 				className="hero-video"
@@ -37,6 +55,9 @@ export function HeroVideo({ src, poster, children }: HeroVideoProps) {
 				preload="auto"
 				aria-hidden
 			/>
-		</Overlay>
+			<div className="hero-scrim">
+				<MediaTheme mode="dark">{children}</MediaTheme>
+			</div>
+		</div>
 	);
 }
