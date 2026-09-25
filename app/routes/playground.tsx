@@ -64,7 +64,7 @@ import { TheoremChat } from '@theoremai/react/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ISSUE_ROW_ATTRIBUTE } from '../components/inspector';
 import { IconMcp } from '../components/mcp-icon';
-import { ProfileEditor } from '../components/profile-editor';
+import { PROFILE_TYPE_ICON, ProfileEditor } from '../components/profile-editor';
 import type { Route } from './+types/playground';
 import type { ShellHandle } from './shell';
 
@@ -120,7 +120,10 @@ const FACET_ICON = {
 	decision: IconGitBranch,
 } satisfies Record<Exclude<PlaygroundNodeRef['facet'], 'toolSpec'>, unknown>;
 
+/** A node's icon; Identity shows the profile type's once one is picked. */
 function nodeIcon(draft: PlaygroundDraft, ref: PlaygroundNodeRef) {
+	const type = draft.identity.profileType;
+	if (ref.facet === 'identity' && type) return PROFILE_TYPE_ICON[type];
 	if (ref.facet !== 'toolSpec') return FACET_ICON[ref.facet];
 	const tool = draft.toolSpecs.find((spec) => spec.key === ref.key);
 	return tool ? TOOL_TYPE_ICON[tool.toolType] : IconTool;

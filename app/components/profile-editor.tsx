@@ -22,6 +22,8 @@ import {
 	IconCircleDashed,
 	IconDeviceDesktop,
 	IconFlame,
+	IconHandOff,
+	IconHandStop,
 	IconLetterA,
 	IconLetterB,
 	IconLetterC,
@@ -34,12 +36,17 @@ import {
 import {
 	ATTACHMENT_ACCEPT_MIMES,
 	fieldMeta,
+	GOOGLE_IMAGE_ASPECT_RATIOS,
+	GOOGLE_IMAGE_INPUT_MIMES,
+	GOOGLE_IMAGE_SIZES,
+	GOOGLE_SPEECH_VOICES,
 	type OverflowKeySlot,
 	PROFILE_TYPE_PROTOCOLS,
 	PROTOCOL_PROVIDERS,
 	type Protocol,
 	type Provider,
 	profileGraphFacet,
+	speechFormatsForProtocol,
 	THINKING_LEVELS,
 	type ThinkingLevel,
 	VOICE_ACCEPT_MIMES,
@@ -65,6 +72,7 @@ import {
 	type PlaygroundIssue,
 	type PlaygroundProfileType,
 	playgroundNodeRef,
+	playgroundRunsTransport,
 	setProfileType,
 } from '@theoremai/playground';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
@@ -95,11 +103,19 @@ function patch<K extends SettingsSection>(setDraft: SetDraft, key: K) {
 	};
 }
 
+/** Each profile type's icon: the Type control's segments and the tree's Identity row. */
+export const PROFILE_TYPE_ICON = {
+	text: IconLetterT,
+	image: IconPhoto,
+	speech: IconVolume,
+	live: IconBroadcast,
+} satisfies Record<PlaygroundProfileType, unknown>;
+
 const PROFILE_TYPE_SEGMENTS: Segment<PlaygroundProfileType>[] = [
-	{ value: 'text', label: 'Text', icon: IconLetterT },
-	{ value: 'image', label: 'Image', icon: IconPhoto },
-	{ value: 'speech', label: 'Speech', icon: IconVolume },
-	{ value: 'live', label: 'Live', icon: IconBroadcast },
+	{ value: 'text', label: 'Text', icon: PROFILE_TYPE_ICON.text },
+	{ value: 'image', label: 'Image', icon: PROFILE_TYPE_ICON.image },
+	{ value: 'speech', label: 'Speech', icon: PROFILE_TYPE_ICON.speech },
+	{ value: 'live', label: 'Live', icon: PROFILE_TYPE_ICON.live },
 ];
 
 const PROTOCOL_SEGMENT = {
@@ -171,10 +187,6 @@ function acceptPicker(mimes: readonly string[]) {
 
 const ATTACHMENT_PICKER = acceptPicker(ATTACHMENT_ACCEPT_MIMES);
 const VOICE_PICKER = acceptPicker(VOICE_ACCEPT_MIMES);
-
-function runsInPlayground(protocol: Protocol, provider: Provider): boolean {
-	return isGoogleTransport(protocol, provider) || isOpenRouterTransport(protocol, provider);
-}
 
 /** The wire model a binding starts on after its transport changes. */
 function defaultApiId(type: PlaygroundProfileType, protocol: Protocol, provider: Provider): string {
@@ -395,7 +407,7 @@ function ModelBindingEditor({
 					value={binding.provider}
 					segments={PROTOCOL_PROVIDERS[binding.protocol].map((provider) => ({
 						...PROVIDER_SEGMENT[provider],
-						isDisabled: !runsInPlayground(binding.protocol, provider),
+						isDisabled: !playgroundRunsTransport(type, binding.protocol, provider),
 					}))}
 					onChange={(provider) => {
 						set(retransport(binding, type, binding.protocol, provider));
@@ -408,11 +420,13 @@ function ModelBindingEditor({
 					value={binding.apiId}
 					options={
 						google
-							? GEMINI_PLAYGROUND_MODELS.map((model) => ({
-									value: model.id,
-									label: model.label,
-									description: model.id,
-								}))
+							? GEMINI_PLAYGROUND_MODELS.filter((model) => model.profileType === type).map(
+									(model) => ({
+										value: model.id,
+										label: model.label,
+										description: model.id,
+									}),
+								)
 							: [OPENROUTER_PLAYGROUND_API_ID]
 					}
 					onChange={(apiId) => {
@@ -632,6 +646,371 @@ function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 	);
 }
 
+/** The segment for a closed set left unset: the provider's default. */
+const PROVIDER_DEFAULT = {
+	value: 'default',
+	label: 'Provider default',
+	icon: IconCircleDashed,
+} as const;
+
+/** An unset pin (`''`) as the provider-default segment. */
+function segmentOf<T extends string>(value: T | ''): T | 'default' {
+	return value === '' ? 'default' : value;
+}
+
+/** The provider-default segment back to an unset pin. */
+function pinOf<T extends string>(segment: T | 'default'): T | '' {
+	return segment === 'default' ? '' : segment;
+}
+
+const BARGE_IN_SEGMENTS: Segment<'default' | 'START_OF_ACTIVITY_INTERRUPTS' | 'NO_INTERRUPTION'>[] =
+	[
+		PROVIDER_DEFAULT,
+		{ value: 'START_OF_ACTIVITY_INTERRUPTS', label: 'Interrupts', icon: IconHandStop },
+		{ value: 'NO_INTERRUPTION', label: 'No interruption', icon: IconHandOff },
+	];
+
+/** Gemini reads only a sensitivity's LOW or HIGH, so each end offers its own pair. */
+const START_SENSITIVITY_SEGMENTS: Segment<
+	'default' | 'START_SENSITIVITY_LOW' | 'START_SENSITIVITY_HIGH'
+>[] = [
+	PROVIDER_DEFAULT,
+	{ value: 'START_SENSITIVITY_LOW', label: 'Low', icon: IconAntennaBars2 },
+	{ value: 'START_SENSITIVITY_HIGH', label: 'High', icon: IconAntennaBars5 },
+];
+const END_SENSITIVITY_SEGMENTS: Segment<
+	'default' | 'END_SENSITIVITY_LOW' | 'END_SENSITIVITY_HIGH'
+>[] = [
+	PROVIDER_DEFAULT,
+	{ value: 'END_SENSITIVITY_LOW', label: 'Low', icon: IconAntennaBars2 },
+	{ value: 'END_SENSITIVITY_HIGH', label: 'High', icon: IconAntennaBars5 },
+];
+
+/** Whether every model is on Google, so the Google preset's vocabularies apply to the pins. */
+function allGoogle(draft: PlaygroundDraft): boolean {
+	return (
+		draft.modelBindings.length > 0 &&
+		draft.modelBindings.every((binding) => isGoogleTransport(binding.protocol, binding.provider))
+	);
+}
+
+/**
+ * A pin the kernel takes as any string: the Google preset's values when every model is on
+ * Google, free text otherwise.
+ */
+function PresetRow({
+	google,
+	label,
+	path,
+	value,
+	preset,
+	hasSearch,
+	onChange,
+}: {
+	google: boolean;
+	label: string;
+	path: string;
+	value: string;
+	preset: readonly string[];
+	hasSearch?: boolean;
+	onChange: (next: string) => void;
+}) {
+	return google ? (
+		<ChoiceRow
+			label={label}
+			path={path}
+			value={value}
+			options={preset}
+			hasSearch={hasSearch}
+			onChange={onChange}
+		/>
+	) : (
+		<TextRow label={label} path={path} value={value} onChange={onChange} />
+	);
+}
+
+/** Image output pins. */
+function ImageEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+	const google = allGoogle(draft);
+	const { image } = draft;
+	const set = patch(setDraft, 'image');
+	return (
+		<>
+			<InspectorSection title="Output">
+				<PresetRow
+					google={google}
+					label="Aspect ratio"
+					path="image.aspectRatio"
+					value={image.aspectRatio}
+					preset={GOOGLE_IMAGE_ASPECT_RATIOS}
+					onChange={(aspectRatio) => {
+						set({ aspectRatio });
+					}}
+				/>
+				<PresetRow
+					google={google}
+					label="Size"
+					path="image.size"
+					value={image.size}
+					preset={GOOGLE_IMAGE_SIZES}
+					onChange={(size) => {
+						set({ size });
+					}}
+				/>
+				<PresetRow
+					google={google}
+					label="Format"
+					path="image.mimeType"
+					value={image.mimeType}
+					preset={GOOGLE_IMAGE_INPUT_MIMES}
+					onChange={(mimeType) => {
+						set({ mimeType });
+					}}
+				/>
+				<SwitchRow
+					label="With text"
+					path="image.includeText"
+					value={image.includeText}
+					onChange={(includeText) => {
+						set({ includeText });
+					}}
+				/>
+			</InspectorSection>
+			<InspectorSection title="Input">
+				<NumberRow
+					label="Max images"
+					path="image.maxInputImages"
+					field="maxInputImages"
+					value={image.maxInputImages}
+					min={1}
+					isIntegerOnly
+					onChange={(maxInputImages) => {
+						set({ maxInputImages });
+					}}
+				/>
+			</InspectorSection>
+		</>
+	);
+}
+
+/** Speech pins. mp3 is only on offer when every model's protocol can make it. */
+function SpeechEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+	const google = allGoogle(draft);
+	const { speech } = draft;
+	const set = patch(setDraft, 'speech');
+	const mp3 = draft.modelBindings.every((binding) =>
+		speechFormatsForProtocol(binding.protocol).includes('mp3'),
+	);
+	return (
+		<InspectorSection title="Voice">
+			<PresetRow
+				google={google}
+				label="Voice"
+				path="speech.voice"
+				value={speech.voice}
+				preset={GOOGLE_SPEECH_VOICES}
+				hasSearch
+				onChange={(voice) => {
+					set({ voice });
+				}}
+			/>
+			<ChoiceRow
+				label="Format"
+				path="speech.format"
+				field="format"
+				value={speech.format}
+				options={[
+					'pcm',
+					{
+						value: 'mp3',
+						label: 'mp3',
+						...(mp3 ? {} : { description: 'Only openAi models make mp3', disabled: true }),
+					},
+				]}
+				onChange={(format) => {
+					set({ format });
+				}}
+			/>
+		</InspectorSection>
+	);
+}
+
+function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+	const google = allGoogle(draft);
+	const { live } = draft;
+	const set = patch(setDraft, 'live');
+	return (
+		<>
+			<InspectorSection title="Ingress">
+				<SwitchRow
+					label="Audio"
+					path="live.ingress.audio"
+					value={live.ingressAudio}
+					onChange={(ingressAudio) => {
+						set({ ingressAudio });
+					}}
+				/>
+				<SwitchRow
+					label="Video"
+					path="live.ingress.video"
+					value={live.ingressVideo}
+					onChange={(ingressVideo) => {
+						set({ ingressVideo });
+					}}
+				/>
+				<SwitchRow
+					label="Text"
+					path="live.ingress.text"
+					value={live.ingressText}
+					onChange={(ingressText) => {
+						set({ ingressText });
+					}}
+				/>
+			</InspectorSection>
+			<InspectorSection title="Voice">
+				<PresetRow
+					google={google}
+					label="Voice"
+					path="live.voice"
+					value={live.voice}
+					preset={GOOGLE_SPEECH_VOICES}
+					hasSearch
+					onChange={(voice) => {
+						set({ voice });
+					}}
+				/>
+				<SwitchRow
+					label="Proactive"
+					path="live.proactiveAudio"
+					value={live.proactiveAudio}
+					onChange={(proactiveAudio) => {
+						set({ proactiveAudio });
+					}}
+				/>
+			</InspectorSection>
+			<InspectorSection title="Session">
+				<SwitchRow
+					label="Resumption"
+					path="live.sessionResumption"
+					value={live.sessionResumption}
+					onChange={(sessionResumption) => {
+						set({ sessionResumption });
+					}}
+				/>
+			</InspectorSection>
+			<InspectorSection title="Context compression">
+				<SwitchRow
+					label="Sliding window"
+					path="live.contextCompression"
+					value={live.contextCompression}
+					onChange={(contextCompression) => {
+						set({ contextCompression });
+					}}
+				/>
+				{live.contextCompression && (
+					<>
+						<NumberRow
+							label="Trigger"
+							path="live.contextCompression.triggerTokens"
+							field="compressionTriggerTokens"
+							value={live.compressionTriggerTokens}
+							min={1}
+							units="tokens"
+							isIntegerOnly
+							onChange={(compressionTriggerTokens) => {
+								set({ compressionTriggerTokens });
+							}}
+						/>
+						<NumberRow
+							label="Keep"
+							path="live.contextCompression.slidingWindow.targetTokens"
+							field="compressionTargetTokens"
+							value={live.compressionTargetTokens}
+							min={1}
+							units="tokens"
+							isIntegerOnly
+							onChange={(compressionTargetTokens) => {
+								set({ compressionTargetTokens });
+							}}
+						/>
+					</>
+				)}
+			</InspectorSection>
+			<InspectorSection title="Transcripts">
+				<SwitchRow
+					label="Input"
+					path="live.transcription.input"
+					value={live.transcriptionInput}
+					onChange={(transcriptionInput) => {
+						set({ transcriptionInput });
+					}}
+				/>
+				<SwitchRow
+					label="Output"
+					path="live.transcription.output"
+					value={live.transcriptionOutput}
+					onChange={(transcriptionOutput) => {
+						set({ transcriptionOutput });
+					}}
+				/>
+			</InspectorSection>
+			<InspectorSection title="Voice activity">
+				<SegmentedRow
+					label="Barge-in"
+					path="live.vad.activityHandling"
+					value={segmentOf(live.vadActivityHandling)}
+					segments={BARGE_IN_SEGMENTS}
+					onChange={(segment) => {
+						set({ vadActivityHandling: pinOf(segment) });
+					}}
+				/>
+				<SegmentedRow
+					label="Start"
+					path="live.vad.startSensitivity"
+					value={segmentOf(live.vadStartSensitivity)}
+					segments={START_SENSITIVITY_SEGMENTS}
+					onChange={(segment) => {
+						set({ vadStartSensitivity: pinOf(segment) });
+					}}
+				/>
+				<SegmentedRow
+					label="End"
+					path="live.vad.endSensitivity"
+					value={segmentOf(live.vadEndSensitivity)}
+					segments={END_SENSITIVITY_SEGMENTS}
+					onChange={(segment) => {
+						set({ vadEndSensitivity: pinOf(segment) });
+					}}
+				/>
+				<NumberRow
+					label="Padding"
+					path="live.vad.prefixPaddingMs"
+					field="vadPrefixPaddingMs"
+					value={live.vadPrefixPaddingMs}
+					min={0}
+					units="ms"
+					isIntegerOnly
+					onChange={(vadPrefixPaddingMs) => {
+						set({ vadPrefixPaddingMs });
+					}}
+				/>
+				<NumberRow
+					label="Silence"
+					path="live.vad.silenceDurationMs"
+					field="vadSilenceDurationMs"
+					value={live.vadSilenceDurationMs}
+					min={0}
+					units="ms"
+					isIntegerOnly
+					onChange={(vadSilenceDurationMs) => {
+						set({ vadSilenceDurationMs });
+					}}
+				/>
+			</InspectorSection>
+		</>
+	);
+}
+
 /**
  * The editor for the tree node `selectedId`. The compile's issues for that node show on the rows
  * of the fields they name; the rest, and all of them for a node with no editor yet, show above it.
@@ -667,6 +1046,15 @@ export function ProfileEditor({
 			break;
 		case 'inputs':
 			editor = <InputsEditor {...props} />;
+			break;
+		case 'image':
+			editor = <ImageEditor {...props} />;
+			break;
+		case 'speech':
+			editor = <SpeechEditor {...props} />;
+			break;
+		case 'live':
+			editor = <LiveEditor {...props} />;
 			break;
 		default:
 			hasRows = false;

@@ -342,7 +342,7 @@ export function ensureTh30ProfileRegistered(): void {
 				silenceDurationMs: 1500,
 			},
 			sessionResumption: true,
-			contextCompression: 'slidingWindow',
+			contextCompression: { slidingWindow: {} },
 			transcription: {
 				input: true,
 				output: true,

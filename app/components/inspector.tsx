@@ -220,6 +220,7 @@ export function NumberRow({
 	max,
 	step,
 	isIntegerOnly,
+	units,
 	isRequired,
 	onChange,
 }: {
@@ -232,6 +233,8 @@ export function NumberRow({
 	max?: number;
 	step?: number;
 	isIntegerOnly?: boolean;
+	/** Shown at the end of the input, e.g. `ms`. */
+	units?: string;
 	onChange: (next: number | null) => void;
 } & IsRequired) {
 	const status = useFieldStatus()(field);
@@ -251,6 +254,7 @@ export function NumberRow({
 					max={max}
 					step={step}
 					isIntegerOnly={isIntegerOnly}
+					units={units}
 					isWheelEnabled={false}
 					hasClear
 					onChange={onChange}
@@ -366,11 +370,16 @@ export function SegmentedRow<T extends string>({
 	);
 }
 
+/** One option of a `ChoiceRow`: its value alone, or with a label, a description, or disabled. */
+export type Choice<T extends string> =
+	| T
+	| { value: T; label?: string; description?: string; disabled?: boolean };
+
 /**
- * A choice from a list the draft supplies (models, aliases), `''` when none is chosen. An optional
- * one can be cleared, and shows what leaving it out does while blank.
+ * A choice from a list, `''` when none is chosen. An optional one can be cleared, and shows what
+ * leaving it out does while blank. `hasSearch` filters a long list.
  */
-export function ChoiceRow({
+export function ChoiceRow<T extends string>({
 	label,
 	path,
 	field,
@@ -378,50 +387,50 @@ export function ChoiceRow({
 	options,
 	isDisabled,
 	isRequired,
+	hasSearch,
 	onChange,
 }: {
 	label: string;
 	path: string;
 	/** The draft field whose issues show on this row. */
 	field?: string;
-	value: string;
-	options: SelectorOptionType[];
+	value: T | '';
+	options: readonly Choice<T>[];
 	isDisabled?: boolean;
-	onChange: (next: string) => void;
+	hasSearch?: boolean;
+	onChange: (next: T | '') => void;
 } & IsRequired) {
 	const status = useFieldStatus()(field);
 	const { required, unset } = presence(path, isRequired);
+	// The Selector hands back a plain string; take the option's own value for it.
+	const choose = (next: string | null) => {
+		const chosen = options
+			.map((option) => (typeof option === 'string' ? option : option.value))
+			.find((candidate) => candidate === next);
+		onChange(chosen ?? '');
+	};
+	const shared = {
+		label,
+		status,
+		isLabelHidden: true,
+		size: 'sm' as const,
+		options: [...options],
+		placement: 'below' as const,
+		isDisabled,
+		hasSearch,
+	};
 	return (
 		<InspectorRow label={label} path={path} isRequired={required} hasIssue={status !== undefined}>
 			<StackItem size="fill">
 				{required ? (
-					<Selector
-						label={label}
-						status={status}
-						isLabelHidden
-						isRequired
-						size="sm"
-						value={value}
-						options={options}
-						placement="below"
-						isDisabled={isDisabled}
-						onChange={onChange}
-					/>
+					<Selector {...shared} isRequired value={value} onChange={choose} />
 				) : (
 					<Selector
-						label={label}
-						status={status}
-						isLabelHidden
-						size="sm"
+						{...shared}
 						value={value || null}
-						options={options}
-						placement="below"
 						placeholder={unset}
-						isDisabled={isDisabled}
 						hasClear
-						onChange={(next) => {
-							onChange(next ?? '');
-						}}
+						onChange={choose}
 					/>
 				)}
 			</StackItem>
