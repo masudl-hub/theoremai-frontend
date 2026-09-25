@@ -28,7 +28,6 @@ import {
 	IconGitBranch,
 	IconId,
 	IconListTree,
-	IconMathFunction,
 	IconMicrophone,
 	IconPhoto,
 	IconPlayerPlay,
@@ -37,9 +36,8 @@ import {
 	IconStack2,
 	IconTool,
 	IconVolume,
-	IconWorld,
 } from '@tabler/icons-react';
-import { type CustomToolType, profileGraphFacet } from '@theoremai/agents';
+import { profileGraphFacet } from '@theoremai/agents';
 import {
 	type CompiledPlayground,
 	compilePlayground,
@@ -62,9 +60,8 @@ import {
 import { LiveRunner } from '@theoremai/react/live';
 import { TheoremChat } from '@theoremai/react/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ISSUE_ROW_ATTRIBUTE } from '../components/inspector';
-import { IconMcp } from '../components/mcp-icon';
-import { PROFILE_TYPE_ICON, ProfileEditor } from '../components/profile-editor';
+import { ISSUE_ROW_ATTRIBUTE, ListBadges } from '../components/inspector';
+import { PROFILE_TYPE_ICON, ProfileEditor, TOOL_TYPE_ICON } from '../components/profile-editor';
 import type { Route } from './+types/playground';
 import type { ShellHandle } from './shell';
 
@@ -97,12 +94,6 @@ const EXAMPLES = [
 		create: createExampleDraft,
 	},
 ] as const;
-
-const TOOL_TYPE_ICON = {
-	function: IconMathFunction,
-	http: IconWorld,
-	mcp: IconMcp,
-} satisfies Record<CustomToolType, unknown>;
 
 const FACET_ICON = {
 	identity: IconId,
@@ -258,6 +249,11 @@ function nextIssueNode(issues: readonly PlaygroundIssue[], selectedId: string): 
  * The code area is the block's `role="group"` scroll container.
  */
 const measureHeight = (node: HTMLElement) => node.getBoundingClientRect().height;
+/** The layout has no padding, so this is the content box Astryx resolves panel percentages on. */
+const measureWidth = (node: HTMLElement) => node.clientWidth;
+
+/** The editor panel's default share of the layout. */
+const EDITOR_DEFAULT_PERCENT = 33.2;
 const measureCodeChrome = (node: HTMLElement) =>
 	node.getBoundingClientRect().height -
 	(node.querySelector('[role="group"]')?.getBoundingClientRect().height ?? 0);
@@ -284,6 +280,14 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	const [panel, setPanel] = useState('profile');
 	const [editorView, setEditorView] = useState<'editor' | 'code'>('editor');
 	const layoutRef = useRef<HTMLDivElement>(null);
+	const [measureLayout, layoutWidth] = useMeasure(measureWidth);
+	const layoutCallbackRef = useCallback(
+		(node: HTMLDivElement | null) => {
+			layoutRef.current = node;
+			return measureLayout(node);
+		},
+		[measureLayout],
+	);
 	const treePanel = useResizable({
 		defaultSize: '20%',
 		minSize: 240,
@@ -291,11 +295,17 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 		autoSaveId: 'playground.tree',
 	});
 	const editorPanel = useResizable({
-		defaultSize: '33.2%',
+		defaultSize: `${String(EDITOR_DEFAULT_PERCENT)}%`,
 		minSize: 320,
 		containerRef: layoutRef,
 		autoSaveId: 'playground.editor',
 	});
+	/** Two badges per list row at the editor's default width or wider; one once it is narrowed. */
+	const listBadges =
+		layoutWidth === undefined ||
+		editorPanel.size >= Math.round((EDITOR_DEFAULT_PERCENT / 100) * layoutWidth)
+			? 2
+			: 1;
 	const [selectedId, setSelectedId] = useState('identity');
 	const editorRef = useRef<HTMLDivElement>(null);
 	/** Bumped by the issue pill; once the editor shows the node, its first failing row is revealed. */
@@ -333,7 +343,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 
 	return (
 		<Layout
-			ref={layoutRef}
+			ref={layoutCallbackRef}
 			padding={0}
 			start={
 				<>
@@ -487,14 +497,18 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 									</HStack>
 								</Section>
 								<StackItem size="fill" ref={bodyRef}>
+									{/* The editor is keyed by node, so each one opens at its top. */}
 									{editorView === 'editor' ? (
-										<ScrollableArea label="Editor" height="100%" ref={editorRef}>
-											<ProfileEditor
-												draft={draft}
-												setDraft={setDraft}
-												selectedId={selected}
-												issues={compiled.ok ? [] : compiled.issues}
-											/>
+										<ScrollableArea key={selected} label="Editor" height="100%" ref={editorRef}>
+											<ListBadges value={listBadges}>
+												<ProfileEditor
+													draft={draft}
+													setDraft={setDraft}
+													selectedId={selected}
+													onSelect={setSelectedId}
+													issues={compiled.ok ? [] : compiled.issues}
+												/>
+											</ListBadges>
 										</ScrollableArea>
 									) : source && compiled.ok ? (
 										<Section variant="transparent" padding={3} ref={codeRef}>

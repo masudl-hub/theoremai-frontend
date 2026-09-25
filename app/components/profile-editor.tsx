@@ -1,14 +1,24 @@
 import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
+import { CheckboxInput } from '@astryxdesign/core/CheckboxInput';
+import { CheckboxList, CheckboxListItem } from '@astryxdesign/core/CheckboxList';
+import { CodeBlock } from '@astryxdesign/core/CodeBlock';
+import { ComplexSelector } from '@astryxdesign/core/ComplexSelector';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
-import { Icon } from '@astryxdesign/core/Icon';
+import { HStack } from '@astryxdesign/core/HStack';
+import { Icon, type IconType } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
+import { List, ListItem } from '@astryxdesign/core/List';
 import { Section } from '@astryxdesign/core/Section';
 import { StackItem } from '@astryxdesign/core/Stack';
+import { pixel, proportional, Table } from '@astryxdesign/core/Table';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
+import { Token } from '@astryxdesign/core/Token';
+import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
 import {
+	IconAlignLeft,
 	IconAntennaBars1,
 	IconAntennaBars2,
 	IconAntennaBars3,
@@ -16,31 +26,65 @@ import {
 	IconAntennaBars5,
 	IconAntennaBarsOff,
 	IconBan,
+	IconBolt,
+	IconBraces,
 	IconBroadcast,
 	IconBulb,
 	IconBulbOff,
+	IconCertificate,
 	IconCircleDashed,
 	IconDeviceDesktop,
+	IconEye,
+	IconEyeOff,
 	IconFlame,
+	IconFlask,
 	IconHandOff,
 	IconHandStop,
+	IconKey,
 	IconLetterA,
 	IconLetterB,
 	IconLetterC,
 	IconLetterT,
+	IconLockOpen,
+	IconMathFunction,
+	IconMessage,
+	IconPackage,
+	IconPencil,
 	IconPhoto,
+	IconPlayerPause,
+	IconPlayerPlay,
+	IconPlugConnected,
 	IconPlus,
+	IconRefresh,
+	IconShieldLock,
+	IconSquareRoundedNumber0,
+	IconSquareRoundedNumber1,
+	IconSquareRoundedNumber2,
+	IconTrash,
+	IconUserCheck,
 	IconVolume,
+	IconWaveSine,
+	IconWorld,
 	IconX,
 } from '@tabler/icons-react';
 import {
 	ATTACHMENT_ACCEPT_MIMES,
+	type AuthUnauthenticatedPolicy,
+	CONTINUE_STOP_KINDS,
+	type ContinueStopKind,
+	type CustomToolType,
+	type EgressOnBlock,
 	fieldMeta,
 	GOOGLE_IMAGE_ASPECT_RATIOS,
 	GOOGLE_IMAGE_INPUT_MIMES,
 	GOOGLE_IMAGE_SIZES,
 	GOOGLE_SPEECH_VOICES,
+	HTTP_METHODS,
+	type HttpMethod,
+	IMAGE_ATTACHMENT_ACCEPT_MIMES,
+	lexiconDefault,
 	type OverflowKeySlot,
+	type PlaygroundAuthType,
 	PROFILE_TYPE_PROTOCOLS,
 	PROTOCOL_PROVIDERS,
 	type Protocol,
@@ -49,6 +93,9 @@ import {
 	speechFormatsForProtocol,
 	THINKING_LEVELS,
 	type ThinkingLevel,
+	type ToolAccess,
+	type ToolLoadTier,
+	type ToolPermission,
 	VOICE_ACCEPT_MIMES,
 } from '@theoremai/agents';
 import {
@@ -58,40 +105,55 @@ import {
 	defaultBindingForProfileType,
 	defaultEffortRequired,
 	defaultModelRequired,
+	draftAllows,
 	expandAccept,
 	GEMINI_PLAYGROUND_DEFAULT_API_ID,
+	GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS,
 	GEMINI_PLAYGROUND_MODELS,
 	inputLimitsRequired,
 	isGoogleTransport,
 	isOpenRouterTransport,
 	keySlotRequired,
 	type ModelBindingDraft,
+	newToolSpec,
 	nextAccept,
+	type ObservabilityDraft,
 	OPENROUTER_PLAYGROUND_API_ID,
+	type OutputsDraft,
+	PLAYGROUND_TRACE_DESTINATION,
 	type PlaygroundDraft,
 	type PlaygroundIssue,
 	type PlaygroundProfileType,
 	playgroundNodeRef,
 	playgroundRunsTransport,
+	sampleToolInput,
 	setProfileType,
+	type ToolSpecDraft,
+	takesContinueInstruction,
+	toolSpecNodeId,
 } from '@theoremai/playground';
-import type { Dispatch, ReactNode, SetStateAction } from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction, useContext, useState } from 'react';
 import { IconGemini, IconGoogle, IconOpenAi, IconOpenRouter } from './brand-icons';
 import {
 	ChoiceRow,
 	InspectorRow,
 	InspectorSection,
+	ListBadges,
 	ListRow,
+	NamesRow,
 	NodeIssues,
 	NumberRow,
 	type Segment,
 	SegmentedRow,
+	SliderRow,
 	SwitchRow,
+	TextAreaRow,
 	TextRow,
 	useFieldStatus,
 } from './inspector';
+import { IconMcp } from './mcp-icon';
 
-type SetDraft = Dispatch<SetStateAction<PlaygroundDraft>>;
+export type SetDraft = Dispatch<SetStateAction<PlaygroundDraft>>;
 
 /** The draft's sections that are one object of settings, rather than a list. */
 type SettingsSection = Exclude<keyof PlaygroundDraft, 'included' | 'modelBindings' | 'toolSpecs'>;
@@ -186,6 +248,7 @@ function acceptPicker(mimes: readonly string[]) {
 }
 
 const ATTACHMENT_PICKER = acceptPicker(ATTACHMENT_ACCEPT_MIMES);
+const IMAGE_ATTACHMENT_PICKER = acceptPicker(IMAGE_ATTACHMENT_ACCEPT_MIMES);
 const VOICE_PICKER = acceptPicker(VOICE_ACCEPT_MIMES);
 
 /** The wire model a binding starts on after its transport changes. */
@@ -218,7 +281,7 @@ function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 	const set = patch(setDraft, 'identity');
 	return (
 		<>
-			<InspectorSection title="Profile">
+			<InspectorSection title="Profile" note="Who this agent is and what kind of thing it makes.">
 				<TextRow
 					label="Id"
 					path="id"
@@ -251,7 +314,10 @@ function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 				/>
 			</InspectorSection>
 			{identity.profileType !== 'speech' && (
-				<InspectorSection title="System prompt">
+				<InspectorSection
+					title="System prompt"
+					note="Standing instructions the model reads before every turn."
+				>
 					<TextArea
 						label="System prompt"
 						isLabelHidden
@@ -273,7 +339,10 @@ function ModelsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 	const { models } = draft;
 	const set = patch(setDraft, 'models');
 	return (
-		<InspectorSection title="Policy">
+		<InspectorSection
+			title="Policy"
+			note="Which model runs by default, and how many steps a turn may take."
+		>
 			<ChoiceRow
 				label="Default"
 				path="defaultModel"
@@ -298,6 +367,7 @@ function ModelsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 			<NumberRow
 				label="Max steps"
 				path="maxSteps"
+				units="steps"
 				field="maxSteps"
 				value={models.maxSteps}
 				min={1}
@@ -366,7 +436,7 @@ function ModelBindingEditor({
 
 	return (
 		<>
-			<InspectorSection title="Model">
+			<InspectorSection title="Model" note="Where this model runs and what it goes by.">
 				<TextRow
 					label="Id"
 					path="models.*"
@@ -447,10 +517,14 @@ function ModelBindingEditor({
 					/>
 				)}
 			</InspectorSection>
-			<InspectorSection title="Generation">
+			<InspectorSection
+				title="Generation"
+				note="How long, how varied, and whether its thinking is summarized."
+			>
 				<NumberRow
 					label="Max output"
 					path="models.*.maxOutputTokens"
+					units="tokens"
 					field="maxOutputTokens"
 					value={binding.maxOutputTokens}
 					min={1}
@@ -480,7 +554,7 @@ function ModelBindingEditor({
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection title="Efforts">
+			<InspectorSection title="Efforts" note="Named thinking levels a turn can ask for.">
 				{binding.efforts.map((effort, index) => {
 					const status = statusAt('efforts', index);
 					return (
@@ -568,9 +642,12 @@ function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 	const { inputs } = draft;
 	const set = patch(setDraft, 'inputs');
 	const limitsRequired = inputLimitsRequired(inputs);
+	/** An image profile takes images, video and PDF as references, and no voice. */
+	const image = draft.identity.profileType === 'image';
+	const attachmentPicker = image ? IMAGE_ATTACHMENT_PICKER : ATTACHMENT_PICKER;
 	return (
 		<>
-			<InspectorSection title="Accepts">
+			<InspectorSection title="Accepts" note="What someone can send the agent.">
 				<SwitchRow
 					label="Text"
 					path="inputs.text"
@@ -582,32 +659,35 @@ function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 				<ListRow
 					label="Attachments"
 					path="inputs.attachments.accept"
-					value={expandAccept(inputs.attachmentsAccept, ATTACHMENT_PICKER.sections)}
-					options={ATTACHMENT_PICKER.options}
+					value={expandAccept(inputs.attachmentsAccept, attachmentPicker.sections)}
+					options={attachmentPicker.options}
 					onChange={(selected) => {
 						set({
 							attachmentsAccept: nextAccept(
 								inputs.attachmentsAccept,
 								selected,
-								ATTACHMENT_PICKER.sections,
+								attachmentPicker.sections,
 							),
 						});
 					}}
 				/>
-				<ListRow
-					label="Voice"
-					path="inputs.voice.accept"
-					value={expandAccept(inputs.voiceAccept, VOICE_PICKER.sections)}
-					options={VOICE_PICKER.options}
-					onChange={(selected) => {
-						set({ voiceAccept: nextAccept(inputs.voiceAccept, selected, VOICE_PICKER.sections) });
-					}}
-				/>
+				{!image && (
+					<ListRow
+						label="Voice"
+						path="inputs.voice.accept"
+						value={expandAccept(inputs.voiceAccept, VOICE_PICKER.sections)}
+						options={VOICE_PICKER.options}
+						onChange={(selected) => {
+							set({ voiceAccept: nextAccept(inputs.voiceAccept, selected, VOICE_PICKER.sections) });
+						}}
+					/>
+				)}
 			</InspectorSection>
-			<InspectorSection title="Limits">
+			<InspectorSection title="Limits" note="How much they can send at once.">
 				<NumberRow
 					label="Max files"
 					path="inputs.maxFiles"
+					units="files"
 					field="maxFiles"
 					isRequired={limitsRequired}
 					value={inputs.maxFiles}
@@ -620,6 +700,7 @@ function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 				<NumberRow
 					label="Max bytes"
 					path="inputs.maxBytes"
+					units="bytes"
 					field="maxBytes"
 					isRequired={limitsRequired}
 					value={inputs.maxBytes}
@@ -632,6 +713,7 @@ function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 				<NumberRow
 					label="Turn bytes"
 					path="inputs.maxTurnBytes"
+					units="bytes"
 					field="maxTurnBytes"
 					isRequired={limitsRequired}
 					value={inputs.maxTurnBytes}
@@ -735,61 +817,46 @@ function ImageEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Se
 	const { image } = draft;
 	const set = patch(setDraft, 'image');
 	return (
-		<>
-			<InspectorSection title="Output">
-				<PresetRow
-					google={google}
-					label="Aspect ratio"
-					path="image.aspectRatio"
-					value={image.aspectRatio}
-					preset={GOOGLE_IMAGE_ASPECT_RATIOS}
-					onChange={(aspectRatio) => {
-						set({ aspectRatio });
-					}}
-				/>
-				<PresetRow
-					google={google}
-					label="Size"
-					path="image.size"
-					value={image.size}
-					preset={GOOGLE_IMAGE_SIZES}
-					onChange={(size) => {
-						set({ size });
-					}}
-				/>
-				<PresetRow
-					google={google}
-					label="Format"
-					path="image.mimeType"
-					value={image.mimeType}
-					preset={GOOGLE_IMAGE_INPUT_MIMES}
-					onChange={(mimeType) => {
-						set({ mimeType });
-					}}
-				/>
-				<SwitchRow
-					label="With text"
-					path="image.includeText"
-					value={image.includeText}
-					onChange={(includeText) => {
-						set({ includeText });
-					}}
-				/>
-			</InspectorSection>
-			<InspectorSection title="Input">
-				<NumberRow
-					label="Max images"
-					path="image.maxInputImages"
-					field="maxInputImages"
-					value={image.maxInputImages}
-					min={1}
-					isIntegerOnly
-					onChange={(maxInputImages) => {
-						set({ maxInputImages });
-					}}
-				/>
-			</InspectorSection>
-		</>
+		<InspectorSection title="Output" note="How generated images come back.">
+			<PresetRow
+				google={google}
+				label="Aspect ratio"
+				path="image.aspectRatio"
+				value={image.aspectRatio}
+				preset={GOOGLE_IMAGE_ASPECT_RATIOS}
+				onChange={(aspectRatio) => {
+					set({ aspectRatio });
+				}}
+			/>
+			<PresetRow
+				google={google}
+				label="Size"
+				path="image.size"
+				value={image.size}
+				preset={GOOGLE_IMAGE_SIZES}
+				onChange={(size) => {
+					set({ size });
+				}}
+			/>
+			<PresetRow
+				google={google}
+				label="Format"
+				path="image.mimeType"
+				value={image.mimeType}
+				preset={GOOGLE_IMAGE_INPUT_MIMES}
+				onChange={(mimeType) => {
+					set({ mimeType });
+				}}
+			/>
+			<SwitchRow
+				label="With text"
+				path="image.includeText"
+				value={image.includeText}
+				onChange={(includeText) => {
+					set({ includeText });
+				}}
+			/>
+		</InspectorSection>
 	);
 }
 
@@ -802,7 +869,7 @@ function SpeechEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 		speechFormatsForProtocol(binding.protocol).includes('mp3'),
 	);
 	return (
-		<InspectorSection title="Voice">
+		<InspectorSection title="Voice" note="How speech sounds, and the format it comes in.">
 			<PresetRow
 				google={google}
 				label="Voice"
@@ -835,13 +902,23 @@ function SpeechEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 	);
 }
 
+/** Compression sliders move in steps of 1,024 tokens, which divides the free key's cap. */
+const COMPRESSION_STEP = 1024;
+
+/**
+ * Google's sliding window when left blank: it triggers at 80% of the context window and keeps half
+ * of that. Shown against the free key's cap, since that is the window a playground session has.
+ */
+const COMPRESSION_TRIGGER_DEFAULT = Math.round(GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS * 0.8);
+const COMPRESSION_TARGET_DEFAULT = Math.round(COMPRESSION_TRIGGER_DEFAULT / 2);
+
 function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
 	const google = allGoogle(draft);
 	const { live } = draft;
 	const set = patch(setDraft, 'live');
 	return (
 		<>
-			<InspectorSection title="Ingress">
+			<InspectorSection title="Ingress" note="What the session listens to.">
 				<SwitchRow
 					label="Audio"
 					path="live.ingress.audio"
@@ -867,7 +944,10 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection title="Voice">
+			<InspectorSection
+				title="Voice"
+				note="How the agent sounds, and whether it may choose when to speak."
+			>
 				<PresetRow
 					google={google}
 					label="Voice"
@@ -888,7 +968,7 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection title="Session">
+			<InspectorSection title="Session" note="Lets a dropped session pick up where it left off.">
 				<SwitchRow
 					label="Resumption"
 					path="live.sessionResumption"
@@ -898,7 +978,10 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection title="Context compression">
+			<InspectorSection
+				title="Context compression"
+				note="Trims older turns once a session grows past the trigger."
+			>
 				<SwitchRow
 					label="Sliding window"
 					path="live.contextCompression"
@@ -909,26 +992,28 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 				/>
 				{live.contextCompression && (
 					<>
-						<NumberRow
+						<SliderRow
 							label="Trigger"
 							path="live.contextCompression.triggerTokens"
 							field="compressionTriggerTokens"
 							value={live.compressionTriggerTokens}
-							min={1}
-							units="tokens"
-							isIntegerOnly
+							fallback={COMPRESSION_TRIGGER_DEFAULT}
+							min={COMPRESSION_STEP}
+							max={GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS}
+							step={COMPRESSION_STEP}
 							onChange={(compressionTriggerTokens) => {
 								set({ compressionTriggerTokens });
 							}}
 						/>
-						<NumberRow
+						<SliderRow
 							label="Keep"
 							path="live.contextCompression.slidingWindow.targetTokens"
 							field="compressionTargetTokens"
 							value={live.compressionTargetTokens}
-							min={1}
-							units="tokens"
-							isIntegerOnly
+							fallback={COMPRESSION_TARGET_DEFAULT}
+							min={COMPRESSION_STEP}
+							max={GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS - COMPRESSION_STEP}
+							step={COMPRESSION_STEP}
 							onChange={(compressionTargetTokens) => {
 								set({ compressionTargetTokens });
 							}}
@@ -936,7 +1021,7 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 					</>
 				)}
 			</InspectorSection>
-			<InspectorSection title="Transcripts">
+			<InspectorSection title="Transcripts" note="Text copies of what is said, both ways.">
 				<SwitchRow
 					label="Input"
 					path="live.transcription.input"
@@ -954,7 +1039,7 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection title="Voice activity">
+			<InspectorSection title="Voice activity" note="How the model hears speech start and stop.">
 				<SegmentedRow
 					label="Barge-in"
 					path="live.vad.activityHandling"
@@ -1011,6 +1096,1413 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 	);
 }
 
+const OUTPUT_MODE_SEGMENTS: Segment<OutputsDraft['mode']>[] = [
+	{ value: 'text', label: 'Free text', icon: IconAlignLeft },
+	{ value: 'structured', label: 'Structured', icon: IconBraces },
+];
+
+type StreamMode = Exclude<OutputsDraft['streamMode'], ''>;
+
+/** The kernel streams over SSE when the mode is left out, so SSE stands for the unset pin. */
+const STREAM_MODE_SEGMENTS: Segment<StreamMode>[] = [
+	{ value: 'sse', label: 'Streamed', icon: IconWaveSine },
+	{ value: 'buffered', label: 'Buffered', icon: IconPackage },
+];
+
+const SCHEMA_PLACEHOLDER = `{
+  "type": "object",
+  "properties": { "answer": { "type": "string" } },
+  "required": ["answer"]
+}`;
+
+function OutputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+	const { outputs } = draft;
+	const set = patch(setDraft, 'outputs');
+	const structured = outputs.mode === 'structured';
+	return (
+		<>
+			<InspectorSection title="Shape" note="Free text, or JSON held to a schema.">
+				<SegmentedRow
+					label="Mode"
+					path="outputs.structured"
+					value={outputs.mode}
+					segments={OUTPUT_MODE_SEGMENTS}
+					onChange={(mode) => {
+						set({ mode });
+					}}
+				/>
+				{structured && (
+					<>
+						<TextRow
+							label="Schema id"
+							path="outputs.structured"
+							field="schemaId"
+							isRequired
+							value={outputs.schemaId}
+							placeholder="reply"
+							onChange={(schemaId) => {
+								set({ schemaId });
+							}}
+						/>
+						<TextAreaRow
+							label="JSON Schema"
+							path="outputs.structured"
+							field="schemaJson"
+							isRequired
+							rows={8}
+							hasSpellCheck={false}
+							value={outputs.schemaJson}
+							placeholder={SCHEMA_PLACEHOLDER}
+							onChange={(schemaJson) => {
+								set({ schemaJson });
+							}}
+						/>
+					</>
+				)}
+			</InspectorSection>
+			{structured && (
+				<InspectorSection
+					title="Repair"
+					note="Checks each reply against the schema and hands what fails back to the model."
+				>
+					<SwitchRow
+						label="Repair"
+						path="outputs.validation"
+						value={outputs.validationEnabled}
+						onChange={(validationEnabled) => {
+							set({ validationEnabled });
+						}}
+					/>
+					{outputs.validationEnabled && (
+						<>
+							<NumberRow
+								label="Retries"
+								path="outputs.validation.maxRetries"
+								units="retries"
+								field="maxRetries"
+								value={outputs.maxRetries}
+								min={0}
+								isIntegerOnly
+								onChange={(maxRetries) => {
+									set({ maxRetries });
+								}}
+							/>
+							<TextAreaRow
+								label="Guidance"
+								path="lexicon.*"
+								field="repairGuidance"
+								value={outputs.repairGuidance}
+								placeholder={lexiconDefault('repair.default_guidance')}
+								onChange={(repairGuidance) => {
+									set({ repairGuidance });
+								}}
+							/>
+						</>
+					)}
+				</InspectorSection>
+			)}
+			<InspectorSection
+				title="Streaming"
+				note="How a reply arrives, and whether its thinking shows."
+			>
+				<SegmentedRow
+					label="Delivery"
+					path="outputs.streaming.mode"
+					value={outputs.streamMode || 'sse'}
+					segments={STREAM_MODE_SEGMENTS}
+					onChange={(mode) => {
+						set({ streamMode: mode === 'sse' ? '' : mode });
+					}}
+				/>
+				<SwitchRow
+					label="Thoughts"
+					path="outputs.streaming.streamThoughts"
+					value={outputs.streamThoughts}
+					onChange={(streamThoughts) => {
+						set({ streamThoughts });
+					}}
+				/>
+			</InspectorSection>
+		</>
+	);
+}
+
+const STOP_KIND_LABEL: Record<ContinueStopKind, string> = {
+	length: 'Length',
+	stream_incomplete: 'Dropped stream',
+	provider_error: 'Provider error',
+};
+
+/** Which stops a reply is continued after: `allow` offers a Continue, `auto` continues unasked. */
+interface Resumption {
+	allow: ContinueStopKind[];
+	auto: ContinueStopKind[];
+}
+
+/**
+ * The picks after one box of the grid changes. Continuing on its own implies it may be continued,
+ * so checking Auto checks Offer, and unchecking Offer unchecks Auto.
+ */
+function pickKind(
+	current: Resumption,
+	kind: ContinueStopKind,
+	column: 'offer' | 'auto',
+	checked: boolean,
+): Resumption {
+	const offer = column === 'offer' ? checked : checked || current.allow.includes(kind);
+	const auto = column === 'auto' ? checked : checked && current.auto.includes(kind);
+	const set = (kinds: ContinueStopKind[], on: boolean) =>
+		CONTINUE_STOP_KINDS.filter((candidate) =>
+			candidate === kind ? on : kinds.includes(candidate),
+		);
+	return { allow: set(current.allow, offer), auto: set(current.auto, auto) };
+}
+
+/**
+ * The trigger's tokens: each stop offered, a bolt on the ones that continue on their own, the
+ * first few shown and the rest counted, as the list rows do.
+ */
+function ResumptionTokens({ allow, auto }: Resumption) {
+	const maxBadges = useContext(ListBadges);
+	const rest = allow.length - maxBadges;
+	return (
+		<HStack gap={1} vAlign="center">
+			{allow.slice(0, maxBadges).map((kind) => (
+				<Token
+					key={kind}
+					size="sm"
+					label={STOP_KIND_LABEL[kind]}
+					icon={auto.includes(kind) ? <Icon icon={IconBolt} size="sm" /> : undefined}
+					description={auto.includes(kind) ? 'Continues on its own' : 'Offers Continue'}
+				/>
+			))}
+			{rest > 0 && <Token size="sm" label={`+${String(rest)}`} />}
+		</HStack>
+	);
+}
+
+/**
+ * Resumption as one picker, a checklist per stop kind. Picking anything turns resumption on, and
+ * clearing everything turns it off, so there is no separate switch.
+ */
+function ResumptionRow({
+	value,
+	onChange,
+}: {
+	value: Resumption;
+	onChange: (next: Resumption) => void;
+}) {
+	const kinds = fieldMeta('turnBehaviour.resumption.allowContinue')?.optionDescriptions;
+	const offerDoc = fieldMeta('turnBehaviour.resumption.allowContinue')?.doc;
+	const autoDoc = fieldMeta('turnBehaviour.resumption.autoContinue')?.doc;
+	return (
+		<InspectorRow label="Continue after" path="turnBehaviour.resumption">
+			<StackItem size="fill">
+				<ComplexSelector
+					label="Continue after"
+					isLabelHidden
+					size="sm"
+					placement="below"
+					value={value}
+					triggerLabel={value.allow.length ? <ResumptionTokens {...value} /> : undefined}
+					placeholder="Never"
+					onChange={onChange}
+				>
+					{(current, change) => {
+						const box = (kind: ContinueStopKind, column: 'offer' | 'auto') => (
+							<CheckboxInput
+								label={`${column === 'offer' ? 'Offer Continue' : 'Continue on its own'} after ${STOP_KIND_LABEL[kind].toLowerCase()}`}
+								isLabelHidden
+								value={(column === 'offer' ? current.allow : current.auto).includes(kind)}
+								onChange={(checked) => {
+									change(pickKind(current, kind, column, checked));
+								}}
+							/>
+						);
+						return (
+							<VStack width={280} padding={2}>
+								<Table
+									density="compact"
+									dividers="rows"
+									idKey="kind"
+									data={CONTINUE_STOP_KINDS.map((kind) => ({ kind }))}
+									columns={[
+										{
+											key: 'kind',
+											header: 'After',
+											width: proportional(1),
+											renderCell: ({ kind }) => (
+												<Tooltip content={kinds?.[kind]}>{STOP_KIND_LABEL[kind]}</Tooltip>
+											),
+										},
+										{
+											key: 'offer',
+											header: <Tooltip content={offerDoc}>Offer</Tooltip>,
+											width: pixel(64),
+											align: 'center',
+											renderCell: ({ kind }) => box(kind, 'offer'),
+										},
+										{
+											key: 'auto',
+											header: <Tooltip content={autoDoc}>Auto</Tooltip>,
+											width: pixel(64),
+											align: 'center',
+											renderCell: ({ kind }) => box(kind, 'auto'),
+										},
+									]}
+								/>
+							</VStack>
+						);
+					}}
+				</ComplexSelector>
+			</StackItem>
+		</InspectorRow>
+	);
+}
+
+function TurnBehaviourEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+	const turn = draft.turnBehaviour;
+	const set = patch(setDraft, 'turnBehaviour');
+	return (
+		<>
+			{draftAllows(draft, 'turnBehaviour.resumption') && (
+				<InspectorSection title="Resumption" note="Picks a reply back up after it stops short.">
+					<ResumptionRow
+						value={
+							turn.resumeEnabled
+								? { allow: turn.allowContinue, auto: turn.autoContinue }
+								: { allow: [], auto: [] }
+						}
+						onChange={({ allow, auto }) => {
+							set({ resumeEnabled: allow.length > 0, allowContinue: allow, autoContinue: auto });
+						}}
+					/>
+					{turn.resumeEnabled && (
+						<>
+							<NumberRow
+								label="Max rounds"
+								path="turnBehaviour.resumption.maxContinues"
+								units="rounds"
+								field="maxContinues"
+								value={turn.maxContinues}
+								min={1}
+								isIntegerOnly
+								onChange={(maxContinues) => {
+									set({ maxContinues });
+								}}
+							/>
+							{takesContinueInstruction(draft) && (
+								<TextAreaRow
+									label="Instruction"
+									path="lexicon.*"
+									field="continueInstruction"
+									value={turn.continueInstruction}
+									placeholder={lexiconDefault('continue.instruction')}
+									onChange={(continueInstruction) => {
+										set({ continueInstruction });
+									}}
+								/>
+							)}
+						</>
+					)}
+				</InspectorSection>
+			)}
+			{draftAllows(draft, 'turnBehaviour.allowSteering') && (
+				<InspectorSection title="Steering" note="Lets you add to a turn while it runs.">
+					<SwitchRow
+						label="Steering"
+						path="turnBehaviour.allowSteering"
+						value={turn.allowSteering}
+						onChange={(allowSteering) => {
+							set({ allowSteering });
+						}}
+					/>
+				</InspectorSection>
+			)}
+		</>
+	);
+}
+
+/** The kernel repairs when on-block is left out, so repair stands for the unset pin. */
+const ON_BLOCK_SEGMENTS: Segment<EgressOnBlock>[] = [
+	{ value: 'reject_to_agent', label: 'Repair', icon: IconRefresh },
+	{ value: 'refuse_to_user', label: 'Refuse', icon: IconHandStop },
+];
+
+function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+	const { guardrails } = draft;
+	const set = patch(setDraft, 'guardrails');
+	return (
+		<>
+			<InspectorSection title="Input" note="Applied to what comes in before the model sees it.">
+				<SwitchRow
+					label="Sanitize"
+					path="guardrails.sanitizeInput"
+					value={guardrails.sanitizeInput}
+					onChange={(sanitizeInput) => {
+						set({ sanitizeInput });
+					}}
+				/>
+				<SwitchRow
+					label="Redact"
+					path="guardrails.redactSensitive"
+					value={guardrails.redactSensitive}
+					onChange={(redactSensitive) => {
+						set({ redactSensitive });
+					}}
+				/>
+			</InspectorSection>
+			{draftAllows(draft, 'guardrails.canary') && (
+				<InspectorSection
+					title="Canary"
+					note="A fresh token in each turn's system prompt, so a leaked prompt shows."
+				>
+					<SwitchRow
+						label="Canary"
+						path="guardrails.canary"
+						value={guardrails.canary}
+						onChange={(canary) => {
+							set({ canary });
+						}}
+					/>
+					{guardrails.canary && (
+						<TextAreaRow
+							label="Bind note"
+							path="lexicon.*"
+							field="canaryBindNote"
+							value={guardrails.canaryBindNote}
+							placeholder={lexiconDefault('canary.bind_note')}
+							onChange={(canaryBindNote) => {
+								set({ canaryBindNote });
+							}}
+						/>
+					)}
+				</InspectorSection>
+			)}
+			<InspectorSection title="Egress" note="Checks each reply before anyone sees it.">
+				<SwitchRow
+					label="Enforce"
+					path="guardrails.egress.enforce"
+					value={guardrails.egressEnabled}
+					onChange={(egressEnabled) => {
+						set({ egressEnabled });
+					}}
+				/>
+				{guardrails.egressEnabled && (
+					<>
+						<SegmentedRow
+							label="On block"
+							path="guardrails.egress.onBlock"
+							value={guardrails.egressOnBlock || 'reject_to_agent'}
+							segments={ON_BLOCK_SEGMENTS}
+							onChange={(onBlock) => {
+								set({ egressOnBlock: onBlock === 'reject_to_agent' ? '' : onBlock });
+							}}
+						/>
+						{guardrails.egressOnBlock === '' && (
+							<>
+								<NumberRow
+									label="Retries"
+									path="guardrails.egress.maxRetries"
+									units="retries"
+									field="egressMaxRetries"
+									value={guardrails.egressMaxRetries}
+									min={0}
+									isIntegerOnly
+									onChange={(egressMaxRetries) => {
+										set({ egressMaxRetries });
+									}}
+								/>
+								<TextAreaRow
+									label="Guidance"
+									path="lexicon.*"
+									field="egressRepairGuidance"
+									value={guardrails.egressRepairGuidance}
+									placeholder={lexiconDefault('egress.default_repair_guidance')}
+									onChange={(egressRepairGuidance) => {
+										set({ egressRepairGuidance });
+									}}
+								/>
+							</>
+						)}
+						<NumberRow
+							label="Holdback"
+							path="guardrails.egress.holdback"
+							field="egressHoldback"
+							value={guardrails.egressHoldback}
+							min={0}
+							units="chars"
+							isIntegerOnly
+							onChange={(egressHoldback) => {
+								set({ egressHoldback });
+							}}
+						/>
+					</>
+				)}
+			</InspectorSection>
+			<InspectorSection title="Network" note="Where HTTP and MCP tools may reach.">
+				<SwitchRow
+					label="Private"
+					path="guardrails.network.allowPrivateNetworks"
+					value={guardrails.allowPrivateNetworks}
+					onChange={(allowPrivateNetworks) => {
+						set({ allowPrivateNetworks });
+					}}
+				/>
+				<NamesRow
+					label="Exempt hosts"
+					path="guardrails.network.allowedHosts"
+					field="allowedHosts"
+					value={guardrails.allowedHosts}
+					placeholder="None: private hosts stay blocked"
+					isDisabled={guardrails.allowPrivateNetworks}
+					disabledMessage="Every private host is already allowed."
+					onChange={(allowedHosts) => {
+						set({ allowedHosts });
+					}}
+				/>
+			</InspectorSection>
+			<InspectorSection
+				title="Quota"
+				note="Your host enforces this. Playground runs aren't counted against it."
+			>
+				<SwitchRow
+					label="Daily cap"
+					path="guardrails.quota"
+					value={guardrails.quotaEnabled}
+					onChange={(quotaEnabled) => {
+						set({ quotaEnabled });
+					}}
+				/>
+				{guardrails.quotaEnabled && (
+					<>
+						<NumberRow
+							label="Per day"
+							path="guardrails.quota.perDay"
+							field="quotaPerDay"
+							isRequired
+							value={guardrails.quotaPerDay}
+							min={1}
+							units="turns"
+							isIntegerOnly
+							onChange={(quotaPerDay) => {
+								set({ quotaPerDay });
+							}}
+						/>
+						<TextAreaRow
+							label="Message"
+							path="lexicon.*"
+							field="quotaMessage"
+							value={guardrails.quotaMessage}
+							placeholder={lexiconDefault('quota.exhausted', {
+								perDay: guardrails.quotaPerDay ?? '{perDay}',
+							})}
+							onChange={(quotaMessage) => {
+								set({ quotaMessage });
+							}}
+						/>
+					</>
+				)}
+			</InspectorSection>
+		</>
+	);
+}
+
+const TRACE_SEGMENTS: Segment<'playground' | 'off'>[] = [
+	{ value: 'playground', label: 'Playground', icon: IconFlask },
+	{ value: 'off', label: 'Off', icon: IconEyeOff },
+];
+
+/** One flag of a set, with what turning it on means. */
+interface Flag<K extends string> {
+	key: K;
+	label: string;
+	description: string;
+}
+
+const INCLUDE_FLAGS: Flag<keyof ObservabilityDraft['include']>[] = [
+	{ key: 'upstreamLog', label: 'Upstream log', description: 'Each provider row as it arrived.' },
+	{
+		key: 'outboundWire',
+		label: 'Outbound wire',
+		description: 'The request body sent on each try.',
+	},
+	{
+		key: 'evidenceRaw',
+		label: 'Raw evidence',
+		description: "The provider's own grounding payload.",
+	},
+	{ key: 'usage', label: 'Usage', description: 'Token counts.' },
+	{ key: 'guardrailDecisions', label: 'Decisions', description: 'What each guardrail decided.' },
+	{
+		key: 'guardrailMatchPreview',
+		label: 'Match preview',
+		description: 'The text a guardrail matched. For debugging.',
+	},
+];
+
+const SCRUB_FLAGS: Flag<keyof ObservabilityDraft['scrub']>[] = [
+	{ key: 'sensitive', label: 'Sensitive', description: 'Credentials and personal details.' },
+	{
+		key: 'injection',
+		label: 'Injection',
+		description: 'Injection attempts in the stored request.',
+	},
+	{ key: 'canary', label: 'Canary', description: "The turn's canary token." },
+];
+
+/** A set of on-or-off flags as one checklist: the ones on are checked. */
+function FlagList<K extends string>({
+	label,
+	path,
+	flags,
+	value,
+	onChange,
+}: {
+	label: string;
+	/** The schema path the flags sit under; each flag's own entry shows on hover. */
+	path: string;
+	flags: readonly Flag<K>[];
+	value: Record<K, boolean>;
+	onChange: (next: Record<K, boolean>) => void;
+}) {
+	return (
+		<CheckboxList
+			label={label}
+			isLabelHidden
+			density="compact"
+			value={flags.filter((flag) => value[flag.key]).map((flag) => flag.key)}
+			onChange={(checked) => {
+				const next = { ...value };
+				for (const flag of flags) next[flag.key] = checked.includes(flag.key);
+				onChange(next);
+			}}
+		>
+			{flags.map((flag) => (
+				<CheckboxListItem
+					key={flag.key}
+					value={flag.key}
+					label={<Tooltip content={fieldMeta(`${path}.${flag.key}`)?.doc}>{flag.label}</Tooltip>}
+					description={flag.description}
+				/>
+			))}
+		</CheckboxList>
+	);
+}
+
+const PERCENT = new Intl.NumberFormat('en-US', { style: 'percent' });
+
+/**
+ * Where traces go and what they keep. Retention and rotation have no rows: the playground's
+ * destination stores nothing, and rotation is only for JSONL files.
+ */
+function ObservabilityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+	const { observability } = draft;
+	const set = patch(setDraft, 'observability');
+	const on = observability.writeTo !== false;
+	return (
+		<>
+			<InspectorSection title="Traces" note="Each run's trace comes back on its own stream.">
+				<SegmentedRow
+					label="Write to"
+					path="observability.writeTo"
+					value={on ? 'playground' : 'off'}
+					segments={TRACE_SEGMENTS}
+					onChange={(segment) => {
+						set({ writeTo: segment === 'off' ? false : PLAYGROUND_TRACE_DESTINATION });
+					}}
+				/>
+				{on && (
+					<SliderRow
+						label="Sample"
+						path="observability.sampleRate"
+						field="sampleRate"
+						value={observability.sampleRate}
+						min={0}
+						max={1}
+						step={0.05}
+						format={(rate) => PERCENT.format(rate)}
+						onChange={(sampleRate) => {
+							set({ sampleRate });
+						}}
+					/>
+				)}
+			</InspectorSection>
+			{on && (
+				<>
+					<InspectorSection title="Keep" note="What each trace holds.">
+						<FlagList
+							label="Keep"
+							path="observability.include"
+							flags={INCLUDE_FLAGS}
+							value={observability.include}
+							onChange={(include) => {
+								set({ include });
+							}}
+						/>
+					</InspectorSection>
+					<InspectorSection title="Scrub" note="Stripped before a trace is stored.">
+						<FlagList
+							label="Scrub"
+							path="observability.scrub"
+							flags={SCRUB_FLAGS}
+							value={observability.scrub}
+							onChange={(scrub) => {
+								set({ scrub });
+							}}
+						/>
+					</InspectorSection>
+				</>
+			)}
+		</>
+	);
+}
+
+/** Each custom tool type's icon: the Type control's segments and the tree's tool rows. */
+export const TOOL_TYPE_ICON = {
+	function: IconMathFunction,
+	http: IconWorld,
+	mcp: IconMcp,
+} satisfies Record<CustomToolType, IconType>;
+
+const TOOL_TYPE_SEGMENTS: Segment<CustomToolType>[] = [
+	{ value: 'function', label: 'Function', icon: TOOL_TYPE_ICON.function },
+	{ value: 'http', label: 'HTTP', icon: TOOL_TYPE_ICON.http },
+	{ value: 'mcp', label: 'MCP', icon: TOOL_TYPE_ICON.mcp },
+];
+
+const ACCESS_SEGMENTS: Segment<ToolAccess>[] = [
+	{ value: 'read-only', label: 'Read only', icon: IconEye },
+	{ value: 'read-write', label: 'Read and write', icon: IconPencil },
+	{ value: 'destructive', label: 'Destructive', icon: IconFlame },
+];
+
+const PERMISSION_SEGMENTS: Segment<ToolPermission>[] = [
+	{ value: 'auto', label: 'Runs', icon: IconPlayerPlay },
+	{ value: 'session_consent', label: 'Once a session', icon: IconUserCheck },
+	{ value: 'always_confirm', label: 'Every call', icon: IconHandStop },
+];
+
+const LOAD_TIER_SEGMENTS: Segment<ToolLoadTier>[] = [
+	{ value: 'T0', label: 'T0', icon: IconSquareRoundedNumber0 },
+	{ value: 'T1', label: 'T1', icon: IconSquareRoundedNumber1 },
+	{ value: 'T2', label: 'T2', icon: IconSquareRoundedNumber2 },
+];
+
+const AUTH_TYPE_SEGMENTS: Segment<PlaygroundAuthType>[] = [
+	{ value: 'none', label: 'None', icon: IconLockOpen },
+	{ value: 'bearer', label: 'Bearer', icon: IconCertificate },
+	{ value: 'api_key', label: 'API key', icon: IconKey },
+	{ value: 'oauth2', label: 'OAuth 2', icon: IconShieldLock },
+];
+
+const UNAUTHENTICATED_SEGMENTS: Segment<AuthUnauthenticatedPolicy>[] = [
+	{ value: 'pause', label: 'Stop the turn', icon: IconPlayerPause },
+	{ value: 'report_to_model', label: 'Tell the model', icon: IconMessage },
+];
+
+/** The prefix the kernel puts before the credential when none is set, by auth type. */
+const AUTH_HEADER_PREFIX: Record<Exclude<PlaygroundAuthType, 'none'>, string> = {
+	bearer: 'Bearer ',
+	api_key: '',
+	oauth2: 'Bearer ',
+};
+
+/**
+ * Why a tool on `tier` never loads on this draft: text and image turns wire T1 tools only through a
+ * T1 policy, which the playground can't write, and T2 tools only through the T2 loader.
+ */
+function loadTierWarning(draft: PlaygroundDraft, tier: ToolLoadTier): string | undefined {
+	if (tier === 'T1' && draftAllows(draft, 'tools.t1Policy')) {
+		return 'The playground has no T1 policy, so this tool never loads.';
+	}
+	if (tier === 'T2' && draftAllows(draft, 'tools.t2Loader') && !draft.tools.t2Loader.trim()) {
+		return 'No T2 loader is set under Tools, so this tool never loads.';
+	}
+	return undefined;
+}
+
+const HEADERS_PLACEHOLDER = `{
+  "Accept": "application/json"
+}`;
+
+/** The tools, each opening its own editor, and the T2 loader. */
+function ToolsEditor({
+	draft,
+	setDraft,
+	onSelect,
+}: {
+	draft: PlaygroundDraft;
+	setDraft: SetDraft;
+	onSelect: (id: string) => void;
+}) {
+	const set = patch(setDraft, 'tools');
+	const loaders = draft.toolSpecs
+		.filter((tool) => tool.toolType === 'function')
+		.map((tool) => tool.toolName.trim())
+		.filter(Boolean);
+	return (
+		<>
+			<InspectorSection
+				title="Tools"
+				note="What the agent can call. Built-in tools are turned on per model."
+			>
+				{draft.toolSpecs.length > 0 && (
+					<List density="compact">
+						{draft.toolSpecs.map((tool) => (
+							<ListItem
+								key={tool.key}
+								label={tool.toolName.trim() || 'Unnamed tool'}
+								description={tool.description.trim() || undefined}
+								startContent={
+									<Icon icon={TOOL_TYPE_ICON[tool.toolType]} size="sm" color="secondary" />
+								}
+								endContent={<Token label={tool.loadTier} size="sm" />}
+								onClick={() => {
+									onSelect(toolSpecNodeId(tool.key));
+								}}
+							/>
+						))}
+					</List>
+				)}
+				<Button
+					label="Add tool"
+					variant="ghost"
+					size="sm"
+					icon={<Icon icon={IconPlus} size="sm" />}
+					onClick={() => {
+						const tool = newToolSpec(draft);
+						setDraft((current) => ({ ...current, toolSpecs: [...current.toolSpecs, tool] }));
+						onSelect(toolSpecNodeId(tool.key));
+					}}
+				/>
+			</InspectorSection>
+			{draftAllows(draft, 'tools.t2Loader') && (
+				<InspectorSection
+					title="Loading"
+					note="A T2 tool stays hidden until the loader, a function tool, names it."
+				>
+					<ChoiceRow
+						label="T2 loader"
+						path="tools.t2Loader"
+						field="t2Loader"
+						value={draft.tools.t2Loader}
+						options={loaders}
+						onChange={(t2Loader) => {
+							set({ t2Loader });
+						}}
+					/>
+				</InspectorSection>
+			)}
+		</>
+	);
+}
+
+/** What the test-connection route answers: an HTTP response, or an MCP server's tool list. */
+interface ProbeResult {
+	ok: boolean;
+	status?: number;
+	statusText?: string;
+	error?: string;
+	preview?: string;
+	elapsedMs?: number;
+	tools?: string[];
+	targetToolFound?: boolean;
+}
+
+/** A JSON object typed into the test, or why it isn't one. Blank is `undefined`. */
+function parseObject(
+	raw: string,
+	label: string,
+): { value?: Record<string, unknown>; error?: string } {
+	if (!raw.trim()) return {};
+	try {
+		const parsed: unknown = JSON.parse(raw);
+		if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+			return { value: parsed as Record<string, unknown> };
+		}
+	} catch {
+		// Falls through to the error below.
+	}
+	return { error: `${label} must be a JSON object.` };
+}
+
+/** The test-connection request for `tool`, under the draft's network guardrails. */
+function probeRequest(
+	draft: PlaygroundDraft,
+	tool: ToolSpecDraft,
+	sampleInput: string,
+	credential: string,
+): { body?: Record<string, unknown>; error?: string } {
+	const headers = parseObject(tool.headersJson ?? '', 'Headers');
+	if (headers.error) return { error: headers.error };
+	const authType = tool.authType ?? 'none';
+	const shared = {
+		headers: headers.value,
+		...(authType === 'none'
+			? {}
+			: {
+					auth: {
+						type: authType,
+						headerName: tool.authHeaderName,
+						headerPrefix: tool.authHeaderPrefix,
+					},
+					testCredential: credential || undefined,
+				}),
+		allowPrivateNetworks: draft.guardrails.allowPrivateNetworks,
+		allowedHosts: draft.guardrails.allowedHosts,
+	};
+	if (tool.toolType === 'mcp') {
+		return {
+			body: {
+				type: 'mcp',
+				serverUrl: tool.serverUrl ?? '',
+				mcpToolName: tool.mcpToolName,
+				...shared,
+			},
+		};
+	}
+	const input = parseObject(sampleInput, 'Sample input');
+	if (input.error) return { error: input.error };
+	return {
+		body: {
+			type: 'http',
+			endpoint: tool.endpoint ?? '',
+			method: tool.method ?? HTTP_METHODS[0],
+			pathParams: tool.pathParams,
+			queryParams: tool.queryParams,
+			bodyParam: tool.bodyParam,
+			sampleInput: input.value,
+			...shared,
+		},
+	};
+}
+
+const MS = new Intl.NumberFormat('en-US', { style: 'unit', unit: 'millisecond' });
+
+/** The result's headline: the status line, or for an MCP server, what it offers. */
+function probeTitle(result: ProbeResult, tool: ToolSpecDraft): string {
+	const took = result.elapsedMs === undefined ? '' : ` · ${MS.format(result.elapsedMs)}`;
+	if (!result.ok && result.error) return result.error;
+	if (tool.toolType === 'mcp' && result.tools) {
+		// The route only checks for the remote tool when one is named.
+		const name = tool.mcpToolName?.trim() ?? '';
+		if (result.targetToolFound === false) return `Connected, but the server has no ${name}${took}`;
+		if (result.targetToolFound) return `Connected, and ${name} is there${took}`;
+		return `Connected: ${String(result.tools.length)} tools${took}`;
+	}
+	return `${String(result.status ?? '')} ${result.statusText ?? ''}`.trim() + took;
+}
+
+/**
+ * Tries the tool's endpoint or MCP server once, from the server, under the draft's network
+ * guardrails. The sample input and credential live here only: neither is saved to the draft.
+ */
+function ToolTest({ draft, tool }: { draft: PlaygroundDraft; tool: ToolSpecDraft }) {
+	/** What the user typed; until then, the sample for the tool, which follows its input schema. */
+	const [typedInput, setTypedInput] = useState<string>();
+	const sample = sampleToolInput(tool.toolName, tool.inputJson);
+	const sampleInput = typedInput ?? (sample ? JSON.stringify(sample, null, 2) : '');
+	const [credential, setCredential] = useState('');
+	const [pending, setPending] = useState(false);
+	const [result, setResult] = useState<ProbeResult>();
+	const http = tool.toolType === 'http';
+	const method = tool.method ?? HTTP_METHODS[0];
+
+	const run = async () => {
+		const request = probeRequest(draft, tool, sampleInput, credential);
+		if (!request.body) {
+			setResult({ ok: false, error: request.error });
+			return;
+		}
+		setPending(true);
+		try {
+			const response = await fetch('/api/playground/test-connection', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(request.body),
+			});
+			setResult(await response.json<ProbeResult>());
+		} catch {
+			setResult({ ok: false, error: "Couldn't reach the playground server." });
+		} finally {
+			setPending(false);
+		}
+	};
+
+	const warned = result?.ok && result.targetToolFound === false;
+	return (
+		<InspectorSection
+			title="Test"
+			note={
+				http
+					? `Sends one real ${method} request with the sample input.`
+					: 'Asks the server which tools it has.'
+			}
+		>
+			{http && (
+				<TextAreaRow
+					label="Sample input"
+					path="playground.sampleInput"
+					value={sampleInput}
+					rows={4}
+					hasSpellCheck={false}
+					placeholder="{}"
+					onChange={setTypedInput}
+				/>
+			)}
+			{(tool.authType ?? 'none') !== 'none' && (
+				<InspectorRow label="Credential" path="playground.testCredential">
+					<StackItem size="fill">
+						<TextInput
+							label="Credential"
+							isLabelHidden
+							size="sm"
+							type="password"
+							autoComplete="off"
+							value={credential}
+							placeholder="Used once, never saved"
+							onChange={setCredential}
+						/>
+					</StackItem>
+				</InspectorRow>
+			)}
+			<HStack>
+				<Button
+					label="Test connection"
+					variant="secondary"
+					size="sm"
+					icon={<Icon icon={IconPlugConnected} size="sm" />}
+					isLoading={pending}
+					onClick={() => {
+						void run();
+					}}
+				/>
+			</HStack>
+			{result && (
+				<Banner
+					status={warned ? 'warning' : result.ok ? 'success' : 'error'}
+					title={probeTitle(result, tool)}
+					description={
+						result.tools?.length ? (
+							<HStack gap={1} wrap="wrap">
+								{result.tools.map((name) => (
+									<Token key={name} label={name} size="sm" />
+								))}
+							</HStack>
+						) : result.preview ? (
+							<CodeBlock
+								code={result.preview}
+								language={result.preview.trimStart().startsWith('{') ? 'json' : 'text'}
+								hasLanguageLabel={false}
+								isWrapped
+								size="sm"
+								maxHeight={200}
+							/>
+						) : undefined
+					}
+				/>
+			)}
+		</InspectorSection>
+	);
+}
+
+function ToolSpecEditor({
+	draft,
+	setDraft,
+	toolKey,
+	onSelect,
+}: {
+	draft: PlaygroundDraft;
+	setDraft: SetDraft;
+	toolKey: string;
+	onSelect: (id: string) => void;
+}) {
+	const tool = draft.toolSpecs.find((candidate) => candidate.key === toolKey);
+	if (!tool) return null;
+	const set = (change: Partial<ToolSpecDraft>) => {
+		setDraft((current) => ({
+			...current,
+			toolSpecs: current.toolSpecs.map((candidate) =>
+				candidate.key === toolKey ? { ...candidate, ...change } : candidate,
+			),
+		}));
+	};
+	const remote = tool.toolType !== 'function';
+	const authType = tool.authType ?? 'none';
+	// HTTP and MCP tools both send static headers.
+	const headersRow = (
+		<TextAreaRow
+			label="Headers"
+			path="headers"
+			field="headersJson"
+			value={tool.headersJson ?? ''}
+			rows={4}
+			hasSpellCheck={false}
+			placeholder={HEADERS_PLACEHOLDER}
+			onChange={(headersJson) => {
+				set({ headersJson });
+			}}
+		/>
+	);
+
+	return (
+		<>
+			<InspectorSection title="Tool" note="What the model calls, and what it's told the tool does.">
+				<TextRow
+					label="Name"
+					path="name"
+					field="toolName"
+					isRequired
+					value={tool.toolName}
+					placeholder="search_flights"
+					onChange={(toolName) => {
+						// The T2 loader names this tool, so it follows the rename.
+						setDraft((current) => ({
+							...current,
+							tools:
+								current.tools.t2Loader === tool.toolName.trim()
+									? { ...current.tools, t2Loader: toolName.trim() }
+									: current.tools,
+							toolSpecs: current.toolSpecs.map((candidate) =>
+								candidate.key === toolKey ? { ...candidate, toolName } : candidate,
+							),
+						}));
+					}}
+				/>
+				<SegmentedRow
+					label="Type"
+					path="registerTool.type"
+					field="toolType"
+					value={tool.toolType}
+					segments={TOOL_TYPE_SEGMENTS}
+					onChange={(toolType) => {
+						set({ toolType });
+					}}
+				/>
+				<TextAreaRow
+					label="Description"
+					path="description"
+					field="description"
+					isRequired
+					value={tool.description}
+					placeholder="Finds flights between two airports on a date."
+					onChange={(description) => {
+						set({ description });
+					}}
+				/>
+				<TextRow
+					label="Category"
+					path="category"
+					field="category"
+					value={tool.category}
+					placeholder="playground"
+					onChange={(category) => {
+						set({ category });
+					}}
+				/>
+			</InspectorSection>
+			<InspectorSection title="Contract" note="What it takes and gives back, as JSON Schema.">
+				<TextAreaRow
+					label="Input"
+					path="playground.inputSchema"
+					field="inputJson"
+					value={tool.inputJson}
+					rows={8}
+					hasSpellCheck={false}
+					onChange={(inputJson) => {
+						set({ inputJson });
+					}}
+				/>
+				<TextAreaRow
+					label="Output"
+					path="playground.outputSchema"
+					field="outputJson"
+					value={tool.outputJson}
+					rows={8}
+					hasSpellCheck={false}
+					onChange={(outputJson) => {
+						set({ outputJson });
+					}}
+				/>
+			</InspectorSection>
+			{tool.toolType === 'function' && (
+				<InspectorSection
+					title="Stub"
+					note="The playground has no code to run, so a function tool answers with this."
+				>
+					<TextAreaRow
+						label="Returns"
+						path="playground.stubOutput"
+						field="stubOutputJson"
+						value={tool.stubOutputJson ?? ''}
+						rows={6}
+						hasSpellCheck={false}
+						placeholder="Left blank, a stand-in built from the output schema."
+						onChange={(stubOutputJson) => {
+							set({ stubOutputJson });
+						}}
+					/>
+				</InspectorSection>
+			)}
+			{tool.toolType === 'http' && (
+				<>
+					<InspectorSection
+						title="Request"
+						note="Where each call goes. Headers are saved in the profile, so keep secrets under Auth."
+					>
+						<TextRow
+							label="Endpoint"
+							path="endpoint"
+							field="endpoint"
+							isRequired
+							value={tool.endpoint ?? ''}
+							placeholder="https://api.example.com/flights/{id}"
+							onChange={(endpoint) => {
+								set({ endpoint });
+							}}
+						/>
+						<ChoiceRow<HttpMethod>
+							label="Method"
+							path="method"
+							field="method"
+							value={tool.method ?? HTTP_METHODS[0]}
+							options={HTTP_METHODS}
+							onChange={(method) => {
+								set({ method: method || undefined });
+							}}
+						/>
+						{headersRow}
+					</InspectorSection>
+					<InspectorSection title="Mapping" note="Which input fields fill the URL and the body.">
+						<NamesRow
+							label="Path"
+							path="mapping.pathParams"
+							field="pathParams"
+							value={tool.pathParams ?? []}
+							placeholder="Names in {braces}"
+							onChange={(pathParams) => {
+								set({ pathParams });
+							}}
+						/>
+						<NamesRow
+							label="Query"
+							path="mapping.queryParams"
+							field="queryParams"
+							value={tool.queryParams ?? []}
+							placeholder="None"
+							onChange={(queryParams) => {
+								set({ queryParams });
+							}}
+						/>
+						<TextRow
+							label="Body"
+							path="mapping.bodyParam"
+							field="bodyParam"
+							value={tool.bodyParam ?? ''}
+							placeholder="None"
+							onChange={(bodyParam) => {
+								set({ bodyParam });
+							}}
+						/>
+					</InspectorSection>
+				</>
+			)}
+			{tool.toolType === 'mcp' && (
+				<InspectorSection
+					title="Server"
+					note="The MCP server and the tool on it. Headers are saved in the profile, so keep secrets under Auth."
+				>
+					<TextRow
+						label="Server"
+						path="serverUrl"
+						field="serverUrl"
+						isRequired
+						value={tool.serverUrl ?? ''}
+						placeholder="https://mcp.example.com/mcp"
+						onChange={(serverUrl) => {
+							set({ serverUrl });
+						}}
+					/>
+					<TextRow
+						label="Remote tool"
+						path="mcpToolName"
+						field="mcpToolName"
+						isRequired
+						value={tool.mcpToolName ?? ''}
+						placeholder="search_flights"
+						onChange={(mcpToolName) => {
+							set({ mcpToolName });
+						}}
+					/>
+					{headersRow}
+				</InspectorSection>
+			)}
+			{remote && (
+				<InspectorSection
+					title="Auth"
+					note="The credential sent with each call. The playground holds none, so a tool that needs one can't sign in here."
+				>
+					<SegmentedRow
+						label="Type"
+						path="playground.authType"
+						field="authType"
+						value={authType}
+						segments={AUTH_TYPE_SEGMENTS}
+						onChange={(next) => {
+							set({ authType: next });
+						}}
+					/>
+					{authType !== 'none' && (
+						<>
+							<TextRow
+								label="Slot"
+								path="auth.slot"
+								field="authSlot"
+								value={tool.authSlot ?? ''}
+								placeholder="default"
+								onChange={(authSlot) => {
+									set({ authSlot });
+								}}
+							/>
+							<TextRow
+								label="Header"
+								path="auth.headerName"
+								field="authHeaderName"
+								value={tool.authHeaderName ?? ''}
+								placeholder="Authorization"
+								onChange={(authHeaderName) => {
+									set({ authHeaderName });
+								}}
+							/>
+							<TextRow
+								label="Prefix"
+								path="auth.headerPrefix"
+								field="authHeaderPrefix"
+								value={tool.authHeaderPrefix ?? ''}
+								placeholder={AUTH_HEADER_PREFIX[authType] || 'None'}
+								onChange={(prefix) => {
+									// Blank is the kernel's prefix for the type, which the placeholder shows.
+									set({ authHeaderPrefix: prefix || undefined });
+								}}
+							/>
+							<SegmentedRow
+								label="Signed out"
+								path="auth.onUnauthenticated"
+								field="authUnauthenticated"
+								value={tool.authUnauthenticated ?? 'pause'}
+								segments={UNAUTHENTICATED_SEGMENTS}
+								onChange={(authUnauthenticated) => {
+									set({ authUnauthenticated });
+								}}
+							/>
+						</>
+					)}
+					{authType === 'oauth2' && (
+						<>
+							<NamesRow
+								label="Scopes"
+								path="auth.scopes"
+								field="authScopes"
+								value={tool.authScopes ?? []}
+								placeholder="None"
+								onChange={(authScopes) => {
+									set({ authScopes });
+								}}
+							/>
+							<TextRow
+								label="Client id"
+								path="auth.clientId"
+								field="authClientId"
+								value={tool.authClientId ?? ''}
+								onChange={(authClientId) => {
+									set({ authClientId });
+								}}
+							/>
+							<TextRow
+								label="Redirect"
+								path="auth.redirectUri"
+								field="authRedirectUri"
+								value={tool.authRedirectUri ?? ''}
+								placeholder="https://example.com/oauth/callback"
+								onChange={(authRedirectUri) => {
+									set({ authRedirectUri });
+								}}
+							/>
+						</>
+					)}
+				</InspectorSection>
+			)}
+			{remote && <ToolTest key={tool.key} draft={draft} tool={tool} />}
+			<InspectorSection
+				title="Policy"
+				note="What it may change, when it asks first, and when the model sees it."
+			>
+				<SegmentedRow
+					label="Access"
+					path="access"
+					field="access"
+					value={tool.access}
+					segments={ACCESS_SEGMENTS}
+					onChange={(access) => {
+						set({ access });
+					}}
+				/>
+				<SegmentedRow
+					label="Permission"
+					path="permission"
+					field="permission"
+					value={tool.permission}
+					segments={PERMISSION_SEGMENTS}
+					onChange={(permission) => {
+						set({ permission });
+					}}
+				/>
+				<SegmentedRow
+					label="Load tier"
+					path="loadTier"
+					field="loadTier"
+					value={tool.loadTier}
+					segments={LOAD_TIER_SEGMENTS}
+					warning={loadTierWarning(draft, tool.loadTier)}
+					onChange={(loadTier) => {
+						set({ loadTier });
+					}}
+				/>
+				<NamesRow
+					label="Paths"
+					path="paths"
+					field="paths"
+					value={tool.paths}
+					placeholder="Every path (*)"
+					onChange={(paths) => {
+						set({ paths });
+					}}
+				/>
+			</InspectorSection>
+			<Section variant="transparent" padding={3}>
+				<Button
+					label="Remove tool"
+					variant="ghost"
+					size="sm"
+					icon={<Icon icon={IconTrash} size="sm" />}
+					onClick={() => {
+						setDraft((current) => ({
+							...current,
+							tools:
+								current.tools.t2Loader === tool.toolName.trim()
+									? { ...current.tools, t2Loader: '' }
+									: current.tools,
+							toolSpecs: current.toolSpecs.filter((candidate) => candidate.key !== toolKey),
+						}));
+						onSelect('tools');
+					}}
+				/>
+			</Section>
+		</>
+	);
+}
+
 /**
  * The editor for the tree node `selectedId`. The compile's issues for that node show on the rows
  * of the fields they name; the rest, and all of them for a node with no editor yet, show above it.
@@ -1020,11 +2512,14 @@ export function ProfileEditor({
 	draft,
 	setDraft,
 	selectedId,
+	onSelect,
 	issues,
 }: {
 	draft: PlaygroundDraft;
 	setDraft: SetDraft;
 	selectedId: string;
+	/** Selects another tree node: a tool, once added or picked from the list, or Tools once removed. */
+	onSelect: (id: string) => void;
 	issues: readonly PlaygroundIssue[];
 }) {
 	const ref = playgroundNodeRef(draft, selectedId);
@@ -1044,6 +2539,12 @@ export function ProfileEditor({
 		case 'modelBinding':
 			editor = <ModelBindingEditor {...props} bindingKey={ref.key} />;
 			break;
+		case 'tools':
+			editor = <ToolsEditor {...props} onSelect={onSelect} />;
+			break;
+		case 'toolSpec':
+			editor = <ToolSpecEditor {...props} toolKey={ref.key} onSelect={onSelect} />;
+			break;
 		case 'inputs':
 			editor = <InputsEditor {...props} />;
 			break;
@@ -1055,6 +2556,18 @@ export function ProfileEditor({
 			break;
 		case 'live':
 			editor = <LiveEditor {...props} />;
+			break;
+		case 'outputs':
+			editor = <OutputsEditor {...props} />;
+			break;
+		case 'turnBehaviour':
+			editor = <TurnBehaviourEditor {...props} />;
+			break;
+		case 'guardrails':
+			editor = <GuardrailsEditor {...props} />;
+			break;
+		case 'observability':
+			editor = <ObservabilityEditor {...props} />;
 			break;
 		default:
 			hasRows = false;

@@ -3,18 +3,23 @@ import { FieldStatus } from '@astryxdesign/core/FieldStatus';
 import { HoverCard } from '@astryxdesign/core/HoverCard';
 import { HStack } from '@astryxdesign/core/HStack';
 import { Icon, type IconType } from '@astryxdesign/core/Icon';
+import { IconButton } from '@astryxdesign/core/IconButton';
 import { MultiSelector } from '@astryxdesign/core/MultiSelector';
 import { NumberInput } from '@astryxdesign/core/NumberInput';
 import { Section } from '@astryxdesign/core/Section';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { Selector, type SelectorOptionType } from '@astryxdesign/core/Selector';
+import { Slider } from '@astryxdesign/core/Slider';
 import { StackItem } from '@astryxdesign/core/Stack';
 import { Switch } from '@astryxdesign/core/Switch';
 import { Text } from '@astryxdesign/core/Text';
+import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Token } from '@astryxdesign/core/Token';
+import { Tokenizer } from '@astryxdesign/core/Tokenizer';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
+import { IconArrowBackUp } from '@tabler/icons-react';
 import { fieldMeta } from '@theoremai/agents';
 import { PLAYGROUND_PROFILE_TYPES, type PlaygroundIssue } from '@theoremai/playground';
 import { createContext, type ReactNode, useContext, useId } from 'react';
@@ -64,15 +69,27 @@ export const ISSUE_ROW_ATTRIBUTE = 'data-issue';
 
 /**
  * A captioned group of rows. The panel stays at zero padding and each section carries the gutter.
- * Transparent, so the panel's own surface shows through.
+ * Transparent, so the panel's own surface shows through. `note` says in a line what the whole
+ * group is for, or what the playground does differently with it.
  */
-export function InspectorSection({ title, children }: { title: string; children: ReactNode }) {
+export function InspectorSection({
+	title,
+	note,
+	children,
+}: {
+	title: string;
+	note?: string;
+	children: ReactNode;
+}) {
 	return (
 		<Section variant="transparent" padding={3}>
 			<VStack gap={3}>
-				<Text type="label" weight="semibold">
-					{title}
-				</Text>
+				<VStack gap={1}>
+					<Text type="label" weight="semibold">
+						{title}
+					</Text>
+					{note && <Text type="supporting">{note}</Text>}
+				</VStack>
 				{children}
 			</VStack>
 		</Section>
@@ -170,96 +187,197 @@ export function InspectorRow({
 }
 
 /** Says whether the row's field is required now, for one required only in some cases. */
-type IsRequired = { isRequired?: boolean };
+export type IsRequired = { isRequired?: boolean };
 
-/** Free text. An optional field left blank shows what leaving it out does, unless `placeholder` is an example. */
-export function TextRow({
-	label,
-	path,
-	field,
-	value,
-	placeholder,
-	isRequired,
-	onChange,
-}: {
+/** What a field row takes: its label, its catalog path, and the draft field whose issues show on it. */
+export type FieldRowProps = {
 	label: string;
 	path: string;
 	/** The draft field whose issues show on this row. */
 	field?: string;
-	value: string;
-	placeholder?: string;
-	onChange: (next: string) => void;
-} & IsRequired) {
+} & IsRequired;
+
+/**
+ * A field row's issue status and presence, and the props its one control shares: labelled but with
+ * the label hidden, since the row shows it.
+ */
+function useFieldRow({ label, path, field, isRequired }: FieldRowProps) {
 	const status = useFieldStatus()(field);
 	const { required, unset } = presence(path, isRequired);
+	const control = { label, status, isLabelHidden: true, isRequired: required, size: 'sm' as const };
+	return { status, required, unset, control };
+}
+
+/** A field row whose one control fills the width beside the label. */
+function FillRow({
+	label,
+	path,
+	required,
+	status,
+	children,
+}: {
+	label: string;
+	path: string;
+	required: boolean;
+	status?: InputStatus;
+	children: ReactNode;
+}) {
 	return (
 		<InspectorRow label={label} path={path} isRequired={required} hasIssue={status !== undefined}>
-			<StackItem size="fill">
-				<TextInput
-					label={label}
-					status={status}
-					isLabelHidden
-					isRequired={required}
-					size="sm"
-					value={value}
-					placeholder={placeholder ?? unset}
-					onChange={onChange}
-				/>
-			</StackItem>
+			<StackItem size="fill">{children}</StackItem>
 		</InspectorRow>
 	);
 }
 
+/** Free text. An optional field left blank shows what leaving it out does, unless `placeholder` is an example. */
+export function TextRow(
+	props: FieldRowProps & {
+		value: string;
+		placeholder?: string;
+		onChange: (next: string) => void;
+	},
+) {
+	const { status, required, unset, control } = useFieldRow(props);
+	return (
+		<FillRow label={props.label} path={props.path} required={required} status={status}>
+			<TextInput
+				{...control}
+				value={props.value}
+				placeholder={props.placeholder ?? unset}
+				onChange={props.onChange}
+			/>
+		</FillRow>
+	);
+}
+
+/**
+ * Longer text, under its label rather than beside it: wording and JSON. Left blank, it shows
+ * `placeholder`, which for wording is the kernel's own default line.
+ */
+export function TextAreaRow(
+	props: FieldRowProps & {
+		value: string;
+		placeholder?: string;
+		rows?: number;
+		hasSpellCheck?: boolean;
+		onChange: (next: string) => void;
+	},
+) {
+	const { label, path, value, placeholder, rows = 3, hasSpellCheck = true, onChange } = props;
+	const { status, required, unset, control } = useFieldRow(props);
+	return (
+		<VStack gap={1} {...{ [ISSUE_ROW_ATTRIBUTE]: status !== undefined || undefined }}>
+			<RowLabel label={label} path={path} isRequired={required} />
+			<TextArea
+				{...control}
+				rows={rows}
+				hasSpellCheck={hasSpellCheck}
+				value={value}
+				placeholder={placeholder ?? unset}
+				onChange={onChange}
+			/>
+		</VStack>
+	);
+}
+
 /** A number the kernel leaves unset when cleared: it gives `null`, shown as what leaving it out does. */
-export function NumberRow({
-	label,
-	path,
-	field,
-	value,
-	min,
-	max,
-	step,
-	isIntegerOnly,
-	units,
-	isRequired,
-	onChange,
-}: {
-	label: string;
-	path: string;
-	/** The draft field whose issues show on this row. */
-	field?: string;
-	value: number | null;
-	min?: number;
-	max?: number;
-	step?: number;
-	isIntegerOnly?: boolean;
-	/** Shown at the end of the input, e.g. `ms`. */
-	units?: string;
-	onChange: (next: number | null) => void;
-} & IsRequired) {
+export function NumberRow(
+	props: FieldRowProps & {
+		value: number | null;
+		min?: number;
+		max?: number;
+		step?: number;
+		isIntegerOnly?: boolean;
+		/** Shown at the end of the input, e.g. `ms`. */
+		units?: string;
+		onChange: (next: number | null) => void;
+	},
+) {
+	const { status, required, unset, control } = useFieldRow(props);
+	return (
+		<FillRow label={props.label} path={props.path} required={required} status={status}>
+			<NumberInput
+				{...control}
+				value={props.value}
+				placeholder={unset}
+				min={props.min}
+				max={props.max}
+				step={props.step}
+				isIntegerOnly={props.isIntegerOnly}
+				units={props.units}
+				isWheelEnabled={false}
+				hasClear
+				onChange={props.onChange}
+			/>
+		</FillRow>
+	);
+}
+
+const COMPACT = new Intl.NumberFormat('en-US', { notation: 'compact' });
+
+/**
+ * A slider's value: one that is always set, or one that can be blank, whose thumb sits at
+ * `fallback` while it is.
+ */
+export type SliderValue =
+	| { value: number; fallback?: undefined; onChange: (next: number) => void }
+	| { value: number | null; fallback: number; onChange: (next: number | null) => void };
+
+/**
+ * A number on a slider, shown by `format` (compact by default). One that can be blank sits at
+ * `fallback`, where the provider puts it, and reads "Default" until moved; reset puts it back.
+ */
+export function SliderRow(
+	props: {
+		label: string;
+		path: string;
+		/** The draft field whose issues show on this row. */
+		field?: string;
+		min: number;
+		max: number;
+		step: number;
+		format?: (value: number) => string;
+	} & SliderValue,
+) {
+	const {
+		label,
+		path,
+		field,
+		min,
+		max,
+		step,
+		format = (next: number) => COMPACT.format(next),
+	} = props;
 	const status = useFieldStatus()(field);
-	const { required, unset } = presence(path, isRequired);
+	const { required } = presence(path);
 	return (
 		<InspectorRow label={label} path={path} isRequired={required} hasIssue={status !== undefined}>
 			<StackItem size="fill">
-				<NumberInput
+				<Slider
 					label={label}
 					status={status}
 					isLabelHidden
-					isRequired={required}
-					size="sm"
-					value={value}
-					placeholder={unset}
+					value={props.fallback === undefined ? props.value : (props.value ?? props.fallback)}
 					min={min}
 					max={max}
 					step={step}
-					isIntegerOnly={isIntegerOnly}
-					units={units}
-					isWheelEnabled={false}
-					hasClear
-					onChange={onChange}
+					valueDisplay="text"
+					formatValue={(next) => (props.value === null ? 'Default' : format(next))}
+					onChange={props.onChange}
 				/>
 			</StackItem>
+			{props.fallback !== undefined && (
+				<IconButton
+					label={`Reset ${label.toLowerCase()} to the provider default`}
+					variant="ghost"
+					size="sm"
+					isDisabled={props.value === null}
+					icon={<Icon icon={IconArrowBackUp} size="sm" />}
+					onClick={() => {
+						props.onChange(null);
+					}}
+				/>
+			)}
 		</InspectorRow>
 	);
 }
@@ -306,7 +424,8 @@ export interface Segment<T extends string> {
 
 /**
  * A closed set, as icon-only segments. Each segment's label is its accessible name, and on hover
- * it shows with the schema's description of that option.
+ * it shows with the schema's description of that option. `warning` says, under it, when the pick
+ * is valid but won't do what it looks like; a compile issue on the row shows instead.
  */
 export function SegmentedRow<T extends string>({
 	label,
@@ -316,6 +435,7 @@ export function SegmentedRow<T extends string>({
 	segments,
 	isDisabled,
 	isRequired,
+	warning,
 	onChange,
 }: {
 	label: string;
@@ -325,13 +445,15 @@ export function SegmentedRow<T extends string>({
 	value: T;
 	segments: readonly Segment<T>[];
 	isDisabled?: boolean;
+	warning?: string;
 	onChange: (next: T) => void;
 } & IsRequired) {
 	const options = fieldMeta(path)?.optionDescriptions;
-	const status = useFieldStatus()(field);
+	const issue = useFieldStatus()(field);
+	const status = issue ?? (warning ? { type: 'warning' as const, message: warning } : undefined);
 	const { required } = presence(path, isRequired);
 	return (
-		<InspectorRow label={label} path={path} isRequired={required} hasIssue={status !== undefined}>
+		<InspectorRow label={label} path={path} isRequired={required} hasIssue={issue !== undefined}>
 			<StackItem size="fill">
 				<SegmentedControl
 					label={label}
@@ -363,7 +485,7 @@ export function SegmentedRow<T extends string>({
 					})}
 				</SegmentedControl>
 				{status?.message && (
-					<FieldStatus type="error" message={status.message} variant="detached" />
+					<FieldStatus type={status.type} message={status.message} variant="detached" />
 				)}
 			</StackItem>
 		</InspectorRow>
@@ -439,8 +561,15 @@ export function ChoiceRow<T extends string>({
 }
 
 /**
- * Several choices from a list, the first as a badge and the rest counted: the trigger is one line
- * tall, and Astryx wraps badges past it. Left empty, it shows what leaving it out does.
+ * How many of a list row's picks show as badges before the rest are counted: two while the editor
+ * is at its default width or wider, one once it is narrowed.
+ */
+export const ListBadges = createContext(1);
+
+/**
+ * Several choices from a list, the first few as badges and the rest counted (`ListBadges`): the
+ * trigger is one line tall, and Astryx wraps badges past it. Left empty, it shows what leaving it
+ * out does.
  */
 export function ListRow({
 	label,
@@ -460,6 +589,7 @@ export function ListRow({
 }) {
 	const status = useFieldStatus()(field);
 	const { unset } = presence(path);
+	const maxBadges = useContext(ListBadges);
 	return (
 		<InspectorRow label={label} path={path} hasIssue={status !== undefined}>
 			<StackItem size="fill">
@@ -473,8 +603,63 @@ export function ListRow({
 					placeholder={unset}
 					hasSearch
 					triggerDisplay="badges"
-					maxBadges={1}
+					maxBadges={maxBadges}
 					onChange={onChange}
+				/>
+			</StackItem>
+		</InspectorRow>
+	);
+}
+
+/** A names row suggests nothing; every token is one the user typed. */
+const NO_SUGGESTIONS = { search: () => [], bootstrap: () => [] };
+
+/**
+ * Free-form names, typed and committed with Enter, each a token. Duplicates and blanks never make
+ * it in. `disabledMessage` says why, when `isDisabled`.
+ */
+export function NamesRow({
+	label,
+	path,
+	field,
+	value,
+	placeholder,
+	isDisabled,
+	disabledMessage,
+	onChange,
+}: {
+	label: string;
+	path: string;
+	/** The draft field whose issues show on this row. */
+	field?: string;
+	value: string[];
+	placeholder?: string;
+	isDisabled?: boolean;
+	disabledMessage?: string;
+	onChange: (next: string[]) => void;
+}) {
+	const status = useFieldStatus()(field);
+	const { unset } = presence(path);
+	return (
+		<InspectorRow label={label} path={path} hasIssue={status !== undefined}>
+			<StackItem size="fill">
+				<Tokenizer
+					label={label}
+					status={status}
+					isLabelHidden
+					size="sm"
+					value={value.map((name) => ({ id: name, label: name }))}
+					searchSource={NO_SUGGESTIONS}
+					hasCreate
+					debounceMs={0}
+					placeholder={placeholder ?? unset}
+					isDisabled={isDisabled}
+					disabledMessage={disabledMessage}
+					tokenOverflowBehavior="unfocusedInline"
+					onChange={(items) => {
+						const names = items.map((item) => item.label.trim()).filter(Boolean);
+						onChange([...new Set(names)]);
+					}}
 				/>
 			</StackItem>
 		</InspectorRow>

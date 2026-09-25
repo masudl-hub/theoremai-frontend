@@ -2,14 +2,16 @@
  * Test-connection probe for playground tool drafts — plain `Request` in, `Response` out.
  */
 import {
-	assertSafeUrl,
 	buildHttpToolTarget,
+	fetchGuarded,
 	isUnsupportedMcpProtocolError,
 	MCP_PROTOCOL_VERSIONS,
 	parseMcpRpcResponse,
+	TheoremError,
 } from '@theoremai/agents';
 import type { HttpMethod } from '@theoremai/agents/schema';
 import { errorMessage } from './ndjson-stream';
+import { resolveHost } from './resolve-host';
 
 type AuthProbe = {
 	slot?: string;
@@ -69,48 +71,89 @@ function applyAuthHeaders(
 ): void {
 	if (!auth?.type || !testCredential) return;
 	const headerName = auth.headerName?.trim() || 'Authorization';
-	const prefix = auth.headerPrefix !== undefined ? auth.headerPrefix : 'Bearer ';
+	// The kernel's defaults: an API key goes in bare, a bearer or OAuth token after `Bearer `.
+	const prefix = auth.headerPrefix ?? (auth.type === 'api_key' ? '' : 'Bearer ');
 	headers[headerName] = `${prefix}${testCredential}`;
 }
 
-function ssrfBlockedResponse(start: number, err: unknown) {
+function isRedirect(res: Response): boolean {
+	return res.status >= 300 && res.status < 400;
+}
+
+function redirectResponse(res: Response, start: number) {
+	const location = res.headers.get('location');
 	return Response.json({
 		ok: false,
-		code: 'ssrf_blocked',
+		status: res.status,
+		code: 'redirect',
+		error: location ? `Redirects to ${location}, which the test doesn't follow.` : 'Redirects.',
+		elapsedMs: elapsedSince(start),
+	});
+}
+
+/** A probe that never got an answer: refused by the network guard, or failed on the way. */
+function fetchErrorResponse(start: number, err: unknown) {
+	const blocked = err instanceof TheoremError && err.kind === 'blocked';
+	return Response.json({
+		ok: false,
+		code: blocked ? 'ssrf_blocked' : 'network_error',
 		error: errorMessage(err),
 		elapsedMs: elapsedSince(start),
 	});
 }
 
-function networkErrorResponse(start: number, err: unknown) {
-	return Response.json({
-		ok: false,
-		code: 'network_error',
-		error: errorMessage(err),
-		elapsedMs: elapsedSince(start),
-	});
-}
+/** How long a probe waits for the whole response, body included. */
+const TIMEOUT_MS = 10_000;
 
-function assertUrlOrBlocked(url: string, policy: NetworkPolicy, start: number) {
+/** How much of a response body a probe reads; enough for a large MCP tool list. */
+const MAX_BODY_BYTES = 1_000_000;
+
+/** Reads the body as text, stopping at `MAX_BODY_BYTES`. */
+async function readCapped(res: Response): Promise<string> {
+	if (!res.body) return '';
+	const reader = res.body.getReader();
+	const decoder = new TextDecoder();
+	let text = '';
+	let bytes = 0;
 	try {
-		assertSafeUrl(url, policy);
-		return null;
-	} catch (guardErr) {
-		return ssrfBlockedResponse(start, guardErr);
+		while (bytes < MAX_BODY_BYTES) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			bytes += value.byteLength;
+			text += decoder.decode(value, { stream: true });
+		}
+	} finally {
+		await reader.cancel();
 	}
+	return text + decoder.decode();
 }
 
+/**
+ * Fetches `url` through the kernel's network guard and reads its body within `TIMEOUT_MS`.
+ * Redirects are never followed: the credential and headers are for `url`'s origin alone. A
+ * redirect comes back as the response.
+ */
 async function fetchWithTimeout(
 	url: string,
-	init: RequestInit,
-	timeoutMs = 10000,
-): Promise<Response> {
+	init: { method: string; headers: Record<string, string>; body?: string },
+	policy: NetworkPolicy,
+): Promise<{ res: Response; text: string }> {
 	const controller = new AbortController();
 	const timeout = setTimeout(() => {
 		controller.abort();
-	}, timeoutMs);
+	}, TIMEOUT_MS);
 	try {
-		return await fetch(url, { ...init, signal: controller.signal });
+		const res = await fetchGuarded(
+			url,
+			{ ...init, signal: controller.signal },
+			{ policy, followRedirects: false, resolveHost },
+		);
+		return { res, text: await readCapped(res) };
+	} catch (err) {
+		if (controller.signal.aborted) {
+			throw new Error(`No complete response within ${String(TIMEOUT_MS / 1000)} s.`);
+		}
+		throw err;
 	} finally {
 		clearTimeout(timeout);
 	}
@@ -130,12 +173,9 @@ async function handleHttpProbe(
 	policy: NetworkPolicy,
 	start: number,
 ) {
-	if (!body.endpoint.trim()) {
+	if (typeof body.endpoint !== 'string' || !body.endpoint.trim()) {
 		return Response.json({ ok: false, error: 'Endpoint URL is required' }, { status: 400 });
 	}
-
-	const blocked = assertUrlOrBlocked(body.endpoint, policy, start);
-	if (blocked) return blocked;
 
 	const headers: Record<string, string> = {
 		Accept: 'application/json, text/plain, */*',
@@ -165,16 +205,13 @@ async function handleHttpProbe(
 		});
 	}
 
-	const mappedBlocked = assertUrlOrBlocked(requestUrl, policy, start);
-	if (mappedBlocked) return mappedBlocked;
-
 	try {
-		const res = await fetchWithTimeout(requestUrl, {
-			method,
-			headers,
-			body: method === 'GET' ? undefined : requestBody,
-		});
-		const text = await res.text();
+		const { res, text } = await fetchWithTimeout(
+			requestUrl,
+			{ method, headers, ...(method === 'GET' ? {} : { body: requestBody }) },
+			policy,
+		);
+		if (isRedirect(res)) return redirectResponse(res, start);
 		const contentType = res.headers.get('content-type') || '';
 		return Response.json({
 			ok: res.ok,
@@ -185,7 +222,7 @@ async function handleHttpProbe(
 			elapsedMs: elapsedSince(start),
 		});
 	} catch (fetchErr) {
-		return networkErrorResponse(start, fetchErr);
+		return fetchErrorResponse(start, fetchErr);
 	}
 }
 
@@ -194,12 +231,9 @@ async function handleMcpProbe(
 	policy: NetworkPolicy,
 	start: number,
 ) {
-	if (!body.serverUrl.trim()) {
+	if (typeof body.serverUrl !== 'string' || !body.serverUrl.trim()) {
 		return Response.json({ ok: false, error: 'Server URL is required' }, { status: 400 });
 	}
-
-	const blocked = assertUrlOrBlocked(body.serverUrl, policy, start);
-	if (blocked) return blocked;
 
 	const baseHeaders: Record<string, string> = {
 		'Content-Type': 'application/json',
@@ -228,13 +262,13 @@ async function handleMcpProbe(
 				},
 			};
 
-			const res = await fetchWithTimeout(body.serverUrl, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify(rpcPayload),
-			});
+			const { res, text } = await fetchWithTimeout(
+				body.serverUrl,
+				{ method: 'POST', headers, body: JSON.stringify(rpcPayload) },
+				policy,
+			);
+			if (isRedirect(res)) return redirectResponse(res, start);
 			lastStatus = res.status;
-			const text = await res.text();
 
 			let rpcData: McpRpcResponse;
 			try {
@@ -272,7 +306,16 @@ async function handleMcpProbe(
 				});
 			}
 
-			const tools = rpcData.result?.tools ?? [];
+			if (rpcData.jsonrpc !== '2.0' || !Array.isArray(rpcData.result?.tools)) {
+				return Response.json({
+					ok: false,
+					status: lastStatus,
+					code: 'not_mcp',
+					error: "Answered, but not as an MCP server: tools/list didn't return a tool list.",
+					elapsedMs: elapsedSince(start),
+				});
+			}
+			const tools = rpcData.result.tools;
 			const toolNames = tools.map((t) => t.name);
 			const targetName = body.mcpToolName?.trim();
 			return Response.json({
@@ -297,7 +340,7 @@ async function handleMcpProbe(
 			elapsedMs: elapsedSince(start),
 		});
 	} catch (fetchErr) {
-		return networkErrorResponse(start, fetchErr);
+		return fetchErrorResponse(start, fetchErr);
 	}
 }
 
@@ -312,15 +355,17 @@ export async function testConnection(request: Request): Promise<Response> {
 				{ status: 400 },
 			);
 		}
+		const { type } = rawBody;
+		if (type !== 'http' && type !== 'mcp') {
+			return Response.json({ ok: false, error: 'Type must be http or mcp' }, { status: 400 });
+		}
 		const body = rawBody as TestConnectionRequest;
 		const policy: NetworkPolicy = {
 			allowPrivateNetworks: Boolean(body.allowPrivateNetworks),
 			allowedHosts: body.allowedHosts ?? [],
 		};
 
-		if (body.type === 'http') {
-			return await handleHttpProbe(body, policy, start);
-		}
+		if (body.type === 'http') return await handleHttpProbe(body, policy, start);
 		return await handleMcpProbe(body, policy, start);
 	} catch (err) {
 		return Response.json({ ok: false, error: errorMessage(err) }, { status: 500 });

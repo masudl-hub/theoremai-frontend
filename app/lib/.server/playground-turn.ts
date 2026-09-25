@@ -1,5 +1,11 @@
 import type { ProfileDefinition, TraceRecord, TurnEvent, TurnInput } from '@theoremai/agents';
-import { createProvider, invokeTool, registerTraceDestination, runTurn } from '@theoremai/agents';
+import {
+	createProvider,
+	invokeTool,
+	registerTraceDestination,
+	runTurn,
+	TheoremError,
+} from '@theoremai/agents';
 import type { InvokeToolRequest } from '@theoremai/agents/kernel';
 import {
 	createPlaygroundTraceRouter,
@@ -14,6 +20,7 @@ import {
 	consumePlaygroundSteerWithRetry,
 	openPlaygroundSteerInbox,
 } from './playground-steer';
+import { resolveHost } from './resolve-host';
 
 type PlaygroundTurnEnv = {
 	GEMINI_API_KEY_FREE_A?: string;
@@ -70,7 +77,7 @@ function openRouterVault(env: PlaygroundTurnEnv) {
 
 function assertNotLiveProfile(profileType: string, action: string): void {
 	if (profileType === 'live') {
-		throw new Error(`Playground ${action} does not support live profiles.`);
+		throw new TheoremError('request', `Playground ${action} does not support live profiles.`);
 	}
 }
 
@@ -115,6 +122,7 @@ export async function* streamPlaygroundTurn(args: {
 					input: args.input,
 					previousInteractionId: args.previousInteractionId,
 					sessionPermissions: args.sessionPermissions,
+					resolveHost,
 					signal: args.signal,
 					...(args.model ? { model: args.model } : {}),
 					...(args.effort ? { effort: args.effort } : {}),
@@ -152,6 +160,7 @@ export async function* streamPlaygroundInvoke(args: {
 		invokeTool({
 			profile: profile.id,
 			...args.request,
+			resolveHost,
 			metadata: { ...args.request.metadata, ...metadata },
 		}),
 	);
