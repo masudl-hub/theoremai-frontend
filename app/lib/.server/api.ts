@@ -8,7 +8,7 @@ import type {
 	TurnInput,
 	TurnRequest,
 } from '@theoremai/agents';
-import type { TurnToolSnapshot } from '@theoremai/agents/kernel';
+import { credentialFromTypedSecret, type TurnToolSnapshot } from '@theoremai/agents/kernel';
 import type { StructuredRegistration, ToolRegistration } from '@theoremai/playground';
 import { badRequestJson, errorMessage, ndjsonEventStream } from './ndjson-stream';
 import { registerPlaygroundProfile } from './playground-register';
@@ -40,7 +40,8 @@ type InvokeBody = {
 	input: unknown;
 	resume?: { value?: unknown; granted?: boolean };
 	sessionPermissions?: string[];
-	credentials?: TurnRequest['credentials'];
+	/** A key typed at a bearer or API-key sign-in gate; the server makes the credential. */
+	secret?: string;
 	turnInput?: TurnInput;
 	snapshot?: TurnToolSnapshot;
 	promoted?: string[];
@@ -87,10 +88,23 @@ export async function playgroundTurn(request: Request, env: PlaygroundTurnEnv): 
 				signal: request.signal,
 				env,
 			}),
+			body.profile.lexicon,
 		);
 	} catch (err) {
 		return badRequestJson(err);
 	}
+}
+
+/**
+ * The typed key as the credential its tool's auth slot waits for. The tool's
+ * own auth config decides the kind; the request only carries the text.
+ */
+function typedCredentials(body: InvokeBody): TurnRequest['credentials'] {
+	if (body.secret === undefined) return undefined;
+	const tool = body.customTools?.find((registration) => registration.name === body.name);
+	const auth = tool && tool.type !== 'function' ? tool.auth : undefined;
+	if (!auth) throw new Error(`Tool "${body.name}" takes no typed credential`);
+	return { [auth.slot]: credentialFromTypedSecret(auth.type, body.secret) };
 }
 
 /** POST /api/playground/invoke — NDJSON events for one tool call. */
@@ -110,7 +124,7 @@ export async function playgroundInvoke(
 					input: body.input,
 					resume: body.resume,
 					sessionPermissions: body.sessionPermissions,
-					credentials: body.credentials,
+					credentials: typedCredentials(body),
 					turnInput: body.turnInput,
 					model: body.model,
 					snapshot: body.snapshot,
@@ -119,6 +133,7 @@ export async function playgroundInvoke(
 				},
 				env,
 			}),
+			body.profile.lexicon,
 		);
 	} catch (err) {
 		return badRequestJson(err);

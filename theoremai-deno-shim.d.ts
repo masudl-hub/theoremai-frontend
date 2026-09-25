@@ -1,11 +1,11 @@
 /** Minimal Deno surface used by sibling theorem source under Node/Vite typechecking. */
 declare namespace Deno {
 	function cwd(): string;
-	function mkdir(path: string, options?: { recursive?: boolean }): Promise<void>;
+	function mkdir(path: string, options?: { recursive?: boolean; mode?: number }): Promise<void>;
 	function writeTextFile(
 		path: string,
 		data: string,
-		options?: { append?: boolean }
+		options?: { append?: boolean; mode?: number }
 	): Promise<void>;
 	function remove(path: string): Promise<void>;
 	function stat(path: string): Promise<{ size?: number }>;
