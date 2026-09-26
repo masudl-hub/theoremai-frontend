@@ -25,15 +25,11 @@ import type {
 	PlaygroundTraceLine,
 	PlaygroundTraceRoute,
 } from '@theoremai/playground';
+import { steerStage } from '@theoremai/react/server';
 import { parseLiveRelayClientMessage } from '../types/live-messages';
 import { ensureKernelInitialized } from './kernel-init';
 import { playgroundScope } from './playground-register';
-import {
-	closePlaygroundSteerInbox,
-	consumePlaygroundSteerWithRetry,
-	newPlaygroundSteerInboxId,
-	openPlaygroundSteerInbox,
-} from './playground-steer';
+import { playgroundSteerInbox } from './playground-steer';
 import { playgroundTraces } from './playground-turn';
 
 export type LiveRelayEnv = {
@@ -92,23 +88,31 @@ function pipeBrowserToSession(
 	session: LiveSession,
 	lexicon?: LexiconOverrides,
 ): void {
+	// A send the session refuses (a channel the profile turned off, a closed call) reaches the browser.
+	const forward = (sent: Promise<void>): void => {
+		sent.catch((err: unknown) => {
+			serverWs.send(errorEnvelope(err, lexicon));
+		});
+	};
 	serverWs.addEventListener('message', (event: MessageEvent) => {
 		try {
 			if (typeof event.data === 'string') {
 				const msg = parseLiveRelayClientMessage(JSON.parse(event.data) as unknown);
 				if (msg?.type === 'audio') {
-					void session.sendAudio({ data: msg.data, mimeType: 'audio/pcm;rate=16000' });
+					forward(session.sendAudio({ data: msg.data, mimeType: 'audio/pcm;rate=16000' }));
 					return;
 				}
 				if (msg?.type === 'video') {
-					void session.sendVideo({
-						data: msg.data,
-						mimeType: msg.mimeType ?? 'image/jpeg',
-					});
+					forward(
+						session.sendVideo({
+							data: msg.data,
+							mimeType: msg.mimeType ?? 'image/jpeg',
+						}),
+					);
 					return;
 				}
 				if (msg?.type === 'text') {
-					void session.sendText(msg.text);
+					forward(session.sendText(msg.text));
 					return;
 				}
 				if (msg?.type === 'executeTool') {
@@ -167,10 +171,12 @@ function pipeBrowserToSession(
 				return;
 			}
 			if (event.data instanceof ArrayBuffer || event.data instanceof Uint8Array) {
-				void session.sendAudio({
-					data: bufferToBase64(event.data),
-					mimeType: 'audio/pcm;rate=16000',
-				});
+				forward(
+					session.sendAudio({
+						data: bufferToBase64(event.data),
+						mimeType: 'audio/pcm;rate=16000',
+					}),
+				);
 			}
 		} catch (err) {
 			serverWs.send(errorEnvelope(err, lexicon));
@@ -206,7 +212,7 @@ async function pipeSessionToBrowser(
 	} finally {
 		// The events loop ends after the session's root record is written.
 		traces.close();
-		await closePlaygroundSteerInbox(sessionId);
+		await playgroundSteerInbox.close(sessionId);
 		try {
 			serverWs.close(1000, 'session ended');
 		} catch {
@@ -224,18 +230,12 @@ async function openLiveSession(
 	metadata: Record<string, string>,
 	openWebSocket: (url: string) => Promise<WebSocket>,
 ): Promise<LiveSession> {
-	await openPlaygroundSteerInbox(sessionId);
+	await playgroundSteerInbox.open(sessionId);
 	return scope.runSession(
 		{
 			profile: profileId,
 			metadata,
-			onStage: async ({ stage }) => {
-				if (stage !== 'pre_turn' && stage !== 'post_tool' && stage !== 'before_end') {
-					return;
-				}
-				const inject = await consumePlaygroundSteerWithRetry(sessionId);
-				return inject?.length ? { inject } : undefined;
-			},
+			onStage: steerStage(playgroundSteerInbox, sessionId),
 		},
 		{
 			gemini: {
@@ -323,7 +323,8 @@ async function relayLiveSession(
 	profileParam: string | null,
 	env: LiveRelayEnv,
 ): Promise<void> {
-	const sessionId = newPlaygroundSteerInboxId();
+	// Random and picked here, so only the call's own browser can steer it.
+	const sessionId = globalThis.crypto.randomUUID();
 	// Each record goes to the browser as the session writes it.
 	const traces = playgroundTraces.route((record) => {
 		if (serverWs.readyState !== WebSocket.OPEN) return;
@@ -360,7 +361,7 @@ async function relayLiveSession(
 		);
 	} catch (err) {
 		traces.close();
-		await closePlaygroundSteerInbox(sessionId);
+		await playgroundSteerInbox.close(sessionId);
 		failRelay(serverWs, err, lexicon);
 		return;
 	}
@@ -369,13 +370,13 @@ async function relayLiveSession(
 	if (serverWs.readyState !== WebSocket.OPEN) {
 		await session.close('client disconnected');
 		traces.close();
-		await closePlaygroundSteerInbox(sessionId);
+		await playgroundSteerInbox.close(sessionId);
 		return;
 	}
 	pipeBrowserToSession(serverWs, session, lexicon);
 	serverWs.addEventListener('close', () => {
 		void session.close('client disconnected');
-		void closePlaygroundSteerInbox(sessionId);
+		void playgroundSteerInbox.close(sessionId);
 	});
 	void pipeSessionToBrowser(serverWs, session, profileId, sessionId, traces, lexicon);
 }

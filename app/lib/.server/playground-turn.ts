@@ -15,13 +15,9 @@ import {
 	type StructuredRegistration,
 	type ToolRegistration,
 } from '@theoremai/playground';
+import { steerStage } from '@theoremai/react/server';
 import { playgroundScope } from './playground-register';
-import {
-	closePlaygroundSteerInbox,
-	consumePlaygroundSteerWithRetry,
-	newPlaygroundSteerInboxId,
-	openPlaygroundSteerInbox,
-} from './playground-steer';
+import { playgroundSteerInbox } from './playground-steer';
 import { resolveHost } from './resolve-host';
 
 type PlaygroundTurnEnv = {
@@ -108,8 +104,9 @@ export async function* streamPlaygroundTurn(args: {
 	assertNotLiveProfile(profile.type, 'turn runner — use runSession');
 
 	const provider = createPlaygroundProvider(profile, args.env ?? {});
-	const inbox = newPlaygroundSteerInboxId();
-	await openPlaygroundSteerInbox(inbox);
+	// Random and picked here, so only the run's own browser can steer it.
+	const inbox = globalThis.crypto.randomUUID();
+	await playgroundSteerInbox.open(inbox);
 	const steerLine: PlaygroundSteerLine = { type: 'steer_inbox', inbox };
 	yield steerLine;
 
@@ -126,19 +123,13 @@ export async function* streamPlaygroundTurn(args: {
 					signal: args.signal,
 					...(args.model ? { model: args.model } : {}),
 					...(args.effort ? { effort: args.effort } : {}),
-					onStage: async ({ stage }) => {
-						if (stage !== 'pre_turn' && stage !== 'post_tool' && stage !== 'before_end') {
-							return;
-						}
-						const inject = await consumePlaygroundSteerWithRetry(inbox);
-						return inject?.length ? { inject } : undefined;
-					},
+					onStage: steerStage(playgroundSteerInbox, inbox),
 				},
 				provider,
 			),
 		);
 	} finally {
-		await closePlaygroundSteerInbox(inbox);
+		await playgroundSteerInbox.close(inbox);
 	}
 }
 

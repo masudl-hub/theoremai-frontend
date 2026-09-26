@@ -2,16 +2,17 @@
  * Site API handlers — plain `Request` in, `Response` out, no framework imports.
  * Route files only resolve the Cloudflare env and delegate here.
  */
-import type {
-	ProfileDefinition,
-	TurnHistoryMessage,
-	TurnInput,
-	TurnRequest,
+import {
+	type ProfileDefinition,
+	TheoremError,
+	type TurnInput,
+	type TurnRequest,
 } from '@theoremai/agents';
 import { credentialFromTypedSecret, type TurnToolSnapshot } from '@theoremai/agents/kernel';
 import type { StructuredRegistration, ToolRegistration } from '@theoremai/playground';
+import { parseSteerUnit } from '@theoremai/react/server';
 import { badRequestJson, errorMessage, ndjsonEventStream } from './ndjson-stream';
-import { enqueuePlaygroundSteer } from './playground-steer';
+import { playgroundSteerInbox } from './playground-steer';
 import {
 	type PlaygroundTurnEnv,
 	streamPlaygroundInvoke,
@@ -34,6 +35,8 @@ type InvokeBody = {
 	profile: ProfileDefinition;
 	customTools?: ToolRegistration[];
 	structured?: StructuredRegistration;
+	/** The paused call this approval runs, so its result settles that call. */
+	callId?: string;
 	name: string;
 	input: unknown;
 	resume?: { value?: unknown; granted?: boolean };
@@ -45,12 +48,6 @@ type InvokeBody = {
 	promoted?: string[];
 	model?: string;
 	path?: string;
-};
-
-type SteerBody = {
-	/** A text turn's inbox (its stream's first line), or a live call's session id. */
-	inbox?: string;
-	inject?: TurnHistoryMessage[];
 };
 
 /** GET /api/kernel — package version and kernel checkout head. */
@@ -110,6 +107,7 @@ export async function playgroundInvoke(
 				customTools: body.customTools ?? [],
 				structured: body.structured,
 				request: {
+					callId: body.callId,
 					name: body.name,
 					input: body.input,
 					resume: body.resume,
@@ -133,15 +131,20 @@ export async function playgroundInvoke(
 /** POST /api/playground/turn/steer — queue a mid-turn inject for a turn or live session. */
 export async function playgroundSteer(request: Request): Promise<Response> {
 	try {
-		const body = await request.json<SteerBody>();
-		const inboxId = body.inbox?.trim();
+		const body: unknown = await request.json();
+		const inboxId =
+			typeof body === 'object' && body !== null && 'inbox' in body && typeof body.inbox === 'string'
+				? body.inbox.trim()
+				: '';
 		if (!inboxId) {
 			return Response.json({ error: 'inbox is required' }, { status: 400 });
 		}
-		if (!Array.isArray(body.inject) || body.inject.length === 0) {
-			return Response.json({ error: 'inject must be a non-empty array' }, { status: 400 });
+		if (!(await playgroundSteerInbox.enqueue(inboxId, parseSteerUnit(body)))) {
+			// lexicon-exempt: internal diagnostic; the user reads session.turn_ended
+			throw new TheoremError('request', 'steer: no open run has this inbox', {
+				copy: { key: 'session.turn_ended' },
+			});
 		}
-		await enqueuePlaygroundSteer(inboxId, body.inject);
 		return Response.json({ ok: true });
 	} catch (err) {
 		return Response.json({ error: errorMessage(err) }, { status: 400 });

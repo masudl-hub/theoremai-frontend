@@ -1800,7 +1800,7 @@ const AUTH_TYPE_SEGMENTS: Segment<PlaygroundAuthType>[] = [
 ];
 
 const UNAUTHENTICATED_SEGMENTS: Segment<AuthUnauthenticatedPolicy>[] = [
-	{ value: 'pause', label: 'Stop the turn', icon: IconPlayerPause },
+	{ value: 'gate', label: 'Stop the turn', icon: IconPlayerPause },
 	{ value: 'report_to_model', label: 'Tell the model', icon: IconMessage },
 ];
 
@@ -2390,7 +2390,7 @@ function ToolSpecEditor({
 								label="Signed out"
 								path="auth.onUnauthenticated"
 								field="authUnauthenticated"
-								value={tool.authUnauthenticated ?? 'pause'}
+								value={tool.authUnauthenticated ?? 'gate'}
 								segments={UNAUTHENTICATED_SEGMENTS}
 								onChange={(authUnauthenticated) => {
 									set({ authUnauthenticated });
