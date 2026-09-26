@@ -1540,7 +1540,10 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 					</>
 				)}
 			</InspectorSection>
-			<InspectorSection title="Network" note="Where HTTP and MCP tools may reach.">
+			<InspectorSection
+				title="Network"
+				note="Where HTTP and MCP tools may reach from your host. Playground runs reach public hosts only."
+			>
 				<SwitchRow
 					label="Private"
 					path="guardrails.network.allowPrivateNetworks"
@@ -1927,9 +1930,8 @@ function parseObject(
 	return { error: `${label} must be a JSON object.` };
 }
 
-/** The test-connection request for `tool`, under the draft's network guardrails. */
+/** The test-connection request for `tool`. The server applies its own network policy. */
 function probeRequest(
-	draft: PlaygroundDraft,
 	tool: ToolSpecDraft,
 	sampleInput: string,
 	credential: string,
@@ -1949,8 +1951,6 @@ function probeRequest(
 					},
 					testCredential: credential || undefined,
 				}),
-		allowPrivateNetworks: draft.guardrails.allowPrivateNetworks,
-		allowedHosts: draft.guardrails.allowedHosts,
 	};
 	if (tool.toolType === 'mcp') {
 		return {
@@ -1995,10 +1995,10 @@ function probeTitle(result: ProbeResult, tool: ToolSpecDraft): string {
 }
 
 /**
- * Tries the tool's endpoint or MCP server once, from the server, under the draft's network
- * guardrails. The sample input and credential live here only: neither is saved to the draft.
+ * Tries the tool's endpoint or MCP server once, from the server, which reaches public hosts only.
+ * The sample input and credential live here only: neither is saved to the draft.
  */
-function ToolTest({ draft, tool }: { draft: PlaygroundDraft; tool: ToolSpecDraft }) {
+function ToolTest({ tool }: { tool: ToolSpecDraft }) {
 	/** What the user typed; until then, the sample for the tool, which follows its input schema. */
 	const [typedInput, setTypedInput] = useState<string>();
 	const sample = sampleToolInput(tool.toolName, tool.inputJson);
@@ -2010,7 +2010,7 @@ function ToolTest({ draft, tool }: { draft: PlaygroundDraft; tool: ToolSpecDraft
 	const method = tool.method ?? HTTP_METHODS[0];
 
 	const run = async () => {
-		const request = probeRequest(draft, tool, sampleInput, credential);
+		const request = probeRequest(tool, sampleInput, credential);
 		if (!request.body) {
 			setResult({ ok: false, error: request.error });
 			return;
@@ -2433,7 +2433,7 @@ function ToolSpecEditor({
 					)}
 				</InspectorSection>
 			)}
-			{remote && <ToolTest key={tool.key} draft={draft} tool={tool} />}
+			{remote && <ToolTest key={tool.key} tool={tool} />}
 			<InspectorSection
 				title="Policy"
 				note="What it may change, when it asks first, and when the model sees it."

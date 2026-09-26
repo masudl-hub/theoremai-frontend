@@ -32,8 +32,6 @@ type TestConnectionRequest =
 			sampleInput?: Record<string, unknown>;
 			auth?: AuthProbe;
 			testCredential?: string;
-			allowPrivateNetworks?: boolean;
-			allowedHosts?: string[];
 	  }
 	| {
 			type: 'mcp';
@@ -42,8 +40,6 @@ type TestConnectionRequest =
 			headers?: Record<string, string>;
 			auth?: AuthProbe;
 			testCredential?: string;
-			allowPrivateNetworks?: boolean;
-			allowedHosts?: string[];
 	  };
 
 interface McpRpcResponse {
@@ -54,11 +50,6 @@ interface McpRpcResponse {
 	};
 	error?: { code: number; message: string; data?: unknown };
 }
-
-type NetworkPolicy = {
-	allowPrivateNetworks: boolean;
-	allowedHosts: string[];
-};
 
 function elapsedSince(start: number): number {
 	return Date.now() - start;
@@ -136,7 +127,6 @@ async function readCapped(res: Response): Promise<string> {
 async function fetchWithTimeout(
 	url: string,
 	init: { method: string; headers: Record<string, string>; body?: string },
-	policy: NetworkPolicy,
 ): Promise<{ res: Response; text: string }> {
 	const controller = new AbortController();
 	const timeout = setTimeout(() => {
@@ -146,7 +136,7 @@ async function fetchWithTimeout(
 		const res = await fetchGuarded(
 			url,
 			{ ...init, signal: controller.signal },
-			{ policy, followRedirects: false, resolveHost },
+			{ followRedirects: false, resolveHost },
 		);
 		return { res, text: await readCapped(res) };
 	} catch (err) {
@@ -170,7 +160,6 @@ function previewResponseBody(text: string, contentType: string): string {
 
 async function handleHttpProbe(
 	body: Extract<TestConnectionRequest, { type: 'http' }>,
-	policy: NetworkPolicy,
 	start: number,
 ) {
 	if (typeof body.endpoint !== 'string' || !body.endpoint.trim()) {
@@ -206,11 +195,11 @@ async function handleHttpProbe(
 	}
 
 	try {
-		const { res, text } = await fetchWithTimeout(
-			requestUrl,
-			{ method, headers, ...(method === 'GET' ? {} : { body: requestBody }) },
-			policy,
-		);
+		const { res, text } = await fetchWithTimeout(requestUrl, {
+			method,
+			headers,
+			...(method === 'GET' ? {} : { body: requestBody }),
+		});
 		if (isRedirect(res)) return redirectResponse(res, start);
 		const contentType = res.headers.get('content-type') || '';
 		return Response.json({
@@ -228,7 +217,6 @@ async function handleHttpProbe(
 
 async function handleMcpProbe(
 	body: Extract<TestConnectionRequest, { type: 'mcp' }>,
-	policy: NetworkPolicy,
 	start: number,
 ) {
 	if (typeof body.serverUrl !== 'string' || !body.serverUrl.trim()) {
@@ -262,11 +250,11 @@ async function handleMcpProbe(
 				},
 			};
 
-			const { res, text } = await fetchWithTimeout(
-				body.serverUrl,
-				{ method: 'POST', headers, body: JSON.stringify(rpcPayload) },
-				policy,
-			);
+			const { res, text } = await fetchWithTimeout(body.serverUrl, {
+				method: 'POST',
+				headers,
+				body: JSON.stringify(rpcPayload),
+			});
 			if (isRedirect(res)) return redirectResponse(res, start);
 			lastStatus = res.status;
 
@@ -360,13 +348,8 @@ export async function testConnection(request: Request): Promise<Response> {
 			return Response.json({ ok: false, error: 'Type must be http or mcp' }, { status: 400 });
 		}
 		const body = rawBody as TestConnectionRequest;
-		const policy: NetworkPolicy = {
-			allowPrivateNetworks: Boolean(body.allowPrivateNetworks),
-			allowedHosts: body.allowedHosts ?? [],
-		};
-
-		if (body.type === 'http') return await handleHttpProbe(body, policy, start);
-		return await handleMcpProbe(body, policy, start);
+		if (body.type === 'http') return await handleHttpProbe(body, start);
+		return await handleMcpProbe(body, start);
 	} catch (err) {
 		return Response.json({ ok: false, error: errorMessage(err) }, { status: 500 });
 	}
