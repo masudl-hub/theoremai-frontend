@@ -6,11 +6,9 @@ import { HStack } from '@astryxdesign/core/HStack';
 import { Icon } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Layout, LayoutContent, LayoutPanel } from '@astryxdesign/core/Layout';
-import { List, ListItem } from '@astryxdesign/core/List';
 import { ResizeHandle, useResizable } from '@astryxdesign/core/Resizable';
 import { ScrollableArea } from '@astryxdesign/core/ScrollableArea';
 import { Section } from '@astryxdesign/core/Section';
-import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { StackItem } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
 import { Token } from '@astryxdesign/core/Token';
@@ -20,7 +18,6 @@ import {
 	IconActivity,
 	IconAdjustmentsHorizontal,
 	IconAlertTriangle,
-	IconBook,
 	IconBrain,
 	IconCode,
 	IconDownload,
@@ -28,7 +25,6 @@ import {
 	IconFileImport,
 	IconGitBranch,
 	IconId,
-	IconListTree,
 	IconMicrophone,
 	IconPhoto,
 	IconPlayerPlay,
@@ -43,7 +39,6 @@ import { profileGraphFacet } from '@theoremai/agents';
 import {
 	type CompiledPlayground,
 	compilePlayground,
-	createBlankDraft,
 	createExampleDraft,
 	createPlaygroundRunId,
 	createPlaygroundTransport,
@@ -81,21 +76,6 @@ export function clientLoader() {
 export function HydrateFallback() {
 	return null;
 }
-
-const EXAMPLES = [
-	{
-		id: 'blank',
-		label: 'Blank',
-		description: 'Start with no profile type.',
-		create: createBlankDraft,
-	},
-	{
-		id: 'travel-concierge',
-		label: 'Travel concierge',
-		description: 'Text agent with demo tools.',
-		create: createExampleDraft,
-	},
-] as const;
 
 const FACET_ICON = {
 	identity: IconId,
@@ -278,7 +258,6 @@ function AgentPreview({ payload }: { payload: PlaygroundRunPayload }) {
  */
 export default function Playground({ loaderData }: Route.ComponentProps) {
 	const [draft, setDraft] = useState<PlaygroundDraft>(loaderData.draft);
-	const [panel, setPanel] = useState('profile');
 	const [editorView, setEditorView] = useState<'editor' | 'code'>('editor');
 	const layoutRef = useRef<HTMLDivElement>(null);
 	const [measureLayout, layoutWidth] = useMeasure(measureWidth);
@@ -341,12 +320,6 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 
 	const title = editorTitle(draft, selected);
 
-	function load(create: () => PlaygroundDraft) {
-		setDraft(create());
-		setSelectedId('identity');
-		setPanel('profile');
-	}
-
 	return (
 		<Layout
 			ref={layoutCallbackRef}
@@ -364,44 +337,19 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 							<div style={{ height: treeSplit.size || '33%', flexShrink: 0 }}>
 								<Section variant="raised" height="100%" padding={3}>
 									<VStack gap={3} height="100%">
-										<SegmentedControl label="Panel" value={panel} onChange={setPanel} layout="fill">
-											<SegmentedControlItem
-												value="profile"
-												label="Profile"
-												icon={<Icon icon={IconListTree} size="sm" />}
-											/>
-											<SegmentedControlItem
-												value="examples"
-												label="Examples"
-												icon={<Icon icon={IconBook} size="sm" />}
-											/>
-										</SegmentedControl>
+										<VStack gap={1}>
+											<Heading level={3}>Theorem Playground</Heading>
+											<Text type="supporting" color="secondary">
+												Configure an agent's profile, then run it to test.
+											</Text>
+										</VStack>
 										<StackItem size="fill">
-											<ScrollableArea
-												ref={sidebarRef}
-												label={panel === 'profile' ? 'Profile' : 'Examples'}
-												height="100%"
-											>
-												{panel === 'profile' ? (
-													<TreeList
-														density="compact"
-														aria-label="Profile"
-														items={treeItems(draft, selected, setSelectedId)}
-													/>
-												) : (
-													<List aria-label="Examples">
-														{EXAMPLES.map((example) => (
-															<ListItem
-																key={example.id}
-																label={example.label}
-																description={example.description}
-																onClick={() => {
-																	load(example.create);
-																}}
-															/>
-														))}
-													</List>
-												)}
+											<ScrollableArea ref={sidebarRef} label="Profile" height="100%">
+												<TreeList
+													density="compact"
+													aria-label="Profile"
+													items={treeItems(draft, selected, setSelectedId)}
+												/>
 											</ScrollableArea>
 										</StackItem>
 									</VStack>
@@ -428,7 +376,6 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 														description="Go to the next issue"
 														onClick={() => {
 															setSelectedId(nextIssueNode(compiled.issues, selected));
-															setPanel('profile');
 															setEditorView('editor');
 															setIssueReveal((count) => count + 1);
 														}}
@@ -502,14 +449,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 					<VStack height="100%">
 						<Section variant="transparent" padding={3}>
 							<HStack gap={2} vAlign="center">
-								<StackItem size="fill">
-									<VStack gap={0}>
-										<Heading level={4}>Theorem Playground</Heading>
-										<Text type="supporting" color="secondary">
-											Configure an agent's profile, then run it to test.
-										</Text>
-									</VStack>
-								</StackItem>
+								<StackItem size="fill" />
 								<Button
 									label="Export"
 									icon={<Icon icon={IconDownload} size="sm" />}
