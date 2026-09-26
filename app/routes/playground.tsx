@@ -1,3 +1,4 @@
+import { Button } from '@astryxdesign/core/Button';
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { Heading } from '@astryxdesign/core/Heading';
@@ -254,8 +255,8 @@ const measureHeight = (node: HTMLElement) => node.getBoundingClientRect().height
 /** The layout has no padding, so this is the content box Astryx resolves panel percentages on. */
 const measureWidth = (node: HTMLElement) => node.clientWidth;
 
-/** The editor panel's default share of the layout. */
-const EDITOR_DEFAULT_PERCENT = 33.2;
+/** The side column's default share of the layout: the tree over the editor. */
+const SIDE_DEFAULT_PERCENT = 33.2;
 const measureCodeChrome = (node: HTMLElement) =>
 	node.getBoundingClientRect().height -
 	(node.querySelector('[role="group"]')?.getBoundingClientRect().height ?? 0);
@@ -271,9 +272,9 @@ function AgentPreview({ payload }: { payload: PlaygroundRunPayload }) {
 }
 
 /**
- * The profile tree on the left, the compiled agent in the middle, and the editor or code for the
- * draft on the right. The draft compiles as it changes; while it doesn't compile, the middle keeps
- * the last agent that did.
+ * The profile tree over the editor (or code) for the draft in a column on the left; the compiled
+ * agent on the right, under Export and Run. The draft compiles as it changes; while it doesn't
+ * compile, the agent stays the last one that did.
  */
 export default function Playground({ loaderData }: Route.ComponentProps) {
 	const [draft, setDraft] = useState<PlaygroundDraft>(loaderData.draft);
@@ -288,22 +289,24 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 		},
 		[measureLayout],
 	);
-	const treePanel = useResizable({
-		defaultSize: '20%',
-		minSize: 240,
-		containerRef: layoutRef,
-		autoSaveId: 'playground.tree',
-	});
-	const editorPanel = useResizable({
-		defaultSize: `${String(EDITOR_DEFAULT_PERCENT)}%`,
+	const sidePanel = useResizable({
+		defaultSize: `${String(SIDE_DEFAULT_PERCENT)}%`,
 		minSize: 320,
 		containerRef: layoutRef,
-		autoSaveId: 'playground.editor',
+		autoSaveId: 'playground.side',
 	});
-	/** Two badges per list row at the editor's default width or wider; one once it is narrowed. */
+	const sideRef = useRef<HTMLDivElement>(null);
+	const treeSplit = useResizable({
+		defaultSize: '33%',
+		minSize: 160,
+		direction: 'vertical',
+		containerRef: sideRef,
+		autoSaveId: 'playground.treeSplit',
+	});
+	/** Two badges per list row at the column's default width or wider; one once it is narrowed. */
 	const listBadges =
 		layoutWidth === undefined ||
-		editorPanel.size >= Math.round((EDITOR_DEFAULT_PERCENT / 100) * layoutWidth)
+		sidePanel.size >= Math.round((SIDE_DEFAULT_PERCENT / 100) * layoutWidth)
 			? 2
 			: 1;
 	const [selectedId, setSelectedId] = useState('identity');
@@ -351,193 +354,196 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 			start={
 				<>
 					<LayoutPanel
-						resizable={treePanel.props}
+						resizable={sidePanel.props}
 						padding={0}
 						role="navigation"
 						label="Playground"
 						isScrollable={false}
 					>
-						<Section variant="raised" height="100%" padding={4}>
-							<VStack gap={4} height="100%">
-								<VStack gap={1}>
-									<Heading level={3}>Theorem Playground</Heading>
-									<Text type="supporting" color="secondary">
-										Configure an agent's profile, then run it to test.
-									</Text>
-								</VStack>
-								<SegmentedControl label="Panel" value={panel} onChange={setPanel} layout="fill">
-									<SegmentedControlItem
-										value="profile"
-										label="Profile"
-										icon={<Icon icon={IconListTree} size="sm" />}
-									/>
-									<SegmentedControlItem
-										value="examples"
-										label="Examples"
-										icon={<Icon icon={IconBook} size="sm" />}
-									/>
-								</SegmentedControl>
-								<StackItem size="fill">
-									<ScrollableArea
-										ref={sidebarRef}
-										label={panel === 'profile' ? 'Profile' : 'Examples'}
-										height="100%"
-									>
-										{panel === 'profile' ? (
-											<TreeList
-												density="compact"
-												aria-label="Profile"
-												items={treeItems(draft, selected, setSelectedId)}
+						<VStack gap={1} height="100%" ref={sideRef}>
+							<div style={{ height: treeSplit.size || '33%', flexShrink: 0 }}>
+								<Section variant="raised" height="100%" padding={3}>
+									<VStack gap={3} height="100%">
+										<SegmentedControl label="Panel" value={panel} onChange={setPanel} layout="fill">
+											<SegmentedControlItem
+												value="profile"
+												label="Profile"
+												icon={<Icon icon={IconListTree} size="sm" />}
 											/>
-										) : (
-											<List aria-label="Examples">
-												{EXAMPLES.map((example) => (
-													<ListItem
-														key={example.id}
-														label={example.label}
-														description={example.description}
+											<SegmentedControlItem
+												value="examples"
+												label="Examples"
+												icon={<Icon icon={IconBook} size="sm" />}
+											/>
+										</SegmentedControl>
+										<StackItem size="fill">
+											<ScrollableArea
+												ref={sidebarRef}
+												label={panel === 'profile' ? 'Profile' : 'Examples'}
+												height="100%"
+											>
+												{panel === 'profile' ? (
+													<TreeList
+														density="compact"
+														aria-label="Profile"
+														items={treeItems(draft, selected, setSelectedId)}
+													/>
+												) : (
+													<List aria-label="Examples">
+														{EXAMPLES.map((example) => (
+															<ListItem
+																key={example.id}
+																label={example.label}
+																description={example.description}
+																onClick={() => {
+																	load(example.create);
+																}}
+															/>
+														))}
+													</List>
+												)}
+											</ScrollableArea>
+										</StackItem>
+									</VStack>
+								</Section>
+							</div>
+							<ResizeHandle
+								direction="vertical"
+								isAlwaysVisible={false}
+								resizable={treeSplit.props}
+								label="Resize profile tree"
+							/>
+							<StackItem size="fill">
+								<Section variant="raised" height="100%" padding={0}>
+									<VStack height="100%">
+										<Section variant="transparent" padding={3} dividers={['bottom']}>
+											<HStack gap={1} vAlign="center">
+												<StackItem size="fill">
+													{title && <Heading level={4}>{title}</Heading>}
+												</StackItem>
+												{issues && !compiled.ok && (
+													<Token
+														label={issues}
+														color="orange"
+														description="Go to the next issue"
 														onClick={() => {
-															load(example.create);
+															setSelectedId(nextIssueNode(compiled.issues, selected));
+															setPanel('profile');
+															setEditorView('editor');
+															setIssueReveal((count) => count + 1);
 														}}
 													/>
-												))}
-											</List>
-										)}
-									</ScrollableArea>
-								</StackItem>
-							</VStack>
-						</Section>
+												)}
+												<IconButton
+													label={editorView === 'editor' ? 'Code' : 'Editor'}
+													variant="ghost"
+													icon={
+														<Icon
+															icon={editorView === 'editor' ? IconCode : IconAdjustmentsHorizontal}
+															size="sm"
+														/>
+													}
+													tooltip={editorView === 'editor' ? 'Show the code' : 'Show the editor'}
+													onClick={() => {
+														setEditorView(editorView === 'editor' ? 'code' : 'editor');
+													}}
+												/>
+											</HStack>
+										</Section>
+										<StackItem size="fill" ref={bodyRef}>
+											{/* The editor is keyed by node, so each one opens at its top. */}
+											{editorView === 'editor' ? (
+												<ScrollableArea key={selected} label="Editor" height="100%" ref={editorRef}>
+													<ListBadges value={listBadges}>
+														<ProfileEditor
+															draft={draft}
+															setDraft={setDraft}
+															selectedId={selected}
+															onSelect={setSelectedId}
+															issues={compiled.ok ? [] : compiled.issues}
+														/>
+													</ListBadges>
+												</ScrollableArea>
+											) : source && compiled.ok ? (
+												<Section variant="transparent" padding={3} ref={codeRef}>
+													<CodeBlock
+														code={source}
+														language="typescript"
+														hasLanguageLabel={false}
+														hasLineNumbers
+														isWrapped
+														width="100%"
+														maxHeight={codeHeight}
+													/>
+												</Section>
+											) : (
+												<EmptyState
+													icon={<Icon icon={IconAlertTriangle} />}
+													title="No code yet"
+													description={`${blocked ?? ''} to generate the TypeScript.`}
+												/>
+											)}
+										</StackItem>
+									</VStack>
+								</Section>
+							</StackItem>
+						</VStack>
 					</LayoutPanel>
 					<ResizeHandle
 						direction="horizontal"
 						isAlwaysVisible={false}
-						resizable={treePanel.props}
+						resizable={sidePanel.props}
 						label="Resize profile"
 					/>
 				</>
 			}
 			content={
 				<LayoutContent isScrollable={false} padding={0}>
-					{payload ? (
-						<AgentPreview payload={payload} />
-					) : (
-						<EmptyState
-							icon={<Icon icon={IconAlertTriangle} />}
-							title="No agent yet"
-							description={`${blocked ?? ''} to run the agent.`}
-						/>
-					)}
-				</LayoutContent>
-			}
-			end={
-				<>
-					<ResizeHandle
-						direction="horizontal"
-						isReversed
-						isAlwaysVisible={false}
-						resizable={editorPanel.props}
-						label="Resize editor"
-					/>
-					<LayoutPanel
-						resizable={editorPanel.props}
-						padding={0}
-						label="Editor"
-						isScrollable={false}
-					>
-						<Section variant="raised" height="100%" padding={0}>
-							<VStack height="100%">
-								<Section variant="transparent" padding={3} dividers={['bottom']}>
-									<HStack gap={1} vAlign="center">
-										<StackItem size="fill">
-											{title && <Heading level={4}>{title}</Heading>}
-										</StackItem>
-										{issues && !compiled.ok && (
-											<Token
-												label={issues}
-												color="orange"
-												description="Go to the next issue"
-												onClick={() => {
-													setSelectedId(nextIssueNode(compiled.issues, selected));
-													setPanel('profile');
-													setEditorView('editor');
-													setIssueReveal((count) => count + 1);
-												}}
-											/>
-										)}
-										<IconButton
-											label={editorView === 'editor' ? 'Code' : 'Editor'}
-											variant="ghost"
-											icon={
-												<Icon
-													icon={editorView === 'editor' ? IconCode : IconAdjustmentsHorizontal}
-													size="sm"
-												/>
-											}
-											tooltip={editorView === 'editor' ? 'Show the code' : 'Show the editor'}
-											onClick={() => {
-												setEditorView(editorView === 'editor' ? 'code' : 'editor');
-											}}
-										/>
-										<IconButton
-											label="Export"
-											variant="ghost"
-											icon={<Icon icon={IconDownload} size="sm" />}
-											isDisabled={!compiled.ok}
-											tooltip={blocked ?? 'Download the TypeScript'}
-											onClick={() => {
-												if (compiled.ok && source) download(compiled.agentId, source);
-											}}
-										/>
-										<IconButton
-											label="Run"
-											variant="ghost"
-											icon={<Icon icon={IconPlayerPlay} size="sm" />}
-											isDisabled={!compiled.ok}
-											tooltip={blocked ?? 'Open the agent in a new tab'}
-											onClick={() => {
-												if (compiled.ok) openInNewTab(runPayload(compiled));
-											}}
-										/>
-									</HStack>
-								</Section>
-								<StackItem size="fill" ref={bodyRef}>
-									{/* The editor is keyed by node, so each one opens at its top. */}
-									{editorView === 'editor' ? (
-										<ScrollableArea key={selected} label="Editor" height="100%" ref={editorRef}>
-											<ListBadges value={listBadges}>
-												<ProfileEditor
-													draft={draft}
-													setDraft={setDraft}
-													selectedId={selected}
-													onSelect={setSelectedId}
-													issues={compiled.ok ? [] : compiled.issues}
-												/>
-											</ListBadges>
-										</ScrollableArea>
-									) : source && compiled.ok ? (
-										<Section variant="transparent" padding={3} ref={codeRef}>
-											<CodeBlock
-												code={source}
-												language="typescript"
-												hasLanguageLabel={false}
-												hasLineNumbers
-												isWrapped
-												width="100%"
-												maxHeight={codeHeight}
-											/>
-										</Section>
-									) : (
-										<EmptyState
-											icon={<Icon icon={IconAlertTriangle} />}
-											title="No code yet"
-											description={`${blocked ?? ''} to generate the TypeScript.`}
-										/>
-									)}
+					<VStack height="100%">
+						<Section variant="transparent" padding={3}>
+							<HStack gap={2} vAlign="center">
+								<StackItem size="fill">
+									<VStack gap={0}>
+										<Heading level={4}>Theorem Playground</Heading>
+										<Text type="supporting" color="secondary">
+											Configure an agent's profile, then run it to test.
+										</Text>
+									</VStack>
 								</StackItem>
-							</VStack>
+								<Button
+									label="Export"
+									icon={<Icon icon={IconDownload} size="sm" />}
+									isDisabled={!compiled.ok}
+									tooltip={blocked ?? 'Download the TypeScript'}
+									onClick={() => {
+										if (compiled.ok && source) download(compiled.agentId, source);
+									}}
+								/>
+								<Button
+									label="Run"
+									variant="primary"
+									icon={<Icon icon={IconPlayerPlay} size="sm" />}
+									isDisabled={!compiled.ok}
+									tooltip={blocked ?? 'Open the agent in a new tab'}
+									onClick={() => {
+										if (compiled.ok) openInNewTab(runPayload(compiled));
+									}}
+								/>
+							</HStack>
 						</Section>
-					</LayoutPanel>
-				</>
+						<StackItem size="fill">
+							{payload ? (
+								<AgentPreview payload={payload} />
+							) : (
+								<EmptyState
+									icon={<Icon icon={IconAlertTriangle} />}
+									title="No agent yet"
+									description={`${blocked ?? ''} to run the agent.`}
+								/>
+							)}
+						</StackItem>
+					</VStack>
+				</LayoutContent>
 			}
 		/>
 	);
