@@ -58,7 +58,7 @@ import {
 	savePlaygroundRunPayload,
 } from '@theoremai/playground';
 import { LiveRunner } from '@theoremai/react/live';
-import { TheoremChat } from '@theoremai/react/ui';
+import { TheoremChat, useDisclosureMotion } from '@theoremai/react/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ISSUE_ROW_ATTRIBUTE, ListBadges } from '../components/inspector';
 import { PROFILE_TYPE_ICON, ProfileEditor, TOOL_TYPE_ICON } from '../components/profile-editor';
@@ -306,6 +306,9 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 			: 1;
 	const [selectedId, setSelectedId] = useState('identity');
 	const editorRef = useRef<HTMLDivElement>(null);
+	// The profile tree's branches mount and unmount; ease them both ways.
+	const sidebarRef = useRef<HTMLDivElement>(null);
+	useDisclosureMotion(sidebarRef);
 	/** Bumped by the issue pill; once the editor shows the node, its first failing row is revealed. */
 	const [issueReveal, setIssueReveal] = useState(0);
 	useEffect(() => {
@@ -374,6 +377,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 								</SegmentedControl>
 								<StackItem size="fill">
 									<ScrollableArea
+										ref={sidebarRef}
 										label={panel === 'profile' ? 'Profile' : 'Examples'}
 										height="100%"
 									>
