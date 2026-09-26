@@ -174,6 +174,9 @@ function isDocsPath(relPath) {
 	const normalized = relPath.replaceAll('\\', '/');
 	return (
 		normalized.startsWith('docs/') ||
+		normalized.startsWith('app/lib/docs/') ||
+		normalized.startsWith('tmp/docs-scratch/') ||
+		normalized.startsWith('scripts/docs-') ||
 		normalized === 'README.md' ||
 		normalized.startsWith('scripts/docs-truth/') ||
 		normalized === 'package.json' ||
