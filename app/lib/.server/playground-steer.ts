@@ -1,85 +1,73 @@
 /**
- * The playground's steer inbox: the package's `SteerInbox` contract, stored in
- * the Cache API (`caches.default`) so a steer POST that reaches another isolate
- * than the run still lands. Dev runs in workerd too (the Cloudflare Vite plugin),
- * so there is one store everywhere.
+ * The playground's steer inbox: the package's `SteerInbox` contract, held by a
+ * Durable Object — one per inbox id, so a steer POST that reaches another
+ * isolate than the run still lands, and two steers sent at once both queue
+ * (the object handles one call at a time). Dev runs in workerd too (the
+ * Cloudflare Vite plugin), so there is one store everywhere.
  *
- * Keyed by an id the server picks when a run opens its inbox: a text turn sends
- * it to its browser as the stream's first line, a live call as its session id.
+ * Keyed by an id the server picks when a text turn opens its inbox and sends
+ * to its browser as the stream's first line.
  */
 
+import { DurableObject } from 'cloudflare:workers';
 import type { SteerInbox, SteerUnit } from '@theoremai/react/server';
 
-const CACHE_PREFIX = 'https://theorem.local/playground/steer/';
-const CACHE_TTL_SECONDS = 60 * 15;
+/** An inbox nobody touches for this long is deleted: a run that died without closing it. */
+const IDLE_DELETE_MS = 15 * 60 * 1000;
 
-function inboxRequest(inboxId: string): Request {
-	return new Request(`${CACHE_PREFIX}${encodeURIComponent(inboxId)}`);
-}
+const QUEUE_KEY = 'queue';
 
-/** Workers' shared cache. The DOM lib's `CacheStorage` type hides `default`, so it is narrowed here. */
-function sharedCache(): Cache {
-	const storage: object = caches;
-	if (!('default' in storage) || !(storage.default instanceof Cache)) {
-		throw new Error('steer: caches.default is missing; the playground runs in workerd');
+/** One inbox. Its queue lives in the object's own storage, so it outlives eviction. */
+export class PlaygroundSteerInbox extends DurableObject {
+	/** The queue, or `undefined` when no run has the inbox open. */
+	private queue(): SteerUnit[] | undefined {
+		return this.ctx.storage.kv.get<SteerUnit[]>(QUEUE_KEY);
 	}
-	return storage.default;
-}
 
-function isSteerUnit(value: unknown): value is SteerUnit {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		'id' in value &&
-		typeof value.id === 'string' &&
-		'messages' in value &&
-		Array.isArray(value.messages)
-	);
-}
-
-/** The inbox's queue, or `undefined` when no run has it open. */
-async function readQueue(inboxId: string): Promise<SteerUnit[] | undefined> {
-	const hit = await sharedCache().match(inboxRequest(inboxId));
-	if (!hit) return undefined;
-	const body: unknown = await hit.json();
-	const queue =
-		typeof body === 'object' && body !== null && 'queue' in body ? body.queue : undefined;
-	if (!Array.isArray(queue) || !queue.every(isSteerUnit)) {
-		throw new Error(`steer: inbox ${inboxId} holds a malformed queue`);
+	private async save(queue: SteerUnit[]): Promise<void> {
+		this.ctx.storage.kv.put(QUEUE_KEY, queue);
+		await this.ctx.storage.setAlarm(Date.now() + IDLE_DELETE_MS);
 	}
-	return queue;
-}
 
-async function writeQueue(inboxId: string, queue: SteerUnit[]): Promise<void> {
-	await sharedCache().put(
-		inboxRequest(inboxId),
-		new Response(JSON.stringify({ queue }), {
-			headers: {
-				'content-type': 'application/json',
-				'cache-control': `max-age=${String(CACHE_TTL_SECONDS)}`,
-			},
-		}),
-	);
-}
+	async open(): Promise<void> {
+		await this.save([]);
+	}
 
-export const playgroundSteerInbox: SteerInbox = {
-	async open(inboxId) {
-		await writeQueue(inboxId, []);
-	},
-	async enqueue(inboxId, unit) {
-		const queue = await readQueue(inboxId);
+	/** `false` when no run has the inbox open. */
+	async enqueue(unit: SteerUnit): Promise<boolean> {
+		const queue = this.queue();
 		if (!queue) return false;
 		queue.push(unit);
-		await writeQueue(inboxId, queue);
+		await this.save(queue);
 		return true;
-	},
-	async consume(inboxId) {
-		const queue = await readQueue(inboxId);
-		const next = queue?.shift();
-		if (queue && next) await writeQueue(inboxId, queue);
+	}
+
+	async consume(): Promise<SteerUnit | undefined> {
+		const queue = this.queue();
+		if (!queue) return undefined;
+		const next = queue.shift();
+		await this.save(queue);
 		return next;
-	},
-	async close(inboxId) {
-		await sharedCache().delete(inboxRequest(inboxId));
-	},
-};
+	}
+
+	async close(): Promise<void> {
+		await this.ctx.storage.deleteAll();
+	}
+
+	override async alarm(): Promise<void> {
+		await this.ctx.storage.deleteAll();
+	}
+}
+
+/** The `SteerInbox` over the `STEER_INBOX` binding: each inbox id names its own object. */
+export function playgroundSteerInbox(
+	namespace: DurableObjectNamespace<PlaygroundSteerInbox>,
+): SteerInbox {
+	const inbox = (inboxId: string) => namespace.get(namespace.idFromName(inboxId));
+	return {
+		open: (inboxId) => inbox(inboxId).open(),
+		enqueue: (inboxId, unit) => inbox(inboxId).enqueue(unit),
+		consume: (inboxId) => inbox(inboxId).consume(),
+		close: (inboxId) => inbox(inboxId).close(),
+	};
+}

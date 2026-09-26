@@ -7,7 +7,12 @@
 	"compatibility_date": "2026-09-01",
 	"compatibility_flags": ["nodejs_compat"],
 	"observability": { "enabled": true },
-	"upload_source_maps": true
+	"upload_source_maps": true,
+	// The playground's mid-turn steer inboxes, one object per inbox id.
+	"durable_objects": {
+		"bindings": [{ "name": "STEER_INBOX", "class_name": "PlaygroundSteerInbox" }]
+	},
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["PlaygroundSteerInbox"] }]
 	// Secrets (wrangler secret put; .env.local in dev): free-tier keys only,
 	// never a paid one — GEMINI_API_KEY_FREE_A, GEMINI_API_KEY_FREE_B, GEMINI_API_KEY_FREE_C,
 	// OPENROUTER_API_KEY.

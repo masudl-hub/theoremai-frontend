@@ -5,8 +5,8 @@ import type {
 	TurnEvent,
 	TurnInput,
 } from '@theoremai/agents';
-import { createProvider, registerTraceDestination, TheoremError } from '@theoremai/agents';
-import type { InvokeToolRequest } from '@theoremai/agents/kernel';
+import { createProvider, registerTraceDestination, TheoremError, z } from '@theoremai/agents';
+import { answerGatedCall, type HeldGatedCall, type RegisteredTool } from '@theoremai/agents/kernel';
 import {
 	createPlaygroundTraceRouter,
 	PLAYGROUND_TRACE_DESTINATION,
@@ -15,9 +15,9 @@ import {
 	type StructuredRegistration,
 	type ToolRegistration,
 } from '@theoremai/playground';
-import { steerStage } from '@theoremai/react/server';
+import type { TheoremInvokeRequest } from '@theoremai/react';
+import { checkRequest, type SteerInbox, steerStage } from '@theoremai/react/server';
 import { playgroundScope } from './playground-register';
-import { playgroundSteerInbox } from './playground-steer';
 import { resolveHost } from './resolve-host';
 
 type PlaygroundTurnEnv = {
@@ -99,6 +99,8 @@ export async function* streamPlaygroundTurn(args: {
 	effort?: string;
 	signal?: AbortSignal;
 	env?: PlaygroundTurnEnv;
+	/** Where the turn's mid-turn steers queue. */
+	steer: SteerInbox;
 }): AsyncGenerator<TurnEvent | PlaygroundTraceLine | PlaygroundSteerLine> {
 	const { scope, profile } = playgroundScope(args.profile, args.customTools, args.structured);
 	assertNotLiveProfile(profile.type, 'turn runner — use runSession');
@@ -106,7 +108,7 @@ export async function* streamPlaygroundTurn(args: {
 	const provider = createPlaygroundProvider(profile, args.env ?? {});
 	// Random and picked here, so only the run's own browser can steer it.
 	const inbox = globalThis.crypto.randomUUID();
-	await playgroundSteerInbox.open(inbox);
+	await args.steer.open(inbox);
 	const steerLine: PlaygroundSteerLine = { type: 'steer_inbox', inbox };
 	yield steerLine;
 
@@ -123,32 +125,75 @@ export async function* streamPlaygroundTurn(args: {
 					signal: args.signal,
 					...(args.model ? { model: args.model } : {}),
 					...(args.effort ? { effort: args.effort } : {}),
-					onStage: steerStage(playgroundSteerInbox, inbox),
+					onStage: steerStage(args.steer, inbox),
 				},
 				provider,
 			),
 		);
 	} finally {
-		await playgroundSteerInbox.close(inbox);
+		await args.steer.close(inbox);
 	}
 }
 
+/** The model's input to the paused call, as the browser replays it. */
+const modelArguments = z.record(z.string(), z.unknown());
+
+/** The gate a tool waits on: its permission tier, and the slot a sign-in gate fills. */
+function heldGate(tool: RegisteredTool): Pick<HeldGatedCall, 'permission' | 'auth'> {
+	const auth = tool.type === 'http' || tool.type === 'mcp' ? tool.auth : undefined;
+	return {
+		permission: tool.permission,
+		...(auth ? { auth: { slot: auth.slot, authType: auth.type } } : {}),
+	};
+}
+
+/**
+ * The user's answer to a paused call. The playground keeps no session, so the
+ * browser replays the call; its gate comes from the draft's registered tool,
+ * and the answer settles it by the rule every Theorem host uses.
+ */
 export async function* streamPlaygroundInvoke(args: {
 	profile: ProfileDefinition;
 	customTools: ToolRegistration[];
 	structured?: StructuredRegistration;
-	request: Omit<InvokeToolRequest, 'profile'>;
+	answer: TheoremInvokeRequest;
 	env?: PlaygroundTurnEnv;
 }): AsyncGenerator<TurnEvent | PlaygroundTraceLine> {
 	const { scope, profile } = playgroundScope(args.profile, args.customTools, args.structured);
 	assertNotLiveProfile(profile.type, 'invoke');
-
+	const { gateId, decision, input, secret, replay = {} } = args.answer;
+	const tool = replay.name === undefined ? undefined : scope.tools.get(replay.name);
+	if (!tool) {
+		// lexicon-exempt: internal diagnostic; the user reads error.request
+		throw new TheoremError('request', 'invoke: the paused call names no tool in this draft');
+	}
+	const answered = answerGatedCall(
+		{ callId: gateId, decision, input, secret },
+		{
+			name: tool.name,
+			arguments: checkRequest(modelArguments, replay.input, 'replayed call input'),
+			...heldGate(tool),
+		},
+		replay.sessionPermissions ?? [],
+	);
 	yield* withRunTraces((metadata) =>
 		scope.invokeTool({
 			profile: profile.id,
-			...args.request,
+			name: tool.name,
+			callId: gateId,
+			input: answered.input,
+			resume: answered.resume,
+			sessionPermissions: answered.sessionPermissions,
+			...(answered.typed
+				? { credentials: { [answered.typed.slot]: answered.typed.credential } }
+				: {}),
+			turnInput: replay.turnInput,
+			snapshot: replay.snapshot,
+			promoted: replay.promoted,
+			model: replay.model,
+			path: replay.path,
 			resolveHost,
-			metadata: { ...args.request.metadata, ...metadata },
+			metadata,
 		}),
 	);
 }
