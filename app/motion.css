@@ -1,0 +1,28 @@
+/*
+ * Every popover layer (tooltips, menus, selects, popovers) fades in and out. Astryx shows and hides
+ * them without motion, and its theme API can't declare the entry: fading in from `display: none`
+ * needs @starting-style, which only a stylesheet can hold. Leaving, the layer holds its display and
+ * top-layer place (allow-discrete) until it has faded.
+ */
+[popover] {
+	transition:
+		opacity var(--duration-fast) var(--ease-standard),
+		display var(--duration-fast) allow-discrete,
+		overlay var(--duration-fast) allow-discrete;
+}
+
+[popover]:not(:popover-open) {
+	opacity: 0;
+}
+
+@starting-style {
+	[popover]:popover-open {
+		opacity: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	[popover] {
+		transition: none;
+	}
+}
