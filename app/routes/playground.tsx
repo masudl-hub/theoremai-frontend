@@ -16,26 +16,14 @@ import { Token } from '@astryxdesign/core/Token';
 import { TreeList, type TreeListItemData } from '@astryxdesign/core/TreeList';
 import { VStack } from '@astryxdesign/core/VStack';
 import {
-	IconActivity,
 	IconAdjustmentsHorizontal,
 	IconAlertTriangle,
 	IconBook,
-	IconBrain,
 	IconCode,
 	IconDownload,
-	IconFileExport,
-	IconFileImport,
-	IconGitBranch,
-	IconId,
 	IconListTree,
-	IconMicrophone,
-	IconPhoto,
 	IconPlayerPlay,
-	IconRepeat,
-	IconShieldCheck,
-	IconStack2,
 	IconTool,
-	IconVolume,
 } from '@tabler/icons-react';
 import { profileGraphFacet } from '@theoremai/agents';
 import {
@@ -62,6 +50,9 @@ import { TheoremChat } from '@theoremai/react/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ISSUE_ROW_ATTRIBUTE, ListBadges } from '../components/inspector';
 import { PROFILE_TYPE_ICON, ProfileEditor, TOOL_TYPE_ICON } from '../components/profile-editor';
+import { PLAYGROUND_SEED_IDS, type PlaygroundSeedId } from '../lib/docs/schema';
+import { docsSeedDraft } from '../lib/docs/seeds';
+import { FACET_ICON } from '../lib/facet-icons';
 import type { Route } from './+types/playground';
 import type { ShellHandle } from './shell';
 
@@ -71,8 +62,14 @@ export function meta() {
 	return [{ title: 'Playground · THEOREM' }];
 }
 
+function isPlaygroundSeed(value: string | null): value is PlaygroundSeedId {
+	return Boolean(value && (PLAYGROUND_SEED_IDS as readonly string[]).includes(value));
+}
+
 /** Draft keys are random, so the draft is made in the browser rather than rendered on the server. */
-export function clientLoader() {
+export function clientLoader({ request }: Route.ClientLoaderArgs) {
+	const seed = new URL(request.url).searchParams.get('seed');
+	if (isPlaygroundSeed(seed)) return { draft: docsSeedDraft(seed) };
 	return { draft: createExampleDraft() };
 }
 
@@ -94,22 +91,6 @@ const EXAMPLES = [
 		create: createExampleDraft,
 	},
 ] as const;
-
-const FACET_ICON = {
-	identity: IconId,
-	models: IconStack2,
-	modelBinding: IconBrain,
-	tools: IconTool,
-	inputs: IconFileImport,
-	outputs: IconFileExport,
-	turnBehaviour: IconRepeat,
-	guardrails: IconShieldCheck,
-	observability: IconActivity,
-	image: IconPhoto,
-	speech: IconVolume,
-	live: IconMicrophone,
-	decision: IconGitBranch,
-} satisfies Record<Exclude<PlaygroundNodeRef['facet'], 'toolSpec'>, unknown>;
 
 /** A node's icon; Identity shows the profile type's once one is picked. */
 function nodeIcon(draft: PlaygroundDraft, ref: PlaygroundNodeRef) {

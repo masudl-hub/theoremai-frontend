@@ -18,12 +18,14 @@ import {
 } from '@tabler/icons-react';
 import { Link, type LinkProps, Outlet, useLocation, useMatches } from 'react-router';
 import { theoremSiteTheme } from '../built/theorem-site';
+import '../components/docs/docs.css';
 import '../components/page-transition.css';
 import '../components/shell.css';
 import { IconJsr } from '../components/jsr-icon';
 import { NewTabLink } from '../components/links';
 import { LogoMark } from '../components/logo-mark';
 import { NavMark } from '../components/nav-mark';
+import { Th30Provider, useTh30 } from '../components/th30-dock';
 
 const SECTIONS = [
 	{ label: 'Playground', href: '/playground', icon: IconPlayerPlay },
@@ -54,8 +56,18 @@ function ShellLink(props: LinkProps) {
 /** Rail and mobile top bar only. The drawer repeats footer icons, and this one does not belong there. */
 function Th30Button() {
 	const mode = useSideNavRenderMode();
+	const th30 = useTh30();
 	if (mode === 'drawer' || mode === 'drawer-content') return null;
-	return <IconButton label="Talk to th30" icon={<IconCircle />} variant="ghost" isDisabled />;
+	return (
+		<IconButton
+			label="Talk to th30"
+			icon={<IconCircle />}
+			variant="ghost"
+			onClick={() => {
+				th30.open();
+			}}
+		/>
+	);
 }
 
 /**
@@ -68,39 +80,41 @@ export default function Shell() {
 	const onBase = useMatches().some((match) => isOnBase(match.handle));
 
 	return (
-		<LinkProvider component={ShellLink}>
-			<AppShell
-				variant={onBase ? 'wash' : 'elevated'}
-				sideNav={
-					<Theme theme={theoremSiteTheme} mode="dark">
-						<SideNav
-							collapsible={{ isCollapsed: true, hasButton: false }}
-							header={<SideNavHeading heading="Theorem" headingHref="/" icon={<LogoMark />} />}
-							footerIcons={<Th30Button />}
-						>
-							<SideNavSection title="Site" isHeaderHidden>
-								{SECTIONS.map(({ label, href, icon }) => (
-									<SideNavItem
-										key={href}
-										label={label}
-										href={href}
-										icon={icon}
-										isSelected={pathname === href || pathname.startsWith(`${href}/`)}
-									/>
-								))}
-							</SideNavSection>
-							<SideNavSection title="Packages" isHeaderHidden>
-								{PACKAGES.map(({ label, href, icon }) => (
-									<SideNavItem key={href} label={label} href={href} icon={icon} as={NewTabLink} />
-								))}
-							</SideNavSection>
-						</SideNav>
-					</Theme>
-				}
-			>
-				<Outlet />
-				<NavMark />
-			</AppShell>
-		</LinkProvider>
+		<Th30Provider>
+			<LinkProvider component={ShellLink}>
+				<AppShell
+					variant={onBase ? 'wash' : 'elevated'}
+					sideNav={
+						<Theme theme={theoremSiteTheme} mode="dark">
+							<SideNav
+								collapsible={{ isCollapsed: true, hasButton: false }}
+								header={<SideNavHeading heading="Theorem" headingHref="/" icon={<LogoMark />} />}
+								footerIcons={<Th30Button />}
+							>
+								<SideNavSection title="Site" isHeaderHidden>
+									{SECTIONS.map(({ label, href, icon }) => (
+										<SideNavItem
+											key={href}
+											label={label}
+											href={href}
+											icon={icon}
+											isSelected={pathname === href || pathname.startsWith(`${href}/`)}
+										/>
+									))}
+								</SideNavSection>
+								<SideNavSection title="Packages" isHeaderHidden>
+									{PACKAGES.map(({ label, href, icon }) => (
+										<SideNavItem key={href} label={label} href={href} icon={icon} as={NewTabLink} />
+									))}
+								</SideNavSection>
+							</SideNav>
+						</Theme>
+					}
+				>
+					<Outlet />
+					<NavMark />
+				</AppShell>
+			</LinkProvider>
+		</Th30Provider>
 	);
 }

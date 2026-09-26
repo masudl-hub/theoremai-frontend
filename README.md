@@ -26,10 +26,12 @@ theoremai-frontend/
     routes.ts                   # route table
     cloudflare.ts               # Worker env type + per-request context
     routes/
-      home.tsx                  # placeholder until the shared shell lands
+      home.tsx                  # landing hero
+      docs.tsx / docs.$slug.tsx # composed /docs landing + reader
       playground.run.tsx        # run host for a compiled playground draft (@theoremai/react)
       api.*.ts                  # resource routes → app/lib/.server/api.ts
     lib/
+      docs/                     # DocIndex schema, compose, projector (UI + Th30 + .md twins)
       .server/                  # server-only (React Router refuses to ship .server modules to the client)
         api.ts                  # framework-free Request → Response handlers
         live-relay.ts           # Gemini Live WebSocket relay (WebSocketPair)
@@ -38,7 +40,7 @@ theoremai-frontend/
         playground-steer.ts     # mid-turn steer inbox
         th30.ts                 # Th30 site assistant profile
         test-connection.ts      # SSRF-guarded tool connection test
-  scripts/                      # kernel checkout resolution + build-time kernel metadata
+  scripts/                      # kernel checkout resolution + build-time kernel metadata + docs:compose
 ```
 
 ## Setup
@@ -78,6 +80,10 @@ Update the sibling kernel in place; re-run `npm run theoremai:ensure` after pull
 
 Egress is **opt-in per profile** — set `guardrails.egress.enforce`.
 
+## Docs
+
+- [`docs/SITE_SCHEMA.md`](docs/SITE_SCHEMA.md) — how `/docs` is built: data model, compose, information hierarchy.
+
 ## Scripts
 
 | Command | Description |
@@ -87,6 +93,8 @@ Egress is **opt-in per profile** — set `guardrails.egress.enforce`.
 | `npm run check` | Generate route types, then typecheck |
 | `npm run lint` | ESLint, Biome, and fallow |
 | `npm run deploy` | Build and `wrangler deploy` the `theorem-site` Worker — not yet the live domain |
+| `npm run docs:compose` | Compose `DocIndex` from kernel catalogs + authored chapters (throws on drift) |
+| `npm run lint:docs` | Compose, then Biome-check TypeScript fences extracted from `tmp/docs-scratch` |
 | `npm run theoremai:ensure` | Symlink the sibling `../theoremai` checkout |
 | `npm run theoremai:pull` | Fast-forward sibling `../theoremai` to `origin/main` |
 
