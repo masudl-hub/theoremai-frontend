@@ -19,12 +19,12 @@ import {
 	TheoremError,
 } from '@theoremai/agents';
 import { forClient, forClientEvents } from '@theoremai/agents/host';
+import { parseLiveClientMessage } from '@theoremai/react/server';
 import type {
 	PlaygroundLiveDraftMessage,
 	PlaygroundTraceLine,
 	PlaygroundTraceRoute,
 } from '@theoremai/playground';
-import { parseLiveRelayClientMessage } from '../types/live-messages';
 import { ensureKernelInitialized } from './kernel-init';
 import { playgroundScope } from './playground-register';
 import { playgroundTraces } from './playground-turn';
@@ -94,25 +94,21 @@ function pipeBrowserToSession(
 	serverWs.addEventListener('message', (event: MessageEvent) => {
 		try {
 			if (typeof event.data === 'string') {
-				const msg = parseLiveRelayClientMessage(JSON.parse(event.data) as unknown);
-				if (msg?.type === 'audio') {
+				// A message that fails its check ends the call with a `request` error (the catch below).
+				const msg = parseLiveClientMessage(event.data);
+				if (msg.type === 'audio') {
 					forward(session.sendAudio({ data: msg.data, mimeType: 'audio/pcm;rate=16000' }));
 					return;
 				}
-				if (msg?.type === 'video') {
-					forward(
-						session.sendVideo({
-							data: msg.data,
-							mimeType: msg.mimeType ?? 'image/jpeg',
-						}),
-					);
+				if (msg.type === 'video') {
+					forward(session.sendVideo({ data: msg.data, mimeType: msg.mimeType }));
 					return;
 				}
-				if (msg?.type === 'text') {
+				if (msg.type === 'text') {
 					forward(session.sendText(msg.text));
 					return;
 				}
-				if (msg?.type === 'executeTool') {
+				if (msg.type === 'executeTool') {
 					const { type: _type, ...call } = msg;
 					void (async () => {
 						try {
