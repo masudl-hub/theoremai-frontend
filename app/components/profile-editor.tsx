@@ -2681,27 +2681,110 @@ function wordingPlaceholder(draft: PlaygroundDraft, key: LexiconKey): string {
 	);
 }
 
-/** A line edited beside its setting: a link there, so each line has one value. */
-function InlineWordingRow({
+/**
+ * The lines that also sit beside their setting: one value, edited from either place. `isOn` is when
+ * the kernel uses the line; off, Wording links to the setting that turns it on.
+ */
+const SHARED_WORDING: Partial<
+	Record<
+		LexiconKey,
+		{
+			setting: string;
+			read: (draft: PlaygroundDraft) => string;
+			write: (setDraft: SetDraft, text: string) => void;
+			isOn: (draft: PlaygroundDraft) => boolean;
+		}
+	>
+> = {
+	'continue.instruction': {
+		setting: 'Resumption',
+		read: (draft) => draft.turnBehaviour.continueInstruction,
+		write: (setDraft, continueInstruction) => {
+			patch(setDraft, 'turnBehaviour')({ continueInstruction });
+		},
+		isOn: (draft) => takesContinueInstruction(draft) && draft.turnBehaviour.resumeEnabled,
+	},
+	'canary.bind_note': {
+		setting: 'Canary',
+		read: (draft) => draft.guardrails.canaryBindNote,
+		write: (setDraft, canaryBindNote) => {
+			patch(setDraft, 'guardrails')({ canaryBindNote });
+		},
+		isOn: (draft) => draft.guardrails.canary,
+	},
+	'quota.exhausted': {
+		setting: 'Daily cap',
+		read: (draft) => draft.guardrails.quotaMessage,
+		write: (setDraft, quotaMessage) => {
+			patch(setDraft, 'guardrails')({ quotaMessage });
+		},
+		isOn: (draft) => draft.guardrails.quotaEnabled,
+	},
+	'repair.default_guidance': {
+		setting: 'Repair',
+		read: (draft) => draft.outputs.repairGuidance,
+		write: (setDraft, repairGuidance) => {
+			patch(setDraft, 'outputs')({ repairGuidance });
+		},
+		isOn: (draft) => draft.outputs.validationEnabled,
+	},
+	'egress.default_repair_guidance': {
+		setting: 'Egress',
+		read: (draft) => draft.guardrails.egressRepairGuidance,
+		write: (setDraft, egressRepairGuidance) => {
+			patch(setDraft, 'guardrails')({ egressRepairGuidance });
+		},
+		isOn: (draft) => draft.guardrails.egressEnabled,
+	},
+};
+
+/** The text a line holds in the draft: its own setting's field, or Wording's. */
+function wordingValue(draft: PlaygroundDraft, key: LexiconKey): string {
+	return SHARED_WORDING[key]?.read(draft) ?? draft.wording[key] ?? '';
+}
+
+/** A line that also sits beside its setting; while that setting is off, a link to turn it on. */
+function SharedWordingRow({
 	lexiconKey,
 	facet,
+	draft,
+	setDraft,
 	onSelect,
 }: {
 	lexiconKey: LexiconKey;
 	facet: ProfileGraphFacetId;
+	draft: PlaygroundDraft;
+	setDraft: SetDraft;
 	onSelect: (id: string) => void;
 }) {
+	const shared = SHARED_WORDING[lexiconKey];
+	if (!shared) return null;
 	return (
-		<InspectorRow label={wordingLabel(lexiconKey)} path="lexicon.*">
-			<Button
-				label={`Edit in ${profileGraphFacet(facet)?.label ?? facet}`}
-				variant="ghost"
-				size="sm"
-				onClick={() => {
-					onSelect(facet);
+		<VStack gap={1}>
+			<TextAreaRow
+				label={wordingLabel(lexiconKey)}
+				path="lexicon.*"
+				rows={2}
+				value={shared.read(draft)}
+				placeholder={wordingPlaceholder(draft, lexiconKey)}
+				onChange={(text) => {
+					shared.write(setDraft, text);
 				}}
 			/>
-		</InspectorRow>
+			{!shared.isOn(draft) && (
+				<HStack gap={1} align="center">
+					<Text type="supporting">Used once {shared.setting} is on.</Text>
+					<Button
+						label={`Open ${profileGraphFacet(facet)?.label ?? facet}`}
+						variant="ghost"
+						size="sm"
+						onClick={() => {
+							onSelect(facet);
+						}}
+					/>
+				</HStack>
+			)}
+		</VStack>
 	);
 }
 
@@ -2719,7 +2802,7 @@ function WordingEditor({
 	const [audience, setAudience] = useState<WordingAudience>('visitor');
 	const areas = WORDING_AREAS.filter((area) => area.audience === audience).map((area) => {
 		const keys = LEXICON_KEYS.filter((key) => key.startsWith(`${area.prefix}.`));
-		const edited = keys.filter((key) => !INLINE_WORDING[key] && draft.wording[key]).length;
+		const edited = keys.filter((key) => wordingValue(draft, key)).length;
 		return { ...area, keys, edited };
 	});
 	const note = WORDING_AUDIENCES.find((entry) => entry.value === audience)?.note;
@@ -2776,10 +2859,12 @@ function WordingEditor({
 									const facet = INLINE_WORDING[key];
 									if (facet)
 										return (
-											<InlineWordingRow
+											<SharedWordingRow
 												key={key}
 												lexiconKey={key}
 												facet={facet}
+												draft={draft}
+												setDraft={setDraft}
 												onSelect={onSelect}
 											/>
 										);
