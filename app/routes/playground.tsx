@@ -235,8 +235,10 @@ const measureHeight = (node: HTMLElement) => node.getBoundingClientRect().height
 /** The layout has no padding, so this is the content box Astryx resolves panel percentages on. */
 const measureWidth = (node: HTMLElement) => node.clientWidth;
 
-/** The side column's default share of the layout: the tree over the editor. */
-const SIDE_DEFAULT_PERCENT = 33.2;
+/** The side panel's default share of the layout, the tree beside the editor: the golden split. */
+const SIDE_DEFAULT_PERCENT = 38.2;
+/** The profile tree's width inside the side panel; the editor takes the rest. */
+const TREE_WIDTH = 216;
 const measureCodeChrome = (node: HTMLElement) =>
 	node.getBoundingClientRect().height -
 	(node.querySelector('[role="group"]')?.getBoundingClientRect().height ?? 0);
@@ -252,7 +254,7 @@ function AgentPreview({ payload }: { payload: PlaygroundRunPayload }) {
 }
 
 /**
- * The profile tree over the editor (or code) for the draft in a column on the left; the compiled
+ * The profile tree beside the editor (or code) for the draft in a panel on the left; the compiled
  * agent on the right, under Export and Run. The draft compiles as it changes; while it doesn't
  * compile, the agent stays the last one that did.
  */
@@ -270,19 +272,11 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	);
 	const sidePanel = useResizable({
 		defaultSize: `${String(SIDE_DEFAULT_PERCENT)}%`,
-		minSize: 320,
+		minSize: TREE_WIDTH + 320,
 		containerRef: layoutRef,
-		autoSaveId: 'playground.side',
+		autoSaveId: 'playground.panel',
 	});
-	const sideRef = useRef<HTMLDivElement>(null);
-	const treeSplit = useResizable({
-		defaultSize: '33%',
-		minSize: 160,
-		direction: 'vertical',
-		containerRef: sideRef,
-		autoSaveId: 'playground.treeSplit',
-	});
-	/** Two badges per list row at the column's default width or wider; one once it is narrowed. */
+	/** Two badges per list row at the panel's default width or wider; one once it is narrowed. */
 	const listBadges =
 		layoutWidth === undefined ||
 		sidePanel.size >= Math.round((SIDE_DEFAULT_PERCENT / 100) * layoutWidth)
@@ -333,9 +327,15 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 						label="Playground"
 						isScrollable={false}
 					>
-						<VStack gap={1} height="100%" ref={sideRef}>
-							<div style={{ height: treeSplit.size || '33%', flexShrink: 0 }}>
-								<Section variant="raised" height="100%" padding={3}>
+						<Section variant="raised" height="100%" padding={0}>
+							<HStack height="100%">
+								<Section
+									variant="transparent"
+									width={TREE_WIDTH}
+									height="100%"
+									padding={3}
+									dividers={['end']}
+								>
 									<VStack gap={3} height="100%">
 										<VStack gap={1}>
 											<Heading level={3}>Theorem Playground</Heading>
@@ -354,15 +354,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 										</StackItem>
 									</VStack>
 								</Section>
-							</div>
-							<ResizeHandle
-								direction="vertical"
-								isAlwaysVisible={false}
-								resizable={treeSplit.props}
-								label="Resize profile tree"
-							/>
-							<StackItem size="fill">
-								<Section variant="raised" height="100%" padding={0}>
+								<StackItem size="fill">
 									<VStack height="100%">
 										<Section variant="transparent" padding={3} dividers={['bottom']}>
 											<HStack gap={1} vAlign="center">
@@ -432,9 +424,9 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 											)}
 										</StackItem>
 									</VStack>
-								</Section>
-							</StackItem>
-						</VStack>
+								</StackItem>
+							</HStack>
+						</Section>
 					</LayoutPanel>
 					<ResizeHandle
 						direction="horizontal"

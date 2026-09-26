@@ -45,6 +45,16 @@ export const siteTheme = defineTheme({
 				backgroundColor: 'var(--color-overlay-pressed)',
 			},
 		},
+		// A name longer than its column (a tool's snake_case, which never wraps) ends in an ellipsis
+		// rather than running under the column's edge.
+		'tree-list-item-label': {
+			base: {
+				minWidth: 0,
+				overflow: 'hidden',
+				textOverflow: 'ellipsis',
+				whiteSpace: 'nowrap',
+			},
+		},
 		// Same fill and corners as the elevated shell's page panel (surface + radius-page, no border),
 		// for pages that sit on the base and draw their own panels.
 		section: {
