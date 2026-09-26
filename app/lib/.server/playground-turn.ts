@@ -6,6 +6,7 @@ import type {
 	TurnInput,
 } from '@theoremai/agents';
 import { createProvider, registerTraceDestination, TheoremError, z } from '@theoremai/agents';
+import type { GateAnswerRequest } from '@theoremai/agents/kernel';
 import { answerGatedCall, type HeldGatedCall, type RegisteredTool } from '@theoremai/agents/kernel';
 import {
 	createPlaygroundTraceRouter,
@@ -15,8 +16,15 @@ import {
 	type StructuredRegistration,
 	type ToolRegistration,
 } from '@theoremai/playground';
-import type { TheoremInvokeRequest } from '@theoremai/react';
-import { checkRequest, type SteerInbox, steerStage } from '@theoremai/react/server';
+import type { TheoremInvokeRequest, TheoremReplay } from '@theoremai/react';
+import {
+	checkRequest,
+	checkWalkAway,
+	type SteerInbox,
+	steerStage,
+	type WalkedAwayCall,
+	walkAway,
+} from '@theoremai/react/server';
 import { playgroundScope } from './playground-register';
 import { resolveHost } from './resolve-host';
 
@@ -101,9 +109,23 @@ export async function* streamPlaygroundTurn(args: {
 	env?: PlaygroundTurnEnv;
 	/** Where the turn's mid-turn steers queue. */
 	steer: SteerInbox;
+	/** The paused calls the message walks away from, each as the browser replays it. */
+	abandon?: { callId: string; replay: TheoremReplay }[];
 }): AsyncGenerator<TurnEvent | PlaygroundTraceLine | PlaygroundSteerLine> {
 	const { scope, profile } = playgroundScope(args.profile, args.customTools, args.structured);
 	assertNotLiveProfile(profile.type, 'turn runner — use runSession');
+	const abandon = args.abandon ?? [];
+	if (abandon.length) {
+		checkWalkAway(
+			args.input,
+			abandon.map(({ callId }) => callId),
+		);
+	}
+	// Answered up front, so a refused call starts nothing.
+	const walked = abandon.map(({ callId, replay }) => ({
+		callId,
+		invoke: answerReplayed(scope, profile.id, { callId, decision: 'abandon' }, replay),
+	}));
 
 	const provider = createPlaygroundProvider(profile, args.env ?? {});
 	// Random and picked here, so only the run's own browser can steer it.
@@ -113,12 +135,18 @@ export async function* streamPlaygroundTurn(args: {
 	yield steerLine;
 
 	try {
-		yield* withRunTraces((metadata) =>
-			scope.runTurn(
+		yield* withRunTraces(async function* (metadata) {
+			const calls: WalkedAwayCall[] = walked.map(({ callId, invoke }) => ({
+				callId,
+				events: scope.invokeTool({ ...invoke, metadata }),
+			}));
+			const input = calls.length ? yield* walkAway(args.input, calls) : args.input;
+			if (!input) return;
+			yield* scope.runTurn(
 				{
 					profile: profile.id,
 					metadata,
-					input: args.input,
+					input,
 					previousInteractionId: args.previousInteractionId,
 					sessionPermissions: args.sessionPermissions,
 					resolveHost,
@@ -128,8 +156,8 @@ export async function* streamPlaygroundTurn(args: {
 					onStage: steerStage(args.steer, inbox),
 				},
 				provider,
-			),
-		);
+			);
+		});
 	} finally {
 		await args.steer.close(inbox);
 	}
@@ -147,11 +175,54 @@ function heldGate(tool: RegisteredTool): Pick<HeldGatedCall, 'permission' | 'aut
 	};
 }
 
+type PlaygroundScope = ReturnType<typeof playgroundScope>['scope'];
+
 /**
  * The user's answer to a paused call. The playground keeps no session, so the
  * browser replays the call; its gate comes from the draft's registered tool,
- * and the answer settles it by the rule every Theorem host uses.
+ * and the answer settles it by the rule every Theorem host uses. Returns the
+ * run that settles it, less its trace metadata.
  */
+function answerReplayed(
+	scope: PlaygroundScope,
+	profile: string,
+	request: GateAnswerRequest,
+	replay: TheoremReplay,
+): Omit<Parameters<PlaygroundScope['invokeTool']>[0], 'metadata'> {
+	const tool = replay.name === undefined ? undefined : scope.tools.get(replay.name);
+	if (!tool) {
+		// lexicon-exempt: internal diagnostic; the user reads error.request
+		throw new TheoremError('request', 'invoke: the paused call names no tool in this draft');
+	}
+	const answered = answerGatedCall(
+		request,
+		{
+			name: tool.name,
+			arguments: checkRequest(modelArguments, replay.input, 'replayed call input'),
+			...heldGate(tool),
+		},
+		replay.sessionPermissions ?? [],
+	);
+	return {
+		profile,
+		name: tool.name,
+		callId: request.callId,
+		input: answered.input,
+		resume: answered.resume,
+		sessionPermissions: answered.sessionPermissions,
+		...(answered.typed
+			? { credentials: { [answered.typed.slot]: answered.typed.credential } }
+			: {}),
+		turnInput: replay.turnInput,
+		snapshot: replay.snapshot,
+		promoted: replay.promoted,
+		model: replay.model,
+		path: replay.path,
+		resolveHost,
+	};
+}
+
+/** The user's answer to a paused call, streamed. */
 export async function* streamPlaygroundInvoke(args: {
 	profile: ProfileDefinition;
 	customTools: ToolRegistration[];
@@ -162,38 +233,11 @@ export async function* streamPlaygroundInvoke(args: {
 	const { scope, profile } = playgroundScope(args.profile, args.customTools, args.structured);
 	assertNotLiveProfile(profile.type, 'invoke');
 	const { gateId, decision, input, secret, replay = {} } = args.answer;
-	const tool = replay.name === undefined ? undefined : scope.tools.get(replay.name);
-	if (!tool) {
-		// lexicon-exempt: internal diagnostic; the user reads error.request
-		throw new TheoremError('request', 'invoke: the paused call names no tool in this draft');
-	}
-	const answered = answerGatedCall(
+	const invoke = answerReplayed(
+		scope,
+		profile.id,
 		{ callId: gateId, decision, input, secret },
-		{
-			name: tool.name,
-			arguments: checkRequest(modelArguments, replay.input, 'replayed call input'),
-			...heldGate(tool),
-		},
-		replay.sessionPermissions ?? [],
+		replay,
 	);
-	yield* withRunTraces((metadata) =>
-		scope.invokeTool({
-			profile: profile.id,
-			name: tool.name,
-			callId: gateId,
-			input: answered.input,
-			resume: answered.resume,
-			sessionPermissions: answered.sessionPermissions,
-			...(answered.typed
-				? { credentials: { [answered.typed.slot]: answered.typed.credential } }
-				: {}),
-			turnInput: replay.turnInput,
-			snapshot: replay.snapshot,
-			promoted: replay.promoted,
-			model: replay.model,
-			path: replay.path,
-			resolveHost,
-			metadata,
-		}),
-	);
+	yield* withRunTraces((metadata) => scope.invokeTool({ ...invoke, metadata }));
 }

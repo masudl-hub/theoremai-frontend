@@ -4,6 +4,7 @@
  */
 import { type ProfileDefinition, TheoremError } from '@theoremai/agents';
 import type { StructuredRegistration, ToolRegistration } from '@theoremai/playground';
+import type { TheoremReplay, TheoremTurnRequest } from '@theoremai/react';
 import {
 	checkRequest,
 	steerUnitOf,
@@ -39,6 +40,18 @@ export function kernelInfo(): Response {
 	});
 }
 
+/** The paused calls a turn walks away from, each with the replay the browser sent for it. */
+function walkedAwayCalls(turn: TheoremTurnRequest): { callId: string; replay: TheoremReplay }[] {
+	return (turn.abandon ?? []).map((callId) => {
+		const replay = turn.replay?.abandon?.[callId];
+		if (!replay) {
+			// lexicon-exempt: internal diagnostic; the user reads error.request
+			throw new TheoremError('request', `turn: no replay for walked-away call ${callId}`);
+		}
+		return { callId, replay };
+	});
+}
+
 /** POST /api/playground/turn — NDJSON turn events. */
 export async function playgroundTurn(request: Request, env: SiteEnv): Promise<Response> {
 	try {
@@ -52,6 +65,7 @@ export async function playgroundTurn(request: Request, env: SiteEnv): Promise<Re
 				input: turn.input,
 				previousInteractionId: turn.previousInteractionId,
 				sessionPermissions: turn.replay?.sessionPermissions,
+				abandon: walkedAwayCalls(turn),
 				model: turn.model,
 				effort: turn.effort,
 				signal: request.signal,
