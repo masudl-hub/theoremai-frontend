@@ -19,12 +19,12 @@ import {
 	TheoremError,
 } from '@theoremai/agents';
 import { forClient, forClientEvents } from '@theoremai/agents/host';
-import { parseLiveClientMessage } from '@theoremai/react/server';
 import type {
 	PlaygroundLiveDraftMessage,
 	PlaygroundTraceLine,
 	PlaygroundTraceRoute,
 } from '@theoremai/playground';
+import { parseLiveClientMessage } from '@theoremai/react/server';
 import { ensureKernelInitialized } from './kernel-init';
 import { playgroundScope } from './playground-register';
 import { playgroundTraces } from './playground-turn';
@@ -96,49 +96,22 @@ function pipeBrowserToSession(
 			if (typeof event.data === 'string') {
 				// A message that fails its check ends the call with a `request` error (the catch below).
 				const msg = parseLiveClientMessage(event.data);
-				if (msg.type === 'audio') {
-					forward(session.sendAudio({ data: msg.data, mimeType: 'audio/pcm;rate=16000' }));
-					return;
+				switch (msg.type) {
+					case 'audio':
+						forward(session.sendAudio({ data: msg.data, mimeType: 'audio/pcm;rate=16000' }));
+						return;
+					case 'video':
+						forward(session.sendVideo({ data: msg.data, mimeType: msg.mimeType }));
+						return;
+					case 'text':
+						forward(session.sendText(msg.text));
+						return;
+					case 'executeTool': {
+						const { type: _type, ...call } = msg;
+						void answerExecuteTool(serverWs, session, call, lexicon);
+						return;
+					}
 				}
-				if (msg.type === 'video') {
-					forward(session.sendVideo({ data: msg.data, mimeType: msg.mimeType }));
-					return;
-				}
-				if (msg.type === 'text') {
-					forward(session.sendText(msg.text));
-					return;
-				}
-				if (msg.type === 'executeTool') {
-					const { type: _type, ...call } = msg;
-					void (async () => {
-						try {
-							const result = await session.executeTool(call);
-							serverWs.send(
-								JSON.stringify(
-									result.gated
-										? {
-												type: 'executeToolResult',
-												callId: call.callId,
-												status: 'gated',
-												gate: result.gated,
-											}
-										: { type: 'executeToolResult', callId: call.callId, status: 'settled' },
-								),
-							);
-						} catch (err) {
-							// The session refused it (an unknown call, a decision it takes no more): the browser reads why.
-							serverWs.send(
-								JSON.stringify({
-									type: 'executeToolResult',
-									callId: call.callId,
-									status: 'refused',
-									body: errorBody(err, lexicon),
-								}),
-							);
-						}
-					})();
-				}
-				return;
 			}
 			if (event.data instanceof ArrayBuffer || event.data instanceof Uint8Array) {
 				forward(
@@ -361,4 +334,33 @@ export function handleLiveRelay(request: Request, env: LiveRelayEnv): Response {
 	void relayLiveSession(serverWs, new URL(request.url).searchParams.get('profile'), env);
 
 	return new Response(null, { status: 101, webSocket: clientWs });
+}
+
+/** Run the browser's `executeTool` on the session and tell the browser what became of the call. */
+async function answerExecuteTool(
+	serverWs: WebSocket,
+	session: LiveSession,
+	call: Parameters<LiveSession['executeTool']>[0],
+	lexicon?: LexiconOverrides,
+): Promise<void> {
+	try {
+		const result = await session.executeTool(call);
+		serverWs.send(
+			JSON.stringify(
+				result.gated
+					? { type: 'executeToolResult', callId: call.callId, status: 'gated', gate: result.gated }
+					: { type: 'executeToolResult', callId: call.callId, status: 'settled' },
+			),
+		);
+	} catch (err) {
+		// The session refused it (an unknown call, a decision it takes no more): the browser reads why.
+		serverWs.send(
+			JSON.stringify({
+				type: 'executeToolResult',
+				callId: call.callId,
+				status: 'refused',
+				body: errorBody(err, lexicon),
+			}),
+		);
+	}
 }
