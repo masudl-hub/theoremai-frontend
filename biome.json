@@ -14,6 +14,8 @@
 			"wrangler.jsonc",
 			".fallowrc.jsonc",
 			"eslint.config.js",
+			"tmp/docs-snippets/**/*.ts",
+			"tmp/docs-snippets/**/*.tsx",
 			"!node_modules",
 			"!**/.react-router",
 			"!build",

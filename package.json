@@ -8,6 +8,8 @@
 		"predev": "node --experimental-strip-types scripts/ensure-theoremai.mjs",
 		"dev": "react-router dev",
 		"prebuild": "node --experimental-strip-types scripts/ensure-theoremai.mjs",
+		"docs:compose": "node scripts/docs-compose.mjs",
+		"lint:docs": "npm run docs:compose && node scripts/docs-lint-snippets.mjs",
 		"build": "react-router build",
 		"preview": "npm run build && vite preview",
 		"deploy": "npm run build && wrangler deploy",
