@@ -1,0 +1,12 @@
+---
+description: Theorem's docs contract — readers first, package truth only
+alwaysApply: true
+---
+
+# Docs contract
+
+**Clear is kind, and only the package's truth is clear.**
+
+The contract lives in the repo so it is readable outside Cursor: @docs/DOCS_CONTRACT.md
+
+Read `docs/DOCS_CONTRACT.md` in full before drafting, editing or reviewing any public docs page, draft (`tmp/docs-scratch/`), chapter (`app/lib/docs/articles/`) or snippet. Change the contract only in that file, and only when the user agrees the change.

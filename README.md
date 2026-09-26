@@ -82,6 +82,7 @@ Egress is **opt-in per profile** — set `guardrails.egress.enforce`.
 
 ## Docs
 
+- [`docs/DOCS_CONTRACT.md`](docs/DOCS_CONTRACT.md) — what may go on `/docs`: readers, the three questions per page, where truth comes from, snippets.
 - [`docs/SITE_SCHEMA.md`](docs/SITE_SCHEMA.md) — how `/docs` is built: data model, compose, information hierarchy.
 
 ## Scripts
