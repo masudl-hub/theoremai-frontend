@@ -2,8 +2,8 @@ import {
 	createPlaygroundTransport,
 	loadPlaygroundRunPayload,
 	playgroundInterface,
+	playgroundLiveConnection,
 	readPlaygroundRunIdFromUrl,
-	registerPlaygroundLiveProfile,
 } from '@theoremai/playground';
 import { LiveRunner } from '@theoremai/react/live';
 import { TheoremChat, TheoremThemeProvider } from '@theoremai/react/ui';
@@ -39,7 +39,7 @@ export default function PlaygroundRun({ loaderData }: Route.ComponentProps) {
 				← Playground
 			</a>
 			{iface.type === 'live' ? (
-				<LiveRunner iface={iface} registerProfile={() => registerPlaygroundLiveProfile(payload)} />
+				<LiveRunner iface={iface} connection={() => playgroundLiveConnection(payload)} />
 			) : (
 				<TheoremChat transport={transport} className="run-chat" />
 			)}

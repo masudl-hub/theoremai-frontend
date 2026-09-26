@@ -11,8 +11,7 @@ import type {
 import { credentialFromTypedSecret, type TurnToolSnapshot } from '@theoremai/agents/kernel';
 import type { StructuredRegistration, ToolRegistration } from '@theoremai/playground';
 import { badRequestJson, errorMessage, ndjsonEventStream } from './ndjson-stream';
-import { registerPlaygroundProfile } from './playground-register';
-import { enqueuePlaygroundSteer, openPlaygroundSteerInbox } from './playground-steer';
+import { enqueuePlaygroundSteer } from './playground-steer';
 import {
 	type PlaygroundTurnEnv,
 	streamPlaygroundInvoke,
@@ -28,7 +27,6 @@ type TurnBody = {
 	sessionPermissions?: string[];
 	model?: string;
 	effort?: string;
-	turnId?: string;
 	input: TurnInput;
 };
 
@@ -49,16 +47,9 @@ type InvokeBody = {
 	path?: string;
 };
 
-type RegisterBody = {
-	profile: ProfileDefinition;
-	customTools?: ToolRegistration[];
-};
-
 type SteerBody = {
-	/** Text turn id. */
-	turnId?: string;
-	/** Live session id (same inbox as turnId). */
-	sessionId?: string;
+	/** A text turn's inbox (its stream's first line), or a live call's session id. */
+	inbox?: string;
 	inject?: TurnHistoryMessage[];
 };
 
@@ -84,7 +75,6 @@ export async function playgroundTurn(request: Request, env: PlaygroundTurnEnv): 
 				sessionPermissions: body.sessionPermissions,
 				model: body.model,
 				effort: body.effort,
-				turnId: body.turnId,
 				signal: request.signal,
 				env,
 			}),
@@ -140,32 +130,17 @@ export async function playgroundInvoke(
 	}
 }
 
-/** POST /api/playground/live/register — register a live draft before the relay opens. */
-export async function playgroundLiveRegister(request: Request): Promise<Response> {
-	try {
-		const body = await request.json<RegisterBody>();
-		if (body.profile.type !== 'live') {
-			return Response.json({ error: 'Profile is not type live' }, { status: 400 });
-		}
-		const profile = registerPlaygroundProfile(body.profile, body.customTools ?? []);
-		return Response.json({ profileId: profile.id });
-	} catch (err) {
-		return badRequestJson(err);
-	}
-}
-
 /** POST /api/playground/turn/steer — queue a mid-turn inject for a turn or live session. */
 export async function playgroundSteer(request: Request): Promise<Response> {
 	try {
 		const body = await request.json<SteerBody>();
-		const inboxId = body.sessionId?.trim() || body.turnId?.trim();
+		const inboxId = body.inbox?.trim();
 		if (!inboxId) {
-			return Response.json({ error: 'turnId or sessionId is required' }, { status: 400 });
+			return Response.json({ error: 'inbox is required' }, { status: 400 });
 		}
 		if (!Array.isArray(body.inject) || body.inject.length === 0) {
 			return Response.json({ error: 'inject must be a non-empty array' }, { status: 400 });
 		}
-		await openPlaygroundSteerInbox(inboxId);
 		await enqueuePlaygroundSteer(inboxId, body.inject);
 		return Response.json({ ok: true });
 	} catch (err) {

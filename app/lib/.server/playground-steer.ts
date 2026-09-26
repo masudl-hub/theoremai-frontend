@@ -1,12 +1,14 @@
 /**
  * Playground mid-turn / live-cycle inject inbox.
  *
- * Keyed by turn id (text) or session id (live). Prefer the Cache API when
+ * Keyed by an id the server picks when a run opens its inbox: a text turn sends
+ * it to its browser as the stream's first line, a live call as its session id.
+ * Steers reach only open inboxes. Prefer the Cache API when
  * available (Cloudflare Pages / Workers share `caches.default` across isolates).
  * Fall back to process memory for local Vite/Node.
  */
 
-import type { TurnHistoryMessage } from '@theoremai/agents';
+import { TheoremError, type TurnHistoryMessage } from '@theoremai/agents';
 
 type SteerUnit = TurnHistoryMessage[];
 
@@ -48,10 +50,6 @@ async function readCacheQueue(turnId: string): Promise<SteerUnit[]> {
 async function writeCacheQueue(turnId: string, queue: SteerUnit[]): Promise<void> {
 	const cache = sharedCache();
 	if (!cache) return;
-	if (queue.length === 0) {
-		await cache.delete(steerRequest(turnId));
-		return;
-	}
 	const response = new Response(JSON.stringify({ queue }), {
 		headers: {
 			'content-type': 'application/json',
@@ -61,18 +59,35 @@ async function writeCacheQueue(turnId: string, queue: SteerUnit[]): Promise<void
 	await cache.put(steerRequest(turnId), response);
 }
 
-export async function openPlaygroundSteerInbox(turnId: string): Promise<void> {
-	if (!MEMORY.has(turnId)) MEMORY.set(turnId, []);
-	if (sharedCache()) {
-		const existing = await readCacheQueue(turnId);
-		if (existing.length === 0) await writeCacheQueue(turnId, []);
-	}
+/** A new inbox id: random, picked on the server, and sent only to the run's own browser. */
+export function newPlaygroundSteerInboxId(): string {
+	return globalThis.crypto.randomUUID();
 }
 
+/** Opens a run's inbox under an id from `newPlaygroundSteerInboxId`. */
+export async function openPlaygroundSteerInbox(inboxId: string): Promise<void> {
+	MEMORY.set(inboxId, []);
+	if (sharedCache()) await writeCacheQueue(inboxId, []);
+}
+
+/** Whether a run opened this inbox and has not closed it yet. */
+async function isInboxOpen(inboxId: string): Promise<boolean> {
+	if (MEMORY.has(inboxId)) return true;
+	const cache = sharedCache();
+	return cache ? (await cache.match(steerRequest(inboxId))) !== undefined : false;
+}
+
+/** Queues an inject for an open inbox; an id no run opened is refused. */
 export async function enqueuePlaygroundSteer(
 	turnId: string,
 	inject: TurnHistoryMessage[],
 ): Promise<void> {
+	if (!(await isInboxOpen(turnId))) {
+		// lexicon-exempt: internal diagnostic; the user reads session.turn_ended
+		throw new TheoremError('request', 'steer: no open run has this inbox', {
+			copy: { key: 'session.turn_ended' },
+		});
+	}
 	if (!inject.length) return;
 	const unit = inject.map((msg) => structuredClone(msg));
 

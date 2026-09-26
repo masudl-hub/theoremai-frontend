@@ -1,98 +1,20 @@
+/**
+ * Playground drafts, each run on a kernel scope of its own. Two visitors can
+ * name the same profile, tool, or schema without either one seeing the other's.
+ */
 import {
+	createKernelScope,
 	defineProfile,
+	type KernelScope,
 	type Profile,
 	type ProfileDefinition,
-	registerProfile,
-	registerStructured,
-	registerTool,
 	standardEgressEnforce,
 } from '@theoremai/agents';
-import { registerGooglePreset } from '@theoremai/agents/presets/google';
 import {
-	playgroundDemoHandler,
+	registerPlaygroundTools,
 	type StructuredRegistration,
-	stubOutputFromSchema,
 	type ToolRegistration,
-	zodFromJsonSchema,
 } from '@theoremai/playground';
-
-let playgroundPresetReady = false;
-
-function ensurePlaygroundPreset(): void {
-	if (playgroundPresetReady) return;
-	registerGooglePreset();
-	playgroundPresetReady = true;
-}
-
-function registerPlaygroundTools(tools: readonly ToolRegistration[]): void {
-	for (const tool of tools) {
-		if (tool.type === 'http') {
-			registerTool({
-				type: 'http',
-				name: tool.name,
-				description: tool.description,
-				category: tool.category,
-				access: tool.access,
-				paths: tool.paths,
-				loadTier: tool.loadTier,
-				permission: tool.permission,
-				endpoint: tool.endpoint,
-				method: tool.method,
-				headers: tool.headers,
-				mapping: tool.mapping,
-				auth: tool.auth,
-				input: zodFromJsonSchema(tool.inputSchema),
-				output: zodFromJsonSchema(tool.outputSchema),
-			});
-		} else if (tool.type === 'mcp') {
-			registerTool({
-				type: 'mcp',
-				name: tool.name,
-				description: tool.description,
-				category: tool.category,
-				access: tool.access,
-				paths: tool.paths,
-				loadTier: tool.loadTier,
-				permission: tool.permission,
-				serverUrl: tool.serverUrl,
-				mcpToolName: tool.mcpToolName,
-				headers: tool.headers,
-				auth: tool.auth,
-				input: zodFromJsonSchema(tool.inputSchema),
-				output: zodFromJsonSchema(tool.outputSchema),
-			});
-		} else {
-			const demoHandler = playgroundDemoHandler(tool.name);
-			const stub = tool.stubResponse ?? stubOutputFromSchema(tool.outputSchema);
-			registerTool({
-				type: 'function',
-				name: tool.name,
-				description: tool.description,
-				category: tool.category,
-				access: tool.access,
-				paths: tool.paths,
-				loadTier: tool.loadTier,
-				permission: tool.permission,
-				input: zodFromJsonSchema(tool.inputSchema),
-				output: zodFromJsonSchema(tool.outputSchema),
-				handler: demoHandler
-					? (input) => {
-							try {
-								return Promise.resolve(demoHandler(input as Record<string, unknown>));
-							} catch (err) {
-								return Promise.reject(err instanceof Error ? err : new Error(String(err)));
-							}
-						}
-					: () => Promise.resolve(stub),
-			});
-		}
-	}
-}
-
-function registerPlaygroundStructured(structured?: StructuredRegistration): void {
-	if (!structured) return;
-	registerStructured(structured.id, structured.spec);
-}
 
 /** Swaps the draft's egress enforcer for the standard one, keeping the guardrails' own type. */
 function withStandardEgress<G extends { egress?: { enforce: unknown } }>(guardrails: G): G {
@@ -100,25 +22,46 @@ function withStandardEgress<G extends { egress?: { enforce: unknown } }>(guardra
 	return { ...guardrails, egress: { ...guardrails.egress, enforce: standardEgressEnforce } };
 }
 
-function runtimeProfileDefinition(def: ProfileDefinition): ProfileDefinition {
-	if (def.type === 'host' || !def.guardrails) return def;
-	// Speech narrows guardrails (no canary), so it is spread on its own to keep that type.
-	if (def.type === 'speech') return { ...def, guardrails: withStandardEgress(def.guardrails) };
-	return { ...def, guardrails: withStandardEgress(def.guardrails) };
+/**
+ * Drops the draft's network exemptions. They are for the host the profile is
+ * exported to; the playground's own server reaches public hosts only.
+ */
+function withoutNetworkExemptions<G extends { network?: unknown }>(guardrails: G): G {
+	return { ...guardrails, network: undefined };
 }
 
-export function registerPlaygroundProfile(
+function runtimeProfileDefinition(def: ProfileDefinition): ProfileDefinition {
+	if (!def.guardrails) return def;
+	if (def.type === 'host') return { ...def, guardrails: withoutNetworkExemptions(def.guardrails) };
+	// Speech narrows guardrails (no canary), so it is spread on its own to keep that type.
+	if (def.type === 'speech') {
+		return { ...def, guardrails: withStandardEgress(withoutNetworkExemptions(def.guardrails)) };
+	}
+	return { ...def, guardrails: withStandardEgress(withoutNetworkExemptions(def.guardrails)) };
+}
+
+/** Registers the draft's tools, schema, and profile into `scope`. */
+function registerDraft(
+	scope: KernelScope,
 	profile: ProfileDefinition,
 	customTools: readonly ToolRegistration[],
-	structured?: StructuredRegistration,
+	structured: StructuredRegistration | undefined,
 ): Profile {
-	ensurePlaygroundPreset();
-	registerPlaygroundTools(customTools);
-	if (profile.type !== 'live') {
-		registerPlaygroundStructured(structured);
+	registerPlaygroundTools(scope.tools, customTools);
+	if (structured && profile.type !== 'live') {
+		scope.schemas.register(structured.id, structured.spec);
 	}
-	const runtime = runtimeProfileDefinition(profile);
-	const defined = defineProfile(runtime);
-	registerProfile(defined);
+	const defined = defineProfile(runtimeProfileDefinition(profile));
+	scope.profiles.register(defined);
 	return defined;
+}
+
+/** A new scope holding one request's draft, and the profile to run on it. */
+export function playgroundScope(
+	profile: ProfileDefinition,
+	customTools: readonly ToolRegistration[],
+	structured: StructuredRegistration | undefined,
+): { scope: KernelScope; profile: Profile } {
+	const scope = createKernelScope();
+	return { scope, profile: registerDraft(scope, profile, customTools, structured) };
 }

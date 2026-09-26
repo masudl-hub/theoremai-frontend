@@ -1,23 +1,25 @@
-import type { ProfileDefinition, TraceRecord, TurnEvent, TurnInput } from '@theoremai/agents';
-import {
-	createProvider,
-	invokeTool,
-	registerTraceDestination,
-	runTurn,
-	TheoremError,
+import type {
+	Profile,
+	ProfileDefinition,
+	TraceRecord,
+	TurnEvent,
+	TurnInput,
 } from '@theoremai/agents';
+import { createProvider, registerTraceDestination, TheoremError } from '@theoremai/agents';
 import type { InvokeToolRequest } from '@theoremai/agents/kernel';
 import {
 	createPlaygroundTraceRouter,
 	PLAYGROUND_TRACE_DESTINATION,
+	type PlaygroundSteerLine,
 	type PlaygroundTraceLine,
 	type StructuredRegistration,
 	type ToolRegistration,
 } from '@theoremai/playground';
-import { registerPlaygroundProfile } from './playground-register';
+import { playgroundScope } from './playground-register';
 import {
 	closePlaygroundSteerInbox,
 	consumePlaygroundSteerWithRetry,
+	newPlaygroundSteerInboxId,
 	openPlaygroundSteerInbox,
 } from './playground-steer';
 import { resolveHost } from './resolve-host';
@@ -81,10 +83,7 @@ function assertNotLiveProfile(profileType: string, action: string): void {
 	}
 }
 
-function createPlaygroundProvider(
-	profile: ReturnType<typeof registerPlaygroundProfile>,
-	env: PlaygroundTurnEnv,
-) {
+function createPlaygroundProvider(profile: Profile, env: PlaygroundTurnEnv) {
 	const gemini = geminiVault(env);
 	const openAiGateway = openRouterVault(env);
 	return createProvider(profile, {
@@ -102,20 +101,21 @@ export async function* streamPlaygroundTurn(args: {
 	sessionPermissions?: string[];
 	model?: string;
 	effort?: string;
-	turnId?: string;
 	signal?: AbortSignal;
 	env?: PlaygroundTurnEnv;
-}): AsyncGenerator<TurnEvent | PlaygroundTraceLine> {
-	const profile = registerPlaygroundProfile(args.profile, args.customTools, args.structured);
+}): AsyncGenerator<TurnEvent | PlaygroundTraceLine | PlaygroundSteerLine> {
+	const { scope, profile } = playgroundScope(args.profile, args.customTools, args.structured);
 	assertNotLiveProfile(profile.type, 'turn runner — use runSession');
 
 	const provider = createPlaygroundProvider(profile, args.env ?? {});
-	const turnId = args.turnId;
-	if (turnId) await openPlaygroundSteerInbox(turnId);
+	const inbox = newPlaygroundSteerInboxId();
+	await openPlaygroundSteerInbox(inbox);
+	const steerLine: PlaygroundSteerLine = { type: 'steer_inbox', inbox };
+	yield steerLine;
 
 	try {
 		yield* withRunTraces((metadata) =>
-			runTurn(
+			scope.runTurn(
 				{
 					profile: profile.id,
 					metadata,
@@ -126,23 +126,19 @@ export async function* streamPlaygroundTurn(args: {
 					signal: args.signal,
 					...(args.model ? { model: args.model } : {}),
 					...(args.effort ? { effort: args.effort } : {}),
-					...(turnId
-						? {
-								onStage: async ({ stage }) => {
-									if (stage !== 'pre_turn' && stage !== 'post_tool' && stage !== 'before_end') {
-										return;
-									}
-									const inject = await consumePlaygroundSteerWithRetry(turnId);
-									return inject?.length ? { inject } : undefined;
-								},
-							}
-						: {}),
+					onStage: async ({ stage }) => {
+						if (stage !== 'pre_turn' && stage !== 'post_tool' && stage !== 'before_end') {
+							return;
+						}
+						const inject = await consumePlaygroundSteerWithRetry(inbox);
+						return inject?.length ? { inject } : undefined;
+					},
 				},
 				provider,
 			),
 		);
 	} finally {
-		if (turnId) await closePlaygroundSteerInbox(turnId);
+		await closePlaygroundSteerInbox(inbox);
 	}
 }
 
@@ -153,11 +149,11 @@ export async function* streamPlaygroundInvoke(args: {
 	request: Omit<InvokeToolRequest, 'profile'>;
 	env?: PlaygroundTurnEnv;
 }): AsyncGenerator<TurnEvent | PlaygroundTraceLine> {
-	const profile = registerPlaygroundProfile(args.profile, args.customTools, args.structured);
+	const { scope, profile } = playgroundScope(args.profile, args.customTools, args.structured);
 	assertNotLiveProfile(profile.type, 'invoke');
 
 	yield* withRunTraces((metadata) =>
-		invokeTool({
+		scope.invokeTool({
 			profile: profile.id,
 			...args.request,
 			resolveHost,

@@ -9,26 +9,32 @@
  */
 
 import {
+	defaultKernelScope,
 	errorKind,
-	getProfile,
+	type KernelScope,
 	type LexiconOverrides,
 	type LiveSession,
+	type Profile,
 	publicError,
-	runSession,
 	TheoremError,
 } from '@theoremai/agents';
 import { forClient, forClientEvents } from '@theoremai/agents/host';
 import type { ToolCredential } from '@theoremai/agents/kernel';
-import type { PlaygroundTraceLine, PlaygroundTraceRoute } from '@theoremai/playground';
+import type {
+	PlaygroundLiveDraftMessage,
+	PlaygroundTraceLine,
+	PlaygroundTraceRoute,
+} from '@theoremai/playground';
 import { parseLiveRelayClientMessage } from '../types/live-messages';
 import { ensureKernelInitialized } from './kernel-init';
+import { playgroundScope } from './playground-register';
 import {
 	closePlaygroundSteerInbox,
 	consumePlaygroundSteerWithRetry,
+	newPlaygroundSteerInboxId,
 	openPlaygroundSteerInbox,
 } from './playground-steer';
 import { playgroundTraces } from './playground-turn';
-import { TH30_PROFILE_ID } from './th30';
 
 export type LiveRelayEnv = {
 	GEMINI_API_KEY_FREE_A?: string;
@@ -70,10 +76,6 @@ function resolveGeminiApiKey(env: LiveRelayEnv): string | undefined {
 		env.GEMINI_API_KEY_FREE_B?.trim() ||
 		env.GEMINI_API_KEY_FREE_C?.trim()
 	);
-}
-
-function newLiveSessionId(): string {
-	return globalThis.crypto.randomUUID();
 }
 
 /** A relay failure as the browser reads it: the profile's wording and the kind, never the detail. */
@@ -214,6 +216,7 @@ async function pipeSessionToBrowser(
 }
 
 async function openLiveSession(
+	scope: KernelScope,
 	profileId: string,
 	env: LiveRelayEnv,
 	apiKey: string,
@@ -222,7 +225,7 @@ async function openLiveSession(
 	openWebSocket: (url: string) => Promise<WebSocket>,
 ): Promise<LiveSession> {
 	await openPlaygroundSteerInbox(sessionId);
-	return runSession(
+	return scope.runSession(
 		{
 			profile: profileId,
 			metadata,
@@ -259,12 +262,68 @@ function failRelay(serverWs: WebSocket, err: unknown, lexicon?: LexiconOverrides
 	}
 }
 
+/** The browser's first message, or a failure if the socket closes before sending one. */
+function firstMessage(serverWs: WebSocket): Promise<unknown> {
+	return new Promise((resolve, reject) => {
+		const onMessage = (event: MessageEvent) => {
+			serverWs.removeEventListener('close', onClose);
+			try {
+				resolve(typeof event.data === 'string' ? (JSON.parse(event.data) as unknown) : undefined);
+			} catch (err) {
+				// lexicon-exempt: internal diagnostic; the user reads error.request
+				reject(new TheoremError('request', 'Live first message is not JSON', { cause: err }));
+			}
+		};
+		const onClose = () => {
+			serverWs.removeEventListener('message', onMessage);
+			// lexicon-exempt: internal diagnostic; the user reads error.network
+			reject(new TheoremError('network', 'Live socket closed before its first message'));
+		};
+		serverWs.addEventListener('message', onMessage, { once: true });
+		serverWs.addEventListener('close', onClose, { once: true });
+	});
+}
+
+function isDraftMessage(raw: unknown): raw is PlaygroundLiveDraftMessage {
+	if (!raw || typeof raw !== 'object') return false;
+	const record = raw as Record<string, unknown>;
+	return (
+		record.type === 'draft' &&
+		Boolean(record.profile) &&
+		typeof record.profile === 'object' &&
+		Array.isArray(record.customTools)
+	);
+}
+
+/**
+ * The scope and profile a call runs on. `?profile=` names a profile the site
+ * registered; without it, the call's first message carries a playground draft,
+ * which runs on a scope of its own that no other call can reach.
+ */
+async function resolveLiveProfile(
+	serverWs: WebSocket,
+	profileParam: string | null,
+): Promise<{ scope: KernelScope; profile: Profile }> {
+	if (profileParam) {
+		return { scope: defaultKernelScope, profile: defaultKernelScope.profiles.get(profileParam) };
+	}
+	const message = await firstMessage(serverWs);
+	if (!isDraftMessage(message)) {
+		throw new TheoremError(
+			'request',
+			// lexicon-exempt: internal diagnostic; the user reads error.request
+			'A live call without ?profile= must open with a draft message',
+		);
+	}
+	return playgroundScope(message.profile, message.customTools, undefined);
+}
+
 async function relayLiveSession(
 	serverWs: WebSocket,
-	profileId: string,
+	profileParam: string | null,
 	env: LiveRelayEnv,
 ): Promise<void> {
-	const sessionId = newLiveSessionId();
+	const sessionId = newPlaygroundSteerInboxId();
 	// Each record goes to the browser as the session writes it.
 	const traces = playgroundTraces.route((record) => {
 		if (serverWs.readyState !== WebSocket.OPEN) return;
@@ -272,13 +331,15 @@ async function relayLiveSession(
 		serverWs.send(JSON.stringify(line));
 	});
 	let lexicon: LexiconOverrides | undefined;
+	let profileId: string;
 	let session: LiveSession;
 	try {
-		const profile = getProfile(profileId);
+		const { scope, profile } = await resolveLiveProfile(serverWs, profileParam);
+		profileId = profile.id;
 		lexicon = profile.lexicon;
 		if (profile.type !== 'live') {
 			// lexicon-exempt: internal diagnostic; the user reads error.config
-			throw new TheoremError('config', `Profile '${profileId}' is not type 'live'`);
+			throw new TheoremError('config', `Profile '${profile.id}' is not type 'live'`);
 		}
 		const apiKey = resolveGeminiApiKey(env);
 		if (!apiKey) {
@@ -289,6 +350,7 @@ async function relayLiveSession(
 			);
 		}
 		session = await openLiveSession(
+			scope,
 			profileId,
 			env,
 			apiKey,
@@ -333,8 +395,7 @@ export function handleLiveRelay(request: Request, env: LiveRelayEnv): Response {
 	// WebSocket never reads an HTTP error body, so every failure travels as an error envelope.
 	const [clientWs, serverWs] = Object.values(new WebSocketPair());
 	serverWs.accept();
-	const profileId = new URL(request.url).searchParams.get('profile') || TH30_PROFILE_ID;
-	void relayLiveSession(serverWs, profileId, env);
+	void relayLiveSession(serverWs, new URL(request.url).searchParams.get('profile'), env);
 
 	return new Response(null, { status: 101, webSocket: clientWs });
 }

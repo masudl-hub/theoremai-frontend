@@ -51,10 +51,10 @@ import {
 	type PlaygroundRunPayload,
 	type PlaygroundTreeNode,
 	playgroundInterface,
+	playgroundLiveConnection,
 	playgroundNodeRef,
 	playgroundSource,
 	playgroundTree,
-	registerPlaygroundLiveProfile,
 	savePlaygroundRunPayload,
 } from '@theoremai/playground';
 import { LiveRunner } from '@theoremai/react/live';
@@ -263,9 +263,7 @@ function AgentPreview({ payload }: { payload: PlaygroundRunPayload }) {
 	const iface = useMemo(() => playgroundInterface(payload), [payload]);
 	const transport = useMemo(() => createPlaygroundTransport(payload), [payload]);
 	if (iface.type === 'live') {
-		return (
-			<LiveRunner iface={iface} registerProfile={() => registerPlaygroundLiveProfile(payload)} />
-		);
+		return <LiveRunner iface={iface} connection={() => playgroundLiveConnection(payload)} />;
 	}
 	return <TheoremChat transport={transport} />;
 }
