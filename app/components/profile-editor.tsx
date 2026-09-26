@@ -2244,7 +2244,7 @@ function ToolSpecEditor({
 						value={tool.stubOutputJson ?? ''}
 						rows={6}
 						hasSpellCheck={false}
-						placeholder="Left blank, a stand-in built from the output schema."
+						hint="Left blank, a stand-in built from the output schema."
 						onChange={(stubOutputJson) => {
 							set({ stubOutputJson });
 						}}
@@ -2306,7 +2306,7 @@ function ToolSpecEditor({
 							path="mapping.bodyParam"
 							field="bodyParam"
 							value={tool.bodyParam ?? ''}
-							placeholder="None"
+							hint="None"
 							onChange={(bodyParam) => {
 								set({ bodyParam });
 							}}
@@ -2386,7 +2386,8 @@ function ToolSpecEditor({
 								path="auth.headerPrefix"
 								field="authHeaderPrefix"
 								value={tool.authHeaderPrefix ?? ''}
-								placeholder={AUTH_HEADER_PREFIX[authType] || 'None'}
+								placeholder={AUTH_HEADER_PREFIX[authType] || undefined}
+								hint="None"
 								onChange={(prefix) => {
 									// Blank is the kernel's prefix for the type, which the placeholder shows.
 									set({ authHeaderPrefix: prefix || undefined });
