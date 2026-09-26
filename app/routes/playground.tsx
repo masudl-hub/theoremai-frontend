@@ -31,6 +31,7 @@ import {
 	IconMicrophone,
 	IconPhoto,
 	IconPlayerPlay,
+	IconQuote,
 	IconRepeat,
 	IconShieldCheck,
 	IconStack2,
@@ -109,6 +110,7 @@ const FACET_ICON = {
 	speech: IconVolume,
 	live: IconMicrophone,
 	decision: IconGitBranch,
+	wording: IconQuote,
 } satisfies Record<Exclude<PlaygroundNodeRef['facet'], 'toolSpec'>, unknown>;
 
 /** A node's icon; Identity shows the profile type's once one is picked. */

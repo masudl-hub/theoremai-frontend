@@ -3,6 +3,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { CheckboxInput } from '@astryxdesign/core/CheckboxInput';
 import { CheckboxList, CheckboxListItem } from '@astryxdesign/core/CheckboxList';
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
+import { Collapsible, CollapsibleGroup } from '@astryxdesign/core/Collapsible';
 import { ComplexSelector } from '@astryxdesign/core/ComplexSelector';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { HStack } from '@astryxdesign/core/HStack';
@@ -12,6 +13,7 @@ import { List, ListItem } from '@astryxdesign/core/List';
 import { Section } from '@astryxdesign/core/Section';
 import { StackItem } from '@astryxdesign/core/Stack';
 import { pixel, proportional, Table } from '@astryxdesign/core/Table';
+import { Text } from '@astryxdesign/core/Text';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Token } from '@astryxdesign/core/Token';
@@ -82,11 +84,14 @@ import {
 	HTTP_METHODS,
 	type HttpMethod,
 	IMAGE_ATTACHMENT_ACCEPT_MIMES,
+	LEXICON_KEYS,
+	type LexiconKey,
 	lexiconDefault,
 	type OverflowKeySlot,
 	type PlaygroundAuthType,
 	PROFILE_TYPE_PROTOCOLS,
 	PROTOCOL_PROVIDERS,
+	type ProfileGraphFacetId,
 	type Protocol,
 	type Provider,
 	profileGraphFacet,
@@ -110,6 +115,7 @@ import {
 	GEMINI_PLAYGROUND_DEFAULT_API_ID,
 	GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS,
 	GEMINI_PLAYGROUND_MODELS,
+	INLINE_WORDING,
 	inputLimitsRequired,
 	isGoogleTransport,
 	isOpenRouterTransport,
@@ -2503,6 +2509,170 @@ function ToolSpecEditor({
 	);
 }
 
+/** Wording's areas, by lexicon key prefix: what visitors read first, then what the model reads. */
+const WORDING_AREAS: readonly { prefix: string; title: string; note: string }[] = [
+	{ prefix: 'error', title: 'Errors', note: 'What a visitor reads when a turn fails.' },
+	{ prefix: 'attachments', title: 'Attachments', note: "When a file can't be sent." },
+	{ prefix: 'voice', title: 'Voice', note: "When a voice note can't be recorded or used." },
+	{ prefix: 'session', title: 'Session', note: 'Waits, approvals, and signing in.' },
+	{ prefix: 'live', title: 'Live', note: 'When a live session ends.' },
+	{ prefix: 'quota', title: 'Quota', note: 'When the daily limit is reached.' },
+	{ prefix: 'tool', title: 'Tools', note: "What the model is told when a tool call can't run." },
+	{
+		prefix: 'repair',
+		title: 'Repair',
+		note: 'How the model is asked to fix a reply that failed its schema.',
+	},
+	{
+		prefix: 'egress',
+		title: 'Egress',
+		note: 'How a reply that fails its check is sent back or refused.',
+	},
+	{
+		prefix: 'continue',
+		title: 'Resumption',
+		note: 'How the model is asked to pick up a reply that stopped short.',
+	},
+	{ prefix: 'canary', title: 'Canary', note: "The note that binds each turn's canary." },
+	{
+		prefix: 'taint',
+		title: 'Untrusted content',
+		note: 'Why a tool call was refused after reading untrusted content.',
+	},
+	{
+		prefix: 'advisory',
+		title: 'Advisories',
+		note: 'Notes the model reads beside content that tries to direct it.',
+	},
+];
+
+/** Row names for keys whose own name reads as code. */
+const WORDING_LABELS: Partial<Record<LexiconKey, string>> = {
+	'attachments.mime_not_allowed': 'File type not allowed',
+	'attachments.limits_unconfigured': 'Files turned off',
+	'quota.exhausted': 'Limit reached',
+};
+
+/** `rate_limit` → "Rate limit". */
+function wordingLabel(key: LexiconKey): string {
+	const named = WORDING_LABELS[key];
+	if (named) return named;
+	const words = key.slice(key.indexOf('.') + 1).replaceAll('_', ' ');
+	return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** The kernel's line for `key`, worded with the draft's own limits where it takes them. */
+function wordingPlaceholder(draft: PlaygroundDraft, key: LexiconKey): string {
+	const { inputs, guardrails } = draft;
+	const text = lexiconDefault(key, {
+		maxFiles: inputs.maxFiles ?? '{maxFiles}',
+		maxBytes: inputs.maxBytes ?? Number.NaN,
+		maxTurnBytes: inputs.maxTurnBytes ?? Number.NaN,
+		perDay: guardrails.quotaPerDay ?? '{perDay}',
+	});
+	// A size the draft leaves unset formats as NaN: show the placeholder the template takes instead.
+	return text.replace(
+		'NaN MB',
+		key === 'attachments.turn_too_large' ? '{maxTurnBytes}' : '{maxBytes}',
+	);
+}
+
+/** A line edited beside its setting: a link there, so each line has one value. */
+function InlineWordingRow({
+	lexiconKey,
+	facet,
+	onSelect,
+}: {
+	lexiconKey: LexiconKey;
+	facet: ProfileGraphFacetId;
+	onSelect: (id: string) => void;
+}) {
+	return (
+		<InspectorRow label={wordingLabel(lexiconKey)} path="lexicon.*">
+			<Button
+				label={`Edit in ${profileGraphFacet(facet)?.label ?? facet}`}
+				variant="ghost"
+				size="sm"
+				onClick={() => {
+					onSelect(facet);
+				}}
+			/>
+		</InspectorRow>
+	);
+}
+
+/** Every line the kernel says, by area; left blank, a line keeps the kernel's own. */
+function WordingEditor({
+	draft,
+	setDraft,
+	onSelect,
+}: {
+	draft: PlaygroundDraft;
+	setDraft: SetDraft;
+	onSelect: (id: string) => void;
+}) {
+	const set = patch(setDraft, 'wording');
+	const areas = WORDING_AREAS.map((area) => ({
+		...area,
+		keys: LEXICON_KEYS.filter((key) => key.startsWith(`${area.prefix}.`)),
+	}));
+	return (
+		<Section variant="transparent" padding={3}>
+			<VStack gap={3}>
+				<Text type="supporting">
+					What the agent says when something happens. Left blank, a line keeps Theorem's default,
+					shown in the field.
+				</Text>
+				<CollapsibleGroup type="multiple" hasDividers density="compact">
+					{areas.map((area) => (
+						<Collapsible
+							key={area.prefix}
+							value={area.prefix}
+							trigger={
+								<VStack gap={0}>
+									<Text type="label" weight="semibold">
+										{area.title}
+									</Text>
+									<Text type="supporting">{area.note}</Text>
+								</VStack>
+							}
+						>
+							<VStack gap={3} paddingBlock={2}>
+								{area.keys.map((key) => {
+									const facet = INLINE_WORDING[key];
+									if (facet)
+										return (
+											<InlineWordingRow
+												key={key}
+												lexiconKey={key}
+												facet={facet}
+												onSelect={onSelect}
+											/>
+										);
+									return (
+										<TextAreaRow
+											key={key}
+											label={wordingLabel(key)}
+											path="lexicon.*"
+											field={key}
+											rows={2}
+											value={draft.wording[key] ?? ''}
+											placeholder={wordingPlaceholder(draft, key)}
+											onChange={(text) => {
+												set({ [key]: text });
+											}}
+										/>
+									);
+								})}
+							</VStack>
+						</Collapsible>
+					))}
+				</CollapsibleGroup>
+			</VStack>
+		</Section>
+	);
+}
+
 /**
  * The editor for the tree node `selectedId`. The compile's issues for that node show on the rows
  * of the fields they name; the rest, and all of them for a node with no editor yet, show above it.
@@ -2568,6 +2738,9 @@ export function ProfileEditor({
 			break;
 		case 'observability':
 			editor = <ObservabilityEditor {...props} />;
+			break;
+		case 'wording':
+			editor = <WordingEditor {...props} onSelect={onSelect} />;
 			break;
 		default:
 			hasRows = false;
