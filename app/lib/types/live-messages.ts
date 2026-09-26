@@ -1,19 +1,21 @@
-export type LiveToolResponse = { id: string; name: string; output: unknown };
+import { GATE_DECISIONS, type GateDecision } from '@theoremai/agents';
+
+function isGateDecision(value: unknown): value is GateDecision {
+	return GATE_DECISIONS.some((decision) => decision === value);
+}
 
 export type LiveRelayClientMessage =
 	| { type: 'audio'; data: string }
 	| { type: 'video'; data: string; mimeType?: string }
 	| { type: 'text'; text: string }
+	/** Run a call the model made, by its id; the live session holds its name, input and gate. */
 	| {
 			type: 'executeTool';
-			name: string;
 			callId: string;
+			decision?: GateDecision;
 			input?: unknown;
-			resume?: { value?: unknown; granted?: boolean };
-			credentials?: Record<string, unknown>;
-	  }
-	| { type: 'toolResponse'; id: string; name: string; output: unknown }
-	| { type: 'toolResponses'; responses: LiveToolResponse[] };
+			secret?: string;
+	  };
 
 export function parseLiveRelayClientMessage(raw: unknown): LiveRelayClientMessage | null {
 	if (!raw || typeof raw !== 'object') return null;
@@ -32,43 +34,17 @@ export function parseLiveRelayClientMessage(raw: unknown): LiveRelayClientMessag
 		case 'text':
 			return typeof record.text === 'string' ? { type: 'text', text: record.text } : null;
 		case 'executeTool': {
-			if (typeof record.name !== 'string' || typeof record.callId !== 'string') return null;
-			const resumeRaw = record.resume;
-			const credentialsRaw = record.credentials;
+			const { callId, decision, input, secret } = record;
+			if (typeof callId !== 'string') return null;
+			if (decision !== undefined && !isGateDecision(decision)) return null;
+			if (secret !== undefined && typeof secret !== 'string') return null;
 			return {
 				type: 'executeTool',
-				name: record.name,
-				callId: record.callId,
-				input: record.input,
-				resume:
-					resumeRaw && typeof resumeRaw === 'object' && !Array.isArray(resumeRaw)
-						? resumeRaw
-						: undefined,
-				credentials:
-					credentialsRaw && typeof credentialsRaw === 'object' && !Array.isArray(credentialsRaw)
-						? Object.fromEntries(Object.entries(credentialsRaw))
-						: undefined,
+				callId,
+				...(decision !== undefined ? { decision } : {}),
+				...(input !== undefined ? { input } : {}),
+				...(secret !== undefined ? { secret } : {}),
 			};
-		}
-		case 'toolResponse':
-			return typeof record.id === 'string' && typeof record.name === 'string'
-				? {
-						type: 'toolResponse',
-						id: record.id,
-						name: record.name,
-						output: record.output,
-					}
-				: null;
-		case 'toolResponses': {
-			if (!Array.isArray(record.responses)) return null;
-			const responses = record.responses.filter(
-				(entry): entry is LiveToolResponse =>
-					Boolean(entry) &&
-					typeof entry === 'object' &&
-					typeof (entry as LiveToolResponse).id === 'string' &&
-					typeof (entry as LiveToolResponse).name === 'string',
-			);
-			return responses.length > 0 ? { type: 'toolResponses', responses } : null;
 		}
 		default:
 			return null;
