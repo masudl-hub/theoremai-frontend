@@ -1,3 +1,4 @@
+import { Badge } from '@astryxdesign/core/Badge';
 import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
 import { CheckboxInput } from '@astryxdesign/core/CheckboxInput';
@@ -11,6 +12,7 @@ import { Icon, type IconType } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { List, ListItem } from '@astryxdesign/core/List';
 import { Section } from '@astryxdesign/core/Section';
+import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { StackItem } from '@astryxdesign/core/Stack';
 import { pixel, proportional, Table } from '@astryxdesign/core/Table';
 import { Text } from '@astryxdesign/core/Text';
@@ -20,6 +22,7 @@ import { Token } from '@astryxdesign/core/Token';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
 import {
+	IconAlertTriangle,
 	IconAlignLeft,
 	IconAntennaBars1,
 	IconAntennaBars2,
@@ -28,6 +31,8 @@ import {
 	IconAntennaBars5,
 	IconAntennaBarsOff,
 	IconBan,
+	IconBandage,
+	IconBiohazard,
 	IconBolt,
 	IconBraces,
 	IconBroadcast,
@@ -35,13 +40,18 @@ import {
 	IconBulbOff,
 	IconCertificate,
 	IconCircleDashed,
+	IconCpu,
 	IconDeviceDesktop,
 	IconEye,
 	IconEyeOff,
+	IconFeather,
 	IconFlame,
 	IconFlask,
+	IconGauge,
 	IconHandOff,
 	IconHandStop,
+	IconHourglass,
+	IconInfoCircle,
 	IconKey,
 	IconLetterA,
 	IconLetterB,
@@ -50,19 +60,25 @@ import {
 	IconLockOpen,
 	IconMathFunction,
 	IconMessage,
+	IconMicrophone,
 	IconPackage,
+	IconPaperclip,
 	IconPencil,
 	IconPhoto,
 	IconPlayerPause,
 	IconPlayerPlay,
+	IconPlayerTrackNext,
 	IconPlugConnected,
 	IconPlus,
 	IconRefresh,
+	IconSend,
 	IconShieldLock,
 	IconSquareRoundedNumber0,
 	IconSquareRoundedNumber1,
 	IconSquareRoundedNumber2,
+	IconTool,
 	IconTrash,
+	IconUser,
 	IconUserCheck,
 	IconVolume,
 	IconWaveSine,
@@ -2511,39 +2527,126 @@ function ToolSpecEditor({
 }
 
 /** Wording's areas, by lexicon key prefix: what visitors read first, then what the model reads. */
-const WORDING_AREAS: readonly { prefix: string; title: string; note: string }[] = [
-	{ prefix: 'error', title: 'Errors', note: 'What a visitor reads when a turn fails.' },
-	{ prefix: 'attachments', title: 'Attachments', note: "When a file can't be sent." },
-	{ prefix: 'voice', title: 'Voice', note: "When a voice note can't be recorded or used." },
-	{ prefix: 'session', title: 'Session', note: 'Waits, approvals, and signing in.' },
-	{ prefix: 'live', title: 'Live', note: 'When a live session ends.' },
-	{ prefix: 'quota', title: 'Quota', note: 'When the daily limit is reached.' },
-	{ prefix: 'tool', title: 'Tools', note: "What the model is told when a tool call can't run." },
+/** Who reads a line: the visitor, in the chat, or the model, in its context. */
+type WordingAudience = 'visitor' | 'model';
+
+const WORDING_AREAS: readonly {
+	prefix: string;
+	title: string;
+	note: string;
+	icon: IconType;
+	audience: WordingAudience;
+}[] = [
+	{
+		prefix: 'error',
+		title: 'Errors',
+		note: 'When a turn fails.',
+		icon: IconAlertTriangle,
+		audience: 'visitor',
+	},
+	{
+		prefix: 'attachments',
+		title: 'Attachments',
+		note: "When a file can't be sent.",
+		icon: IconPaperclip,
+		audience: 'visitor',
+	},
+	{
+		prefix: 'voice',
+		title: 'Voice',
+		note: "When a voice note can't be recorded or used.",
+		icon: IconMicrophone,
+		audience: 'visitor',
+	},
+	{
+		prefix: 'session',
+		title: 'Session',
+		note: 'Waits, approvals, and signing in.',
+		icon: IconHourglass,
+		audience: 'visitor',
+	},
+	{
+		prefix: 'live',
+		title: 'Live',
+		note: 'When a live session ends.',
+		icon: IconBroadcast,
+		audience: 'visitor',
+	},
+	{
+		prefix: 'quota',
+		title: 'Quota',
+		note: 'When the daily limit is reached.',
+		icon: IconGauge,
+		audience: 'visitor',
+	},
+	{
+		prefix: 'tool',
+		title: 'Tools',
+		note: "When a tool call can't run.",
+		icon: IconTool,
+		audience: 'model',
+	},
 	{
 		prefix: 'repair',
 		title: 'Repair',
-		note: 'How the model is asked to fix a reply that failed its schema.',
+		note: 'Fixing a reply that failed its schema.',
+		icon: IconBandage,
+		audience: 'model',
 	},
 	{
 		prefix: 'egress',
 		title: 'Egress',
-		note: 'How a reply that fails its check is sent back or refused.',
+		note: 'A reply that fails its check, sent back or refused.',
+		icon: IconSend,
+		audience: 'model',
 	},
 	{
 		prefix: 'continue',
 		title: 'Resumption',
-		note: 'How the model is asked to pick up a reply that stopped short.',
+		note: 'Picking up a reply that stopped short.',
+		icon: IconPlayerTrackNext,
+		audience: 'model',
 	},
-	{ prefix: 'canary', title: 'Canary', note: "The note that binds each turn's canary." },
+	{
+		prefix: 'canary',
+		title: 'Canary',
+		note: "The note that binds each turn's canary.",
+		icon: IconFeather,
+		audience: 'model',
+	},
 	{
 		prefix: 'taint',
 		title: 'Untrusted content',
-		note: 'Why a tool call was refused after reading untrusted content.',
+		note: 'Why a tool call was refused after reading it.',
+		icon: IconBiohazard,
+		audience: 'model',
 	},
 	{
 		prefix: 'advisory',
 		title: 'Advisories',
-		note: 'Notes the model reads beside content that tries to direct it.',
+		note: 'Notes beside content that tries to direct it.',
+		icon: IconInfoCircle,
+		audience: 'model',
+	},
+];
+
+const WORDING_AUDIENCES: readonly {
+	value: WordingAudience;
+	label: string;
+	icon: IconType;
+	note: string;
+}[] = [
+	{
+		value: 'visitor',
+		label: 'Visitor reads',
+		icon: IconUser,
+		note: 'Shown in the chat when something fails or needs a wait.',
+	},
+	{
+		value: 'model',
+		label: 'Model reads',
+		icon: IconCpu,
+		note: 'Put in front of the model; the visitor never sees these.',
 	},
 ];
 
@@ -2613,29 +2716,59 @@ function WordingEditor({
 	onSelect: (id: string) => void;
 }) {
 	const set = patch(setDraft, 'wording');
-	const areas = WORDING_AREAS.map((area) => ({
-		...area,
-		keys: LEXICON_KEYS.filter((key) => key.startsWith(`${area.prefix}.`)),
-	}));
+	const [audience, setAudience] = useState<WordingAudience>('visitor');
+	const areas = WORDING_AREAS.filter((area) => area.audience === audience).map((area) => {
+		const keys = LEXICON_KEYS.filter((key) => key.startsWith(`${area.prefix}.`));
+		const edited = keys.filter((key) => !INLINE_WORDING[key] && draft.wording[key]).length;
+		return { ...area, keys, edited };
+	});
+	const note = WORDING_AUDIENCES.find((entry) => entry.value === audience)?.note;
 	return (
 		<Section variant="transparent" padding={3}>
 			<VStack gap={3}>
+				<SegmentedControl
+					label="Who reads it"
+					size="sm"
+					layout="fill"
+					value={audience}
+					onChange={(next) => {
+						const picked = WORDING_AUDIENCES.find((entry) => entry.value === next);
+						if (picked) setAudience(picked.value);
+					}}
+				>
+					{WORDING_AUDIENCES.map((entry) => (
+						<SegmentedControlItem
+							key={entry.value}
+							value={entry.value}
+							label={entry.label}
+							icon={<Icon icon={entry.icon} size="sm" />}
+						/>
+					))}
+				</SegmentedControl>
 				<Text type="supporting">
-					What the agent says when something happens. Left blank, a line keeps Theorem's default,
-					shown in the field.
+					{note} Left blank, a line keeps Theorem's default, shown in the field; Tab takes it up to
+					edit.
 				</Text>
-				<CollapsibleGroup type="multiple" hasDividers density="compact">
+				<CollapsibleGroup key={audience} type="multiple" hasDividers density="compact">
 					{areas.map((area) => (
 						<Collapsible
 							key={area.prefix}
 							value={area.prefix}
 							trigger={
-								<VStack gap={0}>
-									<Text type="label" weight="semibold">
-										{area.title}
-									</Text>
-									<Text type="supporting">{area.note}</Text>
-								</VStack>
+								<HStack gap={2} align="center">
+									<Icon icon={area.icon} size="sm" color="secondary" />
+									<StackItem size="fill">
+										<VStack gap={0}>
+											<Text type="label" weight="semibold">
+												{area.title}
+											</Text>
+											<Text type="supporting">{area.note}</Text>
+										</VStack>
+									</StackItem>
+									{area.edited > 0 && (
+										<Badge variant="info" label={`${String(area.edited)} edited`} />
+									)}
+								</HStack>
 							}
 						>
 							<VStack gap={3} paddingBlock={2}>
