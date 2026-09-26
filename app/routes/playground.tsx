@@ -1,5 +1,7 @@
 import { Button } from '@astryxdesign/core/Button';
+import { ButtonGroup } from '@astryxdesign/core/ButtonGroup';
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
+import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
@@ -11,6 +13,7 @@ import { ScrollableArea } from '@astryxdesign/core/ScrollableArea';
 import { Section } from '@astryxdesign/core/Section';
 import { StackItem } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
+import { useToast } from '@astryxdesign/core/Toast';
 import { Token } from '@astryxdesign/core/Token';
 import { TreeList, type TreeListItemData } from '@astryxdesign/core/TreeList';
 import { VStack } from '@astryxdesign/core/VStack';
@@ -19,7 +22,9 @@ import {
 	IconAdjustmentsHorizontal,
 	IconAlertTriangle,
 	IconBrain,
+	IconChevronDown,
 	IconCode,
+	IconCopy,
 	IconDownload,
 	IconFileExport,
 	IconFileImport,
@@ -31,6 +36,7 @@ import {
 	IconQuote,
 	IconRepeat,
 	IconShieldCheck,
+	IconSparkles,
 	IconStack2,
 	IconTool,
 	IconVolume,
@@ -59,6 +65,7 @@ import { TheoremChat, useDisclosureMotion } from '@theoremai/react/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ISSUE_ROW_ATTRIBUTE, ListBadges } from '../components/inspector';
 import { PROFILE_TYPE_ICON, ProfileEditor, TOOL_TYPE_ICON } from '../components/profile-editor';
+import { exportBundle, llmBrief } from '../lib/export-agent';
 import type { Route } from './+types/playground';
 import type { ShellHandle } from './shell';
 
@@ -176,12 +183,12 @@ function openInNewTab(payload: PlaygroundRunPayload) {
 	window.open(`/playground/run?run=${encodeURIComponent(runId)}`, '_blank', 'noopener');
 }
 
-/** Downloads the draft's TypeScript as `<agentId>.ts`. */
-function download(agentId: string, source: string) {
-	const url = URL.createObjectURL(new Blob([source], { type: 'text/typescript' }));
+/** Downloads `text` as `filename`. */
+function download(filename: string, text: string) {
+	const url = URL.createObjectURL(new Blob([text], { type: 'text/typescript' }));
 	const link = document.createElement('a');
 	link.href = url;
-	link.download = `${agentId}.ts`;
+	link.download = filename;
 	link.click();
 	URL.revokeObjectURL(url);
 }
@@ -311,6 +318,13 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 			? '1 issue'
 			: `${String(compiled.issues.length)} issues`;
 	const blocked = issues && `Fix ${issues} first`;
+	const toast = useToast();
+	const copy = (text: string, what: string) => {
+		navigator.clipboard.writeText(text).then(
+			() => toast({ body: `Copied ${what}.` }),
+			() => toast({ body: "Couldn't reach the clipboard.", type: 'error' }),
+		);
+	};
 
 	const title = editorTitle(draft, selected);
 
@@ -442,15 +456,52 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 						<Section variant="transparent" padding={3}>
 							<HStack gap={2} vAlign="center">
 								<StackItem size="fill" />
-								<Button
-									label="Export"
-									icon={<Icon icon={IconDownload} size="sm" />}
-									isDisabled={!compiled.ok}
-									tooltip={blocked ?? 'Download the TypeScript'}
-									onClick={() => {
-										if (compiled.ok && source) download(compiled.agentId, source);
-									}}
-								/>
+								<ButtonGroup label="Export" isDisabled={!compiled.ok}>
+									<Button
+										label="Export"
+										icon={<Icon icon={IconDownload} size="sm" />}
+										tooltip={blocked ?? 'Download the agent as one .tsx'}
+										onClick={() => {
+											if (compiled.ok && source) {
+												download(`${compiled.agentId}.tsx`, exportBundle(compiled, source));
+											}
+										}}
+									/>
+									<DropdownMenu
+										button={{
+											label: 'More export options',
+											isIconOnly: true,
+											icon: <Icon icon={IconChevronDown} size="sm" />,
+											isDisabled: !compiled.ok,
+										}}
+										hasChevron={false}
+										placement="below"
+										alignment="end"
+										items={[
+											{
+												id: 'copy',
+												label: 'Copy',
+												description: 'The .tsx, to paste into your code.',
+												icon: <Icon icon={IconCopy} size="sm" />,
+												onClick: () => {
+													if (compiled.ok && source)
+														copy(exportBundle(compiled, source), 'the .tsx');
+												},
+											},
+											{
+												id: 'copy-llm',
+												label: 'Copy for LLM',
+												description:
+													'The .tsx with a brief: what to install, where it goes, what to ask you.',
+												icon: <Icon icon={IconSparkles} size="sm" />,
+												onClick: () => {
+													if (compiled.ok && source)
+														copy(llmBrief(compiled, source), 'the .tsx and its brief');
+												},
+											},
+										]}
+									/>
+								</ButtonGroup>
 								<Button
 									label="Run"
 									variant="primary"

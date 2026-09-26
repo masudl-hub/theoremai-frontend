@@ -49,7 +49,7 @@ export const siteTheme = defineTheme({
 		// rather than running under the column's edge.
 		'tree-list-item-label': {
 			base: {
-				minWidth: 0,
+				minWidth: '0',
 				overflow: 'hidden',
 				textOverflow: 'ellipsis',
 				whiteSpace: 'nowrap',
