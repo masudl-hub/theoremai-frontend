@@ -9,12 +9,12 @@ import {
 	type Profile,
 	type ProfileDefinition,
 	standardEgressEnforce,
-} from '@theoremai/agents';
+} from '@theoremjs/agents';
 import {
 	registerPlaygroundTools,
 	type StructuredRegistration,
 	type ToolRegistration,
-} from '@theoremai/playground';
+} from '@theoremjs/playground';
 
 /** Swaps the draft's egress enforcer for the standard one, keeping the guardrails' own type. */
 function withStandardEgress<G extends { egress?: { enforce: unknown } }>(guardrails: G): G {

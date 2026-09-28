@@ -15,7 +15,7 @@ import {
 	registerProfile,
 	registerTool,
 	standardEgressEnforce,
-} from '@theoremai/agents';
+} from '@theoremjs/agents';
 import { z } from 'zod';
 import {
 	formatNavigablePathsForPrompt,
@@ -234,7 +234,7 @@ export const th30SearchDocsTool = {
 	type: 'function' as const,
 	name: 'searchDocs',
 	description:
-		'Search across THEOREM documentation sources: local website sections, GitHub repository contracts and specs, JSR (@theoremai/agents), and NPM (theorem).',
+		'Search across THEOREM documentation sources: local website sections, GitHub repository contracts and specs, JSR (@theoremjs/agents), and NPM (theorem).',
 	category: 'docs',
 	access: 'read-only' as const,
 	paths: ['*'],
@@ -290,7 +290,7 @@ Capabilities and Tools:
 - "navigate": Move the user to valid site sections: ${formatNavigablePathsForPrompt()}.
 - "highlight": Visually highlight sections, elements, or exact line ranges (e.g. lineStart: 12, lineEnd: 15) like human text selection.
 - "read": Read live, line-numbered documentation (L01 | ...) for any section or topic (#overview, #pillars, #use, #playground, #architecture, contracts, specs) so you can reference exact line numbers accurately.
-- "searchDocs": Search across local documentation, GitHub contracts, JSR (@theoremai/agents), and NPM (theorem).
+- "searchDocs": Search across local documentation, GitHub contracts, JSR (@theoremjs/agents), and NPM (theorem).
 - Google Search: Grounded real-time web search.
 
 Critical Visual Highlighting Rule:

@@ -1,7 +1,7 @@
 import { defineTheme } from '@astryxdesign/core/theme';
 import { neutralPalettes } from '@astryxdesign/theme-neutral';
-import { tablerIcons } from '@theoremai/react/ui/icons';
-import { theoremTheme } from '@theoremai/react/ui/theme';
+import { tablerIcons } from '@theoremjs/react/ui/icons';
+import { theoremTheme } from '@theoremjs/react/ui/theme';
 
 /**
  * Source of the site look: Theorem's theme on a black base, with each page drawn

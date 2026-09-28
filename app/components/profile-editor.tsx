@@ -119,7 +119,7 @@ import {
 	type ToolLoadTier,
 	type ToolPermission,
 	VOICE_ACCEPT_MIMES,
-} from '@theoremai/agents';
+} from '@theoremjs/agents';
 import {
 	type AcceptSection,
 	acceptSections,
@@ -156,7 +156,7 @@ import {
 	type ToolSpecDraft,
 	takesContinueInstruction,
 	toolSpecNodeId,
-} from '@theoremai/playground';
+} from '@theoremjs/playground';
 import { type Dispatch, type ReactNode, type SetStateAction, useContext, useState } from 'react';
 import { IconGemini, IconGoogle, IconOpenAi, IconOpenRouter } from './brand-icons';
 import {

@@ -4,9 +4,9 @@ import {
 	playgroundInterface,
 	playgroundLiveConnection,
 	readPlaygroundRunIdFromUrl,
-} from '@theoremai/playground';
-import { LiveRunner } from '@theoremai/react/live';
-import { TheoremChat, TheoremThemeProvider } from '@theoremai/react/ui';
+} from '@theoremjs/playground';
+import { LiveRunner } from '@theoremjs/react/live';
+import { TheoremChat, TheoremThemeProvider } from '@theoremjs/react/ui';
 import { useMemo } from 'react';
 import { redirect } from 'react-router';
 import type { Route } from './+types/playground.run';

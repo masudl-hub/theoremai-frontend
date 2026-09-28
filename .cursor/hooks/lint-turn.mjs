@@ -59,7 +59,7 @@ async function readPackageJson(root) {
 async function isTheoremTestRoot(root) {
 	const pkg = await readPackageJson(root);
 	if (!pkg || typeof pkg.scripts?.test !== 'string') return false;
-	if (pkg.name === '@theoremai/agents') return true;
+	if (pkg.name === '@theoremjs/agents') return true;
 	try {
 		await access(path.join(root, 'deno.json'), constants.R_OK);
 		return true;

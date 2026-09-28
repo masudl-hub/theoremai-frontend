@@ -14,13 +14,13 @@ Only free-tier / host wiring in `app/lib/playground/playground-policy.ts` (free 
 ## Must import from theorem
 
 - Graph topology: `PROFILE_GRAPH`, `spineFacetsForProfileType`, `ProfileGraphFacetId`
-- Field catalogs: `PROFILE_FIELDS`, `fieldMeta`, closed unions from `@theoremai/agents/schema`
+- Field catalogs: `PROFILE_FIELDS`, `fieldMeta`, closed unions from `@theoremjs/agents/schema`
 - Defaults: omit empty optionals; rely on `resolveGuardrailPolicy` / `resolveObservabilityPolicy` / `defineProfile` (canary / sanitize / redact default **on**)
 - Continue kinds: `CONTINUE_STOP_KINDS` / `ContinueStopKind` (not full `TURN_STOP_KINDS`); defaults `DEFAULT_ALLOW_CONTINUE`, `DEFAULT_AUTO_CONTINUE`
 
 ## Forbidden
 
-- `FacetKind` / `SpineFacetKind` aliases are **forbidden**; use `ProfileGraphFacetId` from `@theoremai/agents/schema` directly — no local type aliases that duplicate the catalog
+- `FacetKind` / `SpineFacetKind` aliases are **forbidden**; use `ProfileGraphFacetId` from `@theoremjs/agents/schema` directly — no local type aliases that duplicate the catalog
 - Local spine lists that duplicate `PROFILE_GRAPH`
 - Inventing `maxSteps`, `canary`, `sanitizeInput`, `redactSensitive`, `hasEgress`, inputs, or pin defaults that disagree with kernel omit semantics
 - Seeding blank sync with `inputs.text: true`, `streamMode: 'sse'`, `maxOutputTokens`, `efforts`, image MIME lists, or speech `format: 'pcm'`

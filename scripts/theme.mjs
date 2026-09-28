@@ -2,7 +2,7 @@
  * Builds (or with `--check`, verifies) the site theme's committed CSS and module
  * in app/built/ from app/theme.ts.
  *
- * Runs the Astryx CLI that @theoremai/react pins for its own theme. The site
+ * Runs the Astryx CLI that @theoremjs/react pins for its own theme. The site
  * cannot install the CLI itself: it declares `gpt-tokenizer@^3` as a required
  * peer, and the kernel needs `^4`.
  */
@@ -26,7 +26,7 @@ const args = [
 	'-o',
 	'app/built/theme.css',
 	'--icons-specifier',
-	'@theoremai/react/ui/icons',
+	'@theoremjs/react/ui/icons',
 	...process.argv.slice(2),
 ];
 const { status } = spawnSync(process.execPath, args, { cwd: FRONTEND_ROOT, stdio: 'inherit' });

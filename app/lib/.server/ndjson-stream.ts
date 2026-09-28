@@ -1,5 +1,5 @@
-import type { ProfileDefinition } from '@theoremai/agents';
-import { toErrorEvent, withPublicWording } from '@theoremai/agents/guardrails';
+import type { ProfileDefinition } from '@theoremjs/agents';
+import { toErrorEvent, withPublicWording } from '@theoremjs/agents/guardrails';
 
 const NDJSON_HEADERS = {
 	'content-type': 'application/x-ndjson; charset=utf-8',

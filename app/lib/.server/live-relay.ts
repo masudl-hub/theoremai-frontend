@@ -17,14 +17,14 @@ import {
 	type Profile,
 	publicError,
 	TheoremError,
-} from '@theoremai/agents';
-import { forClient, forClientEvents } from '@theoremai/agents/host';
+} from '@theoremjs/agents';
+import { forClient, forClientEvents } from '@theoremjs/agents/host';
 import type {
 	PlaygroundLiveDraftMessage,
 	PlaygroundTraceLine,
 	PlaygroundTraceRoute,
-} from '@theoremai/playground';
-import { parseLiveClientMessage } from '@theoremai/react/server';
+} from '@theoremjs/playground';
+import { parseLiveClientMessage } from '@theoremjs/react/server';
 import { ensureKernelInitialized } from './kernel-init';
 import { playgroundScope } from './playground-register';
 import { playgroundTraces } from './playground-turn';

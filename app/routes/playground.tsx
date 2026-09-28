@@ -45,7 +45,7 @@ import {
 	IconVolume,
 	IconX,
 } from '@tabler/icons-react';
-import { type ProfileGraphFacetId, profileGraphFacet } from '@theoremai/agents';
+import { type ProfileGraphFacetId, profileGraphFacet } from '@theoremjs/agents';
 import {
 	type CompiledPlayground,
 	compilePlayground,
@@ -68,9 +68,9 @@ import {
 	playgroundSource,
 	playgroundTree,
 	savePlaygroundRunPayload,
-} from '@theoremai/playground';
-import { LiveRunner } from '@theoremai/react/live';
-import { TheoremChat, useDisclosureMotion } from '@theoremai/react/ui';
+} from '@theoremjs/playground';
+import { LiveRunner } from '@theoremjs/react/live';
+import { TheoremChat, useDisclosureMotion } from '@theoremjs/react/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ISSUE_ROW_ATTRIBUTE, ListBadges } from '../components/inspector';
 import { PROFILE_TYPE_ICON, ProfileEditor, TOOL_TYPE_ICON } from '../components/profile-editor';

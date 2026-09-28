@@ -2,16 +2,16 @@
  * Site API handlers — plain `Request` in, `Response` out, no framework imports.
  * Route files only resolve the Cloudflare env and delegate here.
  */
-import { type ProfileDefinition, TheoremError } from '@theoremai/agents';
-import type { StructuredRegistration, ToolRegistration } from '@theoremai/playground';
-import type { TheoremReplay, TheoremTurnRequest } from '@theoremai/react';
+import { type ProfileDefinition, TheoremError } from '@theoremjs/agents';
+import type { StructuredRegistration, ToolRegistration } from '@theoremjs/playground';
+import type { TheoremReplay, TheoremTurnRequest } from '@theoremjs/react';
 import {
 	checkRequest,
 	steerUnitOf,
 	theoremInvokeRequestSchema,
 	theoremSteerRequestSchema,
 	theoremTurnRequestSchema,
-} from '@theoremai/react/server';
+} from '@theoremjs/react/server';
 import type { SiteEnv } from '../../cloudflare';
 import { badRequestJson, errorMessage, ndjsonEventStream } from './ndjson-stream';
 import { playgroundSteerInbox } from './playground-steer';

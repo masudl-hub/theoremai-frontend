@@ -4,10 +4,10 @@ import type {
 	TraceRecord,
 	TurnEvent,
 	TurnInput,
-} from '@theoremai/agents';
-import { createProvider, registerTraceDestination, TheoremError, z } from '@theoremai/agents';
-import type { GateAnswerRequest } from '@theoremai/agents/kernel';
-import { answerGatedCall, type HeldGatedCall, type RegisteredTool } from '@theoremai/agents/kernel';
+} from '@theoremjs/agents';
+import { createProvider, registerTraceDestination, TheoremError, z } from '@theoremjs/agents';
+import type { GateAnswerRequest } from '@theoremjs/agents/kernel';
+import { answerGatedCall, type HeldGatedCall, type RegisteredTool } from '@theoremjs/agents/kernel';
 import {
 	createPlaygroundTraceRouter,
 	PLAYGROUND_TRACE_DESTINATION,
@@ -15,8 +15,8 @@ import {
 	type PlaygroundTraceLine,
 	type StructuredRegistration,
 	type ToolRegistration,
-} from '@theoremai/playground';
-import type { TheoremInvokeRequest, TheoremReplay } from '@theoremai/react';
+} from '@theoremjs/playground';
+import type { TheoremInvokeRequest, TheoremReplay } from '@theoremjs/react';
 import {
 	checkRequest,
 	checkWalkAway,
@@ -24,7 +24,7 @@ import {
 	steerStage,
 	type WalkedAwayCall,
 	walkAway,
-} from '@theoremai/react/server';
+} from '@theoremjs/react/server';
 import { playgroundScope } from './playground-register';
 import { resolveHost } from './resolve-host';
 

@@ -10,7 +10,7 @@
  */
 
 import { DurableObject } from 'cloudflare:workers';
-import type { SteerInbox, SteerUnit } from '@theoremai/react/server';
+import type { SteerInbox, SteerUnit } from '@theoremjs/react/server';
 
 /** An inbox nobody touches for this long is deleted: a run that died without closing it. */
 const IDLE_DELETE_MS = 15 * 60 * 1000;

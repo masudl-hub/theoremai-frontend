@@ -17,7 +17,7 @@
 			"toolingDependencies": ["@react-router/dev"]
 		}
 	],
-	"publicPackages": ["@theoremai/react"],
+	"publicPackages": ["@theoremjs/react"],
 	"ignorePatterns": [
 		"node_modules/**",
 		"**/.react-router/**",
@@ -33,7 +33,7 @@
 		"ai",
 		"gpt-tokenizer",
 		"zod",
-		// peerDependencies of @theoremai/react, which the host app must supply.
+		// peerDependencies of @theoremjs/react, which the host app must supply.
 		"@astryxdesign/core",
 		"@astryxdesign/theme-neutral",
 		"@stylexjs/stylex",
