@@ -313,7 +313,7 @@ const measureWidth = (node: HTMLElement) => node.clientWidth;
 /** The side panel's default share of the layout, the tree beside the editor: the golden split. */
 const SIDE_DEFAULT_PERCENT = 38.2;
 /** The profile tree's width inside the side panel; the editor takes the rest. */
-const TREE_WIDTH = 216;
+const TREE_WIDTH = 224;
 const measureCodeChrome = (node: HTMLElement) =>
 	node.getBoundingClientRect().height -
 	(node.querySelector('[role="group"]')?.getBoundingClientRect().height ?? 0);
@@ -435,10 +435,10 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 									variant="transparent"
 									width={TREE_WIDTH}
 									height="100%"
-									padding={3}
+									padding={4}
 									dividers={['end']}
 								>
-									<VStack gap={3} height="100%">
+									<VStack gap={4} height="100%">
 										<VStack gap={1}>
 											<Heading level={3}>Theorem Playground</Heading>
 											<Text type="supporting" color="secondary">
