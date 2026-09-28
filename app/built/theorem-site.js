@@ -572,6 +572,14 @@ export const theoremSiteTheme = {
       "selected:selected": {
         "backgroundColor": "var(--color-overlay-pressed)"
       }
+    },
+    "tree-list-item-label": {
+      "base": {
+        "minWidth": "0",
+        "overflow": "hidden",
+        "textOverflow": "ellipsis",
+        "whiteSpace": "nowrap"
+      }
     }
   },
   __onDark: {
