@@ -16,6 +16,8 @@ import figtreeRegular from '@fontsource/figtree/files/figtree-latin-400-normal.w
 import '@astryxdesign/core/reset.css';
 import '@astryxdesign/core/astryx.css';
 import './built/theme.css';
+// After the theme: motion Astryx's theme API can't express.
+import './motion.css';
 import { theoremSiteTheme } from './built/theorem-site';
 import { BootMark } from './components/boot-mark';
 

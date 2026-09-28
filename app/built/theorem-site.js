@@ -523,6 +523,26 @@ export const theoremSiteTheme = {
         }
       }
     },
+    "citation": {
+      "base": {
+        ":where(*) > [aria-hidden=\"true\"]": {
+          "backgroundColor": "transparent",
+          "borderWidth": "0",
+          "borderRadius": "0"
+        },
+        ":where(*) > [aria-hidden=\"true\"] > img": {
+          "width": "100%",
+          "height": "100%"
+        }
+      }
+    },
+    "chat-tool-calls": {
+      "base": {
+        ":where(*) [role=\"button\"][aria-expanded] > span:not(:first-child):not(:has(svg))": {
+          "alignSelf": "baseline"
+        }
+      }
+    },
     "layout-panel": {
       "base": {
         ":where([role=\"complementary\"])": {

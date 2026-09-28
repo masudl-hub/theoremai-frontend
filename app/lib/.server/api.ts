@@ -2,15 +2,17 @@
  * Site API handlers — plain `Request` in, `Response` out, no framework imports.
  * Route files only resolve the Cloudflare env and delegate here.
  */
-import {
-	type ProfileDefinition,
-	TheoremError,
-	type TurnInput,
-	type TurnRequest,
-} from '@theoremai/agents';
-import { credentialFromTypedSecret, type TurnToolSnapshot } from '@theoremai/agents/kernel';
+import { type ProfileDefinition, TheoremError } from '@theoremai/agents';
 import type { StructuredRegistration, ToolRegistration } from '@theoremai/playground';
-import { parseSteerUnit } from '@theoremai/react/server';
+import type { TheoremReplay, TheoremTurnRequest } from '@theoremai/react';
+import {
+	checkRequest,
+	steerUnitOf,
+	theoremInvokeRequestSchema,
+	theoremSteerRequestSchema,
+	theoremTurnRequestSchema,
+} from '@theoremai/react/server';
+import type { SiteEnv } from '../../cloudflare';
 import { badRequestJson, errorMessage, ndjsonEventStream } from './ndjson-stream';
 import { playgroundSteerInbox } from './playground-steer';
 import {
@@ -20,34 +22,14 @@ import {
 } from './playground-turn';
 import { getKernelPackageVersion, getSubmoduleHead } from './theoremai';
 
-type TurnBody = {
+/**
+ * The draft every playground request carries beside its Theorem request: the
+ * browser authors the profile, so the server compiles it per request.
+ */
+type PlaygroundDraft = {
 	profile: ProfileDefinition;
 	customTools?: ToolRegistration[];
 	structured?: StructuredRegistration;
-	previousInteractionId?: string;
-	sessionPermissions?: string[];
-	model?: string;
-	effort?: string;
-	input: TurnInput;
-};
-
-type InvokeBody = {
-	profile: ProfileDefinition;
-	customTools?: ToolRegistration[];
-	structured?: StructuredRegistration;
-	/** The paused call this approval runs, so its result settles that call. */
-	callId?: string;
-	name: string;
-	input: unknown;
-	resume?: { value?: unknown; granted?: boolean };
-	sessionPermissions?: string[];
-	/** A key typed at a bearer or API-key sign-in gate; the server makes the credential. */
-	secret?: string;
-	turnInput?: TurnInput;
-	snapshot?: TurnToolSnapshot;
-	promoted?: string[];
-	model?: string;
-	path?: string;
 };
 
 /** GET /api/kernel — package version and kernel checkout head. */
@@ -58,88 +40,74 @@ export function kernelInfo(): Response {
 	});
 }
 
+/** The paused calls a turn walks away from, each with the replay the browser sent for it. */
+function walkedAwayCalls(turn: TheoremTurnRequest): { callId: string; replay: TheoremReplay }[] {
+	return (turn.abandon ?? []).map((callId) => {
+		const replay = turn.replay?.abandon?.[callId];
+		if (!replay) {
+			// lexicon-exempt: internal diagnostic; the user reads error.request
+			throw new TheoremError('request', `turn: no replay for walked-away call ${callId}`);
+		}
+		return { callId, replay };
+	});
+}
+
 /** POST /api/playground/turn — NDJSON turn events. */
-export async function playgroundTurn(request: Request, env: PlaygroundTurnEnv): Promise<Response> {
+export async function playgroundTurn(request: Request, env: SiteEnv): Promise<Response> {
 	try {
-		const body = await request.json<TurnBody>();
+		const draft = await request.json<PlaygroundDraft>();
+		const turn = checkRequest(theoremTurnRequestSchema, draft, 'request body');
 		return ndjsonEventStream(
 			streamPlaygroundTurn({
-				profile: body.profile,
-				customTools: body.customTools ?? [],
-				structured: body.structured,
-				input: body.input,
-				previousInteractionId: body.previousInteractionId,
-				sessionPermissions: body.sessionPermissions,
-				model: body.model,
-				effort: body.effort,
+				profile: draft.profile,
+				customTools: draft.customTools ?? [],
+				structured: draft.structured,
+				input: turn.input,
+				previousInteractionId: turn.previousInteractionId,
+				sessionPermissions: turn.replay?.sessionPermissions,
+				abandon: walkedAwayCalls(turn),
+				model: turn.model,
+				effort: turn.effort,
 				signal: request.signal,
 				env,
+				steer: playgroundSteerInbox(env.STEER_INBOX),
 			}),
-			body.profile.lexicon,
+			draft.profile.lexicon,
 		);
 	} catch (err) {
 		return badRequestJson(err);
 	}
 }
 
-/**
- * The typed key as the credential its tool's auth slot waits for. The tool's
- * own auth config decides the kind; the request only carries the text.
- */
-function typedCredentials(body: InvokeBody): TurnRequest['credentials'] {
-	if (body.secret === undefined) return undefined;
-	const tool = body.customTools?.find((registration) => registration.name === body.name);
-	const auth = tool && tool.type !== 'function' ? tool.auth : undefined;
-	if (!auth) throw new Error(`Tool "${body.name}" takes no typed credential`);
-	return { [auth.slot]: credentialFromTypedSecret(auth.type, body.secret) };
-}
-
-/** POST /api/playground/invoke — NDJSON events for one tool call. */
+/** POST /api/playground/invoke — NDJSON events for the user's answer to a paused call. */
 export async function playgroundInvoke(
 	request: Request,
 	env: PlaygroundTurnEnv,
 ): Promise<Response> {
 	try {
-		const body = await request.json<InvokeBody>();
+		const draft = await request.json<PlaygroundDraft>();
+		const answer = checkRequest(theoremInvokeRequestSchema, draft, 'request body');
 		return ndjsonEventStream(
 			streamPlaygroundInvoke({
-				profile: body.profile,
-				customTools: body.customTools ?? [],
-				structured: body.structured,
-				request: {
-					callId: body.callId,
-					name: body.name,
-					input: body.input,
-					resume: body.resume,
-					sessionPermissions: body.sessionPermissions,
-					credentials: typedCredentials(body),
-					turnInput: body.turnInput,
-					model: body.model,
-					snapshot: body.snapshot,
-					promoted: body.promoted,
-					path: body.path,
-				},
+				profile: draft.profile,
+				customTools: draft.customTools ?? [],
+				structured: draft.structured,
+				answer,
 				env,
 			}),
-			body.profile.lexicon,
+			draft.profile.lexicon,
 		);
 	} catch (err) {
 		return badRequestJson(err);
 	}
 }
 
-/** POST /api/playground/turn/steer — queue a mid-turn inject for a turn or live session. */
-export async function playgroundSteer(request: Request): Promise<Response> {
+/** POST /api/playground/turn/steer — queue a mid-turn inject for a running text turn. */
+export async function playgroundSteer(request: Request, env: SiteEnv): Promise<Response> {
 	try {
-		const body: unknown = await request.json();
-		const inboxId =
-			typeof body === 'object' && body !== null && 'inbox' in body && typeof body.inbox === 'string'
-				? body.inbox.trim()
-				: '';
-		if (!inboxId) {
-			return Response.json({ error: 'inbox is required' }, { status: 400 });
-		}
-		if (!(await playgroundSteerInbox.enqueue(inboxId, parseSteerUnit(body)))) {
+		// The inbox the server opened for the turn is the turn id the browser steers.
+		const steer = checkRequest(theoremSteerRequestSchema, await request.json(), 'request body');
+		if (!(await playgroundSteerInbox(env.STEER_INBOX).enqueue(steer.turnId, steerUnitOf(steer)))) {
 			// lexicon-exempt: internal diagnostic; the user reads session.turn_ended
 			throw new TheoremError('request', 'steer: no open run has this inbox', {
 				copy: { key: 'session.turn_ended' },

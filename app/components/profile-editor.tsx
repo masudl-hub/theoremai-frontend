@@ -1,8 +1,10 @@
+import { Badge } from '@astryxdesign/core/Badge';
 import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
 import { CheckboxInput } from '@astryxdesign/core/CheckboxInput';
 import { CheckboxList, CheckboxListItem } from '@astryxdesign/core/CheckboxList';
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
+import { Collapsible, CollapsibleGroup } from '@astryxdesign/core/Collapsible';
 import { ComplexSelector } from '@astryxdesign/core/ComplexSelector';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { HStack } from '@astryxdesign/core/HStack';
@@ -10,14 +12,17 @@ import { Icon, type IconType } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { List, ListItem } from '@astryxdesign/core/List';
 import { Section } from '@astryxdesign/core/Section';
+import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { StackItem } from '@astryxdesign/core/Stack';
 import { pixel, proportional, Table } from '@astryxdesign/core/Table';
+import { Text } from '@astryxdesign/core/Text';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Token } from '@astryxdesign/core/Token';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
 import {
+	IconAlertTriangle,
 	IconAlignLeft,
 	IconAntennaBars1,
 	IconAntennaBars2,
@@ -26,6 +31,8 @@ import {
 	IconAntennaBars5,
 	IconAntennaBarsOff,
 	IconBan,
+	IconBandage,
+	IconBiohazard,
 	IconBolt,
 	IconBraces,
 	IconBroadcast,
@@ -33,13 +40,18 @@ import {
 	IconBulbOff,
 	IconCertificate,
 	IconCircleDashed,
+	IconCpu,
 	IconDeviceDesktop,
 	IconEye,
 	IconEyeOff,
+	IconFeather,
 	IconFlame,
 	IconFlask,
+	IconGauge,
 	IconHandOff,
 	IconHandStop,
+	IconHourglass,
+	IconInfoCircle,
 	IconKey,
 	IconLetterA,
 	IconLetterB,
@@ -48,19 +60,25 @@ import {
 	IconLockOpen,
 	IconMathFunction,
 	IconMessage,
+	IconMicrophone,
 	IconPackage,
+	IconPaperclip,
 	IconPencil,
 	IconPhoto,
 	IconPlayerPause,
 	IconPlayerPlay,
+	IconPlayerTrackNext,
 	IconPlugConnected,
 	IconPlus,
 	IconRefresh,
+	IconSend,
 	IconShieldLock,
 	IconSquareRoundedNumber0,
 	IconSquareRoundedNumber1,
 	IconSquareRoundedNumber2,
+	IconTool,
 	IconTrash,
+	IconUser,
 	IconUserCheck,
 	IconVolume,
 	IconWaveSine,
@@ -82,11 +100,14 @@ import {
 	HTTP_METHODS,
 	type HttpMethod,
 	IMAGE_ATTACHMENT_ACCEPT_MIMES,
+	LEXICON_KEYS,
+	type LexiconKey,
 	lexiconDefault,
 	type OverflowKeySlot,
 	type PlaygroundAuthType,
 	PROFILE_TYPE_PROTOCOLS,
 	PROTOCOL_PROVIDERS,
+	type ProfileGraphFacetId,
 	type Protocol,
 	type Provider,
 	profileGraphFacet,
@@ -110,6 +131,7 @@ import {
 	GEMINI_PLAYGROUND_DEFAULT_API_ID,
 	GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS,
 	GEMINI_PLAYGROUND_MODELS,
+	INLINE_WORDING,
 	inputLimitsRequired,
 	isGoogleTransport,
 	isOpenRouterTransport,
@@ -2238,7 +2260,7 @@ function ToolSpecEditor({
 						value={tool.stubOutputJson ?? ''}
 						rows={6}
 						hasSpellCheck={false}
-						placeholder="Left blank, a stand-in built from the output schema."
+						hint="Left blank, a stand-in built from the output schema."
 						onChange={(stubOutputJson) => {
 							set({ stubOutputJson });
 						}}
@@ -2300,7 +2322,7 @@ function ToolSpecEditor({
 							path="mapping.bodyParam"
 							field="bodyParam"
 							value={tool.bodyParam ?? ''}
-							placeholder="None"
+							hint="None"
 							onChange={(bodyParam) => {
 								set({ bodyParam });
 							}}
@@ -2380,7 +2402,8 @@ function ToolSpecEditor({
 								path="auth.headerPrefix"
 								field="authHeaderPrefix"
 								value={tool.authHeaderPrefix ?? ''}
-								placeholder={AUTH_HEADER_PREFIX[authType] || 'None'}
+								placeholder={AUTH_HEADER_PREFIX[authType] || undefined}
+								hint="None"
 								onChange={(prefix) => {
 									// Blank is the kernel's prefix for the type, which the placeholder shows.
 									set({ authHeaderPrefix: prefix || undefined });
@@ -2503,6 +2526,372 @@ function ToolSpecEditor({
 	);
 }
 
+/** Wording's areas, by lexicon key prefix: what visitors read first, then what the model reads. */
+/** Who reads a line: the visitor, in the chat, or the model, in its context. */
+type WordingAudience = 'visitor' | 'model';
+
+const WORDING_AREAS: readonly {
+	prefix: string;
+	title: string;
+	note: string;
+	icon: IconType;
+	audience: WordingAudience;
+}[] = [
+	{
+		prefix: 'error',
+		title: 'Errors',
+		note: 'When a turn fails.',
+		icon: IconAlertTriangle,
+		audience: 'visitor',
+	},
+	{
+		prefix: 'attachments',
+		title: 'Attachments',
+		note: "When a file can't be sent.",
+		icon: IconPaperclip,
+		audience: 'visitor',
+	},
+	{
+		prefix: 'voice',
+		title: 'Voice',
+		note: "When a voice note can't be recorded or used.",
+		icon: IconMicrophone,
+		audience: 'visitor',
+	},
+	{
+		prefix: 'session',
+		title: 'Session',
+		note: 'Waits, approvals, and signing in.',
+		icon: IconHourglass,
+		audience: 'visitor',
+	},
+	{
+		prefix: 'live',
+		title: 'Live',
+		note: 'When a live session ends.',
+		icon: IconBroadcast,
+		audience: 'visitor',
+	},
+	{
+		prefix: 'quota',
+		title: 'Quota',
+		note: 'When the daily limit is reached.',
+		icon: IconGauge,
+		audience: 'visitor',
+	},
+	{
+		prefix: 'tool',
+		title: 'Tools',
+		note: "When a tool call can't run.",
+		icon: IconTool,
+		audience: 'model',
+	},
+	{
+		prefix: 'repair',
+		title: 'Repair',
+		note: 'Fixing a reply that failed its schema.',
+		icon: IconBandage,
+		audience: 'model',
+	},
+	{
+		prefix: 'egress',
+		title: 'Egress',
+		note: 'A reply that fails its check, sent back or refused.',
+		icon: IconSend,
+		audience: 'model',
+	},
+	{
+		prefix: 'continue',
+		title: 'Resumption',
+		note: 'Picking up a reply that stopped short.',
+		icon: IconPlayerTrackNext,
+		audience: 'model',
+	},
+	{
+		prefix: 'canary',
+		title: 'Canary',
+		note: "The note that binds each turn's canary.",
+		icon: IconFeather,
+		audience: 'model',
+	},
+	{
+		prefix: 'taint',
+		title: 'Untrusted content',
+		note: 'Why a tool call was refused after reading it.',
+		icon: IconBiohazard,
+		audience: 'model',
+	},
+	{
+		prefix: 'advisory',
+		title: 'Advisories',
+		note: 'Notes beside content that tries to direct it.',
+		icon: IconInfoCircle,
+		audience: 'model',
+	},
+];
+
+const WORDING_AUDIENCES: readonly {
+	value: WordingAudience;
+	label: string;
+	icon: IconType;
+	note: string;
+}[] = [
+	{
+		value: 'visitor',
+		label: 'Visitor reads',
+		icon: IconUser,
+		note: 'Shown in the chat when something fails or needs a wait.',
+	},
+	{
+		value: 'model',
+		label: 'Model reads',
+		icon: IconCpu,
+		note: 'Put in front of the model; the visitor never sees these.',
+	},
+];
+
+/** Row names for keys whose own name reads as code. */
+const WORDING_LABELS: Partial<Record<LexiconKey, string>> = {
+	'attachments.mime_not_allowed': 'File type not allowed',
+	'attachments.limits_unconfigured': 'Files turned off',
+	'quota.exhausted': 'Limit reached',
+};
+
+/** `rate_limit` → "Rate limit". */
+function wordingLabel(key: LexiconKey): string {
+	const named = WORDING_LABELS[key];
+	if (named) return named;
+	const words = key.slice(key.indexOf('.') + 1).replaceAll('_', ' ');
+	return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** The kernel's line for `key`, worded with the draft's own limits where it takes them. */
+function wordingPlaceholder(draft: PlaygroundDraft, key: LexiconKey): string {
+	const { inputs, guardrails } = draft;
+	const text = lexiconDefault(key, {
+		maxFiles: inputs.maxFiles ?? '{maxFiles}',
+		maxBytes: inputs.maxBytes ?? Number.NaN,
+		maxTurnBytes: inputs.maxTurnBytes ?? Number.NaN,
+		perDay: guardrails.quotaPerDay ?? '{perDay}',
+	});
+	// A size the draft leaves unset formats as NaN: show the placeholder the template takes instead.
+	return text.replace(
+		'NaN MB',
+		key === 'attachments.turn_too_large' ? '{maxTurnBytes}' : '{maxBytes}',
+	);
+}
+
+/**
+ * The lines that also sit beside their setting: one value, edited from either place. `isOn` is when
+ * the kernel uses the line; off, Wording links to the setting that turns it on.
+ */
+const SHARED_WORDING: Partial<
+	Record<
+		LexiconKey,
+		{
+			setting: string;
+			read: (draft: PlaygroundDraft) => string;
+			write: (setDraft: SetDraft, text: string) => void;
+			isOn: (draft: PlaygroundDraft) => boolean;
+		}
+	>
+> = {
+	'continue.instruction': {
+		setting: 'Resumption',
+		read: (draft) => draft.turnBehaviour.continueInstruction,
+		write: (setDraft, continueInstruction) => {
+			patch(setDraft, 'turnBehaviour')({ continueInstruction });
+		},
+		isOn: (draft) => takesContinueInstruction(draft) && draft.turnBehaviour.resumeEnabled,
+	},
+	'canary.bind_note': {
+		setting: 'Canary',
+		read: (draft) => draft.guardrails.canaryBindNote,
+		write: (setDraft, canaryBindNote) => {
+			patch(setDraft, 'guardrails')({ canaryBindNote });
+		},
+		isOn: (draft) => draft.guardrails.canary,
+	},
+	'quota.exhausted': {
+		setting: 'Daily cap',
+		read: (draft) => draft.guardrails.quotaMessage,
+		write: (setDraft, quotaMessage) => {
+			patch(setDraft, 'guardrails')({ quotaMessage });
+		},
+		isOn: (draft) => draft.guardrails.quotaEnabled,
+	},
+	'repair.default_guidance': {
+		setting: 'Repair',
+		read: (draft) => draft.outputs.repairGuidance,
+		write: (setDraft, repairGuidance) => {
+			patch(setDraft, 'outputs')({ repairGuidance });
+		},
+		isOn: (draft) => draft.outputs.validationEnabled,
+	},
+	'egress.default_repair_guidance': {
+		setting: 'Egress',
+		read: (draft) => draft.guardrails.egressRepairGuidance,
+		write: (setDraft, egressRepairGuidance) => {
+			patch(setDraft, 'guardrails')({ egressRepairGuidance });
+		},
+		isOn: (draft) => draft.guardrails.egressEnabled,
+	},
+};
+
+/** The text a line holds in the draft: its own setting's field, or Wording's. */
+function wordingValue(draft: PlaygroundDraft, key: LexiconKey): string {
+	return SHARED_WORDING[key]?.read(draft) ?? draft.wording[key] ?? '';
+}
+
+/** A line that also sits beside its setting; while that setting is off, a link to turn it on. */
+function SharedWordingRow({
+	lexiconKey,
+	facet,
+	draft,
+	setDraft,
+	onSelect,
+}: {
+	lexiconKey: LexiconKey;
+	facet: ProfileGraphFacetId;
+	draft: PlaygroundDraft;
+	setDraft: SetDraft;
+	onSelect: (id: string) => void;
+}) {
+	const shared = SHARED_WORDING[lexiconKey];
+	if (!shared) return null;
+	return (
+		<VStack gap={1}>
+			<TextAreaRow
+				label={wordingLabel(lexiconKey)}
+				path="lexicon.*"
+				rows={2}
+				value={shared.read(draft)}
+				placeholder={wordingPlaceholder(draft, lexiconKey)}
+				onChange={(text) => {
+					shared.write(setDraft, text);
+				}}
+			/>
+			{!shared.isOn(draft) && (
+				<HStack gap={1} align="center">
+					<Text type="supporting">Used once {shared.setting} is on.</Text>
+					<Button
+						label={`Open ${profileGraphFacet(facet)?.label ?? facet}`}
+						variant="ghost"
+						size="sm"
+						onClick={() => {
+							onSelect(facet);
+						}}
+					/>
+				</HStack>
+			)}
+		</VStack>
+	);
+}
+
+/** Every line the kernel says, by area; left blank, a line keeps the kernel's own. */
+function WordingEditor({
+	draft,
+	setDraft,
+	onSelect,
+}: {
+	draft: PlaygroundDraft;
+	setDraft: SetDraft;
+	onSelect: (id: string) => void;
+}) {
+	const set = patch(setDraft, 'wording');
+	const [audience, setAudience] = useState<WordingAudience>('visitor');
+	const areas = WORDING_AREAS.filter((area) => area.audience === audience).map((area) => {
+		const keys = LEXICON_KEYS.filter((key) => key.startsWith(`${area.prefix}.`));
+		const edited = keys.filter((key) => wordingValue(draft, key)).length;
+		return { ...area, keys, edited };
+	});
+	const note = WORDING_AUDIENCES.find((entry) => entry.value === audience)?.note;
+	return (
+		<Section variant="transparent" padding={3}>
+			<VStack gap={3}>
+				<SegmentedControl
+					label="Who reads it"
+					size="sm"
+					layout="fill"
+					value={audience}
+					onChange={(next) => {
+						const picked = WORDING_AUDIENCES.find((entry) => entry.value === next);
+						if (picked) setAudience(picked.value);
+					}}
+				>
+					{WORDING_AUDIENCES.map((entry) => (
+						<SegmentedControlItem
+							key={entry.value}
+							value={entry.value}
+							label={entry.label}
+							icon={<Icon icon={entry.icon} size="sm" />}
+						/>
+					))}
+				</SegmentedControl>
+				<Text type="supporting">
+					{note} Left blank, a line keeps Theorem's default, shown in the field; Tab takes it up to
+					edit.
+				</Text>
+				<CollapsibleGroup key={audience} type="multiple" hasDividers density="compact">
+					{areas.map((area) => (
+						<Collapsible
+							key={area.prefix}
+							value={area.prefix}
+							trigger={
+								<HStack gap={2} align="center">
+									<Icon icon={area.icon} size="sm" color="secondary" />
+									<StackItem size="fill">
+										<VStack gap={0}>
+											<Text type="label" weight="semibold">
+												{area.title}
+											</Text>
+											<Text type="supporting">{area.note}</Text>
+										</VStack>
+									</StackItem>
+									{area.edited > 0 && (
+										<Badge variant="info" label={`${String(area.edited)} edited`} />
+									)}
+								</HStack>
+							}
+						>
+							<VStack gap={3} paddingBlock={2}>
+								{area.keys.map((key) => {
+									const facet = INLINE_WORDING[key];
+									if (facet)
+										return (
+											<SharedWordingRow
+												key={key}
+												lexiconKey={key}
+												facet={facet}
+												draft={draft}
+												setDraft={setDraft}
+												onSelect={onSelect}
+											/>
+										);
+									return (
+										<TextAreaRow
+											key={key}
+											label={wordingLabel(key)}
+											path="lexicon.*"
+											field={key}
+											rows={2}
+											value={draft.wording[key] ?? ''}
+											placeholder={wordingPlaceholder(draft, key)}
+											onChange={(text) => {
+												set({ [key]: text });
+											}}
+										/>
+									);
+								})}
+							</VStack>
+						</Collapsible>
+					))}
+				</CollapsibleGroup>
+			</VStack>
+		</Section>
+	);
+}
+
 /**
  * The editor for the tree node `selectedId`. The compile's issues for that node show on the rows
  * of the fields they name; the rest, and all of them for a node with no editor yet, show above it.
@@ -2568,6 +2957,9 @@ export function ProfileEditor({
 			break;
 		case 'observability':
 			editor = <ObservabilityEditor {...props} />;
+			break;
+		case 'wording':
+			editor = <WordingEditor {...props} onSelect={onSelect} />;
 			break;
 		default:
 			hasRows = false;

@@ -2,8 +2,8 @@
  * Cloudflare Worker WebSocket relay for Gemini Live via THEOREM `runSession`.
  *
  * Bridges the browser client WebSocket (PCM mic stream + UI tools)
- * to a gated live session. Prefers `LiveSession.executeTool` for registry
- * tools; `sendToolResponse(s)` remain an escape hatch for non-registry relays.
+ * to a gated live session. The browser names a call the model made; the
+ * session holds its input and gate, so the relay only forwards.
  *
  * @module
  */
@@ -19,17 +19,14 @@ import {
 	TheoremError,
 } from '@theoremai/agents';
 import { forClient, forClientEvents } from '@theoremai/agents/host';
-import type { ToolCredential } from '@theoremai/agents/kernel';
 import type {
 	PlaygroundLiveDraftMessage,
 	PlaygroundTraceLine,
 	PlaygroundTraceRoute,
 } from '@theoremai/playground';
-import { steerStage } from '@theoremai/react/server';
-import { parseLiveRelayClientMessage } from '../types/live-messages';
+import { parseLiveClientMessage } from '@theoremai/react/server';
 import { ensureKernelInitialized } from './kernel-init';
 import { playgroundScope } from './playground-register';
-import { playgroundSteerInbox } from './playground-steer';
 import { playgroundTraces } from './playground-turn';
 
 export type LiveRelayEnv = {
@@ -75,12 +72,12 @@ function resolveGeminiApiKey(env: LiveRelayEnv): string | undefined {
 }
 
 /** A relay failure as the browser reads it: the profile's wording and the kind, never the detail. */
+function errorBody(err: unknown, lexicon?: LexiconOverrides): { error: string; errorKind: string } {
+	return { error: publicError(err, lexicon), errorKind: errorKind(err) };
+}
+
 function errorEnvelope(err: unknown, lexicon?: LexiconOverrides): string {
-	return JSON.stringify({
-		type: 'error',
-		error: publicError(err, lexicon),
-		errorKind: errorKind(err),
-	});
+	return JSON.stringify({ type: 'error', ...errorBody(err, lexicon) });
 }
 
 function pipeBrowserToSession(
@@ -97,78 +94,24 @@ function pipeBrowserToSession(
 	serverWs.addEventListener('message', (event: MessageEvent) => {
 		try {
 			if (typeof event.data === 'string') {
-				const msg = parseLiveRelayClientMessage(JSON.parse(event.data) as unknown);
-				if (msg?.type === 'audio') {
-					forward(session.sendAudio({ data: msg.data, mimeType: 'audio/pcm;rate=16000' }));
-					return;
+				// A message that fails its check ends the call with a `request` error (the catch below).
+				const msg = parseLiveClientMessage(event.data);
+				switch (msg.type) {
+					case 'audio':
+						forward(session.sendAudio({ data: msg.data, mimeType: 'audio/pcm;rate=16000' }));
+						return;
+					case 'video':
+						forward(session.sendVideo({ data: msg.data, mimeType: msg.mimeType }));
+						return;
+					case 'text':
+						forward(session.sendText(msg.text));
+						return;
+					case 'executeTool': {
+						const { type: _type, ...call } = msg;
+						void answerExecuteTool(serverWs, session, call, lexicon);
+						return;
+					}
 				}
-				if (msg?.type === 'video') {
-					forward(
-						session.sendVideo({
-							data: msg.data,
-							mimeType: msg.mimeType ?? 'image/jpeg',
-						}),
-					);
-					return;
-				}
-				if (msg?.type === 'text') {
-					forward(session.sendText(msg.text));
-					return;
-				}
-				if (msg?.type === 'executeTool') {
-					void (async () => {
-						try {
-							const result = await session.executeTool({
-								name: msg.name,
-								callId: msg.callId,
-								input: msg.input,
-								resume: msg.resume,
-								credentials: msg.credentials as Record<string, ToolCredential> | undefined,
-							});
-							serverWs.send(
-								JSON.stringify({
-									type: 'executeToolResult',
-									callId: msg.callId,
-									name: msg.name,
-									...(result.gated
-										? { status: 'gated', gate: result.gated }
-										: {
-												status: 'complete',
-												output:
-													result.outputRaw ??
-													result.outputModel?.data ??
-													result.outputModel ??
-													(result.failure
-														? { error: result.failure.message, code: result.failure.code }
-														: { success: true }),
-												awaiting: result.awaiting,
-												failure: result.failure,
-											}),
-								}),
-							);
-						} catch (err) {
-							serverWs.send(
-								JSON.stringify({
-									type: 'executeToolResult',
-									callId: msg.callId,
-									name: msg.name,
-									status: 'complete',
-									output: { error: publicError(err, lexicon) },
-								}),
-							);
-						}
-					})();
-					return;
-				}
-				if (msg?.type === 'toolResponse') {
-					// Escape hatch — skips session stages; prefer executeTool.
-					session.sendToolResponse(msg.id, msg.name, msg.output);
-					return;
-				}
-				if (msg?.type === 'toolResponses') {
-					session.sendToolResponses(msg.responses);
-				}
-				return;
 			}
 			if (event.data instanceof ArrayBuffer || event.data instanceof Uint8Array) {
 				forward(
@@ -212,7 +155,6 @@ async function pipeSessionToBrowser(
 	} finally {
 		// The events loop ends after the session's root record is written.
 		traces.close();
-		await playgroundSteerInbox.close(sessionId);
 		try {
 			serverWs.close(1000, 'session ended');
 		} catch {
@@ -226,16 +168,13 @@ async function openLiveSession(
 	profileId: string,
 	env: LiveRelayEnv,
 	apiKey: string,
-	sessionId: string,
 	metadata: Record<string, string>,
 	openWebSocket: (url: string) => Promise<WebSocket>,
 ): Promise<LiveSession> {
-	await playgroundSteerInbox.open(sessionId);
 	return scope.runSession(
 		{
 			profile: profileId,
 			metadata,
-			onStage: steerStage(playgroundSteerInbox, sessionId),
 		},
 		{
 			gemini: {
@@ -323,7 +262,7 @@ async function relayLiveSession(
 	profileParam: string | null,
 	env: LiveRelayEnv,
 ): Promise<void> {
-	// Random and picked here, so only the call's own browser can steer it.
+	// The call's id, picked here and sent to the browser on `ready`.
 	const sessionId = globalThis.crypto.randomUUID();
 	// Each record goes to the browser as the session writes it.
 	const traces = playgroundTraces.route((record) => {
@@ -355,13 +294,11 @@ async function relayLiveSession(
 			profileId,
 			env,
 			apiKey,
-			sessionId,
 			traces.metadata,
 			openCloudflareUpstreamWebSocket,
 		);
 	} catch (err) {
 		traces.close();
-		await playgroundSteerInbox.close(sessionId);
 		failRelay(serverWs, err, lexicon);
 		return;
 	}
@@ -370,13 +307,11 @@ async function relayLiveSession(
 	if (serverWs.readyState !== WebSocket.OPEN) {
 		await session.close('client disconnected');
 		traces.close();
-		await playgroundSteerInbox.close(sessionId);
 		return;
 	}
 	pipeBrowserToSession(serverWs, session, lexicon);
 	serverWs.addEventListener('close', () => {
 		void session.close('client disconnected');
-		void playgroundSteerInbox.close(sessionId);
 	});
 	void pipeSessionToBrowser(serverWs, session, profileId, sessionId, traces, lexicon);
 }
@@ -399,4 +334,33 @@ export function handleLiveRelay(request: Request, env: LiveRelayEnv): Response {
 	void relayLiveSession(serverWs, new URL(request.url).searchParams.get('profile'), env);
 
 	return new Response(null, { status: 101, webSocket: clientWs });
+}
+
+/** Run the browser's `executeTool` on the session and tell the browser what became of the call. */
+async function answerExecuteTool(
+	serverWs: WebSocket,
+	session: LiveSession,
+	call: Parameters<LiveSession['executeTool']>[0],
+	lexicon?: LexiconOverrides,
+): Promise<void> {
+	try {
+		const result = await session.executeTool(call);
+		serverWs.send(
+			JSON.stringify(
+				result.gated
+					? { type: 'executeToolResult', callId: call.callId, status: 'gated', gate: result.gated }
+					: { type: 'executeToolResult', callId: call.callId, status: 'settled' },
+			),
+		);
+	} catch (err) {
+		// The session refused it (an unknown call, a decision it takes no more): the browser reads why.
+		serverWs.send(
+			JSON.stringify({
+				type: 'executeToolResult',
+				callId: call.callId,
+				status: 'refused',
+				body: errorBody(err, lexicon),
+			}),
+		);
+	}
 }

@@ -23,6 +23,7 @@ import { IconArrowBackUp } from '@tabler/icons-react';
 import { fieldMeta } from '@theoremai/agents';
 import { PLAYGROUND_PROFILE_TYPES, type PlaygroundIssue } from '@theoremai/playground';
 import { createContext, type ReactNode, useContext, useId } from 'react';
+import { tabFills } from '../lib/tab-fills';
 
 /**
  * Inspector building blocks: captioned sections of label-and-control rows, after Astryx's
@@ -229,11 +230,15 @@ function FillRow({
 	);
 }
 
-/** Free text. An optional field left blank shows what leaving it out does, unless `placeholder` is an example. */
+/**
+ * Free text. Left blank, it shows `placeholder`, a value Tab takes up to edit (an example, or the
+ * default); else `hint`, or what leaving it out does.
+ */
 export function TextRow(
 	props: FieldRowProps & {
 		value: string;
 		placeholder?: string;
+		hint?: string;
 		onChange: (next: string) => void;
 	},
 ) {
@@ -243,7 +248,8 @@ export function TextRow(
 			<TextInput
 				{...control}
 				value={props.value}
-				placeholder={props.placeholder ?? unset}
+				placeholder={props.placeholder ?? props.hint ?? unset}
+				onKeyDown={tabFills(props.value, props.placeholder, props.onChange)}
 				onChange={props.onChange}
 			/>
 		</FillRow>
@@ -252,18 +258,19 @@ export function TextRow(
 
 /**
  * Longer text, under its label rather than beside it: wording and JSON. Left blank, it shows
- * `placeholder`, which for wording is the kernel's own default line.
+ * `placeholder` (for wording, the kernel's own default line) for Tab to take up, else `hint`.
  */
 export function TextAreaRow(
 	props: FieldRowProps & {
 		value: string;
 		placeholder?: string;
+		hint?: string;
 		rows?: number;
 		hasSpellCheck?: boolean;
 		onChange: (next: string) => void;
 	},
 ) {
-	const { label, path, value, placeholder, rows = 3, hasSpellCheck = true, onChange } = props;
+	const { label, path, value, placeholder, hint, rows = 3, hasSpellCheck = true, onChange } = props;
 	const { status, required, unset, control } = useFieldRow(props);
 	return (
 		<VStack gap={1} {...{ [ISSUE_ROW_ATTRIBUTE]: status !== undefined || undefined }}>
@@ -273,7 +280,8 @@ export function TextAreaRow(
 				rows={rows}
 				hasSpellCheck={hasSpellCheck}
 				value={value}
-				placeholder={placeholder ?? unset}
+				placeholder={placeholder ?? hint ?? unset}
+				onKeyDown={tabFills(value, placeholder, onChange)}
 				onChange={onChange}
 			/>
 		</VStack>
