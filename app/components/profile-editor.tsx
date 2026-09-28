@@ -71,6 +71,7 @@ import {
 	IconPlugConnected,
 	IconPlus,
 	IconRefresh,
+	IconSearch,
 	IconSend,
 	IconShieldLock,
 	IconSquareRoundedNumber0,
@@ -2814,39 +2815,72 @@ function WordingEditor({
 }) {
 	const set = patch(setDraft, 'wording');
 	const [audience, setAudience] = useState<WordingAudience>('visitor');
-	const areas = WORDING_AREAS.filter((area) => area.audience === audience).map((area) => {
-		const keys = LEXICON_KEYS.filter((key) => key.startsWith(`${area.prefix}.`));
-		const edited = keys.filter((key) => wordingValue(draft, key)).length;
-		return { ...area, keys, edited };
-	});
+	const [query, setQuery] = useState('');
+	const needle = query.trim().toLowerCase();
+	/** A search spans both readers: a line matches on its area, its name, its default or its text. */
+	const areas = WORDING_AREAS.filter((area) => needle || area.audience === audience)
+		.map((area) => {
+			const all = LEXICON_KEYS.filter((key) => key.startsWith(`${area.prefix}.`));
+			const keys = needle
+				? all.filter((key) =>
+						[
+							area.title,
+							wordingLabel(key),
+							wordingPlaceholder(draft, key),
+							wordingValue(draft, key),
+						].some((text) => text.toLowerCase().includes(needle)),
+					)
+				: all;
+			const edited = all.filter((key) => wordingValue(draft, key)).length;
+			return { ...area, keys, edited };
+		})
+		.filter((area) => area.keys.length > 0);
 	const note = WORDING_AUDIENCES.find((entry) => entry.value === audience)?.note;
 	return (
 		<Section variant="transparent" padding={3}>
 			<VStack gap={3}>
-				<SegmentedControl
-					label="Who reads it"
-					size="sm"
-					layout="fill"
-					value={audience}
-					onChange={(next) => {
-						const picked = WORDING_AUDIENCES.find((entry) => entry.value === next);
-						if (picked) setAudience(picked.value);
-					}}
+				<TextInput
+					label="Search wording"
+					isLabelHidden
+					placeholder="Search names, defaults and text"
+					value={query}
+					onChange={setQuery}
+					startIcon={IconSearch}
+					hasClear
+				/>
+				{!needle && (
+					<SegmentedControl
+						label="Who reads it"
+						size="sm"
+						layout="fill"
+						value={audience}
+						onChange={(next) => {
+							const picked = WORDING_AUDIENCES.find((entry) => entry.value === next);
+							if (picked) setAudience(picked.value);
+						}}
+					>
+						{WORDING_AUDIENCES.map((entry) => (
+							<SegmentedControlItem
+								key={entry.value}
+								value={entry.value}
+								label={entry.label}
+								icon={<Icon icon={entry.icon} size="sm" />}
+							/>
+						))}
+					</SegmentedControl>
+				)}
+				{!needle && <Text type="supporting">{note}</Text>}
+				{needle && areas.length === 0 && (
+					<Text type="supporting">No wording matches “{query.trim()}”.</Text>
+				)}
+				<CollapsibleGroup
+					// Searching opens every area with a match; clearing the search goes back to all closed.
+					key={needle ? `search:${areas.map((area) => area.prefix).join()}` : audience}
+					type="multiple"
+					hasDividers
+					density="compact"
+					defaultValue={needle ? areas.map((area) => area.prefix) : undefined}
 				>
-					{WORDING_AUDIENCES.map((entry) => (
-						<SegmentedControlItem
-							key={entry.value}
-							value={entry.value}
-							label={entry.label}
-							icon={<Icon icon={entry.icon} size="sm" />}
-						/>
-					))}
-				</SegmentedControl>
-				<Text type="supporting">
-					{note} Left blank, a line keeps Theorem's default, shown in the field; Tab takes it up to
-					edit.
-				</Text>
-				<CollapsibleGroup key={audience} type="multiple" hasDividers density="compact">
 					{areas.map((area) => (
 						<Collapsible
 							key={area.prefix}
