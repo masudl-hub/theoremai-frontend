@@ -20,8 +20,8 @@ import { Tokenizer } from '@astryxdesign/core/Tokenizer';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
 import { IconArrowBackUp } from '@tabler/icons-react';
-import { fieldMeta } from '@theoremai/agents';
-import { PLAYGROUND_PROFILE_TYPES, type PlaygroundIssue } from '@theoremai/playground';
+import { fieldMeta } from '@theoremjs/agents';
+import { PLAYGROUND_PROFILE_TYPES, type PlaygroundIssue } from '@theoremjs/playground';
 import { createContext, type ReactNode, useContext, useId } from 'react';
 import { tabFills } from '../lib/tab-fills';
 
@@ -612,6 +612,7 @@ export function ListRow({
 					hasSearch
 					triggerDisplay="badges"
 					maxBadges={maxBadges}
+					className="inspector-list"
 					onChange={onChange}
 				/>
 			</StackItem>
