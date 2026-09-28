@@ -95,10 +95,18 @@ export function llmBrief(compiled: CompiledPlayground, source: string): string {
 	return `# Add the Theorem agent \`${compiled.agentId}\` to this app
 
 The code below was exported from the Theorem Playground. It defines a ${compiled.profile.type} agent profile${
-		turns ? ', a server route that runs it, and a chat component that talks to that route' : ''
+		turns ? ', a server route that runs it, and a ready-made chat that talks to that route' : ''
 	}. Wire it into this codebase.
 
-## Before you write code, ask me
+## Before you write code, ask me${
+		turns
+			? `
+- Whether I want a UI at all, since the answer decides what you install and build:
+  - Theorem's ready-made chat (\`TheoremChat\`, part 3 of the export);
+  - my own UI on \`useTheoremChat\` from \`@theoremai/react\`, which gives the conversation state without the styling;
+  - or none: my server code calls \`runTurn\` from \`@theoremai/agents\` directly, and parts 2 and 3 are dropped.`
+			: ''
+	}
 - Which framework this app uses, and where server routes live (so the handler mounts at \`${ENDPOINT}\`, or the path you pick).
 - Where model keys come from: environment variables, a secrets manager, or each user's own key.
 - Who may use the agent: anyone, or only signed-in users (the handler takes a \`session\` resolver).
@@ -107,19 +115,27 @@ The code below was exported from the Theorem Playground. It defines a ${compiled
 			? `\n- What each tool should really do: ${tools.join(', ')} return stand-in data today. Where does the real data come from, and what credentials does each need?`
 			: ''
 	}
-- Where the chat should appear, and whether it should match an existing theme.
+- If I want a UI: where it should appear, and whether it should match an existing theme.
 
 ## Install
-\`\`\`bash
+${
+	turns
+		? `Install only what my answer about the UI needs:
+- No UI: \`npm install @theoremai/agents zod\`
+- My own UI: \`npm install @theoremai/agents @theoremai/react zod react react-dom\`
+- Theorem's chat: \`${INSTALL}\``
+		: `\`\`\`bash
 ${INSTALL}
-\`\`\`
+\`\`\``
+}
 
 ## Organise it
 - \`agent.ts\` (server only): the profile, its tools and output schema, as exported. One module, so the profile has one source of truth.${
 		turns
 			? `
 - \`theorem.ts\` (server only): \`createTheoremHandler\`, mounted so every path under \`${ENDPOINT}\` reaches it.
-- \`AgentChat.tsx\` (browser): \`TheoremChat\` from \`@theoremai/react/ui\`, pointed at that route.`
+- \`AgentChat.tsx\` (browser), only if I want a UI: \`TheoremChat\` from \`@theoremai/react/ui\`, or my own component on \`useTheoremChat\`, pointed at that route.
+- With no UI, skip both and call \`runTurn\` from server code that imports \`agent.ts\`.`
 			: `
 - A relay you host for the live session, and \`LiveRunner\` from \`@theoremai/react/live\` in the browser.`
 	}
