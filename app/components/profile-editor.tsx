@@ -1226,7 +1226,7 @@ function OutputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: 
 							/>
 							<TextAreaRow
 								label="Guidance"
-								path="lexicon.*"
+								path="lexicon.repair.default_guidance"
 								field="repairGuidance"
 								value={outputs.repairGuidance}
 								placeholder={lexiconDefault('repair.default_guidance')}
@@ -1431,7 +1431,7 @@ function TurnBehaviourEditor({ draft, setDraft }: { draft: PlaygroundDraft; setD
 							{takesContinueInstruction(draft) && (
 								<TextAreaRow
 									label="Instruction"
-									path="lexicon.*"
+									path="lexicon.continue.instruction"
 									field="continueInstruction"
 									value={turn.continueInstruction}
 									placeholder={lexiconDefault('continue.instruction')}
@@ -1505,7 +1505,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 					{guardrails.canary && (
 						<TextAreaRow
 							label="Bind note"
-							path="lexicon.*"
+							path="lexicon.canary.bind_note"
 							field="canaryBindNote"
 							value={guardrails.canaryBindNote}
 							placeholder={lexiconDefault('canary.bind_note')}
@@ -1552,7 +1552,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 								/>
 								<TextAreaRow
 									label="Guidance"
-									path="lexicon.*"
+									path="lexicon.egress.default_repair_guidance"
 									field="egressRepairGuidance"
 									value={guardrails.egressRepairGuidance}
 									placeholder={lexiconDefault('egress.default_repair_guidance')}
@@ -1631,7 +1631,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 						/>
 						<TextAreaRow
 							label="Message"
-							path="lexicon.*"
+							path="lexicon.quota.exhausted"
 							field="quotaMessage"
 							value={guardrails.quotaMessage}
 							placeholder={lexiconDefault('quota.exhausted', {
@@ -2778,7 +2778,7 @@ function SharedWordingRow({
 		<VStack gap={1}>
 			<TextAreaRow
 				label={wordingLabel(lexiconKey)}
-				path="lexicon.*"
+				path={`lexicon.${lexiconKey}`}
 				rows={2}
 				value={shared.read(draft)}
 				placeholder={wordingPlaceholder(draft, lexiconKey)}
@@ -2920,7 +2920,7 @@ function WordingEditor({
 										<TextAreaRow
 											key={key}
 											label={wordingLabel(key)}
-											path="lexicon.*"
+											path={`lexicon.${key}`}
 											field={key}
 											rows={2}
 											value={draft.wording[key] ?? ''}
