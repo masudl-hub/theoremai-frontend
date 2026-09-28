@@ -57,15 +57,18 @@
 	}
 }
 
-/* The label ends short of the button (always, without hover) rather than under it. */
+/*
+ * The button sits over the label's end rather than beside it, so it never widens the row; the
+ * label fades out beneath it instead of being pushed along.
+ */
 @media (hover: none) {
-	.playground-tree-row .playground-tree-label {
-		padding-inline-end: var(--spacing-6);
+	.playground-tree-row > button:not([data-tree-toggle]) {
+		mask-image: linear-gradient(to left, transparent var(--spacing-6), #000 var(--spacing-10));
 	}
 }
 
-.playground-tree-row:is(:hover, :focus-within) .playground-tree-label {
-	padding-inline-end: var(--spacing-6);
+.playground-tree-row:is(:hover, :focus-within) > button:not([data-tree-toggle]) {
+	mask-image: linear-gradient(to left, transparent var(--spacing-6), #000 var(--spacing-10));
 }
 
 /* An optional section the draft leaves out: in the tree, a step quieter than the rest. */

@@ -151,7 +151,7 @@ function treeItem(tree: TreeState, node: PlaygroundTreeNode, isTop = false): Tre
 	const isOptional = isTop && facet !== 'toolSpec' && profileGraphFacet(facet)?.optional === true;
 	return {
 		id: node.id,
-		label: isOptional ? <span className="playground-tree-label">{node.label}</span> : node.label,
+		label: node.label,
 		startContent: <Icon icon={nodeIcon(draft, node.ref)} size="sm" color="secondary" />,
 		endContent: isOptional
 			? rowAction(`Remove ${node.label}`, IconX, () => {
@@ -179,7 +179,7 @@ function offItem({ onSelect, setDraft }: TreeState, facet: ProfileGraphFacetId):
 	};
 	return {
 		id: facet,
-		label: <span className="playground-tree-label playground-tree-off">{label}</span>,
+		label: <span className="playground-tree-off">{label}</span>,
 		startContent: (
 			<Icon icon={FACET_ICON[facet as keyof typeof FACET_ICON]} size="sm" color="disabled" />
 		),
