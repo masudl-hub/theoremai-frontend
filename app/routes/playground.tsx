@@ -5,7 +5,7 @@ import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
-import { Icon } from '@astryxdesign/core/Icon';
+import { Icon, type IconType } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Layout, LayoutContent, LayoutPanel } from '@astryxdesign/core/Layout';
 import { ResizeHandle, useResizable } from '@astryxdesign/core/Resizable';
@@ -33,6 +33,7 @@ import {
 	IconMicrophone,
 	IconPhoto,
 	IconPlayerPlay,
+	IconPlus,
 	IconQuote,
 	IconRepeat,
 	IconShieldCheck,
@@ -40,14 +41,19 @@ import {
 	IconStack2,
 	IconTool,
 	IconVolume,
+	IconX,
 } from '@tabler/icons-react';
-import { profileGraphFacet } from '@theoremai/agents';
+import { type ProfileGraphFacetId, profileGraphFacet } from '@theoremai/agents';
 import {
 	type CompiledPlayground,
 	compilePlayground,
 	createExampleDraft,
 	createPlaygroundRunId,
 	createPlaygroundTransport,
+	draftFacets,
+	excludeFacet,
+	includableFacets,
+	includeFacet,
 	type PlaygroundDraft,
 	type PlaygroundIssue,
 	type PlaygroundNodeRef,
@@ -110,36 +116,95 @@ function nodeIcon(draft: PlaygroundDraft, ref: PlaygroundNodeRef) {
 	return tool ? TOOL_TYPE_ICON[tool.toolType] : IconTool;
 }
 
-function treeItem(
-	draft: PlaygroundDraft,
-	node: PlaygroundTreeNode,
-	selectedId: string,
-	onSelect: (id: string) => void,
-): TreeListItemData {
+/** What every tree row reads: the draft, the selection, and how to change them. */
+interface TreeState {
+	draft: PlaygroundDraft;
+	selectedId: string;
+	onSelect: (id: string) => void;
+	setDraft: (update: (draft: PlaygroundDraft) => PlaygroundDraft) => void;
+}
+
+/** A row's hover action: stops at the button so the row itself isn't selected. */
+function rowAction(label: string, icon: IconType, onPress: () => void) {
+	return (
+		<span className="playground-tree-action">
+			<IconButton
+				label={label}
+				variant="ghost"
+				size="sm"
+				icon={<Icon icon={icon} size="sm" />}
+				onClick={(event) => {
+					event.stopPropagation();
+					onPress();
+				}}
+			/>
+		</span>
+	);
+}
+
+function treeItem(tree: TreeState, node: PlaygroundTreeNode, isTop = false): TreeListItemData {
+	const { draft, selectedId, onSelect, setDraft } = tree;
+	const facet = node.ref.facet;
+	const isOptional = isTop && facet !== 'toolSpec' && profileGraphFacet(facet)?.optional === true;
 	return {
 		id: node.id,
-		label: node.label,
+		label: isOptional ? <span className="playground-tree-label">{node.label}</span> : node.label,
 		startContent: <Icon icon={nodeIcon(draft, node.ref)} size="sm" color="secondary" />,
+		endContent: isOptional
+			? rowAction(`Remove ${node.label}`, IconX, () => {
+					setDraft((current) => excludeFacet(current, facet));
+				})
+			: undefined,
+		className: isOptional ? 'playground-tree-row' : undefined,
 		isSelected: node.id === selectedId,
 		isExpanded: node.children.length > 0,
 		onClick: () => {
 			onSelect(node.id);
 		},
 		children: node.children.length
-			? node.children.map((child) => treeItem(draft, child, selectedId, onSelect))
+			? node.children.map((child) => treeItem(tree, child))
 			: undefined,
 	};
 }
 
-/** Identity, labelled with the agent's id, sits beside the facets rather than above them. */
-function treeItems(
-	draft: PlaygroundDraft,
-	selectedId: string,
-	onSelect: (id: string) => void,
-): TreeListItemData[] {
+/** An optional section the type allows but the draft leaves out: dimmed; a click adds it. */
+function offItem({ onSelect, setDraft }: TreeState, facet: ProfileGraphFacetId): TreeListItemData {
+	const label = profileGraphFacet(facet)?.label ?? facet;
+	const add = () => {
+		setDraft((current) => includeFacet(current, facet));
+		onSelect(facet);
+	};
+	return {
+		id: facet,
+		label: <span className="playground-tree-label playground-tree-off">{label}</span>,
+		startContent: (
+			<Icon icon={FACET_ICON[facet as keyof typeof FACET_ICON]} size="sm" color="disabled" />
+		),
+		endContent: rowAction(`Add ${label}`, IconPlus, add),
+		className: 'playground-tree-row',
+		onClick: add,
+	};
+}
+
+/**
+ * Identity, labelled with the agent's id, sits beside the facets rather than above them. Every
+ * section the profile type allows is listed, in catalog order: optional ones left out, dimmed.
+ */
+function treeItems(tree: TreeState): TreeListItemData[] {
+	const { draft } = tree;
 	const root = playgroundTree(draft);
-	const identity = { ...root, children: [] };
-	return [identity, ...root.children].map((node) => treeItem(draft, node, selectedId, onSelect));
+	const shown = new Map(root.children.map((node) => [node.id, node]));
+	const off = includableFacets(draft);
+	const all = draftFacets({ ...draft, included: [...draft.included, ...off] }).filter(
+		(facet) => facet !== 'identity',
+	);
+	return [
+		treeItem(tree, { ...root, children: [] }),
+		...all.map((facet) => {
+			const node = shown.get(facet);
+			return node ? treeItem(tree, node, true) : offItem(tree, facet);
+		}),
+	];
 }
 
 /** The tree's label for a node, e.g. the agent's id for Identity. */
@@ -362,7 +427,12 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 												<TreeList
 													density="compact"
 													aria-label="Profile"
-													items={treeItems(draft, selected, setSelectedId)}
+													items={treeItems({
+														draft,
+														selectedId: selected,
+														onSelect: setSelectedId,
+														setDraft,
+													})}
 												/>
 											</ScrollableArea>
 										</StackItem>

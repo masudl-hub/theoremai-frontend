@@ -132,6 +132,8 @@ import {
 	GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS,
 	GEMINI_PLAYGROUND_MODELS,
 	INLINE_WORDING,
+	includableFacets,
+	includeFacet,
 	inputLimitsRequired,
 	isGoogleTransport,
 	isOpenRouterTransport,
@@ -298,6 +300,17 @@ function retransport(
 	};
 }
 
+/**
+ * A type change turns on each optional section the new type brings that the old one didn't: the
+ * first pick shows them all. One the author took out under the old type stays out.
+ */
+function withNewSections(before: PlaygroundDraft, after: PlaygroundDraft): PlaygroundDraft {
+	const leftOut = new Set(includableFacets(before));
+	return includableFacets(after)
+		.filter((facet) => !leftOut.has(facet))
+		.reduce(includeFacet, after);
+}
+
 function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
 	const { identity } = draft;
 	const set = patch(setDraft, 'identity');
@@ -321,7 +334,8 @@ function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 					value={identity.profileType}
 					segments={PROFILE_TYPE_SEGMENTS}
 					onChange={(type) => {
-						if (type) setDraft((current) => setProfileType(current, type));
+						if (type)
+							setDraft((current) => withNewSections(current, setProfileType(current, type)));
 					}}
 				/>
 				<TextRow

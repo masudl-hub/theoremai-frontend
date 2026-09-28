@@ -26,3 +26,55 @@
 		transition: none;
 	}
 }
+
+/*
+ * A playground tree row's add or remove button shows on hover or focus, fading like the popovers,
+ * so the tree reads as names at rest. Without hover (touch), it always shows.
+ */
+.playground-tree-row {
+	position: relative;
+}
+
+/* Out of the row's flow, so it neither heightens the row nor narrows the label at rest. */
+.playground-tree-action {
+	position: absolute;
+	inset-inline-end: var(--spacing-1);
+	top: 50%;
+	translate: 0 -50%;
+	display: inline-flex;
+	opacity: 0;
+	transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.playground-tree-row:hover .playground-tree-action,
+.playground-tree-row:focus-within .playground-tree-action {
+	opacity: 1;
+}
+
+@media (hover: none) {
+	.playground-tree-action {
+		opacity: 1;
+	}
+}
+
+/* On hover, the label ends short of the button rather than under it. */
+.playground-tree-row:is(:hover, :focus-within) .playground-tree-label {
+	padding-inline-end: var(--spacing-6);
+}
+
+@media (hover: none) {
+	.playground-tree-row .playground-tree-label {
+		padding-inline-end: var(--spacing-6);
+	}
+}
+
+/* An optional section the draft leaves out: in the tree, a step quieter than the rest. */
+.playground-tree-off {
+	color: var(--color-text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.playground-tree-action {
+		transition: none;
+	}
+}
