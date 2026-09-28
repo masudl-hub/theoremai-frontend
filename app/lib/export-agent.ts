@@ -95,14 +95,16 @@ export function llmBrief(compiled: CompiledPlayground, source: string): string {
 	return `# Add the Theorem agent \`${compiled.agentId}\` to this app
 
 The code below was exported from the Theorem Playground. It defines a ${compiled.profile.type} agent profile${
-		turns ? ', a server route that runs it, and a ready-made chat that talks to that route' : ''
+		turns
+			? ', a server route that runs it, and a package-prepared user interface that talks to that route'
+			: ''
 	}. Wire it into this codebase.
 
 ## Before you write code, ask me${
 		turns
 			? `
 - Whether I want a UI at all, since the answer decides what you install and build:
-  - Theorem's ready-made chat (\`TheoremChat\`, part 3 of the export);
+  - The package-prepared user interface (\`TheoremChat\`, part 3 of the export);
   - my own UI on \`useTheoremChat\` from \`@theoremai/react\`, which gives the conversation state without the styling;
   - or none: my server code calls \`runTurn\` from \`@theoremai/agents\` directly, and parts 2 and 3 are dropped.`
 			: ''
@@ -123,7 +125,7 @@ ${
 		? `Install only what my answer about the UI needs:
 - No UI: \`npm install @theoremai/agents zod\`
 - My own UI: \`npm install @theoremai/agents @theoremai/react zod react react-dom\`
-- Theorem's chat: \`${INSTALL}\``
+- The package-prepared user interface: \`${INSTALL}\``
 		: `\`\`\`bash
 ${INSTALL}
 \`\`\``
