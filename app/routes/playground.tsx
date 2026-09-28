@@ -21,11 +21,13 @@ import {
 	IconActivity,
 	IconAdjustmentsHorizontal,
 	IconAlertTriangle,
+	IconBook,
 	IconBrain,
 	IconChevronDown,
 	IconCode,
 	IconCopy,
 	IconDownload,
+	IconEraser,
 	IconFileExport,
 	IconFileImport,
 	IconGitBranch,
@@ -47,6 +49,7 @@ import { type ProfileGraphFacetId, profileGraphFacet } from '@theoremai/agents';
 import {
 	type CompiledPlayground,
 	compilePlayground,
+	createBlankDraft,
 	createExampleDraft,
 	createPlaygroundRunId,
 	createPlaygroundTransport,
@@ -384,6 +387,26 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 			: `${String(compiled.issues.length)} issues`;
 	const blocked = issues && `Fix ${issues} first`;
 	const toast = useToast();
+	/** Swaps in a whole new draft from Identity; the toast can put the old one back. */
+	const replaceDraft = (next: PlaygroundDraft, message: string) => {
+		const previous = draft;
+		setDraft(next);
+		setSelectedId('identity');
+		const dismiss = toast({
+			body: message,
+			endContent: (
+				<Button
+					label="Undo"
+					variant="ghost"
+					size="sm"
+					onClick={() => {
+						setDraft(previous);
+						dismiss();
+					}}
+				/>
+			),
+		});
+	};
 	const copy = (text: string, what: string) => {
 		navigator.clipboard.writeText(text).then(
 			() => toast({ body: `Copied ${what}.` }),
@@ -457,6 +480,24 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 														}}
 													/>
 												)}
+												<IconButton
+													label="Load the example"
+													variant="ghost"
+													icon={<Icon icon={IconBook} size="sm" />}
+													tooltip="Load the example"
+													onClick={() => {
+														replaceDraft(createExampleDraft(), 'Loaded the example.');
+													}}
+												/>
+												<IconButton
+													label="Clear"
+													variant="ghost"
+													icon={<Icon icon={IconEraser} size="sm" />}
+													tooltip="Start from a blank profile"
+													onClick={() => {
+														replaceDraft(createBlankDraft(), 'Cleared the profile.');
+													}}
+												/>
 												<IconButton
 													label={editorView === 'editor' ? 'Code' : 'Editor'}
 													variant="ghost"
