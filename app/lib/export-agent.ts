@@ -7,7 +7,6 @@ const PACKAGES = [
 	'react',
 	'react-dom',
 	'@astryxdesign/core',
-	'@astryxdesign/theme-neutral',
 	'@stylexjs/stylex',
 ];
 
