@@ -40,7 +40,6 @@ import {
 	IconBulbOff,
 	IconCertificate,
 	IconCircleDashed,
-	IconCpu,
 	IconDeviceDesktop,
 	IconEye,
 	IconEyeOff,
@@ -52,6 +51,7 @@ import {
 	IconHandStop,
 	IconHourglass,
 	IconInfoCircle,
+	IconInputAi,
 	IconKey,
 	IconLetterA,
 	IconLetterB,
@@ -2648,7 +2648,7 @@ const WORDING_AUDIENCES: readonly {
 	{
 		value: 'model',
 		label: 'Model reads',
-		icon: IconCpu,
+		icon: IconInputAi,
 		note: 'Put in front of the model; the visitor never sees these.',
 	},
 ];
