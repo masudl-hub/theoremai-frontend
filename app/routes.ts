@@ -6,6 +6,7 @@ export default [
 		route('playground', 'routes/playground.tsx'),
 	]),
 	route('playground/run', 'routes/playground.run.tsx'),
+	route('th30-lab', 'routes/th30-lab.tsx'),
 	route('api/kernel', 'routes/api.kernel.ts'),
 	route('api/playground/turn', 'routes/api.playground.turn.ts'),
 	route('api/playground/turn/steer', 'routes/api.playground.turn.steer.ts'),
