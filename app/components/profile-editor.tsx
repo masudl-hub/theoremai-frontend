@@ -1562,18 +1562,6 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 								/>
 							</>
 						)}
-						<NumberRow
-							label="Holdback"
-							path="guardrails.egress.holdback"
-							field="egressHoldback"
-							value={guardrails.egressHoldback}
-							min={0}
-							units="chars"
-							isIntegerOnly
-							onChange={(egressHoldback) => {
-								set({ egressHoldback });
-							}}
-						/>
 					</>
 				)}
 			</InspectorSection>
