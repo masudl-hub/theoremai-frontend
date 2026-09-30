@@ -2428,7 +2428,7 @@ function ToolSpecEditor({
 			</InspectorSection>
 			<InspectorSection
 				title="Activity"
-				note="What the chat says while a call runs and once it's done. A {field} fills from the call, and {results.0.name} steps into a list."
+				note="What the chat says while a call runs and once it's done. {field} fills from the call, {results.0.name} steps into a list, and {field|text} shows the text when it's empty."
 			>
 				<TextRow
 					label="Running"
