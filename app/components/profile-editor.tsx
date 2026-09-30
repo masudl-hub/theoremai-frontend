@@ -6,7 +6,6 @@ import { CheckboxList, CheckboxListItem } from '@astryxdesign/core/CheckboxList'
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
 import { Collapsible, CollapsibleGroup } from '@astryxdesign/core/Collapsible';
 import { ComplexSelector } from '@astryxdesign/core/ComplexSelector';
-import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { HStack } from '@astryxdesign/core/HStack';
 import { Icon, type IconType } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
@@ -30,6 +29,8 @@ import {
 	IconAntennaBars4,
 	IconAntennaBars5,
 	IconAntennaBarsOff,
+	IconArrowDown,
+	IconArrowUp,
 	IconBan,
 	IconBandage,
 	IconBiohazard,
@@ -39,6 +40,7 @@ import {
 	IconBulb,
 	IconBulbOff,
 	IconCertificate,
+	IconChartBar,
 	IconCircleDashed,
 	IconDeviceDesktop,
 	IconEye,
@@ -47,6 +49,7 @@ import {
 	IconFlame,
 	IconFlask,
 	IconGauge,
+	IconGitBranch,
 	IconHandOff,
 	IconHandStop,
 	IconHourglass,
@@ -57,10 +60,12 @@ import {
 	IconLetterB,
 	IconLetterC,
 	IconLetterT,
+	IconListCheck,
 	IconLockOpen,
 	IconMathFunction,
 	IconMessage,
 	IconMicrophone,
+	IconNumber,
 	IconPackage,
 	IconPaperclip,
 	IconPencil,
@@ -73,6 +78,7 @@ import {
 	IconRefresh,
 	IconSearch,
 	IconSend,
+	IconServer,
 	IconShieldLock,
 	IconSquareRoundedNumber0,
 	IconSquareRoundedNumber1,
@@ -124,6 +130,8 @@ import {
 	type AcceptSection,
 	acceptSections,
 	allowedBuiltinsForGemini,
+	type DecisionQuestionDraft,
+	type DecisionQuestionType,
 	defaultBindingForProfileType,
 	defaultEffortRequired,
 	defaultModelRequired,
@@ -138,17 +146,28 @@ import {
 	inputLimitsRequired,
 	isGoogleTransport,
 	isOpenRouterTransport,
+	JEV_PLAYGROUND_API_ID,
 	keySlotRequired,
 	type ModelBindingDraft,
+	modelBindingNodeId,
+	newCriteria,
+	newDecisionQuestion,
+	newModelBinding,
 	newToolSpec,
 	nextAccept,
 	type ObservabilityDraft,
+	OPENROUTER_DECISION_MODELS,
 	OPENROUTER_PLAYGROUND_API_ID,
 	type OutputsDraft,
+	PLAYGROUND_DECISION_MAX_CRITERIA,
+	PLAYGROUND_DECISION_MAX_QUESTIONS,
+	PLAYGROUND_DECISION_MAX_STATE_BYTES,
+	PLAYGROUND_DECISION_TIMEOUT_MS,
 	PLAYGROUND_TRACE_DESTINATION,
 	type PlaygroundDraft,
 	type PlaygroundIssue,
 	type PlaygroundProfileType,
+	type PlaygroundTurnProfileType,
 	playgroundNodeRef,
 	playgroundRunsTransport,
 	sampleToolInput,
@@ -156,6 +175,7 @@ import {
 	type ToolSpecDraft,
 	takesContinueInstruction,
 	toolSpecNodeId,
+	updateModelBinding,
 } from '@theoremjs/playground';
 import { type Dispatch, type ReactNode, type SetStateAction, useContext, useState } from 'react';
 import { IconGemini, IconGoogle, IconOpenAi, IconOpenRouter } from './brand-icons';
@@ -163,6 +183,7 @@ import {
 	ChoiceRow,
 	InspectorRow,
 	InspectorSection,
+	ISSUE_ROW_ATTRIBUTE,
 	ListBadges,
 	ListRow,
 	NamesRow,
@@ -196,6 +217,8 @@ export const PROFILE_TYPE_ICON = {
 	image: IconPhoto,
 	speech: IconVolume,
 	live: IconBroadcast,
+	decision: IconGitBranch,
+	host: IconServer,
 } satisfies Record<PlaygroundProfileType, unknown>;
 
 const PROFILE_TYPE_SEGMENTS: Segment<PlaygroundProfileType>[] = [
@@ -203,6 +226,8 @@ const PROFILE_TYPE_SEGMENTS: Segment<PlaygroundProfileType>[] = [
 	{ value: 'image', label: 'Image', icon: PROFILE_TYPE_ICON.image },
 	{ value: 'speech', label: 'Speech', icon: PROFILE_TYPE_ICON.speech },
 	{ value: 'live', label: 'Live', icon: PROFILE_TYPE_ICON.live },
+	{ value: 'decision', label: 'Decision', icon: PROFILE_TYPE_ICON.decision },
+	{ value: 'host', label: 'Host', icon: PROFILE_TYPE_ICON.host },
 ];
 
 const PROTOCOL_SEGMENT = {
@@ -213,12 +238,14 @@ const PROTOCOL_SEGMENT = {
 	},
 	geminiLive: { value: 'geminiLive', label: 'Gemini Live', icon: IconGemini },
 	openAi: { value: 'openAi', label: 'OpenAI-compatible', icon: IconOpenAi },
+	decision: { value: 'decision', label: 'Decision', icon: IconGitBranch },
 } satisfies { [P in Protocol]: Segment<P> };
 
 const PROVIDER_SEGMENT = {
 	google: { value: 'google', label: 'Google', icon: IconGoogle },
 	openrouter: { value: 'openrouter', label: 'OpenRouter', icon: IconOpenRouter },
 	local: { value: 'local', label: 'Local', icon: IconDeviceDesktop },
+	typesafe: { value: 'typesafe', label: 'TypeSafe', icon: IconGitBranch },
 } satisfies { [P in Provider]: Segment<P> };
 
 const KEY_SEGMENTS: Segment<OverflowKeySlot | ''>[] = [
@@ -277,7 +304,11 @@ const IMAGE_ATTACHMENT_PICKER = acceptPicker(IMAGE_ATTACHMENT_ACCEPT_MIMES);
 const VOICE_PICKER = acceptPicker(VOICE_ACCEPT_MIMES);
 
 /** The wire model a binding starts on after its transport changes. */
-function defaultApiId(type: PlaygroundProfileType, protocol: Protocol, provider: Provider): string {
+function defaultApiId(
+	type: PlaygroundTurnProfileType,
+	protocol: Protocol,
+	provider: Provider,
+): string {
 	if (isOpenRouterTransport(protocol, provider)) return OPENROUTER_PLAYGROUND_API_ID;
 	if (!isGoogleTransport(protocol, provider)) return '';
 	const seed = defaultBindingForProfileType(type);
@@ -287,7 +318,7 @@ function defaultApiId(type: PlaygroundProfileType, protocol: Protocol, provider:
 /** Moves a binding to a new transport and its default model, dropping builtins that model lacks. */
 function retransport(
 	binding: ModelBindingDraft,
-	type: PlaygroundProfileType,
+	type: PlaygroundTurnProfileType,
 	protocol: Protocol,
 	provider: Provider,
 ): Partial<ModelBindingDraft> {
@@ -339,31 +370,126 @@ function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 							setDraft((current) => withNewSections(current, setProfileType(current, type)));
 					}}
 				/>
-				<TextRow
-					label="Handle"
-					path="identity.handle"
-					field="handle"
-					value={identity.handle}
-					placeholder="agent"
-					onChange={(handle) => {
-						set({ handle });
-					}}
+				{/* A host runs no model: nothing speaks, so it has no handle. */}
+				{identity.profileType !== 'host' && (
+					<TextRow
+						label="Handle"
+						path="identity.handle"
+						field="handle"
+						value={identity.handle}
+						placeholder="agent"
+						onChange={(handle) => {
+							set({ handle });
+						}}
+					/>
+				)}
+			</InspectorSection>
+			{identity.profileType !== 'speech' &&
+				identity.profileType !== 'decision' &&
+				identity.profileType !== 'host' && (
+					<InspectorSection
+						title="System prompt"
+						note="Standing instructions the model reads before every turn."
+					>
+						<TextArea
+							label="System prompt"
+							isLabelHidden
+							size="sm"
+							rows={8}
+							value={identity.system}
+							placeholder={fieldMeta('identity.system')?.unset}
+							onChange={(system) => {
+								set({ system });
+							}}
+						/>
+					</InspectorSection>
+				)}
+		</>
+	);
+}
+
+function ModelsEditor({
+	draft,
+	setDraft,
+	onSelect,
+}: {
+	draft: PlaygroundDraft;
+	setDraft: SetDraft;
+	onSelect: (id: string) => void;
+}) {
+	const { models } = draft;
+	const set = patch(setDraft, 'models');
+	const addModel = () => {
+		const binding = newModelBinding(draft);
+		setDraft((current) => ({ ...current, modelBindings: [...current.modelBindings, binding] }));
+		onSelect(modelBindingNodeId(binding.key));
+	};
+	return (
+		<>
+			<InspectorSection
+				title="Models"
+				note={
+					draft.identity.profileType === 'decision'
+						? 'A decision uses one model. Select its binding in the tree to configure it.'
+						: 'Add a model here, then select its binding in the tree to configure it.'
+				}
+			>
+				<Button
+					label="Add model"
+					variant="ghost"
+					size="sm"
+					icon={<Icon icon={IconPlus} size="sm" />}
+					isDisabled={draft.identity.profileType === 'decision' && draft.modelBindings.length >= 1}
+					onClick={addModel}
 				/>
 			</InspectorSection>
-			{identity.profileType !== 'speech' && (
+			{draft.identity.profileType !== 'decision' && (
 				<InspectorSection
-					title="System prompt"
-					note="Standing instructions the model reads before every turn."
+					title="Policy"
+					note="Which model runs by default, and how many steps a turn may take."
 				>
-					<TextArea
-						label="System prompt"
-						isLabelHidden
-						size="sm"
-						rows={8}
-						value={identity.system}
-						placeholder={fieldMeta('identity.system')?.unset}
-						onChange={(system) => {
-							set({ system });
+					<ChoiceRow
+						label="Default"
+						path="defaultModel"
+						field="defaultModel"
+						value={models.defaultModel}
+						isRequired={defaultModelRequired(draft)}
+						options={draft.modelBindings.map((binding) => binding.modelId)}
+						onChange={(defaultModel) => {
+							set({ defaultModel });
+						}}
+					/>
+					<SwitchRow
+						label="Switching"
+						path="allowModelSelect"
+						field="allowModelSelect"
+						value={models.allowModelSelect}
+						isDisabled={draft.modelBindings.length < 2}
+						onChange={(allowModelSelect) => {
+							set({ allowModelSelect });
+						}}
+					/>
+					<NumberRow
+						label="Max steps"
+						path="maxSteps"
+						units="steps"
+						field="maxSteps"
+						value={models.maxSteps}
+						min={1}
+						isIntegerOnly
+						onChange={(maxSteps) => {
+							set({ maxSteps });
+						}}
+					/>
+					<SegmentedRow
+						label="Key slot"
+						path="key"
+						field="key"
+						value={models.key}
+						segments={KEY_SEGMENTS}
+						isRequired={keySlotRequired(draft)}
+						onChange={(key) => {
+							set({ key });
 						}}
 					/>
 				</InspectorSection>
@@ -372,56 +498,89 @@ function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 	);
 }
 
-function ModelsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
-	const { models } = draft;
-	const set = patch(setDraft, 'models');
+/** Decision model binding, using the same protocol/provider/API id symbols as other models. */
+function DecisionModelEditor({
+	draft,
+	setDraft,
+	bindingKey,
+}: {
+	draft: PlaygroundDraft;
+	setDraft: SetDraft;
+	bindingKey: string;
+}) {
+	const binding = draft.modelBindings.find((candidate) => candidate.key === bindingKey);
+	if (!binding) return null;
+	const set = (change: Partial<ModelBindingDraft>) => {
+		setDraft((current) => updateModelBinding(current, bindingKey, change));
+	};
 	return (
 		<InspectorSection
-			title="Policy"
-			note="Which model runs by default, and how many steps a turn may take."
+			title="Decision model"
+			note="This binding answers the questions configured under Decision."
 		>
-			<ChoiceRow
-				label="Default"
-				path="defaultModel"
-				field="defaultModel"
-				value={models.defaultModel}
-				isRequired={defaultModelRequired(draft)}
-				options={draft.modelBindings.map((binding) => binding.modelId)}
-				onChange={(defaultModel) => {
-					set({ defaultModel });
+			<TextRow
+				label="Id"
+				path="models.*"
+				field="modelId"
+				value={binding.modelId}
+				isRequired
+				onChange={(modelId) => {
+					set({ modelId });
 				}}
 			/>
-			<SwitchRow
-				label="Switching"
-				path="allowModelSelect"
-				field="allowModelSelect"
-				value={models.allowModelSelect}
-				isDisabled={draft.modelBindings.length < 2}
-				onChange={(allowModelSelect) => {
-					set({ allowModelSelect });
+			<SegmentedRow<Protocol>
+				label="Protocol"
+				path="models.*.protocol"
+				field="protocol"
+				value={binding.protocol}
+				segments={[PROTOCOL_SEGMENT.decision]}
+				onChange={(protocol) => {
+					set({ protocol });
+				}}
+			/>
+			<SegmentedRow<Provider>
+				label="Provider"
+				path="models.*.provider"
+				field="provider"
+				value={binding.provider}
+				segments={[PROVIDER_SEGMENT.typesafe, PROVIDER_SEGMENT.openrouter]}
+				onChange={(provider) => {
+					set({
+						provider,
+						apiId:
+							provider === 'typesafe' ? JEV_PLAYGROUND_API_ID : OPENROUTER_DECISION_MODELS[0].id,
+					});
+				}}
+			/>
+			<ChoiceRow
+				label="API model"
+				path="models.*.apiId"
+				field="apiId"
+				value={binding.apiId}
+				options={(binding.provider === 'typesafe'
+					? [{ id: JEV_PLAYGROUND_API_ID, label: 'Jev' }]
+					: OPENROUTER_DECISION_MODELS
+				).map((model) => ({
+					value: model.id,
+					label: model.label,
+					description: model.id,
+				}))}
+				onChange={(apiId) => {
+					set({ apiId });
 				}}
 			/>
 			<NumberRow
-				label="Max steps"
-				path="maxSteps"
-				units="steps"
-				field="maxSteps"
-				value={models.maxSteps}
+				label="Timeout"
+				path="models.*.timeoutMs"
+				units="ms"
+				field="timeoutMs"
+				value={binding.timeoutMs}
 				min={1}
+				max={PLAYGROUND_DECISION_TIMEOUT_MS}
+				hint={`${String(PLAYGROUND_DECISION_TIMEOUT_MS)} by default`}
 				isIntegerOnly
-				onChange={(maxSteps) => {
-					set({ maxSteps });
-				}}
-			/>
-			<SegmentedRow
-				label="Key slot"
-				path="key"
-				field="key"
-				value={models.key}
-				segments={KEY_SEGMENTS}
-				isRequired={keySlotRequired(draft)}
-				onChange={(key) => {
-					set({ key });
+				onChange={(timeoutMs) => {
+					set({ timeoutMs });
 				}}
 			/>
 		</InspectorSection>
@@ -440,14 +599,11 @@ function ModelBindingEditor({
 	const statusAt = useFieldStatus();
 	const binding = draft.modelBindings.find((candidate) => candidate.key === bindingKey);
 	if (!binding) return null;
-	const type = draft.identity.profileType || 'text';
+	// A decision has its own binding editor; a host has no model.
+	const chosen = draft.identity.profileType;
+	const type = chosen && chosen !== 'decision' && chosen !== 'host' ? chosen : 'text';
 	const set = (change: Partial<ModelBindingDraft>) => {
-		setDraft((current) => ({
-			...current,
-			modelBindings: current.modelBindings.map((candidate) =>
-				candidate.key === bindingKey ? { ...candidate, ...change } : candidate,
-			),
-		}));
+		setDraft((current) => updateModelBinding(current, bindingKey, change));
 	};
 	const google = isGoogleTransport(binding.protocol, binding.provider);
 	const builtins = google ? allowedBuiltinsForGemini(binding.apiId) : [];
@@ -483,17 +639,7 @@ function ModelBindingEditor({
 					value={binding.modelId}
 					placeholder="fast"
 					onChange={(modelId) => {
-						// The models' default names this binding by id, so it follows the rename.
-						setDraft((current) => ({
-							...current,
-							models:
-								current.models.defaultModel === binding.modelId
-									? { ...current.models, defaultModel: modelId }
-									: current.models,
-							modelBindings: current.modelBindings.map((candidate) =>
-								candidate.key === bindingKey ? { ...candidate, modelId } : candidate,
-							),
-						}));
+						set({ modelId });
 					}}
 				/>
 				<SegmentedRow<Protocol>
@@ -2928,9 +3074,290 @@ function WordingEditor({
 	);
 }
 
+const QUESTION_TYPE_SEGMENTS: Segment<DecisionQuestionType>[] = [
+	{ value: 'choice', label: 'Choice', icon: IconListCheck },
+	{ value: 'score', label: 'Score', icon: IconChartBar },
+	{ value: 'noul', label: 'Noul', icon: IconNumber },
+];
+
+/** What a question's rows are called, and what a new one's text says. */
+const CRITERIA_COPY = {
+	choice: {
+		title: 'Options',
+		row: 'Option',
+		note: 'Each answer it may pick, and when to pick it.',
+	},
+	score: { title: 'Levels', row: 'Level', note: 'The scale from 0 up, each level described.' },
+	noul: { title: 'Criteria', row: 'Criterion', note: 'Optional named things the number weighs.' },
+} satisfies Record<DecisionQuestionType, { title: string; row: string; note: string }>;
+
+/** One question: its id and answer type, what to ask, and its options or levels. */
+function DecisionQuestionEditor({
+	question,
+	index,
+	count,
+	onChange,
+	onMove,
+	onRemove,
+}: {
+	question: DecisionQuestionDraft;
+	index: number;
+	count: number;
+	onChange: (change: Partial<DecisionQuestionDraft>) => void;
+	onMove: (to: number) => void;
+	onRemove: () => void;
+}) {
+	const status = useFieldStatus()('questions', index);
+	const copy = CRITERIA_COPY[question.type];
+	const name = question.id || `question ${String(index + 1)}`;
+	const setCriteria = (criteria: DecisionQuestionDraft['criteria']) => {
+		onChange({ criteria });
+	};
+	return (
+		<Section variant="transparent" padding={3}>
+			<VStack gap={3} {...{ [ISSUE_ROW_ATTRIBUTE]: status !== undefined || undefined }}>
+				<HStack gap={1} vAlign="center">
+					<StackItem size="fill">
+						<TextInput
+							label={`Question ${String(index + 1)} id`}
+							isLabelHidden
+							size="sm"
+							status={status}
+							value={question.id}
+							placeholder="verdict"
+							onChange={(id) => {
+								onChange({ id });
+							}}
+						/>
+					</StackItem>
+					<IconButton
+						label={`Move ${name} up`}
+						variant="ghost"
+						size="sm"
+						isDisabled={index === 0}
+						icon={<Icon icon={IconArrowUp} size="sm" />}
+						onClick={() => {
+							onMove(index - 1);
+						}}
+					/>
+					<IconButton
+						label={`Move ${name} down`}
+						variant="ghost"
+						size="sm"
+						isDisabled={index === count - 1}
+						icon={<Icon icon={IconArrowDown} size="sm" />}
+						onClick={() => {
+							onMove(index + 1);
+						}}
+					/>
+					<IconButton
+						label={`Remove ${name}`}
+						variant="ghost"
+						size="sm"
+						icon={<Icon icon={IconTrash} size="sm" />}
+						onClick={onRemove}
+					/>
+				</HStack>
+				<SegmentedRow
+					label="Answer"
+					path="decision.questions.type"
+					value={question.type}
+					segments={QUESTION_TYPE_SEGMENTS}
+					onChange={(type) => {
+						// Options carry over between choice and number; a score's levels are a different list.
+						const keeps = type !== 'score' && question.type !== 'score';
+						onChange({ type, ...(keeps ? {} : { criteria: newCriteria(type) }) });
+					}}
+				/>
+				<TextArea
+					label="Instructions"
+					size="sm"
+					rows={3}
+					value={question.instructions}
+					placeholder="What should the model decide, given the state?"
+					onChange={(instructions) => {
+						onChange({ instructions });
+					}}
+				/>
+				<VStack gap={2}>
+					<VStack gap={0}>
+						<Text type="label">{copy.title}</Text>
+						<Text type="supporting">{copy.note}</Text>
+					</VStack>
+					{question.criteria.map((row, at) => (
+						<HStack key={row.key} gap={1} vAlign="center">
+							{question.type === 'score' ? (
+								<StackItem size="static">
+									<Text type="supporting" color="secondary" hasTabularNumbers>
+										{String(at)}
+									</Text>
+								</StackItem>
+							) : (
+								<div style={{ flex: '0 0 38%', minWidth: 0 }}>
+									<TextInput
+										label={`${copy.row} ${String(at + 1)} label`}
+										isLabelHidden
+										size="sm"
+										value={row.label}
+										placeholder="label"
+										onChange={(label) => {
+											setCriteria(
+												question.criteria.map((r) => (r.key === row.key ? { ...r, label } : r)),
+											);
+										}}
+									/>
+								</div>
+							)}
+							<StackItem size="fill">
+								<TextInput
+									label={`${copy.row} ${String(at + 1)} description`}
+									isLabelHidden
+									size="sm"
+									value={row.text}
+									placeholder={
+										question.type === 'score' ? 'What this level means' : 'When to pick it'
+									}
+									onChange={(text) => {
+										setCriteria(
+											question.criteria.map((r) => (r.key === row.key ? { ...r, text } : r)),
+										);
+									}}
+								/>
+							</StackItem>
+							<IconButton
+								label={`Remove ${copy.row.toLowerCase()} ${String(at + 1)}`}
+								variant="ghost"
+								size="sm"
+								icon={<Icon icon={IconX} size="sm" />}
+								onClick={() => {
+									setCriteria(question.criteria.filter((r) => r.key !== row.key));
+								}}
+							/>
+						</HStack>
+					))}
+					<HStack>
+						<Button
+							label={`Add ${copy.row.toLowerCase()}`}
+							variant="ghost"
+							size="sm"
+							icon={<Icon icon={IconPlus} size="sm" />}
+							isDisabled={question.criteria.length >= PLAYGROUND_DECISION_MAX_CRITERIA}
+							onClick={() => {
+								setCriteria([...question.criteria, ...newCriteria('score').slice(0, 1)]);
+							}}
+						/>
+					</HStack>
+				</VStack>
+			</VStack>
+		</Section>
+	);
+}
+
+/** A decision: the contract it answers to, how much state it takes, and the questions it asks of it. */
+function DecisionEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+	const { decision } = draft;
+	const set = patch(setDraft, 'decision');
+	const listStatus = useFieldStatus()('questions');
+	const setQuestions = (
+		change: (questions: DecisionQuestionDraft[]) => DecisionQuestionDraft[],
+	) => {
+		setDraft((current) => ({
+			...current,
+			decision: { ...current.decision, questions: change(current.decision.questions) },
+		}));
+	};
+	return (
+		<>
+			<InspectorSection
+				title="Contract"
+				note="What this decision is called on every trace. The model never sees it."
+			>
+				<TextRow
+					label="Contract"
+					path="decision.contract"
+					field="contract"
+					value={decision.contract}
+					placeholder="guardrails.tool_call.v1"
+					onChange={(contract) => {
+						set({ contract });
+					}}
+				/>
+			</InspectorSection>
+			<InspectorSection
+				title="State"
+				note="The JSON every question is asked about. It's filled in the preview, not saved."
+			>
+				<NumberRow
+					label="Max state"
+					path="inputs.maxStateBytes"
+					units="bytes"
+					field="maxStateBytes"
+					value={decision.maxStateBytes}
+					min={1}
+					max={PLAYGROUND_DECISION_MAX_STATE_BYTES}
+					hint={`${String(PLAYGROUND_DECISION_MAX_STATE_BYTES)} by default`}
+					isIntegerOnly
+					onChange={(maxStateBytes) => {
+						set({ maxStateBytes });
+					}}
+				/>
+			</InspectorSection>
+			<InspectorSection
+				title="Questions"
+				note="Asked together in one call, answered in this order."
+			>
+				{listStatus && <Banner status="error" title={listStatus.message} />}
+			</InspectorSection>
+			{decision.questions.map((question, index) => (
+				<DecisionQuestionEditor
+					key={question.key}
+					question={question}
+					index={index}
+					count={decision.questions.length}
+					onChange={(change) => {
+						setQuestions((questions) =>
+							questions.map((q) => (q.key === question.key ? { ...q, ...change } : q)),
+						);
+					}}
+					onMove={(to) => {
+						setQuestions((questions) => {
+							const next = questions.filter((q) => q.key !== question.key);
+							next.splice(to, 0, question);
+							return next;
+						});
+					}}
+					onRemove={() => {
+						setQuestions((questions) => questions.filter((q) => q.key !== question.key));
+					}}
+				/>
+			))}
+			<Section variant="transparent" padding={3}>
+				<HStack>
+					<Button
+						label="Add question"
+						variant="ghost"
+						size="sm"
+						icon={<Icon icon={IconPlus} size="sm" />}
+						isDisabled={decision.questions.length >= PLAYGROUND_DECISION_MAX_QUESTIONS}
+						onClick={() => {
+							setDraft((current) => ({
+								...current,
+								decision: {
+									...current.decision,
+									questions: [...current.decision.questions, newDecisionQuestion(current)],
+								},
+							}));
+						}}
+					/>
+				</HStack>
+			</Section>
+		</>
+	);
+}
+
 /**
  * The editor for the tree node `selectedId`. The compile's issues for that node show on the rows
- * of the fields they name; the rest, and all of them for a node with no editor yet, show above it.
+ * of the fields they name; the rest show above it.
  * Edits go straight to the draft; the page compiles it.
  */
 export function ProfileEditor({
@@ -2953,16 +3380,20 @@ export function ProfileEditor({
 	const props = { draft, setDraft };
 
 	let editor: ReactNode;
-	let hasRows = true;
 	switch (ref.facet) {
 		case 'identity':
 			editor = <IdentityEditor {...props} />;
 			break;
 		case 'models':
-			editor = <ModelsEditor {...props} />;
+			editor = <ModelsEditor {...props} onSelect={onSelect} />;
 			break;
 		case 'modelBinding':
-			editor = <ModelBindingEditor {...props} bindingKey={ref.key} />;
+			editor =
+				draft.identity.profileType === 'decision' ? (
+					<DecisionModelEditor {...props} bindingKey={ref.key} />
+				) : (
+					<ModelBindingEditor {...props} bindingKey={ref.key} />
+				);
 			break;
 		case 'tools':
 			editor = <ToolsEditor {...props} onSelect={onSelect} />;
@@ -2997,19 +3428,12 @@ export function ProfileEditor({
 		case 'wording':
 			editor = <WordingEditor {...props} onSelect={onSelect} />;
 			break;
-		default:
-			hasRows = false;
-			editor = (
-				<Section variant="transparent" padding={3}>
-					<EmptyState
-						title={`${profileGraphFacet(ref.facet)?.label ?? 'This section'} isn't editable yet`}
-						description="Its editor is next."
-					/>
-				</Section>
-			);
+		case 'decision':
+			editor = <DecisionEditor {...props} />;
+			break;
 	}
 
-	const banners = hasRows ? nodeIssues.filter((issue) => issue.field === undefined) : nodeIssues;
+	const banners = nodeIssues.filter((issue) => issue.field === undefined);
 	return (
 		<NodeIssues value={nodeIssues}>
 			<VStack>

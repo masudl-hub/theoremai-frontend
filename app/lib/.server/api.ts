@@ -2,21 +2,25 @@
  * Site API handlers — plain `Request` in, `Response` out, no framework imports.
  * Route files only resolve the Cloudflare env and delegate here.
  */
-import { type ProfileDefinition, TheoremError } from '@theoremjs/agents';
+import { errorKind, type ProfileDefinition, publicError, TheoremError, z } from '@theoremjs/agents';
+import { caughtStatus } from '@theoremjs/agents/host';
 import type { StructuredRegistration, ToolRegistration } from '@theoremjs/playground';
 import type { TheoremReplay, TheoremTurnRequest } from '@theoremjs/react';
 import {
 	checkRequest,
 	steerUnitOf,
+	theoremHostCallRequestSchema,
 	theoremInvokeRequestSchema,
 	theoremSteerRequestSchema,
 	theoremTurnRequestSchema,
 } from '@theoremjs/react/server';
 import type { SiteEnv } from '../../cloudflare';
 import { badRequestJson, errorMessage, ndjsonEventStream } from './ndjson-stream';
+import { takeAllowance } from './playground-decide-allowance';
 import { playgroundSteerInbox } from './playground-steer';
 import {
 	type PlaygroundTurnEnv,
+	streamPlaygroundCall,
 	streamPlaygroundInvoke,
 	streamPlaygroundTurn,
 } from './playground-turn';
@@ -99,6 +103,61 @@ export async function playgroundInvoke(
 		);
 	} catch (err) {
 		return badRequestJson(err);
+	}
+}
+
+/** The tools a page allowed for the rest of its visit, as the browser holds them. */
+const pagePermissions = z.array(z.string().min(1).max(128)).max(256).optional();
+
+/** Spends one of today's calls for this address; with no binding, nothing runs at all. */
+async function takeCall(request: Request, env: SiteEnv): Promise<void> {
+	if (!env.DECIDE_ALLOWANCE) {
+		// lexicon-exempt: developer contract error
+		throw new TheoremError('config', 'playground call: no DECIDE_ALLOWANCE binding');
+	}
+	const address = request.headers.get('CF-Connecting-IP') ?? 'local';
+	const cap = await takeAllowance(env.DECIDE_ALLOWANCE, 'call', address);
+	if (cap !== null) {
+		// lexicon-exempt: internal diagnostic; the user reads quota.exhausted
+		throw new TheoremError('rate_limit', "playground call: today's calls are spent", {
+			copy: { key: 'quota.exhausted', params: { perDay: cap } },
+		});
+	}
+}
+
+/**
+ * POST /api/playground/call — NDJSON events for one call of a host draft's
+ * tool. Each visitor address, and the site, gets a day's calls: the tools run
+ * on the site's own network.
+ */
+export async function playgroundCall(request: Request, env: SiteEnv): Promise<Response> {
+	let draft: (PlaygroundDraft & { sessionPermissions?: unknown }) | undefined;
+	try {
+		draft = await request.json<PlaygroundDraft & { sessionPermissions?: unknown }>();
+		const call = checkRequest(theoremHostCallRequestSchema, draft, 'request body');
+		const sessionPermissions = checkRequest(
+			pagePermissions,
+			draft.sessionPermissions,
+			'session permissions',
+		);
+		// Counted only once the request is one a host would run.
+		await takeCall(request, env);
+		return ndjsonEventStream(
+			streamPlaygroundCall({
+				profile: draft.profile,
+				customTools: draft.customTools ?? [],
+				call,
+				sessionPermissions,
+				signal: request.signal,
+			}),
+			draft.profile.lexicon,
+		);
+	} catch (err) {
+		if (!(err instanceof TheoremError) || err.kind === 'request') return badRequestJson(err);
+		return Response.json(
+			{ error: publicError(err, draft?.profile.lexicon), errorKind: errorKind(err) },
+			{ status: caughtStatus(err), headers: { 'cache-control': 'no-store' } },
+		);
 	}
 }
 

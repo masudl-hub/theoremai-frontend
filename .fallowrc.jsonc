@@ -45,9 +45,12 @@
 	],
 	"ignoreExportsUsedInFile": true,
 	// Durable Objects are called by the runtime (`alarm`) and through a stub, a
-	// proxy fallow cannot follow (`playgroundSteerInbox` calls the RPC methods).
+	// proxy fallow cannot follow (`playgroundSteerInbox` and `takeAllowance` call the RPC methods).
 	"usedClassMembers": [
-		{ "extends": "DurableObject", "members": ["alarm", "open", "enqueue", "consume", "close"] }
+		{
+			"extends": "DurableObject",
+			"members": ["alarm", "open", "enqueue", "consume", "close", "take"]
+		}
 	],
 	"rules": {
 		"unused-files": "error",

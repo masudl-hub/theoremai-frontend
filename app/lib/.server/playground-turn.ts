@@ -16,7 +16,7 @@ import {
 	type StructuredRegistration,
 	type ToolRegistration,
 } from '@theoremjs/playground';
-import type { TheoremInvokeRequest, TheoremReplay } from '@theoremjs/react';
+import type { TheoremHostCallRequest, TheoremInvokeRequest, TheoremReplay } from '@theoremjs/react';
 import {
 	checkRequest,
 	checkWalkAway,
@@ -78,7 +78,8 @@ function geminiVault(env: PlaygroundTurnEnv) {
 function openRouterVault(env: PlaygroundTurnEnv) {
 	const key = env.OPENROUTER_API_KEY?.trim();
 	if (!key) return undefined;
-	return { apiKey: key };
+	// The draft's key slot names a Google free key; OpenRouter has one key, so it answers every free slot.
+	return { apiKey: key, vault: { slotA: key, slotB: key, slotC: key, paid: undefined } };
 }
 
 function assertNotLiveProfile(profileType: string, action: string): void {
@@ -87,13 +88,18 @@ function assertNotLiveProfile(profileType: string, action: string): void {
 	}
 }
 
-function createPlaygroundProvider(profile: Profile, env: PlaygroundTurnEnv) {
+/** Bound to the model the turn picked, so a pick on another provider reaches that provider. */
+function createPlaygroundProvider(profile: Profile, env: PlaygroundTurnEnv, model?: string) {
 	const gemini = geminiVault(env);
 	const openAiGateway = openRouterVault(env);
-	return createProvider(profile, {
-		...(gemini ? { gemini: { vault: gemini } } : {}),
-		...(openAiGateway ? { openAiGateway } : {}),
-	});
+	return createProvider(
+		profile,
+		{
+			...(gemini ? { gemini: { vault: gemini } } : {}),
+			...(openAiGateway ? { openAiGateway } : {}),
+		},
+		model,
+	);
 }
 
 export async function* streamPlaygroundTurn(args: {
@@ -127,7 +133,7 @@ export async function* streamPlaygroundTurn(args: {
 		invoke: answerReplayed(scope, profile.id, { callId, decision: 'abandon' }, replay),
 	}));
 
-	const provider = createPlaygroundProvider(profile, args.env ?? {});
+	const provider = createPlaygroundProvider(profile, args.env ?? {}, args.model);
 	// Random and picked here, so only the run's own browser can steer it.
 	const inbox = globalThis.crypto.randomUUID();
 	await args.steer.open(inbox);
@@ -240,4 +246,31 @@ export async function* streamPlaygroundInvoke(args: {
 		replay,
 	);
 	yield* withRunTraces((metadata) => scope.invokeTool({ ...invoke, metadata }));
+}
+
+/** One call of a host draft's tool, streamed. */
+export async function* streamPlaygroundCall(args: {
+	profile: ProfileDefinition;
+	customTools: ToolRegistration[];
+	call: TheoremHostCallRequest;
+	/** Tools the user allowed for the page; the playground keeps no session. */
+	sessionPermissions?: string[];
+	signal?: AbortSignal;
+}): AsyncGenerator<TurnEvent | PlaygroundTraceLine> {
+	const { scope, profile } = playgroundScope(args.profile, args.customTools, undefined);
+	if (profile.type !== 'host') {
+		// lexicon-exempt: internal diagnostic; the user reads error.request
+		throw new TheoremError('request', 'Playground calls run host profiles only.');
+	}
+	yield* withRunTraces((metadata) =>
+		scope.invokeTool({
+			profile: profile.id,
+			name: args.call.name,
+			input: args.call.input,
+			sessionPermissions: args.sessionPermissions,
+			resolveHost,
+			signal: args.signal,
+			metadata,
+		}),
+	);
 }

@@ -2,6 +2,7 @@ import { createRequestHandler, RouterContextProvider } from 'react-router';
 import { cloudflareContext, type SiteEnv } from '../app/cloudflare';
 import { handleLiveRelay } from '../app/lib/.server/live-relay';
 
+export { PlaygroundDecideAllowance } from '../app/lib/.server/playground-decide-allowance';
 export { PlaygroundSteerInbox } from '../app/lib/.server/playground-steer';
 
 const LIVE_RELAY_PATH = '/api/live/relay';

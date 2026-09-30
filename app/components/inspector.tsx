@@ -298,6 +298,8 @@ export function NumberRow(
 		isIntegerOnly?: boolean;
 		/** Shown at the end of the input, e.g. `ms`. */
 		units?: string;
+		/** Shown while blank, in place of what leaving it out does. */
+		hint?: string;
 		onChange: (next: number | null) => void;
 	},
 ) {
@@ -307,7 +309,7 @@ export function NumberRow(
 			<NumberInput
 				{...control}
 				value={props.value}
-				placeholder={unset}
+				placeholder={props.hint ?? unset}
 				min={props.min}
 				max={props.max}
 				step={props.step}

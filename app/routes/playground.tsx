@@ -41,18 +41,25 @@ import {
 	IconShieldCheck,
 	IconSparkles,
 	IconStack2,
+	IconTimeline,
 	IconTool,
 	IconVolume,
 	IconX,
 } from '@tabler/icons-react';
-import { type ProfileGraphFacetId, profileGraphFacet } from '@theoremjs/agents';
+import {
+	type ProfileGraphFacetId,
+	profileGraphFacet,
+	resolveObservabilityPolicy,
+} from '@theoremjs/agents';
 import {
 	type CompiledPlayground,
 	compilePlayground,
 	createBlankDraft,
 	createExampleDraft,
+	createPlaygroundHostTransport,
 	createPlaygroundRunId,
 	createPlaygroundTransport,
+	createSpanExampleDraft,
 	draftFacets,
 	excludeFacet,
 	includableFacets,
@@ -70,9 +77,10 @@ import {
 	savePlaygroundRunPayload,
 } from '@theoremjs/playground';
 import { LiveRunner } from '@theoremjs/react/live';
-import { TheoremChat, useDisclosureMotion } from '@theoremjs/react/ui';
+import { TheoremChat, TheoremHost, useDisclosureMotion } from '@theoremjs/react/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ISSUE_ROW_ATTRIBUTE, ListBadges } from '../components/inspector';
+import { PlaygroundDecision } from '../components/playground-decision';
 import { PROFILE_TYPE_ICON, ProfileEditor, TOOL_TYPE_ICON } from '../components/profile-editor';
 import { exportBundle, llmBrief } from '../lib/export-agent';
 import type { Route } from './+types/playground';
@@ -240,8 +248,9 @@ function runPayload({
 	profile,
 	customTools,
 	structured,
+	questions,
 }: CompiledPlayground): PlaygroundRunPayload {
-	return { agentId, profile, customTools, structured };
+	return { agentId, profile, customTools, structured, questions };
 }
 
 /** Hands the compiled agent to a new tab through this browser's storage; the run route reads it back. */
@@ -318,14 +327,41 @@ const measureCodeChrome = (node: HTMLElement) =>
 	node.getBoundingClientRect().height -
 	(node.querySelector('[role="group"]')?.getBoundingClientRect().height ?? 0);
 
+/** A host compiled from the draft: its tools as a console, each call run by the site. */
+function HostPreview({ payload, trace }: { payload: PlaygroundRunPayload; trace: boolean }) {
+	const transport = useMemo(() => createPlaygroundHostTransport(payload), [payload]);
+	return <TheoremHost transport={transport} trace={trace} />;
+}
+
 /** The agent compiled from the draft, running live; a new compile swaps in its profile. */
-function AgentPreview({ payload }: { payload: PlaygroundRunPayload }) {
+function AgentPreview({ payload, trace }: { payload: PlaygroundRunPayload; trace: boolean }) {
+	if (payload.profile.type === 'decision') return <PlaygroundDecision payload={payload} />;
+	if (payload.profile.type === 'host') return <HostPreview payload={payload} trace={trace} />;
+	return <TurnPreview payload={payload} trace={trace} />;
+}
+
+/** Whether the agent records traces, so the header can offer them. */
+function isTraced(payload: PlaygroundRunPayload | null): boolean {
+	if (payload === null || payload.profile.type === 'decision') return false;
+	if (payload.profile.type === 'host') {
+		return resolveObservabilityPolicy(payload.profile.observability).record;
+	}
+	return playgroundInterface(payload).observability?.record === true;
+}
+
+function TurnPreview({ payload, trace }: { payload: PlaygroundRunPayload; trace: boolean }) {
 	const iface = useMemo(() => playgroundInterface(payload), [payload]);
 	const transport = useMemo(() => createPlaygroundTransport(payload), [payload]);
 	if (iface.type === 'live') {
-		return <LiveRunner iface={iface} connection={() => playgroundLiveConnection(payload)} />;
+		return (
+			<LiveRunner
+				iface={iface}
+				connection={() => playgroundLiveConnection(payload)}
+				trace={trace}
+			/>
+		);
 	}
-	return <TheoremChat transport={transport} />;
+	return <TheoremChat transport={transport} trace={trace} />;
 }
 
 /**
@@ -379,6 +415,8 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	const [lastGood, setLastGood] = useState(compiled.ok ? compiled : null);
 	if (compiled.ok && compiled !== lastGood) setLastGood(compiled);
 	const payload = useMemo(() => (lastGood ? runPayload(lastGood) : null), [lastGood]);
+	const traced = useMemo(() => isTraced(payload), [payload]);
+	const [traceOpen, setTraceOpen] = useState(false);
 	const source = useMemo(() => (compiled.ok ? playgroundSource(compiled) : null), [compiled]);
 	const issues = compiled.ok
 		? undefined
@@ -431,36 +469,39 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 					>
 						<Section variant="raised" height="100%" padding={0}>
 							<HStack height="100%">
-								<Section
-									variant="transparent"
-									width={TREE_WIDTH}
-									height="100%"
-									padding={4}
-									dividers={['end']}
-								>
-									<VStack gap={4} height="100%">
-										<VStack gap={1}>
-											<Heading level={3}>Theorem Playground</Heading>
-											<Text type="supporting" color="secondary">
-												Configure an agent's profile, then run it to test.
-											</Text>
+								{/* Static, so the editor beside it never squeezes the tree. */}
+								<StackItem size="static">
+									<Section
+										variant="transparent"
+										width={TREE_WIDTH}
+										height="100%"
+										padding={4}
+										dividers={['end']}
+									>
+										<VStack gap={4} height="100%">
+											<VStack gap={1}>
+												<Heading level={3}>Theorem Playground</Heading>
+												<Text type="supporting" color="secondary">
+													Configure an agent's profile, then run it to test.
+												</Text>
+											</VStack>
+											<StackItem size="fill">
+												<ScrollableArea ref={sidebarRef} label="Profile" height="100%">
+													<TreeList
+														density="compact"
+														aria-label="Profile"
+														items={treeItems({
+															draft,
+															selectedId: selected,
+															onSelect: setSelectedId,
+															setDraft,
+														})}
+													/>
+												</ScrollableArea>
+											</StackItem>
 										</VStack>
-										<StackItem size="fill">
-											<ScrollableArea ref={sidebarRef} label="Profile" height="100%">
-												<TreeList
-													density="compact"
-													aria-label="Profile"
-													items={treeItems({
-														draft,
-														selectedId: selected,
-														onSelect: setSelectedId,
-														setDraft,
-													})}
-												/>
-											</ScrollableArea>
-										</StackItem>
-									</VStack>
-								</Section>
+									</Section>
+								</StackItem>
 								<StackItem size="fill">
 									<VStack height="100%">
 										<Section variant="transparent" padding={3} dividers={['bottom']}>
@@ -480,14 +521,32 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 														}}
 													/>
 												)}
-												<IconButton
-													label="Load the example"
-													variant="ghost"
-													icon={<Icon icon={IconBook} size="sm" />}
-													tooltip="Load the example"
-													onClick={() => {
-														replaceDraft(createExampleDraft(), 'Loaded the example.');
+												<DropdownMenu
+													button={{
+														label: 'Load an example',
+														isIconOnly: true,
+														icon: <Icon icon={IconBook} size="sm" />,
 													}}
+													hasChevron={false}
+													placement="below"
+													alignment="end"
+													items={[
+														{
+															id: 'concierge',
+															label: 'Travel concierge',
+															onClick: () => {
+																replaceDraft(createExampleDraft(), 'Loaded the example.');
+															},
+														},
+														{
+															id: 'span',
+															label: 'Span decision',
+															description: 'Tool-call safety with the free Span model.',
+															onClick: () => {
+																replaceDraft(createSpanExampleDraft(), 'Loaded the Span example.');
+															},
+														},
+													]}
 												/>
 												<IconButton
 													label="Clear"
@@ -567,6 +626,16 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 						<Section variant="transparent" padding={3}>
 							<HStack gap={2} vAlign="center">
 								<StackItem size="fill" />
+								{traced ? (
+									<Button
+										label={traceOpen ? 'Hide trace' : 'View trace'}
+										icon={<Icon icon={IconTimeline} size="sm" />}
+										aria-pressed={traceOpen}
+										onClick={() => {
+											setTraceOpen((open) => !open);
+										}}
+									/>
+								) : null}
 								<ButtonGroup label="Export" isDisabled={!compiled.ok}>
 									<Button
 										label="Export"
@@ -627,7 +696,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 						</Section>
 						<StackItem size="fill">
 							{payload ? (
-								<AgentPreview payload={payload} />
+								<AgentPreview payload={payload} trace={traced && traceOpen} />
 							) : (
 								<EmptyState
 									icon={<Icon icon={IconAlertTriangle} />}
