@@ -183,11 +183,8 @@ import {
 	ChoiceRow,
 	InspectorRow,
 	InspectorSection,
-	ISSUE_ROW_ATTRIBUTE,
-	ListBadges,
 	ListRow,
 	NamesRow,
-	NodeIssues,
 	NumberRow,
 	type Segment,
 	SegmentedRow,
@@ -195,8 +192,8 @@ import {
 	SwitchRow,
 	TextAreaRow,
 	TextRow,
-	useFieldStatus,
 } from './inspector';
+import { ISSUE_ROW_ATTRIBUTE, ListBadges, NodeIssues, useFieldStatus } from './inspector-context';
 import { IconMcp } from './mcp-icon';
 
 export type SetDraft = Dispatch<SetStateAction<PlaygroundDraft>>;

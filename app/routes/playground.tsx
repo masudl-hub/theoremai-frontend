@@ -79,7 +79,7 @@ import {
 import { LiveRunner } from '@theoremjs/react/live';
 import { TheoremChat, TheoremHost, useDisclosureMotion } from '@theoremjs/react/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ISSUE_ROW_ATTRIBUTE, ListBadges } from '../components/inspector';
+import { ISSUE_ROW_ATTRIBUTE, ListBadges } from '../components/inspector-context';
 import { PlaygroundDecision } from '../components/playground-decision';
 import { PROFILE_TYPE_ICON, ProfileEditor, TOOL_TYPE_ICON } from '../components/profile-editor';
 import { exportBundle, llmBrief } from '../lib/export-agent';

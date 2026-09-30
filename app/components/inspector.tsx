@@ -21,9 +21,10 @@ import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
 import { IconArrowBackUp } from '@tabler/icons-react';
 import { fieldMeta } from '@theoremjs/agents';
-import { PLAYGROUND_PROFILE_TYPES, type PlaygroundIssue } from '@theoremjs/playground';
-import { createContext, type ReactNode, useContext, useId } from 'react';
+import { PLAYGROUND_PROFILE_TYPES } from '@theoremjs/playground';
+import { type ReactNode, useContext, useId } from 'react';
 import { tabFills } from '../lib/tab-fills';
+import { ISSUE_ROW_ATTRIBUTE, ListBadges, useFieldStatus } from './inspector-context';
 
 /**
  * Inspector building blocks: captioned sections of label-and-control rows, after Astryx's
@@ -37,24 +38,6 @@ import { tabFills } from '../lib/tab-fills';
  */
 const LABEL_COLUMN = 96;
 
-/** The compile issues for the node being edited; rows show the ones on their field. */
-export const NodeIssues = createContext<readonly PlaygroundIssue[]>([]);
-
-/**
- * Looks up the error status for a draft field of the node being edited, and for a list field, the
- * entry at `index`. Several issues on one field show as one message.
- */
-export function useFieldStatus(): (field?: string, index?: number) => InputStatus | undefined {
-	const issues = useContext(NodeIssues);
-	return (field, index) => {
-		if (field === undefined) return undefined;
-		const messages = issues
-			.filter((issue) => issue.field === field && issue.index === index)
-			.map((issue) => issue.message);
-		return messages.length ? { type: 'error', message: messages.join(' ') } : undefined;
-	};
-}
-
 /**
  * Whether the field at `path` must be set, and what leaving it out does, from the kernel's catalog.
  * `isRequired` overrides it for a field required only in some cases, saying whether it is now.
@@ -64,9 +47,6 @@ function presence(path: string, isRequired?: boolean) {
 	const required = isRequired ?? meta?.required === true;
 	return { required, unset: required ? undefined : meta?.unset };
 }
-
-/** Marks a row that has an issue, so the issue pill can scroll to it. */
-export const ISSUE_ROW_ATTRIBUTE = 'data-issue';
 
 /**
  * A captioned group of rows. The panel stays at zero padding and each section carries the gutter.
@@ -569,12 +549,6 @@ export function ChoiceRow<T extends string>({
 		</InspectorRow>
 	);
 }
-
-/**
- * How many of a list row's picks show as badges before the rest are counted: two while the editor
- * is at its default width or wider, one once it is narrowed.
- */
-export const ListBadges = createContext(1);
 
 /**
  * Several choices from a list, the first few as badges and the rest counted (`ListBadges`): the
