@@ -1996,6 +1996,26 @@ function loadTierWarning(draft: PlaygroundDraft, tier: ToolLoadTier): string | u
 	return undefined;
 }
 
+/** The top-level fields an activity label can name, from the tool's schemas, as `{a} {b}`. */
+function placeholderHint(schemas: string[]): string | undefined {
+	const names = new Set<string>();
+	for (const json of schemas) {
+		try {
+			const schema: unknown = JSON.parse(json);
+			const properties: unknown =
+				schema && typeof schema === 'object' && 'properties' in schema
+					? schema.properties
+					: undefined;
+			if (properties && typeof properties === 'object') {
+				for (const name of Object.keys(properties)) names.add(`{${name}}`);
+			}
+		} catch {
+			// A schema mid-edit names nothing yet.
+		}
+	}
+	return names.size ? `Can use ${[...names].join(' ')}` : undefined;
+}
+
 const HEADERS_PLACEHOLDER = `{
   "Accept": "application/json"
 }`;
@@ -2394,6 +2414,31 @@ function ToolSpecEditor({
 					hasSpellCheck={false}
 					onChange={(outputJson) => {
 						set({ outputJson });
+					}}
+				/>
+			</InspectorSection>
+			<InspectorSection
+				title="Activity"
+				note="What the chat says while a call runs and once it's done. A {field} fills from the call, and {results.0.name} steps into a list."
+			>
+				<TextRow
+					label="Running"
+					path="labels.activity"
+					field="activity"
+					value={tool.activity ?? ''}
+					hint={placeholderHint([tool.inputJson])}
+					onChange={(activity) => {
+						set({ activity });
+					}}
+				/>
+				<TextRow
+					label="Done"
+					path="labels.activityPast"
+					field="activityPast"
+					value={tool.activityPast ?? ''}
+					hint={placeholderHint([tool.inputJson, tool.outputJson])}
+					onChange={(activityPast) => {
+						set({ activityPast });
 					}}
 				/>
 			</InspectorSection>
