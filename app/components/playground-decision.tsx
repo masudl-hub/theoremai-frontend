@@ -4,6 +4,10 @@ import {
 	EXAMPLE_SPAN_DECISION_STATE,
 	type PlaygroundRunPayload,
 } from '@theoremjs/playground';
+import {
+	createBrowserPlaygroundDecisionTransport,
+	type PlaygroundBrowserRuntime,
+} from '@theoremjs/playground/browser';
 import { TheoremDecision } from '@theoremjs/react/ui';
 import { useMemo } from 'react';
 
@@ -11,11 +15,19 @@ import { useMemo } from 'react';
 export function PlaygroundDecision({
 	payload,
 	className,
+	runtime = null,
 }: {
 	payload: PlaygroundRunPayload;
 	className?: string;
+	runtime?: PlaygroundBrowserRuntime | null;
 }) {
-	const transport = useMemo(() => createPlaygroundDecisionTransport(payload), [payload]);
+	const transport = useMemo(
+		() =>
+			runtime
+				? createBrowserPlaygroundDecisionTransport(payload, runtime)
+				: createPlaygroundDecisionTransport(payload),
+		[payload, runtime],
+	);
 	const model =
 		payload.profile.type === 'decision' ? Object.values(payload.profile.models)[0] : undefined;
 	return (

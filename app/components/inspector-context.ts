@@ -1,5 +1,5 @@
 import type { InputStatus } from '@astryxdesign/core/Field';
-import type { PlaygroundIssue } from '@theoremjs/playground';
+import type { PlaygroundConnectionMode, PlaygroundIssue } from '@theoremjs/playground';
 import { createContext, useContext } from 'react';
 
 // Kept out of inspector.tsx: a hot reload re-runs that module and would orphan these contexts.
@@ -30,3 +30,12 @@ export const ISSUE_ROW_ATTRIBUTE = 'data-issue';
  * is at its default width or wider, one once it is narrowed.
  */
 export const ListBadges = createContext(1);
+
+/** Execution policy selected by the playground; credentials stay outside editor state. */
+export const ConnectionMode = createContext<PlaygroundConnectionMode>('demo');
+
+import type { PlaygroundConnectionState } from './playground-connection';
+export const LocalConnection = createContext<Pick<
+	PlaygroundConnectionState,
+	'localModels' | 'local' | 'setLocal' | 'remoteTools' | 'setRemoteTools'
+> | null>(null);

@@ -32,6 +32,7 @@ import {
 	IconGitBranch,
 	IconId,
 	IconInputAi,
+	IconKey,
 	IconMicrophone,
 	IconPhoto,
 	IconPlayerPlay,
@@ -56,9 +57,7 @@ import {
 	compilePlayground,
 	createBlankDraft,
 	createExampleDraft,
-	createPlaygroundHostTransport,
 	createPlaygroundRunId,
-	createPlaygroundTransport,
 	createSpanExampleDraft,
 	draftFacets,
 	excludeFacet,
@@ -70,26 +69,24 @@ import {
 	type PlaygroundRunPayload,
 	type PlaygroundTreeNode,
 	playgroundInterface,
-	playgroundLiveConnection,
 	playgroundNodeRef,
 	playgroundSource,
 	playgroundTree,
 	savePlaygroundRunPayload,
 } from '@theoremjs/playground';
-import { LiveRunner } from '@theoremjs/react/live';
-import {
-	TheoremChat,
-	TheoremHost,
-	TheoremLabelsProvider,
-	useDisclosureMotion,
-} from '@theoremjs/react/ui';
+import { useDisclosureMotion } from '@theoremjs/react/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ISSUE_ROW_ATTRIBUTE, ListBadges } from '../components/inspector-context';
-import { PlaygroundDecision } from '../components/playground-decision';
+import {
+	ConnectionMode,
+	ISSUE_ROW_ATTRIBUTE,
+	ListBadges,
+	LocalConnection,
+} from '../components/inspector-context';
+import { PlaygroundKeys, usePlaygroundConnection } from '../components/playground-connection';
+import { PlaygroundRunner } from '../components/playground-runner';
 import { PROFILE_TYPE_ICON, ProfileEditor, TOOL_TYPE_ICON } from '../components/profile-editor';
 import { exportBundle, llmBrief } from '../lib/export-agent';
 import { KERNEL_PACKAGE_VERSION } from '../lib/kernel-version';
-import { PLAYGROUND_LABELS } from '../lib/playground-labels';
 import type { Route } from './+types/playground';
 import type { ShellHandle } from './shell';
 
@@ -334,26 +331,6 @@ const measureCodeChrome = (node: HTMLElement) =>
 	node.getBoundingClientRect().height -
 	(node.querySelector('[role="group"]')?.getBoundingClientRect().height ?? 0);
 
-/** A host compiled from the draft: its tools as a console, each call run by the site. */
-function HostPreview({ payload, trace }: { payload: PlaygroundRunPayload; trace: boolean }) {
-	const transport = useMemo(() => createPlaygroundHostTransport(payload), [payload]);
-	return <TheoremHost transport={transport} trace={trace} />;
-}
-
-/** The agent compiled from the draft, running live; a new compile swaps in its profile. */
-function AgentPreview({ payload, trace }: { payload: PlaygroundRunPayload; trace: boolean }) {
-	if (payload.profile.type === 'decision') return <PlaygroundDecision payload={payload} />;
-	return (
-		<TheoremLabelsProvider labels={PLAYGROUND_LABELS}>
-			{payload.profile.type === 'host' ? (
-				<HostPreview payload={payload} trace={trace} />
-			) : (
-				<TurnPreview payload={payload} trace={trace} />
-			)}
-		</TheoremLabelsProvider>
-	);
-}
-
 /** Whether the agent records traces, so the header can offer them. */
 function isTraced(payload: PlaygroundRunPayload | null): boolean {
 	if (payload === null || payload.profile.type === 'decision') return false;
@@ -363,21 +340,6 @@ function isTraced(payload: PlaygroundRunPayload | null): boolean {
 	return playgroundInterface(payload).observability?.record === true;
 }
 
-function TurnPreview({ payload, trace }: { payload: PlaygroundRunPayload; trace: boolean }) {
-	const iface = useMemo(() => playgroundInterface(payload), [payload]);
-	const transport = useMemo(() => createPlaygroundTransport(payload), [payload]);
-	if (iface.type === 'live') {
-		return (
-			<LiveRunner
-				iface={iface}
-				connection={() => playgroundLiveConnection(payload)}
-				trace={trace}
-			/>
-		);
-	}
-	return <TheoremChat transport={transport} trace={trace} />;
-}
-
 /**
  * The profile tree beside the editor (or code) for the draft in a panel on the left; the compiled
  * agent on the right, under Export and Run. The draft compiles as it changes; while it doesn't
@@ -385,6 +347,14 @@ function TurnPreview({ payload, trace }: { payload: PlaygroundRunPayload; trace:
  */
 export default function Playground({ loaderData }: Route.ComponentProps) {
 	const [draft, setDraft] = useState<PlaygroundDraft>(loaderData.draft);
+	const namedSlots = [
+		draft.models.key,
+		draft.models.fallbackKey,
+		...draft.modelBindings.flatMap((binding) => [binding.keySlot, binding.fallbackKeySlot]),
+	].filter((slot): slot is string => Boolean(slot));
+	const connection = usePlaygroundConnection(draft.modelBindings, undefined, namedSlots);
+	const { mode, runtime } = connection;
+	const [keysOpen, setKeysOpen] = useState(false);
 	const [editorView, setEditorView] = useState<'editor' | 'code'>('editor');
 	const layoutRef = useRef<HTMLDivElement>(null);
 	const [measureLayout, layoutWidth] = useMeasure(measureWidth);
@@ -425,10 +395,29 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	const codeHeight = bodyHeight === undefined ? undefined : bodyHeight - (codeChrome ?? 0);
 	const selected = playgroundNodeRef(draft, selectedId) ? selectedId : 'identity';
 	const settledDraft = useDebounced(draft, COMPILE_DEBOUNCE_MS);
-	const compiled = useMemo(() => compilePlayground(settledDraft), [settledDraft]);
+	const compiled = useMemo(() => compilePlayground(settledDraft, mode), [settledDraft, mode]);
 	const [lastGood, setLastGood] = useState(compiled.ok ? compiled : null);
 	if (compiled.ok && compiled !== lastGood) setLastGood(compiled);
-	const payload = useMemo(() => (lastGood ? runPayload(lastGood) : null), [lastGood]);
+	const activeProfile = lastGood?.profile;
+	const matchingModels =
+		!activeProfile ||
+		activeProfile.type === 'host' ||
+		draft.modelBindings.every((binding) => {
+			if (!Object.hasOwn(activeProfile.models, binding.modelId)) return false;
+			const model = activeProfile.models[binding.modelId];
+			return (
+				binding.provider === model.provider &&
+				binding.protocol === model.protocol &&
+				binding.apiId.trim() === model.apiId
+			);
+		});
+	const payload = useMemo(
+		() =>
+			lastGood && matchingModels
+				? { ...runPayload(lastGood), connectionMode: mode, localBaseUrl: connection.local.baseUrl }
+				: null,
+		[lastGood, matchingModels, mode, connection.local.baseUrl],
+	);
 	const traced = useMemo(() => isTraced(payload), [payload]);
 	const [traceOpen, setTraceOpen] = useState(false);
 	const source = useMemo(() => (compiled.ok ? playgroundSource(compiled) : null), [compiled]);
@@ -444,6 +433,8 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 		const previous = draft;
 		setDraft(next);
 		setSelectedId('identity');
+		setKeysOpen(false);
+		setEditorView('editor');
 		const dismiss = toast({
 			body: message,
 			endContent: (
@@ -506,8 +497,12 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 														aria-label="Profile"
 														items={treeItems({
 															draft,
-															selectedId: selected,
-															onSelect: setSelectedId,
+															selectedId: keysOpen ? '' : selected,
+															onSelect: (id) => {
+																setKeysOpen(false);
+																setSelectedId(id);
+																setEditorView('editor');
+															},
 															setDraft,
 														})}
 													/>
@@ -521,7 +516,9 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 										<Section variant="transparent" padding={3} dividers={['bottom']}>
 											<HStack gap={1} vAlign="center">
 												<StackItem size="fill">
-													{title && <Heading level={4}>{title}</Heading>}
+													{(keysOpen ? 'Keys' : title) && (
+														<Heading level={4}>{keysOpen ? 'Keys' : title}</Heading>
+													)}
 												</StackItem>
 												{issues && !compiled.ok && (
 													<Token
@@ -529,12 +526,24 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 														color="orange"
 														description="Go to the next issue"
 														onClick={() => {
+															setKeysOpen(false);
 															setSelectedId(nextIssueNode(compiled.issues, selected));
 															setEditorView('editor');
 															setIssueReveal((count) => count + 1);
 														}}
 													/>
 												)}
+												<IconButton
+													label="Keys"
+													variant="ghost"
+													icon={<Icon icon={IconKey} size="sm" />}
+													aria-pressed={keysOpen}
+													tooltip="Keys"
+													onClick={() => {
+														setKeysOpen((open) => !open);
+														setEditorView('editor');
+													}}
+												/>
 												<DropdownMenu
 													button={{
 														label: 'Load an example',
@@ -582,6 +591,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 													}
 													tooltip={editorView === 'editor' ? 'Show the code' : 'Show the editor'}
 													onClick={() => {
+														setKeysOpen(false);
 														setEditorView(editorView === 'editor' ? 'code' : 'editor');
 													}}
 												/>
@@ -589,16 +599,76 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 										</Section>
 										<StackItem size="fill" ref={bodyRef}>
 											{/* The editor is keyed by node, so each one opens at its top. */}
-											{editorView === 'editor' ? (
+											{keysOpen ? (
+												<ScrollableArea label="Keys" height="100%">
+													{' '}
+													<PlaygroundKeys
+														connection={connection}
+														onAddSlot={(slot) => {
+															setDraft((current) =>
+																current.models.key
+																	? current
+																	: { ...current, models: { ...current.models, key: slot } },
+															);
+														}}
+														onRenameSlot={(from, to) => {
+															setDraft((current) => ({
+																...current,
+																models: {
+																	...current.models,
+																	key: current.models.key === from ? to : current.models.key,
+																	fallbackKey:
+																		current.models.fallbackKey === from
+																			? to
+																			: current.models.fallbackKey,
+																},
+																modelBindings: current.modelBindings.map((binding) => ({
+																	...binding,
+																	keySlot: binding.keySlot === from ? to : binding.keySlot,
+																	fallbackKeySlot:
+																		binding.fallbackKeySlot === from ? to : binding.fallbackKeySlot,
+																})),
+															}));
+														}}
+														onRemoveSlot={(slot) => {
+															setDraft((current) => ({
+																...current,
+																models: {
+																	...current.models,
+																	key: current.models.key === slot ? '' : current.models.key,
+																	fallbackKey:
+																		current.models.fallbackKey === slot
+																			? ''
+																			: current.models.fallbackKey,
+																},
+																modelBindings: current.modelBindings.map((binding) => ({
+																	...binding,
+																	keySlot: binding.keySlot === slot ? '' : binding.keySlot,
+																	fallbackKeySlot:
+																		binding.fallbackKeySlot === slot ? '' : binding.fallbackKeySlot,
+																})),
+															}));
+														}}
+													/>
+												</ScrollableArea>
+											) : editorView === 'editor' ? (
 												<ScrollableArea key={selected} label="Editor" height="100%" ref={editorRef}>
 													<ListBadges value={listBadges}>
-														<ProfileEditor
-															draft={draft}
-															setDraft={setDraft}
-															selectedId={selected}
-															onSelect={setSelectedId}
-															issues={compiled.ok ? [] : compiled.issues}
-														/>
+														<ConnectionMode.Provider value={mode}>
+															<LocalConnection.Provider value={connection}>
+																<ProfileEditor
+																	draft={draft}
+																	setDraft={setDraft}
+																	selectedId={selected}
+																	onSelect={(id) => {
+																		setKeysOpen(false);
+																		setSelectedId(id);
+																		setEditorView('editor');
+																	}}
+																	issues={compiled.ok ? [] : compiled.issues}
+																/>
+															</LocalConnection.Provider>
+														</ConnectionMode.Provider>
 													</ListBadges>
 												</ScrollableArea>
 											) : source && compiled.ok ? (
@@ -703,14 +773,25 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 									isDisabled={!compiled.ok}
 									tooltip={blocked ?? 'Open the agent in a new tab'}
 									onClick={() => {
-										if (compiled.ok) openInNewTab(runPayload(compiled));
+										if (compiled.ok)
+											openInNewTab({
+												...runPayload(compiled),
+												connectionMode: mode,
+												localBaseUrl: connection.local.baseUrl,
+											});
 									}}
 								/>
 							</HStack>
 						</Section>
 						<StackItem size="fill">
 							{payload ? (
-								<AgentPreview payload={payload} trace={traced && traceOpen} />
+								<PlaygroundRunner
+									key={mode}
+									payload={payload}
+									mode={mode}
+									runtime={runtime}
+									trace={traced && traceOpen}
+								/>
 							) : (
 								<EmptyState
 									icon={<Icon icon={IconAlertTriangle} />}

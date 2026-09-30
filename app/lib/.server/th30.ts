@@ -329,7 +329,7 @@ export function ensureTh30ProfileRegistered(): void {
 				builtInTools: ['googleSearch'],
 			},
 		},
-		key: 'slotA',
+		key: 'main',
 		live: {
 			voice: 'Aoede',
 			vad: {

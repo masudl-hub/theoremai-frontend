@@ -58,7 +58,7 @@ export function InspectorSection({
 	note,
 	children,
 }: {
-	title: string;
+	title?: string;
 	note?: string;
 	children: ReactNode;
 }) {
@@ -66,9 +66,11 @@ export function InspectorSection({
 		<Section variant="transparent" padding={3}>
 			<VStack gap={3}>
 				<VStack gap={1}>
-					<Text type="label" weight="semibold">
-						{title}
-					</Text>
+					{title && (
+						<Text type="label" weight="semibold">
+							{title}
+						</Text>
+					)}
 					{note && <Text type="supporting">{note}</Text>}
 				</VStack>
 				{children}
@@ -217,16 +219,19 @@ function FillRow({
 export function TextRow(
 	props: FieldRowProps & {
 		value: string;
+		status?: InputStatus;
 		placeholder?: string;
 		hint?: string;
 		onChange: (next: string) => void;
 	},
 ) {
-	const { status, required, unset, control } = useFieldRow(props);
+	const { status: fieldStatus, required, unset, control } = useFieldRow(props);
+	const status = props.status ?? fieldStatus;
 	return (
 		<FillRow label={props.label} path={props.path} required={required} status={status}>
 			<TextInput
 				{...control}
+				status={status}
 				value={props.value}
 				placeholder={props.placeholder ?? props.hint ?? unset}
 				onKeyDown={tabFills(props.value, props.placeholder, props.onChange)}

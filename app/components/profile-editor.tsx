@@ -31,7 +31,6 @@ import {
 	IconAntennaBarsOff,
 	IconArrowDown,
 	IconArrowUp,
-	IconBan,
 	IconBandage,
 	IconBiohazard,
 	IconBolt,
@@ -61,9 +60,6 @@ import {
 	IconInfoCircle,
 	IconInputAi,
 	IconKey,
-	IconLetterA,
-	IconLetterB,
-	IconLetterC,
 	IconLetterT,
 	IconListCheck,
 	IconLockOpen,
@@ -105,6 +101,7 @@ import {
 	type CustomToolType,
 	type EgressOnBlock,
 	fieldMeta,
+	GOOGLE_BUILTIN_TOOLS,
 	GOOGLE_IMAGE_ASPECT_RATIOS,
 	GOOGLE_IMAGE_INPUT_MIMES,
 	GOOGLE_IMAGE_SIZES,
@@ -115,7 +112,6 @@ import {
 	LEXICON_KEYS,
 	type LexiconKey,
 	lexiconDefault,
-	type OverflowKeySlot,
 	type PlaygroundAuthType,
 	PROFILE_TYPE_PROTOCOLS,
 	PROTOCOL_PROVIDERS,
@@ -199,7 +195,14 @@ import {
 	TextAreaRow,
 	TextRow,
 } from './inspector';
-import { ISSUE_ROW_ATTRIBUTE, ListBadges, NodeIssues, useFieldStatus } from './inspector-context';
+import {
+	ConnectionMode,
+	ISSUE_ROW_ATTRIBUTE,
+	ListBadges,
+	LocalConnection,
+	NodeIssues,
+	useFieldStatus,
+} from './inspector-context';
 import { IconMcp } from './mcp-icon';
 
 export type SetDraft = Dispatch<SetStateAction<PlaygroundDraft>>;
@@ -250,13 +253,6 @@ const PROVIDER_SEGMENT = {
 	local: { value: 'local', label: 'Local', icon: IconDeviceDesktop },
 	typesafe: { value: 'typesafe', label: 'TypeSafe', icon: IconGitBranch },
 } satisfies { [P in Provider]: Segment<P> };
-
-const KEY_SEGMENTS: Segment<OverflowKeySlot | ''>[] = [
-	{ value: '', label: 'No key slot', icon: IconBan },
-	{ value: 'slotA', label: 'Slot A', icon: IconLetterA },
-	{ value: 'slotB', label: 'Slot B', icon: IconLetterB },
-	{ value: 'slotC', label: 'Slot C', icon: IconLetterC },
-];
 
 const LEVEL_SEGMENT = {
 	none: { label: 'None', icon: IconAntennaBarsOff },
@@ -484,15 +480,23 @@ function ModelsEditor({
 							set({ maxSteps });
 						}}
 					/>
-					<SegmentedRow
+					<TextRow
 						label="Key slot"
 						path="key"
 						field="key"
 						value={models.key}
-						segments={KEY_SEGMENTS}
 						isRequired={keySlotRequired(draft)}
 						onChange={(key) => {
 							set({ key });
+						}}
+					/>
+					<TextRow
+						label="Fallback slot"
+						path="fallbackKey"
+						field="fallbackKey"
+						value={models.fallbackKey ?? ''}
+						onChange={(fallbackKey) => {
+							set({ fallbackKey });
 						}}
 					/>
 				</InspectorSection>
@@ -511,6 +515,7 @@ function DecisionModelEditor({
 	setDraft: SetDraft;
 	bindingKey: string;
 }) {
+	const mode = useContext(ConnectionMode);
 	const binding = draft.modelBindings.find((candidate) => candidate.key === bindingKey);
 	if (!binding) return null;
 	const set = (change: Partial<ModelBindingDraft>) => {
@@ -555,21 +560,42 @@ function DecisionModelEditor({
 					});
 				}}
 			/>
-			<ChoiceRow
-				label="API model"
-				path="models.*.apiId"
-				field="apiId"
-				value={binding.apiId}
-				options={(binding.provider === 'typesafe'
-					? [{ id: JEV_PLAYGROUND_API_ID, label: 'Jev' }]
-					: OPENROUTER_DECISION_MODELS
-				).map((model) => ({
-					value: model.id,
-					label: model.label,
-					description: model.id,
-				}))}
-				onChange={(apiId) => {
-					set({ apiId });
+			{mode === 'demo' ? (
+				<ChoiceRow
+					label="API model"
+					path="models.*.apiId"
+					field="apiId"
+					value={binding.apiId}
+					options={(binding.provider === 'typesafe'
+						? [{ id: JEV_PLAYGROUND_API_ID, label: 'Jev' }]
+						: OPENROUTER_DECISION_MODELS
+					).map((model) => ({
+						value: model.id,
+						label: model.label,
+						description: model.id,
+					}))}
+					onChange={(apiId) => {
+						set({ apiId });
+					}}
+				/>
+			) : (
+				<TextRow
+					label="API model"
+					path="models.*.apiId"
+					field="apiId"
+					value={binding.apiId}
+					isRequired
+					onChange={(apiId) => {
+						set({ apiId });
+					}}
+				/>
+			)}
+			<TextRow
+				label="Key slot"
+				path="key"
+				value={draft.models.key}
+				onChange={(key) => {
+					setDraft((current) => ({ ...current, models: { ...current.models, key } }));
 				}}
 			/>
 			<NumberRow
@@ -599,6 +625,8 @@ function ModelBindingEditor({
 	setDraft: SetDraft;
 	bindingKey: string;
 }) {
+	const mode = useContext(ConnectionMode);
+	const localConnection = useContext(LocalConnection);
 	const statusAt = useFieldStatus();
 	const binding = draft.modelBindings.find((candidate) => candidate.key === bindingKey);
 	if (!binding) return null;
@@ -609,7 +637,11 @@ function ModelBindingEditor({
 		setDraft((current) => updateModelBinding(current, bindingKey, change));
 	};
 	const google = isGoogleTransport(binding.protocol, binding.provider);
-	const builtins = google ? allowedBuiltinsForGemini(binding.apiId) : [];
+	const builtins = google
+		? mode === 'demo'
+			? allowedBuiltinsForGemini(binding.apiId)
+			: GOOGLE_BUILTIN_TOOLS.map((tool) => tool.name)
+		: [];
 	const aliases = binding.efforts.map((effort) => effort.alias).filter(Boolean);
 	/**
 	 * Sets the efforts and keeps the settings that depend on them valid: the default follows its
@@ -663,33 +695,120 @@ function ModelBindingEditor({
 					value={binding.provider}
 					segments={PROTOCOL_PROVIDERS[binding.protocol].map((provider) => ({
 						...PROVIDER_SEGMENT[provider],
-						isDisabled: !playgroundRunsTransport(type, binding.protocol, provider),
+						isDisabled: !playgroundRunsTransport(
+							type,
+							binding.protocol,
+							provider,
+							provider === 'local' ? 'local' : mode,
+						),
 					}))}
 					onChange={(provider) => {
 						set(retransport(binding, type, binding.protocol, provider));
 					}}
 				/>
-				<ChoiceRow
-					label="API model"
-					path="models.*.apiId"
-					field="apiId"
-					value={binding.apiId}
-					options={
-						google
-							? GEMINI_PLAYGROUND_MODELS.filter((model) => model.profileType === type).map(
-									(model) => ({
-										value: model.id,
-										label: model.label,
-										description: model.id,
-									}),
-								)
-							: [OPENROUTER_PLAYGROUND_API_ID]
-					}
-					onChange={(apiId) => {
-						const allowed = new Set(allowedBuiltinsForGemini(apiId));
-						set({ apiId, builtInTools: binding.builtInTools.filter((id) => allowed.has(id)) });
-					}}
-				/>
+				{binding.provider === 'local' && localConnection && (
+					<TextRow
+						label="Local endpoint"
+						path="local.baseUrl"
+						value={localConnection.local.baseUrl}
+						placeholder="http://127.0.0.1:11434"
+						status={
+							localConnection.localModels.status === 'error'
+								? { type: 'error', message: localConnection.localModels.error ?? '' }
+								: undefined
+						}
+						onChange={(baseUrl) => {
+							localConnection.setLocal((current) => ({ ...current, baseUrl }));
+							set({ apiId: '' });
+						}}
+					/>
+				)}
+				{binding.provider === 'local' && localConnection ? (
+					<ChoiceRow
+						label="API model"
+						path="models.*.apiId"
+						field="apiId"
+						value={binding.apiId}
+						options={localConnection.localModels.ids}
+						isDisabled={
+							localConnection.localModels.status !== 'ready' ||
+							!localConnection.localModels.ids.length
+						}
+						hasSearch
+						isRequired
+						onChange={(apiId) => {
+							set({ apiId });
+						}}
+					/>
+				) : mode === 'demo' ? (
+					<ChoiceRow
+						label="API model"
+						path="models.*.apiId"
+						field="apiId"
+						value={binding.apiId}
+						options={
+							google
+								? GEMINI_PLAYGROUND_MODELS.filter((model) => model.profileType === type).map(
+										(model) => ({
+											value: model.id,
+											label: model.label,
+											description: model.id,
+										}),
+									)
+								: [OPENROUTER_PLAYGROUND_API_ID]
+						}
+						onChange={(apiId) => {
+							const allowed = new Set(allowedBuiltinsForGemini(apiId));
+							set({ apiId, builtInTools: binding.builtInTools.filter((id) => allowed.has(id)) });
+						}}
+					/>
+				) : (
+					<TextRow
+						label="API model"
+						path="models.*.apiId"
+						field="apiId"
+						value={binding.apiId}
+						isRequired
+						placeholder={
+							binding.provider === 'local' ? 'Installed model name' : 'Provider model id'
+						}
+						onChange={(apiId) => {
+							set({ apiId });
+						}}
+					/>
+				)}
+
+				{binding.provider === 'local' && localConnection && (
+					<SwitchRow
+						label="Remote tools"
+						path="playground.remoteTools"
+						value={localConnection.remoteTools}
+						onChange={localConnection.setRemoteTools}
+					/>
+				)}
+				{binding.provider !== 'local' && (
+					<>
+						<TextRow
+							label="Key slot override"
+							path="models.*.key"
+							field="keySlot"
+							value={binding.keySlot ?? ''}
+							onChange={(keySlot) => {
+								set({ keySlot });
+							}}
+						/>
+						<TextRow
+							label="Fallback override"
+							path="models.*.fallbackKey"
+							field="fallbackKeySlot"
+							value={binding.fallbackKeySlot ?? ''}
+							onChange={(fallbackKeySlot) => {
+								set({ fallbackKeySlot });
+							}}
+						/>
+					</>
+				)}
+
 				{google && (
 					<ListRow
 						label="Built-ins"
@@ -1099,6 +1218,7 @@ const COMPRESSION_TRIGGER_DEFAULT = Math.round(GEMINI_PLAYGROUND_LIVE_INPUT_TOKE
 const COMPRESSION_TARGET_DEFAULT = Math.round(COMPRESSION_TRIGGER_DEFAULT / 2);
 
 function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+	const mode = useContext(ConnectionMode);
 	const google = allGoogle(draft);
 	const { live } = draft;
 	const set = patch(setDraft, 'live');
@@ -1176,36 +1296,62 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 						set({ contextCompression });
 					}}
 				/>
-				{live.contextCompression && (
-					<>
-						<SliderRow
-							label="Trigger"
-							path="live.contextCompression.triggerTokens"
-							field="compressionTriggerTokens"
-							value={live.compressionTriggerTokens}
-							fallback={COMPRESSION_TRIGGER_DEFAULT}
-							min={COMPRESSION_STEP}
-							max={GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS}
-							step={COMPRESSION_STEP}
-							onChange={(compressionTriggerTokens) => {
-								set({ compressionTriggerTokens });
-							}}
-						/>
-						<SliderRow
-							label="Keep"
-							path="live.contextCompression.slidingWindow.targetTokens"
-							field="compressionTargetTokens"
-							value={live.compressionTargetTokens}
-							fallback={COMPRESSION_TARGET_DEFAULT}
-							min={COMPRESSION_STEP}
-							max={GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS - COMPRESSION_STEP}
-							step={COMPRESSION_STEP}
-							onChange={(compressionTargetTokens) => {
-								set({ compressionTargetTokens });
-							}}
-						/>
-					</>
-				)}
+				{live.contextCompression &&
+					(mode === 'demo' ? (
+						<>
+							<SliderRow
+								label="Trigger"
+								path="live.contextCompression.triggerTokens"
+								field="compressionTriggerTokens"
+								value={live.compressionTriggerTokens}
+								fallback={COMPRESSION_TRIGGER_DEFAULT}
+								min={COMPRESSION_STEP}
+								max={GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS}
+								step={COMPRESSION_STEP}
+								onChange={(compressionTriggerTokens) => {
+									set({ compressionTriggerTokens });
+								}}
+							/>
+							<SliderRow
+								label="Keep"
+								path="live.contextCompression.slidingWindow.targetTokens"
+								field="compressionTargetTokens"
+								value={live.compressionTargetTokens}
+								fallback={COMPRESSION_TARGET_DEFAULT}
+								min={COMPRESSION_STEP}
+								max={GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS - COMPRESSION_STEP}
+								step={COMPRESSION_STEP}
+								onChange={(compressionTargetTokens) => {
+									set({ compressionTargetTokens });
+								}}
+							/>
+						</>
+					) : (
+						<>
+							<NumberRow
+								label="Trigger"
+								path="live.contextCompression.triggerTokens"
+								field="compressionTriggerTokens"
+								value={live.compressionTriggerTokens}
+								min={1}
+								isIntegerOnly
+								onChange={(compressionTriggerTokens) => {
+									set({ compressionTriggerTokens });
+								}}
+							/>
+							<NumberRow
+								label="Keep"
+								path="live.contextCompression.slidingWindow.targetTokens"
+								field="compressionTargetTokens"
+								value={live.compressionTargetTokens}
+								min={1}
+								isIntegerOnly
+								onChange={(compressionTargetTokens) => {
+									set({ compressionTargetTokens });
+								}}
+							/>
+						</>
+					))}
 			</InspectorSection>
 			<InspectorSection title="Transcripts" note="Text copies of what is said, both ways.">
 				<SwitchRow

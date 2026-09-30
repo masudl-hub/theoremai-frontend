@@ -6,13 +6,10 @@
  * each visitor address, and the site, to a day's decisions before it spends anything.
  */
 import {
-	createKernelScope,
 	defineProfile,
 	errorKind,
 	publicError,
-	resolveObservabilityPolicy,
 	TheoremError,
-	type TraceRecord,
 	validateDecisionRequest,
 } from '@theoremjs/agents';
 import { caughtStatus } from '@theoremjs/agents/host';
@@ -23,8 +20,10 @@ import {
 	modelBindingViolation,
 	playgroundDecisionRequestSchema,
 } from '@theoremjs/playground';
+import { runPlaygroundDecision } from '@theoremjs/playground/runtime';
 import { readBody } from '@theoremjs/react/server';
 import { type PlaygroundDecideAllowance, takeAllowance } from './playground-decide-allowance';
+import { playgroundDemoVault } from './playground-turn';
 
 export type PlaygroundDecideEnv = {
 	/** The site's decision provider keys, shared by every visitor. */
@@ -70,8 +69,6 @@ export async function playgroundDecide(
 			const violation = decisionQuestionViolation(binding, question);
 			if (violation) throw new TheoremError('request', `playground decide: ${violation}`);
 		}
-		const scope = createKernelScope();
-		scope.profiles.register(profile);
 		const decisionRequest = {
 			profile: profile.id,
 			state: body.state,
@@ -79,10 +76,9 @@ export async function playgroundDecide(
 			signal: request.signal,
 		};
 		validateDecisionRequest(decisionRequest, profile);
-		const apiKey = (
-			binding.provider === 'typesafe' ? env['theoremai.typesafe_api_key'] : env.OPENROUTER_API_KEY
-		)?.trim();
-		if (!apiKey) throw new TheoremError('auth', 'playground decide: provider key is missing'); // lexicon-exempt: internal diagnostic
+		const vault = playgroundDemoVault(env, profile);
+		if (!Object.values(vault).some(Boolean))
+			throw new TheoremError('auth', 'playground decide: provider key is missing'); // lexicon-exempt: internal diagnostic
 		const cap = await spentCap(request, env.DECIDE_ALLOWANCE);
 		if (cap !== null) {
 			// lexicon-exempt: internal diagnostic; the user reads quota.exhausted
@@ -90,24 +86,17 @@ export async function playgroundDecide(
 				copy: { key: 'quota.exhausted', params: { perDay: cap } },
 			});
 		}
-		// A recorded decision's trace goes back in the reply; the server writes it nowhere else.
-		const traces: TraceRecord[] = [];
-		const records = profile.observability
-			? resolveObservabilityPolicy(profile.observability).record
-			: false;
-		const result = await scope.runDecision(decisionRequest, {
-			apiKey,
-			...(records
-				? {
-						sink: {
-							write: (record) => {
-								traces.push(record);
-								return Promise.resolve();
-							},
-						},
-					}
-				: {}),
-		});
+		const { result, traces } = await runPlaygroundDecision(
+			{
+				agentId: profile.id,
+				profile: body.profile,
+				customTools: [],
+				questions: body.questions,
+			},
+			body.state as Parameters<typeof runPlaygroundDecision>[1],
+			{ vault },
+			request.signal,
+		);
 		return json(200, { result, traces });
 	} catch (err) {
 		return json(caughtStatus(err), { error: publicError(err, lexicon), errorKind: errorKind(err) });

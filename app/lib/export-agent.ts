@@ -98,11 +98,6 @@ ${hostBundle(compiled, source).trimEnd()}
 
 /** A decision: the profile and its questions, the route that answers them, and the page that asks. */
 function decisionBundle(compiled: CompiledPlayground, source: string): string {
-	const provider =
-		compiled.profile.type === 'decision'
-			? Object.values(compiled.profile.models)[0]?.provider
-			: 'typesafe';
-	const keyName = provider === 'openrouter' ? 'OPENROUTER_API_KEY' : 'TYPESAFE_API_KEY';
 	return `${[
 		'/**',
 		` * ${compiled.agentId}, exported from the Theorem Playground.`,
@@ -111,7 +106,7 @@ function decisionBundle(compiled: CompiledPlayground, source: string): string {
 		' *   1. agent.ts          server only: the profile and the questions it asks.',
 		` *   2. decision.ts       server only: the route that answers them, at ${DECISION_ENDPOINT}.`,
 		' *   3. AgentDecision.tsx the browser: the state field and the answers.',
-		` * Parts 1 and 2 read your ${provider === 'openrouter' ? 'OpenRouter' : 'TypeSafe'} key; nothing in them may reach the browser.`,
+		' * Parts 1 and 2 read your keys from THEOREM_VAULT_<SLOT>; nothing in them may reach the browser.',
 		' *',
 		` *   ${INSTALL}`,
 		' */',
@@ -128,7 +123,7 @@ function decisionBundle(compiled: CompiledPlayground, source: string): string {
 		'export const decision = createTheoremDecisionHandler({',
 		'  profile,',
 		'  questions,',
-		`  apiKey: process.env.${keyName},`,
+		`  vault: ${vaultSource(compiled)},`,
 		'});',
 		'',
 		'// ─── 3. AgentDecision.tsx (browser) ───',
@@ -141,25 +136,40 @@ function decisionBundle(compiled: CompiledPlayground, source: string): string {
 	].join('\n')}\n`;
 }
 
+/** The `key` and `fallbackKey` an object names, when they are strings. */
+function slotsOn(value: unknown): string[] {
+	if (!value || typeof value !== 'object') return [];
+	const { key, fallbackKey } = value as { key?: unknown; fallbackKey?: unknown };
+	return [key, fallbackKey].filter(
+		(slot): slot is string => typeof slot === 'string' && slot !== '',
+	);
+}
+
+/** Every vault slot the profile names, on the profile or on a model. */
+function keySlots({ profile }: CompiledPlayground): string[] {
+	const models: unknown = 'models' in profile ? profile.models : {};
+	const bindings = models && typeof models === 'object' ? (Object.values(models) as unknown[]) : [];
+	return [...new Set([profile, ...bindings].flatMap(slotsOn))];
+}
+
+/** The vault the handler reads: each slot the profile names, from `THEOREM_VAULT_<SLOT>`. */
+function vaultSource(compiled: CompiledPlayground): string {
+	const entries = keySlots(compiled).map(
+		(slot) =>
+			`${JSON.stringify(slot)}: process.env.THEOREM_VAULT_${slot.toUpperCase().replaceAll('-', '_')}`,
+	);
+	return `{ ${entries.join(', ')} }`;
+}
+
 /** The provider options the handler needs, each key read from the server's environment. */
-function providerSource({ profile }: CompiledPlayground): string {
-	const json = JSON.stringify(profile);
-	const parts: string[] = [];
-	if (json.includes('"provider":"google"')) {
-		parts.push(
-			'gemini: { vault: { slotA: process.env.GEMINI_API_KEY, slotB: undefined, slotC: undefined, paid: undefined } }',
-		);
-	}
-	if (json.includes('"provider":"openrouter"')) {
-		parts.push('openAiGateway: { apiKey: process.env.OPENROUTER_API_KEY }');
-	}
-	if (json.includes('"provider":"local"')) {
+function providerSource(compiled: CompiledPlayground): string {
+	const parts = [`vault: ${vaultSource(compiled)}`];
+	if (JSON.stringify(compiled.profile).includes('"provider":"local"')) {
 		parts.push("local: { baseUrl: process.env.LOCAL_MODEL_URL ?? 'http://127.0.0.1:11434' }");
 	}
 	return `{\n${parts.map((part) => `    ${part},`).join('\n')}\n  }`;
 }
 
-/** The agent as one `.tsx`: the profile, the route, and the chat, marked where to split. */
 export function exportBundle(compiled: CompiledPlayground, source: string): string {
 	if (compiled.profile.type === 'decision') return decisionBundle(compiled, source);
 	if (compiled.profile.type === 'host') return hostBundle(compiled, source);
