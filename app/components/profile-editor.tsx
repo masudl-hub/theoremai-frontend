@@ -53,6 +53,11 @@ import {
 	IconHandOff,
 	IconHandStop,
 	IconHourglass,
+	IconHttpDelete,
+	IconHttpGet,
+	IconHttpPatch,
+	IconHttpPost,
+	IconHttpPut,
 	IconInfoCircle,
 	IconInputAi,
 	IconKey,
@@ -1954,6 +1959,14 @@ const PERMISSION_SEGMENTS: Segment<ToolPermission>[] = [
 	{ value: 'always_confirm', label: 'Every call', icon: IconHandStop },
 ];
 
+const METHOD_SEGMENTS: Segment<HttpMethod>[] = [
+	{ value: 'GET', label: 'GET', icon: IconHttpGet },
+	{ value: 'POST', label: 'POST', icon: IconHttpPost },
+	{ value: 'PUT', label: 'PUT', icon: IconHttpPut },
+	{ value: 'PATCH', label: 'PATCH', icon: IconHttpPatch },
+	{ value: 'DELETE', label: 'DELETE', icon: IconHttpDelete },
+];
+
 const LOAD_TIER_SEGMENTS: Segment<ToolLoadTier>[] = [
 	{ value: 'T0', label: 'T0', icon: IconSquareRoundedNumber0 },
 	{ value: 'T1', label: 'T1', icon: IconSquareRoundedNumber1 },
@@ -1993,7 +2006,6 @@ function loadTierWarning(draft: PlaygroundDraft, tier: ToolLoadTier): string | u
 	return undefined;
 }
 
-/** The top-level fields an activity label can name, from the tool's schemas, as `{a} {b}`. */
 function placeholderHint(schemas: string[]): string | undefined {
 	const names = new Set<string>();
 	for (const json of schemas) {
@@ -2475,14 +2487,14 @@ function ToolSpecEditor({
 								set({ endpoint });
 							}}
 						/>
-						<ChoiceRow<HttpMethod>
+						<SegmentedRow
 							label="Method"
 							path="method"
 							field="method"
 							value={tool.method ?? HTTP_METHODS[0]}
-							options={HTTP_METHODS}
+							segments={METHOD_SEGMENTS}
 							onChange={(method) => {
-								set({ method: method || undefined });
+								set({ method });
 							}}
 						/>
 						{headersRow}

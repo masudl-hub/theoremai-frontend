@@ -652,6 +652,7 @@
   .astryx-section[data-variant="raised"] {
     background-color: var(--color-background-surface);
     border-radius: var(--radius-page);
+    overflow: clip;
   }
 
   .astryx-lightbox {

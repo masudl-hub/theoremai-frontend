@@ -61,6 +61,8 @@ export const siteTheme = defineTheme({
 			'variant:raised': {
 				backgroundColor: 'var(--color-background-surface)',
 				borderRadius: 'var(--radius-page)',
+				// Content scrolling past the rounded corners would otherwise draw outside them.
+				overflow: 'clip',
 			},
 		},
 		// The landing wordmark: Astryx's heading type, set at poster scale.

@@ -499,7 +499,8 @@ export const theoremSiteTheme = {
       },
       "variant:raised": {
         "backgroundColor": "var(--color-background-surface)",
-        "borderRadius": "var(--radius-page)"
+        "borderRadius": "var(--radius-page)",
+        "overflow": "clip"
       }
     },
     "lightbox": {

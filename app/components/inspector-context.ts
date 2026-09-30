@@ -2,10 +2,7 @@ import type { InputStatus } from '@astryxdesign/core/Field';
 import type { PlaygroundIssue } from '@theoremjs/playground';
 import { createContext, useContext } from 'react';
 
-/**
- * The inspector's contexts, apart from its components: a module that imports the playground package
- * re-runs when that package changes, and a context made again would leave its readers on the old one.
- */
+// Kept out of inspector.tsx: a hot reload re-runs that module and would orphan these contexts.
 
 /** The compile issues for the node being edited; rows show the ones on their field. */
 export const NodeIssues = createContext<readonly PlaygroundIssue[]>([]);

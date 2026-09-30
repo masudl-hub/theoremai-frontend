@@ -83,6 +83,7 @@ import { ISSUE_ROW_ATTRIBUTE, ListBadges } from '../components/inspector-context
 import { PlaygroundDecision } from '../components/playground-decision';
 import { PROFILE_TYPE_ICON, ProfileEditor, TOOL_TYPE_ICON } from '../components/profile-editor';
 import { exportBundle, llmBrief } from '../lib/export-agent';
+import { KERNEL_PACKAGE_VERSION } from '../lib/kernel-version';
 import type { Route } from './+types/playground';
 import type { ShellHandle } from './shell';
 
@@ -482,7 +483,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 											<VStack gap={1}>
 												<Heading level={3}>Theorem Playground</Heading>
 												<Text type="supporting" color="secondary">
-													Configure an agent's profile, then run it to test.
+													{`@theoremjs/agents ${KERNEL_PACKAGE_VERSION}`}
 												</Text>
 											</VStack>
 											<StackItem size="fill">
