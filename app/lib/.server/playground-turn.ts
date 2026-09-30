@@ -7,7 +7,12 @@ import type {
 } from '@theoremjs/agents';
 import { createProvider, registerTraceDestination, TheoremError, z } from '@theoremjs/agents';
 import type { GateAnswerRequest } from '@theoremjs/agents/kernel';
-import { answerGatedCall, type HeldGatedCall, type RegisteredTool } from '@theoremjs/agents/kernel';
+import {
+	answerGatedCall,
+	type HeldGatedCall,
+	memoryCredentialSource,
+	type RegisteredTool,
+} from '@theoremjs/agents/kernel';
 import {
 	createPlaygroundTraceRouter,
 	PLAYGROUND_TRACE_DESTINATION,
@@ -177,7 +182,7 @@ function heldGate(tool: RegisteredTool): Pick<HeldGatedCall, 'permission' | 'aut
 	const auth = tool.type === 'http' || tool.type === 'mcp' ? tool.auth : undefined;
 	return {
 		permission: tool.permission,
-		...(auth ? { auth: { slot: auth.slot, authType: auth.type } } : {}),
+		...(auth ? { auth: { slot: auth.slot, authType: auth.type, service: auth.service } } : {}),
 	};
 }
 
@@ -217,7 +222,11 @@ function answerReplayed(
 		resume: answered.resume,
 		sessionPermissions: answered.sessionPermissions,
 		...(answered.typed
-			? { credentials: { [answered.typed.slot]: answered.typed.credential } }
+			? {
+					credentials: memoryCredentialSource({
+						[answered.typed.slot]: answered.typed.credential,
+					}),
+				}
 			: {}),
 		turnInput: replay.turnInput,
 		snapshot: replay.snapshot,
