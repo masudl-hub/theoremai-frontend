@@ -135,6 +135,7 @@ import {
 	type AcceptSection,
 	acceptSections,
 	allowedBuiltinsForGemini,
+	credentialHeaderProblem,
 	type DecisionQuestionDraft,
 	type DecisionQuestionType,
 	defaultBindingForProfileType,
@@ -2138,6 +2139,10 @@ function probeRequest(
 ): { body?: Record<string, unknown>; error?: string } {
 	const headers = parseObject(tool.headersJson ?? '', 'Headers');
 	if (headers.error) return { error: headers.error };
+	const credentialHeader = credentialHeaderProblem(
+		headers.value as Record<string, string> | undefined,
+	);
+	if (credentialHeader) return { error: credentialHeader };
 	const authType = tool.authType ?? 'none';
 	const shared = {
 		headers: headers.value,

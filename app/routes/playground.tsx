@@ -77,13 +77,19 @@ import {
 	savePlaygroundRunPayload,
 } from '@theoremjs/playground';
 import { LiveRunner } from '@theoremjs/react/live';
-import { TheoremChat, TheoremHost, useDisclosureMotion } from '@theoremjs/react/ui';
+import {
+	TheoremChat,
+	TheoremHost,
+	TheoremLabelsProvider,
+	useDisclosureMotion,
+} from '@theoremjs/react/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ISSUE_ROW_ATTRIBUTE, ListBadges } from '../components/inspector-context';
 import { PlaygroundDecision } from '../components/playground-decision';
 import { PROFILE_TYPE_ICON, ProfileEditor, TOOL_TYPE_ICON } from '../components/profile-editor';
 import { exportBundle, llmBrief } from '../lib/export-agent';
 import { KERNEL_PACKAGE_VERSION } from '../lib/kernel-version';
+import { PLAYGROUND_LABELS } from '../lib/playground-labels';
 import type { Route } from './+types/playground';
 import type { ShellHandle } from './shell';
 
@@ -337,8 +343,15 @@ function HostPreview({ payload, trace }: { payload: PlaygroundRunPayload; trace:
 /** The agent compiled from the draft, running live; a new compile swaps in its profile. */
 function AgentPreview({ payload, trace }: { payload: PlaygroundRunPayload; trace: boolean }) {
 	if (payload.profile.type === 'decision') return <PlaygroundDecision payload={payload} />;
-	if (payload.profile.type === 'host') return <HostPreview payload={payload} trace={trace} />;
-	return <TurnPreview payload={payload} trace={trace} />;
+	return (
+		<TheoremLabelsProvider labels={PLAYGROUND_LABELS}>
+			{payload.profile.type === 'host' ? (
+				<HostPreview payload={payload} trace={trace} />
+			) : (
+				<TurnPreview payload={payload} trace={trace} />
+			)}
+		</TheoremLabelsProvider>
+	);
 }
 
 /** Whether the agent records traces, so the header can offer them. */

@@ -8,10 +8,16 @@ import {
 	readPlaygroundRunIdFromUrl,
 } from '@theoremjs/playground';
 import { LiveRunner } from '@theoremjs/react/live';
-import { TheoremChat, TheoremHost, TheoremThemeProvider } from '@theoremjs/react/ui';
+import {
+	TheoremChat,
+	TheoremHost,
+	TheoremLabelsProvider,
+	TheoremThemeProvider,
+} from '@theoremjs/react/ui';
 import { useMemo } from 'react';
 import { redirect } from 'react-router';
 import { PlaygroundDecision } from '../components/playground-decision';
+import { PLAYGROUND_LABELS } from '../lib/playground-labels';
 import type { Route } from './+types/playground.run';
 import './run.css';
 
@@ -61,10 +67,14 @@ export default function PlaygroundRun({ loaderData }: Route.ComponentProps) {
 			</a>
 			{payload.profile.type === 'decision' ? (
 				<PlaygroundDecision payload={payload} className="run-chat" />
-			) : payload.profile.type === 'host' ? (
-				<HostRun payload={payload} />
 			) : (
-				<TurnRun payload={payload} />
+				<TheoremLabelsProvider labels={PLAYGROUND_LABELS}>
+					{payload.profile.type === 'host' ? (
+						<HostRun payload={payload} />
+					) : (
+						<TurnRun payload={payload} />
+					)}
+				</TheoremLabelsProvider>
 			)}
 		</TheoremThemeProvider>
 	);
