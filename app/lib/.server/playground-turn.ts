@@ -179,7 +179,7 @@ const modelArguments = z.record(z.string(), z.unknown());
 
 /** The gate a tool waits on: its permission tier, and the slot a sign-in gate fills. */
 function heldGate(tool: RegisteredTool): Pick<HeldGatedCall, 'permission' | 'auth'> {
-	const auth = tool.type === 'http' || tool.type === 'mcp' ? tool.auth : undefined;
+	const auth = 'auth' in tool ? tool.auth : undefined;
 	return {
 		permission: tool.permission,
 		...(auth ? { auth: { slot: auth.slot, authType: auth.type, service: auth.service } } : {}),
