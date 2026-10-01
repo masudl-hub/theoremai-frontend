@@ -6,6 +6,7 @@ import { CheckboxList, CheckboxListItem } from '@astryxdesign/core/CheckboxList'
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
 import { Collapsible, CollapsibleGroup } from '@astryxdesign/core/Collapsible';
 import { ComplexSelector } from '@astryxdesign/core/ComplexSelector';
+import { FileInput } from '@astryxdesign/core/FileInput';
 import { HStack } from '@astryxdesign/core/HStack';
 import { Icon, type IconType } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
@@ -17,6 +18,7 @@ import { pixel, proportional, Table } from '@astryxdesign/core/Table';
 import { Text } from '@astryxdesign/core/Text';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { TextInput } from '@astryxdesign/core/TextInput';
+import { Thumbnail } from '@astryxdesign/core/Thumbnail';
 import { Token } from '@astryxdesign/core/Token';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
@@ -138,10 +140,12 @@ import {
 	defaultEffortRequired,
 	defaultModelRequired,
 	draftAllows,
+	draftKey,
 	expandAccept,
 	GEMINI_PLAYGROUND_DEFAULT_API_ID,
 	GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS,
 	GEMINI_PLAYGROUND_MODELS,
+	type ImageReferenceDraft,
 	INLINE_WORDING,
 	includableFacets,
 	includeFacet,
@@ -1224,49 +1228,251 @@ function PresetRow({
 	);
 }
 
-/** Image output pins. */
+/** OpenRouter's image vocabularies; the kernel takes free strings, so these are the playground's. */
+const OPENROUTER_IMAGE_QUALITIES = ['auto', 'low', 'medium', 'high'] as const;
+const OPENROUTER_IMAGE_BACKGROUNDS = ['auto', 'transparent', 'opaque'] as const;
+/** A pinned file rides in every turn's request, so it stays small. */
+const REFERENCE_MAX_BYTES = 4 * 1024 * 1024;
+
+/** A picked image file as a pinned reference: its bytes in base64. */
+async function referenceFromFile(file: File): Promise<ImageReferenceDraft> {
+	const url = await new Promise<string>((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => {
+			resolve(typeof reader.result === 'string' ? reader.result : '');
+		};
+		reader.onerror = () => {
+			reject(reader.error ?? new Error('Couldn’t read the file.'));
+		};
+		reader.readAsDataURL(file);
+	});
+	return {
+		key: draftKey('reference'),
+		name: file.name,
+		mimeType: file.type,
+		data: url.slice(url.indexOf(',') + 1),
+	};
+}
+
+/** Image output pins. OpenRouter-only pins show when every model is on OpenRouter. */
 function ImageEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
 	const google = allGoogle(draft);
+	const openRouter =
+		draft.modelBindings.length > 0 &&
+		draft.modelBindings.every((binding) =>
+			isOpenRouterTransport(binding.protocol, binding.provider),
+		);
 	const { image } = draft;
 	const set = patch(setDraft, 'image');
 	return (
-		<InspectorSection title="Output" note="How generated images come back.">
-			<PresetRow
-				google={google}
-				label="Aspect ratio"
-				path="image.aspectRatio"
-				value={image.aspectRatio}
-				preset={GOOGLE_IMAGE_ASPECT_RATIOS}
-				onChange={(aspectRatio) => {
-					set({ aspectRatio });
+		<>
+			<InspectorSection title="Output" note="How generated images come back.">
+				<PresetRow
+					google={google}
+					label="Aspect ratio"
+					path="image.aspectRatio"
+					value={image.aspectRatio}
+					preset={GOOGLE_IMAGE_ASPECT_RATIOS}
+					onChange={(aspectRatio) => {
+						set({ aspectRatio });
+					}}
+				/>
+				<PresetRow
+					google={google}
+					label="Resolution"
+					path="image.resolution"
+					value={image.resolution}
+					preset={GOOGLE_IMAGE_RESOLUTIONS}
+					onChange={(resolution) => {
+						set({ resolution });
+					}}
+				/>
+				<PresetRow
+					google={google}
+					label="Format"
+					path="image.mimeType"
+					value={image.mimeType}
+					preset={GOOGLE_IMAGE_OUTPUT_MIMES}
+					onChange={(mimeType) => {
+						set({ mimeType });
+					}}
+				/>
+				{openRouter && (
+					<>
+						<ChoiceRow
+							label="Quality"
+							path="image.quality"
+							field="quality"
+							value={image.quality}
+							options={OPENROUTER_IMAGE_QUALITIES}
+							onChange={(quality) => {
+								set({ quality });
+							}}
+						/>
+						<ChoiceRow
+							label="Background"
+							path="image.background"
+							field="background"
+							value={image.background}
+							options={OPENROUTER_IMAGE_BACKGROUNDS}
+							onChange={(background) => {
+								set({ background });
+							}}
+						/>
+						<NumberRow
+							label="Compression"
+							path="image.outputCompression"
+							field="outputCompression"
+							value={image.outputCompression}
+							min={0}
+							max={100}
+							isIntegerOnly
+							onChange={(outputCompression) => {
+								set({ outputCompression });
+							}}
+						/>
+						<NumberRow
+							label="Images"
+							path="image.n"
+							field="n"
+							units="per turn"
+							value={image.n}
+							min={1}
+							max={10}
+							isIntegerOnly
+							onChange={(n) => {
+								set({ n });
+							}}
+						/>
+					</>
+				)}
+				<NumberRow
+					label="Seed"
+					path="image.seed"
+					field="seed"
+					value={image.seed}
+					min={0}
+					isIntegerOnly
+					onChange={(seed) => {
+						set({ seed });
+					}}
+				/>
+				<SwitchRow
+					label="With text"
+					path="image.includeText"
+					value={image.includeText}
+					onChange={(includeText) => {
+						set({ includeText });
+					}}
+				/>
+			</InspectorSection>
+			<ImageReferencesEditor
+				references={image.references}
+				onChange={(references) => {
+					set({ references });
 				}}
 			/>
-			<PresetRow
-				google={google}
-				label="Resolution"
-				path="image.resolution"
-				value={image.resolution}
-				preset={GOOGLE_IMAGE_RESOLUTIONS}
-				onChange={(resolution) => {
-					set({ resolution });
+		</>
+	);
+}
+
+/** Reference images sent with every turn, ahead of what the user attaches: files or links. */
+function ImageReferencesEditor({
+	references,
+	onChange,
+}: {
+	references: ImageReferenceDraft[];
+	onChange: (references: ImageReferenceDraft[]) => void;
+}) {
+	const statusAt = useFieldStatus();
+	const [reading, setReading] = useState(false);
+	const replace = (key: string, next: ImageReferenceDraft) => {
+		onChange(references.map((reference) => (reference.key === key ? next : reference)));
+	};
+	return (
+		<InspectorSection
+			title="References"
+			note="Images sent with every turn, ahead of the ones the user attaches."
+		>
+			{references.map((reference, index) => {
+				const label = `Reference ${String(index + 1)}`;
+				const status = statusAt('references', index);
+				return (
+					<InspectorRow
+						key={reference.key}
+						label={label}
+						path="image.references"
+						hasIssue={status !== undefined}
+					>
+						{'data' in reference ? (
+							<StackItem size="fill">
+								<HStack gap={2} vAlign="center">
+									<Thumbnail
+										src={`data:${reference.mimeType};base64,${reference.data}`}
+										alt={reference.name}
+										label={reference.name}
+									/>
+									<Text size="sm" maxLines={1}>
+										{reference.name}
+									</Text>
+								</HStack>
+							</StackItem>
+						) : (
+							<StackItem size="fill">
+								<TextInput
+									label={`${label} link`}
+									isLabelHidden
+									size="sm"
+									status={status}
+									value={reference.uri}
+									placeholder="https://…/image.png"
+									onChange={(uri) => {
+										replace(reference.key, { ...reference, uri });
+									}}
+								/>
+							</StackItem>
+						)}
+						<IconButton
+							label={`Remove ${label.toLowerCase()}`}
+							variant="ghost"
+							size="sm"
+							icon={<Icon icon={IconX} size="sm" />}
+							onClick={() => {
+								onChange(references.filter((candidate) => candidate.key !== reference.key));
+							}}
+						/>
+					</InspectorRow>
+				);
+			})}
+			<FileInput
+				label="Add images"
+				isLabelHidden
+				mode="dropzone"
+				accept="image/*"
+				isMultiple
+				maxSize={REFERENCE_MAX_BYTES}
+				isLoading={reading}
+				placeholder="Drop images or choose files, up to 4 MB each"
+				value={null}
+				changeAction={async (files) => {
+					const picked = files === null ? [] : Array.isArray(files) ? files : [files];
+					if (!picked.length) return;
+					setReading(true);
+					try {
+						onChange([...references, ...(await Promise.all(picked.map(referenceFromFile)))]);
+					} finally {
+						setReading(false);
+					}
 				}}
+				onChange={() => undefined}
 			/>
-			<PresetRow
-				google={google}
-				label="Format"
-				path="image.mimeType"
-				value={image.mimeType}
-				preset={GOOGLE_IMAGE_OUTPUT_MIMES}
-				onChange={(mimeType) => {
-					set({ mimeType });
-				}}
-			/>
-			<SwitchRow
-				label="With text"
-				path="image.includeText"
-				value={image.includeText}
-				onChange={(includeText) => {
-					set({ includeText });
+			<Button
+				label="Add link"
+				variant="ghost"
+				size="sm"
+				icon={<Icon icon={IconPlus} size="sm" />}
+				onClick={() => {
+					onChange([...references, { key: draftKey('reference'), uri: '' }]);
 				}}
 			/>
 		</InspectorSection>
