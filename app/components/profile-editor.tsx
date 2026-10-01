@@ -179,6 +179,7 @@ import {
 	toolSpecNodeId,
 	updateModelBinding,
 } from '@theoremjs/playground';
+import type { ListedProfileType } from '@theoremjs/playground/browser';
 import { type Dispatch, type ReactNode, type SetStateAction, useContext, useState } from 'react';
 import { IconGemini, IconGoogle, IconOpenAi, IconOpenRouter } from './brand-icons';
 import {
@@ -204,6 +205,7 @@ import {
 	useFieldStatus,
 } from './inspector-context';
 import { IconMcp } from './mcp-icon';
+import { slotDescription, useProviderModels } from './playground-connection';
 
 export type SetDraft = Dispatch<SetStateAction<PlaygroundDraft>>;
 
@@ -480,7 +482,7 @@ function ModelsEditor({
 							set({ maxSteps });
 						}}
 					/>
-					<TextRow
+					<SlotRow
 						label="Key slot"
 						path="key"
 						field="key"
@@ -490,7 +492,7 @@ function ModelsEditor({
 							set({ key });
 						}}
 					/>
-					<TextRow
+					<SlotRow
 						label="Fallback slot"
 						path="fallbackKey"
 						field="fallbackKey"
@@ -590,7 +592,7 @@ function DecisionModelEditor({
 					}}
 				/>
 			)}
-			<TextRow
+			<SlotRow
 				label="Key slot"
 				path="key"
 				value={draft.models.key}
@@ -613,6 +615,113 @@ function DecisionModelEditor({
 				}}
 			/>
 		</InspectorSection>
+	);
+}
+
+/** A key slot, chosen from the slots the keys panel holds; each says which service its key is for. */
+function SlotRow({
+	label,
+	path,
+	field,
+	value,
+	isRequired,
+	onChange,
+}: {
+	label: string;
+	path: string;
+	field?: string;
+	value: string;
+	isRequired?: boolean;
+	onChange: (slot: string) => void;
+}) {
+	const connection = useContext(LocalConnection);
+	if (!connection)
+		return (
+			<TextRow
+				label={label}
+				path={path}
+				field={field}
+				value={value}
+				isRequired={isRequired}
+				onChange={onChange}
+			/>
+		);
+	// A slot the profile names but the panel doesn't hold yet stays choosable.
+	const slots =
+		value && !connection.slots.includes(value) ? [...connection.slots, value] : connection.slots;
+	return (
+		<ChoiceRow
+			label={label}
+			path={path}
+			field={field}
+			value={value}
+			isRequired={isRequired}
+			options={slots.map((slot) => ({
+				value: slot,
+				label: slot,
+				description: slotDescription(connection.vault[slot]),
+			}))}
+			emptyText="Add a key under Keys first."
+			onChange={onChange}
+		/>
+	);
+}
+
+/**
+ * The provider's model, picked from what it lists for this profile type with the key in the
+ * model's slot. Until there is a list (a Gemini model with no key, or a list that failed), the id
+ * is typed.
+ */
+function ProviderModelRow({
+	provider,
+	type,
+	slot,
+	value,
+	onChange,
+}: {
+	provider: Provider;
+	type: ListedProfileType;
+	slot: string;
+	value: string;
+	onChange: (apiId: string) => void;
+}) {
+	const connection = useContext(LocalConnection);
+	const listed = provider === 'google' || provider === 'openrouter' ? provider : undefined;
+	const models = useProviderModels(listed, type, slot ? connection?.vault[slot] : undefined);
+	if (models.status === 'idle' || models.status === 'error')
+		return (
+			<TextRow
+				label="API model"
+				path="models.*.apiId"
+				field="apiId"
+				value={value}
+				isRequired
+				placeholder={listed === 'google' ? 'Choose a key to list models' : 'Provider model id'}
+				status={models.status === 'error' ? { type: 'error', message: models.error } : undefined}
+				onChange={onChange}
+			/>
+		);
+	const options = models.models.map((model) => ({
+		value: model.id,
+		label: model.label,
+		description: model.id,
+	}));
+	// A model the list leaves out stays chosen, so a list never rewrites the profile.
+	if (value && !models.models.some((model) => model.id === value))
+		options.unshift({ value, label: value, description: 'Not in the list' });
+	return (
+		<ChoiceRow
+			label="API model"
+			path="models.*.apiId"
+			field="apiId"
+			value={value}
+			options={options}
+			isLoading={models.status === 'loading'}
+			emptyText={`No ${type} models listed.`}
+			hasSearch
+			isRequired
+			onChange={onChange}
+		/>
 	);
 }
 
@@ -726,6 +835,28 @@ function ModelBindingEditor({
 				{binding.provider === 'local' &&
 					localConnection?.localModels.status === 'error' &&
 					!isLocalPage() && <LocalOriginHelp />}
+				{binding.provider !== 'local' && (
+					<>
+						<SlotRow
+							label="Key slot override"
+							path="models.*.key"
+							field="keySlot"
+							value={binding.keySlot ?? ''}
+							onChange={(keySlot) => {
+								set({ keySlot });
+							}}
+						/>
+						<SlotRow
+							label="Fallback override"
+							path="models.*.fallbackKey"
+							field="fallbackKeySlot"
+							value={binding.fallbackKeySlot ?? ''}
+							onChange={(fallbackKeySlot) => {
+								set({ fallbackKeySlot });
+							}}
+						/>
+					</>
+				)}
 				{binding.provider === 'local' && localConnection ? (
 					<ChoiceRow
 						label="API model"
@@ -766,15 +897,11 @@ function ModelBindingEditor({
 						}}
 					/>
 				) : (
-					<TextRow
-						label="API model"
-						path="models.*.apiId"
-						field="apiId"
+					<ProviderModelRow
+						provider={binding.provider}
+						type={type}
+						slot={binding.keySlot || draft.models.key}
 						value={binding.apiId}
-						isRequired
-						placeholder={
-							binding.provider === 'local' ? 'Installed model name' : 'Provider model id'
-						}
 						onChange={(apiId) => {
 							set({ apiId });
 						}}
@@ -788,28 +915,6 @@ function ModelBindingEditor({
 						value={localConnection.remoteTools}
 						onChange={localConnection.setRemoteTools}
 					/>
-				)}
-				{binding.provider !== 'local' && (
-					<>
-						<TextRow
-							label="Key slot override"
-							path="models.*.key"
-							field="keySlot"
-							value={binding.keySlot ?? ''}
-							onChange={(keySlot) => {
-								set({ keySlot });
-							}}
-						/>
-						<TextRow
-							label="Fallback override"
-							path="models.*.fallbackKey"
-							field="fallbackKeySlot"
-							value={binding.fallbackKeySlot ?? ''}
-							onChange={(fallbackKeySlot) => {
-								set({ fallbackKeySlot });
-							}}
-						/>
-					</>
 				)}
 
 				{google && (

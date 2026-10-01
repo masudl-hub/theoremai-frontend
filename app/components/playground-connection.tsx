@@ -13,11 +13,15 @@ import {
 } from '@theoremjs/playground';
 import {
 	keyKind,
+	type ListedProfileType,
+	type ListedProvider,
 	listLocalPlaygroundModels,
+	listProviderModels,
 	localPlaygroundConfig,
 	PLAYGROUND_KEY_SLOT_CAP,
 	type PlaygroundBrowserConnection,
 	type PlaygroundBrowserRuntime,
+	type ProviderModel,
 	playgroundVault,
 } from '@theoremjs/playground/browser';
 import { useEffect, useMemo, useState } from 'react';
@@ -153,6 +157,79 @@ export function usePlaygroundConnection(
 }
 
 export type PlaygroundConnectionState = ReturnType<typeof usePlaygroundConnection>;
+
+type ProviderModels =
+	| { status: 'idle' | 'loading'; models: ProviderModel[] }
+	| { status: 'ready'; models: ProviderModel[] }
+	| { status: 'error'; models: ProviderModel[]; error: string };
+
+/** Lists already fetched this tab, by provider, profile type and key; a list barely changes. */
+const listed = new Map<string, ProviderModel[]>();
+
+/**
+ * The models a provider offers for this profile type, listed with the key in the slot the model
+ * reads. OpenRouter lists without a key; Gemini waits for one.
+ */
+export function useProviderModels(
+	provider: ListedProvider | undefined,
+	type: ListedProfileType,
+	secret: string | undefined,
+): ProviderModels {
+	const key = secret?.trim() ?? '';
+	const id = provider ? [provider, type, key].join('\n') : '';
+	const [state, setState] = useState<ProviderModels & { id: string }>({
+		id: '',
+		status: 'idle',
+		models: [],
+	});
+	useEffect(() => {
+		const cached = listed.get(id);
+		if (!provider || cached) {
+			setState({ id, status: cached ? 'ready' : 'idle', models: cached ?? [] });
+			return;
+		}
+		if (provider === 'google' && !key) {
+			setState({ id, status: 'idle', models: [] });
+			return;
+		}
+		const controller = new AbortController();
+		setState({ id, status: 'loading', models: [] });
+		const timer = window.setTimeout(() => {
+			void listProviderModels(
+				provider,
+				type,
+				key || undefined,
+				AbortSignal.any([controller.signal, AbortSignal.timeout(10_000)]),
+			)
+				.then((models) => {
+					listed.set(id, models);
+					if (!controller.signal.aborted) setState({ id, status: 'ready', models });
+				})
+				.catch((error: unknown) => {
+					if (!controller.signal.aborted)
+						setState({
+							id,
+							status: 'error',
+							models: [],
+							error: error instanceof Error ? error.message : 'Couldn’t list models.',
+						});
+				});
+		}, 350);
+		return () => {
+			window.clearTimeout(timer);
+			controller.abort();
+		};
+	}, [id, provider, type, key]);
+	// Until the effect catches up with a new key, the old list isn't this key's.
+	return state.id === id ? state : { status: provider ? 'loading' : 'idle', models: [] };
+}
+
+/** What a slot holds, for a slot picker: the service its key is for, or that it is empty. */
+export function slotDescription(secret: string | undefined): string {
+	if (!secret?.trim()) return 'No key yet';
+	const kind = keyKind(secret);
+	return kind ? KEY_KINDS[kind].label : 'Key';
+}
 
 /** The icon follows the pasted key; a key whose service its prefix doesn't show gets a plain key. */
 const KEY_KINDS = {

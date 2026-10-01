@@ -505,6 +505,10 @@ export function ChoiceRow<T extends string>({
 	isDisabled,
 	isRequired,
 	hasSearch,
+	isLoading,
+	emptyText,
+	placeholder,
+	status: given,
 	onChange,
 }: {
 	label: string;
@@ -515,9 +519,17 @@ export function ChoiceRow<T extends string>({
 	options: readonly Choice<T>[];
 	isDisabled?: boolean;
 	hasSearch?: boolean;
+	/** The options are still arriving. */
+	isLoading?: boolean;
+	/** What an empty list says. */
+	emptyText?: string;
+	/** What the blank row says, in place of what leaving the field out does. */
+	placeholder?: string;
+	/** A status of the row's own, such as a list that failed to load; the field's issues win. */
+	status?: InputStatus;
 	onChange: (next: T | '') => void;
 } & IsRequired) {
-	const status = useFieldStatus()(field);
+	const status = useFieldStatus()(field) ?? given;
 	const { required, unset } = presence(path, isRequired);
 	// The Selector hands back a plain string; take the option's own value for it.
 	const choose = (next: string | null) => {
@@ -535,17 +547,25 @@ export function ChoiceRow<T extends string>({
 		placement: 'below' as const,
 		isDisabled,
 		hasSearch,
+		isLoading,
+		emptyText,
 	};
 	return (
 		<InspectorRow label={label} path={path} isRequired={required} hasIssue={status !== undefined}>
 			<StackItem size="fill">
 				{required ? (
-					<Selector {...shared} isRequired value={value} onChange={choose} />
+					<Selector
+						{...shared}
+						isRequired
+						value={value}
+						placeholder={placeholder}
+						onChange={choose}
+					/>
 				) : (
 					<Selector
 						{...shared}
 						value={value || null}
-						placeholder={unset}
+						placeholder={placeholder ?? unset}
 						hasClear
 						onChange={choose}
 					/>
