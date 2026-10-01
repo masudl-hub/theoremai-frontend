@@ -66,7 +66,7 @@ const ReadOutputSchema = z.object({
 });
 
 const SearchDocsInputSchema = z.object({
-	query: z.string().describe('Search over titles, summaries, and catalog docs'),
+	query: z.string().describe('Words or field names; plurals, typos and partial words still match'),
 	limit: z.number().int().positive().max(10).optional(),
 });
 
@@ -75,6 +75,8 @@ const SearchDocsOutputSchema = z.object({
 	results: z.array(
 		z.object({
 			title: z.string(),
+			slug: z.string().describe('Pass to navigate or read'),
+			blockId: z.string().optional().describe('Pass to navigate or highlight'),
 			urlOrAnchor: z.string(),
 			excerpt: z.string(),
 		}),
@@ -146,7 +148,8 @@ const th30ReadTool = {
 const th30SearchDocsTool = {
 	type: 'function' as const,
 	name: 'searchDocs',
-	description: 'Search the composed docs index (titles, summaries, catalog docs).',
+	description:
+		'Search the docs: chapter titles, sections, fields and code examples. Each hit carries the slug and blockId to navigate, highlight or read.',
 	category: 'docs',
 	access: 'read-only' as const,
 	paths: ['*'],
@@ -160,6 +163,8 @@ const th30SearchDocsTool = {
 			query: searchRes.query,
 			results: searchRes.results.map((hit) => ({
 				title: hit.title,
+				slug: hit.slug,
+				blockId: hit.blockId,
 				urlOrAnchor: hit.href,
 				excerpt: hit.excerpt,
 			})),
@@ -197,7 +202,7 @@ Tools:
 - navigate: { slug, blockId? } — only slugs from the index.
 - highlight: { blockId } — DOM id via getElementById (live.vad is an id, not a CSS selector).
 - read: slug, slug#block, or full_page. Line-numbered markdown from the same projector as the page.
-- searchDocs: bag-of-words over the composed index.
+- searchDocs: { query } — stemmed, typo-tolerant search over titles, sections, fields and examples. Hits that match every word come first. Each hit has slug and blockId: search, then navigate or highlight the hit, then read it before you answer.
 - Google Search: only for the public web, not kernel catalogs.
 
 When you point at a fact, call highlight with that blockId. Never claim you navigated, highlighted, read, or searched unless you issued that call. If a tool errors, say so and retry once.`;
