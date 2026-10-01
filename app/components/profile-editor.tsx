@@ -121,7 +121,6 @@ import {
 	type Protocol,
 	type Provider,
 	profileGraphFacet,
-	speechFormatsForProtocol,
 	THINKING_LEVELS,
 	type ThinkingLevel,
 	type ToolAccess,
@@ -1517,9 +1516,8 @@ function SpeechEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 	const google = allGoogle(draft);
 	const { speech } = draft;
 	const set = patch(setDraft, 'speech');
-	const mp3 = draft.modelBindings.every((binding) =>
-		speechFormatsForProtocol(binding.protocol).includes('mp3'),
-	);
+	// Only the OpenAI protocol makes mp3; Gemini refuses it.
+	const mp3 = draft.modelBindings.every((binding) => binding.protocol === 'openAi');
 	return (
 		<InspectorSection title="Voice" note="How speech sounds, and the format it comes in.">
 			<PresetRow
