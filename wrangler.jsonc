@@ -9,8 +9,8 @@
 	"observability": { "enabled": true },
 	"upload_source_maps": true,
 	// The playground's mid-turn steer inboxes, one object per inbox id; and the
-	// day's decisions on the site's TypeSafe key and host tool calls, per visitor
-	// address and for the site.
+	// day's playground allowances (every API request, decisions on the site's
+	// TypeSafe key, host tool calls), per visitor address and for the site.
 	"durable_objects": {
 		"bindings": [
 			{ "name": "STEER_INBOX", "class_name": "PlaygroundSteerInbox" },

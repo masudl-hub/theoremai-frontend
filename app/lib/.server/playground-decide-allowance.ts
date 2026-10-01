@@ -1,20 +1,15 @@
 /**
- * How much of the site's own keys and tools a visitor address, and the site as
- * a whole, may spend in a day: decisions on its provider keys, and host tool calls.
- * Held by a Durable Object — one per kind, address, and UTC day, and one per
- * kind for the site — so every isolate counts against the same number. A
- * builder who wants more brings their own key.
+ * The Durable Object that holds one day's count of a playground allowance:
+ * one object per kind, name and UTC day (`playground-allowance.ts` holds the
+ * policy). It deletes itself once the day is over.
  */
 
 import { DurableObject } from 'cloudflare:workers';
-
-/** Each kind's daily caps: per visitor address, and for the whole site however many addresses ask. */
-export const DAILY_ALLOWANCES = {
-	decision: { perAddress: 10, perSite: 200 },
-	call: { perAddress: 100, perSite: 2000 },
-} as const;
-
-export type AllowanceKind = keyof typeof DAILY_ALLOWANCES;
+import {
+	type AllowanceKind,
+	type AllowanceStore,
+	takeAllowance as takeFrom,
+} from './playground-allowance';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const COUNT_KEY = 'count';
@@ -36,15 +31,18 @@ export class PlaygroundDecideAllowance extends DurableObject {
 	}
 }
 
+/** The allowance counters, one Durable Object per name. */
+export function allowanceStore(
+	namespace: DurableObjectNamespace<PlaygroundDecideAllowance>,
+): AllowanceStore {
+	return (name) => namespace.get(namespace.idFromName(name));
+}
+
 /** Spends one of today's `kind` for `address`, then one of the site's; the spent day's cap, or `null` when both had room. */
-export async function takeAllowance(
+export function takeAllowance(
 	namespace: DurableObjectNamespace<PlaygroundDecideAllowance>,
 	kind: AllowanceKind,
 	address: string,
 ): Promise<number | null> {
-	const { perAddress, perSite } = DAILY_ALLOWANCES[kind];
-	const day = new Date().toISOString().slice(0, 10);
-	const allowance = (name: string) => namespace.get(namespace.idFromName(`${day}:${kind}:${name}`));
-	if (!(await allowance(`address:${address}`).take(perAddress))) return perAddress;
-	return (await allowance('site').take(perSite)) ? null : perSite;
+	return takeFrom(allowanceStore(namespace), kind, address);
 }

@@ -12,7 +12,7 @@ export type SiteEnv = {
 	OPENROUTER_API_KEY?: string;
 	/** TypeSafe's key for direct playground decisions. */
 	'theoremai.typesafe_api_key'?: string;
-	/** Each day's playground decisions and host tool calls, per visitor address and for the site (`wrangler.jsonc` `durable_objects`). */
+	/** Each day's playground allowances (every request, decisions, host tool calls), per visitor address and for the site (`wrangler.jsonc` `durable_objects`). */
 	DECIDE_ALLOWANCE?: DurableObjectNamespace<PlaygroundDecideAllowance>;
 };
 
