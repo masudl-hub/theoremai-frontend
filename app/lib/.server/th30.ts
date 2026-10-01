@@ -234,6 +234,8 @@ export function ensureTh30ProfileRegistered(): void {
 		// A quota refusal on the first free key reopens the call on the second, when one is set.
 		fallbackKey: 'overflow',
 		live: {
+			// Text carries only the app's "(call connected)" cue, so th30 greets first.
+			ingress: { text: true, video: false },
 			voice: 'Sulafat',
 			vad: {
 				// Barge-in on, coarsest Gemini sensitivity. Fine choppy-cut protection is

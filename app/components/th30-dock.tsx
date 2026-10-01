@@ -195,12 +195,14 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 						}}
 					/>
 					<div className="th30-wave" aria-hidden>
-						<InkWaveform
-							status={phase === 'failed' ? 'error' : status}
-							inputLevel={levels.input}
-							outputLevel={levels.output}
-							variant="pill"
-						/>
+						{phase === 'live' ? (
+							<InkWaveform
+								status={status}
+								inputLevel={levels.input}
+								outputLevel={levels.output}
+								variant="strip"
+							/>
+						) : null}
 					</div>
 					<span className="th30-strip-status" role="status">
 						{phase === 'connecting'

@@ -280,7 +280,7 @@ export function DocsLanding({ index, version }: { index: DocIndex; version: stri
 										padding={10}
 										paddingInlineStart={4}
 									>
-										<Text type="label">@{version}</Text>
+										<Text type="label">@theoremjs/agents {version}</Text>
 										<Heading level={1} type="display-1" hasCapsize>
 											Documentation
 										</Heading>

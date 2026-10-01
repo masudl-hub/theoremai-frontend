@@ -76,10 +76,10 @@
 	height: 40px;
 }
 .th30-trigger-search {
-	width: 36px;
-	height: 36px;
+	width: 48px;
+	height: 40px;
 }
-/* The canvas runs a little past the button so the knot's soft rim is never clipped. */
+/* The canvas runs a little past the button so the cloud's soft rim is never clipped. */
 .th30-light {
 	position: absolute;
 	top: 50%;
@@ -103,4 +103,9 @@
 	.th30-strip {
 		transition: none;
 	}
+}
+/* Beside the docs search the cloud stands taller than in the rail. */
+.th30-trigger-search .th30-light {
+	width: 72px;
+	height: 72px;
 }
