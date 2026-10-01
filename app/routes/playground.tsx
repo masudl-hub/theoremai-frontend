@@ -379,18 +379,20 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	const [lastGood, setLastGood] = useState(compiled.ok ? compiled : null);
 	if (compiled.ok && compiled !== lastGood) setLastGood(compiled);
 	const activeProfile = lastGood?.profile;
+	// A preview built for another type or other models would run what the editor no longer shows.
 	const matchingModels =
 		!activeProfile ||
-		activeProfile.type === 'host' ||
-		draft.modelBindings.every((binding) => {
-			if (!Object.hasOwn(activeProfile.models, binding.modelId)) return false;
-			const model = activeProfile.models[binding.modelId];
-			return (
-				binding.provider === model.provider &&
-				binding.protocol === model.protocol &&
-				binding.apiId.trim() === model.apiId
-			);
-		});
+		(activeProfile.type === settledDraft.identity.profileType &&
+			(activeProfile.type === 'host' ||
+				settledDraft.modelBindings.every((binding) => {
+					if (!Object.hasOwn(activeProfile.models, binding.modelId)) return false;
+					const model = activeProfile.models[binding.modelId];
+					return (
+						binding.provider === model.provider &&
+						binding.protocol === model.protocol &&
+						binding.apiId.trim() === model.apiId
+					);
+				})));
 	const payload = useMemo(
 		() =>
 			lastGood && matchingModels

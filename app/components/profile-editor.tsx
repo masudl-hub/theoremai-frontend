@@ -2512,7 +2512,11 @@ function ToolsEditor({
 		<>
 			<InspectorSection
 				title="Tools"
-				note="What the agent can call. Built-in tools are turned on per model."
+				note={
+					draft.identity.profileType === 'host'
+						? 'What the host runs. Each call names one.'
+						: 'What the agent can call. Built-in tools are turned on per model.'
+				}
 			>
 				{draft.toolSpecs.length > 0 && (
 					<List density="compact">
@@ -2816,7 +2820,14 @@ function ToolSpecEditor({
 
 	return (
 		<>
-			<InspectorSection title="Tool" note="What the model calls, and what it's told the tool does.">
+			<InspectorSection
+				title="Tool"
+				note={
+					draft.identity.profileType === 'host'
+						? 'What a call runs, and what the console says it does.'
+						: "What the model calls, and what it's told the tool does."
+				}
+			>
 				<TextRow
 					label="Name"
 					path="name"
