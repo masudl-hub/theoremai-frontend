@@ -2,6 +2,7 @@
  * Th30 read / search / navigate over the composed index. One projector.
  */
 
+import { create, insert, type Orama, search } from '@orama/orama';
 import {
 	blockHeading,
 	formatWithLineNumbers,
@@ -10,14 +11,6 @@ import {
 	symbolTerm,
 } from './project-text';
 import type { DocArticle, DocIndex } from './schema';
-
-/** Display label for a fragment: block heading or catalog name. */
-function fragmentTitle(article: DocArticle, id: string): string {
-	const block = article.blocks.find((item) => item.id === id);
-	if (block) return blockHeading(block);
-	const symbol = article.symbols.find((item) => item.id === id);
-	return symbol ? symbolTerm(symbol).name : id;
-}
 
 export function articleHref(article: Pick<DocArticle, 'canonicalPath'>, blockId?: string): string {
 	return blockId ? `${article.canonicalPath}#${blockId}` : article.canonicalPath;
@@ -114,20 +107,17 @@ export type DocSearchHit = {
 	blockId?: string;
 };
 
-type FragmentTarget = {
-	id: string;
-	hay: string;
+/** One searchable unit: a chapter (its title and summary), a section, or a dictionary entry. */
+type SearchEntry = {
+	slug: string;
+	/** The section or entry id; absent for the chapter itself. */
+	blockId?: string;
+	title: string;
 	excerpt: string;
-	kind: 'block' | 'leaf';
 };
 
-function scoreHay(hay: string, terms: readonly string[], weight: number): number {
-	let score = 0;
-	for (const term of terms) {
-		if (hay.includes(term)) score += weight;
-	}
-	return score;
-}
+const SEARCH_SCHEMA = { title: 'string', key: 'string', body: 'string' } as const;
+type SearchDb = Orama<typeof SEARCH_SCHEMA>;
 
 function clipExcerpt(text: string, max = 160): string {
 	const flat = text.split('\n').filter(Boolean).join(' ');
@@ -137,55 +127,82 @@ function clipExcerpt(text: string, max = 160): string {
 	return `${(space > 80 ? cut.slice(0, space) : cut).trim()}…`;
 }
 
-function fragmentTargets(article: DocArticle): FragmentTarget[] {
-	const blocks = article.blocks.map((block): FragmentTarget => {
-		const text = projectBlockText(block);
-		return {
-			id: block.id,
-			hay: `${block.id}\n${text}`.toLowerCase(),
-			excerpt: clipExcerpt(text),
-			kind: 'block',
-		};
+/** An id as words, so `turn-behaviour` or `outputs.image` match their parts. */
+function idWords(id: string): string {
+	return id.replace(/[.:_-]+/g, ' ');
+}
+
+/**
+ * The index as an Orama database, built once per composed index. English stemming lets "images"
+ * find "image"; entries keep their place in `entries` by Orama id.
+ */
+const searchIndexes = new WeakMap<DocIndex, { db: SearchDb; entries: Map<string, SearchEntry> }>();
+function searchIndex(index: DocIndex) {
+	const cached = searchIndexes.get(index);
+	if (cached) return cached;
+	const db = create({
+		schema: SEARCH_SCHEMA,
+		components: { tokenizer: { language: 'english', stemming: true } },
 	});
-	const leaves = article.symbols.map((symbol): FragmentTarget => {
-		const { name, text } = symbolTerm(symbol);
-		return { id: symbol.id, hay: `${name} — ${text}`.toLowerCase(), excerpt: text, kind: 'leaf' };
-	});
-	return [...blocks, ...leaves];
+	const entries = new Map<string, SearchEntry>();
+	/** `titled` false: the title is an id (a code example's), so it ranks as one rather than as a heading. */
+	const add = (entry: SearchEntry, key: string, body: string, titled = true) => {
+		const id = String(entries.size);
+		entries.set(id, entry);
+		// No async hooks are configured, so insert completes synchronously.
+		void insert(db, {
+			id,
+			title: titled ? entry.title : '',
+			key: titled ? key : `${key} ${idWords(entry.title)}`,
+			body,
+		});
+	};
+	for (const article of index.articles) {
+		add(
+			{ slug: article.slug, title: article.title, excerpt: article.summary },
+			idWords(article.slug),
+			article.summary,
+		);
+		for (const block of article.blocks) {
+			const text = projectBlockText(block);
+			add(
+				{
+					slug: article.slug,
+					blockId: block.id,
+					title: blockHeading(block),
+					excerpt: clipExcerpt(text),
+				},
+				idWords(block.id),
+				text,
+				block.kind !== 'code',
+			);
+		}
+		for (const symbol of article.symbols) {
+			const { name, text } = symbolTerm(symbol);
+			add(
+				{ slug: article.slug, blockId: symbol.id, title: name, excerpt: text },
+				idWords(symbol.id),
+				text,
+			);
+		}
+	}
+	const built = { db, entries };
+	searchIndexes.set(index, built);
+	return built;
 }
 
 function isChildFragment(child: string, parent: string): boolean {
 	return child.startsWith(`${parent}.`) || child.startsWith(`${parent}:`);
 }
 
-function querySpecifiesChild(childId: string, parentId: string, terms: readonly string[]): boolean {
-	const child = childId.toLowerCase();
-	const parent = parentId.toLowerCase();
-	const extra = child.slice(parent.length).replace(/^[.:_-]+/, '');
-	if (!extra) return false;
-	return terms.some((term) => term === child || term === extra || extra.includes(term));
-}
+/** The most hits one chapter may take, so a single page can't fill the list. */
+const HITS_PER_CHAPTER = 3;
 
-function collapseIdHits(
-	hits: { target: FragmentTarget; idScore: number; score: number }[],
-	terms: readonly string[],
-): { target: FragmentTarget; score: number }[] {
-	const sorted = [...hits].sort(
-		(a, b) => b.score - a.score || a.target.id.length - b.target.id.length,
-	);
-	const kept: { target: FragmentTarget; score: number }[] = [];
-	for (const hit of sorted) {
-		const covered = kept.some(
-			(parent) =>
-				isChildFragment(hit.target.id, parent.target.id) &&
-				!querySpecifiesChild(hit.target.id, parent.target.id, terms),
-		);
-		if (covered) continue;
-		kept.push({ target: hit.target, score: hit.score });
-	}
-	return kept;
-}
-
+/**
+ * Full-text search over chapters, sections and dictionary entries: stemmed, prefix-matched as you
+ * type, and forgiving of typos in longer words. Places matching every word come first, then those
+ * matching some.
+ */
 export function searchDocs(
 	index: DocIndex,
 	query: string,
@@ -195,75 +212,61 @@ export function searchDocs(
 	results: DocSearchHit[];
 	totalMatches: number;
 } {
-	const terms = query
-		.toLowerCase()
-		.split(/\s+/)
-		.map((term) => term.trim())
-		.filter((term) => term.length > 0);
-	if (!terms.length) return { query, results: [], totalMatches: 0 };
+	const term = query.trim();
+	if (!term) return { query, results: [], totalMatches: 0 };
+	const { db, entries } = searchIndex(index);
+	// Typos allowed per edit by the shortest word's length: none under 4 letters, two from 8.
+	const shortest = Math.min(...term.split(/\s+/).map((word) => word.length));
+	const tolerance = shortest >= 8 ? 2 : shortest >= 4 ? 1 : 0;
+	const run = (threshold: number) => {
+		const result = search(db, {
+			term,
+			properties: ['title', 'key', 'body'],
+			boost: { title: 3, key: 2 },
+			tolerance,
+			threshold,
+			limit: entries.size,
+		});
+		if (result instanceof Promise) throw new Error('Docs search must stay synchronous');
+		return result.hits;
+	};
+	const every = run(0);
+	const seen = new Set(every.map((hit) => hit.id));
+	const hits = [...every, ...run(1).filter((hit) => !seen.has(hit.id))];
 
 	const ranked: DocSearchHit[] = [];
-	for (const article of index.articles) {
-		const chrome =
-			scoreHay(article.title.toLowerCase(), terms, 15) +
-			scoreHay(article.summary.toLowerCase(), terms, 10) +
-			scoreHay(article.slug, terms, 8);
-		const idHits: { target: FragmentTarget; idScore: number; score: number }[] = [];
-		let bestText: { target: FragmentTarget; score: number } | undefined;
-		for (const target of fragmentTargets(article)) {
-			const idScore = scoreHay(target.id.toLowerCase(), terms, 12);
-			const textScore = scoreHay(target.hay, terms, 5);
-			const score = idScore + textScore;
-			if (score <= 0) continue;
-			if (idScore > 0) {
-				idHits.push({ target, idScore, score });
-				continue;
-			}
-			if (target.kind === 'block' && (bestText === undefined || score > bestText.score)) {
-				bestText = { target, score };
-			}
-		}
-
-		if (idHits.length) {
-			for (const hit of collapseIdHits(idHits, terms)) {
-				ranked.push({
-					slug: article.slug,
-					title: fragmentTitle(article, hit.target.id),
-					href: articleHref(article, hit.target.id),
-					excerpt: hit.target.excerpt,
-					score: hit.score + chrome,
-					blockId: hit.target.id,
-				});
-			}
+	const perChapter = new Map<string, number>();
+	for (const hit of hits) {
+		const entry = entries.get(hit.id);
+		if (!entry) continue;
+		const taken = perChapter.get(entry.slug) ?? 0;
+		if (taken >= HITS_PER_CHAPTER) continue;
+		// A section already listed stands for its own sub-entries.
+		const { blockId } = entry;
+		if (
+			blockId &&
+			ranked.some(
+				(kept) =>
+					kept.slug === entry.slug &&
+					kept.blockId !== undefined &&
+					isChildFragment(blockId, kept.blockId),
+			)
+		) {
 			continue;
 		}
-		if (chrome > 0) {
-			ranked.push({
-				slug: article.slug,
-				title: article.title,
-				href: articleHref(article),
-				excerpt: article.summary,
-				score: chrome + (bestText?.score ?? 0),
-			});
-			continue;
-		}
-		if (bestText) {
-			ranked.push({
-				slug: article.slug,
-				title: fragmentTitle(article, bestText.target.id),
-				href: articleHref(article, bestText.target.id),
-				excerpt: bestText.target.excerpt,
-				score: bestText.score,
-				blockId: bestText.target.id,
-			});
-		}
+		perChapter.set(entry.slug, taken + 1);
+		const article = index.bySlug[entry.slug];
+		if (!article) continue;
+		ranked.push({
+			slug: entry.slug,
+			title: entry.title,
+			href: articleHref(article, blockId),
+			excerpt: entry.excerpt,
+			score: hit.score,
+			blockId,
+		});
 	}
-	ranked.sort((a, b) => b.score - a.score);
-	return {
-		query,
-		results: ranked.slice(0, limit),
-		totalMatches: ranked.length,
-	};
+	return { query, results: ranked.slice(0, limit), totalMatches: ranked.length };
 }
 
 export function formatNavigableForPrompt(index: DocIndex): string {
