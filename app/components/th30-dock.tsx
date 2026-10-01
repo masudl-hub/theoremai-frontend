@@ -32,6 +32,10 @@ export function useTh30(): Th30Api {
 	return useContext(Th30Context);
 }
 
+/** Tall and narrow in the rail; a wide band beside the search. */
+const RAIL_SPREAD = [1.5, 0.75] as const;
+const SEARCH_SPREAD = [0.42, 1] as const;
+
 /** th30's light as a button: click to call, click again to end. */
 export function Th30Trigger({
 	theme,
@@ -49,7 +53,7 @@ export function Th30Trigger({
 			aria-pressed={th30.isLive}
 			onClick={th30.toggle}
 		>
-			<Th30Light theme={theme} />
+			<Th30Light theme={theme} spread={placement === 'rail' ? RAIL_SPREAD : SEARCH_SPREAD} />
 		</button>
 	);
 }

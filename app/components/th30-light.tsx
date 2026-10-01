@@ -14,6 +14,7 @@ uniform vec2 u_resolution;
 uniform float u_time;
 uniform float u_audio;
 uniform bool u_lightMode;
+uniform vec2 u_spread;
 
 float hash(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -51,13 +52,15 @@ float glow(float d, float core, float aura, float k) {
 void main() {
   vec2 frame = (gl_FragCoord.xy - 0.5 * u_resolution) / min(u_resolution.x, u_resolution.y);
   // The gas's own space: zoomed out so it fits the canvas, and centred between its two cores.
-  vec2 uv = frame * 0.85 + vec2(0.11, 0.0);
+  // Spread below 1 draws the gas out along that axis, to fill a long canvas.
+  vec2 uv = frame * u_spread + vec2(0.11, 0.0);
   float t = u_time * 0.38;
   float level = 1.95 + u_audio * 0.9;
 
-  vec2 q = vec2(fbm(uv + vec2(0.0, t * 0.18)), fbm(uv + vec2(5.2, 1.3 - t * 0.12)));
-  vec2 r = vec2(fbm(uv + 3.8 * q + vec2(1.7 - t * 0.14, 9.2)), fbm(uv + 3.8 * q + vec2(8.3, 2.8 + t * 0.10)));
-  float f = fbm(uv * 1.8 + 2.8 * r);
+  vec2 n = uv;
+  vec2 q = vec2(fbm(n + vec2(0.0, t * 0.18)), fbm(n + vec2(5.2, 1.3 - t * 0.12)));
+  vec2 r = vec2(fbm(n + 3.8 * q + vec2(1.7 - t * 0.14, 9.2)), fbm(n + 3.8 * q + vec2(8.3, 2.8 + t * 0.10)));
+  float f = fbm(n * 1.8 + 2.8 * r);
 
   vec2 core1 = vec2(-0.10 + sin(t * 0.4) * 0.05, 0.02 + cos(t * 0.28) * 0.04);
   vec2 core2 = vec2(0.32 + cos(t * 0.35) * 0.04, -0.06 + sin(t * 0.22) * 0.03);
@@ -78,9 +81,13 @@ void main() {
   }
 
   // Speech swells the footprint. The frame fade only guarantees nothing reaches the canvas edge.
-  float limit = 0.4 + u_audio * 0.16;
+  float limit = 0.5 + u_audio * 0.14;
   float warped = length(uv + r * 0.42) - f * 0.22;
-  col *= smoothstep(limit * 1.45, limit * 0.35, warped) * smoothstep(0.5, 0.26, length(frame));
+  // The gas thins out by its own turbulence. The canvas is sized so it has dissolved before the
+  // edge; the axis fade is only a guard so no wisp is ever cut off.
+  vec2 halfFrame = 0.5 * u_resolution / min(u_resolution.x, u_resolution.y);
+  vec2 edge = smoothstep(halfFrame, halfFrame - 0.12, abs(frame));
+  col *= smoothstep(limit * 1.45, limit * 0.35, warped) * edge.x * edge.y;
   col = max(col - 0.012, 0.0);
 
   float lum = dot(col, vec3(0.299, 0.587, 0.114));
@@ -92,7 +99,7 @@ void main() {
     float alpha = clamp(lum * 2.15, 0.0, 1.0);
     fragColor = vec4(col * alpha, alpha);
   } else {
-    fragColor = vec4(col * clamp(lum * 2.4, 0.0, 1.0) * 1.7, 1.0);
+    fragColor = vec4(col * clamp(lum * 2.4, 0.0, 1.0) * 1.2, 1.0);
   }
 }
 `;
@@ -104,7 +111,17 @@ const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)'
  * about 30fps when the call is quiet and every frame while someone speaks, and holds a single
  * still frame for reduced motion.
  */
-export function Th30Light({ theme, className }: { theme: 'dark' | 'system'; className?: string }) {
+export function Th30Light({
+	theme,
+	spread = [1, 1],
+	className,
+}: {
+	theme: 'dark' | 'system';
+	/** How far to draw the gas out along x and y; below 1 stretches it. */
+	spread?: readonly [number, number];
+	className?: string;
+}) {
+	const [spreadX, spreadY] = spread;
 	const ref = useRef<HTMLCanvasElement>(null);
 
 	useEffect(() => {
@@ -144,6 +161,7 @@ export function Th30Light({ theme, className }: { theme: 'dark' | 'system'; clas
 		const uTime = gl.getUniformLocation(program, 'u_time');
 		const uAudio = gl.getUniformLocation(program, 'u_audio');
 		const uLight = gl.getUniformLocation(program, 'u_lightMode');
+		gl.uniform2f(gl.getUniformLocation(program, 'u_spread'), spreadX, spreadY);
 
 		const scheme = window.matchMedia('(prefers-color-scheme: light)');
 		const paintScheme = () => {
@@ -155,9 +173,9 @@ export function Th30Light({ theme, className }: { theme: 'dark' | 'system'; clas
 		scheme.addEventListener('change', paintScheme);
 
 		const size = () => {
-			const dpr = Math.min(window.devicePixelRatio || 1, 2);
-			canvas.width = Math.max(1, Math.round(canvas.clientWidth * dpr));
-			canvas.height = Math.max(1, Math.round(canvas.clientHeight * dpr));
+			// Gas has no edges to keep sharp, so one pixel per CSS pixel is enough on any screen.
+			canvas.width = Math.max(1, canvas.clientWidth);
+			canvas.height = Math.max(1, canvas.clientHeight);
 			gl.viewport(0, 0, canvas.width, canvas.height);
 			gl.uniform2f(uResolution, canvas.width, canvas.height);
 		};
@@ -205,7 +223,7 @@ export function Th30Light({ theme, className }: { theme: 'dark' | 'system'; clas
 			gl.deleteShader(vert);
 			gl.deleteShader(frag);
 		};
-	}, [theme]);
+	}, [theme, spreadX, spreadY]);
 
 	return (
 		<canvas
