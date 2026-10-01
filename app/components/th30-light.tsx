@@ -65,14 +65,6 @@ mat2 turn(float a) {
   return mat2(cos(a), sin(a), -sin(a), cos(a));
 }
 
-// Three hues blended round a loop, so a colour can keep moving instead of landing.
-vec3 cycle(float h, vec3 a, vec3 b, vec3 c) {
-  h = fract(h) * 3.0;
-  if (h < 1.0) return mix(a, b, smoothstep(0.0, 1.0, h));
-  if (h < 2.0) return mix(b, c, smoothstep(1.0, 2.0, h));
-  return mix(c, a, smoothstep(2.0, 3.0, h));
-}
-
 void main() {
   vec2 p = (gl_FragCoord.xy - 0.5 * u_resolution) / min(u_resolution.x, u_resolution.y);
   float t = u_time;
@@ -108,23 +100,19 @@ void main() {
   float density = envelope * (0.08 + 0.4 * (body + 0.5) + 1.15 * lines) + core * 0.3;
   density *= 1.0 + speak * 0.8 + hover * 0.25;
 
-  // Hover colour bleeds in from the core along the turbulence, then keeps drifting through its
-  // hues; on leave it ebbs back out the same way.
+  // Hover colour bleeds in from the core along the turbulence, and ebbs back out the same way.
   float bleed = smoothstep(0.0, 0.45, hover * 1.5 - d0 * 1.6 - body * 0.5 + 0.1);
-  float hue = t * 0.09 + body * 1.3 + q.x * 1.1 + d0 * 1.8;
 
   vec3 col;
   if (u_lightMode) {
-    vec3 tint = cycle(hue, vec3(0.62, 0.30, 0.80), vec3(0.95, 0.38, 0.58), vec3(0.98, 0.56, 0.34));
-    vec3 rose = mix(vec3(0.86, 0.36, 0.42), tint, bleed);
-    vec3 amber = mix(vec3(0.95, 0.62, 0.30), mix(tint, vec3(1.0, 0.85, 0.7), 0.3), bleed);
-    vec3 plum = mix(vec3(0.52, 0.22, 0.48), tint * 0.6, bleed);
+    vec3 rose = mix(vec3(0.86, 0.36, 0.42), vec3(0.70, 0.30, 0.78), bleed);
+    vec3 amber = mix(vec3(0.95, 0.62, 0.30), vec3(0.98, 0.45, 0.55), bleed);
+    vec3 plum = vec3(0.52, 0.22, 0.48);
     col = mix(plum, rose, smoothstep(-0.2, 0.3, body)) * density + amber * lines * envelope * 0.35;
   } else {
-    vec3 tint = cycle(hue, vec3(0.46, 0.30, 1.0), vec3(0.90, 0.32, 0.86), vec3(0.22, 0.56, 1.0));
-    vec3 navy = mix(vec3(0.05, 0.16, 0.55), tint * 0.35, bleed);
-    vec3 teal = mix(vec3(0.06, 0.62, 0.70), tint, bleed);
-    vec3 emerald = mix(vec3(0.16, 0.95, 0.62), mix(tint, vec3(1.0), 0.4), bleed);
+    vec3 navy = mix(vec3(0.05, 0.16, 0.55), vec3(0.22, 0.10, 0.62), bleed);
+    vec3 teal = mix(vec3(0.06, 0.62, 0.70), vec3(0.42, 0.40, 0.95), bleed);
+    vec3 emerald = mix(vec3(0.16, 0.95, 0.62), vec3(0.70, 0.78, 1.0), bleed);
     col = mix(navy, teal, smoothstep(-0.25, 0.25, body)) * density + emerald * lines * envelope * 0.45;
   }
   col = col / (1.0 + col * 0.6);
