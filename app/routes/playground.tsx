@@ -844,7 +844,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 									/>
 								</ButtonGroup>
 								<Button
-									label="Pop out"
+									label="Launch"
 									isIconOnly={phone}
 									variant="primary"
 									icon={<Icon icon={IconExternalLink} size="sm" />}
