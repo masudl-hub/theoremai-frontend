@@ -16,7 +16,8 @@ import {
 import { createTraceFeed, type TraceFeed } from '@theoremjs/react/client';
 import { LiveRunner } from '@theoremjs/react/live';
 import { TheoremChat, TheoremHost } from '@theoremjs/react/ui';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { noting } from '../lib/playground-activity';
 import { PLAYGROUND_LABELS } from '../lib/playground-labels';
 import { PlaygroundDecision } from './playground-decision';
 
@@ -32,14 +33,20 @@ export function PlaygroundRunner({
 	runtime,
 	trace,
 	className,
+	onActivity,
 }: {
 	payload: PlaygroundRunPayload;
 	mode: PlaygroundConnectionMode;
 	runtime: PlaygroundBrowserRuntime | null;
 	trace?: boolean;
 	className?: string;
+	/** Called on each request the conversation sends: a turn, call, decision or live session. */
+	onActivity?: () => void;
 }) {
 	const [traces] = useState(createTraceFeed);
+	const activity = useRef(onActivity);
+	activity.current = onActivity;
+	const [note] = useState(() => () => activity.current?.());
 	if (mode !== 'demo' && !runtime)
 		return (
 			<EmptyState
@@ -54,6 +61,7 @@ export function PlaygroundRunner({
 				runtime={runtime}
 				traces={traces}
 				className={className}
+				onActivity={note}
 			/>
 		);
 	if (payload.profile.type === 'host')
@@ -64,6 +72,7 @@ export function PlaygroundRunner({
 				traces={traces}
 				trace={trace}
 				className={className}
+				note={note}
 			/>
 		);
 	return (
@@ -73,18 +82,25 @@ export function PlaygroundRunner({
 			traces={traces}
 			trace={trace}
 			className={className}
+			note={note}
 		/>
 	);
 }
 
-type RunProps = Omit<Parameters<typeof PlaygroundRunner>[0], 'mode'> & { traces: TraceFeed };
-function HostRun({ payload, runtime, traces, trace, className }: RunProps) {
+type RunProps = Omit<Parameters<typeof PlaygroundRunner>[0], 'mode' | 'onActivity'> & {
+	traces: TraceFeed;
+	note: () => void;
+};
+function HostRun({ payload, runtime, traces, trace, className, note }: RunProps) {
 	const transport = useMemo(
 		() =>
-			runtime
-				? createBrowserPlaygroundHostTransport(payload, runtime, { traces })
-				: createPlaygroundHostTransport(payload, { traces }),
-		[payload, runtime, traces],
+			noting(
+				runtime
+					? createBrowserPlaygroundHostTransport(payload, runtime, { traces })
+					: createPlaygroundHostTransport(payload, { traces }),
+				note,
+			),
+		[payload, runtime, traces, note],
 	);
 	return (
 		<TheoremHost
@@ -95,24 +111,28 @@ function HostRun({ payload, runtime, traces, trace, className }: RunProps) {
 		/>
 	);
 }
-function TurnRun({ payload, runtime, traces, trace, className }: RunProps) {
+function TurnRun({ payload, runtime, traces, trace, className, note }: RunProps) {
 	const iface = useMemo(() => playgroundInterface(payload), [payload]);
 	const transport = useMemo(
 		() =>
-			runtime
-				? createBrowserPlaygroundTransport(payload, runtime, { traces })
-				: createPlaygroundTransport(payload, { traces }),
-		[payload, runtime, traces],
+			noting(
+				runtime
+					? createBrowserPlaygroundTransport(payload, runtime, { traces })
+					: createPlaygroundTransport(payload, { traces }),
+				note,
+			),
+		[payload, runtime, traces, note],
 	);
 	return iface.type === 'live' ? (
 		<LiveRunner
 			labels={PLAYGROUND_LABELS}
 			iface={iface}
-			connection={() =>
-				runtime
+			connection={() => {
+				note();
+				return runtime
 					? browserPlaygroundLiveConnection(payload, runtime)
-					: playgroundLiveConnection(payload)
-			}
+					: playgroundLiveConnection(payload);
+			}}
 			trace={trace}
 		/>
 	) : (

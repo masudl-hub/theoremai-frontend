@@ -20,13 +20,16 @@ import { VStack } from '@astryxdesign/core/VStack';
 import {
 	IconAdjustmentsHorizontal,
 	IconAlertTriangle,
+	IconArrowLeft,
 	IconBook,
 	IconChevronDown,
 	IconCode,
 	IconCopy,
 	IconDownload,
 	IconEraser,
+	IconExternalLink,
 	IconKey,
+	IconMenu2,
 	IconPlayerPlay,
 	IconPlaylistX,
 	IconPlus,
@@ -63,7 +66,15 @@ import {
 	savePlaygroundRunPayload,
 } from '@theoremjs/playground';
 import { useDisclosureMotion } from '@theoremjs/react/ui';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+	type CSSProperties,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from 'react';
 import {
 	ConnectionMode,
 	ISSUE_ROW_ATTRIBUTE,
@@ -193,14 +204,40 @@ function treeItems(tree: TreeState): TreeListItemData[] {
 	const all = draftFacets({ ...draft, included: [...draft.included, ...off] }).filter(
 		(facet) => facet !== 'identity',
 	);
-	return [
+	const items = [
 		treeItem(tree, { ...root, children: [] }),
 		...all.map((facet) => {
 			const node = shown.get(facet);
 			return node ? treeItem(tree, node, true) : offItem(tree, facet);
 		}),
 	];
+	// The tree keeps a column for the expand arrows only while some row has one; keep it always,
+	// so rows don't jump sideways when the last branch goes (a host's last tool, say).
+	return items.some((item) => item.children?.length)
+		? items
+		: items.map((item) => ({ ...item, style: CHEVRON_COLUMN }));
 }
+
+/** Below the app shell's drawer breakpoint, where the playground shows one pane at a time. */
+const PHONE = '(width < 768px)';
+function usePhone() {
+	return useSyncExternalStore(
+		(change) => {
+			const query = window.matchMedia(PHONE);
+			query.addEventListener('change', change);
+			return () => {
+				query.removeEventListener('change', change);
+			};
+		},
+		() => window.matchMedia(PHONE).matches,
+		() => false,
+	);
+}
+
+/** The indent TreeList gives a leaf row beside a branch: the chevron's width and its gap. */
+const CHEVRON_COLUMN = {
+	'--_tree-indent': 'calc(var(--spacing-4) + var(--spacing-2))',
+} as CSSProperties;
 
 /** The tree's label for a node, e.g. the agent's id for Identity. */
 function nodeLabel(node: PlaygroundTreeNode, id: string): string | undefined {
@@ -404,6 +441,12 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	const [traceOpen, setTraceOpen] = useState(false);
 	// Bumping this remounts the runner: a fresh transcript and trace feed, the same profile.
 	const [conversation, setConversation] = useState(0);
+	/** On a phone, the tree or the preview, each over the editor; neither shows beside it there. */
+	const [sheet, setSheet] = useState<'tree' | 'preview' | null>(null);
+	const phone = usePhone();
+	const runKey = `${mode}:${String(conversation)}`;
+	/** The runner that last sent something; a new one (cleared, or another mode) has no history. */
+	const [usedRun, setUsedRun] = useState<string>();
 	const source = useMemo(() => (compiled.ok ? playgroundSource(compiled) : null), [compiled]);
 	const issues = compiled.ok
 		? undefined
@@ -448,12 +491,14 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	return (
 		<Layout
 			ref={layoutCallbackRef}
+			className={sheet ? `playground-frame playground-${sheet}-open` : 'playground-frame'}
 			padding={0}
 			start={
 				<>
 					<LayoutPanel
 						resizable={sidePanel.props}
 						padding={0}
+						className="playground-side"
 						role="navigation"
 						label="Playground"
 						isScrollable={false}
@@ -461,7 +506,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 						<Section variant="raised" height="100%" padding={0}>
 							<HStack height="100%">
 								{/* Static, so the editor beside it never squeezes the tree. */}
-								<StackItem size="static">
+								<StackItem size="static" className="playground-tree">
 									<Section
 										variant="transparent"
 										width={TREE_WIDTH}
@@ -470,12 +515,26 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 										dividers={['end']}
 									>
 										<VStack gap={4} height="100%">
-											<VStack gap={1}>
-												<Heading level={3}>Theorem Playground</Heading>
-												<Text type="supporting" color="secondary">
-													{`@theoremjs/agents ${KERNEL_PACKAGE_VERSION}`}
-												</Text>
-											</VStack>
+											<HStack gap={2} vAlign="start">
+												<StackItem size="fill">
+													<VStack gap={1}>
+														<Heading level={3}>Theorem Playground</Heading>
+														<Text type="supporting" color="secondary">
+															{`@theoremjs/agents ${KERNEL_PACKAGE_VERSION}`}
+														</Text>
+													</VStack>
+												</StackItem>
+												<span className="playground-phone">
+													<IconButton
+														label="Close sections"
+														variant="ghost"
+														icon={<Icon icon={IconX} size="sm" />}
+														onClick={() => {
+															setSheet(null);
+														}}
+													/>
+												</span>
+											</HStack>
 											<StackItem size="fill">
 												<ScrollableArea ref={sidebarRef} label="Profile" height="100%">
 													<TreeList
@@ -488,6 +547,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 																setKeysOpen(false);
 																setSelectedId(id);
 																setEditorView('editor');
+																setSheet(null);
 															},
 															setDraft,
 														})}
@@ -501,6 +561,16 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 									<VStack height="100%">
 										<Section variant="transparent" padding={3} dividers={['bottom']}>
 											<HStack gap={1} vAlign="center">
+												<span className="playground-phone">
+													<IconButton
+														label="Sections"
+														variant="ghost"
+														icon={<Icon icon={IconMenu2} size="sm" />}
+														onClick={() => {
+															setSheet('tree');
+														}}
+													/>
+												</span>
 												<StackItem size="fill">
 													{(keysOpen ? 'Keys' : title) && (
 														<Heading level={4}>{keysOpen ? 'Keys' : title}</Heading>
@@ -582,6 +652,16 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 														setEditorView(editorView === 'editor' ? 'code' : 'editor');
 													}}
 												/>
+												<span className="playground-phone">
+													<IconButton
+														label="Preview"
+														variant="ghost"
+														icon={<Icon icon={IconPlayerPlay} size="sm" />}
+														onClick={() => {
+															setSheet('preview');
+														}}
+													/>
+												</span>
 											</HStack>
 										</Section>
 										<StackItem size="fill" ref={bodyRef}>
@@ -683,6 +763,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 						</Section>
 					</LayoutPanel>
 					<ResizeHandle
+						className="playground-side-handle"
 						direction="horizontal"
 						isAlwaysVisible={false}
 						resizable={sidePanel.props}
@@ -691,24 +772,36 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 				</>
 			}
 			content={
-				<LayoutContent isScrollable={false} padding={0}>
+				<LayoutContent className="playground-preview" isScrollable={false} padding={0}>
 					<VStack height="100%">
 						<Section variant="transparent" padding={3}>
 							<HStack gap={2} vAlign="center">
+								<span className="playground-phone">
+									<IconButton
+										label="Back to the editor"
+										variant="ghost"
+										icon={<Icon icon={IconArrowLeft} size="sm" />}
+										onClick={() => {
+											setSheet(null);
+										}}
+									/>
+								</span>
 								<StackItem size="fill" />
-								<IconButton
-									label="Clear history"
-									variant="ghost"
-									icon={<Icon icon={IconPlaylistX} size="sm" />}
-									isDisabled={!payload}
-									tooltip="Clear the conversation and its traces. Your profile stays."
-									onClick={() => {
-										setConversation((count) => count + 1);
-									}}
-								/>
+								{payload && usedRun === runKey && (
+									<IconButton
+										label="Clear history"
+										variant="ghost"
+										icon={<Icon icon={IconPlaylistX} size="sm" />}
+										tooltip="Clear the conversation and its traces. Your profile stays."
+										onClick={() => {
+											setConversation((count) => count + 1);
+										}}
+									/>
+								)}
 								{traced ? (
 									<Button
 										label={traceOpen ? 'Hide trace' : 'View trace'}
+										isIconOnly={phone}
 										icon={<Icon icon={IconTimeline} size="sm" />}
 										aria-pressed={traceOpen}
 										onClick={() => {
@@ -719,6 +812,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 								<ButtonGroup label="Export" isDisabled={!compiled.ok}>
 									<Button
 										label="Export"
+										isIconOnly={phone}
 										icon={<Icon icon={IconDownload} size="sm" />}
 										tooltip={blocked ?? 'Download the agent as one .tsx'}
 										onClick={() => {
@@ -763,11 +857,12 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 									/>
 								</ButtonGroup>
 								<Button
-									label="Run"
+									label="Open"
+									isIconOnly={phone}
 									variant="primary"
-									icon={<Icon icon={IconPlayerPlay} size="sm" />}
+									icon={<Icon icon={IconExternalLink} size="sm" />}
 									isDisabled={!compiled.ok}
-									tooltip={blocked ?? 'Open the agent in a new tab'}
+									tooltip={blocked ?? 'Open the agent on its own page, in a new tab'}
 									onClick={() => {
 										if (compiled.ok)
 											openInNewTab({
@@ -782,11 +877,14 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 						<StackItem size="fill">
 							{payload ? (
 								<PlaygroundRunner
-									key={`${mode}:${String(conversation)}`}
+									key={runKey}
 									payload={payload}
 									mode={mode}
 									runtime={runtime}
 									trace={traced && traceOpen}
+									onActivity={() => {
+										setUsedRun(runKey);
+									}}
 								/>
 							) : (
 								<EmptyState

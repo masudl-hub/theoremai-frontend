@@ -88,3 +88,58 @@
 		transition: none;
 	}
 }
+
+/*
+ * The playground on a phone, the way the docs reader works: the editor fills the screen, the tree
+ * opens over it from Sections, and the preview opens over it from Preview, with Back to return. The
+ * draft lives only on this page, so the preview is a sheet here rather than another page.
+ */
+.playground-phone {
+	display: none;
+}
+
+/* The frame's class in each selector outranks Astryx's own one-class rules, including the panel's
+   resized width, without !important. */
+@media (width < 768px) {
+	.playground-phone {
+		display: contents;
+	}
+
+	.playground-frame {
+		position: relative;
+	}
+
+	.playground-frame .playground-side {
+		width: 100%;
+		max-width: none;
+		flex: 1 1 auto;
+	}
+
+	.playground-frame .playground-side-handle,
+	.playground-frame .playground-tree,
+	.playground-frame .playground-preview {
+		display: none;
+	}
+
+	.playground-frame.playground-tree-open .playground-tree,
+	.playground-frame.playground-preview-open .playground-preview {
+		display: flex;
+		position: absolute;
+		inset: 0;
+		z-index: 2;
+		width: 100%;
+	}
+
+	/* The tree covers the editor inside the raised panel; the preview covers the page. */
+	.playground-frame.playground-tree-open .playground-tree {
+		background: var(--color-background-surface);
+	}
+
+	.playground-frame.playground-preview-open .playground-preview {
+		background: var(--color-background-body);
+	}
+
+	.playground-frame.playground-tree-open .playground-tree > * {
+		width: 100%;
+	}
+}
