@@ -8,6 +8,7 @@ import {
 	registerTool,
 	standardEgressEnforce,
 } from '@theoremjs/agents';
+import { googleBindingViolation } from '@theoremjs/agents/presets/google';
 import { z } from 'zod';
 import { getDocIndex } from '../docs/.server/load-index';
 import { formatNavigableForPrompt, readDoc, resolveNavigate, searchDocs } from '../docs/query';
@@ -207,7 +208,18 @@ Tools:
 When you point at a fact, call highlight with that blockId. Never claim you navigated, highlighted, read, or searched unless you issued that call. If a tool errors, say so and retry once.`;
 }
 
+/** Th30 runs on free keys, so it holds to the Google preset's free-tier rules. */
+const TH30_MODEL = {
+	protocol: 'geminiLive',
+	provider: 'google',
+	apiId: 'gemini-3.8-live',
+	temperature: 0.7,
+	maxOutputTokens: 2048,
+} as const;
+
 export function ensureTh30ProfileRegistered(): void {
+	const violation = googleBindingViolation(TH30_MODEL, { freeTier: true });
+	if (violation) throw new Error(`th30: ${violation.message}`);
 	registerTh30Tools();
 
 	const profile = defineProfile({
@@ -217,18 +229,7 @@ export function ensureTh30ProfileRegistered(): void {
 			handle: 'th30',
 			system: th30SystemPrompt(),
 		},
-		models: {
-			gemini38Live: {
-				protocol: 'geminiLive',
-				provider: 'google',
-				apiId: 'gemini-3.8-live',
-				// No Google Search or thinking level: free keys get no Live search quota (1011), and
-				// 3.8 Live refuses a thinking level (1007).
-				summaries: false,
-				temperature: 0.7,
-				maxOutputTokens: 2048,
-			},
-		},
+		models: { gemini38Live: TH30_MODEL },
 		key: 'main',
 		// A quota refusal on the first free key reopens the call on the second, when one is set.
 		fallbackKey: 'overflow',
