@@ -1,11 +1,40 @@
-.docs-facts {
-	flex-wrap: wrap;
-	padding-block: 0.75rem;
-	border-block: 1px solid var(--color-border, rgb(255 255 255 / 12%));
+.docs-dictionary {
+	min-width: 0;
+	width: 100%;
 }
 
-.docs-field {
-	border-block-end: 1px solid var(--color-border, rgb(255 255 255 / 8%));
+.docs-dictionary dl {
+	grid-template-columns: fit-content(20rem) minmax(0, 1fr);
+}
+
+.docs-dictionary dt {
+	display: block;
+	max-width: 100%;
+	min-width: 0;
+	white-space: pre-line;
+	overflow-wrap: anywhere;
+}
+
+.docs-dictionary dd {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.docs-code-wrap {
+	min-width: 0;
+	max-width: 100%;
+	overflow-wrap: anywhere;
+}
+
+.docs-agent-prompt {
+	margin: 0;
+	max-width: 100%;
+	min-width: 0;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	word-break: break-word;
+	font: inherit;
+	color: inherit;
 }
 
 .docs-reader img,
@@ -15,11 +44,179 @@
 	border-radius: var(--radius-2, 6px);
 }
 
+.docs-landing-still {
+	height: 100%;
+	padding-block-start: var(--spacing-4);
+	padding-inline: var(--spacing-4);
+}
+
+.docs-landing-paint {
+	background-position: center 78%;
+	background-repeat: no-repeat;
+	background-size: 100% auto;
+}
+
+.docs-landing .docs-landing-results {
+	min-height: 332px;
+}
+
+.docs-landing .docs-landing-column {
+	display: none;
+}
+
+.docs-still {
+	height: 30%;
+	padding-block-start: var(--spacing-4);
+	padding-inline: var(--spacing-4);
+}
+
+.docs-still-paint {
+	background-position: center;
+	background-repeat: no-repeat;
+	background-size: 100% auto;
+}
+
+.docs-chapters-launch,
+.docs-chapters-sheet {
+	display: none;
+}
+
+.docs-frame {
+	position: relative;
+}
+
 /* Still scrolls away; the rail stays under it, then sticks. */
 .docs-outline {
 	position: sticky;
 	top: 0;
 	align-self: flex-start;
+}
+
+/* Same breakpoint as the app shell drawer. */
+@media (width < 768px) {
+	.docs-frame .docs-tree,
+	.docs-frame .docs-tree-handle,
+	.docs-frame .docs-outline {
+		display: none;
+	}
+
+	.docs-frame .docs-still {
+		aspect-ratio: 16 / 9;
+		height: auto;
+		padding: 0;
+	}
+
+	.docs-frame .docs-still-paint {
+		background-size: cover;
+	}
+
+	.docs-frame .docs-chapters-launch {
+		display: block;
+		position: absolute;
+		z-index: 2;
+		inset-block-start: var(--spacing-3);
+		inset-inline-start: var(--spacing-3);
+		width: max-content;
+		pointer-events: none;
+	}
+
+	.docs-frame .docs-chapters-launch > * {
+		pointer-events: auto;
+	}
+
+	.docs-frame .docs-chapters-sheet {
+		display: flex;
+		flex-direction: column;
+		position: absolute;
+		inset: 0;
+		z-index: 3;
+		min-height: 0;
+		overflow: hidden;
+		border-radius: inherit;
+	}
+
+	.docs-frame .docs-chapters-sheet > * {
+		flex: 1;
+		min-height: 0;
+	}
+
+	.docs-landing > .docs-landing-hero {
+		flex: none;
+		height: auto;
+	}
+
+	.docs-landing-still {
+		aspect-ratio: 16 / 9;
+		height: auto;
+		padding: 0;
+	}
+
+	.docs-landing .docs-landing-paint {
+		background-size: cover;
+	}
+
+	.docs-landing .docs-landing-hero-copy {
+		padding: var(--spacing-4);
+	}
+
+	.docs-landing > .docs-landing-body {
+		flex: 1;
+		min-height: 0;
+		overflow: hidden;
+		padding: var(--spacing-4);
+		gap: var(--spacing-4);
+	}
+
+	.docs-landing-search {
+		width: 100%;
+	}
+
+	.docs-landing-query {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.docs-landing .docs-landing-query > * {
+		max-width: 100%;
+		width: 100%;
+	}
+
+	.docs-landing .docs-landing-results {
+		flex: 1;
+		min-height: 0;
+		overflow-x: hidden;
+		overflow-y: auto;
+	}
+
+	.docs-landing-row {
+		display: none;
+	}
+
+	.docs-landing .docs-landing-column {
+		display: flex;
+		min-width: 0;
+		width: 100%;
+	}
+
+	.docs-landing .docs-landing-tile {
+		max-width: 100%;
+		min-width: 0;
+		width: 100%;
+	}
+
+	.docs-dictionary dl {
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	}
+
+	.docs-landing .docs-landing-tile-still {
+		aspect-ratio: 2 / 1;
+	}
+
+	.docs-landing .docs-landing-tile img {
+		display: block;
+		max-width: 100%;
+		width: 100%;
+	}
 }
 
 [data-docs-block]:focus,

@@ -1,11 +1,11 @@
 /**
- * Th30 ("T H 3 O" / "T H thirty") — The live, grounded site assistant for THEOREM.
+ * Th30 ("T H 3 O" / "T H thirty") — The live, grounded site assistant for Theorem.
  *
  * Configured as a real-time Gemini 3.1 Flash Live voice/speech agent with
  * client-side UI navigation, precise line/element highlighting,
  * real-time line-numbered document reading, multi-source search, and Google Search grounding.
  *
- * Built on the THEOREM tool system (registerTool / Zod contracts).
+ * Built on the Theorem tool system (registerTool / Zod contracts).
  *
  * @module
  */
@@ -21,8 +21,6 @@ import { getDocIndex } from '../docs/.server/load-index';
 import { formatNavigableForPrompt, readDoc, resolveNavigate, searchDocs } from '../docs/query';
 import { TH30_PROFILE_ID } from '../th30-id';
 
-export { TH30_PROFILE_ID };
-
 /* -------------------------------------------------------------------------- */
 /* Tool Schemas (Strict Zod Contracts)                                        */
 /* -------------------------------------------------------------------------- */
@@ -31,7 +29,7 @@ export const NavigateInputSchema = z.object({
 	slug: z
 		.string()
 		.describe(
-			'Docs chapter slug (start, runner, profiles, tools, …). Validated against the index.',
+			'Docs chapter slug (start, modalities, identity, models, …). Validated against the index.',
 		),
 	blockId: z
 		.string()
@@ -202,14 +200,14 @@ export function registerTh30Tools(): void {
 
 export function th30SystemPrompt(): string {
 	const chapters = formatNavigableForPrompt(getDocIndex());
-	return `You are Th30, the real-time AI guide for THEOREM. You are built on THEOREM.
+	return `You are Th30, the real-time AI guide for Theorem. You are built on Theorem.
 Your name is spoken letter-by-letter as "T H 3 O", or as "T H thirty" (the digits 3-0). Never say "Theo", "three O", "three-oh", or "theo".
 You speak concisely (1-3 sentences). English only.
 
 When the call first connects you will receive a user turn with the text "(call connected)". Greet the user as T H 3 O and ask what they want to look at. Do not read the trigger text.
 
 Docs live at /docs. Chapters: ${chapters}.
-Type-scoped pins nest under profiles#types (image, speech, live, decision). runner#session is the live door, not a second pin table. Do not invent field copy — read the catalog.
+Type-scoped pins live on modalities (image, speech, live, decision, host). Field pages deepen each block. Do not invent field copy — read the catalog.
 
 Tools:
 - navigate: { slug, blockId? } — only slugs from the index.

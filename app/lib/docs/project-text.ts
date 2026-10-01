@@ -1,31 +1,26 @@
-/**
- * One text projector for Th30 read, search indexing, and .md twins.
- */
+import type { DocArticle, PageSymbol, ResolvedBlock } from './schema';
 
-import type { DocArticle, ResolvedBlock } from './schema';
-
-function factLines(block: Extract<ResolvedBlock, { kind: 'facts' }>): string[] {
-	return block.items.map((item) => `${item.label}: ${item.value}`);
-}
-
-function fieldLines(block: Extract<ResolvedBlock, { kind: 'fields' }>): string[] {
-	return block.rows.map((row) => {
-		const unset = row.meta.unset ? ` Omit → ${row.meta.unset}.` : '';
-		return `${row.path} — ${row.meta.doc}${unset}`;
-	});
-}
-
-function unionLines(block: Extract<ResolvedBlock, { kind: 'union' }>): string[] {
-	return block.members.map((member) =>
-		member.doc ? `${member.value} — ${member.doc}` : member.value,
-	);
-}
-
-function rowLines(block: Extract<ResolvedBlock, { kind: 'trace' | 'lexicon' }>): string[] {
-	if (block.kind === 'trace') {
-		return block.rows.map((row) => `${row.key} — ${row.label}: ${row.doc}`);
+function symbolLine(symbol: PageSymbol): string {
+	switch (symbol.kind) {
+		case 'field': {
+			const unset = symbol.meta.unset ? ` Omit → ${symbol.meta.unset}.` : '';
+			return `${symbol.path} — ${symbol.meta.doc}${unset}`;
+		}
+		case 'union-member':
+			return symbol.doc ? `${symbol.value} — ${symbol.doc}` : symbol.value;
+		case 'trace':
+			return `${symbol.key} — ${symbol.label}: ${symbol.doc}`;
+		case 'lexicon':
+			return `${symbol.key} — ${symbol.text}`;
+		default: {
+			const unreachable: never = symbol;
+			return unreachable;
+		}
 	}
-	return block.rows.map((row) => `${row.key} — ${row.defaultText}`);
+}
+
+function symbolLines(symbols: readonly PageSymbol[]): string[] {
+	return symbols.map(symbolLine);
 }
 
 export function projectBlockText(block: ResolvedBlock): string {
@@ -34,17 +29,10 @@ export function projectBlockText(block: ResolvedBlock): string {
 		case 'prose':
 		case 'callout':
 			return block.text;
+		case 'agent.paste':
+			return block.prompt;
 		case 'media':
 			return block.media.caption ?? block.media.alt;
-		case 'facts':
-			return factLines(block).join('\n');
-		case 'fields':
-			return fieldLines(block).join('\n');
-		case 'union':
-			return unionLines(block).join('\n');
-		case 'trace':
-		case 'lexicon':
-			return rowLines(block).join('\n');
 		case 'code':
 			return block.code;
 		case 'embed.playground':
@@ -58,11 +46,23 @@ export function projectArticleText(
 ): string {
 	if (detail === 'summary') return `${article.title}\n\n${article.summary}`;
 	const parts: string[] = [`# ${article.title}`, '', article.summary, ''];
+	if (detail === 'full' && article.questions.length) {
+		parts.push('This page covers', ...article.questions.map((item) => `- ${item.question}`), '');
+	}
 	for (const block of article.blocks) {
 		if (detail === 'code_only' && block.kind !== 'code') continue;
 		const text = projectBlockText(block);
 		if (!text) continue;
-		parts.push(`## ${block.id}`, text, '');
+		const heading =
+			block.kind === 'prose'
+				? block.title
+				: block.kind === 'code' && block.title
+					? block.title
+					: block.id;
+		parts.push(`## ${heading}`, text, '');
+	}
+	if (detail === 'full' && article.symbols.length) {
+		parts.push('## dictionary', ...symbolLines(article.symbols), '');
 	}
 	return parts.join('\n').trim();
 }

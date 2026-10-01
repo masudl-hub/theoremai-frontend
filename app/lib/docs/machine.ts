@@ -37,14 +37,37 @@ export function articleJsonLd(
 	article: DocIndex['articles'][number],
 	origin: string,
 ): Record<string, unknown> {
-	const terms = article.blocks.flatMap((block) => {
-		if (block.kind !== 'fields') return [];
-		return block.rows.map((row) => ({
+	const terms = article.symbols.map((symbol) => {
+		if (symbol.kind === 'field') {
+			return {
+				'@type': 'DefinedTerm',
+				name: symbol.path,
+				description: symbol.meta.doc,
+				url: `${origin}${article.canonicalPath}#${symbol.id}`,
+			};
+		}
+		if (symbol.kind === 'union-member') {
+			return {
+				'@type': 'DefinedTerm',
+				name: symbol.value,
+				description: symbol.doc,
+				url: `${origin}${article.canonicalPath}#${symbol.id}`,
+			};
+		}
+		if (symbol.kind === 'trace') {
+			return {
+				'@type': 'DefinedTerm',
+				name: symbol.key,
+				description: symbol.doc,
+				url: `${origin}${article.canonicalPath}#${symbol.id}`,
+			};
+		}
+		return {
 			'@type': 'DefinedTerm',
-			name: row.path,
-			description: row.meta.doc,
-			url: `${origin}${article.canonicalPath}#${row.path}`,
-		}));
+			name: symbol.key,
+			description: symbol.text,
+			url: `${origin}${article.canonicalPath}#${symbol.id}`,
+		};
 	});
 	return {
 		'@context': 'https://schema.org',
@@ -53,7 +76,7 @@ export function articleJsonLd(
 		description: article.summary,
 		url: `${origin}${article.canonicalPath}`,
 		dateModified: article.dateModified,
-		author: { '@type': 'Organization', name: 'THEOREM' },
+		author: { '@type': 'Organization', name: 'Theorem' },
 		mainEntity: {
 			'@type': 'DefinedTermSet',
 			name: article.title,

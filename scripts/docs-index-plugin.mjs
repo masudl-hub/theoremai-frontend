@@ -59,21 +59,23 @@ export function docsIndexPlugin({ repoRoot, theoremai }) {
 		]);
 		const kernelReadme = gitIso(theoremai.root, ['README.md']);
 		const kernelSrc = gitIso(theoremai.root, ['src']);
+		const catalog = laterIso(chapters, compose, kernelSrc);
 		const lastmodBySlug = Object.fromEntries(
-			Object.entries({
-				start: laterIso(chapters, kernelReadme),
-				runner: laterIso(chapters, kernelSrc),
-				profiles: laterIso(chapters, compose, kernelSrc),
-				tools: laterIso(chapters, compose, kernelSrc),
-				guardrails: laterIso(chapters, compose, kernelSrc),
-				observability: laterIso(chapters, compose, kernelSrc),
-				providers: laterIso(chapters, compose, kernelSrc),
-				interface: chapters,
-				ui: chapters,
-				playground: chapters,
-				host: chapters,
-				cli: chapters,
-			}).filter(([, iso]) => iso),
+			[
+				['start', laterIso(chapters, kernelReadme, kernelSrc)],
+				['modalities', catalog],
+				['identity', catalog],
+				['models', catalog],
+				['tools', catalog],
+				['inputs', catalog],
+				['outputs', catalog],
+				['turn-behaviour', catalog],
+				['guardrails', catalog],
+				['traces', catalog],
+				['statuses', catalog],
+				['runner', catalog],
+				['interface', chapters],
+			].filter(([, iso]) => iso),
 		);
 
 		const server = await createServer({

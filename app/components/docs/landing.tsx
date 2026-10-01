@@ -161,44 +161,94 @@ export function DocsLanding({ index, version }: { index: DocIndex; version: stri
 		position: 'absolute',
 		inset: 0,
 		backgroundImage: `url("${LANDING_STILL}")`,
-		backgroundSize: '100% auto',
-		backgroundRepeat: 'no-repeat',
-		backgroundPosition: 'center 78%',
 		pointerEvents: 'none',
 		...stillFilter(LANDING_STILL),
 	} as CSSProperties;
 	const motion = tileMotionStyle(phase);
+	const resultsLabel = searching ? 'Search results' : 'Suggested chapters';
+	const resultCards = (layout: 'row' | 'column') =>
+		tiles.map(({ article, href, title, excerpt, showMeta }) => (
+			<ClickableCard
+				key={href}
+				label={title}
+				href={href}
+				variant="transparent"
+				padding={0}
+				width={layout === 'row' ? 300 : undefined}
+				className={layout === 'column' ? 'docs-landing-tile' : undefined}
+				style={motion}
+			>
+				<VStack gap={3}>
+					{article.cover ? (
+						<Card padding={0}>
+							<AspectRatio className="docs-landing-tile-still" ratio={16 / 10} fit="cover">
+								<img
+									src={article.cover.src}
+									alt={article.cover.alt}
+									style={stillFilter(article.cover.src)}
+								/>
+							</AspectRatio>
+						</Card>
+					) : null}
+					<VStack gap={1} minHeight={layout === 'row' ? 132 : undefined}>
+						<Heading level={3}>{title}</Heading>
+						{showMeta ? (
+							<HStack gap={2} wrap="wrap">
+								<Token label={article.topic} />
+								<Token label={`${String(article.ttrMinutes)} min`} />
+							</HStack>
+						) : null}
+						<Text color="secondary" maxLines={3}>
+							{excerpt}
+						</Text>
+					</VStack>
+				</VStack>
+			</ClickableCard>
+		));
 
 	return (
-		<VStack height="100%">
-			<StackItem size="fill">
-				<div className="hero-video-frame">
-					<div aria-hidden style={stillPaint} />
-					<div className="hero-scrim">
-						<MediaTheme mode="dark">
-							<VStack height="100%" justify="end" gap={2} padding={10}>
-								<Text type="label">{version}</Text>
-								<Heading level={1} type="display-1" hasCapsize>
-									Documentation
-								</Heading>
-							</VStack>
-						</MediaTheme>
-					</div>
-				</div>
+		<VStack className="docs-landing" height="100%">
+			<StackItem className="docs-landing-hero" size="fill">
+				<VStack className="docs-landing-still">
+					<Card padding={0} height="100%">
+						<div className="hero-video-frame">
+							<div aria-hidden className="docs-landing-paint" style={stillPaint} />
+							<div className="hero-scrim">
+								<MediaTheme mode="dark">
+									<VStack
+										className="docs-landing-hero-copy"
+										height="100%"
+										justify="end"
+										gap={2}
+										padding={10}
+										paddingInlineStart={4}
+									>
+										<Text type="label">@{version}</Text>
+										<Heading level={1} type="display-1" hasCapsize>
+											Documentation
+										</Heading>
+									</VStack>
+								</MediaTheme>
+							</div>
+						</div>
+					</Card>
+				</VStack>
 			</StackItem>
-			<VStack gap={6} padding={8}>
-				<HStack justify="center" align="center" gap={4}>
-					<TextInput
-						label="Search docs"
-						isLabelHidden
-						placeholder="Search"
-						value={query}
-						onChange={setQuery}
-						startIcon={IconSearch}
-						width={720}
-						size="lg"
-						hasClear
-					/>
+			<VStack className="docs-landing-body" gap={6} padding={8}>
+				<HStack className="docs-landing-search" justify="center" align="center" gap={4}>
+					<div className="docs-landing-query">
+						<TextInput
+							label="Search docs"
+							isLabelHidden
+							placeholder="Search"
+							value={query}
+							onChange={setQuery}
+							startIcon={IconSearch}
+							width={720}
+							size="lg"
+							hasClear
+						/>
+					</div>
 					<IconButton
 						label="Talk to th30"
 						icon={<IconCircle />}
@@ -209,47 +259,23 @@ export function DocsLanding({ index, version }: { index: DocIndex; version: stri
 						}}
 					/>
 				</HStack>
-				<VStack minHeight={332}>
+				<VStack className="docs-landing-results">
 					{tiles.length ? (
-						<Carousel gap={4} aria-label={searching ? 'Search results' : 'Suggested chapters'}>
-							{tiles.map(({ article, href, title, excerpt, showMeta }) => (
-								<ClickableCard
-									key={href}
-									label={title}
-									href={href}
-									variant="transparent"
-									padding={0}
-									width={300}
-									style={motion}
-								>
-									<VStack gap={3}>
-										{article.cover ? (
-											<Card padding={0}>
-												<AspectRatio ratio={16 / 10} fit="cover">
-													<img
-														src={article.cover.src}
-														alt={article.cover.alt}
-														style={stillFilter(article.cover.src)}
-													/>
-												</AspectRatio>
-											</Card>
-										) : null}
-										<VStack gap={1} minHeight={132}>
-											<Heading level={3}>{title}</Heading>
-											{showMeta ? (
-												<HStack gap={2} wrap="wrap">
-													<Token label={article.topic} />
-													<Token label={`${String(article.ttrMinutes)} min`} />
-												</HStack>
-											) : null}
-											<Text color="secondary" maxLines={3}>
-												{excerpt}
-											</Text>
-										</VStack>
-									</VStack>
-								</ClickableCard>
-							))}
-						</Carousel>
+						<>
+							<div className="docs-landing-row">
+								<Carousel gap={4} aria-label={resultsLabel}>
+									{resultCards('row')}
+								</Carousel>
+							</div>
+							<VStack
+								className="docs-landing-column"
+								gap={4}
+								role="region"
+								aria-label={resultsLabel}
+							>
+								{resultCards('column')}
+							</VStack>
+						</>
 					) : (
 						<VStack style={motion}>
 							<EmptyState

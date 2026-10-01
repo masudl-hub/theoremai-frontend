@@ -15,16 +15,13 @@ import {
 	PROFILE_TYPES,
 } from '@theoremai/agents/schema';
 import { SITE_ARTICLES, SITE_REDIRECTS } from './articles/chapters';
-import { resolveFact } from './facts';
-import { headingLabel } from './headings';
+import { lexiconCatalogRows, traceCatalogRows } from './catalog-rows';
 import { assertFieldOwnership, fieldsForFacet } from './ownership';
 import {
 	assertFacetPlacementComplete,
 	FACET_SECTION,
-	headingId,
 	isDocWorthyUnion,
 	UNION_SECTION,
-	unionOwnsHeading,
 } from './placement';
 import { projectArticleText, ttrMinutesFromText } from './project-text';
 import { resolveBlock } from './resolve-blocks';
@@ -36,6 +33,7 @@ import {
 	type DocArticleDef,
 	type DocIndex,
 	type DocTreeNode,
+	type PageSymbol,
 	type ResolvedBlock,
 } from './schema';
 import { isWideStill } from './still-match';
@@ -53,6 +51,9 @@ function catalogHash(version: string): string {
 function assertArticleDef(def: DocArticleDef): void {
 	if (def.id !== def.slug) throw new Error(`Chapter id ${def.id} must equal slug`);
 	if (def.id !== def.topic) throw new Error(`Chapter ${def.id} topic must equal id`);
+	if (!def.entry || def.entry.startsWith('/') || def.entry.includes('..')) {
+		throw new Error(`${def.id} entry must be a kernel-relative path`);
+	}
 	if (def.summary.length < SUMMARY_MIN || def.summary.length > SUMMARY_MAX) {
 		throw new Error(
 			`${def.id} summary is ${String(def.summary.length)} chars; need ${String(SUMMARY_MIN)}–${String(SUMMARY_MAX)}`,
@@ -65,9 +66,21 @@ function assertArticleDef(def: DocArticleDef): void {
 	if (def.faq && def.faq.length > FAQ_MAX) {
 		throw new Error(`${def.id} faq has more than ${String(FAQ_MAX)} items`);
 	}
+	if (def.questions) {
+		if (!def.questions.length) throw new Error(`${def.id} questions is empty`);
+		for (const item of def.questions) {
+			if (!item.question.trim()) throw new Error(`${def.id} questions has a blank entry`);
+		}
+	}
 	for (const block of def.blocks) {
 		if (!AUTHORED_ID.test(block.id)) {
 			throw new Error(`${def.id} block id "${block.id}" is not a kebab token`);
+		}
+		if (block.kind === 'prose' && !block.title.trim()) {
+			throw new Error(`${def.id}#${block.id} prose title is blank`);
+		}
+		if (block.kind === 'code' && block.title !== undefined && !block.title.trim()) {
+			throw new Error(`${def.id}#${block.id} code title is blank`);
 		}
 	}
 }
@@ -96,124 +109,94 @@ function assertUniqueCovers(defs: readonly DocArticleDef[]): void {
 	}
 }
 
-function injectUnionMembers(blocks: ResolvedBlock[]): ResolvedBlock[] {
-	const next = [...blocks];
-	const types = next.find((block) => block.kind === 'union' && block.name === 'PROFILE_TYPES');
-	if (types?.kind !== 'union') return next;
-	const after = next.indexOf(types);
-	const extras: ResolvedBlock[] = [];
-	for (const member of types.members) {
-		if (next.some((block) => block.id === member.value)) continue;
-		extras.push({ id: member.value, kind: 'prose', text: member.doc });
-	}
-	next.splice(after + 1, 0, ...extras);
-	if (!extras.length) return next;
-	const typesIdx = next.indexOf(types);
-	next[typesIdx] = {
-		...types,
-		members: types.members.map((member) => ({ value: member.value, doc: '' })),
-	};
-	return next;
-}
-
-function fieldsBlock(
-	id: string,
-	paths: readonly string[],
-	reserved: ReadonlySet<string>,
-): ResolvedBlock {
-	const rows = paths
-		.filter((fieldPath) => fieldPath !== id && !reserved.has(fieldPath))
-		.map((fieldPath) => {
-			const meta = fieldMeta(fieldPath);
-			if (meta === undefined) throw new Error(`fieldMeta(${fieldPath}) is undefined`);
-			return { path: fieldPath, meta };
-		});
-	return { id, kind: 'fields', rows };
-}
-
-function insertAfter(
-	blocks: ResolvedBlock[],
-	afterId: string,
-	add: ResolvedBlock,
-): ResolvedBlock[] {
-	if (blocks.some((block) => block.id === add.id)) return blocks;
-	const idx = blocks.findIndex((block) => block.id === afterId);
-	if (idx < 0) return [...blocks, add];
-	return [...blocks.slice(0, idx + 1), add, ...blocks.slice(idx + 1)];
-}
-
-function reservedIds(blocks: readonly ResolvedBlock[]): Set<string> {
-	return new Set(collectIds(blocks));
-}
-
-function injectFacets(topic: DocArticle['topic'], blocks: ResolvedBlock[]): ResolvedBlock[] {
-	let next = blocks;
-	for (const facet of PROFILE_GRAPH) {
-		const place = FACET_SECTION[facet.id];
-		if (place.page !== topic) continue;
-		const section = headingId(place.heading);
-		if (!next.some((block) => block.id === section)) {
-			next = [...next, { id: section, kind: 'prose', text: facet.label }];
+function assertChapterSources(readmePath: string): void {
+	const root = path.dirname(readmePath);
+	for (const def of SITE_ARTICLES) {
+		if (!existsSync(path.join(root, def.entry))) {
+			throw new Error(`${def.id} entry missing ${def.entry}`);
 		}
-		const owned = fieldsForFacet(facet.id);
-		if (!owned.length) continue;
-		next = insertAfter(next, section, fieldsBlock(`${facet.id}-fields`, owned, reservedIds(next)));
 	}
-	return next;
 }
 
-function injectExtraFields(topic: DocArticle['topic'], blocks: ResolvedBlock[]): ResolvedBlock[] {
-	if (topic !== 'tools') return blocks;
-	const existing = new Set(
-		blocks.flatMap((block) => (block.kind === 'fields' ? block.rows.map((row) => row.path) : [])),
-	);
-	const extra = Object.keys(EXTRA_FIELDS).filter((key) => !existing.has(key));
-	if (!extra.length) return blocks;
-	return insertAfter(blocks, 'register', fieldsBlock('extra-fields', extra, reservedIds(blocks)));
+function pushFieldSymbol(
+	symbols: PageSymbol[],
+	seen: Set<string>,
+	reserved: ReadonlySet<string>,
+	fieldPath: string,
+): void {
+	if (seen.has(fieldPath) || reserved.has(fieldPath)) return;
+	const meta = fieldMeta(fieldPath);
+	if (meta === undefined) throw new Error(`fieldMeta(${fieldPath}) is undefined`);
+	seen.add(fieldPath);
+	symbols.push({ kind: 'field', id: fieldPath, path: fieldPath, meta });
 }
 
-function injectWorthyUnions(topic: DocArticle['topic'], blocks: ResolvedBlock[]): ResolvedBlock[] {
-	let next = blocks;
+function pageSymbolsFor(topic: DocArticle['topic'], reserved: ReadonlySet<string>): PageSymbol[] {
+	const symbols: PageSymbol[] = [];
+	const seen = new Set<string>();
+
+	for (const facet of PROFILE_GRAPH) {
+		if (FACET_SECTION[facet.id].page !== topic) continue;
+		for (const fieldPath of fieldsForFacet(facet.id)) {
+			pushFieldSymbol(symbols, seen, reserved, fieldPath);
+		}
+	}
+
+	if (topic === 'tools') {
+		for (const fieldPath of Object.keys(EXTRA_FIELDS)) {
+			pushFieldSymbol(symbols, seen, reserved, fieldPath);
+		}
+	}
+
 	for (const [name, place] of Object.entries(UNION_SECTION)) {
 		if (!isDocWorthyUnion(name)) continue;
 		if (place.page !== topic) continue;
-		if (next.some((block) => block.kind === 'union' && block.name === name)) continue;
-		const section = headingId(place.heading);
-		const id = name.toLowerCase().replace(/_/g, '-');
-		if (!next.some((block) => block.id === section)) {
-			next = [
-				...next,
-				{ id: section, kind: 'prose', text: headingLabel(headingId(place.heading)) },
-			];
+		for (const member of unionMembers(name)) {
+			const id = `${name.toLowerCase().replace(/_/g, '-')}:${member.value}`;
+			if (seen.has(id) || reserved.has(id)) continue;
+			seen.add(id);
+			symbols.push({
+				kind: 'union-member',
+				id,
+				union: name,
+				value: member.value,
+				doc: member.doc,
+			});
 		}
-		next = insertAfter(next, section, {
-			id,
-			kind: 'union',
-			name,
-			members: unionMembers(name),
-		});
 	}
-	return next;
+
+	if (topic === 'traces') {
+		for (const row of traceCatalogRows()) {
+			const id = `trace:${row.key}`;
+			if (seen.has(id) || reserved.has(id)) continue;
+			seen.add(id);
+			symbols.push({ kind: 'trace', id, key: row.key, label: row.label, doc: row.doc });
+		}
+	}
+
+	if (topic === 'statuses') {
+		for (const row of lexiconCatalogRows()) {
+			const id = `lexicon:${row.key}`;
+			if (seen.has(id) || reserved.has(id)) continue;
+			seen.add(id);
+			symbols.push({ kind: 'lexicon', id, key: row.key, text: row.text });
+		}
+	}
+
+	return symbols;
 }
 
 function collectIds(blocks: readonly ResolvedBlock[]): string[] {
-	const ids: string[] = [];
-	for (const block of blocks) {
-		ids.push(block.id);
-		if (block.kind === 'facts') ids.push(...block.items.map((item) => item.id));
-		if (block.kind === 'fields') ids.push(...block.rows.map((row) => row.path));
-		if (block.kind === 'union')
-			ids.push(...block.members.map((member) => `${block.id}:${member.value}`));
-		if (block.kind === 'trace' || block.kind === 'lexicon') {
-			ids.push(...block.rows.map((row) => `${block.id}:${row.key}`));
-		}
-	}
-	return ids;
+	return blocks.map((block) => block.id);
 }
 
-function assertUniqueIds(slug: string, blocks: readonly ResolvedBlock[]): void {
+function assertUniqueIds(
+	slug: string,
+	blocks: readonly ResolvedBlock[],
+	symbols: readonly PageSymbol[],
+): void {
 	const seen = new Set<string>();
-	for (const id of collectIds(blocks)) {
+	for (const id of [...collectIds(blocks), ...symbols.map((symbol) => symbol.id)]) {
 		if (seen.has(id)) throw new Error(`/${slug} duplicate id ${id}`);
 		seen.add(id);
 	}
@@ -228,71 +211,34 @@ function assertActions(def: DocArticleDef, slugs: Set<string>): void {
 			throw new Error(`${def.id} action.copy missing block ${action.blockId}`);
 		}
 	}
-	for (const related of def.related ?? []) {
-		if (!slugs.has(related)) throw new Error(`${def.id} related unknown slug ${related}`);
-	}
 }
 
-function isNavHeading(block: ResolvedBlock): boolean {
-	if (block.id === 'lede') return false;
-	if (block.kind === 'union') {
-		return isDocWorthyUnion(block.name) && unionOwnsHeading(block.name, block.id);
-	}
-	if (block.kind === 'lede' || block.kind === 'prose') return true;
-	return block.kind === 'code' && block.source.from === 'readme';
-}
-
-function nestParent(block: ResolvedBlock): string | undefined {
-	if (block.kind === 'union' && isDocWorthyUnion(block.name)) {
-		const section = headingId(UNION_SECTION[block.name].heading);
-		if (section !== block.id) return section;
-	}
-	for (const place of Object.values(FACET_SECTION)) {
-		if (place.heading.length >= 2 && headingId(place.heading) === block.id) {
-			return place.heading[place.heading.length - 2];
-		}
-	}
-	if ((PROFILE_TYPES as readonly string[]).includes(block.id)) {
-		return headingId(UNION_SECTION.PROFILE_TYPES.heading);
-	}
+function blockTitle(block: ResolvedBlock): string | undefined {
+	if (block.kind === 'prose') return block.title;
+	if (block.kind === 'code') return block.title;
 	return undefined;
 }
 
 function headingNodes(article: DocArticle): DocTreeNode[] {
-	const headings = article.blocks.filter(isNavHeading);
-	const nodes = new Map<string, { node: DocTreeNode; children: DocTreeNode[] }>();
-	for (const block of headings) {
-		const children: DocTreeNode[] = [];
-		nodes.set(block.id, {
-			children,
-			node: {
-				id: `${article.slug}#${block.id}`,
-				label: headingLabel(block.id),
-				slug: article.slug,
-				blockId: block.id,
-				children,
-			},
+	const nodes: DocTreeNode[] = [];
+	for (const block of article.blocks) {
+		const title = blockTitle(block);
+		if (title === undefined) continue;
+		nodes.push({
+			id: `${article.slug}#${block.id}`,
+			label: title,
+			slug: article.slug,
+			blockId: block.id,
+			children: [],
 		});
 	}
-	const roots: DocTreeNode[] = [];
-	for (const block of headings) {
-		const entry = nodes.get(block.id);
-		if (!entry) continue;
-		const parentId = nestParent(block);
-		const parent = parentId ? nodes.get(parentId) : undefined;
-		if (parent && parent !== entry) {
-			parent.children.push(entry.node);
-		} else {
-			roots.push(entry.node);
-		}
-	}
-	return roots;
+	return nodes;
 }
 
 function assertProfileTypeSections(blocks: readonly ResolvedBlock[]): void {
 	for (const type of PROFILE_TYPES) {
 		if (!blocks.some((block) => block.id === type)) {
-			throw new Error(`profiles missing #${type} member section`);
+			throw new Error(`modalities missing #${type} member section`);
 		}
 	}
 }
@@ -300,11 +246,12 @@ function assertProfileTypeSections(blocks: readonly ResolvedBlock[]): void {
 function buildTree(articles: readonly DocArticle[]): DocTreeNode[] {
 	return DOC_SECTIONS.map((section) => {
 		const article = articles.find((item) => item.topic === section);
+		if (!article) throw new Error(`Missing chapter for section ${section}`);
 		return {
 			id: section,
-			label: article?.title ?? headingLabel(section),
-			slug: article?.slug,
-			children: article ? headingNodes(article) : [],
+			label: article.title,
+			slug: article.slug,
+			children: headingNodes(article),
 		};
 	});
 }
@@ -337,6 +284,7 @@ export function composeDocIndex(options: ComposeOptions): DocIndex {
 		if (!slugs.has(section)) throw new Error(`Missing chapter ${section}`);
 	}
 	assertUniqueCovers(SITE_ARTICLES);
+	assertChapterSources(options.readmePath);
 
 	const ranks = new Set<number>();
 	const label = updatedLabel(options);
@@ -363,59 +311,50 @@ export function composeDocIndex(options: ComposeOptions): DocIndex {
 			ranks.add(def.suggest.rank);
 		}
 
-		let blocks = resolveAuthored(def, options.readmePath);
-		blocks = injectWorthyUnions(def.topic, blocks);
-		blocks = injectUnionMembers(blocks);
-		blocks = injectFacets(def.topic, blocks);
-		blocks = injectExtraFields(def.topic, blocks);
-		if (def.topic === 'profiles') assertProfileTypeSections(blocks);
-		assertUniqueIds(def.slug, blocks);
+		const blocks = resolveAuthored(def, options.readmePath);
+		const symbols = pageSymbolsFor(def.topic, new Set(collectIds(blocks)));
+		if (def.topic === 'modalities') assertProfileTypeSections(blocks);
+		assertUniqueIds(def.slug, blocks, symbols);
 
+		const questions = def.questions ?? [];
 		const projected = projectArticleText({
 			id: def.id,
 			slug: def.slug,
 			title: def.title,
 			topic: def.topic,
+			entry: def.entry,
 			kind: def.kind,
 			summary: def.summary,
-			related: def.related ?? [],
 			actions: def.actions ?? [],
+			questions,
 			faq: def.faq ?? [],
-			origin: 'authored',
 			canonicalPath: `/docs/${def.slug}`,
 			truth,
 			ttrMinutes: 1,
 			updatedLabel: label,
 			blocks,
-			tree: def.tree,
+			symbols,
 		});
-		// Touch facts resolver so pair keys fail closed even when only used in authored facts.
-		for (const block of def.blocks) {
-			if (block.kind === 'facts') {
-				for (const item of block.items) resolveFact(item);
-			}
-		}
-
 		return {
 			id: def.id,
 			slug: def.slug,
 			title: def.title,
 			topic: def.topic,
+			entry: def.entry,
 			kind: def.kind,
 			summary: def.summary,
 			cover: def.cover,
 			suggest: def.suggest,
-			tree: def.tree,
-			related: def.related ?? [],
 			actions: def.actions ?? [],
+			questions,
 			faq: def.faq ?? [],
-			origin: 'authored' as const,
 			canonicalPath: `/docs/${def.slug}`,
 			truth,
 			ttrMinutes: ttrMinutesFromText(projected),
 			updatedLabel: label,
 			dateModified: options.lastmodBySlug?.[def.slug],
 			blocks,
+			symbols,
 		};
 	});
 

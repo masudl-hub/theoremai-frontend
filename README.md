@@ -82,7 +82,7 @@ Egress is **opt-in per profile** — set `guardrails.egress.enforce`.
 
 ## Docs
 
-- [`docs/DOCS_CONTRACT.md`](docs/DOCS_CONTRACT.md) — what may go on `/docs`: readers, the three questions per page, where truth comes from, snippets.
+- [`docs/DOCS_CONTRACT.md`](docs/DOCS_CONTRACT.md) — what may go on `/docs`: readers, the questions per page, where truth comes from, snippets.
 - [`docs/SITE_SCHEMA.md`](docs/SITE_SCHEMA.md) — how `/docs` is built: data model, compose, information hierarchy.
 
 ## Scripts
@@ -95,7 +95,7 @@ Egress is **opt-in per profile** — set `guardrails.egress.enforce`.
 | `npm run lint` | ESLint, Biome, and fallow |
 | `npm run deploy` | Build and `wrangler deploy` the `theorem-site` Worker — not yet the live domain |
 | `npm run docs:compose` | Compose `DocIndex` from kernel catalogs + authored chapters (throws on drift) |
-| `npm run lint:docs` | Compose, then Biome-check TypeScript fences extracted from `tmp/docs-scratch` |
+| `npm run lint:docs` | Compose, Biome-check scratch snippets, and fail authored `/docs` copy that uses a banned AI-ism |
 | `npm run theoremai:ensure` | Symlink the sibling `../theoremai` checkout |
 | `npm run theoremai:pull` | Fast-forward sibling `../theoremai` to `origin/main` |
 

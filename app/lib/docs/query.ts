@@ -2,65 +2,54 @@
  * Th30 read / search / navigate over the composed index. One projector.
  */
 
-import { fragmentLabel } from './headings';
 import { formatWithLineNumbers, projectArticleText, projectBlockText } from './project-text';
-import type { DocArticle, DocIndex, ResolvedBlock } from './schema';
+import type { DocArticle, DocIndex } from './schema';
+
+/** Display label for a fragment: authored block title, else catalog id as written. */
+function fragmentTitle(article: DocArticle, id: string): string {
+	const block = article.blocks.find((item) => item.id === id);
+	if (block?.kind === 'prose') return block.title;
+	if (block?.kind === 'code' && block.title) return block.title;
+	const symbol = article.symbols.find((item) => item.id === id);
+	if (symbol?.kind === 'field') return symbol.path;
+	if (symbol?.kind === 'union-member') return symbol.value;
+	if (symbol?.kind === 'trace' || symbol?.kind === 'lexicon') return symbol.key;
+	if (id.includes('.')) return id;
+	const colon = id.lastIndexOf(':');
+	return colon === -1 ? id : id.slice(colon + 1);
+}
 
 export function articleHref(article: Pick<DocArticle, 'canonicalPath'>, blockId?: string): string {
 	return blockId ? `${article.canonicalPath}#${blockId}` : article.canonicalPath;
 }
 
-export function articleHasBlock(article: DocArticle, blockId: string): boolean {
-	if (article.blocks.some((block) => block.id === blockId)) return true;
-	return article.blocks.some((block) => blockIdsIn(block).includes(blockId));
+export function chapterNeighbors(
+	index: DocIndex,
+	slug: string,
+): { prev?: DocArticle; next?: DocArticle } {
+	const slugs = index.tree.flatMap((node) => (node.slug === undefined ? [] : [node.slug]));
+	const at = slugs.indexOf(slug);
+	if (at < 0) return {};
+	const prevSlug = at > 0 ? slugs[at - 1] : undefined;
+	const nextSlug = at < slugs.length - 1 ? slugs[at + 1] : undefined;
+	return {
+		prev: prevSlug === undefined ? undefined : index.bySlug[prevSlug],
+		next: nextSlug === undefined ? undefined : index.bySlug[nextSlug],
+	};
 }
 
-function blockIdsIn(block: ResolvedBlock): string[] {
-	if (block.kind === 'facts') return block.items.map((item) => item.id);
-	if (block.kind === 'fields') return block.rows.map((row) => row.path);
-	if (block.kind === 'union') {
-		return block.members.flatMap((member) =>
-			member.doc ? [`${block.id}:${member.value}`] : [member.value],
-		);
-	}
-	if (block.kind === 'trace' || block.kind === 'lexicon') {
-		return block.rows.map((row) => `${block.id}:${row.key}`);
-	}
-	return [];
+export function articleHasBlock(article: DocArticle, blockId: string): boolean {
+	if (article.symbols.some((symbol) => symbol.id === blockId)) return true;
+	return article.blocks.some((block) => block.id === blockId);
 }
 
 function isolateFragment(article: DocArticle, fragment: string): DocArticle | undefined {
 	const exact = article.blocks.find((block) => block.id === fragment);
-	if (exact) return { ...article, blocks: [exact] };
+	if (exact) return { ...article, blocks: [exact], symbols: [] };
 
-	for (const block of article.blocks) {
-		if (block.kind === 'fields') {
-			const row = block.rows.find((item) => item.path === fragment);
-			if (row) return { ...article, blocks: [{ ...block, rows: [row] }] };
-		}
-		if (block.kind === 'facts') {
-			const item = block.items.find((fact) => fact.id === fragment);
-			if (item) return { ...article, blocks: [{ ...block, items: [item] }] };
-		}
-		if (block.kind === 'union') {
-			const member = block.members.find(
-				(entry) => entry.value === fragment || `${block.id}:${entry.value}` === fragment,
-			);
-			if (member) return { ...article, blocks: [{ ...block, members: [member] }] };
-		}
-		if (block.kind === 'trace') {
-			const row = block.rows.find(
-				(entry) => entry.key === fragment || `${block.id}:${entry.key}` === fragment,
-			);
-			if (row) return { ...article, blocks: [{ ...block, rows: [row] }] };
-		}
-		if (block.kind === 'lexicon') {
-			const row = block.rows.find(
-				(entry) => entry.key === fragment || `${block.id}:${entry.key}` === fragment,
-			);
-			if (row) return { ...article, blocks: [{ ...block, rows: [row] }] };
-		}
-	}
+	const symbol = article.symbols.find((item) => item.id === fragment);
+	if (symbol) return { ...article, blocks: [], symbols: [symbol] };
+
 	return undefined;
 }
 
@@ -87,10 +76,10 @@ export function readDoc(
 	const trimmed = target.trim();
 	if (trimmed === 'full_page' || trimmed === 'all') {
 		const text = index.articles.map((article) => projectArticleText(article, detail)).join('\n\n');
-		const formatted = formatWithLineNumbers('THEOREM docs', text);
+		const formatted = formatWithLineNumbers('Theorem docs', text);
 		return {
 			target: 'full_page',
-			title: 'THEOREM docs',
+			title: 'Theorem docs',
 			content: formatted,
 			lineCount: text.split('\n').length,
 		};
@@ -183,62 +172,43 @@ function fragmentTargets(article: DocArticle): FragmentTarget[] {
 			excerpt: clipExcerpt(blockText),
 			kind: 'block',
 		});
-		if (block.kind === 'fields') {
-			for (const row of block.rows) {
-				const unset = row.meta.unset ? ` Omit → ${row.meta.unset}.` : '';
-				const excerpt = row.meta.doc;
-				out.push({
-					id: row.path,
-					hay: `${row.path} — ${excerpt}${unset}`.toLowerCase(),
-					excerpt,
-					kind: 'leaf',
-				});
-			}
+	}
+	for (const symbol of article.symbols) {
+		if (symbol.kind === 'field') {
+			const unset = symbol.meta.unset ? ` Omit → ${symbol.meta.unset}.` : '';
+			out.push({
+				id: symbol.id,
+				hay: `${symbol.path} — ${symbol.meta.doc}${unset}`.toLowerCase(),
+				excerpt: symbol.meta.doc,
+				kind: 'leaf',
+			});
+			continue;
 		}
-		if (block.kind === 'facts') {
-			for (const item of block.items) {
-				const excerpt = `${item.label}: ${item.value}`;
-				out.push({
-					id: item.id,
-					hay: `${item.id} ${excerpt}`.toLowerCase(),
-					excerpt,
-					kind: 'leaf',
-				});
-			}
+		if (symbol.kind === 'union-member') {
+			out.push({
+				id: symbol.id,
+				hay: `${symbol.value} ${symbol.union} ${symbol.doc}`.toLowerCase(),
+				excerpt: symbol.doc || symbol.value,
+				kind: 'leaf',
+			});
+			continue;
 		}
-		if (block.kind === 'union') {
-			for (const member of block.members) {
-				const id = member.doc ? `${block.id}:${member.value}` : member.value;
-				const excerpt = member.doc || member.value;
-				out.push({
-					id,
-					hay: excerpt.toLowerCase(),
-					excerpt,
-					kind: 'leaf',
-				});
-			}
+		if (symbol.kind === 'trace') {
+			const excerpt = `${symbol.label}. ${symbol.doc}`;
+			out.push({
+				id: symbol.id,
+				hay: `${symbol.key} — ${excerpt}`.toLowerCase(),
+				excerpt,
+				kind: 'leaf',
+			});
+			continue;
 		}
-		if (block.kind === 'trace') {
-			for (const row of block.rows) {
-				const excerpt = `${row.label}. ${row.doc}`;
-				out.push({
-					id: `${block.id}:${row.key}`,
-					hay: `${row.key} — ${excerpt}`.toLowerCase(),
-					excerpt,
-					kind: 'leaf',
-				});
-			}
-		}
-		if (block.kind === 'lexicon') {
-			for (const row of block.rows) {
-				out.push({
-					id: `${block.id}:${row.key}`,
-					hay: `${row.key} — ${row.defaultText}`.toLowerCase(),
-					excerpt: row.defaultText,
-					kind: 'leaf',
-				});
-			}
-		}
+		out.push({
+			id: symbol.id,
+			hay: `${symbol.key} — ${symbol.text}`.toLowerCase(),
+			excerpt: symbol.text,
+			kind: 'leaf',
+		});
 	}
 	return out;
 }
@@ -317,7 +287,7 @@ export function searchDocs(
 			for (const hit of collapseIdHits(idHits, terms)) {
 				ranked.push({
 					slug: article.slug,
-					title: fragmentLabel(hit.target.id),
+					title: fragmentTitle(article, hit.target.id),
 					href: articleHref(article, hit.target.id),
 					excerpt: hit.target.excerpt,
 					score: hit.score + chrome,
@@ -340,7 +310,7 @@ export function searchDocs(
 		if (bestText) {
 			ranked.push({
 				slug: article.slug,
-				title: fragmentLabel(bestText.target.id),
+				title: fragmentTitle(article, bestText.target.id),
 				href: articleHref(article, bestText.target.id),
 				excerpt: bestText.target.excerpt,
 				score: bestText.score,

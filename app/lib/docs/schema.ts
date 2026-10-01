@@ -4,7 +4,7 @@
  */
 
 import type * as SchemaModule from '@theoremai/agents/schema';
-import type { FieldMeta, ProfileGraphFacetId } from '@theoremai/agents/schema';
+import type { FieldMeta } from '@theoremai/agents/schema';
 
 export const DOC_KINDS = ['guide', 'reference', 'tutorial', 'concept'] as const;
 export type DocKind = (typeof DOC_KINDS)[number];
@@ -12,17 +12,18 @@ export type DocKind = (typeof DOC_KINDS)[number];
 /** Section ids = the IA tree, not PROFILE_GRAPH. */
 export const DOC_SECTIONS = [
 	'start',
-	'runner',
-	'profiles',
+	'modalities',
+	'identity',
+	'models',
 	'tools',
+	'inputs',
+	'outputs',
+	'turn-behaviour',
 	'guardrails',
-	'observability',
-	'providers',
+	'traces',
+	'statuses',
+	'runner',
 	'interface',
-	'ui',
-	'playground',
-	'host',
-	'cli',
 ] as const;
 export type DocSection = (typeof DOC_SECTIONS)[number];
 
@@ -41,19 +42,6 @@ export type ArrayUnionName = {
 	[K in keyof typeof SchemaModule]: (typeof SchemaModule)[K] extends readonly string[] ? K : never;
 }[keyof typeof SchemaModule];
 
-export type PairTableName = 'PROFILE_TYPE_PROTOCOLS' | 'PROTOCOL_PROVIDERS';
-
-export type DocFact =
-	| {
-			id: string;
-			label: string;
-			from: 'field';
-			path: string;
-			show: 'unset' | 'required' | 'type' | 'profileTypes';
-	  }
-	| { id: string; label: string; from: 'union'; union: ArrayUnionName; member: string }
-	| { id: string; label: string; from: 'pairs'; table: PairTableName; key: string };
-
 export type DocAction =
 	| { kind: 'playground'; seed: PlaygroundSeedId }
 	| { kind: 'copy'; blockId: string }
@@ -61,72 +49,61 @@ export type DocAction =
 
 export type CodeSource =
 	| { from: 'seed'; seed: PlaygroundSeedId }
-	| { from: 'readme'; heading: string; nth: number; sha256: string };
+	| { from: 'readme'; heading: string; nth: number; sha256: string }
+	| { from: 'literal'; lang: 'ts' | 'bash'; code: string };
 
 export type AuthoredBlock =
 	| { id: string; kind: 'lede'; text: string }
-	| { id: string; kind: 'prose'; text: string }
+	| { id: string; kind: 'prose'; title: string; text: string }
 	| { id: string; kind: 'media'; media: DocMediaRef }
-	| { id: string; kind: 'code'; source: CodeSource }
+	| { id: string; kind: 'code'; title?: string; source: CodeSource }
 	| { id: string; kind: 'callout'; tone: 'note' | 'warn'; text: string }
-	| { id: string; kind: 'facts'; items: readonly DocFact[] }
-	| { id: string; kind: 'catalog.fields'; paths: readonly string[] | { prefix: string } }
-	| { id: string; kind: 'catalog.union'; union: ArrayUnionName }
-	| { id: string; kind: 'catalog.trace'; group?: string }
-	| { id: string; kind: 'catalog.lexicon'; keys?: readonly string[] }
+	/** Copyable prompt for a coding agent — not a Banner note. */
+	| { id: string; kind: 'agent.paste'; prompt: string }
 	| { id: string; kind: 'embed.playground'; seed: PlaygroundSeedId };
 
-export type DocBlockKind = AuthoredBlock['kind'];
-
-export type DocHeading = readonly [string, ...string[]];
-
-export type DocPlacement = {
-	page: DocSection;
-	heading: DocHeading;
-};
-
-export type CatalogReplace =
-	| { kind: 'catalog.facet'; id: ProfileGraphFacetId }
-	| { kind: 'catalog.union'; union: ArrayUnionName }
-	| { kind: 'catalog.trace'; group?: string }
-	| { kind: 'catalog.lexicon' };
-
-/** Authored overlay only. Generated articles never use this type. */
+/** Authored overlay only. Catalog rows are composed onto `symbols`, not authored blocks. */
 export type DocArticleDef = {
 	id: string;
 	slug: string;
 	title: string;
 	topic: DocSection;
+	/** Kernel-relative file this chapter opens on GitHub. */
+	entry: string;
 	kind: Exclude<DocKind, 'reference'>;
 	summary: string;
 	cover?: DocMediaRef;
 	suggest?: { rank: 1 | 2 | 3 | 4; blockId?: string };
-	tree: { parent?: string; order: number };
-	replaces?: CatalogReplace | readonly CatalogReplace[];
-	related?: readonly string[];
 	actions?: readonly DocAction[];
+	/** Shown as “This page answers” before the body. Agreed questions only. */
+	questions?: readonly { question: string }[];
 	faq?: readonly { question: string; answer: string }[];
 	blocks: readonly AuthoredBlock[];
 };
 
-export type ResolvedFact = { id: string; label: string; value: string };
-
-export type ResolvedFieldRow = { path: string; meta: FieldMeta };
-
-export type ResolvedUnionMember = { value: string; doc: string };
-
-export type ResolvedTraceRow = { key: string; label: string; doc: string };
-
-export type ResolvedLexiconRow = { key: string; defaultText: string };
+/** Catalog rows owned by a topic page — rendered as a filterable dictionary. */
+export type PageSymbol =
+	| { kind: 'field'; id: string; path: string; meta: FieldMeta }
+	| {
+			kind: 'union-member';
+			id: string;
+			union: ArrayUnionName;
+			value: string;
+			doc: string;
+	  }
+	| { kind: 'trace'; id: string; key: string; label: string; doc: string }
+	| { kind: 'lexicon'; id: string; key: string; text: string };
 
 export type ResolvedBlock =
-	| Extract<AuthoredBlock, { kind: 'lede' | 'prose' | 'media' | 'callout' }>
-	| { id: string; kind: 'facts'; items: readonly ResolvedFact[] }
-	| { id: string; kind: 'fields'; rows: readonly ResolvedFieldRow[] }
-	| { id: string; kind: 'union'; name: ArrayUnionName; members: readonly ResolvedUnionMember[] }
-	| { id: string; kind: 'trace'; rows: readonly ResolvedTraceRow[] }
-	| { id: string; kind: 'lexicon'; rows: readonly ResolvedLexiconRow[] }
-	| { id: string; kind: 'code'; lang: 'ts' | 'bash'; code: string; source: CodeSource }
+	| Extract<AuthoredBlock, { kind: 'lede' | 'prose' | 'media' | 'callout' | 'agent.paste' }>
+	| {
+			id: string;
+			kind: 'code';
+			title?: string;
+			lang: 'ts' | 'bash';
+			code: string;
+			source: CodeSource;
+	  }
 	| { id: string; kind: 'embed.playground'; seed: PlaygroundSeedId };
 
 export type DocArticle = {
@@ -134,15 +111,14 @@ export type DocArticle = {
 	slug: string;
 	title: string;
 	topic: DocSection;
+	entry: string;
 	kind: DocKind;
 	summary: string;
 	cover?: DocMediaRef;
 	suggest?: { rank: 1 | 2 | 3 | 4; blockId?: string };
-	tree: { parent?: string; order: number };
-	related: readonly string[];
 	actions: readonly DocAction[];
+	questions: readonly { question: string }[];
 	faq: readonly { question: string; answer: string }[];
-	origin: 'authored' | 'catalog';
 	canonicalPath: string;
 	truth: {
 		kernelVersion: string;
@@ -154,6 +130,8 @@ export type DocArticle = {
 	/** ISO from `git log -1 --format=%cI` on source files; omitted when git cannot answer. */
 	dateModified?: string;
 	blocks: readonly ResolvedBlock[];
+	/** Facet fields, worthy-union members, and the trace or lexicon catalog this topic owns. */
+	symbols: readonly PageSymbol[];
 };
 
 export type DocTreeNode = {

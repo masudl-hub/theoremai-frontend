@@ -41,7 +41,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 			<RetiredHashRedirect />
 			<HeroVideo src="/hero/valley.mp4" poster="/hero/valley.webp">
 				<VStack height="100%" justify="end" gap={2} padding={10}>
-					<Text type="label">{loaderData.version}</Text>
+					<Text type="label">@{loaderData.version}</Text>
 					<Heading level={1} type="wordmark" hasCapsize>
 						THEOREM
 					</Heading>

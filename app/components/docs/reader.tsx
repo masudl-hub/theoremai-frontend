@@ -1,6 +1,9 @@
+import { Card } from '@astryxdesign/core/Card';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
+import { IconButton } from '@astryxdesign/core/IconButton';
 import { Layout, LayoutContent, LayoutPanel } from '@astryxdesign/core/Layout';
+import { Link as AstryxLink } from '@astryxdesign/core/Link';
 import { Outline, type OutlineItem } from '@astryxdesign/core/Outline';
 import { ResizeHandle, useResizable } from '@astryxdesign/core/Resizable';
 import { ScrollableArea } from '@astryxdesign/core/ScrollableArea';
@@ -9,17 +12,31 @@ import { SideNavItem, SideNavSection } from '@astryxdesign/core/SideNav';
 import { StackItem } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
+import { Token } from '@astryxdesign/core/Token';
 import { MediaTheme } from '@astryxdesign/core/theme';
 import { VStack } from '@astryxdesign/core/VStack';
-import { IconSearch } from '@tabler/icons-react';
-import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router';
+import { IconBrandGithub, IconMenu2, IconSearch, IconX } from '@tabler/icons-react';
+import {
+	type CSSProperties,
+	type ReactNode,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from 'react';
+import { useLocation } from 'react-router';
 import { chapterIcon } from '../../lib/docs/chapter-icons';
-import { articleHref, type DocSearchHit, searchDocs } from '../../lib/docs/query';
+import { chapterGithubHref } from '../../lib/docs/chapter-source';
+import { projectArticleText } from '../../lib/docs/project-text';
+import { articleHref, chapterNeighbors, type DocSearchHit, searchDocs } from '../../lib/docs/query';
 import type { DocArticle, DocIndex, DocTreeNode } from '../../lib/docs/schema';
 import { stillFilter } from '../../lib/docs/still-match';
-import { scrollToBlock } from '../../lib/docs/th30-client';
-import { DocsBlock } from './blocks';
+import { NewTabLink } from '../links';
+import { holdDocsArticleTransition } from './article-transition';
+import { DocsBlock, QuestionsStrip } from './blocks';
+import { CopyIconButton } from './copy-button';
+import { PageDictionary } from './dictionary';
 import '../hero-video.css';
 
 const SEARCH_LIMIT = 64;
@@ -27,6 +44,28 @@ const SEARCH_LIMIT = 64;
 function hashBlockId(hash: string): string | undefined {
 	const id = decodeURIComponent(hash.replace(/^#/, ''));
 	return id || undefined;
+}
+
+/** Same landing the outline uses: smooth, at the start of the scrollport. */
+function scrollToOutlineTarget(blockId: string): void {
+	document.getElementById(blockId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/**
+ * Router scroll restoration runs after this component's layout effect and
+ * calls `scrollIntoView()` on the hash target. Drop the id until that effect
+ * has run so an article change stays at the top of the new page.
+ */
+function concealHashTarget(): void {
+	const id = hashBlockId(window.location.hash);
+	if (!id) return;
+	const el = document.getElementById(id);
+	if (!el) return;
+	const restore = el.id;
+	el.removeAttribute('id');
+	queueMicrotask(() => {
+		if (el.id.length === 0) el.id = restore;
+	});
 }
 
 function nodeHref(node: DocTreeNode): string | undefined {
@@ -57,6 +96,7 @@ function DocsNavItem({
 	expandAll,
 	opened,
 	onOpenChange,
+	onSection,
 }: {
 	node: DocTreeNode;
 	article: DocArticle | undefined;
@@ -64,6 +104,7 @@ function DocsNavItem({
 	expandAll: boolean;
 	opened: ReadonlySet<string>;
 	onOpenChange: (id: string, collapsed: boolean) => void;
+	onSection: (blockId: string) => void;
 }) {
 	const onArticle = article !== undefined && node.slug === article.slug;
 	const selected = onArticle && (node.blockId ? node.blockId === hashId : hashId === undefined);
@@ -73,12 +114,22 @@ function DocsNavItem({
 		(article !== undefined && node.id === article.topic) ||
 		opened.has(node.id);
 	const href = nodeHref(node);
+	const sectionId = onArticle ? node.blockId : undefined;
 	return (
 		<SideNavItem
 			label={node.label}
 			href={href}
 			icon={node.blockId === undefined ? chapterIcon(node.id) : undefined}
 			isSelected={selected}
+			onClick={
+				sectionId === undefined
+					? undefined
+					: (event) => {
+							if (event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) return;
+							event.preventDefault();
+							onSection(sectionId);
+						}
+			}
 			collapsible={
 				node.children.length
 					? {
@@ -100,6 +151,7 @@ function DocsNavItem({
 							expandAll={expandAll}
 							opened={opened}
 							onOpenChange={onOpenChange}
+							onSection={onSection}
 						/>
 					))
 				: undefined}
@@ -118,6 +170,90 @@ function outlineNodes(index: DocIndex, article: DocArticle): readonly DocTreeNod
 	return index.tree.find((node) => node.id === article.topic)?.children ?? [];
 }
 
+function ChapterPane({
+	updated,
+	query,
+	onQueryChange,
+	tree,
+	article,
+	hashId,
+	searching,
+	opened,
+	onOpenChange,
+	onSection,
+	onClose,
+}: {
+	updated: string | undefined;
+	query: string;
+	onQueryChange: (value: string) => void;
+	tree: readonly DocTreeNode[];
+	article: DocArticle | undefined;
+	hashId: string | undefined;
+	searching: boolean;
+	opened: ReadonlySet<string>;
+	onOpenChange: (id: string, collapsed: boolean) => void;
+	onSection: (blockId: string) => void;
+	onClose?: () => void;
+}) {
+	return (
+		<Section variant="raised" height="100%" padding={4}>
+			<VStack gap={4} height="100%">
+				<VStack gap={1}>
+					<HStack vAlign="center" gap={2}>
+						<StackItem size="fill">
+							<Heading level={3}>
+								<AstryxLink href="/docs" type="inherit" color="inherit" hasUnderline={false}>
+									Theorem Docs
+								</AstryxLink>
+							</Heading>
+						</StackItem>
+						{onClose ? (
+							<IconButton
+								label="Close chapters"
+								icon={<IconX />}
+								variant="ghost"
+								onClick={onClose}
+							/>
+						) : null}
+					</HStack>
+					{updated ? (
+						<Text type="supporting" color="secondary">
+							{updated}
+						</Text>
+					) : null}
+				</VStack>
+				<TextInput
+					label="Search docs"
+					isLabelHidden
+					placeholder="Search"
+					value={query}
+					onChange={onQueryChange}
+					startIcon={IconSearch}
+					hasClear
+				/>
+				<StackItem size="fill">
+					<ScrollableArea label="Chapters" height="100%">
+						<SideNavSection title="Chapters" isHeaderHidden>
+							{tree.map((node) => (
+								<DocsNavItem
+									key={node.id}
+									node={node}
+									article={article}
+									hashId={hashId}
+									expandAll={searching}
+									opened={opened}
+									onOpenChange={onOpenChange}
+									onSection={onSection}
+								/>
+							))}
+						</SideNavSection>
+					</ScrollableArea>
+				</StackItem>
+			</VStack>
+		</Section>
+	);
+}
+
 const MONTHS = [
 	'Jan',
 	'Feb',
@@ -133,12 +269,17 @@ const MONTHS = [
 	'Dec',
 ] as const;
 
-function updatedOn(iso: string | undefined): string | undefined {
+function formatDay(iso: string | undefined): string | undefined {
 	const day = iso === undefined ? undefined : /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
 	if (!day) return undefined;
 	const monthIndex = Number(day[2]) - 1;
 	if (!Number.isInteger(monthIndex) || monthIndex < 0 || monthIndex > 11) return undefined;
-	return `Last updated: ${MONTHS[monthIndex]} ${String(Number(day[3]))}, ${day[1]}`;
+	return `${MONTHS[monthIndex]} ${String(Number(day[3]))}, ${day[1]}`;
+}
+
+function docsUpdatedOn(iso: string | undefined): string | undefined {
+	const day = formatDay(iso);
+	return day === undefined ? undefined : `Docs updated: ${day}`;
 }
 
 function latestModified(index: DocIndex): string | undefined {
@@ -154,13 +295,16 @@ export function DocsFrame({
 	index,
 	article,
 	hashId,
+	onSection,
 	children,
 }: {
 	index: DocIndex;
 	article?: DocArticle;
 	hashId?: string;
+	onSection?: (blockId: string) => void;
 	children: ReactNode;
 }) {
+	const { pathname, hash } = useLocation();
 	const layoutRef = useRef<HTMLDivElement>(null);
 	const treePanel = useResizable({
 		defaultSize: '20%',
@@ -170,7 +314,29 @@ export function DocsFrame({
 	});
 	const [query, setQuery] = useState('');
 	const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
-	const updated = updatedOn(article?.dateModified ?? latestModified(index));
+	const [chaptersOpen, setChaptersOpen] = useState(false);
+	useEffect(() => {
+		const here = `${pathname}${hash}`;
+		if (here.length > 0) setChaptersOpen(false);
+	}, [pathname, hash]);
+	useEffect(() => {
+		if (!chaptersOpen) return;
+		const onKey = (event: KeyboardEvent) => {
+			if (event.key === 'Escape') setChaptersOpen(false);
+		};
+		document.addEventListener('keydown', onKey);
+		return () => {
+			document.removeEventListener('keydown', onKey);
+		};
+	}, [chaptersOpen]);
+	const closeChapters = () => {
+		setChaptersOpen(false);
+	};
+	const chooseSection = (blockId: string) => {
+		setChaptersOpen(false);
+		onSection?.(blockId);
+	};
+	const updated = docsUpdatedOn(latestModified(index));
 	const searching = query.trim().length > 0;
 	const tree = useMemo(() => {
 		if (!searching) return [...index.tree];
@@ -188,10 +354,12 @@ export function DocsFrame({
 	return (
 		<Layout
 			ref={layoutRef}
+			className="docs-frame"
 			padding={0}
 			start={
 				<>
 					<LayoutPanel
+						className="docs-tree"
 						resizable={treePanel.props}
 						padding={0}
 						role="navigation"
@@ -199,46 +367,21 @@ export function DocsFrame({
 						isScrollable={false}
 						hasDivider
 					>
-						<Section variant="raised" height="100%" padding={4}>
-							<VStack gap={4} height="100%">
-								<VStack gap={1}>
-									<Heading level={3}>Theorem Docs</Heading>
-									{updated ? (
-										<Text type="supporting" color="secondary">
-											{updated}
-										</Text>
-									) : null}
-								</VStack>
-								<TextInput
-									label="Search docs"
-									isLabelHidden
-									placeholder="Search"
-									value={query}
-									onChange={setQuery}
-									startIcon={IconSearch}
-									hasClear
-								/>
-								<StackItem size="fill">
-									<ScrollableArea label="Chapters" height="100%">
-										<SideNavSection title="Chapters" isHeaderHidden>
-											{tree.map((node) => (
-												<DocsNavItem
-													key={node.id}
-													node={node}
-													article={article}
-													hashId={hashId}
-													expandAll={searching}
-													opened={opened}
-													onOpenChange={onOpenChange}
-												/>
-											))}
-										</SideNavSection>
-									</ScrollableArea>
-								</StackItem>
-							</VStack>
-						</Section>
+						<ChapterPane
+							updated={updated}
+							query={query}
+							onQueryChange={setQuery}
+							tree={tree}
+							article={article}
+							hashId={hashId}
+							searching={searching}
+							opened={opened}
+							onOpenChange={onOpenChange}
+							onSection={chooseSection}
+						/>
 					</LayoutPanel>
 					<ResizeHandle
+						className="docs-tree-handle"
 						direction="horizontal"
 						isAlwaysVisible={false}
 						resizable={treePanel.props}
@@ -246,7 +389,49 @@ export function DocsFrame({
 					/>
 				</>
 			}
-			content={children}
+			content={
+				<>
+					<div className="docs-chapters-launch">
+						<MediaTheme mode="dark">
+							<IconButton
+								label="Chapters"
+								icon={<IconMenu2 />}
+								onClick={() => {
+									setChaptersOpen(true);
+								}}
+							/>
+						</MediaTheme>
+					</div>
+					{children}
+					{chaptersOpen ? (
+						<div className="docs-chapters-sheet" role="dialog" aria-label="Chapters">
+							<ChapterPane
+								updated={updated}
+								query={query}
+								onQueryChange={setQuery}
+								tree={tree}
+								article={article}
+								hashId={hashId}
+								searching={searching}
+								opened={opened}
+								onOpenChange={onOpenChange}
+								onSection={chooseSection}
+								onClose={closeChapters}
+							/>
+						</div>
+					) : null}
+				</>
+			}
+		/>
+	);
+}
+
+function CopyMarkdownButton({ article }: { article: DocArticle }) {
+	return (
+		<CopyIconButton
+			label="Copy markdown"
+			copiedLabel="Copied markdown"
+			text={projectArticleText(article)}
 		/>
 	);
 }
@@ -254,31 +439,52 @@ export function DocsFrame({
 function ArticleStill({ article }: { article: DocArticle }) {
 	const cover = article.cover;
 	if (!cover) return null;
+	const updated = formatDay(article.dateModified);
+	const source = chapterGithubHref(article.entry);
 	const stillPaint = {
 		position: 'absolute',
 		inset: 0,
 		backgroundImage: `url("${cover.src}")`,
-		backgroundSize: '100% auto',
-		backgroundRepeat: 'no-repeat',
-		backgroundPosition: 'center',
 		pointerEvents: 'none',
 		...stillFilter(cover.src),
 	} as CSSProperties;
 
 	return (
-		<VStack height="20%">
-			<div className="hero-video-frame">
-				<div aria-hidden style={stillPaint} />
-				<div className="hero-scrim">
-					<MediaTheme mode="dark">
+		<VStack className="docs-still">
+			<Card padding={0} height="100%">
+				<div className="hero-video-frame">
+					<div aria-hidden className="docs-still-paint" style={stillPaint} />
+					<div className="hero-scrim">
 						<VStack height="100%" justify="end" gap={2} padding={4}>
-							<Heading level={1} hasCapsize>
-								{article.title}
-							</Heading>
+							<MediaTheme mode="dark">
+								<Heading level={1} hasCapsize>
+									{article.title}
+								</Heading>
+							</MediaTheme>
+							<HStack gap={2} wrap="wrap" vAlign="center">
+								{updated ? <Token label={updated} /> : null}
+								<Token label={`${String(article.ttrMinutes)} min`} />
+								<MediaTheme mode="dark">
+									<HStack gap={2} vAlign="center">
+										<CopyMarkdownButton article={article} />
+										{source ? (
+											<IconButton
+												label="Source on GitHub"
+												tooltip="Source on GitHub"
+												variant="ghost"
+												size="sm"
+												icon={<IconBrandGithub />}
+												href={source}
+												as={NewTabLink}
+											/>
+										) : null}
+									</HStack>
+								</MediaTheme>
+							</HStack>
 						</VStack>
-					</MediaTheme>
+					</div>
 				</div>
-			</div>
+			</Card>
 		</VStack>
 	);
 }
@@ -290,43 +496,80 @@ export function DocsReader({ index, article }: { index: DocIndex; article: DocAr
 	useEffect(() => {
 		setHashReady(true);
 	}, []);
-	const hashId = hashReady ? hashBlockId(hash) : undefined;
+	const locationKey = `${article.slug}\n${hash}`;
+	const [sectionPick, setSectionPick] = useState<{ key: string; id: string } | null>(null);
+	const pickedId =
+		sectionPick !== null && sectionPick.key === locationKey ? sectionPick.id : undefined;
+	const hashId = pickedId ?? (hashReady ? hashBlockId(hash) : undefined);
 	const outline = outlineItems(outlineNodes(index, article));
+	const { prev, next } = chapterNeighbors(index, article.slug);
 	const contentRef = useRef<HTMLDivElement>(null);
+	const slugRef = useRef<string | null>(null);
+	const suppressScrollSlug = useRef<string | null>(null);
 
-	const pageKey = `${article.slug}#${hashId ?? ''}`;
+	useLayoutEffect(() => {
+		const previous = slugRef.current;
+		slugRef.current = article.slug;
+		if (previous === null || previous === article.slug) return;
+		suppressScrollSlug.current = article.slug;
+		const container = contentRef.current;
+		if (container) container.scrollTop = 0;
+		concealHashTarget();
+		holdDocsArticleTransition();
+	}, [article.slug]);
+
 	useEffect(() => {
-		const fragment = pageKey.split('#')[1];
-		if (!fragment) return;
-		const frame = window.requestAnimationFrame(() => {
-			scrollToBlock(fragment);
-		});
-		return () => {
-			window.cancelAnimationFrame(frame);
-		};
-	}, [pageKey]);
+		if (suppressScrollSlug.current === article.slug) {
+			suppressScrollSlug.current = null;
+			return;
+		}
+		if (!hashId) return;
+		scrollToOutlineTarget(hashId);
+	}, [article.slug, hashId]);
+
+	const selectSection = (blockId: string) => {
+		const nextHash = `#${blockId}`;
+		if (hashBlockId(window.location.hash) !== blockId) {
+			window.history.pushState(null, '', nextHash);
+		}
+		// Already on this section: the hash effect will not run again, so scroll here.
+		if (hashId === blockId) {
+			scrollToOutlineTarget(blockId);
+			return;
+		}
+		setSectionPick({ key: locationKey, id: blockId });
+	};
 
 	return (
-		<DocsFrame index={index} article={article} hashId={hashId}>
+		<DocsFrame index={index} article={article} hashId={hashId} onSection={selectSection}>
 			<LayoutContent ref={contentRef} padding={0} className="docs-reader">
 				<ArticleStill article={article} />
-				<HStack align="start">
+				<HStack className="docs-article" align="start">
 					<StackItem size="fill">
 						<VStack gap={6} padding={8}>
+							<QuestionsStrip questions={article.questions} />
 							{article.blocks.map((block) => (
 								<DocsBlock key={block.id} block={block} />
 							))}
-							{article.related.length ? (
-								<HStack gap={3}>
-									{article.related.flatMap((slug) => {
-										const related = index.bySlug[slug];
-										if (related === undefined) return [];
-										return [
-											<Link key={slug} to={related.canonicalPath}>
-												{related.title}
-											</Link>,
-										];
-									})}
+							<PageDictionary symbols={article.symbols} />
+							{prev || next ? (
+								<HStack justify={prev ? 'between' : 'end'} wrap="wrap" gap={4}>
+									{prev ? (
+										<VStack gap={1}>
+											<Text type="supporting" color="secondary">
+												Previous
+											</Text>
+											<AstryxLink href={prev.canonicalPath}>{prev.title}</AstryxLink>
+										</VStack>
+									) : null}
+									{next ? (
+										<VStack gap={1} align="end">
+											<Text type="supporting" color="secondary">
+												Next
+											</Text>
+											<AstryxLink href={next.canonicalPath}>{next.title}</AstryxLink>
+										</VStack>
+									) : null}
 								</HStack>
 							) : null}
 						</VStack>

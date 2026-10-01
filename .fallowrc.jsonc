@@ -44,6 +44,9 @@
 		"@react-router/dev"
 	],
 	"ignoreExportsUsedInFile": true,
+	// compose.ts is a Vite build root: scripts/docs-index-plugin.mjs loads it with
+	// ssrLoadModule, which fallow cannot follow. Seeding it keeps the catalog graph live.
+	"entry": ["app/lib/docs/compose.ts"],
 	// Durable Objects are called by the runtime (`alarm`) and through a stub, a
 	// proxy fallow cannot follow (`playgroundSteerInbox` calls the RPC methods).
 	"usedClassMembers": [

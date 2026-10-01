@@ -21,6 +21,8 @@ import { theoremSiteTheme } from '../built/theorem-site';
 import '../components/docs/docs.css';
 import '../components/page-transition.css';
 import '../components/shell.css';
+import { holdDocsArticleTransition } from '../components/docs/article-transition';
+import { pageOwnsDocsNav } from '../components/docs/shell-slot';
 import { IconJsr } from '../components/jsr-icon';
 import { NewTabLink } from '../components/links';
 import { LogoMark } from '../components/logo-mark';
@@ -42,6 +44,8 @@ const PACKAGES = [
 export type ShellHandle = {
 	/** Put the page on the black base beside the rail instead of in the elevated panel. */
 	isOnBase?: boolean;
+	/** On a narrow screen the page's own menu takes the shell bar's place. */
+	docsOwnsNav?: boolean;
 };
 
 function isOnBase(handle: unknown): boolean {
@@ -49,8 +53,33 @@ function isOnBase(handle: unknown): boolean {
 }
 
 /** In-app links crossfade the page panel. The rail is not part of that snapshot. */
-function ShellLink(props: LinkProps) {
-	return <Link {...props} viewTransition />;
+function ShellLink({ onClick, to, ...props }: LinkProps) {
+	const location = useLocation();
+	return (
+		<Link
+			{...props}
+			to={to}
+			viewTransition
+			onClick={(event) => {
+				onClick?.(event);
+				if (event.defaultPrevented) return;
+				if (
+					event.button !== 0 ||
+					event.metaKey ||
+					event.altKey ||
+					event.ctrlKey ||
+					event.shiftKey
+				) {
+					return;
+				}
+				const href = typeof to === 'string' ? to : undefined;
+				if (!href?.startsWith('/docs/') || !location.pathname.startsWith('/docs/')) return;
+				const nextPath = href.split(/[?#]/)[0] ?? href;
+				if (nextPath === location.pathname) return;
+				holdDocsArticleTransition();
+			}}
+		/>
+	);
 }
 
 /** Rail and mobile top bar only. The drawer repeats footer icons, and this one does not belong there. */
@@ -77,13 +106,17 @@ function Th30Button() {
  */
 export default function Shell() {
 	const { pathname } = useLocation();
-	const onBase = useMatches().some((match) => isOnBase(match.handle));
+	const matches = useMatches();
+	const onBase = matches.some((match) => isOnBase(match.handle));
+	const pageOwnsNav = matches.some((match) => pageOwnsDocsNav(match.handle));
 
 	return (
 		<Th30Provider>
 			<LinkProvider component={ShellLink}>
 				<AppShell
+					className={pageOwnsNav ? 'docs-owns-nav' : undefined}
 					variant={onBase ? 'wash' : 'elevated'}
+					mobileNav={pageOwnsNav ? false : undefined}
 					sideNav={
 						<Theme theme={theoremSiteTheme} mode="dark">
 							<SideNav

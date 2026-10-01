@@ -6,13 +6,20 @@ export const STILL_MATCH: boolean = true;
 
 /** Landscape aerials (1536×656 and 1536×864). Reader headers and landing covers share these. */
 const WIDE_STILLS: ReadonlySet<string> = new Set([
+	'/imagery/th30_ambermeadow.png',
+	'/imagery/th30_basaltplanes.png',
+	'/imagery/th30_braidedriver.png',
+	'/imagery/th30_canyon.png',
 	'/imagery/th30_cherryblossoms.png',
 	'/imagery/th30_copperandobsidian.png',
 	'/imagery/th30_floodedpaddy.png',
 	'/imagery/th30_goldenmarsh.png',
 	'/imagery/th30_hayss.png',
+	'/imagery/th30_lilacfog.png',
+	'/imagery/th30_mineralhills.png',
 	'/imagery/th30_mistyforest.png',
 	'/imagery/th30_orchards.png',
+	'/imagery/th30_peninsula.png',
 	'/imagery/th30_reeds.png',
 	'/imagery/th30_roads.png',
 	'/imagery/th30_rustsand.png',
@@ -20,6 +27,8 @@ const WIDE_STILLS: ReadonlySet<string> = new Set([
 	'/imagery/th30_steppe.png',
 	'/imagery/th30_terracedgarden.png',
 	'/imagery/th30_tidalmudflats.png',
+	'/imagery/th30_tidalpools.png',
+	'/imagery/th30_wideorchard.png',
 	'/imagery/th30_wildflowerroad.png',
 ]);
 

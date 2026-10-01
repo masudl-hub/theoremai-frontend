@@ -8,7 +8,7 @@ export function meta() {
 		{ title: 'Docs · Theorem' },
 		{
 			name: 'description',
-			content: 'THEOREM docs: profiles, runner doors, and the catalogs they project.',
+			content: 'Theorem docs: how to define a profile and run a turn.',
 		},
 	];
 }

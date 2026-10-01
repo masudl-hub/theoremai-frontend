@@ -34,18 +34,20 @@ function optionDescriptionsFor(values: readonly string[]): Record<string, string
 function hostClauseFromTypeDoc(): string {
 	const doc = fieldMeta('type')?.doc;
 	if (!doc) throw new Error("fieldMeta('type') is missing");
-	const host = /host\s*=\s*([^.]+\.)/i.exec(doc);
-	if (!host?.[1]) {
-		throw new Error("fieldMeta('type').doc has no host = … clause to project");
+	const paren = /(?:^|[,\s])host\s*\(([^)]+)\)/i.exec(doc);
+	if (paren?.[1]) {
+		const clause = paren[1].trim();
+		return clause.charAt(0).toUpperCase() + clause.slice(1) + (clause.endsWith('.') ? '' : '.');
 	}
-	return host[1].trim();
+	const equals = /host\s*=\s*([^.]+\.)/i.exec(doc);
+	if (equals?.[1]) return equals[1].trim();
+	throw new Error("fieldMeta('type').doc has no host (…) or host = … clause to project");
 }
 
 function profileTypeDoc(type: ProfileType): string {
 	if (type === 'host') return hostClauseFromTypeDoc();
 	const protocols = PROFILE_TYPE_PROTOCOLS[type];
-	const protocolFact =
-		protocols.length === 0 ? 'Binds no protocol.' : `Legal protocols: ${protocols.join(', ')}.`;
+	const protocolFact = `Legal protocols: ${protocols.join(', ')}.`;
 	const pin = PROFILE_GRAPH.find((facet) => facet.id === type && facet.profilePath === type);
 	if (pin) return `Type-scoped pins live on ${pin.profilePath}. ${protocolFact}`;
 	if (type === 'text') return `No type-scoped pin facet. ${protocolFact}`;

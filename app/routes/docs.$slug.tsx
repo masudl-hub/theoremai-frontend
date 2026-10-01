@@ -1,4 +1,4 @@
-import { data } from 'react-router';
+import { data, redirect } from 'react-router';
 import { DocsNotFound } from '../components/docs/not-found';
 import { DocsReader } from '../components/docs/reader';
 import { getDocIndex } from '../lib/docs/.server/load-index';
@@ -9,6 +9,8 @@ export function loader({ params, request }: Route.LoaderArgs) {
 	const index = getDocIndex();
 	const article = index.bySlug[params.slug];
 	if (article === undefined) {
+		const retired = index.redirects.find((item) => item.from === `/docs/${params.slug}`);
+		if (retired) return redirect(retired.to);
 		return data({ ok: false as const, index, slug: params.slug }, { status: 404 });
 	}
 	const origin = new URL(request.url).origin;
