@@ -16,9 +16,11 @@
 		"allowImportingTsExtensions": true,
 		"forceConsistentCasingInFileNames": true,
 		"rootDirs": [".", "./.react-router/types"],
-		// @theoremjs/react is compiled from source and ships its own @types/react;
-		// resolve both to this install so their types unify.
+		// @theoremjs/react is compiled from source and ships its own @types/react and Astryx;
+		// resolve both to this install so their types unify (and the site theme's variants hold).
 		"paths": {
+			"@astryxdesign/core": ["./node_modules/@astryxdesign/core/dist/index.d.ts"],
+			"@astryxdesign/core/*": ["./node_modules/@astryxdesign/core/dist/*/index.d.ts"],
 			"react": ["./node_modules/@types/react"],
 			"react/*": ["./node_modules/@types/react/*"],
 			"react-dom": ["./node_modules/@types/react-dom"],

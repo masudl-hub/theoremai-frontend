@@ -3,6 +3,7 @@ import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { Theme } from '@astryxdesign/core/theme';
 import { IconMicrophone, IconMicrophoneOff } from '@tabler/icons-react';
 import { LiveSessionClient } from '@theoremjs/react/client';
+import { InkWaveform, type InkWaveStatus } from '@theoremjs/react/ui';
 import {
 	createContext,
 	type ReactNode,
@@ -65,7 +66,10 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 	const [isMuted, setMuted] = useState(false);
 	/** Why the last call failed, in the profile's own wording. */
 	const [failure, setFailure] = useState<string | null>(null);
+	const [status, setStatus] = useState<InkWaveStatus>('disconnected');
+	const [levels, setLevels] = useState({ input: 0, output: 0 });
 	const clientRef = useRef<LiveSessionClient | null>(null);
+	const chimeRef = useRef<ReturnType<typeof makeChime> | null>(null);
 	const navigate = useNavigate();
 
 	const applyTool = useCallback(
@@ -94,21 +98,35 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 	const stop = useCallback(() => {
 		clientRef.current?.disconnect();
 		clientRef.current = null;
+		chimeRef.current?.close();
+		chimeRef.current = null;
 		th30Voice.user = 0;
 		th30Voice.agent = 0;
 		setMuted(false);
+		setStatus('disconnected');
+		setLevels({ input: 0, output: 0 });
 		setPhase('idle');
 	}, []);
 
 	const start = useCallback(async () => {
 		if (clientRef.current) return;
+		const chime = makeChime();
+		chimeRef.current = chime;
+		let greeted = false;
 		const client = new LiveSessionClient({
 			profile: TH30_PROFILE_ID,
 			voiceIngress: true,
 			onStatusChange: (next) => {
 				if (clientRef.current !== client) return;
+				setStatus(next);
 				if (next === 'error') setPhase('failed');
 				else if (next !== 'connecting' && next !== 'disconnected') setPhase('live');
+				// Through: chime, then nudge th30 to greet first rather than wait for the caller.
+				if (next === 'listening' && !greeted) {
+					greeted = true;
+					chime.play();
+					client.sendText('(call connected)');
+				}
 			},
 			onError: (err) => {
 				if (clientRef.current !== client) return;
@@ -119,6 +137,7 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 			onVolumeLevel: (level, isUser) => {
 				if (isUser) th30Voice.user = level;
 				else th30Voice.agent = level;
+				setLevels((prev) => (isUser ? { ...prev, input: level } : { ...prev, output: level }));
 			},
 			// Th30's tools are read-only and never gate; the relay runs each call and the session answers the model.
 			onToolCall: async (name, args, meta) => {
@@ -175,7 +194,14 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 							if (client) setMuted(client.toggleMute());
 						}}
 					/>
-					<Waveform isRunning={isLive} />
+					<div className="th30-wave" aria-hidden>
+						<InkWaveform
+							status={phase === 'failed' ? 'error' : status}
+							inputLevel={levels.input}
+							outputLevel={levels.output}
+							variant="pill"
+						/>
+					</div>
 					<span className="th30-strip-status" role="status">
 						{phase === 'connecting'
 							? 'Connecting to th30…'
@@ -189,75 +215,31 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 	);
 }
 
-/** One bar per sample, newest on the right. */
-const SAMPLE_MS = 60;
-const PITCH = 8;
-const BAR = 3;
-
 /**
- * The call's history, scrolling left: your voice in one tint, th30's in another. It draws only
- * while a call is on.
+ * A soft two-note chime for "you're through". Its own context, made on the click that starts
+ * the call, so the browser lets it sound.
  */
-function Waveform({ isRunning }: { isRunning: boolean }) {
-	const ref = useRef<HTMLCanvasElement>(null);
-
-	useEffect(() => {
-		const canvas = ref.current;
-		const ctx = canvas?.getContext('2d');
-		if (!canvas || !ctx || !isRunning) return;
-		const style = getComputedStyle(canvas);
-		const userTint = style.getPropertyValue('--th30-user').trim() || '#fff';
-		const agentTint = style.getPropertyValue('--th30-agent').trim() || '#2fd3a0';
-		const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-		const samples: { level: number; agent: boolean }[] = [];
-		let peakUser = 0;
-		let peakAgent = 0;
-		let sampledAt = performance.now();
-		let frame = 0;
-
-		const size = () => {
-			const dpr = Math.min(window.devicePixelRatio || 1, 2);
-			canvas.width = Math.round(canvas.clientWidth * dpr);
-			canvas.height = Math.round(canvas.clientHeight * dpr);
-			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-		};
-		size();
-		const resize = new ResizeObserver(size);
-		resize.observe(canvas);
-
-		const tick = (now: number) => {
-			frame = requestAnimationFrame(tick);
-			peakUser = Math.max(peakUser, th30Voice.user);
-			peakAgent = Math.max(peakAgent, th30Voice.agent);
-			while (now - sampledAt >= SAMPLE_MS) {
-				sampledAt += SAMPLE_MS;
-				samples.push({ level: Math.max(peakUser, peakAgent), agent: peakAgent > peakUser });
-				peakUser = 0;
-				peakAgent = 0;
-			}
-			const width = canvas.clientWidth;
-			const height = canvas.clientHeight;
-			const count = Math.ceil(width / PITCH) + 1;
-			if (samples.length > count) samples.splice(0, samples.length - count);
-			const shift = still ? 0 : ((now - sampledAt) / SAMPLE_MS) * PITCH;
-			ctx.clearRect(0, 0, width, height);
-			for (let i = 0; i < samples.length; i++) {
-				const sample = samples[samples.length - 1 - i];
-				const x = width - BAR - i * PITCH - shift;
-				const h = Math.max(BAR, Math.min(1, sample.level * 1.6) * height);
-				ctx.fillStyle = sample.agent ? agentTint : userTint;
-				ctx.beginPath();
-				ctx.roundRect(x, height - h, BAR, h, BAR / 2);
-				ctx.fill();
-			}
-		};
-		frame = requestAnimationFrame(tick);
-		return () => {
-			cancelAnimationFrame(frame);
-			resize.disconnect();
-			ctx.clearRect(0, 0, canvas.width, canvas.height);
-		};
-	}, [isRunning]);
-
-	return <canvas ref={ref} className="th30-wave" aria-hidden />;
+function makeChime(): { play: () => void; close: () => void } {
+	const ctx = new AudioContext();
+	return {
+		play: () => {
+			const at = ctx.currentTime + 0.02;
+			[659.25, 987.77].forEach((hz, i) => {
+				const start = at + i * 0.12;
+				const tone = ctx.createOscillator();
+				const gain = ctx.createGain();
+				tone.type = 'sine';
+				tone.frequency.value = hz;
+				gain.gain.setValueAtTime(0, start);
+				gain.gain.linearRampToValueAtTime(0.08, start + 0.015);
+				gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.9);
+				tone.connect(gain).connect(ctx.destination);
+				tone.start(start);
+				tone.stop(start + 0.95);
+			});
+		},
+		close: () => {
+			window.setTimeout(() => void ctx.close(), 1200);
+		},
+	};
 }

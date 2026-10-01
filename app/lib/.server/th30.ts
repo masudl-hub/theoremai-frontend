@@ -234,7 +234,7 @@ export function ensureTh30ProfileRegistered(): void {
 		// A quota refusal on the first free key reopens the call on the second, when one is set.
 		fallbackKey: 'overflow',
 		live: {
-			voice: 'Aoede',
+			voice: 'Sulafat',
 			vad: {
 				// Barge-in on, coarsest Gemini sensitivity. Fine choppy-cut protection is
 				// client-side: live-client withholds quiet mic frames while model audio plays.

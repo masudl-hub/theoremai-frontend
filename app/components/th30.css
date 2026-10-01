@@ -13,8 +13,6 @@
 }
 
 .th30-strip {
-	--th30-user: var(--color-text-secondary);
-	--th30-agent: #34d3a6;
 	position: fixed;
 	inset-inline: 48px 0;
 	bottom: 0;
@@ -41,6 +39,7 @@
 	flex: 1;
 	min-width: 0;
 	height: 100%;
+	color: var(--color-icon-primary);
 }
 .th30-strip-status {
 	position: absolute;
