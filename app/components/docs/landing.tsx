@@ -27,7 +27,10 @@ const SEARCH_HINTS = [
 	'Try “when a tool pauses”',
 	'Try “recording traces”',
 ];
-const HINT_MS = 3200;
+const TYPE_MS = 55;
+const ERASE_MS = 25;
+const HOLD_MS = 1800;
+const GAP_MS = 350;
 const TILE_MOTION: CSSProperties = {
 	transitionProperty: 'opacity, transform',
 	transitionDuration: 'var(--duration-medium)',
@@ -123,19 +126,52 @@ function useEasedTiles(target: LandingTile[]): { tiles: LandingTile[]; phase: Ti
 	return { tiles, phase };
 }
 
-/** Cycles the search hints while the field is empty and unfocused. */
+/**
+ * Types each search hint out, holds it, erases it and types the next, while the field is empty
+ * and unfocused. Paused, it shows the whole hint; with reduced motion, only the first.
+ */
 function useSearchHint(paused: boolean): string {
 	const [hint, setHint] = useState(0);
+	const [shown, setShown] = useState(-1);
+	// The loop's place, kept across pauses so it resumes on the hint it stopped at.
+	const at = useRef(0);
 	useEffect(() => {
-		if (paused || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-		const timer = window.setInterval(() => {
-			setHint((i) => (i + 1) % SEARCH_HINTS.length);
-		}, HINT_MS);
+		if (paused || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			setShown(-1);
+			return;
+		}
+		let index = at.current;
+		let length = 0;
+		let erasing = false;
+		let timer = 0;
+		const step = () => {
+			const text = SEARCH_HINTS[index] ?? '';
+			if (!erasing && length < text.length) {
+				length += 1;
+				timer = window.setTimeout(step, TYPE_MS);
+			} else if (!erasing) {
+				erasing = true;
+				timer = window.setTimeout(step, HOLD_MS);
+				return;
+			} else if (length > 0) {
+				length -= 1;
+				timer = window.setTimeout(step, ERASE_MS);
+			} else {
+				erasing = false;
+				index = (index + 1) % SEARCH_HINTS.length;
+				at.current = index;
+				setHint(index);
+				timer = window.setTimeout(step, GAP_MS);
+			}
+			setShown(length);
+		};
+		timer = window.setTimeout(step, GAP_MS);
 		return () => {
-			window.clearInterval(timer);
+			window.clearTimeout(timer);
 		};
 	}, [paused]);
-	return SEARCH_HINTS[hint] ?? 'Search the docs';
+	const text = SEARCH_HINTS[hint] ?? 'Search the docs';
+	return shown < 0 ? text : text.slice(0, shown);
 }
 
 function tilesFromIndex(index: DocIndex, query: string): LandingTile[] {

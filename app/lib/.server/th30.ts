@@ -219,10 +219,10 @@ export function ensureTh30ProfileRegistered(): void {
 			system: th30SystemPrompt(),
 		},
 		models: {
-			gemini31FlashLive: {
+			gemini38Live: {
 				protocol: 'geminiLive',
 				provider: 'google',
-				apiId: 'gemini-3.1-flash-live-preview',
+				apiId: 'gemini-3.8-live',
 				efforts: { normal: 'low' },
 				summaries: false,
 				temperature: 0.7,
