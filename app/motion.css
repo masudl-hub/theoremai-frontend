@@ -28,7 +28,7 @@
 }
 
 /*
- * A playground tree row's add or remove button shows on hover or focus, fading like the popovers,
+ * A playground tree row's add or remove button shows on hover or keyboard focus, fading like the popovers,
  * so the tree reads as names at rest. Without hover (touch), it always shows.
  */
 .playground-tree-row {
@@ -47,7 +47,7 @@
 }
 
 .playground-tree-row:hover .playground-tree-action,
-.playground-tree-row:focus-within .playground-tree-action {
+.playground-tree-row:has(:focus-visible) .playground-tree-action {
 	opacity: 1;
 }
 
@@ -67,7 +67,7 @@
 	}
 }
 
-.playground-tree-row:is(:hover, :focus-within) > button:not([data-tree-toggle]) {
+.playground-tree-row:is(:hover, :has(:focus-visible)) > button:not([data-tree-toggle]) {
 	mask-image: linear-gradient(to left, transparent var(--spacing-6), #000 var(--spacing-10));
 }
 
