@@ -136,9 +136,6 @@ export function usePlaygroundConnection(
 		},
 		[connection],
 	);
-	const clearKeys = () => {
-		setVault({});
-	};
 	return {
 		entries,
 		setEntries,
@@ -147,7 +144,6 @@ export function usePlaygroundConnection(
 		runtime: connection?.runtime ?? null,
 		vault,
 		setVault,
-		clearKeys,
 		slots,
 		local,
 		setLocal,
@@ -305,6 +301,8 @@ function KeyRow({
 		? (connection.vault[entry.slot] ?? '')
 		: '';
 	const kind = keyKind(secret);
+	// Where the profile can't drop a slot it names (the run tab), its row stays and only the key goes.
+	const removable = onRemoveSlot !== undefined || !entry.slot;
 	const rename = () => {
 		if (name === entry.slot) return;
 		if (!isKeySlotName(name)) {
@@ -379,12 +377,13 @@ function KeyRow({
 						}}
 					/>
 					<IconButton
-						label="Remove key"
+						label={removable ? 'Remove key' : 'Clear key'}
 						variant="ghost"
 						size="sm"
 						icon={<Icon icon={IconTrash} size="sm" />}
 						onClick={() => {
 							connection.setVault((current) => withoutSlot(current, entry.slot));
+							if (!removable) return;
 							connection.setEntries((current) => current.filter((other) => other.id !== entry.id));
 							onRemoveSlot?.(entry.slot);
 						}}

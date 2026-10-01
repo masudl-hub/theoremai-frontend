@@ -419,6 +419,8 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 		setSelectedId('identity');
 		setKeysOpen(false);
 		setEditorView('editor');
+		// A new agent starts a new conversation; the old one's transcript doesn't carry over.
+		setConversation((count) => count + 1);
 		const dismiss = toast({
 			body: message,
 			endContent: (
@@ -586,7 +588,6 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 											{/* The editor is keyed by node, so each one opens at its top. */}
 											{keysOpen ? (
 												<ScrollableArea label="Keys" height="100%">
-													{' '}
 													<PlaygroundKeys
 														connection={connection}
 														onAddSlot={(slot) => {

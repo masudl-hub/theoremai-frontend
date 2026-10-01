@@ -70,6 +70,8 @@ export default function PlaygroundRun({ loaderData }: Route.ComponentProps) {
 					label="Keys"
 					variant="ghost"
 					icon={<Icon icon={IconKey} size="sm" />}
+					aria-pressed={keysOpen}
+					tooltip="Keys"
 					onClick={() => {
 						setKeysOpen((open) => !open);
 					}}

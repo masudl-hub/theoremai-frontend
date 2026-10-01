@@ -44,7 +44,7 @@ export function PlaygroundRunner({
 		return (
 			<EmptyState
 				title="Connect to run"
-				description="Enter your provider keys or local endpoint above."
+				description="Add your provider keys or local endpoint under Keys."
 			/>
 		);
 	if (payload.profile.type === 'decision')

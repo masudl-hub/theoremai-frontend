@@ -176,6 +176,7 @@ import {
 	type PlaygroundTurnProfileType,
 	playgroundNodeRef,
 	playgroundRunsTransport,
+	removeModelBinding,
 	sampleToolInput,
 	setProfileType,
 	type ToolSpecDraft,
@@ -470,6 +471,7 @@ function ModelsEditor({
 						field="allowModelSelect"
 						value={models.allowModelSelect}
 						isDisabled={draft.modelBindings.length < 2}
+						disabledMessage="Add a second model to let people switch."
 						onChange={(allowModelSelect) => {
 							set({ allowModelSelect });
 						}}
@@ -733,10 +735,12 @@ function ModelBindingEditor({
 	draft,
 	setDraft,
 	bindingKey,
+	onSelect,
 }: {
 	draft: PlaygroundDraft;
 	setDraft: SetDraft;
 	bindingKey: string;
+	onSelect: (id: string) => void;
 }) {
 	const mode = useContext(ConnectionMode);
 	const localConnection = useContext(LocalConnection);
@@ -814,6 +818,10 @@ function ModelBindingEditor({
 							provider,
 							provider === 'local' ? 'local' : mode,
 						),
+						disabledMessage:
+							mode === 'demo' && provider !== 'local'
+								? 'Add your own key under Keys to use it.'
+								: `It doesn't run ${type} agents.`,
 					}))}
 					onChange={(provider) => {
 						set(retransport(binding, type, binding.protocol, provider));
@@ -821,7 +829,7 @@ function ModelBindingEditor({
 				/>
 				{binding.provider === 'local' && localConnection && (
 					<TextRow
-						label="Local endpoint"
+						label="Endpoint"
 						path="local.baseUrl"
 						value={localConnection.local.baseUrl}
 						placeholder="http://127.0.0.1:11434"
@@ -842,7 +850,7 @@ function ModelBindingEditor({
 				{binding.provider !== 'local' && (
 					<>
 						<SlotRow
-							label="Key slot override"
+							label="Key slot"
 							path="models.*.key"
 							field="keySlot"
 							value={binding.keySlot ?? ''}
@@ -851,7 +859,7 @@ function ModelBindingEditor({
 							}}
 						/>
 						<SlotRow
-							label="Fallback override"
+							label="Fallback slot"
 							path="models.*.fallbackKey"
 							field="fallbackKeySlot"
 							value={binding.fallbackKeySlot ?? ''}
@@ -869,9 +877,18 @@ function ModelBindingEditor({
 						value={binding.apiId}
 						options={localConnection.localModels.ids}
 						isDisabled={
-							localConnection.localModels.status !== 'ready' ||
-							!localConnection.localModels.ids.length
+							localConnection.localModels.status === 'idle' ||
+							localConnection.localModels.status === 'error'
 						}
+						isLoading={localConnection.localModels.status === 'loading'}
+						placeholder={
+							localConnection.localModels.status === 'error'
+								? "Can't reach the endpoint"
+								: localConnection.localModels.status === 'idle'
+									? 'Enter the endpoint first'
+									: undefined
+						}
+						emptyText="This server has no models."
 						hasSearch
 						isRequired
 						onChange={(apiId) => {
@@ -1046,11 +1063,27 @@ function ModelBindingEditor({
 					field="allowEffortSelect"
 					value={binding.allowEffortSelect}
 					isDisabled={aliases.length < 2}
+					disabledMessage="Add a second effort to let people switch."
 					onChange={(allowEffortSelect) => {
 						set({ allowEffortSelect });
 					}}
 				/>
 			</InspectorSection>
+			{/* A profile runs on at least one model, so the last one stays. */}
+			{draft.modelBindings.length > 1 && (
+				<Section variant="transparent" padding={3}>
+					<Button
+						label="Remove model"
+						variant="ghost"
+						size="sm"
+						icon={<Icon icon={IconTrash} size="sm" />}
+						onClick={() => {
+							setDraft((current) => removeModelBinding(current, bindingKey));
+							onSelect('models');
+						}}
+					/>
+				</Section>
+			)}
 		</>
 	);
 }
@@ -2148,6 +2181,19 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 								set({ egressOnBlock: onBlock === 'reject_to_agent' ? '' : onBlock });
 							}}
 						/>
+						<NumberRow
+							label="Holdback"
+							path="guardrails.egress.holdback"
+							units="chars"
+							field="egressHoldback"
+							value={guardrails.egressHoldback}
+							min={0}
+							hint="256 by default"
+							isIntegerOnly
+							onChange={(egressHoldback) => {
+								set({ egressHoldback });
+							}}
+						/>
 						{guardrails.egressOnBlock === '' && (
 							<>
 								<NumberRow
@@ -2504,8 +2550,8 @@ function ToolsEditor({
 	onSelect: (id: string) => void;
 }) {
 	const set = patch(setDraft, 'tools');
+	// Any custom tool can load T2 tools: one that answers with the ids to load.
 	const loaders = draft.toolSpecs
-		.filter((tool) => tool.toolType === 'function')
 		.map((tool) => tool.toolName.trim())
 		.filter(Boolean);
 	return (
@@ -2551,7 +2597,7 @@ function ToolsEditor({
 			{draftAllows(draft, 'tools.t2Loader') && (
 				<InspectorSection
 					title="Loading"
-					note="A T2 tool stays hidden until the loader, a function tool, names it."
+					note="A T2 tool stays hidden until the loader tool names it."
 				>
 					<ChoiceRow
 						label="T2 loader"
@@ -2680,6 +2726,23 @@ function ToolTest({ tool }: { tool: ToolSpecDraft }) {
 	const [result, setResult] = useState<ProbeResult>();
 	const http = tool.toolType === 'http';
 	const method = tool.method ?? HTTP_METHODS[0];
+	// A result answers the request as it was: once what it reaches or sends changes, it's dropped.
+	const target = JSON.stringify([
+		tool.toolType,
+		tool.endpoint,
+		method,
+		tool.serverUrl,
+		tool.mcpToolName,
+		tool.headersJson,
+		tool.authType,
+		tool.authHeaderName,
+		tool.authHeaderPrefix,
+	]);
+	const [testedTarget, setTestedTarget] = useState(target);
+	if (target !== testedTarget) {
+		setTestedTarget(target);
+		setResult(undefined);
+	}
 
 	const run = async () => {
 		const request = probeRequest(tool, sampleInput, credential);
@@ -3461,6 +3524,8 @@ function SharedWordingRow({
 						variant="ghost"
 						size="sm"
 						onClick={() => {
+							// A section left out of the profile has no node to open until it's back in.
+							setDraft((current) => includeFacet(current, facet));
 							onSelect(facet);
 						}}
 					/>
@@ -3925,7 +3990,7 @@ export function ProfileEditor({
 				draft.identity.profileType === 'decision' ? (
 					<DecisionModelEditor {...props} bindingKey={ref.key} />
 				) : (
-					<ModelBindingEditor {...props} bindingKey={ref.key} />
+					<ModelBindingEditor {...props} bindingKey={ref.key} onSelect={onSelect} />
 				);
 			break;
 		case 'tools':
@@ -3990,7 +4055,8 @@ const isLocalPage = () =>
 	typeof window !== 'undefined' &&
 	/^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
 
-const OLLAMA_ORIGINS_COMMAND = 'launchctl setenv OLLAMA_ORIGINS "https://theorem.masudlewis.com"';
+/** Allows the page the builder is on, wherever it's hosted. */
+const ollamaOriginsCommand = () => `launchctl setenv OLLAMA_ORIGINS "${window.location.origin}"`;
 
 /** Why a hosted page can't list local models, and the one command that fixes it. */
 function LocalOriginHelp() {
@@ -4005,7 +4071,7 @@ function LocalOriginHelp() {
 						Studio: turn on CORS in its server settings.
 					</Text>
 					<CodeBlock
-						code={OLLAMA_ORIGINS_COMMAND}
+						code={ollamaOriginsCommand()}
 						language="bash"
 						hasLanguageLabel={false}
 						isWrapped

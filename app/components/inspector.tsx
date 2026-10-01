@@ -384,6 +384,7 @@ export function SwitchRow({
 	field,
 	value,
 	isDisabled,
+	disabledMessage,
 	onChange,
 }: {
 	label: string;
@@ -392,6 +393,8 @@ export function SwitchRow({
 	field?: string;
 	value: boolean;
 	isDisabled?: boolean;
+	/** Why it's off limits, on hover and focus, when `isDisabled`. */
+	disabledMessage?: string;
 	onChange: (next: boolean) => void;
 }) {
 	const status = useFieldStatus()(field);
@@ -404,6 +407,7 @@ export function SwitchRow({
 				size="sm"
 				value={value}
 				isDisabled={isDisabled}
+				disabledMessage={disabledMessage}
 				onChange={onChange}
 			/>
 		</InspectorRow>
@@ -415,6 +419,8 @@ export interface Segment<T extends string> {
 	label: string;
 	icon: IconType;
 	isDisabled?: boolean;
+	/** Why it can't be picked, on hover, when `isDisabled`. */
+	disabledMessage?: string;
 }
 
 /**
@@ -462,7 +468,8 @@ export function SegmentedRow<T extends string>({
 					}}
 				>
 					{segments.map((segment) => {
-						const description = options?.[segment.value];
+						const description =
+							(segment.isDisabled && segment.disabledMessage) || options?.[segment.value];
 						return (
 							<Tooltip
 								key={segment.value}

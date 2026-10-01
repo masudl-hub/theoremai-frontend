@@ -71,7 +71,6 @@
 	mask-image: linear-gradient(to left, transparent var(--spacing-6), #000 var(--spacing-10));
 }
 
-/* An optional section the draft leaves out: in the tree, a step quieter than the rest. */
 /* A list row's badges stay on one line: past the field's width they end in an ellipsis beside the
    count, rather than wrapping the count out of the field. */
 .inspector-list span:has(> .astryx-badge) {
@@ -79,6 +78,7 @@
 	min-width: 0;
 }
 
+/* An optional section the draft leaves out: in the tree, a step quieter than the rest. */
 .playground-tree-off {
 	color: var(--color-text-secondary);
 }
