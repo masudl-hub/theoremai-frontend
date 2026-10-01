@@ -1,9 +1,11 @@
 import { Button } from '@astryxdesign/core/Button';
+import { ButtonGroup } from '@astryxdesign/core/ButtonGroup';
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
+import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
-import { Icon } from '@astryxdesign/core/Icon';
+import { Icon, type IconType } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Layout, LayoutContent, LayoutPanel } from '@astryxdesign/core/Layout';
 import { ResizeHandle, useResizable } from '@astryxdesign/core/Resizable';
@@ -11,44 +13,70 @@ import { ScrollableArea } from '@astryxdesign/core/ScrollableArea';
 import { Section } from '@astryxdesign/core/Section';
 import { StackItem } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
+import { useToast } from '@astryxdesign/core/Toast';
 import { Token } from '@astryxdesign/core/Token';
 import { TreeList, type TreeListItemData } from '@astryxdesign/core/TreeList';
 import { VStack } from '@astryxdesign/core/VStack';
 import {
 	IconAdjustmentsHorizontal,
 	IconAlertTriangle,
+	IconBook,
+	IconChevronDown,
 	IconCode,
+	IconCopy,
 	IconDownload,
+	IconEraser,
+	IconKey,
 	IconPlayerPlay,
+	IconPlus,
+	IconSparkles,
+	IconTimeline,
 	IconTool,
+	IconX,
 } from '@tabler/icons-react';
-import { profileGraphFacet } from '@theoremai/agents';
+import {
+	type ProfileGraphFacetId,
+	profileGraphFacet,
+	resolveObservabilityPolicy,
+} from '@theoremjs/agents';
 import {
 	type CompiledPlayground,
 	compilePlayground,
+	createBlankDraft,
 	createExampleDraft,
 	createPlaygroundRunId,
-	createPlaygroundTransport,
+	createSpanExampleDraft,
+	draftFacets,
+	excludeFacet,
+	includableFacets,
+	includeFacet,
 	type PlaygroundDraft,
 	type PlaygroundIssue,
 	type PlaygroundNodeRef,
 	type PlaygroundRunPayload,
 	type PlaygroundTreeNode,
 	playgroundInterface,
-	playgroundLiveConnection,
 	playgroundNodeRef,
 	playgroundSource,
 	playgroundTree,
 	savePlaygroundRunPayload,
-} from '@theoremai/playground';
-import { LiveRunner } from '@theoremai/react/live';
-import { TheoremChat, useDisclosureMotion } from '@theoremai/react/ui';
+} from '@theoremjs/playground';
+import { useDisclosureMotion } from '@theoremjs/react/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ISSUE_ROW_ATTRIBUTE, ListBadges } from '../components/inspector';
+import {
+	ConnectionMode,
+	ISSUE_ROW_ATTRIBUTE,
+	ListBadges,
+	LocalConnection,
+} from '../components/inspector-context';
+import { PlaygroundKeys, usePlaygroundConnection } from '../components/playground-connection';
+import { PlaygroundRunner } from '../components/playground-runner';
 import { PROFILE_TYPE_ICON, ProfileEditor, TOOL_TYPE_ICON } from '../components/profile-editor';
 import { PLAYGROUND_SEED_IDS, type PlaygroundSeedId } from '../lib/docs/schema';
 import { docsSeedDraft } from '../lib/docs/seeds';
+import { exportBundle, llmBrief } from '../lib/export-agent';
 import { FACET_ICON } from '../lib/facet-icons';
+import { KERNEL_PACKAGE_VERSION } from '../lib/kernel-version';
 import type { Route } from './+types/playground';
 import type { ShellHandle } from './shell';
 
@@ -82,36 +110,95 @@ function nodeIcon(draft: PlaygroundDraft, ref: PlaygroundNodeRef) {
 	return tool ? TOOL_TYPE_ICON[tool.toolType] : IconTool;
 }
 
-function treeItem(
-	draft: PlaygroundDraft,
-	node: PlaygroundTreeNode,
-	selectedId: string,
-	onSelect: (id: string) => void,
-): TreeListItemData {
+/** What every tree row reads: the draft, the selection, and how to change them. */
+interface TreeState {
+	draft: PlaygroundDraft;
+	selectedId: string;
+	onSelect: (id: string) => void;
+	setDraft: (update: (draft: PlaygroundDraft) => PlaygroundDraft) => void;
+}
+
+/** A row's hover action: stops at the button so the row itself isn't selected. */
+function rowAction(label: string, icon: IconType, onPress: () => void) {
+	return (
+		<span className="playground-tree-action">
+			<IconButton
+				label={label}
+				variant="ghost"
+				size="sm"
+				icon={<Icon icon={icon} size="sm" />}
+				onClick={(event) => {
+					event.stopPropagation();
+					onPress();
+				}}
+			/>
+		</span>
+	);
+}
+
+function treeItem(tree: TreeState, node: PlaygroundTreeNode, isTop = false): TreeListItemData {
+	const { draft, selectedId, onSelect, setDraft } = tree;
+	const facet = node.ref.facet;
+	const isOptional = isTop && facet !== 'toolSpec' && profileGraphFacet(facet)?.optional === true;
 	return {
 		id: node.id,
 		label: node.label,
 		startContent: <Icon icon={nodeIcon(draft, node.ref)} size="sm" color="secondary" />,
+		endContent: isOptional
+			? rowAction(`Remove ${node.label}`, IconX, () => {
+					setDraft((current) => excludeFacet(current, facet));
+				})
+			: undefined,
+		className: isOptional ? 'playground-tree-row' : undefined,
 		isSelected: node.id === selectedId,
 		isExpanded: node.children.length > 0,
 		onClick: () => {
 			onSelect(node.id);
 		},
 		children: node.children.length
-			? node.children.map((child) => treeItem(draft, child, selectedId, onSelect))
+			? node.children.map((child) => treeItem(tree, child))
 			: undefined,
 	};
 }
 
-/** Identity, labelled with the agent's id, sits beside the facets rather than above them. */
-function treeItems(
-	draft: PlaygroundDraft,
-	selectedId: string,
-	onSelect: (id: string) => void,
-): TreeListItemData[] {
+/** An optional section the type allows but the draft leaves out: dimmed; a click adds it. */
+function offItem({ onSelect, setDraft }: TreeState, facet: ProfileGraphFacetId): TreeListItemData {
+	const label = profileGraphFacet(facet)?.label ?? facet;
+	const add = () => {
+		setDraft((current) => includeFacet(current, facet));
+		onSelect(facet);
+	};
+	return {
+		id: facet,
+		label: <span className="playground-tree-off">{label}</span>,
+		startContent: (
+			<Icon icon={FACET_ICON[facet as keyof typeof FACET_ICON]} size="sm" color="disabled" />
+		),
+		endContent: rowAction(`Add ${label}`, IconPlus, add),
+		className: 'playground-tree-row',
+		onClick: add,
+	};
+}
+
+/**
+ * Identity, labelled with the agent's id, sits beside the facets rather than above them. Every
+ * section the profile type allows is listed, in catalog order: optional ones left out, dimmed.
+ */
+function treeItems(tree: TreeState): TreeListItemData[] {
+	const { draft } = tree;
 	const root = playgroundTree(draft);
-	const identity = { ...root, children: [] };
-	return [identity, ...root.children].map((node) => treeItem(draft, node, selectedId, onSelect));
+	const shown = new Map(root.children.map((node) => [node.id, node]));
+	const off = includableFacets(draft);
+	const all = draftFacets({ ...draft, included: [...draft.included, ...off] }).filter(
+		(facet) => facet !== 'identity',
+	);
+	return [
+		treeItem(tree, { ...root, children: [] }),
+		...all.map((facet) => {
+			const node = shown.get(facet);
+			return node ? treeItem(tree, node, true) : offItem(tree, facet);
+		}),
+	];
 }
 
 /** The tree's label for a node, e.g. the agent's id for Identity. */
@@ -144,8 +231,9 @@ function runPayload({
 	profile,
 	customTools,
 	structured,
+	questions,
 }: CompiledPlayground): PlaygroundRunPayload {
-	return { agentId, profile, customTools, structured };
+	return { agentId, profile, customTools, structured, questions };
 }
 
 /** Hands the compiled agent to a new tab through this browser's storage; the run route reads it back. */
@@ -155,12 +243,12 @@ function openInNewTab(payload: PlaygroundRunPayload) {
 	window.open(`/playground/run?run=${encodeURIComponent(runId)}`, '_blank', 'noopener');
 }
 
-/** Downloads the draft's TypeScript as `<agentId>.ts`. */
-function download(agentId: string, source: string) {
-	const url = URL.createObjectURL(new Blob([source], { type: 'text/typescript' }));
+/** Downloads `text` as `filename`. */
+function download(filename: string, text: string) {
+	const url = URL.createObjectURL(new Blob([text], { type: 'text/typescript' }));
 	const link = document.createElement('a');
 	link.href = url;
-	link.download = `${agentId}.ts`;
+	link.download = filename;
 	link.click();
 	URL.revokeObjectURL(url);
 }
@@ -214,29 +302,38 @@ const measureHeight = (node: HTMLElement) => node.getBoundingClientRect().height
 /** The layout has no padding, so this is the content box Astryx resolves panel percentages on. */
 const measureWidth = (node: HTMLElement) => node.clientWidth;
 
-/** The side column's default share of the layout: the tree over the editor. */
-const SIDE_DEFAULT_PERCENT = 33.2;
+/** The side panel's default share of the layout, the tree beside the editor: the golden split. */
+const SIDE_DEFAULT_PERCENT = 38.2;
+/** The profile tree's width inside the side panel; the editor takes the rest. */
+const TREE_WIDTH = 224;
 const measureCodeChrome = (node: HTMLElement) =>
 	node.getBoundingClientRect().height -
 	(node.querySelector('[role="group"]')?.getBoundingClientRect().height ?? 0);
 
-/** The agent compiled from the draft, running live; a new compile swaps in its profile. */
-function AgentPreview({ payload }: { payload: PlaygroundRunPayload }) {
-	const iface = useMemo(() => playgroundInterface(payload), [payload]);
-	const transport = useMemo(() => createPlaygroundTransport(payload), [payload]);
-	if (iface.type === 'live') {
-		return <LiveRunner iface={iface} connection={() => playgroundLiveConnection(payload)} />;
+/** Whether the agent records traces, so the header can offer them. */
+function isTraced(payload: PlaygroundRunPayload | null): boolean {
+	if (payload === null || payload.profile.type === 'decision') return false;
+	if (payload.profile.type === 'host') {
+		return resolveObservabilityPolicy(payload.profile.observability).record;
 	}
-	return <TheoremChat transport={transport} />;
+	return playgroundInterface(payload).observability?.record === true;
 }
 
 /**
- * The profile tree over the editor (or code) for the draft in a column on the left; the compiled
+ * The profile tree beside the editor (or code) for the draft in a panel on the left; the compiled
  * agent on the right, under Export and Run. The draft compiles as it changes; while it doesn't
  * compile, the agent stays the last one that did.
  */
 export default function Playground({ loaderData }: Route.ComponentProps) {
 	const [draft, setDraft] = useState<PlaygroundDraft>(loaderData.draft);
+	const namedSlots = [
+		draft.models.key,
+		draft.models.fallbackKey,
+		...draft.modelBindings.flatMap((binding) => [binding.keySlot, binding.fallbackKeySlot]),
+	].filter((slot): slot is string => Boolean(slot));
+	const connection = usePlaygroundConnection(draft.modelBindings, undefined, namedSlots);
+	const { mode, runtime } = connection;
+	const [keysOpen, setKeysOpen] = useState(false);
 	const [editorView, setEditorView] = useState<'editor' | 'code'>('editor');
 	const layoutRef = useRef<HTMLDivElement>(null);
 	const [measureLayout, layoutWidth] = useMeasure(measureWidth);
@@ -249,19 +346,11 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	);
 	const sidePanel = useResizable({
 		defaultSize: `${String(SIDE_DEFAULT_PERCENT)}%`,
-		minSize: 320,
+		minSize: TREE_WIDTH + 320,
 		containerRef: layoutRef,
-		autoSaveId: 'playground.side',
+		autoSaveId: 'playground.panel',
 	});
-	const sideRef = useRef<HTMLDivElement>(null);
-	const treeSplit = useResizable({
-		defaultSize: '33%',
-		minSize: 160,
-		direction: 'vertical',
-		containerRef: sideRef,
-		autoSaveId: 'playground.treeSplit',
-	});
-	/** Two badges per list row at the column's default width or wider; one once it is narrowed. */
+	/** Two badges per list row at the panel's default width or wider; one once it is narrowed. */
 	const listBadges =
 		layoutWidth === undefined ||
 		sidePanel.size >= Math.round((SIDE_DEFAULT_PERCENT / 100) * layoutWidth)
@@ -285,10 +374,31 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	const codeHeight = bodyHeight === undefined ? undefined : bodyHeight - (codeChrome ?? 0);
 	const selected = playgroundNodeRef(draft, selectedId) ? selectedId : 'identity';
 	const settledDraft = useDebounced(draft, COMPILE_DEBOUNCE_MS);
-	const compiled = useMemo(() => compilePlayground(settledDraft), [settledDraft]);
+	const compiled = useMemo(() => compilePlayground(settledDraft, mode), [settledDraft, mode]);
 	const [lastGood, setLastGood] = useState(compiled.ok ? compiled : null);
 	if (compiled.ok && compiled !== lastGood) setLastGood(compiled);
-	const payload = useMemo(() => (lastGood ? runPayload(lastGood) : null), [lastGood]);
+	const activeProfile = lastGood?.profile;
+	const matchingModels =
+		!activeProfile ||
+		activeProfile.type === 'host' ||
+		draft.modelBindings.every((binding) => {
+			if (!Object.hasOwn(activeProfile.models, binding.modelId)) return false;
+			const model = activeProfile.models[binding.modelId];
+			return (
+				binding.provider === model.provider &&
+				binding.protocol === model.protocol &&
+				binding.apiId.trim() === model.apiId
+			);
+		});
+	const payload = useMemo(
+		() =>
+			lastGood && matchingModels
+				? { ...runPayload(lastGood), connectionMode: mode, localBaseUrl: connection.local.baseUrl }
+				: null,
+		[lastGood, matchingModels, mode, connection.local.baseUrl],
+	);
+	const traced = useMemo(() => isTraced(payload), [payload]);
+	const [traceOpen, setTraceOpen] = useState(false);
 	const source = useMemo(() => (compiled.ok ? playgroundSource(compiled) : null), [compiled]);
 	const issues = compiled.ok
 		? undefined
@@ -296,6 +406,35 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 			? '1 issue'
 			: `${String(compiled.issues.length)} issues`;
 	const blocked = issues && `Fix ${issues} first`;
+	const toast = useToast();
+	/** Swaps in a whole new draft from Identity; the toast can put the old one back. */
+	const replaceDraft = (next: PlaygroundDraft, message: string) => {
+		const previous = draft;
+		setDraft(next);
+		setSelectedId('identity');
+		setKeysOpen(false);
+		setEditorView('editor');
+		const dismiss = toast({
+			body: message,
+			endContent: (
+				<Button
+					label="Undo"
+					variant="ghost"
+					size="sm"
+					onClick={() => {
+						setDraft(previous);
+						dismiss();
+					}}
+				/>
+			),
+		});
+	};
+	const copy = (text: string, what: string) => {
+		navigator.clipboard.writeText(text).then(
+			() => toast({ body: `Copied ${what}.` }),
+			() => toast({ body: "Couldn't reach the clipboard.", type: 'error' }),
+		);
+	};
 
 	const title = editorTitle(draft, selected);
 
@@ -312,41 +451,53 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 						label="Playground"
 						isScrollable={false}
 					>
-						<VStack gap={1} height="100%" ref={sideRef}>
-							<div style={{ height: treeSplit.size || '33%', flexShrink: 0 }}>
-								<Section variant="raised" height="100%" padding={3}>
-									<VStack gap={3} height="100%">
-										<VStack gap={1}>
-											<Heading level={3}>Theorem Playground</Heading>
-											<Text type="supporting" color="secondary">
-												Configure an agent's profile, then run it to test.
-											</Text>
+						<Section variant="raised" height="100%" padding={0}>
+							<HStack height="100%">
+								{/* Static, so the editor beside it never squeezes the tree. */}
+								<StackItem size="static">
+									<Section
+										variant="transparent"
+										width={TREE_WIDTH}
+										height="100%"
+										padding={4}
+										dividers={['end']}
+									>
+										<VStack gap={4} height="100%">
+											<VStack gap={1}>
+												<Heading level={3}>Theorem Playground</Heading>
+												<Text type="supporting" color="secondary">
+													{`@theoremjs/agents ${KERNEL_PACKAGE_VERSION}`}
+												</Text>
+											</VStack>
+											<StackItem size="fill">
+												<ScrollableArea ref={sidebarRef} label="Profile" height="100%">
+													<TreeList
+														density="compact"
+														aria-label="Profile"
+														items={treeItems({
+															draft,
+															selectedId: keysOpen ? '' : selected,
+															onSelect: (id) => {
+																setKeysOpen(false);
+																setSelectedId(id);
+																setEditorView('editor');
+															},
+															setDraft,
+														})}
+													/>
+												</ScrollableArea>
+											</StackItem>
 										</VStack>
-										<StackItem size="fill">
-											<ScrollableArea ref={sidebarRef} label="Profile" height="100%">
-												<TreeList
-													density="compact"
-													aria-label="Profile"
-													items={treeItems(draft, selected, setSelectedId)}
-												/>
-											</ScrollableArea>
-										</StackItem>
-									</VStack>
-								</Section>
-							</div>
-							<ResizeHandle
-								direction="vertical"
-								isAlwaysVisible={false}
-								resizable={treeSplit.props}
-								label="Resize profile tree"
-							/>
-							<StackItem size="fill">
-								<Section variant="raised" height="100%" padding={0}>
+									</Section>
+								</StackItem>
+								<StackItem size="fill">
 									<VStack height="100%">
 										<Section variant="transparent" padding={3} dividers={['bottom']}>
 											<HStack gap={1} vAlign="center">
 												<StackItem size="fill">
-													{title && <Heading level={4}>{title}</Heading>}
+													{(keysOpen ? 'Keys' : title) && (
+														<Heading level={4}>{keysOpen ? 'Keys' : title}</Heading>
+													)}
 												</StackItem>
 												{issues && !compiled.ok && (
 													<Token
@@ -354,12 +505,60 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 														color="orange"
 														description="Go to the next issue"
 														onClick={() => {
+															setKeysOpen(false);
 															setSelectedId(nextIssueNode(compiled.issues, selected));
 															setEditorView('editor');
 															setIssueReveal((count) => count + 1);
 														}}
 													/>
 												)}
+												<IconButton
+													label="Keys"
+													variant="ghost"
+													icon={<Icon icon={IconKey} size="sm" />}
+													aria-pressed={keysOpen}
+													tooltip="Keys"
+													onClick={() => {
+														setKeysOpen((open) => !open);
+														setEditorView('editor');
+													}}
+												/>
+												<DropdownMenu
+													button={{
+														label: 'Load an example',
+														isIconOnly: true,
+														icon: <Icon icon={IconBook} size="sm" />,
+													}}
+													hasChevron={false}
+													placement="below"
+													alignment="end"
+													items={[
+														{
+															id: 'concierge',
+															label: 'Travel concierge',
+															onClick: () => {
+																replaceDraft(createExampleDraft(), 'Loaded the example.');
+															},
+														},
+														{
+															id: 'span',
+															label: 'Span decision',
+															description: 'Tool-call safety with the free Span model.',
+															onClick: () => {
+																replaceDraft(createSpanExampleDraft(), 'Loaded the Span example.');
+															},
+														},
+													]}
+												/>
+												<IconButton
+													label="Clear"
+													variant="ghost"
+													icon={<Icon icon={IconEraser} size="sm" />}
+													tooltip="Start from a blank profile"
+													onClick={() => {
+														replaceDraft(createBlankDraft(), 'Cleared the profile.');
+													}}
+												/>
 												<IconButton
 													label={editorView === 'editor' ? 'Code' : 'Editor'}
 													variant="ghost"
@@ -371,6 +570,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 													}
 													tooltip={editorView === 'editor' ? 'Show the code' : 'Show the editor'}
 													onClick={() => {
+														setKeysOpen(false);
 														setEditorView(editorView === 'editor' ? 'code' : 'editor');
 													}}
 												/>
@@ -378,16 +578,76 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 										</Section>
 										<StackItem size="fill" ref={bodyRef}>
 											{/* The editor is keyed by node, so each one opens at its top. */}
-											{editorView === 'editor' ? (
+											{keysOpen ? (
+												<ScrollableArea label="Keys" height="100%">
+													{' '}
+													<PlaygroundKeys
+														connection={connection}
+														onAddSlot={(slot) => {
+															setDraft((current) =>
+																current.models.key
+																	? current
+																	: { ...current, models: { ...current.models, key: slot } },
+															);
+														}}
+														onRenameSlot={(from, to) => {
+															setDraft((current) => ({
+																...current,
+																models: {
+																	...current.models,
+																	key: current.models.key === from ? to : current.models.key,
+																	fallbackKey:
+																		current.models.fallbackKey === from
+																			? to
+																			: current.models.fallbackKey,
+																},
+																modelBindings: current.modelBindings.map((binding) => ({
+																	...binding,
+																	keySlot: binding.keySlot === from ? to : binding.keySlot,
+																	fallbackKeySlot:
+																		binding.fallbackKeySlot === from ? to : binding.fallbackKeySlot,
+																})),
+															}));
+														}}
+														onRemoveSlot={(slot) => {
+															setDraft((current) => ({
+																...current,
+																models: {
+																	...current.models,
+																	key: current.models.key === slot ? '' : current.models.key,
+																	fallbackKey:
+																		current.models.fallbackKey === slot
+																			? ''
+																			: current.models.fallbackKey,
+																},
+																modelBindings: current.modelBindings.map((binding) => ({
+																	...binding,
+																	keySlot: binding.keySlot === slot ? '' : binding.keySlot,
+																	fallbackKeySlot:
+																		binding.fallbackKeySlot === slot ? '' : binding.fallbackKeySlot,
+																})),
+															}));
+														}}
+													/>
+												</ScrollableArea>
+											) : editorView === 'editor' ? (
 												<ScrollableArea key={selected} label="Editor" height="100%" ref={editorRef}>
 													<ListBadges value={listBadges}>
-														<ProfileEditor
-															draft={draft}
-															setDraft={setDraft}
-															selectedId={selected}
-															onSelect={setSelectedId}
-															issues={compiled.ok ? [] : compiled.issues}
-														/>
+														<ConnectionMode.Provider value={mode}>
+															<LocalConnection.Provider value={connection}>
+																<ProfileEditor
+																	draft={draft}
+																	setDraft={setDraft}
+																	selectedId={selected}
+																	onSelect={(id) => {
+																		setKeysOpen(false);
+																		setSelectedId(id);
+																		setEditorView('editor');
+																	}}
+																	issues={compiled.ok ? [] : compiled.issues}
+																/>
+															</LocalConnection.Provider>
+														</ConnectionMode.Provider>
 													</ListBadges>
 												</ScrollableArea>
 											) : source && compiled.ok ? (
@@ -411,9 +671,9 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 											)}
 										</StackItem>
 									</VStack>
-								</Section>
-							</StackItem>
-						</VStack>
+								</StackItem>
+							</HStack>
+						</Section>
 					</LayoutPanel>
 					<ResizeHandle
 						direction="horizontal"
@@ -429,15 +689,62 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 						<Section variant="transparent" padding={3}>
 							<HStack gap={2} vAlign="center">
 								<StackItem size="fill" />
-								<Button
-									label="Export"
-									icon={<Icon icon={IconDownload} size="sm" />}
-									isDisabled={!compiled.ok}
-									tooltip={blocked ?? 'Download the TypeScript'}
-									onClick={() => {
-										if (compiled.ok && source) download(compiled.agentId, source);
-									}}
-								/>
+								{traced ? (
+									<Button
+										label={traceOpen ? 'Hide trace' : 'View trace'}
+										icon={<Icon icon={IconTimeline} size="sm" />}
+										aria-pressed={traceOpen}
+										onClick={() => {
+											setTraceOpen((open) => !open);
+										}}
+									/>
+								) : null}
+								<ButtonGroup label="Export" isDisabled={!compiled.ok}>
+									<Button
+										label="Export"
+										icon={<Icon icon={IconDownload} size="sm" />}
+										tooltip={blocked ?? 'Download the agent as one .tsx'}
+										onClick={() => {
+											if (compiled.ok && source) {
+												download(`${compiled.agentId}.tsx`, exportBundle(compiled, source));
+											}
+										}}
+									/>
+									<DropdownMenu
+										button={{
+											label: 'More export options',
+											isIconOnly: true,
+											icon: <Icon icon={IconChevronDown} size="sm" />,
+											isDisabled: !compiled.ok,
+										}}
+										hasChevron={false}
+										placement="below"
+										alignment="end"
+										items={[
+											{
+												id: 'copy',
+												label: 'Copy',
+												description: 'The .tsx, to paste into your code.',
+												icon: <Icon icon={IconCopy} size="sm" />,
+												onClick: () => {
+													if (compiled.ok && source)
+														copy(exportBundle(compiled, source), 'the .tsx');
+												},
+											},
+											{
+												id: 'copy-llm',
+												label: 'Copy for LLM',
+												description:
+													'The .tsx with a brief: what to install, where it goes, what to ask you.',
+												icon: <Icon icon={IconSparkles} size="sm" />,
+												onClick: () => {
+													if (compiled.ok && source)
+														copy(llmBrief(compiled, source), 'the .tsx and its brief');
+												},
+											},
+										]}
+									/>
+								</ButtonGroup>
 								<Button
 									label="Run"
 									variant="primary"
@@ -445,14 +752,25 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 									isDisabled={!compiled.ok}
 									tooltip={blocked ?? 'Open the agent in a new tab'}
 									onClick={() => {
-										if (compiled.ok) openInNewTab(runPayload(compiled));
+										if (compiled.ok)
+											openInNewTab({
+												...runPayload(compiled),
+												connectionMode: mode,
+												localBaseUrl: connection.local.baseUrl,
+											});
 									}}
 								/>
 							</HStack>
 						</Section>
 						<StackItem size="fill">
 							{payload ? (
-								<AgentPreview payload={payload} />
+								<PlaygroundRunner
+									key={mode}
+									payload={payload}
+									mode={mode}
+									runtime={runtime}
+									trace={traced && traceOpen}
+								/>
 							) : (
 								<EmptyState
 									icon={<Icon icon={IconAlertTriangle} />}

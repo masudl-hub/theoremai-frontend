@@ -4,7 +4,7 @@
  * cross-link and does not take the inputs catalog.
  */
 
-import { PROFILE_FIELDS, PROFILE_GRAPH, type ProfileGraphFacetId } from '@theoremai/agents/schema';
+import { PROFILE_FIELDS, PROFILE_GRAPH, type ProfileGraphFacetId } from '@theoremjs/agents/schema';
 
 const CROSS_LINK_OWNS: Readonly<Partial<Record<ProfileGraphFacetId, readonly string[]>>> = {
 	decision: ['inputs'],

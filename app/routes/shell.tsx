@@ -36,8 +36,8 @@ const SECTIONS = [
 
 const PACKAGES = [
 	{ label: 'GitHub', href: 'https://github.com/masudl-hub/theoremai', icon: IconBrandGithub },
-	{ label: 'JSR', href: 'https://jsr.io/@theoremai/agents', icon: IconJsr },
-	{ label: 'npm', href: 'https://www.npmjs.com/package/@theoremai%2Fagents', icon: IconBrandNpm },
+	{ label: 'JSR', href: 'https://jsr.io/@theoremjs/agents', icon: IconJsr },
+	{ label: 'npm', href: 'https://www.npmjs.com/package/@theoremjs%2Fagents', icon: IconBrandNpm },
 ] as const;
 
 /** Route `handle` a page exports to change how the shell frames it. */

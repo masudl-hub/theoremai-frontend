@@ -26,3 +26,65 @@
 		transition: none;
 	}
 }
+
+/*
+ * A playground tree row's add or remove button shows on hover or focus, fading like the popovers,
+ * so the tree reads as names at rest. Without hover (touch), it always shows.
+ */
+.playground-tree-row {
+	position: relative;
+}
+
+/* Out of the row's flow, so it neither heightens the row nor narrows the label at rest. */
+.playground-tree-action {
+	position: absolute;
+	inset-inline-end: var(--spacing-1);
+	top: 50%;
+	translate: 0 -50%;
+	display: inline-flex;
+	opacity: 0;
+	transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.playground-tree-row:hover .playground-tree-action,
+.playground-tree-row:focus-within .playground-tree-action {
+	opacity: 1;
+}
+
+@media (hover: none) {
+	.playground-tree-action {
+		opacity: 1;
+	}
+}
+
+/*
+ * The button sits over the label's end rather than beside it, so it never widens the row; the
+ * label fades out beneath it instead of being pushed along.
+ */
+@media (hover: none) {
+	.playground-tree-row > button:not([data-tree-toggle]) {
+		mask-image: linear-gradient(to left, transparent var(--spacing-6), #000 var(--spacing-10));
+	}
+}
+
+.playground-tree-row:is(:hover, :focus-within) > button:not([data-tree-toggle]) {
+	mask-image: linear-gradient(to left, transparent var(--spacing-6), #000 var(--spacing-10));
+}
+
+/* An optional section the draft leaves out: in the tree, a step quieter than the rest. */
+/* A list row's badges stay on one line: past the field's width they end in an ellipsis beside the
+   count, rather than wrapping the count out of the field. */
+.inspector-list span:has(> .astryx-badge) {
+	flex-wrap: nowrap;
+	min-width: 0;
+}
+
+.playground-tree-off {
+	color: var(--color-text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.playground-tree-action {
+		transition: none;
+	}
+}

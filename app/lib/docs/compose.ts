@@ -13,7 +13,7 @@ import {
 	PROFILE_FIELDS,
 	PROFILE_GRAPH,
 	PROFILE_TYPES,
-} from '@theoremai/agents/schema';
+} from '@theoremjs/agents/schema';
 import { SITE_ARTICLES, SITE_REDIRECTS } from './articles/chapters';
 import { lexiconCatalogRows, traceCatalogRows } from './catalog-rows';
 import { assertFieldOwnership, fieldsForFacet } from './ownership';

@@ -20,10 +20,11 @@ import { Tokenizer } from '@astryxdesign/core/Tokenizer';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
 import { IconArrowBackUp } from '@tabler/icons-react';
-import { fieldMeta } from '@theoremai/agents';
-import { PLAYGROUND_PROFILE_TYPES, type PlaygroundIssue } from '@theoremai/playground';
-import { createContext, type ReactNode, useContext, useId } from 'react';
+import { fieldMeta } from '@theoremjs/agents';
+import { PLAYGROUND_PROFILE_TYPES } from '@theoremjs/playground';
+import { type ReactNode, useContext, useId } from 'react';
 import { tabFills } from '../lib/tab-fills';
+import { ISSUE_ROW_ATTRIBUTE, ListBadges, useFieldStatus } from './inspector-context';
 
 /**
  * Inspector building blocks: captioned sections of label-and-control rows, after Astryx's
@@ -37,24 +38,6 @@ import { tabFills } from '../lib/tab-fills';
  */
 const LABEL_COLUMN = 96;
 
-/** The compile issues for the node being edited; rows show the ones on their field. */
-export const NodeIssues = createContext<readonly PlaygroundIssue[]>([]);
-
-/**
- * Looks up the error status for a draft field of the node being edited, and for a list field, the
- * entry at `index`. Several issues on one field show as one message.
- */
-export function useFieldStatus(): (field?: string, index?: number) => InputStatus | undefined {
-	const issues = useContext(NodeIssues);
-	return (field, index) => {
-		if (field === undefined) return undefined;
-		const messages = issues
-			.filter((issue) => issue.field === field && issue.index === index)
-			.map((issue) => issue.message);
-		return messages.length ? { type: 'error', message: messages.join(' ') } : undefined;
-	};
-}
-
 /**
  * Whether the field at `path` must be set, and what leaving it out does, from the kernel's catalog.
  * `isRequired` overrides it for a field required only in some cases, saying whether it is now.
@@ -64,9 +47,6 @@ function presence(path: string, isRequired?: boolean) {
 	const required = isRequired ?? meta?.required === true;
 	return { required, unset: required ? undefined : meta?.unset };
 }
-
-/** Marks a row that has an issue, so the issue pill can scroll to it. */
-export const ISSUE_ROW_ATTRIBUTE = 'data-issue';
 
 /**
  * A captioned group of rows. The panel stays at zero padding and each section carries the gutter.
@@ -78,7 +58,7 @@ export function InspectorSection({
 	note,
 	children,
 }: {
-	title: string;
+	title?: string;
 	note?: string;
 	children: ReactNode;
 }) {
@@ -86,9 +66,11 @@ export function InspectorSection({
 		<Section variant="transparent" padding={3}>
 			<VStack gap={3}>
 				<VStack gap={1}>
-					<Text type="label" weight="semibold">
-						{title}
-					</Text>
+					{title && (
+						<Text type="label" weight="semibold">
+							{title}
+						</Text>
+					)}
 					{note && <Text type="supporting">{note}</Text>}
 				</VStack>
 				{children}
@@ -237,16 +219,19 @@ function FillRow({
 export function TextRow(
 	props: FieldRowProps & {
 		value: string;
+		status?: InputStatus;
 		placeholder?: string;
 		hint?: string;
 		onChange: (next: string) => void;
 	},
 ) {
-	const { status, required, unset, control } = useFieldRow(props);
+	const { status: fieldStatus, required, unset, control } = useFieldRow(props);
+	const status = props.status ?? fieldStatus;
 	return (
 		<FillRow label={props.label} path={props.path} required={required} status={status}>
 			<TextInput
 				{...control}
+				status={status}
 				value={props.value}
 				placeholder={props.placeholder ?? props.hint ?? unset}
 				onKeyDown={tabFills(props.value, props.placeholder, props.onChange)}
@@ -298,6 +283,8 @@ export function NumberRow(
 		isIntegerOnly?: boolean;
 		/** Shown at the end of the input, e.g. `ms`. */
 		units?: string;
+		/** Shown while blank, in place of what leaving it out does. */
+		hint?: string;
 		onChange: (next: number | null) => void;
 	},
 ) {
@@ -307,7 +294,7 @@ export function NumberRow(
 			<NumberInput
 				{...control}
 				value={props.value}
-				placeholder={unset}
+				placeholder={props.hint ?? unset}
 				min={props.min}
 				max={props.max}
 				step={props.step}
@@ -569,12 +556,6 @@ export function ChoiceRow<T extends string>({
 }
 
 /**
- * How many of a list row's picks show as badges before the rest are counted: two while the editor
- * is at its default width or wider, one once it is narrowed.
- */
-export const ListBadges = createContext(1);
-
-/**
  * Several choices from a list, the first few as badges and the rest counted (`ListBadges`): the
  * trigger is one line tall, and Astryx wraps badges past it. Left empty, it shows what leaving it
  * out does.
@@ -612,6 +593,7 @@ export function ListRow({
 					hasSearch
 					triggerDisplay="badges"
 					maxBadges={maxBadges}
+					className="inspector-list"
 					onChange={onChange}
 				/>
 			</StackItem>

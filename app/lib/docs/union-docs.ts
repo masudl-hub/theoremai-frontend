@@ -13,7 +13,7 @@ import {
 	PROFILE_GRAPH,
 	PROFILE_TYPE_PROTOCOLS,
 	type ProfileType,
-} from '@theoremai/agents/schema';
+} from '@theoremjs/agents/schema';
 import { type DocWorthyUnion, worthyUnionValues } from './placement';
 
 function allFieldMeta(): FieldMeta[] {

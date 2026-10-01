@@ -1,7 +1,7 @@
 import { defineTheme } from '@astryxdesign/core/theme';
 import { neutralPalettes } from '@astryxdesign/theme-neutral';
-import { tablerIcons } from '@theoremai/react/ui/icons';
-import { theoremTheme } from '@theoremai/react/ui/theme';
+import { tablerIcons } from '@theoremjs/react/ui/icons';
+import { theoremTheme } from '@theoremjs/react/ui/theme';
 
 /**
  * Source of the site look: Theorem's theme on a black base, with each page drawn
@@ -45,12 +45,24 @@ export const siteTheme = defineTheme({
 				backgroundColor: 'var(--color-overlay-pressed)',
 			},
 		},
+		// A name longer than its column (a tool's snake_case, which never wraps) ends in an ellipsis
+		// rather than running under the column's edge.
+		'tree-list-item-label': {
+			base: {
+				minWidth: '0',
+				overflow: 'hidden',
+				textOverflow: 'ellipsis',
+				whiteSpace: 'nowrap',
+			},
+		},
 		// Same fill and corners as the elevated shell's page panel (surface + radius-page, no border),
 		// for pages that sit on the base and draw their own panels.
 		section: {
 			'variant:raised': {
 				backgroundColor: 'var(--color-background-surface)',
 				borderRadius: 'var(--radius-page)',
+				// Content scrolling past the rounded corners would otherwise draw outside them.
+				overflow: 'clip',
 			},
 		},
 		// The landing wordmark: Astryx's heading type, set at poster scale.

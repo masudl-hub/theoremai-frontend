@@ -3,8 +3,8 @@
  * Catalog rows are imported at compose time — nothing here copies FieldMeta.doc.
  */
 
-import type * as SchemaModule from '@theoremai/agents/schema';
-import type { FieldMeta } from '@theoremai/agents/schema';
+import type * as SchemaModule from '@theoremjs/agents/schema';
+import type { FieldMeta } from '@theoremjs/agents/schema';
 
 export const DOC_KINDS = ['guide', 'reference', 'tutorial', 'concept'] as const;
 export type DocKind = (typeof DOC_KINDS)[number];

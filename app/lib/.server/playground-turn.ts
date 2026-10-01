@@ -1,31 +1,18 @@
-import type {
-	Profile,
-	ProfileDefinition,
-	TraceRecord,
-	TurnEvent,
-	TurnInput,
-} from '@theoremai/agents';
-import { createProvider, registerTraceDestination, TheoremError, z } from '@theoremai/agents';
-import type { GateAnswerRequest } from '@theoremai/agents/kernel';
-import { answerGatedCall, type HeldGatedCall, type RegisteredTool } from '@theoremai/agents/kernel';
 import {
-	createPlaygroundTraceRouter,
-	PLAYGROUND_TRACE_DESTINATION,
-	type PlaygroundSteerLine,
-	type PlaygroundTraceLine,
-	type StructuredRegistration,
-	type ToolRegistration,
-} from '@theoremai/playground';
-import type { TheoremInvokeRequest, TheoremReplay } from '@theoremai/react';
+	type CreateProviderOptions,
+	createProvider,
+	type KeyVault,
+	type Profile,
+	type ProfileDefinition,
+} from '@theoremjs/agents';
 import {
-	checkRequest,
-	checkWalkAway,
-	type SteerInbox,
-	steerStage,
-	type WalkedAwayCall,
-	walkAway,
-} from '@theoremai/react/server';
-import { playgroundScope } from './playground-register';
+	streamPlaygroundCall as sharedCall,
+	streamPlaygroundInvoke as sharedInvoke,
+	streamPlaygroundTurn as sharedTurn,
+} from '@theoremjs/playground/runtime';
+
+export { playgroundTraces } from '@theoremjs/playground/runtime';
+
 import { resolveHost } from './resolve-host';
 
 type PlaygroundTurnEnv = {
@@ -33,211 +20,79 @@ type PlaygroundTurnEnv = {
 	GEMINI_API_KEY_FREE_B?: string;
 	GEMINI_API_KEY_FREE_C?: string;
 	OPENROUTER_API_KEY?: string;
+	/** Jev's key, for decision models on TypeSafe. */
+	'theoremai.typesafe_api_key'?: string;
 };
 
 export type { PlaygroundTurnEnv };
 
-// Profiles that write to the playground destination get their records back on the run's own stream.
-export const playgroundTraces = createPlaygroundTraceRouter();
-registerTraceDestination(PLAYGROUND_TRACE_DESTINATION, playgroundTraces.sink);
+/** The site's own key for each provider: free-tier Gemini only, never a paid key. */
+function siteKey(env: PlaygroundTurnEnv, provider: string): string | undefined {
+	if (provider === 'google') {
+		return [env.GEMINI_API_KEY_FREE_A, env.GEMINI_API_KEY_FREE_B, env.GEMINI_API_KEY_FREE_C]
+			.map((key) => key?.trim())
+			.find(Boolean);
+	}
+	if (provider === 'openrouter') return env.OPENROUTER_API_KEY?.trim() || undefined;
+	if (provider === 'typesafe') return env['theoremai.typesafe_api_key']?.trim() || undefined;
+	return undefined;
+}
 
 /**
- * Streams one run's events, then the trace records it wrote. The kernel writes
- * a run's records before the run returns or throws, so a failed run still
- * delivers them ahead of its failure.
+ * The demo fills each slot the profile names with the site's key for the provider that reads it. A
+ * slot two providers share gets no key, so a key never reaches a provider it isn't for.
  */
-async function* withRunTraces(
-	run: (metadata: Record<string, string>) => AsyncIterable<TurnEvent>,
-): AsyncGenerator<TurnEvent | PlaygroundTraceLine> {
-	const records: TraceRecord[] = [];
-	const traces = playgroundTraces.route((record) => records.push(record));
-	let failure: { error: unknown } | undefined;
-	try {
-		yield* run(traces.metadata);
-	} catch (error) {
-		failure = { error };
-	} finally {
-		traces.close();
+export function playgroundDemoVault(
+	env: PlaygroundTurnEnv,
+	profile: Profile | ProfileDefinition,
+): KeyVault {
+	if (!('models' in profile)) return {};
+	const top = profile as { key?: string; fallbackKey?: string };
+	const readers = new Map<string, Set<string>>();
+	for (const binding of Object.values(profile.models) as {
+		provider: string;
+		key?: string;
+		fallbackKey?: string;
+	}[]) {
+		for (const slot of [binding.key ?? top.key, binding.fallbackKey ?? top.fallbackKey]) {
+			if (slot) readers.set(slot, (readers.get(slot) ?? new Set()).add(binding.provider));
+		}
 	}
-	for (const record of records) yield { type: 'trace', record };
-	if (failure) throw failure.error;
-}
-
-function geminiVault(env: PlaygroundTurnEnv) {
-	const slotA = env.GEMINI_API_KEY_FREE_A?.trim();
-	if (!slotA) return undefined;
-	return {
-		slotA,
-		slotB: env.GEMINI_API_KEY_FREE_B?.trim(),
-		slotC: env.GEMINI_API_KEY_FREE_C?.trim(),
-		// The playground never spends on a paid key, so a quota refusal has nowhere to overflow.
-		paid: undefined,
-	};
-}
-
-function openRouterVault(env: PlaygroundTurnEnv) {
-	const key = env.OPENROUTER_API_KEY?.trim();
-	if (!key) return undefined;
-	return { apiKey: key };
-}
-
-function assertNotLiveProfile(profileType: string, action: string): void {
-	if (profileType === 'live') {
-		throw new TheoremError('request', `Playground ${action} does not support live profiles.`);
-	}
-}
-
-function createPlaygroundProvider(profile: Profile, env: PlaygroundTurnEnv) {
-	const gemini = geminiVault(env);
-	const openAiGateway = openRouterVault(env);
-	return createProvider(profile, {
-		...(gemini ? { gemini: { vault: gemini } } : {}),
-		...(openAiGateway ? { openAiGateway } : {}),
-	});
-}
-
-export async function* streamPlaygroundTurn(args: {
-	profile: ProfileDefinition;
-	customTools: ToolRegistration[];
-	structured?: StructuredRegistration;
-	input: TurnInput;
-	previousInteractionId?: string;
-	sessionPermissions?: string[];
-	model?: string;
-	effort?: string;
-	signal?: AbortSignal;
-	env?: PlaygroundTurnEnv;
-	/** Where the turn's mid-turn steers queue. */
-	steer: SteerInbox;
-	/** The paused calls the message walks away from, each as the browser replays it. */
-	abandon?: { callId: string; replay: TheoremReplay }[];
-}): AsyncGenerator<TurnEvent | PlaygroundTraceLine | PlaygroundSteerLine> {
-	const { scope, profile } = playgroundScope(args.profile, args.customTools, args.structured);
-	assertNotLiveProfile(profile.type, 'turn runner — use runSession');
-	const abandon = args.abandon ?? [];
-	if (abandon.length) {
-		checkWalkAway(
-			args.input,
-			abandon.map(({ callId }) => callId),
-		);
-	}
-	// Answered up front, so a refused call starts nothing.
-	const walked = abandon.map(({ callId, replay }) => ({
-		callId,
-		invoke: answerReplayed(scope, profile.id, { callId, decision: 'abandon' }, replay),
-	}));
-
-	const provider = createPlaygroundProvider(profile, args.env ?? {});
-	// Random and picked here, so only the run's own browser can steer it.
-	const inbox = globalThis.crypto.randomUUID();
-	await args.steer.open(inbox);
-	const steerLine: PlaygroundSteerLine = { type: 'steer_inbox', inbox };
-	yield steerLine;
-
-	try {
-		yield* withRunTraces(async function* (metadata) {
-			const calls: WalkedAwayCall[] = walked.map(({ callId, invoke }) => ({
-				callId,
-				events: scope.invokeTool({ ...invoke, metadata }),
-			}));
-			const input = calls.length ? yield* walkAway(args.input, calls) : args.input;
-			if (!input) return;
-			yield* scope.runTurn(
-				{
-					profile: profile.id,
-					metadata,
-					input,
-					previousInteractionId: args.previousInteractionId,
-					sessionPermissions: args.sessionPermissions,
-					resolveHost,
-					signal: args.signal,
-					...(args.model ? { model: args.model } : {}),
-					...(args.effort ? { effort: args.effort } : {}),
-					onStage: steerStage(args.steer, inbox),
-				},
-				provider,
-			);
-		});
-	} finally {
-		await args.steer.close(inbox);
-	}
-}
-
-/** The model's input to the paused call, as the browser replays it. */
-const modelArguments = z.record(z.string(), z.unknown());
-
-/** The gate a tool waits on: its permission tier, and the slot a sign-in gate fills. */
-function heldGate(tool: RegisteredTool): Pick<HeldGatedCall, 'permission' | 'auth'> {
-	const auth = tool.type === 'http' || tool.type === 'mcp' ? tool.auth : undefined;
-	return {
-		permission: tool.permission,
-		...(auth ? { auth: { slot: auth.slot, authType: auth.type } } : {}),
-	};
-}
-
-type PlaygroundScope = ReturnType<typeof playgroundScope>['scope'];
-
-/**
- * The user's answer to a paused call. The playground keeps no session, so the
- * browser replays the call; its gate comes from the draft's registered tool,
- * and the answer settles it by the rule every Theorem host uses. Returns the
- * run that settles it, less its trace metadata.
- */
-function answerReplayed(
-	scope: PlaygroundScope,
-	profile: string,
-	request: GateAnswerRequest,
-	replay: TheoremReplay,
-): Omit<Parameters<PlaygroundScope['invokeTool']>[0], 'metadata'> {
-	const tool = replay.name === undefined ? undefined : scope.tools.get(replay.name);
-	if (!tool) {
-		// lexicon-exempt: internal diagnostic; the user reads error.request
-		throw new TheoremError('request', 'invoke: the paused call names no tool in this draft');
-	}
-	const answered = answerGatedCall(
-		request,
-		{
-			name: tool.name,
-			arguments: checkRequest(modelArguments, replay.input, 'replayed call input'),
-			...heldGate(tool),
-		},
-		replay.sessionPermissions ?? [],
+	return Object.fromEntries(
+		[...readers].map(([slot, providers]) => [
+			slot,
+			providers.size === 1 ? siteKey(env, [...providers][0]) : undefined,
+		]),
 	);
+}
+
+/** The demo's provider options: one vault holding the site's keys, by the slots the profile names. */
+export function playgroundProviders(
+	env: PlaygroundTurnEnv,
+	profile: Profile,
+): CreateProviderOptions {
+	return { vault: playgroundDemoVault(env, profile) };
+}
+
+function runtime(env: PlaygroundTurnEnv = {}) {
 	return {
-		profile,
-		name: tool.name,
-		callId: request.callId,
-		input: answered.input,
-		resume: answered.resume,
-		sessionPermissions: answered.sessionPermissions,
-		...(answered.typed
-			? { credentials: { [answered.typed.slot]: answered.typed.credential } }
-			: {}),
-		turnInput: replay.turnInput,
-		snapshot: replay.snapshot,
-		promoted: replay.promoted,
-		model: replay.model,
-		path: replay.path,
+		mode: 'demo' as const,
 		resolveHost,
+		provider: (profile: Profile, model?: string) =>
+			createProvider(profile, playgroundProviders(env, profile), model),
 	};
 }
 
-/** The user's answer to a paused call, streamed. */
-export async function* streamPlaygroundInvoke(args: {
-	profile: ProfileDefinition;
-	customTools: ToolRegistration[];
-	structured?: StructuredRegistration;
-	answer: TheoremInvokeRequest;
-	env?: PlaygroundTurnEnv;
-}): AsyncGenerator<TurnEvent | PlaygroundTraceLine> {
-	const { scope, profile } = playgroundScope(args.profile, args.customTools, args.structured);
-	assertNotLiveProfile(profile.type, 'invoke');
-	const { gateId, decision, input, secret, replay = {} } = args.answer;
-	const invoke = answerReplayed(
-		scope,
-		profile.id,
-		{ callId: gateId, decision, input, secret },
-		replay,
-	);
-	yield* withRunTraces((metadata) => scope.invokeTool({ ...invoke, metadata }));
+export function streamPlaygroundTurn(
+	args: Omit<Parameters<typeof sharedTurn>[0], 'runtime'> & { env?: PlaygroundTurnEnv },
+) {
+	return sharedTurn({ ...args, runtime: runtime(args.env) });
+}
+export function streamPlaygroundInvoke(
+	args: Omit<Parameters<typeof sharedInvoke>[0], 'runtime'> & { env?: PlaygroundTurnEnv },
+) {
+	return sharedInvoke({ ...args, runtime: runtime(args.env) });
+}
+export function streamPlaygroundCall(args: Omit<Parameters<typeof sharedCall>[0], 'runtime'>) {
+	return sharedCall({ ...args, runtime: runtime() });
 }

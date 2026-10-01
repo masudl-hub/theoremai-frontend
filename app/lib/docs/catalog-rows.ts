@@ -3,8 +3,8 @@
  * Same catalogs the kernel exports — no authored copies.
  */
 
-import { LEXICON_KEYS, lexiconDefault } from '@theoremai/agents/guardrails';
-import { TRACE_FIELDS, TRACE_SPAN_TYPES } from '@theoremai/agents/observability';
+import { LEXICON_KEYS, lexiconDefault } from '@theoremjs/agents/guardrails';
+import { TRACE_FIELDS, TRACE_SPAN_TYPES } from '@theoremjs/agents/observability';
 
 type TraceCatalogRow = { key: string; label: string; doc: string };
 

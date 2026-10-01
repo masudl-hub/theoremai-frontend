@@ -16,7 +16,7 @@
 		"allowImportingTsExtensions": true,
 		"forceConsistentCasingInFileNames": true,
 		"rootDirs": [".", "./.react-router/types"],
-		// @theoremai/react is compiled from source and ships its own @types/react;
+		// @theoremjs/react is compiled from source and ships its own @types/react;
 		// resolve both to this install so their types unify.
 		"paths": {
 			"react": ["./node_modules/@types/react"],

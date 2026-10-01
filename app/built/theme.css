@@ -652,6 +652,7 @@
   .astryx-section[data-variant="raised"] {
     background-color: var(--color-background-surface);
     border-radius: var(--radius-page);
+    overflow: clip;
   }
 
   .astryx-lightbox {
@@ -711,6 +712,13 @@
 
   .astryx-tree-list-item[data-selected="selected"] {
     background-color: var(--color-overlay-pressed);
+  }
+
+  .astryx-tree-list-item-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .astryx-text[data-color="primary"] { color: var(--color-text-primary); }

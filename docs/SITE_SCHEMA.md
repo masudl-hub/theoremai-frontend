@@ -2,7 +2,7 @@
 
 How `/docs` is built. What may go on a page is [DOCS_CONTRACT.md](DOCS_CONTRACT.md). Types live in [app/lib/docs/schema.ts](app/lib/docs/schema.ts). This file does not restate them.
 
-The UI, the landing cards, the reader tree, and Th30 consume **one composed index**. Nothing in that index copies `FieldMeta.doc`, facet lists, stop kinds, or version strings. Those are imported from `@theoremai/agents/schema` (and build-time kernel meta) at compose time.
+The UI, the landing cards, the reader tree, and Th30 consume **one composed index**. Nothing in that index copies `FieldMeta.doc`, facet lists, stop kinds, or version strings. Those are imported from `@theoremjs/agents/schema` (and build-time kernel meta) at compose time.
 
 ```mermaid
 flowchart TD
@@ -26,7 +26,7 @@ flowchart TD
 
 ## Ownership
 
-- **Kernel** owns catalogs, omit resolvers, export names, and lexicon. Do not add an article CMS to `@theoremai/agents`. Do not put site copy in the kernel.
+- **Kernel** owns catalogs, omit resolvers, export names, and lexicon. Do not add an article CMS to `@theoremjs/agents`. Do not put site copy in the kernel.
 - **Frontend** owns `DocArticle` / `AuthoredBlock` / `ResolvedBlock` / `PageSymbol`, authored guides, landing order, and covers.
 - **Public surface** is the thirteen topic pages plus the published README truths the contract allows. Maintainer contracts stay on GitHub.
 

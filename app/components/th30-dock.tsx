@@ -3,7 +3,7 @@ import { Dialog } from '@astryxdesign/core/Dialog';
 import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
-import { LiveSessionClient } from '@theoremai/react/client';
+import { LiveSessionClient } from '@theoremjs/react/client';
 import { createContext, type ReactNode, useCallback, useContext, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { docsPath, highlightBlock } from '../lib/docs/th30-client';
@@ -21,13 +21,6 @@ const Th30Context = createContext<Th30Api>({
 
 export function useTh30(): Th30Api {
 	return useContext(Th30Context);
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-	if (value && typeof value === 'object' && !Array.isArray(value)) {
-		return value as Record<string, unknown>;
-	}
-	return {};
 }
 
 export function Th30Provider({ children }: { children: ReactNode }) {
@@ -67,16 +60,10 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 			onStatusChange: (next) => {
 				setStatus(next);
 			},
-			onToolCall: async (name, args, meta): Promise<Record<string, unknown>> => {
+			// Th30's tools are read-only and never gate; the relay runs each call and the session answers the model.
+			onToolCall: async (name, args, meta) => {
 				applyTool(name, args);
-				const live = clientRef.current;
-				if (!live) return {};
-				const result = await live.executeToolOnRelay({
-					name,
-					callId: meta.callId,
-					input: args,
-				});
-				return asRecord(result.output);
+				await clientRef.current?.executeToolOnRelay({ callId: meta.callId });
 			},
 		});
 		clientRef.current = client;

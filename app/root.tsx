@@ -1,4 +1,9 @@
+import { Button } from '@astryxdesign/core/Button';
+import { Center } from '@astryxdesign/core/Center';
+import { EmptyState } from '@astryxdesign/core/EmptyState';
+import { Icon } from '@astryxdesign/core/Icon';
 import { Theme } from '@astryxdesign/core/theme';
+import { IconAlertTriangle, IconMapOff } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 import {
 	isRouteErrorResponse,
@@ -79,10 +84,39 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-	const status = isRouteErrorResponse(error) ? error.status : 500;
+	const missing = isRouteErrorResponse(error) && error.status === 404;
 	return (
-		<main>
-			<h1>{status === 404 ? 'Not found' : 'Something went wrong'}</h1>
-		</main>
+		<Theme theme={theoremSiteTheme} mode="system">
+			<main>
+				<Center style={{ minHeight: '100dvh', padding: 16 }}>
+					<EmptyState
+						headingLevel={1}
+						icon={<Icon icon={missing ? IconMapOff : IconAlertTriangle} size="lg" />}
+						title={missing ? 'Page not found' : 'Something went wrong'}
+						description={
+							missing
+								? "This page doesn't exist or has moved."
+								: 'The page hit an error. Try again, or head back home.'
+						}
+						actions={
+							missing ? (
+								<Button label="Go home" variant="primary" href="/" />
+							) : (
+								<>
+									<Button
+										label="Try again"
+										variant="primary"
+										onClick={() => {
+											window.location.reload();
+										}}
+									/>
+									<Button label="Go home" href="/" />
+								</>
+							)
+						}
+					/>
+				</Center>
+			</main>
+		</Theme>
 	);
 }

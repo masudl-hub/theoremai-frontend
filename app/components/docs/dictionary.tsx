@@ -12,7 +12,7 @@ import { TextInput } from '@astryxdesign/core/TextInput';
 import { Token } from '@astryxdesign/core/Token';
 import { VStack } from '@astryxdesign/core/VStack';
 import { IconSearch } from '@tabler/icons-react';
-import type { FieldMeta } from '@theoremai/agents/schema';
+import type { FieldMeta } from '@theoremjs/agents/schema';
 import { type ReactNode, useMemo, useState } from 'react';
 import type { PageSymbol } from '../../lib/docs/schema';
 

@@ -6,7 +6,6 @@ import { CheckboxList, CheckboxListItem } from '@astryxdesign/core/CheckboxList'
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
 import { Collapsible, CollapsibleGroup } from '@astryxdesign/core/Collapsible';
 import { ComplexSelector } from '@astryxdesign/core/ComplexSelector';
-import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { HStack } from '@astryxdesign/core/HStack';
 import { Icon, type IconType } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
@@ -30,7 +29,8 @@ import {
 	IconAntennaBars4,
 	IconAntennaBars5,
 	IconAntennaBarsOff,
-	IconBan,
+	IconArrowDown,
+	IconArrowUp,
 	IconBandage,
 	IconBiohazard,
 	IconBolt,
@@ -39,8 +39,8 @@ import {
 	IconBulb,
 	IconBulbOff,
 	IconCertificate,
+	IconChartBar,
 	IconCircleDashed,
-	IconCpu,
 	IconDeviceDesktop,
 	IconEye,
 	IconEyeOff,
@@ -48,19 +48,25 @@ import {
 	IconFlame,
 	IconFlask,
 	IconGauge,
+	IconGitBranch,
 	IconHandOff,
 	IconHandStop,
 	IconHourglass,
+	IconHttpDelete,
+	IconHttpGet,
+	IconHttpPatch,
+	IconHttpPost,
+	IconHttpPut,
 	IconInfoCircle,
+	IconInputAi,
 	IconKey,
-	IconLetterA,
-	IconLetterB,
-	IconLetterC,
 	IconLetterT,
+	IconListCheck,
 	IconLockOpen,
 	IconMathFunction,
 	IconMessage,
 	IconMicrophone,
+	IconNumber,
 	IconPackage,
 	IconPaperclip,
 	IconPencil,
@@ -71,7 +77,9 @@ import {
 	IconPlugConnected,
 	IconPlus,
 	IconRefresh,
+	IconSearch,
 	IconSend,
+	IconServer,
 	IconShieldLock,
 	IconSquareRoundedNumber0,
 	IconSquareRoundedNumber1,
@@ -93,6 +101,7 @@ import {
 	type CustomToolType,
 	type EgressOnBlock,
 	fieldMeta,
+	GOOGLE_BUILTIN_TOOLS,
 	GOOGLE_IMAGE_ASPECT_RATIOS,
 	GOOGLE_IMAGE_INPUT_MIMES,
 	GOOGLE_IMAGE_SIZES,
@@ -103,7 +112,6 @@ import {
 	LEXICON_KEYS,
 	type LexiconKey,
 	lexiconDefault,
-	type OverflowKeySlot,
 	type PlaygroundAuthType,
 	PROFILE_TYPE_PROTOCOLS,
 	PROTOCOL_PROVIDERS,
@@ -118,11 +126,14 @@ import {
 	type ToolLoadTier,
 	type ToolPermission,
 	VOICE_ACCEPT_MIMES,
-} from '@theoremai/agents';
+} from '@theoremjs/agents';
 import {
 	type AcceptSection,
 	acceptSections,
 	allowedBuiltinsForGemini,
+	credentialHeaderProblem,
+	type DecisionQuestionDraft,
+	type DecisionQuestionType,
 	defaultBindingForProfileType,
 	defaultEffortRequired,
 	defaultModelRequired,
@@ -132,20 +143,33 @@ import {
 	GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS,
 	GEMINI_PLAYGROUND_MODELS,
 	INLINE_WORDING,
+	includableFacets,
+	includeFacet,
 	inputLimitsRequired,
 	isGoogleTransport,
 	isOpenRouterTransport,
+	JEV_PLAYGROUND_API_ID,
 	keySlotRequired,
 	type ModelBindingDraft,
+	modelBindingNodeId,
+	newCriteria,
+	newDecisionQuestion,
+	newModelBinding,
 	newToolSpec,
 	nextAccept,
 	type ObservabilityDraft,
+	OPENROUTER_DECISION_MODELS,
 	OPENROUTER_PLAYGROUND_API_ID,
 	type OutputsDraft,
+	PLAYGROUND_DECISION_MAX_CRITERIA,
+	PLAYGROUND_DECISION_MAX_QUESTIONS,
+	PLAYGROUND_DECISION_MAX_STATE_BYTES,
+	PLAYGROUND_DECISION_TIMEOUT_MS,
 	PLAYGROUND_TRACE_DESTINATION,
 	type PlaygroundDraft,
 	type PlaygroundIssue,
 	type PlaygroundProfileType,
+	type PlaygroundTurnProfileType,
 	playgroundNodeRef,
 	playgroundRunsTransport,
 	sampleToolInput,
@@ -153,17 +177,16 @@ import {
 	type ToolSpecDraft,
 	takesContinueInstruction,
 	toolSpecNodeId,
-} from '@theoremai/playground';
+	updateModelBinding,
+} from '@theoremjs/playground';
 import { type Dispatch, type ReactNode, type SetStateAction, useContext, useState } from 'react';
 import { IconGemini, IconGoogle, IconOpenAi, IconOpenRouter } from './brand-icons';
 import {
 	ChoiceRow,
 	InspectorRow,
 	InspectorSection,
-	ListBadges,
 	ListRow,
 	NamesRow,
-	NodeIssues,
 	NumberRow,
 	type Segment,
 	SegmentedRow,
@@ -171,8 +194,15 @@ import {
 	SwitchRow,
 	TextAreaRow,
 	TextRow,
-	useFieldStatus,
 } from './inspector';
+import {
+	ConnectionMode,
+	ISSUE_ROW_ATTRIBUTE,
+	ListBadges,
+	LocalConnection,
+	NodeIssues,
+	useFieldStatus,
+} from './inspector-context';
 import { IconMcp } from './mcp-icon';
 
 export type SetDraft = Dispatch<SetStateAction<PlaygroundDraft>>;
@@ -193,6 +223,8 @@ export const PROFILE_TYPE_ICON = {
 	image: IconPhoto,
 	speech: IconVolume,
 	live: IconBroadcast,
+	decision: IconGitBranch,
+	host: IconServer,
 } satisfies Record<PlaygroundProfileType, unknown>;
 
 const PROFILE_TYPE_SEGMENTS: Segment<PlaygroundProfileType>[] = [
@@ -200,6 +232,8 @@ const PROFILE_TYPE_SEGMENTS: Segment<PlaygroundProfileType>[] = [
 	{ value: 'image', label: 'Image', icon: PROFILE_TYPE_ICON.image },
 	{ value: 'speech', label: 'Speech', icon: PROFILE_TYPE_ICON.speech },
 	{ value: 'live', label: 'Live', icon: PROFILE_TYPE_ICON.live },
+	{ value: 'decision', label: 'Decision', icon: PROFILE_TYPE_ICON.decision },
+	{ value: 'host', label: 'Host', icon: PROFILE_TYPE_ICON.host },
 ];
 
 const PROTOCOL_SEGMENT = {
@@ -210,20 +244,15 @@ const PROTOCOL_SEGMENT = {
 	},
 	geminiLive: { value: 'geminiLive', label: 'Gemini Live', icon: IconGemini },
 	openAi: { value: 'openAi', label: 'OpenAI-compatible', icon: IconOpenAi },
+	decision: { value: 'decision', label: 'Decision', icon: IconGitBranch },
 } satisfies { [P in Protocol]: Segment<P> };
 
 const PROVIDER_SEGMENT = {
 	google: { value: 'google', label: 'Google', icon: IconGoogle },
 	openrouter: { value: 'openrouter', label: 'OpenRouter', icon: IconOpenRouter },
 	local: { value: 'local', label: 'Local', icon: IconDeviceDesktop },
+	typesafe: { value: 'typesafe', label: 'TypeSafe', icon: IconGitBranch },
 } satisfies { [P in Provider]: Segment<P> };
-
-const KEY_SEGMENTS: Segment<OverflowKeySlot | ''>[] = [
-	{ value: '', label: 'No key slot', icon: IconBan },
-	{ value: 'slotA', label: 'Slot A', icon: IconLetterA },
-	{ value: 'slotB', label: 'Slot B', icon: IconLetterB },
-	{ value: 'slotC', label: 'Slot C', icon: IconLetterC },
-];
 
 const LEVEL_SEGMENT = {
 	none: { label: 'None', icon: IconAntennaBarsOff },
@@ -274,7 +303,11 @@ const IMAGE_ATTACHMENT_PICKER = acceptPicker(IMAGE_ATTACHMENT_ACCEPT_MIMES);
 const VOICE_PICKER = acceptPicker(VOICE_ACCEPT_MIMES);
 
 /** The wire model a binding starts on after its transport changes. */
-function defaultApiId(type: PlaygroundProfileType, protocol: Protocol, provider: Provider): string {
+function defaultApiId(
+	type: PlaygroundTurnProfileType,
+	protocol: Protocol,
+	provider: Provider,
+): string {
 	if (isOpenRouterTransport(protocol, provider)) return OPENROUTER_PLAYGROUND_API_ID;
 	if (!isGoogleTransport(protocol, provider)) return '';
 	const seed = defaultBindingForProfileType(type);
@@ -284,7 +317,7 @@ function defaultApiId(type: PlaygroundProfileType, protocol: Protocol, provider:
 /** Moves a binding to a new transport and its default model, dropping builtins that model lacks. */
 function retransport(
 	binding: ModelBindingDraft,
-	type: PlaygroundProfileType,
+	type: PlaygroundTurnProfileType,
 	protocol: Protocol,
 	provider: Provider,
 ): Partial<ModelBindingDraft> {
@@ -296,6 +329,17 @@ function retransport(
 		apiId,
 		builtInTools: binding.builtInTools.filter((id) => allowed.has(id)),
 	};
+}
+
+/**
+ * A type change turns on each optional section the new type brings that the old one didn't: the
+ * first pick shows them all. One the author took out under the old type stays out.
+ */
+function withNewSections(before: PlaygroundDraft, after: PlaygroundDraft): PlaygroundDraft {
+	const leftOut = new Set(includableFacets(before));
+	return includableFacets(after)
+		.filter((facet) => !leftOut.has(facet))
+		.reduce(includeFacet, after);
 }
 
 function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
@@ -321,34 +365,138 @@ function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 					value={identity.profileType}
 					segments={PROFILE_TYPE_SEGMENTS}
 					onChange={(type) => {
-						if (type) setDraft((current) => setProfileType(current, type));
+						if (type)
+							setDraft((current) => withNewSections(current, setProfileType(current, type)));
 					}}
 				/>
-				<TextRow
-					label="Handle"
-					path="identity.handle"
-					field="handle"
-					value={identity.handle}
-					placeholder="agent"
-					onChange={(handle) => {
-						set({ handle });
-					}}
+				{/* A host runs no model: nothing speaks, so it has no handle. */}
+				{identity.profileType !== 'host' && (
+					<TextRow
+						label="Handle"
+						path="identity.handle"
+						field="handle"
+						value={identity.handle}
+						placeholder="agent"
+						onChange={(handle) => {
+							set({ handle });
+						}}
+					/>
+				)}
+			</InspectorSection>
+			{identity.profileType !== 'speech' &&
+				identity.profileType !== 'decision' &&
+				identity.profileType !== 'host' && (
+					<InspectorSection
+						title="System prompt"
+						note="Standing instructions the model reads before every turn."
+					>
+						<TextArea
+							label="System prompt"
+							isLabelHidden
+							size="sm"
+							rows={8}
+							value={identity.system}
+							placeholder={fieldMeta('identity.system')?.unset}
+							onChange={(system) => {
+								set({ system });
+							}}
+						/>
+					</InspectorSection>
+				)}
+		</>
+	);
+}
+
+function ModelsEditor({
+	draft,
+	setDraft,
+	onSelect,
+}: {
+	draft: PlaygroundDraft;
+	setDraft: SetDraft;
+	onSelect: (id: string) => void;
+}) {
+	const { models } = draft;
+	const set = patch(setDraft, 'models');
+	const addModel = () => {
+		const binding = newModelBinding(draft);
+		setDraft((current) => ({ ...current, modelBindings: [...current.modelBindings, binding] }));
+		onSelect(modelBindingNodeId(binding.key));
+	};
+	return (
+		<>
+			<InspectorSection
+				title="Models"
+				note={
+					draft.identity.profileType === 'decision'
+						? 'A decision uses one model. Select its binding in the tree to configure it.'
+						: 'Add a model here, then select its binding in the tree to configure it.'
+				}
+			>
+				<Button
+					label="Add model"
+					variant="ghost"
+					size="sm"
+					icon={<Icon icon={IconPlus} size="sm" />}
+					isDisabled={draft.identity.profileType === 'decision' && draft.modelBindings.length >= 1}
+					onClick={addModel}
 				/>
 			</InspectorSection>
-			{identity.profileType !== 'speech' && (
+			{draft.identity.profileType !== 'decision' && (
 				<InspectorSection
-					title="System prompt"
-					note="Standing instructions the model reads before every turn."
+					title="Policy"
+					note="Which model runs by default, and how many steps a turn may take."
 				>
-					<TextArea
-						label="System prompt"
-						isLabelHidden
-						size="sm"
-						rows={8}
-						value={identity.system}
-						placeholder={fieldMeta('identity.system')?.unset}
-						onChange={(system) => {
-							set({ system });
+					<ChoiceRow
+						label="Default"
+						path="defaultModel"
+						field="defaultModel"
+						value={models.defaultModel}
+						isRequired={defaultModelRequired(draft)}
+						options={draft.modelBindings.map((binding) => binding.modelId)}
+						onChange={(defaultModel) => {
+							set({ defaultModel });
+						}}
+					/>
+					<SwitchRow
+						label="Switching"
+						path="allowModelSelect"
+						field="allowModelSelect"
+						value={models.allowModelSelect}
+						isDisabled={draft.modelBindings.length < 2}
+						onChange={(allowModelSelect) => {
+							set({ allowModelSelect });
+						}}
+					/>
+					<NumberRow
+						label="Max steps"
+						path="maxSteps"
+						units="steps"
+						field="maxSteps"
+						value={models.maxSteps}
+						min={1}
+						isIntegerOnly
+						onChange={(maxSteps) => {
+							set({ maxSteps });
+						}}
+					/>
+					<TextRow
+						label="Key slot"
+						path="key"
+						field="key"
+						value={models.key}
+						isRequired={keySlotRequired(draft)}
+						onChange={(key) => {
+							set({ key });
+						}}
+					/>
+					<TextRow
+						label="Fallback slot"
+						path="fallbackKey"
+						field="fallbackKey"
+						value={models.fallbackKey ?? ''}
+						onChange={(fallbackKey) => {
+							set({ fallbackKey });
 						}}
 					/>
 				</InspectorSection>
@@ -357,56 +505,111 @@ function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 	);
 }
 
-function ModelsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
-	const { models } = draft;
-	const set = patch(setDraft, 'models');
+/** Decision model binding, using the same protocol/provider/API id symbols as other models. */
+function DecisionModelEditor({
+	draft,
+	setDraft,
+	bindingKey,
+}: {
+	draft: PlaygroundDraft;
+	setDraft: SetDraft;
+	bindingKey: string;
+}) {
+	const mode = useContext(ConnectionMode);
+	const binding = draft.modelBindings.find((candidate) => candidate.key === bindingKey);
+	if (!binding) return null;
+	const set = (change: Partial<ModelBindingDraft>) => {
+		setDraft((current) => updateModelBinding(current, bindingKey, change));
+	};
 	return (
 		<InspectorSection
-			title="Policy"
-			note="Which model runs by default, and how many steps a turn may take."
+			title="Decision model"
+			note="This binding answers the questions configured under Decision."
 		>
-			<ChoiceRow
-				label="Default"
-				path="defaultModel"
-				field="defaultModel"
-				value={models.defaultModel}
-				isRequired={defaultModelRequired(draft)}
-				options={draft.modelBindings.map((binding) => binding.modelId)}
-				onChange={(defaultModel) => {
-					set({ defaultModel });
+			<TextRow
+				label="Id"
+				path="models.*"
+				field="modelId"
+				value={binding.modelId}
+				isRequired
+				onChange={(modelId) => {
+					set({ modelId });
 				}}
 			/>
-			<SwitchRow
-				label="Switching"
-				path="allowModelSelect"
-				field="allowModelSelect"
-				value={models.allowModelSelect}
-				isDisabled={draft.modelBindings.length < 2}
-				onChange={(allowModelSelect) => {
-					set({ allowModelSelect });
+			<SegmentedRow<Protocol>
+				label="Protocol"
+				path="models.*.protocol"
+				field="protocol"
+				value={binding.protocol}
+				segments={[PROTOCOL_SEGMENT.decision]}
+				onChange={(protocol) => {
+					set({ protocol });
+				}}
+			/>
+			<SegmentedRow<Provider>
+				label="Provider"
+				path="models.*.provider"
+				field="provider"
+				value={binding.provider}
+				segments={[PROVIDER_SEGMENT.typesafe, PROVIDER_SEGMENT.openrouter]}
+				onChange={(provider) => {
+					set({
+						provider,
+						apiId:
+							provider === 'typesafe' ? JEV_PLAYGROUND_API_ID : OPENROUTER_DECISION_MODELS[0].id,
+					});
+				}}
+			/>
+			{mode === 'demo' ? (
+				<ChoiceRow
+					label="API model"
+					path="models.*.apiId"
+					field="apiId"
+					value={binding.apiId}
+					options={(binding.provider === 'typesafe'
+						? [{ id: JEV_PLAYGROUND_API_ID, label: 'Jev' }]
+						: OPENROUTER_DECISION_MODELS
+					).map((model) => ({
+						value: model.id,
+						label: model.label,
+						description: model.id,
+					}))}
+					onChange={(apiId) => {
+						set({ apiId });
+					}}
+				/>
+			) : (
+				<TextRow
+					label="API model"
+					path="models.*.apiId"
+					field="apiId"
+					value={binding.apiId}
+					isRequired
+					onChange={(apiId) => {
+						set({ apiId });
+					}}
+				/>
+			)}
+			<TextRow
+				label="Key slot"
+				path="key"
+				value={draft.models.key}
+				onChange={(key) => {
+					setDraft((current) => ({ ...current, models: { ...current.models, key } }));
 				}}
 			/>
 			<NumberRow
-				label="Max steps"
-				path="maxSteps"
-				units="steps"
-				field="maxSteps"
-				value={models.maxSteps}
+				label="Timeout"
+				path="models.*.timeoutMs"
+				units="ms"
+				field="timeoutMs"
+				value={binding.timeoutMs}
 				min={1}
+				max={PLAYGROUND_DECISION_TIMEOUT_MS}
+				hint={`${String(PLAYGROUND_DECISION_TIMEOUT_MS)} by default`}
 				isIntegerOnly
-				onChange={(maxSteps) => {
-					set({ maxSteps });
-				}}
-			/>
-			<SegmentedRow
-				label="Key slot"
-				path="key"
-				field="key"
-				value={models.key}
-				segments={KEY_SEGMENTS}
-				isRequired={keySlotRequired(draft)}
-				onChange={(key) => {
-					set({ key });
+				onChange={(timeoutMs) => {
+					set({ timeoutMs });
 				}}
 			/>
 		</InspectorSection>
@@ -422,20 +625,23 @@ function ModelBindingEditor({
 	setDraft: SetDraft;
 	bindingKey: string;
 }) {
+	const mode = useContext(ConnectionMode);
+	const localConnection = useContext(LocalConnection);
 	const statusAt = useFieldStatus();
 	const binding = draft.modelBindings.find((candidate) => candidate.key === bindingKey);
 	if (!binding) return null;
-	const type = draft.identity.profileType || 'text';
+	// A decision has its own binding editor; a host has no model.
+	const chosen = draft.identity.profileType;
+	const type = chosen && chosen !== 'decision' && chosen !== 'host' ? chosen : 'text';
 	const set = (change: Partial<ModelBindingDraft>) => {
-		setDraft((current) => ({
-			...current,
-			modelBindings: current.modelBindings.map((candidate) =>
-				candidate.key === bindingKey ? { ...candidate, ...change } : candidate,
-			),
-		}));
+		setDraft((current) => updateModelBinding(current, bindingKey, change));
 	};
 	const google = isGoogleTransport(binding.protocol, binding.provider);
-	const builtins = google ? allowedBuiltinsForGemini(binding.apiId) : [];
+	const builtins = google
+		? mode === 'demo'
+			? allowedBuiltinsForGemini(binding.apiId)
+			: GOOGLE_BUILTIN_TOOLS.map((tool) => tool.name)
+		: [];
 	const aliases = binding.efforts.map((effort) => effort.alias).filter(Boolean);
 	/**
 	 * Sets the efforts and keeps the settings that depend on them valid: the default follows its
@@ -468,17 +674,7 @@ function ModelBindingEditor({
 					value={binding.modelId}
 					placeholder="fast"
 					onChange={(modelId) => {
-						// The models' default names this binding by id, so it follows the rename.
-						setDraft((current) => ({
-							...current,
-							models:
-								current.models.defaultModel === binding.modelId
-									? { ...current.models, defaultModel: modelId }
-									: current.models,
-							modelBindings: current.modelBindings.map((candidate) =>
-								candidate.key === bindingKey ? { ...candidate, modelId } : candidate,
-							),
-						}));
+						set({ modelId });
 					}}
 				/>
 				<SegmentedRow<Protocol>
@@ -499,33 +695,123 @@ function ModelBindingEditor({
 					value={binding.provider}
 					segments={PROTOCOL_PROVIDERS[binding.protocol].map((provider) => ({
 						...PROVIDER_SEGMENT[provider],
-						isDisabled: !playgroundRunsTransport(type, binding.protocol, provider),
+						isDisabled: !playgroundRunsTransport(
+							type,
+							binding.protocol,
+							provider,
+							provider === 'local' ? 'local' : mode,
+						),
 					}))}
 					onChange={(provider) => {
 						set(retransport(binding, type, binding.protocol, provider));
 					}}
 				/>
-				<ChoiceRow
-					label="API model"
-					path="models.*.apiId"
-					field="apiId"
-					value={binding.apiId}
-					options={
-						google
-							? GEMINI_PLAYGROUND_MODELS.filter((model) => model.profileType === type).map(
-									(model) => ({
-										value: model.id,
-										label: model.label,
-										description: model.id,
-									}),
-								)
-							: [OPENROUTER_PLAYGROUND_API_ID]
-					}
-					onChange={(apiId) => {
-						const allowed = new Set(allowedBuiltinsForGemini(apiId));
-						set({ apiId, builtInTools: binding.builtInTools.filter((id) => allowed.has(id)) });
-					}}
-				/>
+				{binding.provider === 'local' && localConnection && (
+					<TextRow
+						label="Local endpoint"
+						path="local.baseUrl"
+						value={localConnection.local.baseUrl}
+						placeholder="http://127.0.0.1:11434"
+						status={
+							localConnection.localModels.status === 'error'
+								? { type: 'error', message: localConnection.localModels.error ?? '' }
+								: undefined
+						}
+						onChange={(baseUrl) => {
+							localConnection.setLocal((current) => ({ ...current, baseUrl }));
+							set({ apiId: '' });
+						}}
+					/>
+				)}
+				{binding.provider === 'local' &&
+					localConnection?.localModels.status === 'error' &&
+					!isLocalPage() && <LocalOriginHelp />}
+				{binding.provider === 'local' && localConnection ? (
+					<ChoiceRow
+						label="API model"
+						path="models.*.apiId"
+						field="apiId"
+						value={binding.apiId}
+						options={localConnection.localModels.ids}
+						isDisabled={
+							localConnection.localModels.status !== 'ready' ||
+							!localConnection.localModels.ids.length
+						}
+						hasSearch
+						isRequired
+						onChange={(apiId) => {
+							set({ apiId });
+						}}
+					/>
+				) : mode === 'demo' ? (
+					<ChoiceRow
+						label="API model"
+						path="models.*.apiId"
+						field="apiId"
+						value={binding.apiId}
+						options={
+							google
+								? GEMINI_PLAYGROUND_MODELS.filter((model) => model.profileType === type).map(
+										(model) => ({
+											value: model.id,
+											label: model.label,
+											description: model.id,
+										}),
+									)
+								: [OPENROUTER_PLAYGROUND_API_ID]
+						}
+						onChange={(apiId) => {
+							const allowed = new Set(allowedBuiltinsForGemini(apiId));
+							set({ apiId, builtInTools: binding.builtInTools.filter((id) => allowed.has(id)) });
+						}}
+					/>
+				) : (
+					<TextRow
+						label="API model"
+						path="models.*.apiId"
+						field="apiId"
+						value={binding.apiId}
+						isRequired
+						placeholder={
+							binding.provider === 'local' ? 'Installed model name' : 'Provider model id'
+						}
+						onChange={(apiId) => {
+							set({ apiId });
+						}}
+					/>
+				)}
+
+				{binding.provider === 'local' && localConnection && (
+					<SwitchRow
+						label="Remote tools"
+						path="playground.remoteTools"
+						value={localConnection.remoteTools}
+						onChange={localConnection.setRemoteTools}
+					/>
+				)}
+				{binding.provider !== 'local' && (
+					<>
+						<TextRow
+							label="Key slot override"
+							path="models.*.key"
+							field="keySlot"
+							value={binding.keySlot ?? ''}
+							onChange={(keySlot) => {
+								set({ keySlot });
+							}}
+						/>
+						<TextRow
+							label="Fallback override"
+							path="models.*.fallbackKey"
+							field="fallbackKeySlot"
+							value={binding.fallbackKeySlot ?? ''}
+							onChange={(fallbackKeySlot) => {
+								set({ fallbackKeySlot });
+							}}
+						/>
+					</>
+				)}
+
 				{google && (
 					<ListRow
 						label="Built-ins"
@@ -935,6 +1221,7 @@ const COMPRESSION_TRIGGER_DEFAULT = Math.round(GEMINI_PLAYGROUND_LIVE_INPUT_TOKE
 const COMPRESSION_TARGET_DEFAULT = Math.round(COMPRESSION_TRIGGER_DEFAULT / 2);
 
 function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+	const mode = useContext(ConnectionMode);
 	const google = allGoogle(draft);
 	const { live } = draft;
 	const set = patch(setDraft, 'live');
@@ -1012,36 +1299,62 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 						set({ contextCompression });
 					}}
 				/>
-				{live.contextCompression && (
-					<>
-						<SliderRow
-							label="Trigger"
-							path="live.contextCompression.triggerTokens"
-							field="compressionTriggerTokens"
-							value={live.compressionTriggerTokens}
-							fallback={COMPRESSION_TRIGGER_DEFAULT}
-							min={COMPRESSION_STEP}
-							max={GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS}
-							step={COMPRESSION_STEP}
-							onChange={(compressionTriggerTokens) => {
-								set({ compressionTriggerTokens });
-							}}
-						/>
-						<SliderRow
-							label="Keep"
-							path="live.contextCompression.slidingWindow.targetTokens"
-							field="compressionTargetTokens"
-							value={live.compressionTargetTokens}
-							fallback={COMPRESSION_TARGET_DEFAULT}
-							min={COMPRESSION_STEP}
-							max={GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS - COMPRESSION_STEP}
-							step={COMPRESSION_STEP}
-							onChange={(compressionTargetTokens) => {
-								set({ compressionTargetTokens });
-							}}
-						/>
-					</>
-				)}
+				{live.contextCompression &&
+					(mode === 'demo' ? (
+						<>
+							<SliderRow
+								label="Trigger"
+								path="live.contextCompression.triggerTokens"
+								field="compressionTriggerTokens"
+								value={live.compressionTriggerTokens}
+								fallback={COMPRESSION_TRIGGER_DEFAULT}
+								min={COMPRESSION_STEP}
+								max={GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS}
+								step={COMPRESSION_STEP}
+								onChange={(compressionTriggerTokens) => {
+									set({ compressionTriggerTokens });
+								}}
+							/>
+							<SliderRow
+								label="Keep"
+								path="live.contextCompression.slidingWindow.targetTokens"
+								field="compressionTargetTokens"
+								value={live.compressionTargetTokens}
+								fallback={COMPRESSION_TARGET_DEFAULT}
+								min={COMPRESSION_STEP}
+								max={GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS - COMPRESSION_STEP}
+								step={COMPRESSION_STEP}
+								onChange={(compressionTargetTokens) => {
+									set({ compressionTargetTokens });
+								}}
+							/>
+						</>
+					) : (
+						<>
+							<NumberRow
+								label="Trigger"
+								path="live.contextCompression.triggerTokens"
+								field="compressionTriggerTokens"
+								value={live.compressionTriggerTokens}
+								min={1}
+								isIntegerOnly
+								onChange={(compressionTriggerTokens) => {
+									set({ compressionTriggerTokens });
+								}}
+							/>
+							<NumberRow
+								label="Keep"
+								path="live.contextCompression.slidingWindow.targetTokens"
+								field="compressionTargetTokens"
+								value={live.compressionTargetTokens}
+								min={1}
+								isIntegerOnly
+								onChange={(compressionTargetTokens) => {
+									set({ compressionTargetTokens });
+								}}
+							/>
+						</>
+					))}
 			</InspectorSection>
 			<InspectorSection title="Transcripts" note="Text copies of what is said, both ways.">
 				<SwitchRow
@@ -1211,7 +1524,7 @@ function OutputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: 
 							/>
 							<TextAreaRow
 								label="Guidance"
-								path="lexicon.*"
+								path="lexicon.repair.default_guidance"
 								field="repairGuidance"
 								value={outputs.repairGuidance}
 								placeholder={lexiconDefault('repair.default_guidance')}
@@ -1416,7 +1729,7 @@ function TurnBehaviourEditor({ draft, setDraft }: { draft: PlaygroundDraft; setD
 							{takesContinueInstruction(draft) && (
 								<TextAreaRow
 									label="Instruction"
-									path="lexicon.*"
+									path="lexicon.continue.instruction"
 									field="continueInstruction"
 									value={turn.continueInstruction}
 									placeholder={lexiconDefault('continue.instruction')}
@@ -1490,7 +1803,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 					{guardrails.canary && (
 						<TextAreaRow
 							label="Bind note"
-							path="lexicon.*"
+							path="lexicon.canary.bind_note"
 							field="canaryBindNote"
 							value={guardrails.canaryBindNote}
 							placeholder={lexiconDefault('canary.bind_note')}
@@ -1537,7 +1850,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 								/>
 								<TextAreaRow
 									label="Guidance"
-									path="lexicon.*"
+									path="lexicon.egress.default_repair_guidance"
 									field="egressRepairGuidance"
 									value={guardrails.egressRepairGuidance}
 									placeholder={lexiconDefault('egress.default_repair_guidance')}
@@ -1547,18 +1860,6 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 								/>
 							</>
 						)}
-						<NumberRow
-							label="Holdback"
-							path="guardrails.egress.holdback"
-							field="egressHoldback"
-							value={guardrails.egressHoldback}
-							min={0}
-							units="chars"
-							isIntegerOnly
-							onChange={(egressHoldback) => {
-								set({ egressHoldback });
-							}}
-						/>
 					</>
 				)}
 			</InspectorSection>
@@ -1616,7 +1917,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 						/>
 						<TextAreaRow
 							label="Message"
-							path="lexicon.*"
+							path="lexicon.quota.exhausted"
 							field="quotaMessage"
 							value={guardrails.quotaMessage}
 							placeholder={lexiconDefault('quota.exhausted', {
@@ -1808,6 +2109,14 @@ const PERMISSION_SEGMENTS: Segment<ToolPermission>[] = [
 	{ value: 'always_confirm', label: 'Every call', icon: IconHandStop },
 ];
 
+const METHOD_SEGMENTS: Segment<HttpMethod>[] = [
+	{ value: 'GET', label: 'GET', icon: IconHttpGet },
+	{ value: 'POST', label: 'POST', icon: IconHttpPost },
+	{ value: 'PUT', label: 'PUT', icon: IconHttpPut },
+	{ value: 'PATCH', label: 'PATCH', icon: IconHttpPatch },
+	{ value: 'DELETE', label: 'DELETE', icon: IconHttpDelete },
+];
+
 const LOAD_TIER_SEGMENTS: Segment<ToolLoadTier>[] = [
 	{ value: 'T0', label: 'T0', icon: IconSquareRoundedNumber0 },
 	{ value: 'T1', label: 'T1', icon: IconSquareRoundedNumber1 },
@@ -1845,6 +2154,25 @@ function loadTierWarning(draft: PlaygroundDraft, tier: ToolLoadTier): string | u
 		return 'No T2 loader is set under Tools, so this tool never loads.';
 	}
 	return undefined;
+}
+
+function placeholderHint(schemas: string[]): string | undefined {
+	const names = new Set<string>();
+	for (const json of schemas) {
+		try {
+			const schema: unknown = JSON.parse(json);
+			const properties: unknown =
+				schema && typeof schema === 'object' && 'properties' in schema
+					? schema.properties
+					: undefined;
+			if (properties && typeof properties === 'object') {
+				for (const name of Object.keys(properties)) names.add(`{${name}}`);
+			}
+		} catch {
+			// A schema mid-edit names nothing yet.
+		}
+	}
+	return names.size ? `Can use ${[...names].join(' ')}` : undefined;
 }
 
 const HEADERS_PLACEHOLDER = `{
@@ -1960,6 +2288,10 @@ function probeRequest(
 ): { body?: Record<string, unknown>; error?: string } {
 	const headers = parseObject(tool.headersJson ?? '', 'Headers');
 	if (headers.error) return { error: headers.error };
+	const credentialHeader = credentialHeaderProblem(
+		headers.value as Record<string, string> | undefined,
+	);
+	if (credentialHeader) return { error: credentialHeader };
 	const authType = tool.authType ?? 'none';
 	const shared = {
 		headers: headers.value,
@@ -2248,6 +2580,31 @@ function ToolSpecEditor({
 					}}
 				/>
 			</InspectorSection>
+			<InspectorSection
+				title="Activity"
+				note="What the chat says while a call runs and once it's done. {field} fills from the call, {results.0.name} steps into a list, and {field|text} shows the text when it's empty."
+			>
+				<TextRow
+					label="Running"
+					path="labels.activity"
+					field="activity"
+					value={tool.activity ?? ''}
+					hint={placeholderHint([tool.inputJson])}
+					onChange={(activity) => {
+						set({ activity });
+					}}
+				/>
+				<TextRow
+					label="Done"
+					path="labels.activityPast"
+					field="activityPast"
+					value={tool.activityPast ?? ''}
+					hint={placeholderHint([tool.inputJson, tool.outputJson])}
+					onChange={(activityPast) => {
+						set({ activityPast });
+					}}
+				/>
+			</InspectorSection>
 			{tool.toolType === 'function' && (
 				<InspectorSection
 					title="Stub"
@@ -2284,14 +2641,14 @@ function ToolSpecEditor({
 								set({ endpoint });
 							}}
 						/>
-						<ChoiceRow<HttpMethod>
+						<SegmentedRow
 							label="Method"
 							path="method"
 							field="method"
 							value={tool.method ?? HTTP_METHODS[0]}
-							options={HTTP_METHODS}
+							segments={METHOD_SEGMENTS}
 							onChange={(method) => {
-								set({ method: method || undefined });
+								set({ method });
 							}}
 						/>
 						{headersRow}
@@ -2645,7 +3002,7 @@ const WORDING_AUDIENCES: readonly {
 	{
 		value: 'model',
 		label: 'Model reads',
-		icon: IconCpu,
+		icon: IconInputAi,
 		note: 'Put in front of the model; the visitor never sees these.',
 	},
 ];
@@ -2763,7 +3120,7 @@ function SharedWordingRow({
 		<VStack gap={1}>
 			<TextAreaRow
 				label={wordingLabel(lexiconKey)}
-				path="lexicon.*"
+				path={`lexicon.${lexiconKey}`}
 				rows={2}
 				value={shared.read(draft)}
 				placeholder={wordingPlaceholder(draft, lexiconKey)}
@@ -2800,39 +3157,72 @@ function WordingEditor({
 }) {
 	const set = patch(setDraft, 'wording');
 	const [audience, setAudience] = useState<WordingAudience>('visitor');
-	const areas = WORDING_AREAS.filter((area) => area.audience === audience).map((area) => {
-		const keys = LEXICON_KEYS.filter((key) => key.startsWith(`${area.prefix}.`));
-		const edited = keys.filter((key) => wordingValue(draft, key)).length;
-		return { ...area, keys, edited };
-	});
+	const [query, setQuery] = useState('');
+	const needle = query.trim().toLowerCase();
+	/** A search spans both readers: a line matches on its area, its name, its default or its text. */
+	const areas = WORDING_AREAS.filter((area) => needle || area.audience === audience)
+		.map((area) => {
+			const all = LEXICON_KEYS.filter((key) => key.startsWith(`${area.prefix}.`));
+			const keys = needle
+				? all.filter((key) =>
+						[
+							area.title,
+							wordingLabel(key),
+							wordingPlaceholder(draft, key),
+							wordingValue(draft, key),
+						].some((text) => text.toLowerCase().includes(needle)),
+					)
+				: all;
+			const edited = all.filter((key) => wordingValue(draft, key)).length;
+			return { ...area, keys, edited };
+		})
+		.filter((area) => area.keys.length > 0);
 	const note = WORDING_AUDIENCES.find((entry) => entry.value === audience)?.note;
 	return (
 		<Section variant="transparent" padding={3}>
 			<VStack gap={3}>
-				<SegmentedControl
-					label="Who reads it"
-					size="sm"
-					layout="fill"
-					value={audience}
-					onChange={(next) => {
-						const picked = WORDING_AUDIENCES.find((entry) => entry.value === next);
-						if (picked) setAudience(picked.value);
-					}}
+				<TextInput
+					label="Search wording"
+					isLabelHidden
+					placeholder="Search names, defaults and text"
+					value={query}
+					onChange={setQuery}
+					startIcon={IconSearch}
+					hasClear
+				/>
+				{!needle && (
+					<SegmentedControl
+						label="Who reads it"
+						size="sm"
+						layout="fill"
+						value={audience}
+						onChange={(next) => {
+							const picked = WORDING_AUDIENCES.find((entry) => entry.value === next);
+							if (picked) setAudience(picked.value);
+						}}
+					>
+						{WORDING_AUDIENCES.map((entry) => (
+							<SegmentedControlItem
+								key={entry.value}
+								value={entry.value}
+								label={entry.label}
+								icon={<Icon icon={entry.icon} size="sm" />}
+							/>
+						))}
+					</SegmentedControl>
+				)}
+				{!needle && <Text type="supporting">{note}</Text>}
+				{needle && areas.length === 0 && (
+					<Text type="supporting">No wording matches “{query.trim()}”.</Text>
+				)}
+				<CollapsibleGroup
+					// Searching opens every area with a match; clearing the search goes back to all closed.
+					key={needle ? `search:${areas.map((area) => area.prefix).join()}` : audience}
+					type="multiple"
+					hasDividers
+					density="compact"
+					defaultValue={needle ? areas.map((area) => area.prefix) : undefined}
 				>
-					{WORDING_AUDIENCES.map((entry) => (
-						<SegmentedControlItem
-							key={entry.value}
-							value={entry.value}
-							label={entry.label}
-							icon={<Icon icon={entry.icon} size="sm" />}
-						/>
-					))}
-				</SegmentedControl>
-				<Text type="supporting">
-					{note} Left blank, a line keeps Theorem's default, shown in the field; Tab takes it up to
-					edit.
-				</Text>
-				<CollapsibleGroup key={audience} type="multiple" hasDividers density="compact">
 					{areas.map((area) => (
 						<Collapsible
 							key={area.prefix}
@@ -2872,7 +3262,7 @@ function WordingEditor({
 										<TextAreaRow
 											key={key}
 											label={wordingLabel(key)}
-											path="lexicon.*"
+											path={`lexicon.${key}`}
 											field={key}
 											rows={2}
 											value={draft.wording[key] ?? ''}
@@ -2892,9 +3282,290 @@ function WordingEditor({
 	);
 }
 
+const QUESTION_TYPE_SEGMENTS: Segment<DecisionQuestionType>[] = [
+	{ value: 'choice', label: 'Choice', icon: IconListCheck },
+	{ value: 'score', label: 'Score', icon: IconChartBar },
+	{ value: 'noul', label: 'Noul', icon: IconNumber },
+];
+
+/** What a question's rows are called, and what a new one's text says. */
+const CRITERIA_COPY = {
+	choice: {
+		title: 'Options',
+		row: 'Option',
+		note: 'Each answer it may pick, and when to pick it.',
+	},
+	score: { title: 'Levels', row: 'Level', note: 'The scale from 0 up, each level described.' },
+	noul: { title: 'Criteria', row: 'Criterion', note: 'Optional named things the number weighs.' },
+} satisfies Record<DecisionQuestionType, { title: string; row: string; note: string }>;
+
+/** One question: its id and answer type, what to ask, and its options or levels. */
+function DecisionQuestionEditor({
+	question,
+	index,
+	count,
+	onChange,
+	onMove,
+	onRemove,
+}: {
+	question: DecisionQuestionDraft;
+	index: number;
+	count: number;
+	onChange: (change: Partial<DecisionQuestionDraft>) => void;
+	onMove: (to: number) => void;
+	onRemove: () => void;
+}) {
+	const status = useFieldStatus()('questions', index);
+	const copy = CRITERIA_COPY[question.type];
+	const name = question.id || `question ${String(index + 1)}`;
+	const setCriteria = (criteria: DecisionQuestionDraft['criteria']) => {
+		onChange({ criteria });
+	};
+	return (
+		<Section variant="transparent" padding={3}>
+			<VStack gap={3} {...{ [ISSUE_ROW_ATTRIBUTE]: status !== undefined || undefined }}>
+				<HStack gap={1} vAlign="center">
+					<StackItem size="fill">
+						<TextInput
+							label={`Question ${String(index + 1)} id`}
+							isLabelHidden
+							size="sm"
+							status={status}
+							value={question.id}
+							placeholder="verdict"
+							onChange={(id) => {
+								onChange({ id });
+							}}
+						/>
+					</StackItem>
+					<IconButton
+						label={`Move ${name} up`}
+						variant="ghost"
+						size="sm"
+						isDisabled={index === 0}
+						icon={<Icon icon={IconArrowUp} size="sm" />}
+						onClick={() => {
+							onMove(index - 1);
+						}}
+					/>
+					<IconButton
+						label={`Move ${name} down`}
+						variant="ghost"
+						size="sm"
+						isDisabled={index === count - 1}
+						icon={<Icon icon={IconArrowDown} size="sm" />}
+						onClick={() => {
+							onMove(index + 1);
+						}}
+					/>
+					<IconButton
+						label={`Remove ${name}`}
+						variant="ghost"
+						size="sm"
+						icon={<Icon icon={IconTrash} size="sm" />}
+						onClick={onRemove}
+					/>
+				</HStack>
+				<SegmentedRow
+					label="Answer"
+					path="decision.questions.type"
+					value={question.type}
+					segments={QUESTION_TYPE_SEGMENTS}
+					onChange={(type) => {
+						// Options carry over between choice and number; a score's levels are a different list.
+						const keeps = type !== 'score' && question.type !== 'score';
+						onChange({ type, ...(keeps ? {} : { criteria: newCriteria(type) }) });
+					}}
+				/>
+				<TextArea
+					label="Instructions"
+					size="sm"
+					rows={3}
+					value={question.instructions}
+					placeholder="What should the model decide, given the state?"
+					onChange={(instructions) => {
+						onChange({ instructions });
+					}}
+				/>
+				<VStack gap={2}>
+					<VStack gap={0}>
+						<Text type="label">{copy.title}</Text>
+						<Text type="supporting">{copy.note}</Text>
+					</VStack>
+					{question.criteria.map((row, at) => (
+						<HStack key={row.key} gap={1} vAlign="center">
+							{question.type === 'score' ? (
+								<StackItem size="static">
+									<Text type="supporting" color="secondary" hasTabularNumbers>
+										{String(at)}
+									</Text>
+								</StackItem>
+							) : (
+								<div style={{ flex: '0 0 38%', minWidth: 0 }}>
+									<TextInput
+										label={`${copy.row} ${String(at + 1)} label`}
+										isLabelHidden
+										size="sm"
+										value={row.label}
+										placeholder="label"
+										onChange={(label) => {
+											setCriteria(
+												question.criteria.map((r) => (r.key === row.key ? { ...r, label } : r)),
+											);
+										}}
+									/>
+								</div>
+							)}
+							<StackItem size="fill">
+								<TextInput
+									label={`${copy.row} ${String(at + 1)} description`}
+									isLabelHidden
+									size="sm"
+									value={row.text}
+									placeholder={
+										question.type === 'score' ? 'What this level means' : 'When to pick it'
+									}
+									onChange={(text) => {
+										setCriteria(
+											question.criteria.map((r) => (r.key === row.key ? { ...r, text } : r)),
+										);
+									}}
+								/>
+							</StackItem>
+							<IconButton
+								label={`Remove ${copy.row.toLowerCase()} ${String(at + 1)}`}
+								variant="ghost"
+								size="sm"
+								icon={<Icon icon={IconX} size="sm" />}
+								onClick={() => {
+									setCriteria(question.criteria.filter((r) => r.key !== row.key));
+								}}
+							/>
+						</HStack>
+					))}
+					<HStack>
+						<Button
+							label={`Add ${copy.row.toLowerCase()}`}
+							variant="ghost"
+							size="sm"
+							icon={<Icon icon={IconPlus} size="sm" />}
+							isDisabled={question.criteria.length >= PLAYGROUND_DECISION_MAX_CRITERIA}
+							onClick={() => {
+								setCriteria([...question.criteria, ...newCriteria('score').slice(0, 1)]);
+							}}
+						/>
+					</HStack>
+				</VStack>
+			</VStack>
+		</Section>
+	);
+}
+
+/** A decision: the contract it answers to, how much state it takes, and the questions it asks of it. */
+function DecisionEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+	const { decision } = draft;
+	const set = patch(setDraft, 'decision');
+	const listStatus = useFieldStatus()('questions');
+	const setQuestions = (
+		change: (questions: DecisionQuestionDraft[]) => DecisionQuestionDraft[],
+	) => {
+		setDraft((current) => ({
+			...current,
+			decision: { ...current.decision, questions: change(current.decision.questions) },
+		}));
+	};
+	return (
+		<>
+			<InspectorSection
+				title="Contract"
+				note="What this decision is called on every trace. The model never sees it."
+			>
+				<TextRow
+					label="Contract"
+					path="decision.contract"
+					field="contract"
+					value={decision.contract}
+					placeholder="guardrails.tool_call.v1"
+					onChange={(contract) => {
+						set({ contract });
+					}}
+				/>
+			</InspectorSection>
+			<InspectorSection
+				title="State"
+				note="The JSON every question is asked about. It's filled in the preview, not saved."
+			>
+				<NumberRow
+					label="Max state"
+					path="inputs.maxStateBytes"
+					units="bytes"
+					field="maxStateBytes"
+					value={decision.maxStateBytes}
+					min={1}
+					max={PLAYGROUND_DECISION_MAX_STATE_BYTES}
+					hint={`${String(PLAYGROUND_DECISION_MAX_STATE_BYTES)} by default`}
+					isIntegerOnly
+					onChange={(maxStateBytes) => {
+						set({ maxStateBytes });
+					}}
+				/>
+			</InspectorSection>
+			<InspectorSection
+				title="Questions"
+				note="Asked together in one call, answered in this order."
+			>
+				{listStatus && <Banner status="error" title={listStatus.message} />}
+			</InspectorSection>
+			{decision.questions.map((question, index) => (
+				<DecisionQuestionEditor
+					key={question.key}
+					question={question}
+					index={index}
+					count={decision.questions.length}
+					onChange={(change) => {
+						setQuestions((questions) =>
+							questions.map((q) => (q.key === question.key ? { ...q, ...change } : q)),
+						);
+					}}
+					onMove={(to) => {
+						setQuestions((questions) => {
+							const next = questions.filter((q) => q.key !== question.key);
+							next.splice(to, 0, question);
+							return next;
+						});
+					}}
+					onRemove={() => {
+						setQuestions((questions) => questions.filter((q) => q.key !== question.key));
+					}}
+				/>
+			))}
+			<Section variant="transparent" padding={3}>
+				<HStack>
+					<Button
+						label="Add question"
+						variant="ghost"
+						size="sm"
+						icon={<Icon icon={IconPlus} size="sm" />}
+						isDisabled={decision.questions.length >= PLAYGROUND_DECISION_MAX_QUESTIONS}
+						onClick={() => {
+							setDraft((current) => ({
+								...current,
+								decision: {
+									...current.decision,
+									questions: [...current.decision.questions, newDecisionQuestion(current)],
+								},
+							}));
+						}}
+					/>
+				</HStack>
+			</Section>
+		</>
+	);
+}
+
 /**
  * The editor for the tree node `selectedId`. The compile's issues for that node show on the rows
- * of the fields they name; the rest, and all of them for a node with no editor yet, show above it.
+ * of the fields they name; the rest show above it.
  * Edits go straight to the draft; the page compiles it.
  */
 export function ProfileEditor({
@@ -2917,16 +3588,20 @@ export function ProfileEditor({
 	const props = { draft, setDraft };
 
 	let editor: ReactNode;
-	let hasRows = true;
 	switch (ref.facet) {
 		case 'identity':
 			editor = <IdentityEditor {...props} />;
 			break;
 		case 'models':
-			editor = <ModelsEditor {...props} />;
+			editor = <ModelsEditor {...props} onSelect={onSelect} />;
 			break;
 		case 'modelBinding':
-			editor = <ModelBindingEditor {...props} bindingKey={ref.key} />;
+			editor =
+				draft.identity.profileType === 'decision' ? (
+					<DecisionModelEditor {...props} bindingKey={ref.key} />
+				) : (
+					<ModelBindingEditor {...props} bindingKey={ref.key} />
+				);
 			break;
 		case 'tools':
 			editor = <ToolsEditor {...props} onSelect={onSelect} />;
@@ -2961,19 +3636,12 @@ export function ProfileEditor({
 		case 'wording':
 			editor = <WordingEditor {...props} onSelect={onSelect} />;
 			break;
-		default:
-			hasRows = false;
-			editor = (
-				<Section variant="transparent" padding={3}>
-					<EmptyState
-						title={`${profileGraphFacet(ref.facet)?.label ?? 'This section'} isn't editable yet`}
-						description="Its editor is next."
-					/>
-				</Section>
-			);
+		case 'decision':
+			editor = <DecisionEditor {...props} />;
+			break;
 	}
 
-	const banners = hasRows ? nodeIssues.filter((issue) => issue.field === undefined) : nodeIssues;
+	const banners = nodeIssues.filter((issue) => issue.field === undefined);
 	return (
 		<NodeIssues value={nodeIssues}>
 			<VStack>
@@ -2989,5 +3657,37 @@ export function ProfileEditor({
 				{editor}
 			</VStack>
 		</NodeIssues>
+	);
+}
+
+/** Local servers answer local pages only; a hosted page needs its origin allowed. */
+const isLocalPage = () =>
+	typeof window !== 'undefined' &&
+	/^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
+
+const OLLAMA_ORIGINS_COMMAND = 'launchctl setenv OLLAMA_ORIGINS "https://theorem.masudlewis.com"';
+
+/** Why a hosted page can't list local models, and the one command that fixes it. */
+function LocalOriginHelp() {
+	return (
+		<Banner
+			status="warning"
+			title="Your local server must allow this site"
+			description={
+				<VStack gap={2}>
+					<Text type="supporting">
+						Ollama only answers pages on your own machine. Run this, then quit and reopen Ollama. LM
+						Studio: turn on CORS in its server settings.
+					</Text>
+					<CodeBlock
+						code={OLLAMA_ORIGINS_COMMAND}
+						language="bash"
+						hasLanguageLabel={false}
+						isWrapped
+						size="sm"
+					/>
+				</VStack>
+			}
+		/>
 	);
 }

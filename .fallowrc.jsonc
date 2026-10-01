@@ -17,7 +17,7 @@
 			"toolingDependencies": ["@react-router/dev"]
 		}
 	],
-	"publicPackages": ["@theoremai/react"],
+	"publicPackages": ["@theoremjs/react"],
 	"ignorePatterns": [
 		"node_modules/**",
 		"**/.react-router/**",
@@ -33,7 +33,7 @@
 		"ai",
 		"gpt-tokenizer",
 		"zod",
-		// peerDependencies of @theoremai/react, which the host app must supply.
+		// peerDependencies of @theoremjs/react, which the host app must supply.
 		"@astryxdesign/core",
 		"@astryxdesign/theme-neutral",
 		"@stylexjs/stylex",
@@ -48,9 +48,12 @@
 	// ssrLoadModule, which fallow cannot follow. Seeding it keeps the catalog graph live.
 	"entry": ["app/lib/docs/compose.ts"],
 	// Durable Objects are called by the runtime (`alarm`) and through a stub, a
-	// proxy fallow cannot follow (`playgroundSteerInbox` calls the RPC methods).
+	// proxy fallow cannot follow (`playgroundSteerInbox` and `takeAllowance` call the RPC methods).
 	"usedClassMembers": [
-		{ "extends": "DurableObject", "members": ["alarm", "open", "enqueue", "consume", "close"] }
+		{
+			"extends": "DurableObject",
+			"members": ["alarm", "open", "enqueue", "consume", "close", "take"]
+		}
 	],
 	"rules": {
 		"unused-files": "error",

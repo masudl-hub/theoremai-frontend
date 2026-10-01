@@ -15,7 +15,7 @@ import {
 	registerProfile,
 	registerTool,
 	standardEgressEnforce,
-} from '@theoremai/agents';
+} from '@theoremjs/agents';
 import { z } from 'zod';
 import { getDocIndex } from '../docs/.server/load-index';
 import { formatNavigableForPrompt, readDoc, resolveNavigate, searchDocs } from '../docs/query';
@@ -241,7 +241,7 @@ export function ensureTh30ProfileRegistered(): void {
 				builtInTools: ['googleSearch'],
 			},
 		},
-		key: 'slotA',
+		key: 'main',
 		live: {
 			voice: 'Aoede',
 			vad: {

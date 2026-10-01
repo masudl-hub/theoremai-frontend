@@ -17,33 +17,18 @@ import {
 	type Profile,
 	publicError,
 	TheoremError,
-} from '@theoremai/agents';
-import { forClient, forClientEvents } from '@theoremai/agents/host';
-import type {
-	PlaygroundLiveDraftMessage,
-	PlaygroundTraceLine,
-	PlaygroundTraceRoute,
-} from '@theoremai/playground';
-import { parseLiveClientMessage } from '@theoremai/react/server';
+} from '@theoremjs/agents';
+import type { PlaygroundLiveDraftMessage, PlaygroundTraceLine } from '@theoremjs/playground';
+import { attachPlaygroundLiveSession } from '@theoremjs/playground/browser';
 import { ensureKernelInitialized } from './kernel-init';
 import { playgroundScope } from './playground-register';
-import { playgroundTraces } from './playground-turn';
+import { playgroundProviders, playgroundTraces } from './playground-turn';
 
 export type LiveRelayEnv = {
 	GEMINI_API_KEY_FREE_A?: string;
 	GEMINI_API_KEY_FREE_B?: string;
 	GEMINI_API_KEY_FREE_C?: string;
 };
-
-/** Convert binary PCM chunks to base64 for Gemini Live realtime input framing. */
-function bufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
-	const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-	let binary = '';
-	for (const byte of bytes) {
-		binary += String.fromCharCode(byte);
-	}
-	return btoa(binary);
-}
 
 /**
  * Cloudflare Workers outbound WebSocket via fetch upgrade
@@ -80,115 +65,17 @@ function errorEnvelope(err: unknown, lexicon?: LexiconOverrides): string {
 	return JSON.stringify({ type: 'error', ...errorBody(err, lexicon) });
 }
 
-function pipeBrowserToSession(
-	serverWs: WebSocket,
-	session: LiveSession,
-	lexicon?: LexiconOverrides,
-): void {
-	// A send the session refuses (a channel the profile turned off, a closed call) reaches the browser.
-	const forward = (sent: Promise<void>): void => {
-		sent.catch((err: unknown) => {
-			serverWs.send(errorEnvelope(err, lexicon));
-		});
-	};
-	serverWs.addEventListener('message', (event: MessageEvent) => {
-		try {
-			if (typeof event.data === 'string') {
-				// A message that fails its check ends the call with a `request` error (the catch below).
-				const msg = parseLiveClientMessage(event.data);
-				switch (msg.type) {
-					case 'audio':
-						forward(session.sendAudio({ data: msg.data, mimeType: 'audio/pcm;rate=16000' }));
-						return;
-					case 'video':
-						forward(session.sendVideo({ data: msg.data, mimeType: msg.mimeType }));
-						return;
-					case 'text':
-						forward(session.sendText(msg.text));
-						return;
-					case 'executeTool': {
-						const { type: _type, ...call } = msg;
-						void answerExecuteTool(serverWs, session, call, lexicon);
-						return;
-					}
-				}
-			}
-			if (event.data instanceof ArrayBuffer || event.data instanceof Uint8Array) {
-				forward(
-					session.sendAudio({
-						data: bufferToBase64(event.data),
-						mimeType: 'audio/pcm;rate=16000',
-					}),
-				);
-			}
-		} catch (err) {
-			serverWs.send(errorEnvelope(err, lexicon));
-		}
-	});
-}
-
-async function pipeSessionToBrowser(
-	serverWs: WebSocket,
-	session: LiveSession,
-	profileId: string,
-	sessionId: string,
-	traces: PlaygroundTraceRoute,
-	lexicon?: LexiconOverrides,
-): Promise<void> {
-	serverWs.send(JSON.stringify({ type: 'ready', profile: profileId, sessionId }));
-	try {
-		for await (const event of session.events()) {
-			if (event.type === 'error') {
-				// The session worded it with the profile's lexicon; forClient drops the builder detail.
-				serverWs.send(JSON.stringify(forClient(event)));
-				try {
-					serverWs.close(1011, 'session error');
-				} catch {
-					/* ignore */
-				}
-				return;
-			}
-			serverWs.send(JSON.stringify({ type: 'events', events: forClientEvents([event]) }));
-		}
-	} catch (err) {
-		serverWs.send(errorEnvelope(err, lexicon));
-	} finally {
-		// The events loop ends after the session's root record is written.
-		traces.close();
-		try {
-			serverWs.close(1000, 'session ended');
-		} catch {
-			/* ignore */
-		}
-	}
-}
-
 async function openLiveSession(
 	scope: KernelScope,
 	profileId: string,
 	env: LiveRelayEnv,
-	apiKey: string,
 	metadata: Record<string, string>,
 	openWebSocket: (url: string) => Promise<WebSocket>,
 ): Promise<LiveSession> {
-	return scope.runSession(
-		{
-			profile: profileId,
-			metadata,
-		},
-		{
-			gemini: {
-				vault: {
-					slotA: apiKey,
-					slotB: env.GEMINI_API_KEY_FREE_B?.trim(),
-					slotC: env.GEMINI_API_KEY_FREE_C?.trim(),
-					// The playground never spends on a paid key, so a quota refusal has nowhere to overflow.
-					paid: undefined,
-				},
-			},
-			openWebSocket,
-		},
-	);
+	const { vault } = playgroundProviders(env, scope.profiles.get(profileId));
+	if (!vault || !Object.values(vault).some(Boolean))
+		throw new TheoremError('auth', 'No demo Gemini credentials configured.'); // lexicon-exempt: internal diagnostic
+	return scope.runSession({ profile: profileId, metadata }, { vault, openWebSocket });
 }
 
 /** Setup failures reach the browser like session failures: over the socket, worded, with their kind. */
@@ -293,7 +180,6 @@ async function relayLiveSession(
 			scope,
 			profileId,
 			env,
-			apiKey,
 			traces.metadata,
 			openCloudflareUpstreamWebSocket,
 		);
@@ -309,11 +195,7 @@ async function relayLiveSession(
 		traces.close();
 		return;
 	}
-	pipeBrowserToSession(serverWs, session, lexicon);
-	serverWs.addEventListener('close', () => {
-		void session.close('client disconnected');
-	});
-	void pipeSessionToBrowser(serverWs, session, profileId, sessionId, traces, lexicon);
+	void attachPlaygroundLiveSession(serverWs, session, profileId, sessionId, traces, lexicon);
 }
 
 /** Handle incoming WebSocket upgrade request and spawn duplex relay pipe. */
@@ -334,33 +216,4 @@ export function handleLiveRelay(request: Request, env: LiveRelayEnv): Response {
 	void relayLiveSession(serverWs, new URL(request.url).searchParams.get('profile'), env);
 
 	return new Response(null, { status: 101, webSocket: clientWs });
-}
-
-/** Run the browser's `executeTool` on the session and tell the browser what became of the call. */
-async function answerExecuteTool(
-	serverWs: WebSocket,
-	session: LiveSession,
-	call: Parameters<LiveSession['executeTool']>[0],
-	lexicon?: LexiconOverrides,
-): Promise<void> {
-	try {
-		const result = await session.executeTool(call);
-		serverWs.send(
-			JSON.stringify(
-				result.gated
-					? { type: 'executeToolResult', callId: call.callId, status: 'gated', gate: result.gated }
-					: { type: 'executeToolResult', callId: call.callId, status: 'settled' },
-			),
-		);
-	} catch (err) {
-		// The session refused it (an unknown call, a decision it takes no more): the browser reads why.
-		serverWs.send(
-			JSON.stringify({
-				type: 'executeToolResult',
-				callId: call.callId,
-				status: 'refused',
-				body: errorBody(err, lexicon),
-			}),
-		);
-	}
 }

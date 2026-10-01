@@ -16,5 +16,7 @@ export default [
 	route('api/playground/turn', 'routes/api.playground.turn.ts'),
 	route('api/playground/turn/steer', 'routes/api.playground.turn.steer.ts'),
 	route('api/playground/invoke', 'routes/api.playground.invoke.ts'),
+	route('api/playground/call', 'routes/api.playground.call.ts'),
+	route('api/playground/decide', 'routes/api.playground.decide.ts'),
 	route('api/playground/test-connection', 'routes/api.playground.test-connection.ts'),
 ] satisfies RouteConfig;

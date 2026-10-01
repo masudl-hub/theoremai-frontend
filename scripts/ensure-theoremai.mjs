@@ -6,7 +6,7 @@ import { FRONTEND_ROOT, resolveTheoremaiRoot } from './resolve-theoremai-root.mj
 const frontendRoot = FRONTEND_ROOT;
 const { root, source } = resolveTheoremaiRoot(frontendRoot);
 const markerPath = path.join(frontendRoot, '.theoremai-root');
-const nodeModulesAgents = path.join(frontendRoot, 'node_modules/@theoremai/agents');
+const nodeModulesAgents = path.join(frontendRoot, 'node_modules/@theoremjs/agents');
 const legacyNodeModulesTheorum = path.join(frontendRoot, 'node_modules/theorum');
 
 writeFileSync(markerPath, `${root}\n`, 'utf8');
@@ -28,12 +28,12 @@ if (existsSync(nodeModulesAgents)) {
 
 mkdirSync(path.dirname(nodeModulesAgents), { recursive: true });
 symlinkSync(root, nodeModulesAgents, 'dir');
-console.log(`@theoremai/agents → ${root} (${source})`);
+console.log(`@theoremjs/agents → ${root} (${source})`);
 
 // file: deps are pinned to the sibling path; follow the resolved root instead.
 for (const pkg of ['react', 'playground']) {
-	const link = path.join(frontendRoot, 'node_modules/@theoremai', pkg);
+	const link = path.join(frontendRoot, 'node_modules/@theoremjs', pkg);
 	if (existsSync(link) || lstatSync(link, { throwIfNoEntry: false })) rmSync(link, { recursive: true, force: true });
 	symlinkSync(path.join(root, pkg), link, 'dir');
-	console.log(`@theoremai/${pkg} → ${path.join(root, pkg)}`);
+	console.log(`@theoremjs/${pkg} → ${path.join(root, pkg)}`);
 }

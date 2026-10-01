@@ -14,7 +14,7 @@ import {
 	type PlaygroundDraft,
 	playgroundSource,
 	setProfileType,
-} from '@theoremai/playground';
+} from '@theoremjs/playground';
 import type { PlaygroundSeedId } from './schema';
 
 const HARBOR_SYSTEM = [

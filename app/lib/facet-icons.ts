@@ -5,11 +5,11 @@
 
 import {
 	IconActivity,
-	IconBrain,
 	IconFileExport,
 	IconFileImport,
 	IconGitBranch,
 	IconId,
+	IconInputAi,
 	IconMicrophone,
 	IconPhoto,
 	IconQuote,
@@ -19,12 +19,12 @@ import {
 	IconTool,
 	IconVolume,
 } from '@tabler/icons-react';
-import type { PlaygroundNodeRef } from '@theoremai/playground';
+import type { PlaygroundNodeRef } from '@theoremjs/playground';
 
 export const FACET_ICON = {
 	identity: IconId,
 	models: IconStack2,
-	modelBinding: IconBrain,
+	modelBinding: IconInputAi,
 	tools: IconTool,
 	inputs: IconFileImport,
 	outputs: IconFileExport,

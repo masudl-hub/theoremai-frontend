@@ -8,8 +8,8 @@ import {
 	MCP_PROTOCOL_VERSIONS,
 	parseMcpRpcResponse,
 	TheoremError,
-} from '@theoremai/agents';
-import type { HttpMethod } from '@theoremai/agents/schema';
+} from '@theoremjs/agents';
+import type { HttpMethod } from '@theoremjs/agents/schema';
 import { errorMessage } from './ndjson-stream';
 import { resolveHost } from './resolve-host';
 

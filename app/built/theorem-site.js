@@ -6,7 +6,7 @@
  * Core: @astryxdesign/core@0.6.3
  */
 
-import { tablerIcons } from "@theoremai/react/ui/icons";
+import { tablerIcons } from "@theoremjs/react/ui/icons";
 /**
  * theorem-site theme — built by `npx astryx theme build`
  * Import the CSS file alongside this module:
@@ -499,7 +499,8 @@ export const theoremSiteTheme = {
       },
       "variant:raised": {
         "backgroundColor": "var(--color-background-surface)",
-        "borderRadius": "var(--radius-page)"
+        "borderRadius": "var(--radius-page)",
+        "overflow": "clip"
       }
     },
     "lightbox": {
@@ -571,6 +572,14 @@ export const theoremSiteTheme = {
     "tree-list-item": {
       "selected:selected": {
         "backgroundColor": "var(--color-overlay-pressed)"
+      }
+    },
+    "tree-list-item-label": {
+      "base": {
+        "minWidth": "0",
+        "overflow": "hidden",
+        "textOverflow": "ellipsis",
+        "whiteSpace": "nowrap"
       }
     }
   },

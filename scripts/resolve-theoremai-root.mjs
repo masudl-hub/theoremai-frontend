@@ -37,12 +37,10 @@ export function theoremaiStaleReason(candidate) {
 		return 'missing src/kernel/engine/session/mod.ts (runSession door)';
 	}
 	if (schema.includes('GEMINI_KEY_SLOTS') || schema.includes('GEMINI_SLOTS') || schema.includes('GeminiKeySlot')) {
-		return 'schema still uses Gemini-named slot vocabulary (expected KEY_SLOTS or KEY_SLOT_NAME)';
+		return 'schema still uses Gemini-named slot vocabulary (expected named key slots)';
 	}
-	const closedSlots = schema.includes('KEY_SLOTS') && schema.includes('OVERFLOW_KEY_SLOTS');
-	const openSlots = schema.includes('KEY_SLOT_NAME');
-	if (!closedSlots && !openSlots) {
-		return 'schema missing KEY_SLOTS / OVERFLOW_KEY_SLOTS or KEY_SLOT_NAME';
+	if (!schema.includes('isKeySlotName') || schema.includes('export const KEY_SLOTS')) {
+		return 'schema missing named key slots';
 	}
 	if (schema.includes('ProfileModelSpec') || schema.includes('interface ModelSpec')) {
 		return 'schema still defines ProfileModelSpec / ModelSpec (expected flat models + ModelBinding)';

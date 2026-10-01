@@ -11,7 +11,7 @@ import {
 	type ProfileGraphFacetId,
 	STREAM_MODES,
 	TOOL_LOAD_TIERS,
-} from '@theoremai/agents/schema';
+} from '@theoremjs/agents/schema';
 import type { ArrayUnionName, DocSection } from './schema';
 
 /** Unions we surface in the topic dictionary. Compose throws if a member has no catalog doc. */
