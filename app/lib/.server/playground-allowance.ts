@@ -14,7 +14,7 @@ import { errorKind, publicError, TheoremError } from '@theoremjs/agents';
 /** Each kind's daily caps, per visitor address and for the whole site however many addresses ask. */
 export const DAILY_ALLOWANCES = {
 	/** Any request to /api/playground/*. */
-	request: { perAddress: 500, perSite: 20_000 },
+	request: { perAddress: 150, perSite: 3000 },
 	/** A decision on the site's TypeSafe key. */
 	decision: { perAddress: 10, perSite: 200 },
 	/** A host tool call, run on the site's network. */
