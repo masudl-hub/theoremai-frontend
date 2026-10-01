@@ -63,6 +63,8 @@ type Phase = 'idle' | 'connecting' | 'live' | 'failed';
 export function Th30Provider({ children }: { children: ReactNode }) {
 	const [phase, setPhase] = useState<Phase>('idle');
 	const [isMuted, setMuted] = useState(false);
+	/** Why the last call failed, in the profile's own wording. */
+	const [failure, setFailure] = useState<string | null>(null);
 	const clientRef = useRef<LiveSessionClient | null>(null);
 	const navigate = useNavigate();
 
@@ -108,8 +110,11 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 				if (next === 'error') setPhase('failed');
 				else if (next !== 'connecting' && next !== 'disconnected') setPhase('live');
 			},
-			onError: () => {
-				if (clientRef.current === client) setPhase('failed');
+			onError: (err) => {
+				if (clientRef.current !== client) return;
+				console.warn('[th30]', err);
+				setFailure(err.message);
+				setPhase('failed');
 			},
 			onVolumeLevel: (level, isUser) => {
 				if (isUser) th30Voice.user = level;
@@ -122,11 +127,15 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 			},
 		});
 		clientRef.current = client;
+		setFailure(null);
 		setPhase('connecting');
 		try {
 			await client.connect();
-		} catch {
-			if (clientRef.current === client) setPhase('failed');
+		} catch (err) {
+			if (clientRef.current !== client) return;
+			console.warn('[th30]', err);
+			setFailure(err instanceof Error ? err.message : null);
+			setPhase('failed');
 		}
 	}, [applyTool]);
 
@@ -171,7 +180,7 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 						{phase === 'connecting'
 							? 'Connecting to th30…'
 							: phase === 'failed'
-								? 'th30 couldn’t connect. Click the light to close, then try again.'
+								? `th30 couldn’t connect${failure ? `: ${failure}` : '.'} Click the light to close, then try again.`
 								: ''}
 					</span>
 				</div>
