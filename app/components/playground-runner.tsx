@@ -16,7 +16,7 @@ import {
 import { createTraceFeed, type TraceFeed } from '@theoremjs/react/client';
 import { LiveRunner } from '@theoremjs/react/live';
 import { TheoremChat, TheoremHost } from '@theoremjs/react/ui';
-import { useMemo, useRef, useState } from 'react';
+import { type ComponentProps, useMemo, useRef, useState } from 'react';
 import { noting } from '../lib/playground-activity';
 import { PLAYGROUND_LABELS } from '../lib/playground-labels';
 import { PlaygroundDecision } from './playground-decision';
@@ -34,6 +34,9 @@ export function PlaygroundRunner({
 	trace,
 	className,
 	onActivity,
+	initialChat,
+	onChatChange,
+	chatRef,
 }: {
 	payload: PlaygroundRunPayload;
 	mode: PlaygroundConnectionMode;
@@ -42,6 +45,10 @@ export function PlaygroundRunner({
 	className?: string;
 	/** Called on each request the conversation sends: a turn, call, decision or live session. */
 	onActivity?: () => void;
+	/** A chat conversation to resume, as `onChatChange` reported it (text and image agents). */
+	initialChat?: ChatProps['initialChat'];
+	onChatChange?: ChatProps['onChatChange'];
+	chatRef?: ChatProps['chatRef'];
 }) {
 	const [traces] = useState(createTraceFeed);
 	const activity = useRef(onActivity);
@@ -83,10 +90,14 @@ export function PlaygroundRunner({
 			trace={trace}
 			className={className}
 			note={note}
+			initialChat={initialChat}
+			onChatChange={onChatChange}
+			chatRef={chatRef}
 		/>
 	);
 }
 
+type ChatProps = ComponentProps<typeof TheoremChat>;
 type RunProps = Omit<Parameters<typeof PlaygroundRunner>[0], 'mode' | 'onActivity'> & {
 	traces: TraceFeed;
 	note: () => void;
@@ -111,7 +122,17 @@ function HostRun({ payload, runtime, traces, trace, className, note }: RunProps)
 		/>
 	);
 }
-function TurnRun({ payload, runtime, traces, trace, className, note }: RunProps) {
+function TurnRun({
+	payload,
+	runtime,
+	traces,
+	trace,
+	className,
+	note,
+	initialChat,
+	onChatChange,
+	chatRef,
+}: RunProps) {
 	const iface = useMemo(() => playgroundInterface(payload), [payload]);
 	const transport = useMemo(
 		() =>
@@ -141,6 +162,9 @@ function TurnRun({ payload, runtime, traces, trace, className, note }: RunProps)
 			transport={transport}
 			trace={trace}
 			className={className}
+			initialChat={initialChat}
+			onChatChange={onChatChange}
+			chatRef={chatRef}
 		/>
 	);
 }

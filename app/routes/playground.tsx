@@ -89,6 +89,14 @@ import { docsSeedDraft } from '../lib/docs/seeds';
 import { exportBundle, llmBrief } from '../lib/export-agent';
 import { FACET_ICON } from '../lib/facet-icons';
 import { KERNEL_PACKAGE_VERSION } from '../lib/kernel-version';
+import {
+	clearConversation,
+	createPlaygroundStore,
+	type RestoredPlayground,
+	restoreConversation,
+	restorePlayground,
+	saveConversation,
+} from '../lib/playground-store';
 import { type Th30PageHandle, useReportTh30Playground } from '../lib/th30-page';
 import type { Route } from './+types/playground';
 import type { ShellHandle } from './shell';
@@ -110,11 +118,33 @@ function isPlaygroundSeed(value: string | null): value is PlaygroundSeedId {
 	return Boolean(value && (PLAYGROUND_SEED_IDS as readonly string[]).includes(value));
 }
 
-/** Draft keys are random, so the draft is made in the browser rather than rendered on the server. */
+/**
+ * Draft keys are random, so the draft is made in the browser rather than rendered on the server.
+ * This tab's kept draft comes back unless a docs seed asks for another; then it waits behind Undo.
+ */
 export function clientLoader({ request }: Route.ClientLoaderArgs) {
 	const seed = new URL(request.url).searchParams.get('seed');
-	if (isPlaygroundSeed(seed)) return { draft: docsSeedDraft(seed) };
-	return { draft: createExampleDraft() };
+	const kept = restorePlayground();
+	const fresh = (draft: PlaygroundDraft): RestoredPlayground => ({
+		draft,
+		revision: kept.kind === 'restored' ? kept.value.revision + 1 : 0,
+		selectedId: 'identity',
+		ledger: kept.kind === 'restored' ? kept.value.ledger : [],
+	});
+	if (isPlaygroundSeed(seed)) {
+		return {
+			start: fresh(docsSeedDraft(seed)),
+			displaced: kept.kind === 'restored' ? kept.value.draft : undefined,
+			discarded: kept.kind === 'discarded',
+		};
+	}
+	if (kept.kind === 'restored')
+		return { start: kept.value, displaced: undefined, discarded: false };
+	return {
+		start: fresh(createExampleDraft()),
+		displaced: undefined,
+		discarded: kept.kind === 'discarded',
+	};
 }
 
 export function HydrateFallback() {
@@ -371,7 +401,25 @@ function isTraced(payload: PlaygroundRunPayload | null): boolean {
  * compile, the agent stays the last one that did.
  */
 export default function Playground({ loaderData }: Route.ComponentProps) {
-	const [draft, setDraft] = useState<PlaygroundDraft>(loaderData.draft);
+	// The draft lives in a store kept in this tab's sessionStorage; th30's tools read it synchronously.
+	const [store] = useState(() => createPlaygroundStore(loaderData.start));
+	const draft = useSyncExternalStore(store.subscribe, store.getDraft, store.getDraft);
+	const setDraft = useCallback(
+		(next: PlaygroundDraft | ((current: PlaygroundDraft) => PlaygroundDraft)) => {
+			store.update(next);
+		},
+		[store],
+	);
+	useEffect(() => {
+		const flush = () => {
+			store.flush();
+		};
+		window.addEventListener('pagehide', flush);
+		return () => {
+			window.removeEventListener('pagehide', flush);
+			flush();
+		};
+	}, [store]);
 	const namedSlots = [
 		draft.models.key,
 		draft.models.fallbackKey,
@@ -402,7 +450,10 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 		sidePanel.size >= Math.round((SIDE_DEFAULT_PERCENT / 100) * layoutWidth)
 			? 2
 			: 1;
-	const [selectedId, setSelectedId] = useState('identity');
+	const [selectedId, setSelectedId] = useState(loaderData.start.selectedId);
+	useEffect(() => {
+		store.select(selectedId);
+	}, [store, selectedId]);
 	const editorRef = useRef<HTMLDivElement>(null);
 	// The profile tree's branches mount and unmount; ease them both ways.
 	const sidebarRef = useRef<HTMLDivElement>(null);
@@ -440,6 +491,11 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	const [sheet, setSheet] = useState<'tree' | 'preview' | null>(null);
 	const phone = usePhone();
 	const runKey = `${mode}:${String(conversation)}`;
+	// The kept conversation resumes in the first runner only; a cleared or remade one starts empty.
+	const [resume] = useState(() => ({
+		runKey,
+		chat: restoreConversation(),
+	}));
 	/** The runner that last sent something; a new one (cleared, or another mode) has no history. */
 	const [usedRun, setUsedRun] = useState<string>();
 	const source = useMemo(() => (compiled.ok ? playgroundSource(compiled) : null), [compiled]);
@@ -450,6 +506,28 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 			: `${String(compiled.issues.length)} issues`;
 	const blocked = issues && `Fix ${issues} first`;
 	const toast = useToast();
+	// Once, on arrival: say when a kept draft was set aside for a docs seed, or couldn't be read back.
+	const arrival = useRef({ displaced: loaderData.displaced, discarded: loaderData.discarded });
+	useEffect(() => {
+		const { displaced, discarded } = arrival.current;
+		arrival.current = { displaced: undefined, discarded: false };
+		if (discarded) toast({ body: "Your last draft couldn't be restored." });
+		if (!displaced) return;
+		const dismiss = toast({
+			body: 'Opened the example from the docs.',
+			endContent: (
+				<Button
+					label="Back to my draft"
+					variant="ghost"
+					size="sm"
+					onClick={() => {
+						setDraft(displaced);
+						dismiss();
+					}}
+				/>
+			),
+		});
+	}, [toast, setDraft]);
 	/** Swaps in a whole new draft from Identity; the toast can put the old one back. */
 	const replaceDraft = (next: PlaygroundDraft, message: string) => {
 		const previous = draft;
@@ -458,6 +536,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 		setKeysOpen(false);
 		setEditorView('editor');
 		// A new agent starts a new conversation; the old one's transcript doesn't carry over.
+		clearConversation();
 		setConversation((count) => count + 1);
 		const dismiss = toast({
 			body: message,
@@ -795,6 +874,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 										icon={<Icon icon={IconPlaylistX} size="sm" />}
 										tooltip="Clear the conversation and its traces. Your profile stays."
 										onClick={() => {
+											clearConversation();
 											setConversation((count) => count + 1);
 										}}
 									/>
@@ -886,6 +966,8 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 									onActivity={() => {
 										setUsedRun(runKey);
 									}}
+									initialChat={runKey === resume.runKey ? resume.chat : undefined}
+									onChatChange={saveConversation}
 								/>
 							) : (
 								<EmptyState
