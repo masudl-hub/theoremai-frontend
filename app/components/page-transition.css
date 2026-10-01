@@ -18,13 +18,12 @@
 	animation: page-enter 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* The name is set on the reader only for the length of an article change.
-   Leaving it on the scroller stops scrollIntoView, which the outline uses. */
-html[data-docs-article-switch] ::view-transition-old(docs-article) {
+/* The reader carries this name only for the length of an article change (article-transition.ts). */
+::view-transition-old(docs-article) {
 	animation: docs-article-leave 220ms cubic-bezier(0.4, 0, 1, 1) both;
 }
 
-html[data-docs-article-switch] ::view-transition-new(docs-article) {
+::view-transition-new(docs-article) {
 	animation: docs-article-enter 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -57,8 +56,8 @@ html[data-docs-article-switch] ::view-transition-new(docs-article) {
 @media (prefers-reduced-motion: reduce) {
 	::view-transition-old(main),
 	::view-transition-new(main),
-	html[data-docs-article-switch] ::view-transition-old(docs-article),
-	html[data-docs-article-switch] ::view-transition-new(docs-article) {
+	::view-transition-old(docs-article),
+	::view-transition-new(docs-article) {
 		animation: none;
 	}
 }

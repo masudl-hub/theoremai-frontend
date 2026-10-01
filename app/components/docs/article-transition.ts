@@ -1,7 +1,6 @@
 let articleEnterTimer = 0;
 
 function releaseArticleEnter(): void {
-	delete document.documentElement.dataset.docsArticleSwitch;
 	document.querySelector<HTMLElement>('.docs-reader')?.style.removeProperty('view-transition-name');
 }
 
@@ -11,7 +10,6 @@ function releaseArticleEnter(): void {
  * `scrollIntoView` does not move it, and that is how the outline scrolls.
  */
 export function holdDocsArticleTransition(): void {
-	document.documentElement.dataset.docsArticleSwitch = '';
 	document
 		.querySelector<HTMLElement>('.docs-reader')
 		?.style.setProperty('view-transition-name', 'docs-article');

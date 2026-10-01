@@ -120,7 +120,7 @@
 		pointer-events: none;
 	}
 
-	.docs-frame .docs-chapters-launch > * {
+	.docs-chapters-launch > * {
 		pointer-events: auto;
 	}
 
@@ -135,7 +135,7 @@
 		border-radius: inherit;
 	}
 
-	.docs-frame .docs-chapters-sheet > * {
+	.docs-chapters-sheet > * {
 		flex: 1;
 		min-height: 0;
 	}
@@ -176,7 +176,7 @@
 		min-width: 0;
 	}
 
-	.docs-landing .docs-landing-query > * {
+	.docs-landing-query > * {
 		max-width: 100%;
 		width: 100%;
 	}
@@ -212,7 +212,7 @@
 		aspect-ratio: 2 / 1;
 	}
 
-	.docs-landing .docs-landing-tile img {
+	.docs-landing-tile img {
 		display: block;
 		max-width: 100%;
 		width: 100%;

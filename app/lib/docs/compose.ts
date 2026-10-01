@@ -127,8 +127,19 @@ function pushFieldSymbol(
 	if (seen.has(fieldPath) || reserved.has(fieldPath)) return;
 	const meta = fieldMeta(fieldPath);
 	if (meta === undefined) throw new Error(`fieldMeta(${fieldPath}) is undefined`);
-	seen.add(fieldPath);
-	symbols.push({ kind: 'field', id: fieldPath, path: fieldPath, meta });
+	pushSymbol(symbols, seen, reserved, { kind: 'field', id: fieldPath, path: fieldPath, meta });
+}
+
+/** A symbol joins the page once, unless an authored block already claims its id. */
+function pushSymbol(
+	symbols: PageSymbol[],
+	seen: Set<string>,
+	reserved: ReadonlySet<string>,
+	symbol: PageSymbol,
+): void {
+	if (seen.has(symbol.id) || reserved.has(symbol.id)) return;
+	seen.add(symbol.id);
+	symbols.push(symbol);
 }
 
 function pageSymbolsFor(topic: DocArticle['topic'], reserved: ReadonlySet<string>): PageSymbol[] {
@@ -152,12 +163,9 @@ function pageSymbolsFor(topic: DocArticle['topic'], reserved: ReadonlySet<string
 		if (!isDocWorthyUnion(name)) continue;
 		if (place.page !== topic) continue;
 		for (const member of unionMembers(name)) {
-			const id = `${name.toLowerCase().replace(/_/g, '-')}:${member.value}`;
-			if (seen.has(id) || reserved.has(id)) continue;
-			seen.add(id);
-			symbols.push({
+			pushSymbol(symbols, seen, reserved, {
+				id: `${name.toLowerCase().replace(/_/g, '-')}:${member.value}`,
 				kind: 'union-member',
-				id,
 				union: name,
 				value: member.value,
 				doc: member.doc,
@@ -167,19 +175,13 @@ function pageSymbolsFor(topic: DocArticle['topic'], reserved: ReadonlySet<string
 
 	if (topic === 'traces') {
 		for (const row of traceCatalogRows()) {
-			const id = `trace:${row.key}`;
-			if (seen.has(id) || reserved.has(id)) continue;
-			seen.add(id);
-			symbols.push({ kind: 'trace', id, key: row.key, label: row.label, doc: row.doc });
+			pushSymbol(symbols, seen, reserved, { kind: 'trace', id: `trace:${row.key}`, ...row });
 		}
 	}
 
 	if (topic === 'statuses') {
 		for (const row of lexiconCatalogRows()) {
-			const id = `lexicon:${row.key}`;
-			if (seen.has(id) || reserved.has(id)) continue;
-			seen.add(id);
-			symbols.push({ kind: 'lexicon', id, key: row.key, text: row.text });
+			pushSymbol(symbols, seen, reserved, { kind: 'lexicon', id: `lexicon:${row.key}`, ...row });
 		}
 	}
 

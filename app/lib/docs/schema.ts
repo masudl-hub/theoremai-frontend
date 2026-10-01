@@ -63,17 +63,21 @@ export type AuthoredBlock =
 	| { id: string; kind: 'embed.playground'; seed: PlaygroundSeedId };
 
 /** Authored overlay only. Catalog rows are composed onto `symbols`, not authored blocks. */
-export type DocArticleDef = {
+/** What an authored chapter and its composed article share. */
+export type DocArticleHead = {
 	id: string;
 	slug: string;
 	title: string;
 	topic: DocSection;
 	/** Kernel-relative file this chapter opens on GitHub. */
 	entry: string;
-	kind: Exclude<DocKind, 'reference'>;
 	summary: string;
 	cover?: DocMediaRef;
 	suggest?: { rank: 1 | 2 | 3 | 4; blockId?: string };
+};
+
+export type DocArticleDef = DocArticleHead & {
+	kind: Exclude<DocKind, 'reference'>;
 	actions?: readonly DocAction[];
 	/** Shown as “This page answers” before the body. Agreed questions only. */
 	questions?: readonly { question: string }[];
@@ -106,16 +110,8 @@ export type ResolvedBlock =
 	  }
 	| { id: string; kind: 'embed.playground'; seed: PlaygroundSeedId };
 
-export type DocArticle = {
-	id: string;
-	slug: string;
-	title: string;
-	topic: DocSection;
-	entry: string;
+export type DocArticle = DocArticleHead & {
 	kind: DocKind;
-	summary: string;
-	cover?: DocMediaRef;
-	suggest?: { rank: 1 | 2 | 3 | 4; blockId?: string };
 	actions: readonly DocAction[];
 	questions: readonly { question: string }[];
 	faq: readonly { question: string; answer: string }[];

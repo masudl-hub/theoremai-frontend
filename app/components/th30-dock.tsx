@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router';
 import { docsPath, highlightBlock } from '../lib/docs/th30-client';
 import { TH30_PROFILE_ID } from '../lib/th30-id';
 
-type Th30Api = {
+export type Th30Api = {
 	open: () => void;
 	close: () => void;
 };
