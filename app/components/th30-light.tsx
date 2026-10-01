@@ -7,8 +7,9 @@ void main() { gl_Position = vec4(a_position, 0.0, 1.0); }
 `;
 
 /**
- * A knot of gas: glowing strands twisting in on themselves inside a tight, uneven envelope. The
- * envelope's edge is soft and pushed around by the same turbulence, so it never reads as a disc.
+ * A knot of gas: two layers of glowing strands winding opposite ways, by uneven amounts, inside a
+ * tight envelope whose soft rim the same turbulence shoves in and out. Hover tightens the knot and
+ * turns it towards violet.
  */
 const FRAGMENT = `#version 300 es
 precision mediump float;
@@ -17,6 +18,7 @@ uniform vec2 u_resolution;
 uniform float u_time;
 uniform float u_audio;
 uniform bool u_lightMode;
+uniform float u_hover;
 
 float hash(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -59,40 +61,70 @@ float strands(vec2 p) {
   return v;
 }
 
+mat2 turn(float a) {
+  return mat2(cos(a), sin(a), -sin(a), cos(a));
+}
+
+// Three hues blended round a loop, so a colour can keep moving instead of landing.
+vec3 cycle(float h, vec3 a, vec3 b, vec3 c) {
+  h = fract(h) * 3.0;
+  if (h < 1.0) return mix(a, b, smoothstep(0.0, 1.0, h));
+  if (h < 2.0) return mix(b, c, smoothstep(1.0, 2.0, h));
+  return mix(c, a, smoothstep(2.0, 3.0, h));
+}
+
 void main() {
   vec2 p = (gl_FragCoord.xy - 0.5 * u_resolution) / min(u_resolution.x, u_resolution.y);
   float t = u_time;
   float speak = u_audio;
+  float hover = u_hover;
 
-  // Twist: the closer to the middle, the further each point turns, so strands wind into the knot.
+  // The knot wanders a little around the middle rather than spinning in place.
+  p -= 0.035 * vec2(sin(t * 0.31), cos(t * 0.23));
   float d0 = length(p);
-  float twist = (0.5 - d0) * 5.0 + t * 0.35;
-  vec2 tp = mat2(cos(twist), sin(twist), -sin(twist), cos(twist)) * p;
 
-  // Warp the twisted space by itself, then trace strands through it.
-  vec2 q = vec2(fbm(tp * 3.0 + vec2(0.0, t * 0.2)), fbm(tp * 3.0 + vec2(5.2, -t * 0.17)));
-  float body = fbm(tp * 3.2 + 2.4 * q);
-  float lines = strands(tp * 4.2 + 1.8 * q + vec2(t * 0.08, 0.0));
+  // Two layers wind opposite ways, each by an amount that varies across the knot, so strands
+  // cross and tangle instead of all spiralling into one eye.
+  float pull = (0.5 - d0) * (1.0 + hover * 0.6);
+  float na = noise(p * 2.3 + vec2(t * 0.11, 3.1));
+  float nb = noise(p * 2.1 + vec2(7.4, -t * 0.09));
+  // Hover stirs it: an extra twist, strongest in the middle, that winds up as hover eases in.
+  float stir = hover * (0.55 - d0) * (2.4 + 1.2 * sin(t * 0.37));
+  vec2 pa = turn(pull * (2.6 + 3.2 * na) + t * 0.21 + stir) * p;
+  vec2 pb = turn(-pull * (2.2 + 3.0 * nb) - t * 0.17 + 1.9 + stir * 0.6) * p;
+
+  vec2 ps = turn(stir * 0.8) * p;
+  vec2 q = vec2(fbm(ps * 2.8 + vec2(0.0, t * 0.16)), fbm(ps * 2.8 + vec2(5.2, -t * 0.13)));
+  float body = fbm(p * 3.0 + 2.2 * q);
+  float scale = 4.0 + hover * 1.2;
+  float lines = max(strands(pa * scale + 1.6 * q), strands(pb * (scale * 0.9) - 1.4 * q + 3.7) * 0.85);
 
   // The envelope: a tight core whose rim is shoved in and out by the turbulence.
   float rim = d0 + body * 0.34 + (q.x - q.y) * 0.16;
-  float reach = 0.30 + speak * 0.06;
+  float reach = 0.30 + speak * 0.06 + hover * 0.025;
   float envelope = smoothstep(reach + 0.14, reach - 0.16, rim);
   float core = exp(-d0 * d0 * 40.0);
 
   float density = envelope * (0.08 + 0.4 * (body + 0.5) + 1.15 * lines) + core * 0.3;
-  density *= 1.0 + speak * 0.8;
+  density *= 1.0 + speak * 0.8 + hover * 0.25;
+
+  // Hover colour bleeds in from the core along the turbulence, then keeps drifting through its
+  // hues; on leave it ebbs back out the same way.
+  float bleed = smoothstep(0.0, 0.45, hover * 1.5 - d0 * 1.6 - body * 0.5 + 0.1);
+  float hue = t * 0.09 + body * 1.3 + q.x * 1.1 + d0 * 1.8;
 
   vec3 col;
   if (u_lightMode) {
-    vec3 rose = vec3(0.86, 0.36, 0.42);
-    vec3 amber = vec3(0.95, 0.62, 0.30);
-    vec3 plum = vec3(0.52, 0.22, 0.48);
+    vec3 tint = cycle(hue, vec3(0.62, 0.30, 0.80), vec3(0.95, 0.38, 0.58), vec3(0.98, 0.56, 0.34));
+    vec3 rose = mix(vec3(0.86, 0.36, 0.42), tint, bleed);
+    vec3 amber = mix(vec3(0.95, 0.62, 0.30), mix(tint, vec3(1.0, 0.85, 0.7), 0.3), bleed);
+    vec3 plum = mix(vec3(0.52, 0.22, 0.48), tint * 0.6, bleed);
     col = mix(plum, rose, smoothstep(-0.2, 0.3, body)) * density + amber * lines * envelope * 0.35;
   } else {
-    vec3 navy = vec3(0.05, 0.16, 0.55);
-    vec3 teal = vec3(0.06, 0.62, 0.70);
-    vec3 emerald = vec3(0.16, 0.95, 0.62);
+    vec3 tint = cycle(hue, vec3(0.46, 0.30, 1.0), vec3(0.90, 0.32, 0.86), vec3(0.22, 0.56, 1.0));
+    vec3 navy = mix(vec3(0.05, 0.16, 0.55), tint * 0.35, bleed);
+    vec3 teal = mix(vec3(0.06, 0.62, 0.70), tint, bleed);
+    vec3 emerald = mix(vec3(0.16, 0.95, 0.62), mix(tint, vec3(1.0), 0.4), bleed);
     col = mix(navy, teal, smoothstep(-0.25, 0.25, body)) * density + emerald * lines * envelope * 0.45;
   }
   col = col / (1.0 + col * 0.6);
@@ -158,6 +190,7 @@ export function Th30Light({ theme, className }: { theme: 'dark' | 'system'; clas
 		const uTime = gl.getUniformLocation(program, 'u_time');
 		const uAudio = gl.getUniformLocation(program, 'u_audio');
 		const uLight = gl.getUniformLocation(program, 'u_lightMode');
+		const uHover = gl.getUniformLocation(program, 'u_hover');
 
 		const scheme = window.matchMedia('(prefers-color-scheme: light)');
 		const paintScheme = () => {
@@ -177,35 +210,60 @@ export function Th30Light({ theme, className }: { theme: 'dark' | 'system'; clas
 		};
 		size();
 
-		const start = performance.now();
+		const still = reducedMotion();
+		let clock = 4;
 		let audio = 0;
+		let hovering = 0;
+		let hover = 0;
 		let frame = 0;
-		let last = 0;
+		let last = performance.now();
 		let visible = false;
-		const draw = (now: number) => {
+		const draw = (dt: number) => {
 			audio += (voiceLevel() - audio) * 0.18;
-			gl.uniform1f(uTime, ((now - start) / 1000) * 0.8);
+			// Slow both ways, so the colour has time to swirl in and ebb out rather than switch.
+			const rate = hovering ? 1.3 : 0.8;
+			hover = still ? hovering : hover + (hovering - hover) * Math.min(1, dt * rate);
+			// Hover quickens the drift as well as tightening the knot.
+			clock += dt * (0.8 + hover * 0.9);
+			gl.uniform1f(uTime, clock);
 			gl.uniform1f(uAudio, audio);
+			gl.uniform1f(uHover, hover);
 			gl.drawArrays(gl.TRIANGLES, 0, 3);
 		};
 		const tick = (now: number) => {
 			frame = requestAnimationFrame(tick);
-			if (audio < 0.02 && now - last < 32) return;
+			const calm = audio < 0.02 && hovering === 0 && hover < 0.01;
+			if (calm && now - last < 32) return;
+			draw(Math.min(0.1, (now - last) / 1000));
 			last = now;
-			draw(now);
 		};
-		const still = reducedMotion();
+
+		// Hovering or focusing the button around the light.
+		const target = canvas.parentElement;
+		const setHover = (on: boolean) => () => {
+			hovering = on ? 1 : 0;
+			if (still && visible) draw(0);
+		};
+		const enter = setHover(true);
+		const leave = setHover(false);
+		target?.addEventListener('pointerenter', enter);
+		target?.addEventListener('pointerleave', leave);
+		target?.addEventListener('focusin', enter);
+		target?.addEventListener('focusout', leave);
 		const observer = new IntersectionObserver((entries) => {
 			visible = entries.some((entry) => entry.isIntersecting);
 			cancelAnimationFrame(frame);
 			if (!visible) return;
-			if (still) draw(start + 4000);
-			else frame = requestAnimationFrame(tick);
+			if (still) draw(0);
+			else {
+				last = performance.now();
+				frame = requestAnimationFrame(tick);
+			}
 		});
 		observer.observe(canvas);
 		const resize = new ResizeObserver(() => {
 			size();
-			if (still && visible) draw(start + 4000);
+			if (still && visible) draw(0);
 		});
 		resize.observe(canvas);
 
@@ -213,6 +271,10 @@ export function Th30Light({ theme, className }: { theme: 'dark' | 'system'; clas
 			cancelAnimationFrame(frame);
 			observer.disconnect();
 			resize.disconnect();
+			target?.removeEventListener('pointerenter', enter);
+			target?.removeEventListener('pointerleave', leave);
+			target?.removeEventListener('focusin', enter);
+			target?.removeEventListener('focusout', leave);
 			scheme.removeEventListener('change', paintScheme);
 			gl.deleteBuffer(buffer);
 			gl.deleteProgram(program);

@@ -1,4 +1,5 @@
 import { IconButton } from '@astryxdesign/core/IconButton';
+import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { Theme } from '@astryxdesign/core/theme';
 import { IconMicrophone, IconMicrophoneOff } from '@tabler/icons-react';
 import { LiveSessionClient } from '@theoremjs/react/client';
@@ -41,16 +42,19 @@ export function Th30Trigger({
 	placement: 'rail' | 'search';
 }) {
 	const th30 = useTh30();
+	const label = th30.isLive ? 'End the call with th30' : 'Talk to th30';
 	return (
-		<button
-			type="button"
-			className={`th30-trigger th30-trigger-${placement}`}
-			aria-label={th30.isLive ? 'End the call with th30' : 'Talk to th30'}
-			aria-pressed={th30.isLive}
-			onClick={th30.toggle}
-		>
-			<Th30Light theme={theme} />
-		</button>
+		<Tooltip content={label} placement={placement === 'rail' ? 'end' : 'below'}>
+			<button
+				type="button"
+				className={`th30-trigger th30-trigger-${placement}`}
+				aria-label={label}
+				aria-pressed={th30.isLive}
+				onClick={th30.toggle}
+			>
+				<Th30Light theme={theme} />
+			</button>
+		</Tooltip>
 	);
 }
 
