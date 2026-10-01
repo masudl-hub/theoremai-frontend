@@ -4,7 +4,7 @@
  * Throws on drift. The reader and Th30 only see the composed index.
  */
 
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { EXTRA_FIELDS, fieldMeta, PROFILE_GRAPH, PROFILE_TYPES } from '@theoremjs/agents/schema';
 import { SITE_ARTICLES, SITE_REDIRECTS } from './articles/chapters';
@@ -31,6 +31,22 @@ const KEBAB_ID = /^[a-z][a-z0-9-]*$/;
 /** Search-result description length. */
 const SUMMARY_MIN = 110;
 const SUMMARY_MAX = 160;
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+/** Covers are headers: nothing narrower than 16:9. */
+const COVER_MIN_RATIO = 16 / 9 - 0.01;
+
+/** Width over height from a PNG's IHDR chunk. */
+function pngRatio(file: string): number {
+	const png = readFileSync(file);
+	const ihdr = new DataView(png.buffer, png.byteOffset + 16, 8);
+	return ihdr.getUint32(0) / ihdr.getUint32(4);
+}
+
+function assertPublic(options: ComposeOptions, slug: string, src: string): string {
+	const file = path.join(options.publicRoot, src);
+	if (!existsSync(file)) throw new Error(`${slug} references a missing file: ${src}`);
+	return file;
+}
 
 function assertChapters(options: ComposeOptions): void {
 	const slugs = SITE_ARTICLES.map((def) => def.slug);
@@ -46,8 +62,12 @@ function assertChapters(options: ComposeOptions): void {
 		if (!existsSync(path.join(options.kernelRoot, def.entry))) {
 			throw new Error(`${def.slug} entry missing in the kernel: ${def.entry}`);
 		}
-		if (!existsSync(path.join(options.publicRoot, def.cover.src))) {
-			throw new Error(`${def.slug} cover missing at ${def.cover.src}`);
+		const cover = assertPublic(options, def.slug, def.cover.src);
+		if (!cover.endsWith('.png') || pngRatio(cover) < COVER_MIN_RATIO) {
+			throw new Error(`${def.slug} cover ${def.cover.src} must be a PNG at least 16:9 wide`);
+		}
+		for (const block of def.blocks) {
+			if (block.kind === 'media') assertPublic(options, def.slug, block.src);
 		}
 		if (covers.has(def.cover.src)) throw new Error(`cover ${def.cover.src} is used twice`);
 		covers.add(def.cover.src);
@@ -60,6 +80,10 @@ function assertChapters(options: ComposeOptions): void {
 }
 
 function assertChapter(def: DocArticleDef): void {
+	const today = new Date().toISOString().slice(0, 10);
+	if (!ISO_DAY.test(def.updated) || Number.isNaN(Date.parse(def.updated)) || def.updated > today) {
+		throw new Error(`${def.slug} updated must be a past or present YYYY-MM-DD day`);
+	}
 	if (def.entry.startsWith('/') || def.entry.includes('..')) {
 		throw new Error(`${def.slug} entry must be a kernel-relative path`);
 	}
@@ -178,7 +202,7 @@ export function composeDocIndex(options: ComposeOptions): DocIndex {
 			...def,
 			questions: def.questions ?? [],
 			canonicalPath: `/docs/${def.slug}`,
-			dateModified: options.dateModified,
+			dateModified: def.updated,
 			blocks,
 			symbols: pageSymbols(def.slug, blocks, byFacet),
 		};

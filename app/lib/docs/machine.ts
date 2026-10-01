@@ -24,10 +24,7 @@ export function sitemapXml(index: DocIndex, origin: string): string {
 	const landing = `  <url>\n    <loc>${origin}/docs</loc>\n  </url>`;
 	const articles = index.articles
 		.map((article) => {
-			const lastmod = article.dateModified
-				? `\n    <lastmod>${article.dateModified}</lastmod>`
-				: '';
-			return `  <url>\n    <loc>${origin}${article.canonicalPath}</loc>${lastmod}\n  </url>`;
+			return `  <url>\n    <loc>${origin}${article.canonicalPath}</loc>\n    <lastmod>${article.dateModified}</lastmod>\n  </url>`;
 		})
 		.join('\n');
 	return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${landing}\n${articles}\n</urlset>\n`;

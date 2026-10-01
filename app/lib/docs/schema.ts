@@ -40,6 +40,16 @@ export type AuthoredBlock =
 	| { id: string; kind: 'lede'; text: string }
 	| { id: string; kind: 'prose'; title: string; text: string }
 	| { id: string; kind: 'code'; title?: string; source: CodeSource }
+	/** An image or video from public/; the caption also feeds search and the .md twin. */
+	| {
+			id: string;
+			kind: 'media';
+			media: 'image' | 'video';
+			src: string;
+			alt: string;
+			caption?: string;
+	  }
+	| { id: string; kind: 'callout'; tone: 'note' | 'warn'; text: string }
 	/** Copyable prompt for a coding agent. */
 	| { id: string; kind: 'agent.paste'; prompt: string }
 	| { id: string; kind: 'embed.playground'; seed: PlaygroundSeedId };
@@ -47,11 +57,13 @@ export type AuthoredBlock =
 /** What an authored chapter and its composed article share. */
 export type DocArticleHead = {
 	slug: DocSection;
+	/** YYYY-MM-DD of the last edit to this chapter. `npm run lint:docs` fails when the file changes and this does not. */
+	updated: string;
 	title: string;
 	/** Kernel-relative file this chapter opens on GitHub. */
 	entry: string;
 	summary: string;
-	/** A wide still from public/imagery. */
+	/** A still from public/imagery at least 16:9 wide. */
 	cover: { src: string; alt: string };
 	/** Idle landing card position. */
 	suggest?: { rank: 1 | 2 | 3 | 4; blockId?: string };
@@ -89,8 +101,8 @@ export type DocArticle = DocArticleHead & {
 	questions: readonly { question: string }[];
 	canonicalPath: string;
 	ttrMinutes: number;
-	/** ISO commit time of the docs and kernel sources; omitted when git cannot answer. */
-	dateModified?: string;
+	/** The chapter's `updated` day. */
+	dateModified: string;
 	blocks: readonly ResolvedBlock[];
 	/** Facet fields, worthy-union members, and the trace or lexicon catalog this topic owns. */
 	symbols: readonly PageSymbol[];
@@ -113,7 +125,6 @@ export type DocIndex = {
 };
 
 export type ComposeOptions = {
-	dateModified?: string;
 	publicRoot: string;
 	/** Kernel checkout; chapter entries resolve against it. */
 	kernelRoot: string;

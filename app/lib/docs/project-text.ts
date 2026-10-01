@@ -21,8 +21,12 @@ export function projectBlockText(block: ResolvedBlock): string {
 		case 'lede':
 		case 'prose':
 			return block.text;
+		case 'callout':
+			return block.text;
 		case 'agent.paste':
 			return block.prompt;
+		case 'media':
+			return block.caption ?? block.alt;
 		case 'code':
 			return block.code;
 		case 'embed.playground':

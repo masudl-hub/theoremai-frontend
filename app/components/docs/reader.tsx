@@ -284,12 +284,10 @@ function docsUpdatedOn(iso: string | undefined): string | undefined {
 }
 
 function latestModified(index: DocIndex): string | undefined {
-	let latest: string | undefined;
-	for (const item of index.articles) {
-		const iso = item.dateModified;
-		if (iso !== undefined && (latest === undefined || iso > latest)) latest = iso;
-	}
-	return latest;
+	return index.articles
+		.map((item) => item.dateModified)
+		.sort()
+		.at(-1);
 }
 
 export function DocsFrame({
