@@ -413,29 +413,16 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	const selected = playgroundNodeRef(draft, selectedId) ? selectedId : 'identity';
 	const settledDraft = useDebounced(draft, COMPILE_DEBOUNCE_MS);
 	const compiled = useMemo(() => compilePlayground(settledDraft, mode), [settledDraft, mode]);
+	// Only a draft that compiles changes the preview; while one has issues, the last good agent and its
+	// conversation stay put.
 	const [lastGood, setLastGood] = useState(compiled.ok ? compiled : null);
 	if (compiled.ok && compiled !== lastGood) setLastGood(compiled);
-	const activeProfile = lastGood?.profile;
-	// A preview built for another type or other models would run what the editor no longer shows.
-	const matchingModels =
-		!activeProfile ||
-		(activeProfile.type === settledDraft.identity.profileType &&
-			(activeProfile.type === 'host' ||
-				settledDraft.modelBindings.every((binding) => {
-					if (!Object.hasOwn(activeProfile.models, binding.modelId)) return false;
-					const model = activeProfile.models[binding.modelId];
-					return (
-						binding.provider === model.provider &&
-						binding.protocol === model.protocol &&
-						binding.apiId.trim() === model.apiId
-					);
-				})));
 	const payload = useMemo(
 		() =>
-			lastGood && matchingModels
+			lastGood
 				? { ...runPayload(lastGood), connectionMode: mode, localBaseUrl: connection.local.baseUrl }
 				: null,
-		[lastGood, matchingModels, mode, connection.local.baseUrl],
+		[lastGood, mode, connection.local.baseUrl],
 	);
 	const traced = useMemo(() => isTraced(payload), [payload]);
 	const [traceOpen, setTraceOpen] = useState(false);
@@ -857,12 +844,12 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 									/>
 								</ButtonGroup>
 								<Button
-									label="Open"
+									label="Pop out"
 									isIconOnly={phone}
 									variant="primary"
 									icon={<Icon icon={IconExternalLink} size="sm" />}
 									isDisabled={!compiled.ok}
-									tooltip={blocked ?? 'Open the agent on its own page, in a new tab'}
+									tooltip={blocked ?? 'Run the agent on its own page, in a new tab'}
 									onClick={() => {
 										if (compiled.ok)
 											openInNewTab({
