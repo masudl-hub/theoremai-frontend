@@ -7,9 +7,9 @@ void main() { gl_Position = vec4(a_position, 0.0, 1.0); }
 `;
 
 /**
- * A knot of gas: two layers of glowing strands winding opposite ways, by uneven amounts, inside a
- * tight envelope whose soft rim the same turbulence shoves in and out. Hover tightens the knot and
- * turns it towards violet.
+ * A small cumulus: soft puffs merged into one silhouette, flatter underneath, with a cauliflower
+ * rim of billows at two scales. Lit from above, so the tops glow and the belly sinks into shadow.
+ * The billows drift on a slow wind; speaking swells it, and hover stirs it and turns it violet.
  */
 const FRAGMENT = `#version 300 es
 precision mediump float;
@@ -49,12 +49,13 @@ float fbm(vec2 p) {
   }
   return v;
 }
-// Ridged noise: bright thin creases where the noise crosses zero. These are the strands.
-float strands(vec2 p) {
+// Billows: rounded bumps with soft, rounded creases between them, the texture of a cloud's surface.
+float billows(vec2 p) {
   float v = 0.0;
   float a = 0.6;
   for (int i = 0; i < 3; ++i) {
-    v += a * pow(1.0 - abs(noise(p)), 3.0);
+    float n = noise(p);
+    v += a * sqrt(n * n + 0.012);
     p = ROT * p * 2.1 + vec2(4.1, 1.3);
     a *= 0.5;
   }
@@ -65,60 +66,90 @@ mat2 turn(float a) {
   return mat2(cos(a), sin(a), -sin(a), cos(a));
 }
 
+float smin(float a, float b, float k) {
+  float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+  return mix(b, a, h) - k * h * (1.0 - h);
+}
+
+// The silhouette: puffs that bob a little, merged softly, with the base pressed flatter.
+float cloud(vec2 p, float t) {
+  float d = length(p - vec2(-0.21, -0.03 + 0.010 * sin(t * 0.50))) - 0.12;
+  d = smin(d, length(p - vec2(-0.07, 0.085 + 0.012 * sin(t * 0.41 + 1.0))) - 0.165, 0.07);
+  d = smin(d, length(p - vec2(0.12, 0.03 + 0.010 * sin(t * 0.37 + 2.0))) - 0.15, 0.07);
+  d = smin(d, length(p - vec2(0.26, -0.05 + 0.008 * sin(t * 0.45 + 3.0))) - 0.10, 0.07);
+  d = smin(d, length(p - vec2(0.02, -0.08)) - 0.15, 0.07);
+  return -smin(-d, p.y + 0.15, 0.05);
+}
+
+// The lumpy rim as a field: below zero is inside. ps is the stirred frame, q the warp.
+float surface(vec2 c, vec2 ps, vec2 q, vec2 wind, float t, float swell) {
+  float big = billows(ps * 8.0 + 1.2 * q - wind);
+  float fine = billows(ps * 17.0 + 2.0 * q - wind * 1.6 + 7.3);
+  return cloud(c, t) - 0.065 * big - 0.045 * fine - swell + 0.045;
+}
+
+// Read as a heap of domes: height rises from the rim inwards, so every billow gets a crown.
+float dome(float e) {
+  return sqrt(clamp(-e / 0.12, 0.0, 1.0));
+}
+
 void main() {
   vec2 p = (gl_FragCoord.xy - 0.5 * u_resolution) / min(u_resolution.x, u_resolution.y);
   float t = u_time;
   float speak = u_audio;
   float hover = u_hover;
 
-  // The knot wanders a little around the middle rather than spinning in place.
-  p -= 0.035 * vec2(sin(t * 0.31), cos(t * 0.23));
+  // It drifts a little around the middle; c is the cloud's own frame, centred on the canvas.
+  p -= vec2(0.025 * sin(t * 0.21), 0.018 * cos(t * 0.29));
+  vec2 c = p + vec2(0.025, 0.05);
   float d0 = length(p);
 
-  // Two layers wind opposite ways, each by an amount that varies across the knot, so strands
-  // cross and tangle instead of all spiralling into one eye.
-  float pull = (0.5 - d0) * (1.0 + hover * 0.6);
-  float na = noise(p * 2.3 + vec2(t * 0.11, 3.1));
-  float nb = noise(p * 2.1 + vec2(7.4, -t * 0.09));
-  // Hover stirs it: an extra twist, strongest in the middle, that winds up as hover eases in.
-  float stir = hover * (0.55 - d0) * (2.4 + 1.2 * sin(t * 0.37));
-  vec2 pa = turn(pull * (2.6 + 3.2 * na) + t * 0.21 + stir) * p;
-  vec2 pb = turn(-pull * (2.2 + 3.0 * nb) - t * 0.17 + 1.9 + stir * 0.6) * p;
+  // Hover stirs the billows: a twist, strongest in the middle, that winds up as hover eases in.
+  float stir = hover * (0.5 - d0) * (2.4 + 1.2 * sin(t * 0.37));
+  vec2 ps = turn(stir) * p;
+  vec2 q = vec2(fbm(ps * 3.0 + vec2(t * 0.10, 0.0)), fbm(ps * 3.0 + vec2(5.2, -t * 0.08)));
+  vec2 wind = vec2(t * 0.06, 0.0);
+  float big = billows(ps * 8.0 + 1.2 * q - wind);
 
-  vec2 ps = turn(stir * 0.8) * p;
-  vec2 q = vec2(fbm(ps * 2.8 + vec2(0.0, t * 0.16)), fbm(ps * 2.8 + vec2(5.2, -t * 0.13)));
-  float body = fbm(p * 3.0 + 2.2 * q);
-  float scale = 4.0 + hover * 1.2;
-  float lines = max(strands(pa * scale + 1.6 * q), strands(pb * (scale * 0.9) - 1.4 * q + 3.7) * 0.85);
+  // The rim: the silhouette pushed out by billows at two scales, swelling as th30 speaks.
+  float swell = speak * 0.03 + hover * 0.012;
+  float edge = surface(c, ps, q, wind, t, swell);
+  float density = smoothstep(0.028, -0.03, edge);
 
-  // The envelope: a tight core whose rim is shoved in and out by the turbulence.
-  float rim = d0 + body * 0.34 + (q.x - q.y) * 0.16;
-  float reach = 0.30 + speak * 0.06 + hover * 0.025;
-  float envelope = smoothstep(reach + 0.14, reach - 0.16, rim);
-  float core = exp(-d0 * d0 * 40.0);
-
-  float density = envelope * (0.08 + 0.4 * (body + 0.5) + 1.15 * lines) + core * 0.3;
+  // Light from the upper left on the domes' slopes: lit crowns, shaded undersides, and dark
+  // creases where billows meet. The belly sits a little deeper in shadow overall.
+  const float E = 0.016;
+  float h = dome(edge);
+  float hx = dome(surface(c + vec2(E, 0.0), ps + vec2(E, 0.0), q, wind, t, swell));
+  float hy = dome(surface(c + vec2(0.0, E), ps + vec2(0.0, E), q, wind, t, swell));
+  vec3 n = normalize(vec3(-(hx - h) / E, -(hy - h) / E, 9.0));
+  float diffuse = max(dot(n, normalize(vec3(-0.45, 0.75, 0.55))), 0.0);
+  float crown = smoothstep(-0.16, 0.2, c.y);
+  float shade = (0.42 + 0.68 * diffuse) * mix(0.72, 1.05, crown);
   density *= 1.0 + speak * 0.8 + hover * 0.25;
 
-  // Hover colour bleeds in from the core along the turbulence, and ebbs back out the same way.
-  float bleed = smoothstep(0.0, 0.45, hover * 1.5 - d0 * 1.6 - body * 0.5 + 0.1);
+  // Hover colour bleeds in from the middle along the billows, and ebbs back out the same way.
+  float bleed = smoothstep(0.0, 0.45, hover * 1.5 - d0 * 1.6 - big * 0.5 + 0.1);
 
   vec3 col;
   if (u_lightMode) {
+    vec3 plum = vec3(0.52, 0.22, 0.48);
     vec3 rose = mix(vec3(0.86, 0.36, 0.42), vec3(0.70, 0.30, 0.78), bleed);
     vec3 amber = mix(vec3(0.95, 0.62, 0.30), vec3(0.98, 0.45, 0.55), bleed);
-    vec3 plum = vec3(0.52, 0.22, 0.48);
-    col = mix(plum, rose, smoothstep(-0.2, 0.3, body)) * density + amber * lines * envelope * 0.35;
+    col = mix(plum, rose, smoothstep(0.2, 0.6, shade));
+    col = mix(col, amber, smoothstep(0.65, 1.1, shade));
   } else {
     vec3 navy = mix(vec3(0.05, 0.16, 0.55), vec3(0.22, 0.10, 0.62), bleed);
     vec3 teal = mix(vec3(0.06, 0.62, 0.70), vec3(0.42, 0.40, 0.95), bleed);
     vec3 emerald = mix(vec3(0.16, 0.95, 0.62), vec3(0.70, 0.78, 1.0), bleed);
-    col = mix(navy, teal, smoothstep(-0.25, 0.25, body)) * density + emerald * lines * envelope * 0.45;
+    col = mix(navy, teal, smoothstep(0.2, 0.6, shade));
+    col = mix(col, emerald, smoothstep(0.65, 1.1, shade));
   }
+  col *= density * 1.15;
   col = col / (1.0 + col * 0.6);
 
   float grain = (hash(gl_FragCoord.xy + fract(t * 19.33)) - 0.5) * 0.05;
-  col = max(col + grain * envelope, 0.0);
+  col = max(col + grain * density, 0.0);
 
   // On dark the canvas screens onto the page, so black is invisible and the rim never dims
   // what's behind it. On light it has to cover, or warm gas would vanish into a pale page.
