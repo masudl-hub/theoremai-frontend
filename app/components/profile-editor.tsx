@@ -132,7 +132,6 @@ import {
 	type AcceptSection,
 	acceptSections,
 	allowedBuiltinsForGemini,
-	credentialHeaderProblem,
 	type DecisionQuestionDraft,
 	type DecisionQuestionType,
 	defaultBindingForProfileType,
@@ -184,7 +183,20 @@ import {
 	updateModelBinding,
 } from '@theoremjs/playground';
 import type { ListedProfileType } from '@theoremjs/playground/browser';
-import { type Dispatch, type ReactNode, type SetStateAction, useContext, useState } from 'react';
+import {
+	type Dispatch,
+	type ReactNode,
+	type SetStateAction,
+	useContext,
+	useState,
+	useSyncExternalStore,
+} from 'react';
+import {
+	setToolCredential,
+	subscribeToolCredentials,
+	toolCredential,
+} from '../lib/tool-credentials';
+import { type ProbeResult, runToolProbe } from '../lib/tool-probe';
 import { IconGemini, IconGoogle, IconOpenAi, IconOpenRouter } from './brand-icons';
 import {
 	ChoiceRow,
@@ -2613,87 +2625,6 @@ function ToolsEditor({
 	);
 }
 
-/** What the test-connection route answers: an HTTP response, or an MCP server's tool list. */
-interface ProbeResult {
-	ok: boolean;
-	status?: number;
-	statusText?: string;
-	error?: string;
-	preview?: string;
-	elapsedMs?: number;
-	tools?: string[];
-	targetToolFound?: boolean;
-}
-
-/** A JSON object typed into the test, or why it isn't one. Blank is `undefined`. */
-function parseObject(
-	raw: string,
-	label: string,
-): { value?: Record<string, unknown>; error?: string } {
-	if (!raw.trim()) return {};
-	try {
-		const parsed: unknown = JSON.parse(raw);
-		if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-			return { value: parsed as Record<string, unknown> };
-		}
-	} catch {
-		// Falls through to the error below.
-	}
-	return { error: `${label} must be a JSON object.` };
-}
-
-/** The test-connection request for `tool`. The server applies its own network policy. */
-function probeRequest(
-	tool: ToolSpecDraft,
-	sampleInput: string,
-	credential: string,
-): { body?: Record<string, unknown>; error?: string } {
-	const headers = parseObject(tool.headersJson ?? '', 'Headers');
-	if (headers.error) return { error: headers.error };
-	const credentialHeader = credentialHeaderProblem(
-		headers.value as Record<string, string> | undefined,
-	);
-	if (credentialHeader) return { error: credentialHeader };
-	const authType = tool.authType ?? 'none';
-	const shared = {
-		headers: headers.value,
-		...(authType === 'none'
-			? {}
-			: {
-					auth: {
-						type: authType,
-						headerName: tool.authHeaderName,
-						headerPrefix: tool.authHeaderPrefix,
-					},
-					testCredential: credential || undefined,
-				}),
-	};
-	if (tool.toolType === 'mcp') {
-		return {
-			body: {
-				type: 'mcp',
-				serverUrl: tool.serverUrl ?? '',
-				mcpToolName: tool.mcpToolName,
-				...shared,
-			},
-		};
-	}
-	const input = parseObject(sampleInput, 'Sample input');
-	if (input.error) return { error: input.error };
-	return {
-		body: {
-			type: 'http',
-			endpoint: tool.endpoint ?? '',
-			method: tool.method ?? HTTP_METHODS[0],
-			pathParams: tool.pathParams,
-			queryParams: tool.queryParams,
-			bodyParam: tool.bodyParam,
-			sampleInput: input.value,
-			...shared,
-		},
-	};
-}
-
 const MS = new Intl.NumberFormat('en-US', { style: 'unit', unit: 'millisecond' });
 
 /** The result's headline: the status line, or for an MCP server, what it offers. */
@@ -2719,7 +2650,14 @@ function ToolTest({ tool }: { tool: ToolSpecDraft }) {
 	const [typedInput, setTypedInput] = useState<string>();
 	const sample = sampleToolInput(tool.toolName, tool.inputJson);
 	const sampleInput = typedInput ?? (sample ? JSON.stringify(sample, null, 2) : '');
-	const [credential, setCredential] = useState('');
+	const credential = useSyncExternalStore(
+		subscribeToolCredentials,
+		() => toolCredential(tool.key),
+		() => '',
+	);
+	const setCredential = (value: string) => {
+		setToolCredential(tool.key, value);
+	};
 	const [pending, setPending] = useState(false);
 	const [result, setResult] = useState<ProbeResult>();
 	const http = tool.toolType === 'http';
@@ -2743,21 +2681,9 @@ function ToolTest({ tool }: { tool: ToolSpecDraft }) {
 	}
 
 	const run = async () => {
-		const request = probeRequest(tool, sampleInput, credential);
-		if (!request.body) {
-			setResult({ ok: false, error: request.error });
-			return;
-		}
 		setPending(true);
 		try {
-			const response = await fetch('/api/playground/test-connection', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(request.body),
-			});
-			setResult(await response.json<ProbeResult>());
-		} catch {
-			setResult({ ok: false, error: "Couldn't reach the playground server." });
+			setResult(await runToolProbe(tool, sampleInput, credential));
 		} finally {
 			setPending(false);
 		}

@@ -9,15 +9,11 @@ import {
 	standardEgressEnforce,
 } from '@theoremjs/agents';
 import { googleBindingViolation } from '@theoremjs/agents/presets/google';
+import { SURFACE_PROMPT, SURFACE_TOOL_NAMES, surfaceTools } from '@theoremjs/agents/surface';
 import { z } from 'zod';
 import { getDocIndex } from '../docs/.server/load-index';
 import { formatNavigableForPrompt, readDoc, resolveNavigate, searchDocs } from '../docs/query';
 import { TH30_PROFILE_ID } from '../th30-id';
-import {
-	registerTh30BuilderTools,
-	TH30_BUILDER_PROMPT,
-	TH30_BUILDER_TOOL_IDS,
-} from './th30-builder';
 
 /* -------------------------------------------------------------------------- */
 /* Tool Schemas (Strict Zod Contracts)                                        */
@@ -208,8 +204,17 @@ function registerTh30Tools(): void {
 	registerTool(th30ReadTool);
 	registerTool(th30SearchDocsTool);
 	registerTool(th30SearchWebTool);
-	registerTh30BuilderTools();
+	for (const tool of surfaceTools({ category: 'page' })) registerTool(tool);
 }
+
+/** What th30 does with the playground surface, on top of how it uses look and act. */
+const TH30_BUILDER_PROMPT = `Building an agent. On the playground you build the visitor's agent with them; they see every change land. Look at "playground" to start (look or act on it from any page and it opens).
+- Ask at most 3 short questions (what it does, which type, which model), then build. Narrate in a few words, never field by field.
+- An agent runs only when the playground has no issues: fix them, or tell the visitor what only they can do.
+- newAgent replaces the draft: ask first if the visitor has changed the current one.
+- When it runs, offer to try it: act try with their message, and tell them what came back.
+- When something doesn't work ("why isn't this working?"): look for issues, test the key nodes and tools involved, and say what you found. A key's card tells you if it is missing, malformed, or the same as another; its test tells you whether the provider accepts it.
+- To explain a setting, searchDocs it first. The site surface's go takes the visitor home, to the docs or the playground.`;
 
 /* -------------------------------------------------------------------------- */
 /* System Prompt & Profile Definition                                         */
@@ -226,6 +231,8 @@ You always know the page the visitor is on. A line starting "(page)" names it: t
 When the call first connects you get a cue like "(call connected) (page) /docs/guardrails — …". It is not the caller speaking; never read it out. Open the call yourself, warmly and in one short breath, the way a friendly guide picks up: say your name once, then offer help that fits the page they're on. On the docs landing, offer to find what they're after. Vary the wording from call to call. No "How may I assist you", no list of what you can do.
 
 On the playground, explain a setting by searching the docs, never by guessing: searchDocs the field or section name, read the hit, then answer from it.
+
+${SURFACE_PROMPT}
 
 ${TH30_BUILDER_PROMPT}
 
@@ -288,7 +295,7 @@ export function ensureTh30ProfileRegistered(): void {
 			},
 		},
 		tools: {
-			allow: [...TH30_TOOL_IDS, ...TH30_BUILDER_TOOL_IDS],
+			allow: [...TH30_TOOL_IDS, ...SURFACE_TOOL_NAMES],
 		},
 		guardrails: {
 			canary: true,

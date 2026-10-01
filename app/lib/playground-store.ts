@@ -1,8 +1,10 @@
 /**
  * The playground's draft, kept in this tab's sessionStorage so it outlives a reload or a trip to
  * the docs and back. Every change bumps a revision, so th30 can tell its own edits from the
- * visitor's. Keys never come here: the vault stays in memory.
+ * visitor's. Keys never come here: the vault stays in memory, and a tool's URLs and headers are kept
+ * with their credentials masked.
  */
+import { maskHeaders, maskUrl } from '@theoremjs/agents/surface';
 import type { PlaygroundDraft } from '@theoremjs/playground';
 import type { TheoremChat } from '@theoremjs/react/ui';
 import type { ComponentProps } from 'react';
@@ -14,23 +16,11 @@ const DRAFT_KEY = 'theorem.playground.v1';
 const CHAT_KEY = 'theorem.playground.v1.chat';
 const VERSION = 1;
 const WRITE_MS = 300;
-const LEDGER_SIZE = 100;
 const CHANGES_SIZE = 50;
 /** Past this, a stored conversation drops its media, then its oldest turns. */
 const CHAT_BUDGET = 2_000_000;
 
 export type DraftAuthor = 'th30' | 'visitor';
-
-/** One th30 call the page answered; a replayed callId gets this back and applies nothing. */
-export interface LedgerEntry {
-	callId: string;
-	tool: string;
-	/** th30's own key for a whole-draft call, so a re-issued call under a new id applies once. */
-	intent?: string;
-	result: unknown;
-	revision: number;
-	at: number;
-}
 
 /** Which sections one change touched, and who made it. */
 export interface DraftChange {
@@ -44,7 +34,6 @@ interface StoredDraft {
 	draft: PlaygroundDraft;
 	revision: number;
 	selectedId: string;
-	ledger: LedgerEntry[];
 }
 
 export type RestoredPlayground = Omit<StoredDraft, 'v'>;
@@ -66,8 +55,7 @@ function isStoredDraft(value: unknown): value is StoredDraft {
 		typeof record.draft.identity === 'object' &&
 		Array.isArray(record.draft.modelBindings) &&
 		typeof record.revision === 'number' &&
-		typeof record.selectedId === 'string' &&
-		Array.isArray(record.ledger)
+		typeof record.selectedId === 'string'
 	);
 }
 
@@ -84,8 +72,8 @@ export function restorePlayground():
 	try {
 		const parsed: unknown = JSON.parse(raw);
 		if (isStoredDraft(parsed)) {
-			const { draft, revision, selectedId, ledger } = parsed;
-			return { kind: 'restored', value: { draft, revision, selectedId, ledger } };
+			const { draft, revision, selectedId } = parsed;
+			return { kind: 'restored', value: { draft, revision, selectedId } };
 		}
 	} catch {
 		// Falls through to discard.
@@ -93,6 +81,36 @@ export function restorePlayground():
 	store.removeItem(DRAFT_KEY);
 	store.removeItem(CHAT_KEY);
 	return { kind: 'discarded' };
+}
+
+const CREDENTIAL_TEXT = /auth|key|token|secret|passw|cookie|session|signature|credential/i;
+
+/**
+ * Headers as kept: unchanged (formatting and all) when nothing in them is a credential, masked when
+ * something is. Text that isn't JSON yet is kept unless it looks like it carries one.
+ */
+function keptHeaders(raw: string): string {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw);
+	} catch {
+		return CREDENTIAL_TEXT.test(raw) ? '' : raw;
+	}
+	const masked = maskHeaders(raw);
+	return typeof masked === 'string' && masked !== JSON.stringify(parsed) ? masked : raw;
+}
+
+/** The draft as kept: each tool's URLs and headers with their credentials masked. */
+function keptDraft(draft: PlaygroundDraft): PlaygroundDraft {
+	return {
+		...draft,
+		toolSpecs: draft.toolSpecs.map((tool) => ({
+			...tool,
+			...(tool.endpoint ? { endpoint: maskUrl(tool.endpoint) } : {}),
+			...(tool.serverUrl ? { serverUrl: maskUrl(tool.serverUrl) } : {}),
+			...(tool.headersJson ? { headersJson: keptHeaders(tool.headersJson) } : {}),
+		})),
+	};
 }
 
 /** The top-level draft sections that differ; the draft is immutable, so identity is enough. */
@@ -113,14 +131,13 @@ export function createPlaygroundStore(initial: RestoredPlayground) {
 	let draft = initial.draft;
 	let revision = initial.revision;
 	let selectedId = initial.selectedId;
-	let ledger = initial.ledger.slice(-LEDGER_SIZE);
 	let changes: DraftChange[] = [];
 	const listeners = new Set<() => void>();
 	let timer: ReturnType<typeof setTimeout> | undefined;
 
 	const write = () => {
 		timer = undefined;
-		const record: StoredDraft = { v: VERSION, draft, revision, selectedId, ledger };
+		const record: StoredDraft = { v: VERSION, draft: keptDraft(draft), revision, selectedId };
 		try {
 			session()?.setItem(DRAFT_KEY, JSON.stringify(record));
 		} catch {
@@ -158,18 +175,6 @@ export function createPlaygroundStore(initial: RestoredPlayground) {
 		/** Changes after `since`, oldest first; only the last 50 are kept. */
 		changesSince: (since: number): DraftChange[] =>
 			changes.filter((change) => change.revision > since),
-		ledger: {
-			get: (callId: string) => ledger.find((entry) => entry.callId === callId),
-			byIntent: (intent: string, withinMs: number) =>
-				ledger.findLast((entry) => entry.intent === intent && Date.now() - entry.at <= withinMs),
-			add(entry: LedgerEntry) {
-				ledger = [...ledger.filter((old) => old.callId !== entry.callId), entry].slice(
-					-LEDGER_SIZE,
-				);
-				schedule();
-			},
-			recent: (count: number) => ledger.slice(-count),
-		},
 		subscribe: (listener: () => void) => {
 			listeners.add(listener);
 			return () => {

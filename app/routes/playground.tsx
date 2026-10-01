@@ -63,8 +63,10 @@ import {
 	playgroundNodeRef,
 	playgroundSource,
 	playgroundTree,
+	sampleToolInput,
 	savePlaygroundRunPayload,
 } from '@theoremjs/playground';
+import { type PlaygroundSurfaceHost, playgroundSurface } from '@theoremjs/playground/surface';
 import { type TheoremChatHandle, useDisclosureMotion } from '@theoremjs/react/ui';
 import {
 	type CSSProperties,
@@ -98,12 +100,9 @@ import {
 	saveConversation,
 } from '../lib/playground-store';
 import { type Th30PageHandle, useReportTh30Playground } from '../lib/th30-page';
-import {
-	buildStateLine,
-	createPlaygroundTools,
-	type PlaygroundToolsHost,
-} from '../lib/th30-playground-tools';
-import { emitTh30Note, registerTh30Tools, setTh30StateLine } from '../lib/th30-tools';
+import { th30Surfaces } from '../lib/th30-surfaces';
+import { toolCredential } from '../lib/tool-credentials';
+import { runToolProbe } from '../lib/tool-probe';
 import type { Route } from './+types/playground';
 import type { ShellHandle } from './shell';
 
@@ -135,7 +134,6 @@ export function clientLoader({ request }: Route.ClientLoaderArgs) {
 		draft,
 		revision: kept.kind === 'restored' ? kept.value.revision + 1 : 0,
 		selectedId: 'identity',
-		ledger: kept.kind === 'restored' ? kept.value.ledger : [],
 	});
 	if (isPlaygroundSeed(seed)) {
 		return {
@@ -583,13 +581,13 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	};
 	const pageRef = useRef(page);
 	pageRef.current = page;
+	// th30 sees and works in the playground through its surface, mounted while the page is open.
 	useEffect(() => {
 		const compileNow = () => compilePlayground(store.getDraft(), pageRef.current.mode);
-		const host: PlaygroundToolsHost = {
+		const host: PlaygroundSurfaceHost = {
 			getDraft: store.getDraft,
 			getRevision: store.getRevision,
 			getMode: () => pageRef.current.mode,
-			getSelected: store.getSelectedId,
 			update: (next) => store.update(next, 'th30'),
 			replaceDraft: (next, message) => {
 				pageRef.current.replaceDraft(next, message, 'th30');
@@ -598,11 +596,37 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 				pageRef.current.setSelectedId(id);
 				store.select(id);
 			},
-			ledger: store.ledger,
-			lastChanges: (since) => store.changesSince(since).flatMap((change) => change.sections),
-			keysFilled: (slot) => Boolean(pageRef.current.connection.vault[slot]?.trim()),
+			changesSince: (since) =>
+				store.changesSince(since).map((change) => ({
+					revision: change.revision,
+					by: change.by === 'th30' ? 'agent' : 'person',
+					sections: change.sections,
+				})),
+			subscribe: store.subscribe,
+			key: (slot) => pageRef.current.connection.vault[slot] ?? '',
 			openKeys: () => {
 				pageRef.current.setKeysOpen(true);
+			},
+			testKey: async (slot) => {
+				const key = pageRef.current.connection.vault[slot]?.trim();
+				if (!key) return { ok: false, error: 'No key in this slot.' };
+				try {
+					const response = await fetch('/api/playground/test-key', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ key }),
+					});
+					return await response.json<unknown>();
+				} catch {
+					return { ok: false, error: "Couldn't reach the playground server." };
+				}
+			},
+			toolCredential,
+			testTool: (key, input) => {
+				const tool = store.getDraft().toolSpecs.find((candidate) => candidate.key === key);
+				if (!tool) return Promise.resolve({ ok: false, error: 'No such tool.' });
+				const sample = input ?? sampleToolInput(tool.toolName, tool.inputJson) ?? {};
+				return runToolProbe(tool, JSON.stringify(sample), toolCredential(key));
 			},
 			send: (text) => chatRef.current?.send(text) ?? Promise.resolve(null),
 			newConversation: () => {
@@ -632,25 +656,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 				return Promise.resolve(true);
 			},
 		};
-		const unregister = registerTh30Tools(createPlaygroundTools(host));
-		setTh30StateLine(() => buildStateLine(host));
-		let seen = store.getRevision();
-		const stopWatching = store.subscribe(() => {
-			const edits = store.changesSince(seen).filter((change) => change.by === 'visitor');
-			seen = store.getRevision();
-			if (edits.length === 0) return;
-			const compiledNow = compileNow();
-			const sections = [...new Set(edits.flatMap((change) => change.sections))].join(', ');
-			const count = compiledNow.ok ? 0 : compiledNow.issues.length;
-			emitTh30Note(
-				`r${String(seen)} — you changed: ${sections}; ${String(count)} ${count === 1 ? 'issue' : 'issues'}`,
-			);
-		});
-		return () => {
-			unregister();
-			setTh30StateLine(null);
-			stopWatching();
-		};
+		return th30Surfaces.mount(playgroundSurface(host));
 	}, [store]);
 
 	const title = editorTitle(draft, selected);

@@ -2,6 +2,7 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { Theme } from '@astryxdesign/core/theme';
 import { IconMicrophone, IconMicrophoneOff } from '@tabler/icons-react';
+import { defineAction } from '@theoremjs/agents/surface';
 import { LiveSessionClient } from '@theoremjs/react/client';
 import { InkWaveform, type InkWaveStatus } from '@theoremjs/react/ui';
 import {
@@ -14,6 +15,7 @@ import {
 	useState,
 } from 'react';
 import { useLocation, useMatches, useNavigate } from 'react-router';
+import { z } from 'zod';
 import { theoremSiteTheme } from '../built/theorem-site';
 import { docsPath, highlightBlock } from '../lib/docs/th30-client';
 import { TH30_PROFILE_ID } from '../lib/th30-id';
@@ -23,14 +25,7 @@ import {
 	th30PageLine,
 	useTh30PlaygroundState,
 } from '../lib/th30-page';
-import {
-	emitTh30Note,
-	getTh30Tool,
-	isTh30ClientTool,
-	onTh30Note,
-	th30StateLine,
-	waitForTh30Tools,
-} from '../lib/th30-tools';
+import { onTh30Note, setTh30SurfaceOpener, th30Surfaces } from '../lib/th30-surfaces';
 import { th30Voice } from '../lib/th30-voice';
 import { Th30Light } from './th30-light';
 import './th30.css';
@@ -76,8 +71,10 @@ export function Th30Trigger({
 type Phase = 'idle' | 'connecting' | 'live' | 'failed';
 
 const PAGE_LINE_DEBOUNCE_MS = 800;
-/** How long a playground tool waits for the playground to mount after th30 sends the visitor there. */
-const MOUNT_WAIT_MS = 5000;
+
+/** Where each surface th30 can open lives. */
+const SURFACE_PAGES: Record<string, string> = { playground: '/playground' };
+const SITE_PAGES = { home: '/', docs: '/docs', playground: '/playground' } as const;
 
 /** The page the visitor is on, from the deepest matched route that describes itself. */
 function useTh30PageLine(): string | null {
@@ -109,8 +106,43 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 	/** The last page line th30 was told, so an unchanged page says nothing; `undefined` until the call is greeted. */
 	const toldRef = useRef<string | null | undefined>(undefined);
 
-	/** Client calls the playground applied, so a late answer or a cancel after the fact can be told. */
-	const appliedRef = useRef(new Map<string, string>());
+	// th30 opens a surface's page when it asks for one that isn't mounted, and can always move the person.
+	const { pathname } = useLocation();
+	const pathnameRef = useRef(pathname);
+	pathnameRef.current = pathname;
+	useEffect(() => {
+		setTh30SurfaceOpener((surfaceId) => {
+			const to = SURFACE_PAGES[surfaceId];
+			if (to && window.location.pathname !== to) void navigate(to);
+		});
+		const unmount = th30Surfaces.mount({
+			id: 'site',
+			title: 'The Theorem site',
+			revision: () => 1,
+			summary: () => `on ${pathnameRef.current}`,
+			nodes: () => [
+				{
+					id: '',
+					title: 'The Theorem site',
+					actions: {
+						go: defineAction({
+							description: 'Take the person to the home page, the docs, or the playground.',
+							effect: 'run',
+							input: z.object({ page: z.enum(['home', 'docs', 'playground']) }),
+							run: ({ page }) => {
+								void navigate(SITE_PAGES[page]);
+								return { result: { went: page } };
+							},
+						}),
+					},
+				},
+			],
+		});
+		return () => {
+			setTh30SurfaceOpener(null);
+			unmount();
+		};
+	}, [navigate]);
 
 	const applyTool = useCallback(
 		(name: string, args: Record<string, unknown>) => {
@@ -126,11 +158,6 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 					}
 				}
 			}
-			if (name === 'goTo') {
-				const page = typeof args.page === 'string' ? args.page : '';
-				const to = { home: '/', docs: '/docs', playground: '/playground' }[page];
-				if (to) void navigate(to);
-			}
 			if (name === 'highlight') {
 				const blockId = typeof args.blockId === 'string' ? args.blockId : '';
 				const label = typeof args.label === 'string' ? args.label : undefined;
@@ -140,36 +167,17 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 		[navigate],
 	);
 
-	const runClientTool = useCallback(
+	/** Answers a `look` or `act` from the page; an applied call whose answer is lost is noted. */
+	const answerSurface = useCallback(
 		async (name: string, args: Record<string, unknown>, callId: string) => {
-			let handler = isTh30ClientTool(name) ? getTh30Tool(name) : undefined;
-			if (!handler && isTh30ClientTool(name)) {
-				if (window.location.pathname !== '/playground') void navigate('/playground');
-				if (await waitForTh30Tools(MOUNT_WAIT_MS)) handler = getTh30Tool(name);
-			}
-			let output: unknown;
-			if (!handler) {
-				output = { applied: false, reason: 'not_on_playground', page: pageLineRef.current };
-			} else {
-				try {
-					output = await handler(args, callId);
-				} catch (err) {
-					output = {
-						applied: false,
-						reason: 'error',
-						message: err instanceof Error ? err.message : String(err),
-					};
-				}
-			}
-			const applied = (output as { applied?: unknown } | null)?.applied === true;
-			if (applied) appliedRef.current.set(callId, name);
+			const output = await th30Surfaces.answer(name, args, callId);
 			try {
 				await clientRef.current?.executeToolOnRelay({ callId, output });
 			} catch {
-				if (applied) emitTh30Note(`${name} applied late: th30 never heard back`);
+				th30Surfaces.settled(callId, 'undelivered');
 			}
 		},
-		[navigate],
+		[],
 	);
 
 	const stop = useCallback(() => {
@@ -205,7 +213,7 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 					chime.play();
 					const line = pageLineRef.current;
 					toldRef.current = line;
-					const state = th30StateLine();
+					const state = th30Surfaces.stateLine();
 					client.sendText(['(call connected)', line, state].filter((part) => part).join(' '));
 				}
 			},
@@ -220,10 +228,10 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 				else th30Voice.agent = level;
 				setLevels((prev) => (isUser ? { ...prev, input: level } : { ...prev, output: level }));
 			},
-			// Th30's tools never gate. The relay runs the server ones; the browser answers the playground ones.
+			// Th30's tools never gate. The relay runs the server ones; the page answers look and act.
 			onToolCall: async (name, args, meta) => {
-				if (isTh30ClientTool(name)) {
-					await runClientTool(name, args, meta.callId);
+				if (th30Surfaces.isSurfaceTool(name)) {
+					await answerSurface(name, args, meta.callId);
 					return;
 				}
 				applyTool(name, args);
@@ -231,8 +239,7 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 			},
 			onTurnEvent: (event) => {
 				if (event.type !== 'tool' || event.tool.phase !== 'cancel') return;
-				const applied = appliedRef.current.get(event.tool.callId);
-				if (applied) emitTh30Note(`${applied} applied before it was cancelled`);
+				th30Surfaces.settled(event.tool.callId, 'cancelled');
 			},
 		});
 		clientRef.current = client;
@@ -246,7 +253,7 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 			setFailure(err instanceof Error ? err.message : null);
 			setPhase('failed');
 		}
-	}, [applyTool, runClientTool]);
+	}, [applyTool, answerSurface]);
 
 	useEffect(() => {
 		if (phase !== 'live') return;
