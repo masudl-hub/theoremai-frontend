@@ -22,6 +22,7 @@ import {
 	IconAlertTriangle,
 	IconBook,
 	IconChevronDown,
+	IconClearAll,
 	IconCode,
 	IconCopy,
 	IconDownload,
@@ -399,6 +400,8 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	);
 	const traced = useMemo(() => isTraced(payload), [payload]);
 	const [traceOpen, setTraceOpen] = useState(false);
+	// Bumping this remounts the runner: a fresh transcript and trace feed, the same profile.
+	const [conversation, setConversation] = useState(0);
 	const source = useMemo(() => (compiled.ok ? playgroundSource(compiled) : null), [compiled]);
 	const issues = compiled.ok
 		? undefined
@@ -526,6 +529,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 												<DropdownMenu
 													button={{
 														label: 'Load an example',
+														variant: 'ghost',
 														isIconOnly: true,
 														icon: <Icon icon={IconBook} size="sm" />,
 													}}
@@ -689,6 +693,16 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 						<Section variant="transparent" padding={3}>
 							<HStack gap={2} vAlign="center">
 								<StackItem size="fill" />
+								<IconButton
+									label="Clear history"
+									variant="ghost"
+									icon={<Icon icon={IconClearAll} size="sm" />}
+									isDisabled={!payload}
+									tooltip="Clear the conversation and its traces. Your profile stays."
+									onClick={() => {
+										setConversation((count) => count + 1);
+									}}
+								/>
 								{traced ? (
 									<Button
 										label={traceOpen ? 'Hide trace' : 'View trace'}
@@ -765,7 +779,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 						<StackItem size="fill">
 							{payload ? (
 								<PlaygroundRunner
-									key={mode}
+									key={`${mode}:${String(conversation)}`}
 									payload={payload}
 									mode={mode}
 									runtime={runtime}
