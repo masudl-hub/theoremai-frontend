@@ -19,6 +19,15 @@ import '../hero-video.css';
 import { Th30Trigger } from '../th30-dock';
 
 const SEARCH_LIMIT = 16;
+const SEARCH_HINTS = [
+	'Search the docs',
+	'Try “runTurn”',
+	'Try “guardrails”',
+	'Try “structured outputs”',
+	'Try “when a tool pauses”',
+	'Try “recording traces”',
+];
+const HINT_MS = 3200;
 const TILE_MOTION: CSSProperties = {
 	transitionProperty: 'opacity, transform',
 	transitionDuration: 'var(--duration-medium)',
@@ -114,6 +123,21 @@ function useEasedTiles(target: LandingTile[]): { tiles: LandingTile[]; phase: Ti
 	return { tiles, phase };
 }
 
+/** Cycles the search hints while the field is empty and unfocused. */
+function useSearchHint(paused: boolean): string {
+	const [hint, setHint] = useState(0);
+	useEffect(() => {
+		if (paused || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		const timer = window.setInterval(() => {
+			setHint((i) => (i + 1) % SEARCH_HINTS.length);
+		}, HINT_MS);
+		return () => {
+			window.clearInterval(timer);
+		};
+	}, [paused]);
+	return SEARCH_HINTS[hint] ?? 'Search the docs';
+}
+
 function tilesFromIndex(index: DocIndex, query: string): LandingTile[] {
 	const trimmed = query.trim();
 	if (!trimmed) {
@@ -153,6 +177,8 @@ export function DocsLanding({ index, version }: { index: DocIndex; version: stri
 	const target = useMemo(() => tilesFromIndex(index, query), [index, query]);
 	const { tiles, phase } = useEasedTiles(target);
 	const searching = query.trim().length > 0;
+	const [focused, setFocused] = useState(false);
+	const hint = useSearchHint(focused || query.length > 0);
 	const stillPaint = {
 		position: 'absolute',
 		inset: 0,
@@ -231,11 +257,19 @@ export function DocsLanding({ index, version }: { index: DocIndex; version: stri
 			</StackItem>
 			<VStack className="docs-landing-body" gap={6} padding={8}>
 				<HStack className="docs-landing-search" justify="center" align="center" gap={4}>
-					<div className="docs-landing-query">
+					<div
+						className="docs-landing-query"
+						onFocus={() => {
+							setFocused(true);
+						}}
+						onBlur={() => {
+							setFocused(false);
+						}}
+					>
 						<TextInput
 							label="Search docs"
 							isLabelHidden
-							placeholder="Search"
+							placeholder={hint}
 							value={query}
 							onChange={setQuery}
 							startIcon={IconSearch}
