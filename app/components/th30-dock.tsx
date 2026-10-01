@@ -23,6 +23,14 @@ import {
 	th30PageLine,
 	useTh30PlaygroundState,
 } from '../lib/th30-page';
+import {
+	emitTh30Note,
+	getTh30Tool,
+	isTh30ClientTool,
+	onTh30Note,
+	th30StateLine,
+	waitForTh30Tools,
+} from '../lib/th30-tools';
 import { th30Voice } from '../lib/th30-voice';
 import { Th30Light } from './th30-light';
 import './th30.css';
@@ -68,6 +76,8 @@ export function Th30Trigger({
 type Phase = 'idle' | 'connecting' | 'live' | 'failed';
 
 const PAGE_LINE_DEBOUNCE_MS = 800;
+/** How long a playground tool waits for the playground to mount after th30 sends the visitor there. */
+const MOUNT_WAIT_MS = 5000;
 
 /** The page the visitor is on, from the deepest matched route that describes itself. */
 function useTh30PageLine(): string | null {
@@ -99,6 +109,9 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 	/** The last page line th30 was told, so an unchanged page says nothing; `undefined` until the call is greeted. */
 	const toldRef = useRef<string | null | undefined>(undefined);
 
+	/** Client calls the playground applied, so a late answer or a cancel after the fact can be told. */
+	const appliedRef = useRef(new Map<string, string>());
+
 	const applyTool = useCallback(
 		(name: string, args: Record<string, unknown>) => {
 			if (name === 'navigate') {
@@ -113,10 +126,47 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 					}
 				}
 			}
+			if (name === 'goTo') {
+				const page = typeof args.page === 'string' ? args.page : '';
+				const to = { home: '/', docs: '/docs', playground: '/playground' }[page];
+				if (to) void navigate(to);
+			}
 			if (name === 'highlight') {
 				const blockId = typeof args.blockId === 'string' ? args.blockId : '';
 				const label = typeof args.label === 'string' ? args.label : undefined;
 				if (blockId) highlightBlock(blockId, label);
+			}
+		},
+		[navigate],
+	);
+
+	const runClientTool = useCallback(
+		async (name: string, args: Record<string, unknown>, callId: string) => {
+			let handler = isTh30ClientTool(name) ? getTh30Tool(name) : undefined;
+			if (!handler && isTh30ClientTool(name)) {
+				if (window.location.pathname !== '/playground') void navigate('/playground');
+				if (await waitForTh30Tools(MOUNT_WAIT_MS)) handler = getTh30Tool(name);
+			}
+			let output: unknown;
+			if (!handler) {
+				output = { applied: false, reason: 'not_on_playground', page: pageLineRef.current };
+			} else {
+				try {
+					output = await handler(args, callId);
+				} catch (err) {
+					output = {
+						applied: false,
+						reason: 'error',
+						message: err instanceof Error ? err.message : String(err),
+					};
+				}
+			}
+			const applied = (output as { applied?: unknown } | null)?.applied === true;
+			if (applied) appliedRef.current.set(callId, name);
+			try {
+				await clientRef.current?.executeToolOnRelay({ callId, output });
+			} catch {
+				if (applied) emitTh30Note(`${name} applied late: th30 never heard back`);
 			}
 		},
 		[navigate],
@@ -155,7 +205,8 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 					chime.play();
 					const line = pageLineRef.current;
 					toldRef.current = line;
-					client.sendText(line ? `(call connected) ${line}` : '(call connected)');
+					const state = th30StateLine();
+					client.sendText(['(call connected)', line, state].filter((part) => part).join(' '));
 				}
 			},
 			onError: (err) => {
@@ -169,10 +220,19 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 				else th30Voice.agent = level;
 				setLevels((prev) => (isUser ? { ...prev, input: level } : { ...prev, output: level }));
 			},
-			// Th30's tools are read-only and never gate; the relay runs each call and the session answers the model.
+			// Th30's tools never gate. The relay runs the server ones; the browser answers the playground ones.
 			onToolCall: async (name, args, meta) => {
+				if (isTh30ClientTool(name)) {
+					await runClientTool(name, args, meta.callId);
+					return;
+				}
 				applyTool(name, args);
 				await clientRef.current?.executeToolOnRelay({ callId: meta.callId });
+			},
+			onTurnEvent: (event) => {
+				if (event.type !== 'tool' || event.tool.phase !== 'cancel') return;
+				const applied = appliedRef.current.get(event.tool.callId);
+				if (applied) emitTh30Note(`${applied} applied before it was cancelled`);
 			},
 		});
 		clientRef.current = client;
@@ -186,7 +246,26 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 			setFailure(err instanceof Error ? err.message : null);
 			setPhase('failed');
 		}
-	}, [applyTool]);
+	}, [applyTool, runClientTool]);
+
+	useEffect(() => {
+		if (phase !== 'live') return;
+		let pending: string[] = [];
+		let timer: number | undefined;
+		const off = onTh30Note((line) => {
+			pending.push(line);
+			window.clearTimeout(timer);
+			timer = window.setTimeout(() => {
+				const lines = pending;
+				pending = [];
+				clientRef.current?.sendContext(`(state) ${lines.join('; ')}`);
+			}, PAGE_LINE_DEBOUNCE_MS);
+		});
+		return () => {
+			off();
+			window.clearTimeout(timer);
+		};
+	}, [phase]);
 
 	useEffect(() => {
 		if (phase !== 'live' || !pageLine || pageLine === toldRef.current) return;

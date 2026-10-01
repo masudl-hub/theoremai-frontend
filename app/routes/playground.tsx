@@ -65,7 +65,7 @@ import {
 	playgroundTree,
 	savePlaygroundRunPayload,
 } from '@theoremjs/playground';
-import { useDisclosureMotion } from '@theoremjs/react/ui';
+import { type TheoremChatHandle, useDisclosureMotion } from '@theoremjs/react/ui';
 import {
 	type CSSProperties,
 	useCallback,
@@ -98,6 +98,12 @@ import {
 	saveConversation,
 } from '../lib/playground-store';
 import { type Th30PageHandle, useReportTh30Playground } from '../lib/th30-page';
+import {
+	buildStateLine,
+	createPlaygroundTools,
+	type PlaygroundToolsHost,
+} from '../lib/th30-playground-tools';
+import { emitTh30Note, registerTh30Tools, setTh30StateLine } from '../lib/th30-tools';
 import type { Route } from './+types/playground';
 import type { ShellHandle } from './shell';
 
@@ -529,9 +535,13 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 		});
 	}, [toast, setDraft]);
 	/** Swaps in a whole new draft from Identity; the toast can put the old one back. */
-	const replaceDraft = (next: PlaygroundDraft, message: string) => {
+	const replaceDraft = (
+		next: PlaygroundDraft,
+		message: string,
+		by: 'th30' | 'visitor' = 'visitor',
+	) => {
 		const previous = draft;
-		setDraft(next);
+		store.update(next, by);
 		setSelectedId('identity');
 		setKeysOpen(false);
 		setEditorView('editor');
@@ -559,6 +569,89 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 			() => toast({ body: "Couldn't reach the clipboard.", type: 'error' }),
 		);
 	};
+
+	const chatRef = useRef<TheoremChatHandle>(null);
+	// th30's tools read the page through this ref, so they register once and always see the latest.
+	const page = {
+		mode,
+		connection,
+		replaceDraft,
+		copy,
+		setSelectedId,
+		setKeysOpen,
+		setConversation,
+	};
+	const pageRef = useRef(page);
+	pageRef.current = page;
+	useEffect(() => {
+		const compileNow = () => compilePlayground(store.getDraft(), pageRef.current.mode);
+		const host: PlaygroundToolsHost = {
+			getDraft: store.getDraft,
+			getRevision: store.getRevision,
+			getMode: () => pageRef.current.mode,
+			getSelected: store.getSelectedId,
+			update: (next) => store.update(next, 'th30'),
+			replaceDraft: (next, message) => {
+				pageRef.current.replaceDraft(next, message, 'th30');
+			},
+			select: (id) => {
+				pageRef.current.setSelectedId(id);
+				store.select(id);
+			},
+			ledger: store.ledger,
+			lastChanges: (since) => store.changesSince(since).flatMap((change) => change.sections),
+			keysFilled: (slot) => Boolean(pageRef.current.connection.vault[slot]?.trim()),
+			openKeys: () => {
+				pageRef.current.setKeysOpen(true);
+			},
+			send: (text) => chatRef.current?.send(text) ?? Promise.resolve(null),
+			newConversation: () => {
+				clearConversation();
+				pageRef.current.setConversation((count) => count + 1);
+			},
+			launch: () => {
+				const result = compileNow();
+				if (!result.ok) return;
+				openInNewTab({
+					...runPayload(result),
+					connectionMode: pageRef.current.mode,
+					localBaseUrl: pageRef.current.connection.local.baseUrl,
+				});
+			},
+			exportAgent: (format) => {
+				const result = compileNow();
+				if (!result.ok) return Promise.resolve(false);
+				const code = playgroundSource(result);
+				if (format === 'tsx') {
+					download(`${result.agentId}.tsx`, exportBundle(result, code));
+				} else if (format === 'copy') {
+					pageRef.current.copy(exportBundle(result, code), 'the .tsx');
+				} else {
+					pageRef.current.copy(llmBrief(result, code), 'the .tsx and its brief');
+				}
+				return Promise.resolve(true);
+			},
+		};
+		const unregister = registerTh30Tools(createPlaygroundTools(host));
+		setTh30StateLine(() => buildStateLine(host));
+		let seen = store.getRevision();
+		const stopWatching = store.subscribe(() => {
+			const edits = store.changesSince(seen).filter((change) => change.by === 'visitor');
+			seen = store.getRevision();
+			if (edits.length === 0) return;
+			const compiledNow = compileNow();
+			const sections = [...new Set(edits.flatMap((change) => change.sections))].join(', ');
+			const count = compiledNow.ok ? 0 : compiledNow.issues.length;
+			emitTh30Note(
+				`r${String(seen)} — you changed: ${sections}; ${String(count)} ${count === 1 ? 'issue' : 'issues'}`,
+			);
+		});
+		return () => {
+			unregister();
+			setTh30StateLine(null);
+			stopWatching();
+		};
+	}, [store]);
 
 	const title = editorTitle(draft, selected);
 	useReportTh30Playground({
@@ -968,6 +1061,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 									}}
 									initialChat={runKey === resume.runKey ? resume.chat : undefined}
 									onChatChange={saveConversation}
+									chatRef={chatRef}
 								/>
 							) : (
 								<EmptyState

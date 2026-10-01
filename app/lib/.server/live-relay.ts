@@ -195,7 +195,10 @@ async function relayLiveSession(
 		traces.close();
 		return;
 	}
-	void attachPlaygroundLiveSession(serverWs, session, profileId, sessionId, traces, lexicon);
+	// A queued client call waits behind tryAgent (up to 60s), so the default 20s watchdog is too short.
+	void attachPlaygroundLiveSession(serverWs, session, profileId, sessionId, traces, lexicon, {
+		clientCallTimeoutMs: 90_000,
+	});
 }
 
 /** Handle incoming WebSocket upgrade request and spawn duplex relay pipe. */

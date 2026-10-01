@@ -16,6 +16,7 @@
 		"postinstall": "patch-package && node --experimental-strip-types scripts/ensure-theoremai.mjs",
 		"precheck": "node --experimental-strip-types scripts/ensure-theoremai.mjs",
 		"check": "react-router typegen && tsc --noEmit",
+		"test": "deno test -A --no-check --unstable-sloppy-imports tests",
 		"theme": "node scripts/theme.mjs",
 		"lint:eslint": "eslint .",
 		"lint:eslint:fix": "eslint . --fix && biome check --write .",

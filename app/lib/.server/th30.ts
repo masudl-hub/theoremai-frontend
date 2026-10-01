@@ -13,6 +13,11 @@ import { z } from 'zod';
 import { getDocIndex } from '../docs/.server/load-index';
 import { formatNavigableForPrompt, readDoc, resolveNavigate, searchDocs } from '../docs/query';
 import { TH30_PROFILE_ID } from '../th30-id';
+import {
+	registerTh30BuilderTools,
+	TH30_BUILDER_PROMPT,
+	TH30_BUILDER_TOOL_IDS,
+} from './th30-builder';
 
 /* -------------------------------------------------------------------------- */
 /* Tool Schemas (Strict Zod Contracts)                                        */
@@ -203,6 +208,7 @@ function registerTh30Tools(): void {
 	registerTool(th30ReadTool);
 	registerTool(th30SearchDocsTool);
 	registerTool(th30SearchWebTool);
+	registerTh30BuilderTools();
 }
 
 /* -------------------------------------------------------------------------- */
@@ -220,6 +226,8 @@ You always know the page the visitor is on. A line starting "(page)" names it: t
 When the call first connects you get a cue like "(call connected) (page) /docs/guardrails — …". It is not the caller speaking; never read it out. Open the call yourself, warmly and in one short breath, the way a friendly guide picks up: say your name once, then offer help that fits the page they're on. On the docs landing, offer to find what they're after. Vary the wording from call to call. No "How may I assist you", no list of what you can do.
 
 On the playground, explain a setting by searching the docs, never by guessing: searchDocs the field or section name, read the hit, then answer from it.
+
+${TH30_BUILDER_PROMPT}
 
 Docs live at /docs. Chapters: ${chapters}.
 Type-scoped pins are on modalities (image, speech, live, decision, host). Each chapter ends with a dictionary of its fields. Do not invent field copy — read it.
@@ -280,7 +288,7 @@ export function ensureTh30ProfileRegistered(): void {
 			},
 		},
 		tools: {
-			allow: [...TH30_TOOL_IDS],
+			allow: [...TH30_TOOL_IDS, ...TH30_BUILDER_TOOL_IDS],
 		},
 		guardrails: {
 			canary: true,
