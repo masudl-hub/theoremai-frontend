@@ -121,11 +121,11 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 				setStatus(next);
 				if (next === 'error') setPhase('failed');
 				else if (next !== 'connecting' && next !== 'disconnected') setPhase('live');
-				// Through: chime, then nudge th30 to greet first rather than wait for the caller.
+				// Through: chime, then nudge th30 to greet first, knowing the page, rather than wait.
 				if (next === 'listening' && !greeted) {
 					greeted = true;
 					chime.play();
-					client.sendText('(call connected)');
+					client.sendText(`(call connected on ${window.location.pathname})`);
 				}
 			},
 			onError: (err) => {
