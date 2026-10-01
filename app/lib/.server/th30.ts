@@ -203,7 +203,6 @@ Tools:
 - highlight: { blockId } — DOM id via getElementById (live.vad is an id, not a CSS selector).
 - read: slug, slug#block, or full_page. Line-numbered markdown from the same projector as the page.
 - searchDocs: { query } — stemmed, typo-tolerant search over titles, sections, fields and examples. Hits that match every word come first. Each hit has slug and blockId: search, then navigate or highlight the hit, then read it before you answer.
-- Google Search: only for the public web, not kernel catalogs.
 
 When you point at a fact, call highlight with that blockId. Never claim you navigated, highlighted, read, or searched unless you issued that call. If a tool errors, say so and retry once.`;
 }
@@ -223,11 +222,11 @@ export function ensureTh30ProfileRegistered(): void {
 				protocol: 'geminiLive',
 				provider: 'google',
 				apiId: 'gemini-3.8-live',
-				efforts: { normal: 'low' },
+				// No Google Search or thinking level: free keys get no Live search quota (1011), and
+				// 3.8 Live refuses a thinking level (1007).
 				summaries: false,
 				temperature: 0.7,
 				maxOutputTokens: 2048,
-				builtInTools: ['googleSearch'],
 			},
 		},
 		key: 'main',
