@@ -2,14 +2,14 @@ import type { DocArticleDef } from '../schema';
 
 export const statuses: DocArticleDef = {
 	slug: 'statuses',
-	updated: '2026-09-30',
+	updated: '2026-10-01',
 	title: 'Describing statuses',
 	entry: 'src/guardrails/lexicon.ts',
 	summary:
 		'Override person-facing status lines under lexicon. The copy a person reads changes \u2014 not whether a check runs or a tool pauses.',
 	cover: {
-		src: '/imagery/th30_lilacfog.png',
-		alt: 'Lilac fog',
+		src: '/imagery/th30_corals.png',
+		alt: 'Coral reefs in turquoise water',
 	},
 	questions: [
 		{ question: 'How do I change the line a person sees when a check fires?' },

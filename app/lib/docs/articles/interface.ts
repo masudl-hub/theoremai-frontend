@@ -2,14 +2,14 @@ import type { DocArticleDef } from '../schema';
 
 export const interfaceChapter: DocArticleDef = {
 	slug: 'interface',
-	updated: '2026-09-30',
+	updated: '2026-10-01',
 	title: 'Building the interface',
 	entry: 'src/interface/mod.ts',
 	summary:
 		'A headless projection of a profile, plus the React chat and live runners. The surface loads the same profile the host runs.',
 	cover: {
-		src: '/imagery/th30_terracedgarden.png',
-		alt: 'A terraced garden',
+		src: '/imagery/th30_lapis.png',
+		alt: 'A lapis lake among green hills',
 	},
 	suggest: { rank: 4 },
 	questions: [

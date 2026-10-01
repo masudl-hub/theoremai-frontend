@@ -2,14 +2,14 @@ import type { DocArticleDef } from '../schema';
 
 export const outputs: DocArticleDef = {
 	slug: 'outputs',
-	updated: '2026-09-30',
+	updated: '2026-10-01',
 	title: 'Declaring outputs',
 	entry: 'src/kernel/registry/profiles.ts',
 	summary:
 		'Pin what comes back with outputs, image, or speech. Only one may be active per turn; omit outputs and the reply is free text.',
 	cover: {
-		src: '/imagery/th30_ambermeadow.png',
-		alt: 'An amber meadow',
+		src: '/imagery/th30_orangecanyon.png',
+		alt: 'An orange canyon',
 	},
 	questions: [
 		{ question: 'How do I pin what comes back?' },

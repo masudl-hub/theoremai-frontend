@@ -2,14 +2,14 @@ import type { DocArticleDef } from '../schema';
 
 export const tools: DocArticleDef = {
 	slug: 'tools',
-	updated: '2026-09-30',
+	updated: '2026-10-01',
 	title: 'Registering tools',
 	entry: 'src/kernel/tools/mod.ts',
 	summary:
 		'Register tools once on the scope, then allow them by name on the profile. Builtins sit on the model binding, not the allow list.',
 	cover: {
-		src: '/imagery/th30_roads.png',
-		alt: 'Crossing roads through a field',
+		src: '/imagery/th30_malachite.png',
+		alt: 'Malachite pools in rings',
 	},
 	questions: [
 		{ question: 'How do I register a tool and allow it on the profile?' },

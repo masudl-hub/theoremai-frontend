@@ -2,14 +2,14 @@ import type { DocArticleDef } from '../schema';
 
 export const traces: DocArticleDef = {
 	slug: 'traces',
-	updated: '2026-09-30',
+	updated: '2026-10-01',
 	title: 'Recording traces',
 	entry: 'src/observability/mod.ts',
 	summary:
 		'Recording is opt-in. Point writeTo at a registered destination and each recorded run becomes a TraceRecord. Omit the block and nothing is stored.',
 	cover: {
-		src: '/imagery/th30_mistyforest.png',
-		alt: 'A misty forest',
+		src: '/imagery/th30_siennadunes.png',
+		alt: 'Sienna dunes',
 	},
 	questions: [
 		{ question: 'How do I turn recording on so I can see what a turn did?' },

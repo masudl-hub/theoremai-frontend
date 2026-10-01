@@ -2,14 +2,14 @@ import type { DocArticleDef } from '../schema';
 
 export const runner: DocArticleDef = {
 	slug: 'runner',
-	updated: '2026-09-30',
+	updated: '2026-10-01',
 	title: 'Running a turn',
 	entry: 'src/kernel/engine/runner/mod.ts',
 	summary:
 		'Which door to call, what to pass, what the stream yields, and how a paused tool resumes. Four doors share one event family.',
 	cover: {
-		src: '/imagery/th30_burntorange.png',
-		alt: 'Burnt-orange dunes',
+		src: '/imagery/th30_poppies.png',
+		alt: 'A field of poppies',
 	},
 	suggest: { rank: 3 },
 	questions: [

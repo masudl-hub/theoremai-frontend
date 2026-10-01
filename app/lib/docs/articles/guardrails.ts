@@ -2,14 +2,14 @@ import type { DocArticleDef } from '../schema';
 
 export const guardrails: DocArticleDef = {
 	slug: 'guardrails',
-	updated: '2026-09-30',
+	updated: '2026-10-01',
 	title: 'Setting guardrails',
 	entry: 'src/guardrails/mod.ts',
 	summary:
 		'Inbound sanitisation, canary tokens, and egress checks are profile policy. Three switches resolve on when omitted \u2014 the kernel ships the mechanism.',
 	cover: {
-		src: '/imagery/th30_copperandobsidian.png',
-		alt: 'Copper and obsidian',
+		src: '/imagery/th30_crimsoncrater.png',
+		alt: 'A crimson lake in a crater',
 	},
 	questions: [
 		{ question: 'What boundaries does Theorem put on a turn?' },

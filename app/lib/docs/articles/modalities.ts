@@ -2,14 +2,14 @@ import type { DocArticleDef } from '../schema';
 
 export const modalities: DocArticleDef = {
 	slug: 'modalities',
-	updated: '2026-09-30',
+	updated: '2026-10-01',
 	title: 'Choosing a modality',
 	entry: 'src/kernel/registry/profiles.ts',
 	summary:
 		'The profile type is the modality \u2014 it locks which blocks you may author and which pins you must set. Six types, one contract.',
 	cover: {
-		src: '/imagery/th30_wideorchard.png',
-		alt: 'A wide orchard',
+		src: '/imagery/th30_dyevats.png',
+		alt: 'Round vats of blue dye, from above',
 	},
 	suggest: { rank: 2 },
 	questions: [{ question: 'What does each profile type carry, and what are its limits?' }],

@@ -19,7 +19,7 @@ import { traces } from './traces';
 import { turnBehaviour } from './turn-behaviour';
 
 /** The /docs landing backdrop. */
-export const LANDING_STILL = '/imagery/th30_goldenmarsh.png';
+export const LANDING_STILL = '/imagery/th30_marigolds.png';
 
 export const SITE_REDIRECTS = [
 	{ from: '/#use', to: '/docs/start', reason: 'home hash retired' },

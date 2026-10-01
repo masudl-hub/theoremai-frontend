@@ -2,14 +2,14 @@ import type { DocArticleDef } from '../schema';
 
 export const turnBehaviour: DocArticleDef = {
 	slug: 'turn-behaviour',
-	updated: '2026-09-30',
+	updated: '2026-10-01',
 	title: 'Setting turn behaviour',
 	entry: 'src/kernel/registry/profiles.ts',
 	summary:
 		'Continue is a new host turn after a cut stop. Inject is mid-turn host input through onStage. Neither is live session resumption.',
 	cover: {
-		src: '/imagery/th30_moonlitriver.png',
-		alt: 'A moonlit river',
+		src: '/imagery/th30_nightide.png',
+		alt: 'A night tide along a wooded shore',
 	},
 	questions: [
 		{ question: 'How do I continue a cut reply, and who may inject while it runs?' },

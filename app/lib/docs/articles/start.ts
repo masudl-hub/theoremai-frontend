@@ -2,14 +2,14 @@ import type { DocArticleDef } from '../schema';
 
 export const start: DocArticleDef = {
 	slug: 'start',
-	updated: '2026-09-30',
+	updated: '2026-10-01',
 	title: 'Getting started',
 	entry: 'src/kernel/engine/runner/mod.ts',
 	summary:
 		'Why a typed profile beats rebuilding the prompt each call, then a Harbor front desk that runs one turn on the wire.',
 	cover: {
-		src: '/imagery/th30_wildflowerroad.png',
-		alt: 'A wildflower road',
+		src: '/imagery/th30_emeraldriver.png',
+		alt: 'A green river through red canyons',
 	},
 	suggest: { rank: 1 },
 	questions: [

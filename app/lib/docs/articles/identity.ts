@@ -2,14 +2,14 @@ import type { DocArticleDef } from '../schema';
 
 export const identity: DocArticleDef = {
 	slug: 'identity',
-	updated: '2026-09-30',
+	updated: '2026-10-01',
 	title: 'Setting the identity',
 	entry: 'src/kernel/registry/profiles.ts',
 	summary:
 		'Handle is the name a person sees; system is what the model reads. Set both under identity, and use role lines when turns differ.',
 	cover: {
-		src: '/imagery/th30_saltflats.png',
-		alt: 'Salt flats in rings, from above',
+		src: '/imagery/th30_amethyst.png',
+		alt: 'Amethyst seams in a grey cliff',
 	},
 	questions: [
 		{

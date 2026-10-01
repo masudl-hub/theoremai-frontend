@@ -7,6 +7,8 @@
 import path from 'node:path';
 import sharp from 'sharp';
 
+/** Off by default: it darkened the 21:9 stills and dulled their colour. DOCS_EXPOSURE_MATCH=1 turns it on. */
+const EXPOSURE_MATCH = process.env.DOCS_EXPOSURE_MATCH === '1';
 const REFERENCE = '/imagery/th30_lavender.png';
 const BRIGHTNESS = { min: 0.62, max: 1.24 };
 const CONTRAST = { min: 0.78, max: 1.32 };
@@ -39,6 +41,7 @@ export async function stillFilters(
 	publicRoot: string,
 	srcs: readonly string[],
 ): Promise<Map<string, string>> {
+	if (!EXPOSURE_MATCH) return new Map();
 	const target = await luma(path.join(publicRoot, REFERENCE));
 	const stills = [...new Set(srcs)].filter((src) => src.startsWith('/imagery/'));
 	const entries = await Promise.all(

@@ -2,14 +2,14 @@ import type { DocArticleDef } from '../schema';
 
 export const models: DocArticleDef = {
 	slug: 'models',
-	updated: '2026-09-30',
+	updated: '2026-10-01',
 	title: 'Binding models',
 	entry: 'src/providers/mod.ts',
 	summary:
 		'A binding is protocol, provider, and apiId under a name. Legal pairs are a catalog table; the pair, pick, or key fails closed.',
 	cover: {
-		src: '/imagery/th30_peatbog.png',
-		alt: 'A peat bog at sunset',
+		src: '/imagery/th30_amberresin.png',
+		alt: 'Amber resin pooled in a forest',
 	},
 	questions: [
 		{ question: 'How do I bind a model so a turn can call it?' },

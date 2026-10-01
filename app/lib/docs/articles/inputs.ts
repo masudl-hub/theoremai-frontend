@@ -2,14 +2,14 @@ import type { DocArticleDef } from '../schema';
 
 export const inputs: DocArticleDef = {
 	slug: 'inputs',
-	updated: '2026-09-30',
+	updated: '2026-10-01',
 	title: 'Declaring inputs',
 	entry: 'src/kernel/registry/profiles.ts',
 	summary:
 		'Declare what a turn may carry \u2014 text, files, voice, or state \u2014 and which channels close by type. Refused means the door said no.',
 	cover: {
-		src: '/imagery/th30_tidalpools.png',
-		alt: 'Tidal pools',
+		src: '/imagery/th30_cobaltwaves.png',
+		alt: 'Cobalt waves on a black beach',
 	},
 	questions: [
 		{ question: 'What must I declare before a turn can carry text, files, voice, or state?' },
