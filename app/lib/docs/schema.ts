@@ -64,7 +64,12 @@ export type DocArticleHead = {
 	entry: string;
 	summary: string;
 	/** A still from public/imagery at least 16:9 wide. */
-	cover: { src: string; alt: string };
+	cover: {
+		src: string;
+		alt: string;
+		/** CSS background-position that keeps the still's clouds in frame wherever it is cropped. */
+		position: string;
+	};
 	/** Idle landing card position. */
 	suggest?: { rank: 1 | 2 | 3 | 4; blockId?: string };
 	/** Shown as “This page covers” before the body. */
@@ -128,7 +133,7 @@ export type DocIndex = {
 	bySlug: Readonly<Record<string, DocArticle | undefined>>;
 	redirects: readonly { from: string; to: string; reason?: string }[];
 	/** The /docs landing backdrop. */
-	landing: { src: string; filter?: string };
+	landing: { src: string; position: string; filter?: string };
 };
 
 export type ComposeOptions = {

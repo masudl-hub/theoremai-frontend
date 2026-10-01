@@ -159,6 +159,7 @@ export function DocsLanding({ index, version }: { index: DocIndex; version: stri
 		position: 'absolute',
 		inset: 0,
 		backgroundImage: `url("${index.landing.src}")`,
+		backgroundPosition: index.landing.position,
 		pointerEvents: 'none',
 		filter: index.landing.filter,
 	} as CSSProperties;
@@ -182,7 +183,7 @@ export function DocsLanding({ index, version }: { index: DocIndex; version: stri
 							<img
 								src={article.cover.src}
 								alt={article.cover.alt}
-								style={{ filter: article.cover.filter }}
+								style={{ filter: article.cover.filter, objectPosition: article.cover.position }}
 							/>
 						</AspectRatio>
 					</Card>

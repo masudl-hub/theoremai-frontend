@@ -10,6 +10,7 @@ export const inputs: DocArticleDef = {
 	cover: {
 		src: '/imagery/th30_cobaltwaves.png',
 		alt: 'Cobalt waves on a black beach',
+		position: '0% 81%',
 	},
 	questions: [
 		{ question: 'What must I declare before a turn can carry text, files, voice, or state?' },

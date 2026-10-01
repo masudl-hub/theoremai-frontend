@@ -10,6 +10,7 @@ export const identity: DocArticleDef = {
 	cover: {
 		src: '/imagery/th30_amethyst.png',
 		alt: 'Amethyst seams in a grey cliff',
+		position: '0% 100%',
 	},
 	questions: [
 		{

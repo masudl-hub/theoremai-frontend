@@ -10,6 +10,7 @@ export const outputs: DocArticleDef = {
 	cover: {
 		src: '/imagery/th30_orangecanyon.png',
 		alt: 'An orange canyon',
+		position: '0% 34%',
 	},
 	questions: [
 		{ question: 'How do I pin what comes back?' },

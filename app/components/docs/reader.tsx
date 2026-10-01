@@ -442,6 +442,7 @@ function ArticleStill({ article }: { article: DocArticle }) {
 		position: 'absolute',
 		inset: 0,
 		backgroundImage: `url("${cover.src}")`,
+		backgroundPosition: cover.position,
 		pointerEvents: 'none',
 		filter: cover.filter,
 	} as CSSProperties;

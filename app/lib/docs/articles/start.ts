@@ -10,6 +10,7 @@ export const start: DocArticleDef = {
 	cover: {
 		src: '/imagery/th30_emeraldriver.png',
 		alt: 'A green river through red canyons',
+		position: '100% 100%',
 	},
 	suggest: { rank: 1 },
 	questions: [

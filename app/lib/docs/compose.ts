@@ -56,8 +56,8 @@ function assertChapters(options: ComposeOptions): void {
 			`SITE_ARTICLES must be one chapter per DOC_SECTIONS, in order: ${slugs.join()}`,
 		);
 	}
-	assertPublic(options, 'landing', LANDING_STILL);
-	const covers = new Set<string>([LANDING_STILL]);
+	assertPublic(options, 'landing', LANDING_STILL.src);
+	const covers = new Set<string>([LANDING_STILL.src]);
 	const ranks = new Set<number>();
 	for (const def of SITE_ARTICLES) {
 		assertChapter(def);
@@ -199,7 +199,7 @@ export async function composeDocIndex(options: ComposeOptions): Promise<DocIndex
 	assertChapters(options);
 	const byFacet = fieldsByFacet();
 	const filters = await stillFilters(options.publicRoot, [
-		LANDING_STILL,
+		LANDING_STILL.src,
 		...SITE_ARTICLES.flatMap((def) => [
 			def.cover.src,
 			...def.blocks.flatMap((block) => (block.kind === 'media' ? [block.src] : [])),
@@ -230,6 +230,6 @@ export async function composeDocIndex(options: ComposeOptions): Promise<DocIndex
 		suggested,
 		bySlug: Object.fromEntries(articles.map((article) => [article.slug, article])),
 		redirects: [...SITE_REDIRECTS],
-		landing: { src: LANDING_STILL, filter: filters.get(LANDING_STILL) },
+		landing: { ...LANDING_STILL, filter: filters.get(LANDING_STILL.src) },
 	};
 }

@@ -10,6 +10,7 @@ export const runner: DocArticleDef = {
 	cover: {
 		src: '/imagery/th30_poppies.png',
 		alt: 'A field of poppies',
+		position: '0% 8%',
 	},
 	suggest: { rank: 3 },
 	questions: [

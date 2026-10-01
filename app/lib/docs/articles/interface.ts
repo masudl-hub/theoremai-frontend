@@ -10,6 +10,7 @@ export const interfaceChapter: DocArticleDef = {
 	cover: {
 		src: '/imagery/th30_lapis.png',
 		alt: 'A lapis lake among green hills',
+		position: '100% 75%',
 	},
 	suggest: { rank: 4 },
 	questions: [

@@ -10,6 +10,7 @@ export const traces: DocArticleDef = {
 	cover: {
 		src: '/imagery/th30_siennadunes.png',
 		alt: 'Sienna dunes',
+		position: '0% 0%',
 	},
 	questions: [
 		{ question: 'How do I turn recording on so I can see what a turn did?' },

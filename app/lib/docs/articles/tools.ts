@@ -10,6 +10,7 @@ export const tools: DocArticleDef = {
 	cover: {
 		src: '/imagery/th30_malachite.png',
 		alt: 'Malachite pools in rings',
+		position: '0% 16%',
 	},
 	questions: [
 		{ question: 'How do I register a tool and allow it on the profile?' },

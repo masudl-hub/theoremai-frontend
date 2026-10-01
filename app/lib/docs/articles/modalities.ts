@@ -10,6 +10,7 @@ export const modalities: DocArticleDef = {
 	cover: {
 		src: '/imagery/th30_dyevats.png',
 		alt: 'Round vats of blue dye, from above',
+		position: '44% 82%',
 	},
 	suggest: { rank: 2 },
 	questions: [{ question: 'What does each profile type carry, and what are its limits?' }],

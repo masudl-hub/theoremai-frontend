@@ -18,8 +18,8 @@ import { tools } from './tools';
 import { traces } from './traces';
 import { turnBehaviour } from './turn-behaviour';
 
-/** The /docs landing backdrop. */
-export const LANDING_STILL = '/imagery/th30_marigolds.png';
+/** The /docs landing backdrop; position as for a chapter cover. */
+export const LANDING_STILL = { src: '/imagery/th30_marigolds.png', position: '75% 73%' };
 
 export const SITE_REDIRECTS = [
 	{ from: '/#use', to: '/docs/start', reason: 'home hash retired' },

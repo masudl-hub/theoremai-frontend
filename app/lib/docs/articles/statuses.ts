@@ -10,6 +10,7 @@ export const statuses: DocArticleDef = {
 	cover: {
 		src: '/imagery/th30_corals.png',
 		alt: 'Coral reefs in turquoise water',
+		position: '96% 6%',
 	},
 	questions: [
 		{ question: 'How do I change the line a person sees when a check fires?' },

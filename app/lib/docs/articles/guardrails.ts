@@ -8,8 +8,9 @@ export const guardrails: DocArticleDef = {
 	summary:
 		'Inbound sanitisation, canary tokens, and egress checks are profile policy. Three switches resolve on when omitted \u2014 the kernel ships the mechanism.',
 	cover: {
-		src: '/imagery/th30_crimsoncrater.png',
-		alt: 'A crimson lake in a crater',
+		src: '/imagery/th30_obsidianshores.png',
+		alt: 'Black rocks where the surf meets the shore',
+		position: '100% 0%',
 	},
 	questions: [
 		{ question: 'What boundaries does Theorem put on a turn?' },

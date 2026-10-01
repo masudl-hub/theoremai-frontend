@@ -10,6 +10,7 @@ export const turnBehaviour: DocArticleDef = {
 	cover: {
 		src: '/imagery/th30_nightide.png',
 		alt: 'A night tide along a wooded shore',
+		position: '0% 0%',
 	},
 	questions: [
 		{ question: 'How do I continue a cut reply, and who may inject while it runs?' },

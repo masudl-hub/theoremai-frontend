@@ -10,6 +10,7 @@ export const models: DocArticleDef = {
 	cover: {
 		src: '/imagery/th30_amberresin.png',
 		alt: 'Amber resin pooled in a forest',
+		position: '0% 98%',
 	},
 	questions: [
 		{ question: 'How do I bind a model so a turn can call it?' },
