@@ -22,13 +22,13 @@ import {
 	IconAlertTriangle,
 	IconBook,
 	IconChevronDown,
-	IconClearAll,
 	IconCode,
 	IconCopy,
 	IconDownload,
 	IconEraser,
 	IconKey,
 	IconPlayerPlay,
+	IconPlaylistX,
 	IconPlus,
 	IconSparkles,
 	IconTimeline,
@@ -696,7 +696,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 								<IconButton
 									label="Clear history"
 									variant="ghost"
-									icon={<Icon icon={IconClearAll} size="sm" />}
+									icon={<Icon icon={IconPlaylistX} size="sm" />}
 									isDisabled={!payload}
 									tooltip="Clear the conversation and its traces. Your profile stays."
 									onClick={() => {
