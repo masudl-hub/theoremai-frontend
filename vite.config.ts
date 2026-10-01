@@ -55,6 +55,14 @@ export default defineConfig({
 		],
 	},
 	optimizeDeps: {
+		// Scan every source up front, lazy chunks included, so a dependency first reached mid-session
+		// (the trace's PowerSearch) never forces a re-optimize that strands open tabs on a 504.
+		entries: [
+			'app/**/*.tsx',
+			`${theoremai.root}/react/src/**/*.tsx`,
+			`${theoremai.root}/playground/**/*.ts`,
+			`!${theoremai.root}/**/*.test.*`,
+		],
 		// Served per icon by tablerIconFiles instead.
 		exclude: ['@tabler/icons-react'],
 	},
