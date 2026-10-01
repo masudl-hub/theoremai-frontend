@@ -231,6 +231,8 @@ export function ensureTh30ProfileRegistered(): void {
 			},
 		},
 		key: 'main',
+		// A quota refusal on the first free key reopens the call on the second, when one is set.
+		fallbackKey: 'overflow',
 		live: {
 			voice: 'Aoede',
 			vad: {

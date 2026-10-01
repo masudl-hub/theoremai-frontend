@@ -26,16 +26,20 @@ type PlaygroundTurnEnv = {
 
 export type { PlaygroundTurnEnv };
 
-/** The site's own key for each provider: free-tier Gemini only, never a paid key. */
-function siteKey(env: PlaygroundTurnEnv, provider: string): string | undefined {
-	if (provider === 'google') {
-		return [env.GEMINI_API_KEY_FREE_A, env.GEMINI_API_KEY_FREE_B, env.GEMINI_API_KEY_FREE_C]
-			.map((key) => key?.trim())
-			.find(Boolean);
-	}
-	if (provider === 'openrouter') return env.OPENROUTER_API_KEY?.trim() || undefined;
-	if (provider === 'typesafe') return env['theoremai.typesafe_api_key']?.trim() || undefined;
-	return undefined;
+/**
+ * The site's own keys for each provider, in order: free-tier Gemini only, never a paid key. A
+ * profile's key slot gets the first; a slot it names only as a fallback gets the second.
+ */
+function siteKey(env: PlaygroundTurnEnv, provider: string, rank: 0 | 1): string | undefined {
+	const keys =
+		provider === 'google'
+			? [env.GEMINI_API_KEY_FREE_A, env.GEMINI_API_KEY_FREE_B, env.GEMINI_API_KEY_FREE_C]
+			: provider === 'openrouter'
+				? [env.OPENROUTER_API_KEY]
+				: provider === 'typesafe'
+					? [env['theoremai.typesafe_api_key']]
+					: [];
+	return keys.map((key) => key?.trim()).filter(Boolean)[rank];
 }
 
 /**
@@ -49,19 +53,22 @@ export function playgroundDemoVault(
 	if (!('models' in profile)) return {};
 	const top = profile as { key?: string; fallbackKey?: string };
 	const readers = new Map<string, Set<string>>();
+	const primary = new Set<string>();
 	for (const binding of Object.values(profile.models) as {
 		provider: string;
 		key?: string;
 		fallbackKey?: string;
 	}[]) {
-		for (const slot of [binding.key ?? top.key, binding.fallbackKey ?? top.fallbackKey]) {
+		const key = binding.key ?? top.key;
+		if (key) primary.add(key);
+		for (const slot of [key, binding.fallbackKey ?? top.fallbackKey]) {
 			if (slot) readers.set(slot, (readers.get(slot) ?? new Set()).add(binding.provider));
 		}
 	}
 	return Object.fromEntries(
 		[...readers].map(([slot, providers]) => [
 			slot,
-			providers.size === 1 ? siteKey(env, [...providers][0]) : undefined,
+			providers.size === 1 ? siteKey(env, [...providers][0], primary.has(slot) ? 0 : 1) : undefined,
 		]),
 	);
 }
