@@ -10,7 +10,6 @@ import { VStack } from '@astryxdesign/core/VStack';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { ResolvedBlock } from '../../lib/docs/schema';
-import { stillFilter } from '../../lib/docs/still-match';
 import { CopyIconButton } from './copy-button';
 
 function BlockAnchor({ id, children }: { id: string; children: React.ReactNode }) {
@@ -135,7 +134,12 @@ export function DocsBlock({ block }: { block: ResolvedBlock }) {
 						{block.media === 'video' ? (
 							<video src={block.src} aria-label={block.alt} controls muted playsInline />
 						) : (
-							<img src={block.src} alt={block.alt} loading="lazy" style={stillFilter(block.src)} />
+							<img
+								src={block.src}
+								alt={block.alt}
+								loading="lazy"
+								style={{ filter: block.filter }}
+							/>
 						)}
 						{block.caption ? (
 							<figcaption>

@@ -28,7 +28,7 @@ export function docsIndexPlugin({ repoRoot, theoremai }) {
 		});
 		try {
 			const mod = await server.ssrLoadModule('/app/lib/docs/compose.ts');
-			return mod.composeDocIndex({
+			return await mod.composeDocIndex({
 				publicRoot: path.join(repoRoot, 'public'),
 				kernelRoot: theoremai.root,
 			});

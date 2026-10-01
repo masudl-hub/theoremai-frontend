@@ -7,8 +7,9 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { EXTRA_FIELDS, fieldMeta, PROFILE_GRAPH, PROFILE_TYPES } from '@theoremjs/agents/schema';
-import { SITE_ARTICLES, SITE_REDIRECTS } from './articles/chapters';
+import { LANDING_STILL, SITE_ARTICLES, SITE_REDIRECTS } from './articles/chapters';
 import { lexiconCatalogRows, traceCatalogRows } from './catalog-rows';
+import { stillFilters } from './exposure';
 import { fieldsByFacet } from './ownership';
 import { FACET_SECTION, UNION_SECTION } from './placement';
 import { projectArticleText, ttrMinutesFromText } from './project-text';
@@ -55,7 +56,8 @@ function assertChapters(options: ComposeOptions): void {
 			`SITE_ARTICLES must be one chapter per DOC_SECTIONS, in order: ${slugs.join()}`,
 		);
 	}
-	const covers = new Set<string>();
+	assertPublic(options, 'landing', LANDING_STILL);
+	const covers = new Set<string>([LANDING_STILL]);
 	const ranks = new Set<number>();
 	for (const def of SITE_ARTICLES) {
 		assertChapter(def);
@@ -106,7 +108,8 @@ function assertChapter(def: DocArticleDef): void {
 }
 
 /** Code blocks get their source text; the reader never compiles or calls fieldMeta. */
-function resolveBlock(block: AuthoredBlock): ResolvedBlock {
+function resolveBlock(block: AuthoredBlock, filters: Map<string, string>): ResolvedBlock {
+	if (block.kind === 'media') return { ...block, filter: filters.get(block.src) };
 	if (block.kind !== 'code') return block;
 	const { source } = block;
 	if (source.from === 'seed') return { ...block, lang: 'ts', code: compileSeedSource(source.seed) };
@@ -192,14 +195,22 @@ function buildTree(articles: readonly DocArticle[]): DocTreeNode[] {
 	}));
 }
 
-export function composeDocIndex(options: ComposeOptions): DocIndex {
+export async function composeDocIndex(options: ComposeOptions): Promise<DocIndex> {
 	assertChapters(options);
 	const byFacet = fieldsByFacet();
+	const filters = await stillFilters(options.publicRoot, [
+		LANDING_STILL,
+		...SITE_ARTICLES.flatMap((def) => [
+			def.cover.src,
+			...def.blocks.flatMap((block) => (block.kind === 'media' ? [block.src] : [])),
+		]),
+	]);
 
 	const articles = SITE_ARTICLES.map((def): DocArticle => {
-		const blocks = def.blocks.map((block) => resolveBlock(block));
+		const blocks = def.blocks.map((block) => resolveBlock(block, filters));
 		const article = {
 			...def,
+			cover: { ...def.cover, filter: filters.get(def.cover.src) },
 			questions: def.questions ?? [],
 			canonicalPath: `/docs/${def.slug}`,
 			dateModified: def.updated,
@@ -219,5 +230,6 @@ export function composeDocIndex(options: ComposeOptions): DocIndex {
 		suggested,
 		bySlug: Object.fromEntries(articles.map((article) => [article.slug, article])),
 		redirects: [...SITE_REDIRECTS],
+		landing: { src: LANDING_STILL, filter: filters.get(LANDING_STILL) },
 	};
 }

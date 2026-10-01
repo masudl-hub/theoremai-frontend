@@ -87,7 +87,11 @@ export type PageSymbol =
 	| { kind: 'lexicon'; id: string; key: string; text: string };
 
 export type ResolvedBlock =
-	| Exclude<AuthoredBlock, { kind: 'code' }>
+	| Exclude<AuthoredBlock, { kind: 'code' | 'media' }>
+	| (Extract<AuthoredBlock, { kind: 'media' }> & {
+			/** Exposure match as a CSS filter; compose sets it for public/imagery stills only. */
+			filter?: string;
+	  })
 	| {
 			id: string;
 			kind: 'code';
@@ -97,7 +101,8 @@ export type ResolvedBlock =
 			source: CodeSource;
 	  };
 
-export type DocArticle = DocArticleHead & {
+export type DocArticle = Omit<DocArticleHead, 'cover'> & {
+	cover: DocArticleHead['cover'] & { filter?: string };
 	questions: readonly { question: string }[];
 	canonicalPath: string;
 	ttrMinutes: number;
@@ -122,6 +127,8 @@ export type DocIndex = {
 	suggested: readonly { slug: string; blockId?: string; rank: 1 | 2 | 3 | 4 }[];
 	bySlug: Readonly<Record<string, DocArticle | undefined>>;
 	redirects: readonly { from: string; to: string; reason?: string }[];
+	/** The /docs landing backdrop. */
+	landing: { src: string; filter?: string };
 };
 
 export type ComposeOptions = {

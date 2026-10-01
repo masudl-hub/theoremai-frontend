@@ -16,11 +16,9 @@ import { IconCircle, IconSearch } from '@tabler/icons-react';
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { articleHref, searchDocs } from '../../lib/docs/query';
 import type { DocArticle, DocIndex } from '../../lib/docs/schema';
-import { stillFilter } from '../../lib/docs/still-match';
 import '../hero-video.css';
 import { useTh30 } from '../th30-dock';
 
-const LANDING_STILL = '/imagery/th30_goldenmarsh.png';
 const SEARCH_LIMIT = 16;
 const TILE_MOTION: CSSProperties = {
 	transitionProperty: 'opacity, transform',
@@ -160,9 +158,9 @@ export function DocsLanding({ index, version }: { index: DocIndex; version: stri
 	const stillPaint = {
 		position: 'absolute',
 		inset: 0,
-		backgroundImage: `url("${LANDING_STILL}")`,
+		backgroundImage: `url("${index.landing.src}")`,
 		pointerEvents: 'none',
-		...stillFilter(LANDING_STILL),
+		filter: index.landing.filter,
 	} as CSSProperties;
 	const motion = tileMotionStyle(phase);
 	const resultsLabel = searching ? 'Search results' : 'Suggested chapters';
@@ -184,7 +182,7 @@ export function DocsLanding({ index, version }: { index: DocIndex; version: stri
 							<img
 								src={article.cover.src}
 								alt={article.cover.alt}
-								style={stillFilter(article.cover.src)}
+								style={{ filter: article.cover.filter }}
 							/>
 						</AspectRatio>
 					</Card>

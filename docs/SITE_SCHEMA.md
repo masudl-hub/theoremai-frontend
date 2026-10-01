@@ -22,7 +22,7 @@ flowchart LR
 | Which chapter lists a facet's fields or a union's members | [placement.ts](../app/lib/docs/placement.ts) |
 | Getting started's full program | the `firstTurn` draft in [seeds.ts](../app/lib/docs/seeds.ts) |
 | A retired URL | `SITE_REDIRECTS` in chapters.ts |
-| A cover's exposure | [still-match.ts](../app/lib/docs/still-match.ts) |
+| The landing backdrop | `LANDING_STILL` in chapters.ts |
 
 ## A page
 
@@ -37,5 +37,7 @@ flowchart LR
 [compose.ts](../app/lib/docs/compose.ts) runs inside the Vite plugin ([docs-index-plugin.mjs](../scripts/docs-index-plugin.mjs)) and throws on drift; the error names the chapter and what to fix. `npm run lint:docs` runs it, then lints literal snippets with Biome and authored copy against [docs-banned-voice.json](../scripts/docs-banned-voice.json), and checks chapter dates.
 
 Each page's date is its chapter's `updated` day. When you edit a chapter file, set `updated` to today: [docs-lint-dates.mjs](../scripts/docs-lint-dates.mjs) fails any chapter that changed since `origin/main` without a newer date. A kernel change alone does not move the date.
+
+Compose matches every still in `public/imagery` to the lavender still's brightness and contrast ([exposure.ts](../app/lib/docs/exposure.ts)), so a new still needs no settings.
 
 Fallow cannot see the plugin's `ssrLoadModule`, so `.fallowrc.jsonc` lists compose.ts as an entry.

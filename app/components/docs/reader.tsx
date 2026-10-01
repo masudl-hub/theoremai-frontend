@@ -30,7 +30,6 @@ import { chapterIcon } from '../../lib/docs/chapter-icons';
 import { projectArticleText } from '../../lib/docs/project-text';
 import { articleHref, chapterNeighbors, type DocSearchHit, searchDocs } from '../../lib/docs/query';
 import type { DocArticle, DocIndex, DocTreeNode } from '../../lib/docs/schema';
-import { stillFilter } from '../../lib/docs/still-match';
 import { NewTabLink } from '../links';
 import { holdDocsArticleTransition } from './article-transition';
 import { DocsBlock, QuestionsStrip } from './blocks';
@@ -444,7 +443,7 @@ function ArticleStill({ article }: { article: DocArticle }) {
 		inset: 0,
 		backgroundImage: `url("${cover.src}")`,
 		pointerEvents: 'none',
-		...stillFilter(cover.src),
+		filter: cover.filter,
 	} as CSSProperties;
 
 	return (
