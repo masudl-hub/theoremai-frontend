@@ -1,6 +1,6 @@
 /**
- * Compose virtual:docs/index at Vite transform time (full TS, not strip-only Node).
- * Emits machine twins into the client build; SSR reads the virtual module.
+ * Compose virtual:docs/index with a throwaway Vite SSR server (full TS, not strip-only Node).
+ * The /docs routes, the .md twins, llms.txt, the sitemap and Th30 all read that module.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -11,33 +11,16 @@ import { kernelMetaDefine } from './kernel-meta.mjs';
 export const DOCS_VIRTUAL = 'virtual:docs/index';
 const DOCS_RESOLVED = `\0${DOCS_VIRTUAL}`;
 
-/** @param {string} repoRoot */
-function gitIso(repoRoot, files) {
+/** Last commit time touching these paths, or undefined when git cannot answer. Never mtime. */
+function gitIso(root, paths) {
 	try {
-		const out = execFileSync('git', ['-C', repoRoot, 'log', '-1', '--format=%cI', '--', ...files], {
+		const out = execFileSync('git', ['-C', root, 'log', '-1', '--format=%cI', '--', ...paths], {
 			encoding: 'utf8',
 		}).trim();
 		return out || undefined;
 	} catch {
 		return undefined;
 	}
-}
-
-/** @param {string} theoremaiRoot */
-function kernelDirty(theoremaiRoot) {
-	try {
-		return (
-			execFileSync('git', ['-C', theoremaiRoot, 'status', '--porcelain'], {
-				encoding: 'utf8',
-			}).trim().length > 0
-		);
-	} catch {
-		return false;
-	}
-}
-
-function laterIso(...values) {
-	return values.filter(Boolean).sort().at(-1);
 }
 
 /**
@@ -48,59 +31,26 @@ export function docsIndexPlugin({ repoRoot, theoremai }) {
 	let parentServer;
 
 	async function runCompose() {
-		const version = JSON.parse(kernelMetaDefine(theoremai)['import.meta.env.KERNEL_PACKAGE_VERSION']);
-		const head = JSON.parse(kernelMetaDefine(theoremai)['import.meta.env.KERNEL_SUBMODULE_HEAD']);
-		const chapters = gitIso(repoRoot, ['app/lib/docs/articles/chapters.ts']);
-		const compose = gitIso(repoRoot, [
-			'app/lib/docs/compose.ts',
-			'app/lib/docs/placement.ts',
-			'app/lib/docs/ownership.ts',
-			'app/lib/docs/union-docs.ts',
-		]);
-		const kernelReadme = gitIso(theoremai.root, ['README.md']);
-		const kernelSrc = gitIso(theoremai.root, ['src']);
-		const catalog = laterIso(chapters, compose, kernelSrc);
-		const lastmodBySlug = Object.fromEntries(
-			[
-				['start', laterIso(chapters, kernelReadme, kernelSrc)],
-				['modalities', catalog],
-				['identity', catalog],
-				['models', catalog],
-				['tools', catalog],
-				['inputs', catalog],
-				['outputs', catalog],
-				['turn-behaviour', catalog],
-				['guardrails', catalog],
-				['traces', catalog],
-				['statuses', catalog],
-				['runner', catalog],
-				['interface', chapters],
-			].filter(([, iso]) => iso),
-		);
-
+		// Pages are written against the kernel, so they are as fresh as the later of the two.
+		const dateModified = [gitIso(repoRoot, ['app/lib/docs']), gitIso(theoremai.root, ['src', 'README.md'])]
+			.filter(Boolean)
+			.sort()
+			.at(-1);
 		const server = await createServer({
 			configFile: false,
 			root: repoRoot,
 			define: kernelMetaDefine(theoremai),
-			server: {
-				middlewareMode: true,
-				fs: { allow: [repoRoot, theoremai.root] },
-			},
+			server: { middlewareMode: true, ws: false, fs: { allow: [repoRoot, theoremai.root] } },
 			appType: 'custom',
 			plugins: [],
 		});
 		try {
 			const mod = await server.ssrLoadModule('/app/lib/docs/compose.ts');
-			const machine = await server.ssrLoadModule('/app/lib/docs/machine.ts');
-			const index = mod.composeDocIndex({
-				kernelVersion: version,
-				kernelHead: head,
-				kernelDirty: kernelDirty(theoremai.root),
-				lastmodBySlug,
+			return mod.composeDocIndex({
+				dateModified,
 				publicRoot: path.join(repoRoot, 'public'),
-				readmePath: path.join(theoremai.root, 'README.md'),
+				kernelRoot: theoremai.root,
 			});
-			return { index, machine };
 		} finally {
 			await server.close();
 		}
@@ -117,34 +67,12 @@ export function docsIndexPlugin({ repoRoot, theoremai }) {
 		},
 		async load(id) {
 			if (id !== DOCS_RESOLVED) return;
-			const { index } = await runCompose();
-			return `export const docIndex = ${JSON.stringify(index)};`;
+			return `export const docIndex = ${JSON.stringify(await runCompose())};`;
 		},
-		async handleHotUpdate(ctx) {
+		handleHotUpdate(ctx) {
 			if (!ctx.file.includes(`${path.sep}app${path.sep}lib${path.sep}docs${path.sep}`)) return;
 			const mod = parentServer?.moduleGraph.getModuleById(DOCS_RESOLVED);
 			if (mod) return [mod];
-		},
-		async generateBundle() {
-			const { index, machine } = await runCompose();
-			this.emitFile({
-				type: 'asset',
-				fileName: 'docs/index.json',
-				source: JSON.stringify(index),
-			});
-			for (const article of index.articles) {
-				this.emitFile({
-					type: 'asset',
-					fileName: `docs/${article.slug}.md`,
-					source: machine.articleMarkdown(index, article.slug) ?? '',
-				});
-			}
-			this.emitFile({ type: 'asset', fileName: 'llms.txt', source: machine.llmsTxt(index) });
-			this.emitFile({
-				type: 'asset',
-				fileName: 'sitemap.xml',
-				source: machine.sitemapXml(index, 'https://theorem.ai'),
-			});
 		},
 	};
 }

@@ -24,7 +24,7 @@ function prefixScore(path: string, profilePath: string): number {
 	return -1;
 }
 
-export function ownerForField(path: string): ProfileGraphFacetId {
+function ownerForField(path: string): ProfileGraphFacetId {
 	let best: { id: ProfileGraphFacetId; score: number } | undefined;
 	for (const facet of PROFILE_GRAPH) {
 		const score = prefixScore(path, facet.profilePath);
@@ -46,18 +46,12 @@ export function ownerForField(path: string): ProfileGraphFacetId {
 	return best.id;
 }
 
-/** Every PROFILE_FIELDS path has exactly one owner. */
-export function assertFieldOwnership(): Map<ProfileGraphFacetId, string[]> {
+/** Every PROFILE_FIELDS path under exactly one facet. Throws if a path has no owner. */
+export function fieldsByFacet(): Map<ProfileGraphFacetId, string[]> {
 	const owned = new Map<ProfileGraphFacetId, string[]>();
 	for (const path of Object.keys(PROFILE_FIELDS)) {
 		const owner = ownerForField(path);
-		const list = owned.get(owner) ?? [];
-		list.push(path);
-		owned.set(owner, list);
+		owned.set(owner, [...(owned.get(owner) ?? []), path]);
 	}
 	return owned;
-}
-
-export function fieldsForFacet(id: ProfileGraphFacetId): string[] {
-	return [...Object.keys(PROFILE_FIELDS)].filter((path) => ownerForField(path) === id);
 }

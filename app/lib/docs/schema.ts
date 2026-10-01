@@ -1,15 +1,12 @@
 /**
- * Docs data model. Authored overlays and the composed index share these types.
+ * Docs data model. Authored chapters and the composed index share these types.
  * Catalog rows are imported at compose time — nothing here copies FieldMeta.doc.
  */
 
 import type * as SchemaModule from '@theoremjs/agents/schema';
 import type { FieldMeta } from '@theoremjs/agents/schema';
 
-export const DOC_KINDS = ['guide', 'reference', 'tutorial', 'concept'] as const;
-export type DocKind = (typeof DOC_KINDS)[number];
-
-/** Section ids = the IA tree, not PROFILE_GRAPH. */
+/** One chapter per section, in this order. The slug is the section id. */
 export const DOC_SECTIONS = [
 	'start',
 	'modalities',
@@ -27,63 +24,42 @@ export const DOC_SECTIONS = [
 ] as const;
 export type DocSection = (typeof DOC_SECTIONS)[number];
 
-export const PLAYGROUND_SEED_IDS = ['liveVoice', 'firstTurn'] as const;
+export const PLAYGROUND_SEED_IDS = ['firstTurn'] as const;
 export type PlaygroundSeedId = (typeof PLAYGROUND_SEED_IDS)[number];
-
-export type DocMediaRef = {
-	src: string;
-	alt: string;
-	kind: 'image' | 'video';
-	caption?: string;
-};
 
 /** Schema exports that are closed string arrays — derived, not a hand name list. */
 export type ArrayUnionName = {
 	[K in keyof typeof SchemaModule]: (typeof SchemaModule)[K] extends readonly string[] ? K : never;
 }[keyof typeof SchemaModule];
 
-export type DocAction =
-	| { kind: 'playground'; seed: PlaygroundSeedId }
-	| { kind: 'copy'; blockId: string }
-	| { kind: 'open'; slug: string };
-
 export type CodeSource =
 	| { from: 'seed'; seed: PlaygroundSeedId }
-	| { from: 'readme'; heading: string; nth: number; sha256: string }
 	| { from: 'literal'; lang: 'ts' | 'bash'; code: string };
 
 export type AuthoredBlock =
 	| { id: string; kind: 'lede'; text: string }
 	| { id: string; kind: 'prose'; title: string; text: string }
-	| { id: string; kind: 'media'; media: DocMediaRef }
 	| { id: string; kind: 'code'; title?: string; source: CodeSource }
-	| { id: string; kind: 'callout'; tone: 'note' | 'warn'; text: string }
-	/** Copyable prompt for a coding agent — not a Banner note. */
+	/** Copyable prompt for a coding agent. */
 	| { id: string; kind: 'agent.paste'; prompt: string }
 	| { id: string; kind: 'embed.playground'; seed: PlaygroundSeedId };
 
-/** Authored overlay only. Catalog rows are composed onto `symbols`, not authored blocks. */
 /** What an authored chapter and its composed article share. */
 export type DocArticleHead = {
-	id: string;
-	slug: string;
+	slug: DocSection;
 	title: string;
-	topic: DocSection;
 	/** Kernel-relative file this chapter opens on GitHub. */
 	entry: string;
 	summary: string;
-	cover?: DocMediaRef;
+	/** A wide still from public/imagery. */
+	cover: { src: string; alt: string };
+	/** Idle landing card position. */
 	suggest?: { rank: 1 | 2 | 3 | 4; blockId?: string };
+	/** Shown as “This page covers” before the body. */
+	questions?: readonly { question: string }[];
 };
 
-export type DocArticleDef = DocArticleHead & {
-	kind: Exclude<DocKind, 'reference'>;
-	actions?: readonly DocAction[];
-	/** Shown as “This page answers” before the body. Agreed questions only. */
-	questions?: readonly { question: string }[];
-	faq?: readonly { question: string; answer: string }[];
-	blocks: readonly AuthoredBlock[];
-};
+export type DocArticleDef = DocArticleHead & { blocks: readonly AuthoredBlock[] };
 
 /** Catalog rows owned by a topic page — rendered as a filterable dictionary. */
 export type PageSymbol =
@@ -99,7 +75,7 @@ export type PageSymbol =
 	| { kind: 'lexicon'; id: string; key: string; text: string };
 
 export type ResolvedBlock =
-	| Extract<AuthoredBlock, { kind: 'lede' | 'prose' | 'media' | 'callout' | 'agent.paste' }>
+	| Exclude<AuthoredBlock, { kind: 'code' }>
 	| {
 			id: string;
 			kind: 'code';
@@ -107,23 +83,13 @@ export type ResolvedBlock =
 			lang: 'ts' | 'bash';
 			code: string;
 			source: CodeSource;
-	  }
-	| { id: string; kind: 'embed.playground'; seed: PlaygroundSeedId };
+	  };
 
 export type DocArticle = DocArticleHead & {
-	kind: DocKind;
-	actions: readonly DocAction[];
 	questions: readonly { question: string }[];
-	faq: readonly { question: string; answer: string }[];
 	canonicalPath: string;
-	truth: {
-		kernelVersion: string;
-		kernelHead: string;
-		catalogHash?: string;
-	};
 	ttrMinutes: number;
-	updatedLabel: string;
-	/** ISO from `git log -1 --format=%cI` on source files; omitted when git cannot answer. */
+	/** ISO commit time of the docs and kernel sources; omitted when git cannot answer. */
 	dateModified?: string;
 	blocks: readonly ResolvedBlock[];
 	/** Facet fields, worthy-union members, and the trace or lexicon catalog this topic owns. */
@@ -147,11 +113,8 @@ export type DocIndex = {
 };
 
 export type ComposeOptions = {
-	kernelVersion: string;
-	kernelHead: string;
-	kernelDirty: boolean;
-	/** slug → ISO commit time of that article's source files. */
-	lastmodBySlug?: Readonly<Record<string, string>>;
+	dateModified?: string;
 	publicRoot: string;
-	readmePath: string;
+	/** Kernel checkout; chapter entries resolve against it. */
+	kernelRoot: string;
 };

@@ -27,7 +27,6 @@ import {
 } from 'react';
 import { useLocation } from 'react-router';
 import { chapterIcon } from '../../lib/docs/chapter-icons';
-import { chapterGithubHref } from '../../lib/docs/chapter-source';
 import { projectArticleText } from '../../lib/docs/project-text';
 import { articleHref, chapterNeighbors, type DocSearchHit, searchDocs } from '../../lib/docs/query';
 import type { DocArticle, DocIndex, DocTreeNode } from '../../lib/docs/schema';
@@ -40,6 +39,8 @@ import { PageDictionary } from './dictionary';
 import '../hero-video.css';
 
 const SEARCH_LIMIT = 64;
+/** The kernel repo the site rail links; chapter `entry` paths are relative to it. */
+const KERNEL_GITHUB = 'https://github.com/masudl-hub/theoremai/blob/main';
 
 function hashBlockId(hash: string): string | undefined {
 	const id = decodeURIComponent(hash.replace(/^#/, ''));
@@ -111,7 +112,7 @@ function DocsNavItem({
 	const open =
 		expandAll ||
 		onArticle ||
-		(article !== undefined && node.id === article.topic) ||
+		(article !== undefined && node.id === article.slug) ||
 		opened.has(node.id);
 	const href = nodeHref(node);
 	const sectionId = onArticle ? node.blockId : undefined;
@@ -167,7 +168,7 @@ function outlineItems(nodes: readonly DocTreeNode[], level = 2): OutlineItem[] {
 }
 
 function outlineNodes(index: DocIndex, article: DocArticle): readonly DocTreeNode[] {
-	return index.tree.find((node) => node.id === article.topic)?.children ?? [];
+	return index.tree.find((node) => node.id === article.slug)?.children ?? [];
 }
 
 function ChapterPane({
@@ -438,9 +439,8 @@ function CopyMarkdownButton({ article }: { article: DocArticle }) {
 
 function ArticleStill({ article }: { article: DocArticle }) {
 	const cover = article.cover;
-	if (!cover) return null;
 	const updated = formatDay(article.dateModified);
-	const source = chapterGithubHref(article.entry);
+	const source = `${KERNEL_GITHUB}/${article.entry}`;
 	const stillPaint = {
 		position: 'absolute',
 		inset: 0,
@@ -467,17 +467,15 @@ function ArticleStill({ article }: { article: DocArticle }) {
 								<MediaTheme mode="dark">
 									<HStack gap={2} vAlign="center">
 										<CopyMarkdownButton article={article} />
-										{source ? (
-											<IconButton
-												label="Source on GitHub"
-												tooltip="Source on GitHub"
-												variant="ghost"
-												size="sm"
-												icon={<IconBrandGithub />}
-												href={source}
-												as={NewTabLink}
-											/>
-										) : null}
+										<IconButton
+											label="Source on GitHub"
+											tooltip="Source on GitHub"
+											variant="ghost"
+											size="sm"
+											icon={<IconBrandGithub />}
+											href={source}
+											as={NewTabLink}
+										/>
 									</HStack>
 								</MediaTheme>
 							</HStack>

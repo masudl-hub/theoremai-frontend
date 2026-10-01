@@ -2,21 +2,21 @@
  * Th30 read / search / navigate over the composed index. One projector.
  */
 
-import { formatWithLineNumbers, projectArticleText, projectBlockText } from './project-text';
+import {
+	blockHeading,
+	formatWithLineNumbers,
+	projectArticleText,
+	projectBlockText,
+	symbolTerm,
+} from './project-text';
 import type { DocArticle, DocIndex } from './schema';
 
-/** Display label for a fragment: authored block title, else catalog id as written. */
+/** Display label for a fragment: block heading or catalog name. */
 function fragmentTitle(article: DocArticle, id: string): string {
 	const block = article.blocks.find((item) => item.id === id);
-	if (block?.kind === 'prose') return block.title;
-	if (block?.kind === 'code' && block.title) return block.title;
+	if (block) return blockHeading(block);
 	const symbol = article.symbols.find((item) => item.id === id);
-	if (symbol?.kind === 'field') return symbol.path;
-	if (symbol?.kind === 'union-member') return symbol.value;
-	if (symbol?.kind === 'trace' || symbol?.kind === 'lexicon') return symbol.key;
-	if (id.includes('.')) return id;
-	const colon = id.lastIndexOf(':');
-	return colon === -1 ? id : id.slice(colon + 1);
+	return symbol ? symbolTerm(symbol).name : id;
 }
 
 export function articleHref(article: Pick<DocArticle, 'canonicalPath'>, blockId?: string): string {
@@ -73,21 +73,20 @@ export function readDoc(
 	target: string,
 	detail: 'summary' | 'full' | 'code_only' = 'full',
 ): { target: string; title: string; content: string; lineCount: number } {
+	const read = (href: string, title: string, text: string) => ({
+		target: href,
+		title,
+		content: formatWithLineNumbers(title, text),
+		lineCount: text.split('\n').length,
+	});
 	const trimmed = target.trim();
 	if (trimmed === 'full_page' || trimmed === 'all') {
 		const text = index.articles.map((article) => projectArticleText(article, detail)).join('\n\n');
-		const formatted = formatWithLineNumbers('Theorem docs', text);
-		return {
-			target: 'full_page',
-			title: 'Theorem docs',
-			content: formatted,
-			lineCount: text.split('\n').length,
-		};
+		return read('full_page', 'Theorem docs', text);
 	}
 
 	const [slugPart, fragment] = trimmed.replace(/^\/docs\//, '').split('#');
-	const slug = slugPart || trimmed;
-	const article = index.bySlug[slug];
+	const article = index.bySlug[slugPart || trimmed];
 	if (article === undefined) {
 		const valid = index.articles.map((item) => item.slug).join(', ');
 		return {
@@ -98,36 +97,12 @@ export function readDoc(
 		};
 	}
 
-	if (fragment) {
-		const isolated = isolateFragment(article, fragment);
-		if (!isolated) {
-			const text = projectArticleText(article, detail);
-			const formatted = formatWithLineNumbers(article.title, text);
-			return {
-				target: articleHref(article),
-				title: article.title,
-				content: formatted,
-				lineCount: text.split('\n').length,
-			};
-		}
-		const text = projectArticleText(isolated, detail);
-		const formatted = formatWithLineNumbers(`${article.title}#${fragment}`, text);
-		return {
-			target: articleHref(article, fragment),
-			title: `${article.title}#${fragment}`,
-			content: formatted,
-			lineCount: text.split('\n').length,
-		};
+	const isolated = fragment ? isolateFragment(article, fragment) : undefined;
+	if (fragment && isolated) {
+		const title = `${article.title}#${fragment}`;
+		return read(articleHref(article, fragment), title, projectArticleText(isolated, detail));
 	}
-
-	const text = projectArticleText(article, detail);
-	const formatted = formatWithLineNumbers(article.title, text);
-	return {
-		target: article.canonicalPath,
-		title: article.title,
-		content: formatted,
-		lineCount: text.split('\n').length,
-	};
+	return read(article.canonicalPath, article.title, projectArticleText(article, detail));
 }
 
 export type DocSearchHit = {
@@ -163,54 +138,20 @@ function clipExcerpt(text: string, max = 160): string {
 }
 
 function fragmentTargets(article: DocArticle): FragmentTarget[] {
-	const out: FragmentTarget[] = [];
-	for (const block of article.blocks) {
-		const blockText = projectBlockText(block);
-		out.push({
+	const blocks = article.blocks.map((block): FragmentTarget => {
+		const text = projectBlockText(block);
+		return {
 			id: block.id,
-			hay: `${block.id}\n${blockText}`.toLowerCase(),
-			excerpt: clipExcerpt(blockText),
+			hay: `${block.id}\n${text}`.toLowerCase(),
+			excerpt: clipExcerpt(text),
 			kind: 'block',
-		});
-	}
-	for (const symbol of article.symbols) {
-		if (symbol.kind === 'field') {
-			const unset = symbol.meta.unset ? ` Omit → ${symbol.meta.unset}.` : '';
-			out.push({
-				id: symbol.id,
-				hay: `${symbol.path} — ${symbol.meta.doc}${unset}`.toLowerCase(),
-				excerpt: symbol.meta.doc,
-				kind: 'leaf',
-			});
-			continue;
-		}
-		if (symbol.kind === 'union-member') {
-			out.push({
-				id: symbol.id,
-				hay: `${symbol.value} ${symbol.union} ${symbol.doc}`.toLowerCase(),
-				excerpt: symbol.doc || symbol.value,
-				kind: 'leaf',
-			});
-			continue;
-		}
-		if (symbol.kind === 'trace') {
-			const excerpt = `${symbol.label}. ${symbol.doc}`;
-			out.push({
-				id: symbol.id,
-				hay: `${symbol.key} — ${excerpt}`.toLowerCase(),
-				excerpt,
-				kind: 'leaf',
-			});
-			continue;
-		}
-		out.push({
-			id: symbol.id,
-			hay: `${symbol.key} — ${symbol.text}`.toLowerCase(),
-			excerpt: symbol.text,
-			kind: 'leaf',
-		});
-	}
-	return out;
+		};
+	});
+	const leaves = article.symbols.map((symbol): FragmentTarget => {
+		const { name, text } = symbolTerm(symbol);
+		return { id: symbol.id, hay: `${name} — ${text}`.toLowerCase(), excerpt: text, kind: 'leaf' };
+	});
+	return [...blocks, ...leaves];
 }
 
 function isChildFragment(child: string, parent: string): boolean {
@@ -301,8 +242,7 @@ export function searchDocs(
 				slug: article.slug,
 				title: article.title,
 				href: articleHref(article),
-				excerpt:
-					article.summary.length > 0 ? article.summary : projectArticleText(article, 'summary'),
+				excerpt: article.summary,
 				score: chrome + (bestText?.score ?? 0),
 			});
 			continue;

@@ -1,41 +1,7 @@
 /**
- * Overlay-only exposure match to lavender. Does not rewrite files.
- * Set STILL_MATCH to false to see the originals.
+ * Per-still exposure match to lavender, applied as a CSS filter on the overlay.
+ * The image files are untouched.
  */
-export const STILL_MATCH: boolean = true;
-
-/** Landscape aerials (1536×656 and 1536×864). Reader headers and landing covers share these. */
-const WIDE_STILLS: ReadonlySet<string> = new Set([
-	'/imagery/th30_ambermeadow.png',
-	'/imagery/th30_basaltplanes.png',
-	'/imagery/th30_braidedriver.png',
-	'/imagery/th30_canyon.png',
-	'/imagery/th30_cherryblossoms.png',
-	'/imagery/th30_copperandobsidian.png',
-	'/imagery/th30_floodedpaddy.png',
-	'/imagery/th30_goldenmarsh.png',
-	'/imagery/th30_hayss.png',
-	'/imagery/th30_lilacfog.png',
-	'/imagery/th30_mineralhills.png',
-	'/imagery/th30_mistyforest.png',
-	'/imagery/th30_orchards.png',
-	'/imagery/th30_peninsula.png',
-	'/imagery/th30_reeds.png',
-	'/imagery/th30_roads.png',
-	'/imagery/th30_rustsand.png',
-	'/imagery/th30_saltflats.png',
-	'/imagery/th30_steppe.png',
-	'/imagery/th30_terracedgarden.png',
-	'/imagery/th30_tidalmudflats.png',
-	'/imagery/th30_tidalpools.png',
-	'/imagery/th30_wideorchard.png',
-	'/imagery/th30_wildflowerroad.png',
-]);
-
-export function isWideStill(src: string): boolean {
-	return WIDE_STILLS.has(src);
-}
-
 const STILL_MATCH_FILTERS: {
 	readonly [src: string]: { brightness: number; contrast: number } | undefined;
 } = {
@@ -84,7 +50,6 @@ const STILL_MATCH_FILTERS: {
 };
 
 export function stillFilter(src: string): { filter: string } | undefined {
-	if (!STILL_MATCH) return undefined;
 	const match = STILL_MATCH_FILTERS[src];
 	if (match === undefined) return undefined;
 	return {

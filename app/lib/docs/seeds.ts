@@ -63,13 +63,6 @@ const FIRST_TURN_PROMPT = [
 	'about how many road hours, and what is the hold?',
 ].join(' ');
 
-function withIdentity(
-	draft: PlaygroundDraft,
-	identity: PlaygroundDraft['identity'],
-): PlaygroundDraft {
-	return { ...draft, identity };
-}
-
 function demoSpecs(...names: string[]) {
 	const wanted = new Set(names);
 	return demoToolSpecs()
@@ -144,16 +137,6 @@ function firstTurnDraft(): PlaygroundDraft {
 	};
 }
 
-export function docsSeedDraft(seed: PlaygroundSeedId): PlaygroundDraft {
-	if (seed === 'firstTurn') return firstTurnDraft();
-	return withIdentity(setProfileType(createBlankDraft(), 'live'), {
-		agentId: 'docs.live-voice',
-		profileType: 'live',
-		handle: 'voice',
-		system: 'A short live session for the docs try-it.',
-	});
-}
-
 /** Getting started wraps the compiled profile with createProvider + runTurn. */
 function withFirstTurnDoor(source: string, profileId: string): string {
 	const imports = source.replace(
@@ -192,13 +175,24 @@ export async function firstTurn(apiKey: string) {
 `;
 }
 
+/** Each seed's playground draft, and how its compiled profile is wrapped for the docs fence. */
+const SEEDS: Record<
+	PlaygroundSeedId,
+	{ draft: () => PlaygroundDraft; wrap: (source: string, profileId: string) => string }
+> = {
+	firstTurn: { draft: firstTurnDraft, wrap: withFirstTurnDoor },
+};
+
+export function docsSeedDraft(seed: PlaygroundSeedId): PlaygroundDraft {
+	return SEEDS[seed].draft();
+}
+
 export function compileSeedSource(seed: PlaygroundSeedId): string {
 	const compiled = compilePlayground(docsSeedDraft(seed));
 	if (!compiled.ok) {
 		const issues = compiled.issues.map((issue) => issue.message).join('; ');
 		throw new Error(`DOCS_SEEDS.${seed} failed to compile: ${issues}`);
 	}
-	const source = playgroundSource(compiled);
-	if (seed === 'firstTurn') return withFirstTurnDoor(source, compiled.agentId);
-	return source;
+	const { wrap } = SEEDS[seed];
+	return wrap(playgroundSource(compiled), compiled.agentId);
 }

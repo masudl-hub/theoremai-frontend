@@ -179,22 +179,20 @@ export function DocsLanding({ index, version }: { index: DocIndex; version: stri
 				style={motion}
 			>
 				<VStack gap={3}>
-					{article.cover ? (
-						<Card padding={0}>
-							<AspectRatio className="docs-landing-tile-still" ratio={16 / 10} fit="cover">
-								<img
-									src={article.cover.src}
-									alt={article.cover.alt}
-									style={stillFilter(article.cover.src)}
-								/>
-							</AspectRatio>
-						</Card>
-					) : null}
+					<Card padding={0}>
+						<AspectRatio className="docs-landing-tile-still" ratio={16 / 10} fit="cover">
+							<img
+								src={article.cover.src}
+								alt={article.cover.alt}
+								style={stillFilter(article.cover.src)}
+							/>
+						</AspectRatio>
+					</Card>
 					<VStack gap={1} minHeight={layout === 'row' ? 132 : undefined}>
 						<Heading level={3}>{title}</Heading>
 						{showMeta ? (
 							<HStack gap={2} wrap="wrap">
-								<Token label={article.topic} />
+								<Token label={article.slug} />
 								<Token label={`${String(article.ttrMinutes)} min`} />
 							</HStack>
 						) : null}

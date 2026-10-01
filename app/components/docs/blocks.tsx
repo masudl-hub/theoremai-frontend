@@ -1,4 +1,3 @@
-import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
 import { Card } from '@astryxdesign/core/Card';
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
@@ -10,7 +9,6 @@ import { VStack } from '@astryxdesign/core/VStack';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { ResolvedBlock } from '../../lib/docs/schema';
-import { stillFilter } from '../../lib/docs/still-match';
 import { CopyIconButton } from './copy-button';
 
 function BlockAnchor({ id, children }: { id: string; children: React.ReactNode }) {
@@ -118,16 +116,6 @@ export function DocsBlock({ block }: { block: ResolvedBlock }) {
 					</VStack>
 				</BlockAnchor>
 			);
-		case 'callout':
-			return (
-				<BlockAnchor id={block.id}>
-					<Banner
-						status={block.tone === 'warn' ? 'warning' : 'info'}
-						title={block.tone === 'warn' ? 'Warning' : 'Note'}
-						description={block.text}
-					/>
-				</BlockAnchor>
-			);
 		case 'agent.paste':
 			return (
 				<BlockAnchor id={block.id}>
@@ -142,27 +130,6 @@ export function DocsBlock({ block }: { block: ResolvedBlock }) {
 							<p className="docs-agent-prompt">{block.prompt}</p>
 						</VStack>
 					</Card>
-				</BlockAnchor>
-			);
-		case 'media':
-			return (
-				<BlockAnchor id={block.id}>
-					<VStack gap={2}>
-						{block.media.kind === 'video' ? (
-							<video src={block.media.src} poster={undefined} controls muted playsInline />
-						) : (
-							<img
-								src={block.media.src}
-								alt={block.media.alt}
-								style={stillFilter(block.media.src)}
-							/>
-						)}
-						{block.media.caption ? (
-							<Text type="supporting" color="secondary">
-								{block.media.caption}
-							</Text>
-						) : null}
-					</VStack>
 				</BlockAnchor>
 			);
 		case 'code':

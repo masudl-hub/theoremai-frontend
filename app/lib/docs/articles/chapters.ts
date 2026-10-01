@@ -37,24 +37,16 @@ export const SITE_ARTICLES: readonly DocArticleDef[] = [
 	/*  start                                                              */
 	/* ------------------------------------------------------------------ */
 	{
-		id: 'start',
 		slug: 'start',
 		title: 'Getting started',
-		topic: 'start',
 		entry: 'src/kernel/engine/runner/mod.ts',
-		kind: 'tutorial',
 		summary:
 			'Why a typed profile beats rebuilding the prompt each call, then a Harbor front desk that runs one turn on the wire.',
 		cover: {
 			src: '/imagery/th30_wildflowerroad.png',
 			alt: 'A wildflower road',
-			kind: 'image',
 		},
 		suggest: { rank: 1 },
-		actions: [
-			{ kind: 'playground', seed: 'firstTurn' },
-			{ kind: 'copy', blockId: 'install' },
-		],
 		questions: [
 			{ question: 'Why run an agent this way?' },
 			{ question: 'What do I write to get a first turn on the wire?' },
@@ -122,18 +114,14 @@ export const SITE_ARTICLES: readonly DocArticleDef[] = [
 	/*  modalities                                                         */
 	/* ------------------------------------------------------------------ */
 	{
-		id: 'modalities',
 		slug: 'modalities',
 		title: 'Choosing a modality',
-		topic: 'modalities',
 		entry: 'src/kernel/registry/profiles.ts',
-		kind: 'guide',
 		summary:
 			'The profile type is the modality \u2014 it locks which blocks you may author and which pins you must set. Six types, one contract.',
 		cover: {
 			src: '/imagery/th30_wideorchard.png',
 			alt: 'A wide orchard',
-			kind: 'image',
 		},
 		suggest: { rank: 2 },
 		questions: [{ question: 'What does each profile type carry, and what are its limits?' }],
@@ -381,18 +369,14 @@ export const SITE_ARTICLES: readonly DocArticleDef[] = [
 	/*  identity                                                           */
 	/* ------------------------------------------------------------------ */
 	{
-		id: 'identity',
 		slug: 'identity',
 		title: 'Setting the identity',
-		topic: 'identity',
 		entry: 'src/kernel/registry/profiles.ts',
-		kind: 'guide',
 		summary:
 			'Handle is the name a person sees; system is what the model reads. Set both under identity, and use role lines when turns differ.',
 		cover: {
 			src: '/imagery/th30_peninsula.png',
 			alt: 'A peninsula from above',
-			kind: 'image',
 		},
 		questions: [
 			{
@@ -501,18 +485,14 @@ export const SITE_ARTICLES: readonly DocArticleDef[] = [
 	/*  models                                                             */
 	/* ------------------------------------------------------------------ */
 	{
-		id: 'models',
 		slug: 'models',
 		title: 'Binding models',
-		topic: 'models',
 		entry: 'src/providers/mod.ts',
-		kind: 'guide',
 		summary:
 			'A binding is protocol, provider, and apiId under a name. Legal pairs are a catalog table; the pair, pick, or key fails closed.',
 		cover: {
 			src: '/imagery/th30_mineralhills.png',
 			alt: 'Mineral hills',
-			kind: 'image',
 		},
 		questions: [
 			{ question: 'How do I bind a model so a turn can call it?' },
@@ -652,18 +632,14 @@ export const SITE_ARTICLES: readonly DocArticleDef[] = [
 	/*  tools                                                              */
 	/* ------------------------------------------------------------------ */
 	{
-		id: 'tools',
 		slug: 'tools',
 		title: 'Registering tools',
-		topic: 'tools',
 		entry: 'src/kernel/tools/mod.ts',
-		kind: 'guide',
 		summary:
 			'Register tools once on the scope, then allow them by name on the profile. Builtins sit on the model binding, not the allow list.',
 		cover: {
 			src: '/imagery/th30_basaltplanes.png',
 			alt: 'Basalt planes',
-			kind: 'image',
 		},
 		questions: [
 			{ question: 'How do I register a tool and allow it on the profile?' },
@@ -734,18 +710,14 @@ export const SITE_ARTICLES: readonly DocArticleDef[] = [
 	/*  inputs                                                             */
 	/* ------------------------------------------------------------------ */
 	{
-		id: 'inputs',
 		slug: 'inputs',
 		title: 'Declaring inputs',
-		topic: 'inputs',
 		entry: 'src/kernel/registry/profiles.ts',
-		kind: 'guide',
 		summary:
 			'Declare what a turn may carry \u2014 text, files, voice, or state \u2014 and which channels close by type. Refused means the door said no.',
 		cover: {
 			src: '/imagery/th30_tidalpools.png',
 			alt: 'Tidal pools',
-			kind: 'image',
 		},
 		questions: [
 			{ question: 'What must I declare before a turn can carry text, files, voice, or state?' },
@@ -844,18 +816,14 @@ export const SITE_ARTICLES: readonly DocArticleDef[] = [
 	/*  outputs                                                            */
 	/* ------------------------------------------------------------------ */
 	{
-		id: 'outputs',
 		slug: 'outputs',
 		title: 'Declaring outputs',
-		topic: 'outputs',
 		entry: 'src/kernel/registry/profiles.ts',
-		kind: 'guide',
 		summary:
 			'Pin what comes back with outputs, image, or speech. Only one may be active per turn; omit outputs and the reply is free text.',
 		cover: {
 			src: '/imagery/th30_ambermeadow.png',
 			alt: 'An amber meadow',
-			kind: 'image',
 		},
 		questions: [
 			{ question: 'How do I pin what comes back?' },
@@ -965,18 +933,14 @@ export const SITE_ARTICLES: readonly DocArticleDef[] = [
 	/*  turn-behaviour                                                     */
 	/* ------------------------------------------------------------------ */
 	{
-		id: 'turn-behaviour',
 		slug: 'turn-behaviour',
 		title: 'Setting turn behaviour',
-		topic: 'turn-behaviour',
 		entry: 'src/kernel/registry/profiles.ts',
-		kind: 'guide',
 		summary:
 			'Continue is a new host turn after a cut stop. Inject is mid-turn host input through onStage. Neither is live session resumption.',
 		cover: {
 			src: '/imagery/th30_braidedriver.png',
 			alt: 'A braided river',
-			kind: 'image',
 		},
 		questions: [
 			{ question: 'How do I continue a cut reply, and who may inject while it runs?' },
@@ -1044,18 +1008,14 @@ export const SITE_ARTICLES: readonly DocArticleDef[] = [
 	/*  guardrails                                                         */
 	/* ------------------------------------------------------------------ */
 	{
-		id: 'guardrails',
 		slug: 'guardrails',
 		title: 'Setting guardrails',
-		topic: 'guardrails',
 		entry: 'src/guardrails/mod.ts',
-		kind: 'guide',
 		summary:
 			'Inbound sanitisation, canary tokens, and egress checks are profile policy. Three switches resolve on when omitted \u2014 the kernel ships the mechanism.',
 		cover: {
 			src: '/imagery/th30_copperandobsidian.png',
 			alt: 'Copper and obsidian',
-			kind: 'image',
 		},
 		questions: [
 			{ question: 'What boundaries does Theorem put on a turn?' },
@@ -1135,18 +1095,14 @@ export const SITE_ARTICLES: readonly DocArticleDef[] = [
 	/*  traces                                                             */
 	/* ------------------------------------------------------------------ */
 	{
-		id: 'traces',
 		slug: 'traces',
 		title: 'Recording traces',
-		topic: 'traces',
 		entry: 'src/observability/mod.ts',
-		kind: 'guide',
 		summary:
 			'Recording is opt-in. Point writeTo at a registered destination and each recorded run becomes a TraceRecord. Omit the block and nothing is stored.',
 		cover: {
 			src: '/imagery/th30_mistyforest.png',
 			alt: 'A misty forest',
-			kind: 'image',
 		},
 		questions: [
 			{ question: 'How do I turn recording on so I can see what a turn did?' },
@@ -1208,18 +1164,14 @@ export const SITE_ARTICLES: readonly DocArticleDef[] = [
 	/*  statuses                                                           */
 	/* ------------------------------------------------------------------ */
 	{
-		id: 'statuses',
 		slug: 'statuses',
 		title: 'Describing statuses',
-		topic: 'statuses',
 		entry: 'src/guardrails/lexicon.ts',
-		kind: 'guide',
 		summary:
 			'Override person-facing status lines under lexicon. The copy a person reads changes \u2014 not whether a check runs or a tool pauses.',
 		cover: {
 			src: '/imagery/th30_lilacfog.png',
 			alt: 'Lilac fog',
-			kind: 'image',
 		},
 		questions: [
 			{ question: 'How do I change the line a person sees when a check fires?' },
@@ -1283,18 +1235,14 @@ export const SITE_ARTICLES: readonly DocArticleDef[] = [
 	/*  runner                                                             */
 	/* ------------------------------------------------------------------ */
 	{
-		id: 'runner',
 		slug: 'runner',
 		title: 'Running a turn',
-		topic: 'runner',
 		entry: 'src/kernel/engine/runner/mod.ts',
-		kind: 'guide',
 		summary:
 			'Which door to call, what to pass, what the stream yields, and how a paused tool resumes. Four doors share one event family.',
 		cover: {
 			src: '/imagery/th30_canyon.png',
 			alt: 'A canyon',
-			kind: 'image',
 		},
 		suggest: { rank: 3 },
 		questions: [
@@ -1461,18 +1409,14 @@ export const SITE_ARTICLES: readonly DocArticleDef[] = [
 	/*  interface                                                          */
 	/* ------------------------------------------------------------------ */
 	{
-		id: 'interface',
 		slug: 'interface',
 		title: 'Building the interface',
-		topic: 'interface',
 		entry: 'src/interface/mod.ts',
-		kind: 'concept',
 		summary:
 			'A headless projection of a profile, plus the React chat and live runners. The surface loads the same profile the host runs.',
 		cover: {
 			src: '/imagery/th30_terracedgarden.png',
 			alt: 'A terraced garden',
-			kind: 'image',
 		},
 		suggest: { rank: 4 },
 		questions: [

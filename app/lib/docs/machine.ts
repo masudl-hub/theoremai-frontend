@@ -2,7 +2,7 @@
  * Machine twins of the composed index. Same projector as Th30 read.
  */
 
-import { projectArticleText } from './project-text';
+import { projectArticleText, symbolTerm } from './project-text';
 import type { DocIndex } from './schema';
 
 export function articleMarkdown(index: DocIndex, slug: string): string | undefined {
@@ -38,34 +38,11 @@ export function articleJsonLd(
 	origin: string,
 ): Record<string, unknown> {
 	const terms = article.symbols.map((symbol) => {
-		if (symbol.kind === 'field') {
-			return {
-				'@type': 'DefinedTerm',
-				name: symbol.path,
-				description: symbol.meta.doc,
-				url: `${origin}${article.canonicalPath}#${symbol.id}`,
-			};
-		}
-		if (symbol.kind === 'union-member') {
-			return {
-				'@type': 'DefinedTerm',
-				name: symbol.value,
-				description: symbol.doc,
-				url: `${origin}${article.canonicalPath}#${symbol.id}`,
-			};
-		}
-		if (symbol.kind === 'trace') {
-			return {
-				'@type': 'DefinedTerm',
-				name: symbol.key,
-				description: symbol.doc,
-				url: `${origin}${article.canonicalPath}#${symbol.id}`,
-			};
-		}
+		const { name, text } = symbolTerm(symbol);
 		return {
 			'@type': 'DefinedTerm',
-			name: symbol.key,
-			description: symbol.text,
+			name,
+			description: text,
 			url: `${origin}${article.canonicalPath}#${symbol.id}`,
 		};
 	});

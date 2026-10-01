@@ -31,7 +31,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 		{ name: 'description', content: article.summary },
 		{ property: 'og:title', content: `${article.title} · Theorem docs` },
 		{ property: 'og:description', content: article.summary },
-		...(article.cover ? [{ property: 'og:image', content: article.cover.src }] : []),
+		{ property: 'og:image', content: article.cover.src },
 		{ tagName: 'link', rel: 'canonical', href: article.canonicalPath },
 		{
 			tagName: 'link',

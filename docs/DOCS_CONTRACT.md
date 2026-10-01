@@ -26,7 +26,7 @@ Curious people, developers, designers, design engineers, builders, and AI system
 
 ## Snippets
 
-- A topic page shows only the code that page is about. Getting started carries the full program from `DOCS_SEEDS.firstTurn`. Do not repeat `defineProfile` / `runTurn` around every field. Modalities may show a full `defineProfile` for one type.
+- A topic page shows only the code that page is about. Getting started carries the full program from the `firstTurn` seed. Do not repeat `defineProfile` / `runTurn` around every field. Modalities may show a full `defineProfile` for one type.
 - Getting started compiles from a playground seed (`app/lib/docs/seeds.ts`). Topic pages use literal slices of that shape. Do not hand-type a `defineProfile` that materialises omit defaults.
 - There is no build-time composition of a shared profile plus an addition, and no `highlightLines`. A snippet is not type-checked against the kernel yet, so no snippet counts as verified until that check exists.
 

@@ -1,15 +1,7 @@
 /**
- * Th30 ("T H 3 O" / "T H thirty") — The live, grounded site assistant for Theorem.
- *
- * Configured as a real-time Gemini 3.1 Flash Live voice/speech agent with
- * client-side UI navigation, precise line/element highlighting,
- * real-time line-numbered document reading, multi-source search, and Google Search grounding.
- *
- * Built on the Theorem tool system (registerTool / Zod contracts).
- *
- * @module
+ * Th30 ("T H 3 O") — the site's live voice guide. A Gemini Live profile with
+ * four docs tools over the composed index: navigate, highlight, read, search.
  */
-
 import {
 	defineProfile,
 	registerProfile,
@@ -25,7 +17,7 @@ import { TH30_PROFILE_ID } from '../th30-id';
 /* Tool Schemas (Strict Zod Contracts)                                        */
 /* -------------------------------------------------------------------------- */
 
-export const NavigateInputSchema = z.object({
+const NavigateInputSchema = z.object({
 	slug: z
 		.string()
 		.describe(
@@ -37,26 +29,26 @@ export const NavigateInputSchema = z.object({
 		.describe('Optional in-page block or field path (e.g. session, types, live.vad)'),
 });
 
-export const NavigateOutputSchema = z.object({
+const NavigateOutputSchema = z.object({
 	success: z.boolean(),
 	navigatedTo: z.string(),
 	error: z.string().optional(),
 });
 
-export const HighlightInputSchema = z.object({
+const HighlightInputSchema = z.object({
 	blockId: z
 		.string()
 		.describe('DOM id to focus via getElementById (e.g. session, live.vad, types)'),
 	label: z.string().optional().describe('Short label shown on the highlight'),
 });
 
-export const HighlightOutputSchema = z.object({
+const HighlightOutputSchema = z.object({
 	success: z.boolean(),
 	highlighted: z.string(),
 	label: z.string().optional(),
 });
 
-export const ReadInputSchema = z.object({
+const ReadInputSchema = z.object({
 	target: z
 		.string()
 		.describe('Chapter slug, slug#blockId, or full_page — projected from the composed index'),
@@ -66,19 +58,19 @@ export const ReadInputSchema = z.object({
 		.describe('summary | full | code_only'),
 });
 
-export const ReadOutputSchema = z.object({
+const ReadOutputSchema = z.object({
 	target: z.string(),
 	title: z.string(),
 	content: z.string().describe('Structured, line-numbered markdown representation (L01 | ...)'),
 	lineCount: z.number(),
 });
 
-export const SearchDocsInputSchema = z.object({
+const SearchDocsInputSchema = z.object({
 	query: z.string().describe('Search over titles, summaries, and catalog docs'),
 	limit: z.number().int().positive().max(10).optional(),
 });
 
-export const SearchDocsOutputSchema = z.object({
+const SearchDocsOutputSchema = z.object({
 	query: z.string(),
 	results: z.array(
 		z.object({
@@ -99,7 +91,7 @@ type SearchDocsInput = z.infer<typeof SearchDocsInputSchema>;
 /* Tool Definitions & Registration                                            */
 /* -------------------------------------------------------------------------- */
 
-export const th30NavigateTool = {
+const th30NavigateTool = {
 	type: 'function' as const,
 	name: 'navigate',
 	description: 'Navigate the user to a /docs chapter slug, optionally to a block id.',
@@ -117,7 +109,7 @@ export const th30NavigateTool = {
 	},
 };
 
-export const th30HighlightTool = {
+const th30HighlightTool = {
 	type: 'function' as const,
 	name: 'highlight',
 	description:
@@ -136,7 +128,7 @@ export const th30HighlightTool = {
 	}),
 };
 
-export const th30ReadTool = {
+const th30ReadTool = {
 	type: 'function' as const,
 	name: 'read',
 	description:
@@ -148,18 +140,10 @@ export const th30ReadTool = {
 	permission: 'auto' as const,
 	input: ReadInputSchema,
 	output: ReadOutputSchema,
-	handler: (input: ReadInput) => {
-		const doc = readDoc(getDocIndex(), input.target, input.detail);
-		return {
-			target: doc.target,
-			title: doc.title,
-			content: doc.content,
-			lineCount: doc.lineCount,
-		};
-	},
+	handler: (input: ReadInput) => readDoc(getDocIndex(), input.target, input.detail),
 };
 
-export const th30SearchDocsTool = {
+const th30SearchDocsTool = {
 	type: 'function' as const,
 	name: 'searchDocs',
 	description: 'Search the composed docs index (titles, summaries, catalog docs).',
@@ -184,10 +168,10 @@ export const th30SearchDocsTool = {
 	},
 };
 
-export const TH30_TOOL_IDS = ['navigate', 'highlight', 'read', 'searchDocs'] as const;
+const TH30_TOOL_IDS = ['navigate', 'highlight', 'read', 'searchDocs'] as const;
 
 /** Register all Th30 tools into the process-local tool registry. */
-export function registerTh30Tools(): void {
+function registerTh30Tools(): void {
 	registerTool(th30NavigateTool);
 	registerTool(th30HighlightTool);
 	registerTool(th30ReadTool);
@@ -198,7 +182,7 @@ export function registerTh30Tools(): void {
 /* System Prompt & Profile Definition                                         */
 /* -------------------------------------------------------------------------- */
 
-export function th30SystemPrompt(): string {
+function th30SystemPrompt(): string {
 	const chapters = formatNavigableForPrompt(getDocIndex());
 	return `You are Th30, the real-time AI guide for Theorem. You are built on Theorem.
 Your name is spoken letter-by-letter as "T H 3 O", or as "T H thirty" (the digits 3-0). Never say "Theo", "three O", "three-oh", or "theo".
@@ -207,7 +191,7 @@ You speak concisely (1-3 sentences). English only.
 When the call first connects you will receive a user turn with the text "(call connected)". Greet the user as T H 3 O and ask what they want to look at. Do not read the trigger text.
 
 Docs live at /docs. Chapters: ${chapters}.
-Type-scoped pins live on modalities (image, speech, live, decision, host). Field pages deepen each block. Do not invent field copy — read the catalog.
+Type-scoped pins are on modalities (image, speech, live, decision, host). Each chapter ends with a dictionary of its fields. Do not invent field copy — read it.
 
 Tools:
 - navigate: { slug, blockId? } — only slugs from the index.

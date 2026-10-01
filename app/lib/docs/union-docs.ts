@@ -1,80 +1,54 @@
 /**
- * Member docs for worthy unions. Prefer fieldMeta.optionDescriptions.
- * PROFILE_TYPES has no optionDescriptions in the kernel yet — compose the
- * member sentence from PROFILE_TYPE_PROTOCOLS + PROFILE_GRAPH pins + the
- * host clause already on fieldMeta('type').doc. Do not invent product copy.
+ * Member docs for worthy unions, from fieldMeta.optionDescriptions.
+ * PROFILE_TYPES has no optionDescriptions in the kernel yet, so its member
+ * sentence is composed from PROFILE_TYPE_PROTOCOLS, PROFILE_GRAPH pins and
+ * the host clause on fieldMeta('type').doc. Do not invent product copy.
  */
 
 import {
 	EXTRA_FIELDS,
-	type FieldMeta,
 	fieldMeta,
 	PROFILE_FIELDS,
 	PROFILE_GRAPH,
 	PROFILE_TYPE_PROTOCOLS,
 	type ProfileType,
 } from '@theoremjs/agents/schema';
-import { type DocWorthyUnion, worthyUnionValues } from './placement';
-
-function allFieldMeta(): FieldMeta[] {
-	return [...Object.values(PROFILE_FIELDS), ...Object.values(EXTRA_FIELDS)];
-}
+import { type DocWorthyUnion, UNION_SECTION } from './placement';
 
 function optionDescriptionsFor(values: readonly string[]): Record<string, string> | undefined {
-	for (const meta of allFieldMeta()) {
-		if (!meta.options || !meta.optionDescriptions) continue;
-		if (meta.options.length !== values.length) continue;
-		if (values.every((value) => meta.options?.includes(value))) {
-			return meta.optionDescriptions;
-		}
+	for (const meta of [...Object.values(PROFILE_FIELDS), ...Object.values(EXTRA_FIELDS)]) {
+		const options = meta.options;
+		if (!options || !meta.optionDescriptions || options.length !== values.length) continue;
+		if (values.every((value) => options.includes(value))) return meta.optionDescriptions;
 	}
 	return undefined;
 }
 
 function hostClauseFromTypeDoc(): string {
-	const doc = fieldMeta('type')?.doc;
-	if (!doc) throw new Error("fieldMeta('type') is missing");
-	const paren = /(?:^|[,\s])host\s*\(([^)]+)\)/i.exec(doc);
-	if (paren?.[1]) {
-		const clause = paren[1].trim();
-		return clause.charAt(0).toUpperCase() + clause.slice(1) + (clause.endsWith('.') ? '' : '.');
-	}
-	const equals = /host\s*=\s*([^.]+\.)/i.exec(doc);
-	if (equals?.[1]) return equals[1].trim();
-	throw new Error("fieldMeta('type').doc has no host (…) or host = … clause to project");
+	const doc = fieldMeta('type')?.doc ?? '';
+	const clause = /(?:^|[,\s])host\s*\(([^)]+)\)/i.exec(doc)?.[1]?.trim();
+	if (!clause) throw new Error("fieldMeta('type').doc has no host (…) clause to project");
+	return clause.charAt(0).toUpperCase() + clause.slice(1) + (clause.endsWith('.') ? '' : '.');
 }
 
 function profileTypeDoc(type: ProfileType): string {
+	const fromField = fieldMeta('type')?.optionDescriptions?.[type];
+	if (fromField) return fromField;
 	if (type === 'host') return hostClauseFromTypeDoc();
-	const protocols = PROFILE_TYPE_PROTOCOLS[type];
-	const protocolFact = `Legal protocols: ${protocols.join(', ')}.`;
+	const protocols = `Legal protocols: ${PROFILE_TYPE_PROTOCOLS[type].join(', ')}.`;
 	const pin = PROFILE_GRAPH.find((facet) => facet.id === type && facet.profilePath === type);
-	if (pin) return `Type-scoped pins live on ${pin.profilePath}. ${protocolFact}`;
-	if (type === 'text') return `No type-scoped pin facet. ${protocolFact}`;
-	throw new Error(`Cannot derive a catalog sentence for PROFILE_TYPES member ${type}`);
-}
-
-export function unionMemberDoc(union: DocWorthyUnion, member: string): string {
-	const values = worthyUnionValues(union);
-	if (!values.includes(member)) {
-		throw new Error(`${union} has no member ${member}`);
-	}
-	if (union === 'PROFILE_TYPES') {
-		const fromField = fieldMeta('type')?.optionDescriptions?.[member];
-		if (fromField) return fromField;
-		return profileTypeDoc(member as ProfileType);
-	}
-	const descriptions = optionDescriptionsFor(values);
-	const doc = descriptions?.[member];
-	if (!doc) {
-		throw new Error(`${union} member ${member} has no optionDescriptions`);
-	}
-	return doc;
+	return pin ? `Type-scoped pins live on ${pin.profilePath}. ${protocols}` : protocols;
 }
 
 export function unionMembers(union: DocWorthyUnion): readonly { value: string; doc: string }[] {
-	return worthyUnionValues(union).map((value) => ({
-		value,
-		doc: unionMemberDoc(union, value),
-	}));
+	const values = UNION_SECTION[union].values;
+	if (union === 'PROFILE_TYPES') {
+		return values.map((value) => ({ value, doc: profileTypeDoc(value as ProfileType) }));
+	}
+	const descriptions = optionDescriptionsFor(values);
+	return values.map((value) => {
+		const doc = descriptions?.[value];
+		if (!doc) throw new Error(`${union} member ${value} has no optionDescriptions`);
+		return { value, doc };
+	});
 }
