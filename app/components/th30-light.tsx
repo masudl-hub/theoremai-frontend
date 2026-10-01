@@ -6,7 +6,10 @@ in vec2 a_position;
 void main() { gl_Position = vec4(a_position, 0.0, 1.0); }
 `;
 
-/** Two drifting, domain-warped glows. No edge or ring: the gas dissolves before the canvas ends. */
+/**
+ * A knot of gas: glowing strands twisting in on themselves inside a tight, uneven envelope. The
+ * envelope's edge is soft and pushed around by the same turbulence, so it never reads as a disc.
+ */
 const FRAGMENT = `#version 300 es
 precision mediump float;
 out vec4 fragColor;
@@ -14,7 +17,6 @@ uniform vec2 u_resolution;
 uniform float u_time;
 uniform float u_audio;
 uniform bool u_lightMode;
-uniform vec2 u_spread;
 
 float hash(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -34,72 +36,77 @@ float noise(vec2 p) {
     mix(dot(hash2(i + vec2(0.0, 1.0)), f - vec2(0.0, 1.0)), dot(hash2(i + vec2(1.0)), f - vec2(1.0)), u.x),
     u.y);
 }
+const mat2 ROT = mat2(0.8, 0.6, -0.6, 0.8);
 float fbm(vec2 p) {
   float v = 0.0;
   float a = 0.5;
-  mat2 rot = mat2(cos(0.52), sin(0.52), -sin(0.52), cos(0.52));
   for (int i = 0; i < 4; ++i) {
     v += a * noise(p);
-    p = rot * p * 2.0 + vec2(100.0);
+    p = ROT * p * 2.03 + vec2(1.7, 9.2);
     a *= 0.5;
   }
   return v;
 }
-float glow(float d, float core, float aura, float k) {
-  return (exp(-abs(d) * core) * 0.38 + 0.65 / (1.0 + abs(d) * aura)) * k;
+// Ridged noise: bright thin creases where the noise crosses zero. These are the strands.
+float strands(vec2 p) {
+  float v = 0.0;
+  float a = 0.6;
+  for (int i = 0; i < 3; ++i) {
+    v += a * pow(1.0 - abs(noise(p)), 3.0);
+    p = ROT * p * 2.1 + vec2(4.1, 1.3);
+    a *= 0.5;
+  }
+  return v;
 }
 
 void main() {
-  vec2 frame = (gl_FragCoord.xy - 0.5 * u_resolution) / min(u_resolution.x, u_resolution.y);
-  // The gas's own space: zoomed out so it fits the canvas, and centred between its two cores.
-  // Spread below 1 draws the gas out along that axis, to fill a long canvas.
-  vec2 uv = frame * u_spread + vec2(0.11, 0.0);
-  float t = u_time * 0.38;
-  float level = 1.95 + u_audio * 0.9;
+  vec2 p = (gl_FragCoord.xy - 0.5 * u_resolution) / min(u_resolution.x, u_resolution.y);
+  float t = u_time;
+  float speak = u_audio;
 
-  vec2 n = uv;
-  vec2 q = vec2(fbm(n + vec2(0.0, t * 0.18)), fbm(n + vec2(5.2, 1.3 - t * 0.12)));
-  vec2 r = vec2(fbm(n + 3.8 * q + vec2(1.7 - t * 0.14, 9.2)), fbm(n + 3.8 * q + vec2(8.3, 2.8 + t * 0.10)));
-  float f = fbm(n * 1.8 + 2.8 * r);
+  // Twist: the closer to the middle, the further each point turns, so strands wind into the knot.
+  float d0 = length(p);
+  float twist = (0.5 - d0) * 5.0 + t * 0.35;
+  vec2 tp = mat2(cos(twist), sin(twist), -sin(twist), cos(twist)) * p;
 
-  vec2 core1 = vec2(-0.10 + sin(t * 0.4) * 0.05, 0.02 + cos(t * 0.28) * 0.04);
-  vec2 core2 = vec2(0.32 + cos(t * 0.35) * 0.04, -0.06 + sin(t * 0.22) * 0.03);
-  float d1 = length(uv - core1);
-  float d2 = length(uv - core2);
-  float a = glow(d1 + f * 0.40 - 0.03, 7.2, 3.6, level);
-  float b = glow(d1 + f * 0.36, 10.2, 4.3, level);
-  float c = glow(d1 + f * 0.32 + 0.04, 5.8, 2.5, level);
-  float lobe = glow(d2 + f * 0.28, 10.8, 4.8, level * 0.70);
+  // Warp the twisted space by itself, then trace strands through it.
+  vec2 q = vec2(fbm(tp * 3.0 + vec2(0.0, t * 0.2)), fbm(tp * 3.0 + vec2(5.2, -t * 0.17)));
+  float body = fbm(tp * 3.2 + 2.4 * q);
+  float lines = strands(tp * 4.2 + 1.8 * q + vec2(t * 0.08, 0.0));
+
+  // The envelope: a tight core whose rim is shoved in and out by the turbulence.
+  float rim = d0 + body * 0.34 + (q.x - q.y) * 0.16;
+  float reach = 0.30 + speak * 0.06;
+  float envelope = smoothstep(reach + 0.14, reach - 0.16, rim);
+  float core = exp(-d0 * d0 * 40.0);
+
+  float density = envelope * (0.08 + 0.4 * (body + 0.5) + 1.15 * lines) + core * 0.3;
+  density *= 1.0 + speak * 0.8;
 
   vec3 col;
   if (u_lightMode) {
-    col = vec3(a * 1.05 + c * 0.88 + lobe * 0.72, a * 0.36 + c * 0.46 + lobe * 0.26, a * 0.44 + c * 0.16 + lobe * 0.62);
-    col = pow(col / (1.0 + col * 0.78), vec3(1.16)) * 0.84;
+    vec3 rose = vec3(0.86, 0.36, 0.42);
+    vec3 amber = vec3(0.95, 0.62, 0.30);
+    vec3 plum = vec3(0.52, 0.22, 0.48);
+    col = mix(plum, rose, smoothstep(-0.2, 0.3, body)) * density + amber * lines * envelope * 0.35;
   } else {
-    col = vec3(a * 0.03 + c * 0.05 + lobe * 0.04, a * 0.82 + b * 0.52 + lobe * 0.24, c * 1.18 + b * 0.42 + lobe * 0.94);
-    col = pow(col / (1.0 + col * 0.92), vec3(1.24)) * 0.76;
+    vec3 navy = vec3(0.05, 0.16, 0.55);
+    vec3 teal = vec3(0.06, 0.62, 0.70);
+    vec3 emerald = vec3(0.16, 0.95, 0.62);
+    col = mix(navy, teal, smoothstep(-0.25, 0.25, body)) * density + emerald * lines * envelope * 0.45;
   }
+  col = col / (1.0 + col * 0.6);
 
-  // Speech swells the footprint. The frame fade only guarantees nothing reaches the canvas edge.
-  float limit = 0.5 + u_audio * 0.14;
-  float warped = length(uv + r * 0.42) - f * 0.22;
-  // The gas thins out by its own turbulence. The canvas is sized so it has dissolved before the
-  // edge; the axis fade is only a guard so no wisp is ever cut off.
-  vec2 halfFrame = 0.5 * u_resolution / min(u_resolution.x, u_resolution.y);
-  vec2 edge = smoothstep(halfFrame, halfFrame - 0.12, abs(frame));
-  col *= smoothstep(limit * 1.45, limit * 0.35, warped) * edge.x * edge.y;
-  col = max(col - 0.012, 0.0);
+  float grain = (hash(gl_FragCoord.xy + fract(t * 19.33)) - 0.5) * 0.05;
+  col = max(col + grain * envelope, 0.0);
 
-  float lum = dot(col, vec3(0.299, 0.587, 0.114));
-  float grain = (hash(gl_FragCoord.xy + fract(u_time * 19.33)) - 0.5) * 0.06 * (u_lightMode ? 0.68 : 1.0);
-  col = max(col + grain * (0.28 + 0.72 * lum) * smoothstep(0.001, 0.08, lum), 0.0);
-  // On dark the canvas screens onto the page, so black is invisible and the fringe never dims
+  // On dark the canvas screens onto the page, so black is invisible and the rim never dims
   // what's behind it. On light it has to cover, or warm gas would vanish into a pale page.
   if (u_lightMode) {
-    float alpha = clamp(lum * 2.15, 0.0, 1.0);
+    float alpha = clamp(dot(col, vec3(0.299, 0.587, 0.114)) * 2.6, 0.0, 1.0);
     fragColor = vec4(col * alpha, alpha);
   } else {
-    fragColor = vec4(col * clamp(lum * 2.4, 0.0, 1.0) * 1.2, 1.0);
+    fragColor = vec4(col, 1.0);
   }
 }
 `;
@@ -111,17 +118,7 @@ const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)'
  * about 30fps when the call is quiet and every frame while someone speaks, and holds a single
  * still frame for reduced motion.
  */
-export function Th30Light({
-	theme,
-	spread = [1, 1],
-	className,
-}: {
-	theme: 'dark' | 'system';
-	/** How far to draw the gas out along x and y; below 1 stretches it. */
-	spread?: readonly [number, number];
-	className?: string;
-}) {
-	const [spreadX, spreadY] = spread;
+export function Th30Light({ theme, className }: { theme: 'dark' | 'system'; className?: string }) {
 	const ref = useRef<HTMLCanvasElement>(null);
 
 	useEffect(() => {
@@ -161,7 +158,6 @@ export function Th30Light({
 		const uTime = gl.getUniformLocation(program, 'u_time');
 		const uAudio = gl.getUniformLocation(program, 'u_audio');
 		const uLight = gl.getUniformLocation(program, 'u_lightMode');
-		gl.uniform2f(gl.getUniformLocation(program, 'u_spread'), spreadX, spreadY);
 
 		const scheme = window.matchMedia('(prefers-color-scheme: light)');
 		const paintScheme = () => {
@@ -173,9 +169,9 @@ export function Th30Light({
 		scheme.addEventListener('change', paintScheme);
 
 		const size = () => {
-			// Gas has no edges to keep sharp, so one pixel per CSS pixel is enough on any screen.
-			canvas.width = Math.max(1, canvas.clientWidth);
-			canvas.height = Math.max(1, canvas.clientHeight);
+			const dpr = Math.min(window.devicePixelRatio || 1, 2);
+			canvas.width = Math.max(1, Math.round(canvas.clientWidth * dpr));
+			canvas.height = Math.max(1, Math.round(canvas.clientHeight * dpr));
 			gl.viewport(0, 0, canvas.width, canvas.height);
 			gl.uniform2f(uResolution, canvas.width, canvas.height);
 		};
@@ -223,7 +219,7 @@ export function Th30Light({
 			gl.deleteShader(vert);
 			gl.deleteShader(frag);
 		};
-	}, [theme, spreadX, spreadY]);
+	}, [theme]);
 
 	return (
 		<canvas

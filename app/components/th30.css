@@ -80,26 +80,15 @@
 	width: 36px;
 	height: 36px;
 }
-/* The nebula spills well past the button and dissolves on its own. In the rail it keeps to the
-   rail's width and trails up and down; beside the search it drifts over the space around it. */
+/* The canvas runs a little past the button so the knot's soft rim is never clipped. */
 .th30-light {
 	position: absolute;
 	top: 50%;
 	left: 50%;
+	width: 48px;
+	height: 48px;
 	transform: translate(-50%, -50%);
 	pointer-events: none;
-}
-.th30-trigger-rail .th30-light {
-	width: 48px;
-	height: 72px;
-	/* Centred on the rail, not the button, and lifted clear of the window's bottom edge. */
-	transform: translate(-50%, -68%);
-}
-.th30-trigger-search .th30-light {
-	width: 280px;
-	height: 92px;
-	/* The brighter core sits left of the gas's centre; nudge it back over the button. */
-	transform: translate(-36%, -50%);
 }
 .th30-light[data-fallback] {
 	background: radial-gradient(
