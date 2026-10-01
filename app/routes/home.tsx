@@ -6,6 +6,7 @@ import { useLocation, useNavigate } from 'react-router';
 import { HeroVideo } from '../components/hero-video';
 import { getKernelPackageVersion } from '../lib/.server/theoremai';
 import { SITE_REDIRECTS } from '../lib/docs/articles/chapters';
+import type { Th30PageHandle } from '../lib/th30-page';
 import type { Route } from './+types/home';
 
 export function meta() {
@@ -17,6 +18,14 @@ export function meta() {
 		},
 	];
 }
+
+export const handle = {
+	th30Page: () => ({
+		title: 'Home',
+		summary:
+			"The home page: the Theorem wordmark over a valley video, the package version, and the line 'Typed, composable agents for text, image, speech, and live voice — guarded on every turn.' From here the visitor goes to the docs or the playground; th30 can take them to any docs chapter.",
+	}),
+} satisfies Th30PageHandle;
 
 export function loader() {
 	return { version: getKernelPackageVersion() };

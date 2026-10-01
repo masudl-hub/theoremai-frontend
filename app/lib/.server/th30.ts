@@ -174,7 +174,27 @@ const th30SearchDocsTool = {
 	},
 };
 
-const TH30_TOOL_IDS = ['navigate', 'highlight', 'read', 'searchDocs'] as const;
+/** Exa's keyless MCP server: th30's web search, since free Gemini keys refuse Google Search. */
+const th30SearchWebTool = {
+	type: 'mcp' as const,
+	name: 'searchWeb',
+	description:
+		'Search the web with Exa for what the Theorem docs do not cover: providers, models, other libraries, current news. Describe the page you want, not just keywords.',
+	category: 'web',
+	access: 'read-only' as const,
+	paths: ['*'],
+	loadTier: 'T0' as const,
+	permission: 'auto' as const,
+	serverUrl: 'https://mcp.exa.ai/mcp',
+	mcpToolName: 'web_search_exa',
+	input: z.object({
+		query: z.string().min(1).max(500).describe('A description of the ideal page'),
+		numResults: z.number().int().min(1).max(5).optional(),
+	}),
+	output: z.string().describe('Titles, links and highlights from the top results'),
+};
+
+const TH30_TOOL_IDS = ['navigate', 'highlight', 'read', 'searchDocs', 'searchWeb'] as const;
 
 /** Register all Th30 tools into the process-local tool registry. */
 function registerTh30Tools(): void {
@@ -182,6 +202,7 @@ function registerTh30Tools(): void {
 	registerTool(th30HighlightTool);
 	registerTool(th30ReadTool);
 	registerTool(th30SearchDocsTool);
+	registerTool(th30SearchWebTool);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -194,7 +215,11 @@ function th30SystemPrompt(): string {
 Your name is spoken letter-by-letter as "T H 3 O", or as "T H thirty" (the digits 3-0). Never say "Theo", "three O", "three-oh", or "theo".
 You speak concisely (1-3 sentences). English only.
 
-When the call first connects you get a cue like "(call connected on /docs/guardrails)". It is not the caller speaking; never read it out. Open the call yourself, warmly and in one short breath, the way a friendly guide picks up: say your name once, then offer help that fits the page they're on (name the chapter in plain words, not the path). On the docs landing, offer to find what they're after. Vary the wording from call to call. No "How may I assist you", no list of what you can do.
+You always know the page the visitor is on. A line starting "(page)" names it: the path, the page's title and what is on it, and sometimes the visitor's state in brackets (the chapter block they are viewing; on the playground the agent they are building, its type, its issue count and the section they have open). Page lines are context, not the caller speaking; never read one out or announce it. They update silently as the visitor moves, so use the latest one when they say "this", "here" or "this page". Name a chapter in plain words, not the path.
+
+When the call first connects you get a cue like "(call connected) (page) /docs/guardrails — …". It is not the caller speaking; never read it out. Open the call yourself, warmly and in one short breath, the way a friendly guide picks up: say your name once, then offer help that fits the page they're on. On the docs landing, offer to find what they're after. Vary the wording from call to call. No "How may I assist you", no list of what you can do.
+
+On the playground, explain a setting by searching the docs, never by guessing: searchDocs the field or section name, read the hit, then answer from it.
 
 Docs live at /docs. Chapters: ${chapters}.
 Type-scoped pins are on modalities (image, speech, live, decision, host). Each chapter ends with a dictionary of its fields. Do not invent field copy — read it.
@@ -204,6 +229,7 @@ Tools:
 - highlight: { blockId } — DOM id via getElementById (live.vad is an id, not a CSS selector).
 - read: slug, slug#block, or full_page. Line-numbered markdown from the same projector as the page.
 - searchDocs: { query } — stemmed, typo-tolerant search over titles, sections, fields and examples. Hits that match every word come first. Each hit has slug and blockId: search, then navigate or highlight the hit, then read it before you answer.
+- searchWeb: { query } — the web, through Exa. Only for what the docs don't cover (providers, models, other tools, news). Answer about Theorem from the docs, never from the web.
 
 When you point at a fact, call highlight with that blockId. Never claim you navigated, highlighted, read, or searched unless you issued that call. If a tool errors, say so and retry once.`;
 }
@@ -234,7 +260,7 @@ export function ensureTh30ProfileRegistered(): void {
 		// A quota refusal on the first free key reopens the call on the second, when one is set.
 		fallbackKey: 'overflow',
 		live: {
-			// Text carries only the app's "(call connected on <page>)" cue, so th30 greets first.
+			// Text carries only the call-connected cue, so th30 greets first; page lines ride as context, which draws no reply.
 			ingress: { text: true, video: false },
 			voice: 'Sulafat',
 			vad: {

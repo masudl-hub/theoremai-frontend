@@ -13,10 +13,16 @@ import {
 	useRef,
 	useState,
 } from 'react';
-import { useNavigate } from 'react-router';
+import { useLocation, useMatches, useNavigate } from 'react-router';
 import { theoremSiteTheme } from '../built/theorem-site';
 import { docsPath, highlightBlock } from '../lib/docs/th30-client';
 import { TH30_PROFILE_ID } from '../lib/th30-id';
+import {
+	type Th30Page,
+	type Th30PageHandle,
+	th30PageLine,
+	useTh30PlaygroundState,
+} from '../lib/th30-page';
 import { th30Voice } from '../lib/th30-voice';
 import { Th30Light } from './th30-light';
 import './th30.css';
@@ -61,6 +67,22 @@ export function Th30Trigger({
 
 type Phase = 'idle' | 'connecting' | 'live' | 'failed';
 
+const PAGE_LINE_DEBOUNCE_MS = 800;
+
+/** The page the visitor is on, from the deepest matched route that describes itself. */
+function useTh30PageLine(): string | null {
+	const matches = useMatches();
+	const { pathname, hash } = useLocation();
+	const playground = useTh30PlaygroundState();
+	for (const match of [...matches].reverse()) {
+		const describe = (match.handle as Th30PageHandle | undefined)?.th30Page;
+		if (!describe) continue;
+		const page = (describe as (data: unknown, hash: string) => Th30Page)(match.loaderData, hash);
+		return th30PageLine(pathname, page, pathname === '/playground' ? playground : null);
+	}
+	return null;
+}
+
 export function Th30Provider({ children }: { children: ReactNode }) {
 	const [phase, setPhase] = useState<Phase>('idle');
 	const [isMuted, setMuted] = useState(false);
@@ -71,6 +93,11 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 	const clientRef = useRef<LiveSessionClient | null>(null);
 	const chimeRef = useRef<ReturnType<typeof makeChime> | null>(null);
 	const navigate = useNavigate();
+	const pageLine = useTh30PageLine();
+	const pageLineRef = useRef(pageLine);
+	pageLineRef.current = pageLine;
+	/** The last page line th30 was told, so an unchanged page says nothing; `undefined` until the call is greeted. */
+	const toldRef = useRef<string | null | undefined>(undefined);
 
 	const applyTool = useCallback(
 		(name: string, args: Record<string, unknown>) => {
@@ -113,6 +140,7 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 		const chime = makeChime();
 		chimeRef.current = chime;
 		let greeted = false;
+		toldRef.current = undefined;
 		const client = new LiveSessionClient({
 			profile: TH30_PROFILE_ID,
 			voiceIngress: true,
@@ -125,7 +153,9 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 				if (next === 'listening' && !greeted) {
 					greeted = true;
 					chime.play();
-					client.sendText(`(call connected on ${window.location.pathname})`);
+					const line = pageLineRef.current;
+					toldRef.current = line;
+					client.sendText(line ? `(call connected) ${line}` : '(call connected)');
 				}
 			},
 			onError: (err) => {
@@ -157,6 +187,19 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 			setPhase('failed');
 		}
 	}, [applyTool]);
+
+	useEffect(() => {
+		if (phase !== 'live' || !pageLine || pageLine === toldRef.current) return;
+		const timer = window.setTimeout(() => {
+			const client = clientRef.current;
+			if (!client || toldRef.current === undefined) return;
+			toldRef.current = pageLine;
+			client.sendContext(pageLine);
+		}, PAGE_LINE_DEBOUNCE_MS);
+		return () => {
+			window.clearTimeout(timer);
+		};
+	}, [pageLine, phase]);
 
 	const isLive = phase !== 'idle';
 	const toggle = useCallback(() => {

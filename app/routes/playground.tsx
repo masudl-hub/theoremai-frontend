@@ -89,10 +89,18 @@ import { docsSeedDraft } from '../lib/docs/seeds';
 import { exportBundle, llmBrief } from '../lib/export-agent';
 import { FACET_ICON } from '../lib/facet-icons';
 import { KERNEL_PACKAGE_VERSION } from '../lib/kernel-version';
+import { type Th30PageHandle, useReportTh30Playground } from '../lib/th30-page';
 import type { Route } from './+types/playground';
 import type { ShellHandle } from './shell';
 
-export const handle = { isOnBase: true } satisfies ShellHandle;
+export const handle = {
+	isOnBase: true,
+	th30Page: () => ({
+		title: 'Playground',
+		summary:
+			"The playground, where the visitor builds an agent without code. On the left are the profile sections, a tree of the agent's settings (type, identity, models, tools, guardrails and more), and a Keys panel for their own API keys. The middle is the editor for the selected section, and the right is a live preview to chat with the agent. Load an example offers ready agents such as Travel concierge and Span decision. Issues the agent must fix before it can run are flagged, with a button to go to the next one. Export downloads the agent as one .tsx, or copies it, or copies it with a brief for an LLM. Launch opens the agent on its own page in a new tab. The docs explain each field, so th30 should search the docs for them.",
+	}),
+} satisfies ShellHandle & Th30PageHandle;
 
 export function meta() {
 	return [{ title: 'Playground · THEOREM' }];
@@ -474,6 +482,12 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	};
 
 	const title = editorTitle(draft, selected);
+	useReportTh30Playground({
+		agent: draft.identity.handle || draft.identity.agentId || 'unnamed',
+		type: draft.identity.profileType || 'not chosen',
+		issues: compiled.ok ? 0 : compiled.issues.length,
+		section: title,
+	});
 
 	return (
 		<Layout
