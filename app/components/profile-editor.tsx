@@ -723,6 +723,9 @@ function ModelBindingEditor({
 						}}
 					/>
 				)}
+				{binding.provider === 'local' &&
+					localConnection?.localModels.status === 'error' &&
+					!isLocalPage() && <LocalOriginHelp />}
 				{binding.provider === 'local' && localConnection ? (
 					<ChoiceRow
 						label="API model"
@@ -3654,5 +3657,37 @@ export function ProfileEditor({
 				{editor}
 			</VStack>
 		</NodeIssues>
+	);
+}
+
+/** Local servers answer local pages only; a hosted page needs its origin allowed. */
+const isLocalPage = () =>
+	typeof window !== 'undefined' &&
+	/^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
+
+const OLLAMA_ORIGINS_COMMAND = 'launchctl setenv OLLAMA_ORIGINS "https://theorem.masudlewis.com"';
+
+/** Why a hosted page can't list local models, and the one command that fixes it. */
+function LocalOriginHelp() {
+	return (
+		<Banner
+			status="warning"
+			title="Your local server must allow this site"
+			description={
+				<VStack gap={2}>
+					<Text type="supporting">
+						Ollama only answers pages on your own machine. Run this, then quit and reopen Ollama. LM
+						Studio: turn on CORS in its server settings.
+					</Text>
+					<CodeBlock
+						code={OLLAMA_ORIGINS_COMMAND}
+						language="bash"
+						hasLanguageLabel={false}
+						isWrapped
+						size="sm"
+					/>
+				</VStack>
+			}
+		/>
 	);
 }
