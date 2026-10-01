@@ -5,19 +5,18 @@ import { ClickableCard } from '@astryxdesign/core/ClickableCard';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
-import { IconButton } from '@astryxdesign/core/IconButton';
 import { StackItem } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Token } from '@astryxdesign/core/Token';
 import { MediaTheme } from '@astryxdesign/core/theme';
 import { VStack } from '@astryxdesign/core/VStack';
-import { IconCircle, IconSearch } from '@tabler/icons-react';
+import { IconSearch } from '@tabler/icons-react';
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { articleHref, searchDocs } from '../../lib/docs/query';
 import type { DocArticle, DocIndex } from '../../lib/docs/schema';
 import '../hero-video.css';
-import { useTh30 } from '../th30-dock';
+import { Th30Trigger } from '../th30-dock';
 
 const SEARCH_LIMIT = 16;
 const TILE_MOTION: CSSProperties = {
@@ -150,7 +149,6 @@ function tilesFromIndex(index: DocIndex, query: string): LandingTile[] {
 }
 
 export function DocsLanding({ index, version }: { index: DocIndex; version: string }) {
-	const th30 = useTh30();
 	const [query, setQuery] = useState('');
 	const target = useMemo(() => tilesFromIndex(index, query), [index, query]);
 	const { tiles, phase } = useEasedTiles(target);
@@ -246,15 +244,7 @@ export function DocsLanding({ index, version }: { index: DocIndex; version: stri
 							hasClear
 						/>
 					</div>
-					<IconButton
-						label="Talk to th30"
-						icon={<IconCircle />}
-						variant="ghost"
-						size="lg"
-						onClick={() => {
-							th30.open();
-						}}
-					/>
+					<Th30Trigger theme="system" placement="search" />
 				</HStack>
 				<VStack className="docs-landing-results">
 					{tiles.length ? (

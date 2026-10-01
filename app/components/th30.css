@@ -1,0 +1,103 @@
+/* th30's call. The light toggles it; while it's on, the page panel lifts and a strip of the
+   call's voices runs along the black base beneath it, beside the rail. */
+:root {
+	--th30-strip: 56px;
+	--th30-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+[role="main"] {
+	transition: height 420ms var(--th30-ease);
+}
+.th30-live [role="main"] {
+	height: calc(100% - var(--spacing-4) - var(--th30-strip));
+}
+
+.th30-strip {
+	--th30-user: var(--color-text-secondary);
+	--th30-agent: #34d3a6;
+	position: fixed;
+	inset-inline: 48px 0;
+	bottom: 0;
+	height: var(--th30-strip);
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-3);
+	padding-inline: var(--spacing-2) var(--spacing-4);
+	padding-block: var(--spacing-3);
+	opacity: 0;
+	transform: translateY(16px);
+	transition:
+		opacity 260ms var(--th30-ease),
+		transform 420ms var(--th30-ease);
+	pointer-events: none;
+	z-index: 1;
+}
+.th30-live .th30-strip {
+	opacity: 1;
+	transform: none;
+	pointer-events: auto;
+}
+.th30-wave {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+}
+.th30-strip-status {
+	position: absolute;
+	inset-inline-start: calc(var(--spacing-2) + 40px);
+	color: var(--color-text-secondary);
+	font-size: 13px;
+	pointer-events: none;
+}
+.th30-strip-status:empty {
+	display: none;
+}
+
+@media (width < 768px) {
+	.th30-strip {
+		inset-inline-start: 0;
+		padding-inline-start: var(--spacing-4);
+	}
+}
+
+/* The trigger: no chrome, just the light. */
+.th30-trigger {
+	all: unset;
+	position: relative;
+	display: block;
+	cursor: pointer;
+	border-radius: 50%;
+}
+.th30-trigger:focus-visible {
+	outline: 2px solid var(--color-border-emphasized);
+	outline-offset: 2px;
+}
+.th30-trigger-rail {
+	width: 40px;
+	height: 40px;
+}
+.th30-trigger-search {
+	width: 36px;
+	height: 36px;
+}
+.th30-light {
+	display: block;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+}
+.th30-light[data-fallback] {
+	background: radial-gradient(
+		closest-side,
+		rgb(52 211 166 / 0.85),
+		rgb(30 70 140 / 0.35) 60%,
+		transparent
+	);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	[role="main"],
+	.th30-strip {
+		transition: none;
+	}
+}

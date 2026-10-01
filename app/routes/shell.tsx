@@ -1,5 +1,4 @@
 import { AppShell } from '@astryxdesign/core/AppShell';
-import { IconButton } from '@astryxdesign/core/IconButton';
 import { LinkProvider } from '@astryxdesign/core/Link';
 import {
 	SideNav,
@@ -9,13 +8,7 @@ import {
 	useSideNavRenderMode,
 } from '@astryxdesign/core/SideNav';
 import { Theme } from '@astryxdesign/core/theme';
-import {
-	IconBook2,
-	IconBrandGithub,
-	IconBrandNpm,
-	IconCircle,
-	IconPlayerPlay,
-} from '@tabler/icons-react';
+import { IconBook2, IconBrandGithub, IconBrandNpm, IconPlayerPlay } from '@tabler/icons-react';
 import { Link, type LinkProps, Outlet, useLocation, useMatches } from 'react-router';
 import { theoremSiteTheme } from '../built/theorem-site';
 import '../components/docs/docs.css';
@@ -27,7 +20,7 @@ import { IconJsr } from '../components/jsr-icon';
 import { NewTabLink } from '../components/links';
 import { LogoMark } from '../components/logo-mark';
 import { NavMark } from '../components/nav-mark';
-import { Th30Provider, useTh30 } from '../components/th30-dock';
+import { Th30Provider, Th30Trigger } from '../components/th30-dock';
 
 const SECTIONS = [
 	{ label: 'Playground', href: '/playground', icon: IconPlayerPlay },
@@ -85,18 +78,8 @@ function ShellLink({ onClick, to, ...props }: LinkProps) {
 /** Rail and mobile top bar only. The drawer repeats footer icons, and this one does not belong there. */
 function Th30Button() {
 	const mode = useSideNavRenderMode();
-	const th30 = useTh30();
 	if (mode === 'drawer' || mode === 'drawer-content') return null;
-	return (
-		<IconButton
-			label="Talk to th30"
-			icon={<IconCircle />}
-			variant="ghost"
-			onClick={() => {
-				th30.open();
-			}}
-		/>
-	);
+	return <Th30Trigger theme="dark" placement="rail" />;
 }
 
 /**
