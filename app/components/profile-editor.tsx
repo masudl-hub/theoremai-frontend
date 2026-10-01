@@ -103,8 +103,8 @@ import {
 	fieldMeta,
 	GOOGLE_BUILTIN_TOOLS,
 	GOOGLE_IMAGE_ASPECT_RATIOS,
-	GOOGLE_IMAGE_INPUT_MIMES,
-	GOOGLE_IMAGE_SIZES,
+	GOOGLE_IMAGE_OUTPUT_MIMES,
+	GOOGLE_IMAGE_RESOLUTIONS,
 	GOOGLE_SPEECH_VOICES,
 	HTTP_METHODS,
 	type HttpMethod,
@@ -1138,12 +1138,12 @@ function ImageEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Se
 			/>
 			<PresetRow
 				google={google}
-				label="Size"
-				path="image.size"
-				value={image.size}
-				preset={GOOGLE_IMAGE_SIZES}
-				onChange={(size) => {
-					set({ size });
+				label="Resolution"
+				path="image.resolution"
+				value={image.resolution}
+				preset={GOOGLE_IMAGE_RESOLUTIONS}
+				onChange={(resolution) => {
+					set({ resolution });
 				}}
 			/>
 			<PresetRow
@@ -1151,7 +1151,7 @@ function ImageEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Se
 				label="Format"
 				path="image.mimeType"
 				value={image.mimeType}
-				preset={GOOGLE_IMAGE_INPUT_MIMES}
+				preset={GOOGLE_IMAGE_OUTPUT_MIMES}
 				onChange={(mimeType) => {
 					set({ mimeType });
 				}}
@@ -1453,48 +1453,51 @@ const SCHEMA_PLACEHOLDER = `{
 function OutputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
 	const { outputs } = draft;
 	const set = patch(setDraft, 'outputs');
-	const structured = outputs.mode === 'structured';
+	const shaped = draftAllows(draft, 'outputs.structured');
+	const structured = shaped && outputs.mode === 'structured';
 	return (
 		<>
-			<InspectorSection title="Shape" note="Free text, or JSON held to a schema.">
-				<SegmentedRow
-					label="Mode"
-					path="outputs.structured"
-					value={outputs.mode}
-					segments={OUTPUT_MODE_SEGMENTS}
-					onChange={(mode) => {
-						set({ mode });
-					}}
-				/>
-				{structured && (
-					<>
-						<TextRow
-							label="Schema id"
-							path="outputs.structured"
-							field="schemaId"
-							isRequired
-							value={outputs.schemaId}
-							placeholder="reply"
-							onChange={(schemaId) => {
-								set({ schemaId });
-							}}
-						/>
-						<TextAreaRow
-							label="JSON Schema"
-							path="outputs.structured"
-							field="schemaJson"
-							isRequired
-							rows={8}
-							hasSpellCheck={false}
-							value={outputs.schemaJson}
-							placeholder={SCHEMA_PLACEHOLDER}
-							onChange={(schemaJson) => {
-								set({ schemaJson });
-							}}
-						/>
-					</>
-				)}
-			</InspectorSection>
+			{shaped && (
+				<InspectorSection title="Shape" note="Free text, or JSON held to a schema.">
+					<SegmentedRow
+						label="Mode"
+						path="outputs.structured"
+						value={outputs.mode}
+						segments={OUTPUT_MODE_SEGMENTS}
+						onChange={(mode) => {
+							set({ mode });
+						}}
+					/>
+					{structured && (
+						<>
+							<TextRow
+								label="Schema id"
+								path="outputs.structured"
+								field="schemaId"
+								isRequired
+								value={outputs.schemaId}
+								placeholder="reply"
+								onChange={(schemaId) => {
+									set({ schemaId });
+								}}
+							/>
+							<TextAreaRow
+								label="JSON Schema"
+								path="outputs.structured"
+								field="schemaJson"
+								isRequired
+								rows={8}
+								hasSpellCheck={false}
+								value={outputs.schemaJson}
+								placeholder={SCHEMA_PLACEHOLDER}
+								onChange={(schemaJson) => {
+									set({ schemaJson });
+								}}
+							/>
+						</>
+					)}
+				</InspectorSection>
+			)}
 			{structured && (
 				<InspectorSection
 					title="Repair"

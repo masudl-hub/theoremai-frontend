@@ -49,9 +49,11 @@ export function usePlaygroundConnection(
 	const [remoteTools, setRemoteTools] = useState(false);
 	const slotNames = [...new Set([...namedSlots, ...Object.keys(vault)])].join('\n');
 	const slots = useMemo(() => (slotNames ? slotNames.split('\n') : []), [slotNames]);
+	// A row follows a slot the draft names or a key the vault holds; typing a slot name in the
+	// editor must not leave a row behind for every prefix. Unnamed rows stay until removed.
 	useEffect(() => {
 		setEntries((current) => [
-			...current,
+			...current.filter((entry) => !entry.slot || slots.includes(entry.slot)),
 			...slots
 				.filter((slot) => !current.some((entry) => entry.slot === slot))
 				.map((slot) => ({ id: crypto.randomUUID(), slot })),
