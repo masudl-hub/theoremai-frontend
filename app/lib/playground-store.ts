@@ -5,7 +5,7 @@
  * with their credentials masked.
  */
 import { maskHeaders, maskUrl } from '@theoremjs/agents/surface';
-import type { PlaygroundDraft } from '@theoremjs/playground';
+import { createBlankDraft, type PlaygroundDraft } from '@theoremjs/playground';
 import type { TheoremChat } from '@theoremjs/react/ui';
 import type { ComponentProps } from 'react';
 
@@ -49,16 +49,28 @@ function session(): Storage | null {
 	}
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * True when `value` has every section `shape` has, all the way down, and lists where it has lists.
+ * A draft kept before the draft grew a section fails it, so it is set aside rather than compiled.
+ */
+function hasShapeOf(value: unknown, shape: unknown): boolean {
+	if (Array.isArray(shape)) return Array.isArray(value);
+	if (!isRecord(shape)) return true;
+	if (!isRecord(value)) return false;
+	return Object.entries(shape).every(([key, part]) => hasShapeOf(value[key], part));
+}
+
 function isStoredDraft(value: unknown): value is StoredDraft {
-	if (typeof value !== 'object' || value === null) return false;
-	const record = value as Partial<StoredDraft>;
+	if (!isRecord(value)) return false;
 	return (
-		record.v === VERSION &&
-		typeof record.draft === 'object' &&
-		typeof record.draft.identity === 'object' &&
-		Array.isArray(record.draft.modelBindings) &&
-		typeof record.revision === 'number' &&
-		typeof record.selectedId === 'string'
+		value.v === VERSION &&
+		hasShapeOf(value.draft, createBlankDraft()) &&
+		typeof value.revision === 'number' &&
+		typeof value.selectedId === 'string'
 	);
 }
 
