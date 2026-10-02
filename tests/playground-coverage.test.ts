@@ -9,7 +9,7 @@ import { PROFILE_FIELDS } from '@theoremjs/agents';
  */
 const NOT_IN_PLAYGROUND: Record<string, string> = {
 	'models.*.compaction':
-		'Needs a second registered profile to write the summary; the playground builds one.',
+		'Needs a second registered profile to write the summary; the playground builds only one.',
 	'tools.allow': 'Built from the tool list: every tool added is allowed.',
 	'tools.t1Policy': 'A function that picks T1 tools each turn, written in code.',
 	'inputs.state': 'Set by the Decision profile type.',
