@@ -146,6 +146,7 @@ import {
 	GEMINI_PLAYGROUND_DEFAULT_API_ID,
 	GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS,
 	GEMINI_PLAYGROUND_MODELS,
+	type GuardrailsDraft,
 	type ImageReferenceDraft,
 	INLINE_WORDING,
 	includableFacets,
@@ -188,6 +189,7 @@ import {
 import type { ListedProfileType } from '@theoremjs/playground/browser';
 import {
 	type Dispatch,
+	Fragment,
 	type ReactNode,
 	type SetStateAction,
 	useContext,
@@ -2170,6 +2172,103 @@ const ON_BLOCK_SEGMENTS: Segment<EgressOnBlock>[] = [
 	{ value: 'refuse_to_user', label: 'Refuse', icon: IconHandStop },
 ];
 
+/** A guardrail's sensitive-data groups, in the kernel's order, as the draft carries them. */
+function groupsOf<Group extends string>(groups: Readonly<Record<Group, boolean>>): Group[] {
+	return Object.keys(groups) as Group[];
+}
+
+function groupLabel(group: string): string {
+	return group === 'ids' ? 'IDs' : group;
+}
+
+type EgressChecksDraft = GuardrailsDraft['egressChecks'];
+type UrlCheckDraft = EgressChecksDraft['images'];
+
+const URL_CHECKS = [
+	{ name: 'images', label: 'Images', hostsLabel: 'Image hosts' },
+	{ name: 'links', label: 'Links', hostsLabel: 'Link hosts' },
+] as const;
+
+/** The bundled checks egress runs on each reply: one switch each, and where a URL may come from. */
+function EgressChecksEditor({
+	checks,
+	onChange,
+}: {
+	checks: EgressChecksDraft;
+	onChange: (next: EgressChecksDraft) => void;
+}) {
+	return (
+		<InspectorSection title="Reply checks" note="What egress looks for. A find blocks the reply.">
+			{groupsOf(checks.sensitive).map((group) => (
+				<SwitchRow
+					key={group}
+					label={`Sensitive ${groupLabel(group)}`}
+					path={`guardrails.egress.checks.sensitive.${group}`}
+					value={checks.sensitive[group]}
+					onChange={(on) => {
+						onChange({ ...checks, sensitive: { ...checks.sensitive, [group]: on } });
+					}}
+				/>
+			))}
+			<SwitchRow
+				label="Boundary"
+				path="guardrails.egress.checks.boundary"
+				value={checks.boundary}
+				onChange={(boundary) => {
+					onChange({ ...checks, boundary });
+				}}
+			/>
+			<SwitchRow
+				label="Injection"
+				path="guardrails.egress.checks.injection"
+				value={checks.injection}
+				onChange={(injection) => {
+					onChange({ ...checks, injection });
+				}}
+			/>
+			{URL_CHECKS.map(({ name, label, hostsLabel }) => {
+				const check = checks[name];
+				const setCheck = (next: Partial<UrlCheckDraft>) => {
+					onChange({ ...checks, [name]: { ...check, ...next } });
+				};
+				return (
+					<Fragment key={name}>
+						<SwitchRow
+							label={label}
+							path={`guardrails.egress.checks.${name}`}
+							value={check.on}
+							onChange={(on) => {
+								setCheck({ on });
+							}}
+						/>
+						{check.on && (
+							<>
+								<NamesRow
+									label={hostsLabel}
+									path={`guardrails.egress.checks.${name}.hosts`}
+									field={`egressChecks.${name}.hosts`}
+									value={check.hosts}
+									onChange={(hosts) => {
+										setCheck({ hosts });
+									}}
+								/>
+								<SwitchRow
+									label="From tools"
+									path={`guardrails.egress.checks.${name}.fromTools`}
+									value={check.fromTools}
+									onChange={(fromTools) => {
+										setCheck({ fromTools });
+									}}
+								/>
+							</>
+						)}
+					</Fragment>
+				);
+			})}
+		</InspectorSection>
+	);
+}
+
 function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
 	const { guardrails } = draft;
 	const set = patch(setDraft, 'guardrails');
@@ -2184,38 +2283,17 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 						set({ sanitizeInput });
 					}}
 				/>
-				<SwitchRow
-					label="Redact IDs"
-					path="guardrails.redactSensitive.ids"
-					value={guardrails.redactSensitive.ids}
-					onChange={(on) => {
-						set({ redactSensitive: { ...guardrails.redactSensitive, ids: on } });
-					}}
-				/>
-				<SwitchRow
-					label="Redact financial"
-					path="guardrails.redactSensitive.financial"
-					value={guardrails.redactSensitive.financial}
-					onChange={(on) => {
-						set({ redactSensitive: { ...guardrails.redactSensitive, financial: on } });
-					}}
-				/>
-				<SwitchRow
-					label="Redact network"
-					path="guardrails.redactSensitive.network"
-					value={guardrails.redactSensitive.network}
-					onChange={(on) => {
-						set({ redactSensitive: { ...guardrails.redactSensitive, network: on } });
-					}}
-				/>
-				<SwitchRow
-					label="Redact credentials"
-					path="guardrails.redactSensitive.credentials"
-					value={guardrails.redactSensitive.credentials}
-					onChange={(on) => {
-						set({ redactSensitive: { ...guardrails.redactSensitive, credentials: on } });
-					}}
-				/>
+				{groupsOf(guardrails.redactSensitive).map((group) => (
+					<SwitchRow
+						key={group}
+						label={`Redact ${groupLabel(group)}`}
+						path={`guardrails.redactSensitive.${group}`}
+						value={guardrails.redactSensitive[group]}
+						onChange={(on) => {
+							set({ redactSensitive: { ...guardrails.redactSensitive, [group]: on } });
+						}}
+					/>
+				))}
 			</InspectorSection>
 			{draftAllows(draft, 'guardrails.canary') && (
 				<InspectorSection
@@ -2246,8 +2324,8 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 			)}
 			<InspectorSection title="Egress" note="Checks each reply before anyone sees it.">
 				<SwitchRow
-					label="Enforce"
-					path="guardrails.egress.enforce"
+					label="Checks"
+					path="guardrails.egress.checks"
 					value={guardrails.egressEnabled}
 					onChange={(egressEnabled) => {
 						set({ egressEnabled });
@@ -2293,6 +2371,14 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 					</>
 				)}
 			</InspectorSection>
+			{guardrails.egressEnabled && (
+				<EgressChecksEditor
+					checks={guardrails.egressChecks}
+					onChange={(egressChecks) => {
+						set({ egressChecks });
+					}}
+				/>
+			)}
 			<InspectorSection
 				title="Network"
 				note="Where HTTP and MCP tools may reach from your host. Playground runs reach public hosts only."
