@@ -2136,11 +2136,35 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 					}}
 				/>
 				<SwitchRow
-					label="Redact"
-					path="guardrails.redactSensitive"
-					value={guardrails.redactSensitive}
-					onChange={(redactSensitive) => {
-						set({ redactSensitive });
+					label="Redact IDs"
+					path="guardrails.redactSensitive.ids"
+					value={guardrails.redactSensitive.ids}
+					onChange={(on) => {
+						set({ redactSensitive: { ...guardrails.redactSensitive, ids: on } });
+					}}
+				/>
+				<SwitchRow
+					label="Redact financial"
+					path="guardrails.redactSensitive.financial"
+					value={guardrails.redactSensitive.financial}
+					onChange={(on) => {
+						set({ redactSensitive: { ...guardrails.redactSensitive, financial: on } });
+					}}
+				/>
+				<SwitchRow
+					label="Redact network"
+					path="guardrails.redactSensitive.network"
+					value={guardrails.redactSensitive.network}
+					onChange={(on) => {
+						set({ redactSensitive: { ...guardrails.redactSensitive, network: on } });
+					}}
+				/>
+				<SwitchRow
+					label="Redact credentials"
+					path="guardrails.redactSensitive.credentials"
+					value={guardrails.redactSensitive.credentials}
+					onChange={(on) => {
+						set({ redactSensitive: { ...guardrails.redactSensitive, credentials: on } });
 					}}
 				/>
 			</InspectorSection>
@@ -2189,19 +2213,6 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 							segments={ON_BLOCK_SEGMENTS}
 							onChange={(onBlock) => {
 								set({ egressOnBlock: onBlock === 'reject_to_agent' ? '' : onBlock });
-							}}
-						/>
-						<NumberRow
-							label="Holdback"
-							path="guardrails.egress.holdback"
-							units="chars"
-							field="egressHoldback"
-							value={guardrails.egressHoldback}
-							min={0}
-							hint="256 by default"
-							isIntegerOnly
-							onChange={(egressHoldback) => {
-								set({ egressHoldback });
 							}}
 						/>
 						{guardrails.egressOnBlock === '' && (
