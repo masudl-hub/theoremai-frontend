@@ -1779,14 +1779,6 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 						set({ voice });
 					}}
 				/>
-				<SwitchRow
-					label="Proactive"
-					path="live.proactiveAudio"
-					value={live.proactiveAudio}
-					onChange={(proactiveAudio) => {
-						set({ proactiveAudio });
-					}}
-				/>
 			</InspectorSection>
 			<InspectorSection title="Session" note="Lets a dropped session pick up where it left off.">
 				<SwitchRow
