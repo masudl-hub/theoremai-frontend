@@ -154,7 +154,7 @@ export function usePlaygroundConnection(
 
 export type PlaygroundConnectionState = ReturnType<typeof usePlaygroundConnection>;
 
-type ProviderModels =
+export type ProviderModels =
 	| { status: 'idle' | 'loading'; models: ProviderModel[] }
 	| { status: 'ready'; models: ProviderModel[] }
 	| { status: 'error'; models: ProviderModel[]; error: string };

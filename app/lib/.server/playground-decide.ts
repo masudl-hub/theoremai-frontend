@@ -22,7 +22,8 @@ import {
 } from '@theoremjs/playground';
 import { runPlaygroundDecision } from '@theoremjs/playground/runtime';
 import { readBody } from '@theoremjs/react/server';
-import { type PlaygroundDecideAllowance, takeAllowance } from './playground-decide-allowance';
+import { takeAllowance } from './playground-allowance';
+import { allowanceStore, type PlaygroundDecideAllowance } from './playground-decide-allowance';
 import { playgroundDemoVault } from './playground-turn';
 
 export type PlaygroundDecideEnv = {
@@ -46,7 +47,11 @@ function spentCap(
 		// lexicon-exempt: developer contract error
 		throw new TheoremError('config', 'playground decide: no DECIDE_ALLOWANCE binding');
 	}
-	return takeAllowance(allowance, 'decision', request.headers.get('CF-Connecting-IP') ?? 'local');
+	return takeAllowance(
+		allowanceStore(allowance),
+		'decision',
+		request.headers.get('CF-Connecting-IP') ?? 'local',
+	);
 }
 
 export async function playgroundDecide(

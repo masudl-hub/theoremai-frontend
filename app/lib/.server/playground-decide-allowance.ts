@@ -5,11 +5,7 @@
  */
 
 import { DurableObject } from 'cloudflare:workers';
-import {
-	type AllowanceKind,
-	type AllowanceStore,
-	takeAllowance as takeFrom,
-} from './playground-allowance';
+import type { AllowanceStore } from './playground-allowance';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const COUNT_KEY = 'count';
@@ -36,13 +32,4 @@ export function allowanceStore(
 	namespace: DurableObjectNamespace<PlaygroundDecideAllowance>,
 ): AllowanceStore {
 	return (name) => namespace.get(namespace.idFromName(name));
-}
-
-/** Spends one of today's `kind` for `address`, then one of the site's; the spent day's cap, or `null` when both had room. */
-export function takeAllowance(
-	namespace: DurableObjectNamespace<PlaygroundDecideAllowance>,
-	kind: AllowanceKind,
-	address: string,
-): Promise<number | null> {
-	return takeFrom(allowanceStore(namespace), kind, address);
 }

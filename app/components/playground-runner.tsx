@@ -97,7 +97,7 @@ export function PlaygroundRunner({
 	);
 }
 
-type ChatProps = ComponentProps<typeof TheoremChat>;
+export type ChatProps = ComponentProps<typeof TheoremChat>;
 type RunProps = Omit<Parameters<typeof PlaygroundRunner>[0], 'mode' | 'onActivity'> & {
 	traces: TraceFeed;
 	note: () => void;

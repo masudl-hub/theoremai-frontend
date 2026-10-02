@@ -16,7 +16,8 @@ import {
 } from '@theoremjs/react/server';
 import type { SiteEnv } from '../../cloudflare';
 import { badRequestJson, errorMessage, ndjsonEventStream } from './ndjson-stream';
-import { takeAllowance } from './playground-decide-allowance';
+import { takeAllowance } from './playground-allowance';
+import { allowanceStore } from './playground-decide-allowance';
 import { playgroundSteerInbox } from './playground-steer';
 import {
 	type PlaygroundTurnEnv,
@@ -116,7 +117,7 @@ async function takeCall(request: Request, env: SiteEnv): Promise<void> {
 		throw new TheoremError('config', 'playground call: no DECIDE_ALLOWANCE binding');
 	}
 	const address = request.headers.get('CF-Connecting-IP') ?? 'local';
-	const cap = await takeAllowance(env.DECIDE_ALLOWANCE, 'call', address);
+	const cap = await takeAllowance(allowanceStore(env.DECIDE_ALLOWANCE), 'call', address);
 	if (cap !== null) {
 		// lexicon-exempt: internal diagnostic; the user reads quota.exhausted
 		throw new TheoremError('rate_limit', "playground call: today's calls are spent", {

@@ -6,7 +6,7 @@ import { createSurfaceRuntime, type SurfaceLedgerEntry } from '@theoremjs/agents
 
 const LEDGER_KEY = 'theorem.th30.ledger.v1';
 
-type NoteListener = (line: string) => void;
+export type NoteListener = (line: string) => void;
 const noteListeners = new Set<NoteListener>();
 let opener: ((surfaceId: string) => void) | null = null;
 

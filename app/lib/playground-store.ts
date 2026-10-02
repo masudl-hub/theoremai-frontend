@@ -29,14 +29,17 @@ export interface DraftChange {
 	sections: string[];
 }
 
-interface StoredDraft {
-	v: typeof VERSION;
+/** A kept draft, read back: the draft, its revision and the node that was open. */
+export interface RestoredPlayground {
 	draft: PlaygroundDraft;
 	revision: number;
 	selectedId: string;
 }
 
-export type RestoredPlayground = Omit<StoredDraft, 'v'>;
+/** What sessionStorage holds: a restored playground plus its format version. */
+interface StoredDraft extends RestoredPlayground {
+	v: typeof VERSION;
+}
 
 function session(): Storage | null {
 	try {
@@ -188,13 +191,6 @@ export function createPlaygroundStore(initial: RestoredPlayground) {
 			write();
 		},
 	};
-}
-
-/** Clears what this tab kept, the draft and the conversation. */
-export function clearPlaygroundStorage(): void {
-	const store = session();
-	store?.removeItem(DRAFT_KEY);
-	store?.removeItem(CHAT_KEY);
 }
 
 /** True for a value that carries media bytes: a long base64 `data` field or a data: URL. */

@@ -70,6 +70,9 @@ import { type PlaygroundSurfaceHost, playgroundSurface } from '@theoremjs/playgr
 import { type TheoremChatHandle, useDisclosureMotion } from '@theoremjs/react/ui';
 import {
 	type CSSProperties,
+	type Dispatch,
+	type RefObject,
+	type SetStateAction,
 	useCallback,
 	useEffect,
 	useMemo,
@@ -94,6 +97,7 @@ import { KERNEL_PACKAGE_VERSION } from '../lib/kernel-version';
 import {
 	clearConversation,
 	createPlaygroundStore,
+	type PlaygroundStore,
 	type RestoredPlayground,
 	restoreConversation,
 	restorePlayground,
@@ -399,6 +403,172 @@ function isTraced(payload: PlaygroundRunPayload | null): boolean {
 	return playgroundInterface(payload).observability?.record === true;
 }
 
+/** What is left of `height` under the code view's chrome. */
+function heightBelow(height: number | undefined, chrome: number | undefined): number | undefined {
+	return height === undefined ? undefined : height - (chrome ?? 0);
+}
+
+/** The frame's class; on a phone it names the sheet open over the editor. */
+function frameClass(sheet: 'tree' | 'preview' | null): string {
+	return sheet ? `playground-frame playground-${sheet}-open` : 'playground-frame';
+}
+
+/** Two badges per list row at the panel's default width or wider; one once it is narrowed. */
+function badgesPerRow(panelSize: number, layoutWidth: number | undefined): 1 | 2 {
+	if (layoutWidth === undefined) return 2;
+	return panelSize >= Math.round((SIDE_DEFAULT_PERCENT / 100) * layoutWidth) ? 2 : 1;
+}
+
+type Compiled = ReturnType<typeof compilePlayground>;
+
+/** The last draft that compiled; it holds while the current one has issues. */
+function useLastGood(compiled: Compiled): Extract<Compiled, { ok: true }> | null {
+	const [lastGood, setLastGood] = useState(compiled.ok ? compiled : null);
+	if (compiled.ok && compiled !== lastGood) setLastGood(compiled);
+	return compiled.ok ? compiled : lastGood;
+}
+
+/** The editor/code button, by the view it leaves. */
+const VIEW_TOGGLE = {
+	editor: { label: 'Code', icon: IconCode, tooltip: 'Show the code', next: 'code' },
+	code: {
+		label: 'Editor',
+		icon: IconAdjustmentsHorizontal,
+		tooltip: 'Show the editor',
+		next: 'editor',
+	},
+} as const;
+
+/** The draft with every use of key slot `from` pointed at `to`; `''` lets go of it. */
+function swapKeySlot(draft: PlaygroundDraft, from: string, to: string): PlaygroundDraft {
+	const swap = <Slot extends string | undefined>(slot: Slot) => (slot === from ? to : slot) as Slot;
+	return {
+		...draft,
+		models: {
+			...draft.models,
+			key: swap(draft.models.key),
+			fallbackKey: swap(draft.models.fallbackKey),
+		},
+		modelBindings: draft.modelBindings.map((binding) => ({
+			...binding,
+			keySlot: swap(binding.keySlot),
+			fallbackKeySlot: swap(binding.fallbackKeySlot),
+		})),
+	};
+}
+
+/** "1 issue" or "N issues" while the draft doesn't compile; nothing once it does. */
+function issueCount(compiled: ReturnType<typeof compilePlayground>): string | undefined {
+	if (compiled.ok) return undefined;
+	return compiled.issues.length === 1 ? '1 issue' : `${String(compiled.issues.length)} issues`;
+}
+
+/** What th30 is told about the draft on screen. */
+function th30Report(
+	draft: PlaygroundDraft,
+	compiled: ReturnType<typeof compilePlayground>,
+	section: string | undefined,
+) {
+	return {
+		agent: draft.identity.handle || draft.identity.agentId || 'unnamed',
+		type: draft.identity.profileType || 'not chosen',
+		issues: compiled.ok ? 0 : compiled.issues.length,
+		section,
+	};
+}
+
+/** What th30's surface reaches on the page beyond the store; read through a ref so it is always the latest. */
+type SurfacePage = {
+	mode: ReturnType<typeof usePlaygroundConnection>['mode'];
+	connection: ReturnType<typeof usePlaygroundConnection>;
+	replaceDraft: (next: PlaygroundDraft, message: string, by?: 'th30' | 'visitor') => void;
+	copy: (text: string, what: string) => void;
+	setSelectedId: (id: string) => void;
+	setKeysOpen: (open: boolean) => void;
+	setConversation: Dispatch<SetStateAction<number>>;
+};
+
+/** The playground as th30's surface host: the draft from the store, everything else from the page. */
+function playgroundSurfaceHost(
+	store: PlaygroundStore,
+	page: RefObject<SurfacePage>,
+	chat: RefObject<TheoremChatHandle | null>,
+): PlaygroundSurfaceHost {
+	const compileNow = () => compilePlayground(store.getDraft(), page.current.mode);
+	return {
+		getDraft: store.getDraft,
+		getRevision: store.getRevision,
+		getMode: () => page.current.mode,
+		update: (next) => store.update(next, 'th30'),
+		replaceDraft: (next, message) => {
+			page.current.replaceDraft(next, message, 'th30');
+		},
+		select: (id) => {
+			page.current.setSelectedId(id);
+			store.select(id);
+		},
+		changesSince: (since) =>
+			store.changesSince(since).map((change) => ({
+				revision: change.revision,
+				by: change.by === 'th30' ? 'agent' : 'person',
+				sections: change.sections,
+			})),
+		subscribe: store.subscribe,
+		key: (slot) => page.current.connection.vault[slot] ?? '',
+		openKeys: () => {
+			page.current.setKeysOpen(true);
+		},
+		testKey: async (slot) => {
+			const key = page.current.connection.vault[slot]?.trim();
+			if (!key) return { ok: false, error: 'No key in this slot.' };
+			try {
+				const response = await fetch('/api/playground/test-key', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ key }),
+				});
+				return await response.json<unknown>();
+			} catch {
+				return { ok: false, error: "Couldn't reach the playground server." };
+			}
+		},
+		toolCredential,
+		testTool: (key, input) => {
+			const tool = store.getDraft().toolSpecs.find((candidate) => candidate.key === key);
+			if (!tool) return Promise.resolve({ ok: false, error: 'No such tool.' });
+			const sample = input ?? sampleToolInput(tool.toolName, tool.inputJson) ?? {};
+			return runToolProbe(tool, JSON.stringify(sample), toolCredential(key));
+		},
+		send: (text) => chat.current?.send(text) ?? Promise.resolve(null),
+		newConversation: () => {
+			clearConversation();
+			page.current.setConversation((count) => count + 1);
+		},
+		launch: () => {
+			const result = compileNow();
+			if (!result.ok) return;
+			openInNewTab({
+				...runPayload(result),
+				connectionMode: page.current.mode,
+				localBaseUrl: page.current.connection.local.baseUrl,
+			});
+		},
+		exportAgent: (format) => {
+			const result = compileNow();
+			if (!result.ok) return Promise.resolve(false);
+			const code = playgroundSource(result);
+			if (format === 'tsx') {
+				download(`${result.agentId}.tsx`, exportBundle(result, code));
+			} else if (format === 'copy') {
+				page.current.copy(exportBundle(result, code), 'the .tsx');
+			} else {
+				page.current.copy(llmBrief(result, code), 'the .tsx and its brief');
+			}
+			return Promise.resolve(true);
+		},
+	};
+}
+
 /**
  * The profile tree beside the editor (or code) for the draft in a panel on the left; the compiled
  * agent on the right, under Export and Run. The draft compiles as it changes; while it doesn't
@@ -448,12 +618,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 		containerRef: layoutRef,
 		autoSaveId: 'playground.panel',
 	});
-	/** Two badges per list row at the panel's default width or wider; one once it is narrowed. */
-	const listBadges =
-		layoutWidth === undefined ||
-		sidePanel.size >= Math.round((SIDE_DEFAULT_PERCENT / 100) * layoutWidth)
-			? 2
-			: 1;
+	const listBadges = badgesPerRow(sidePanel.size, layoutWidth);
 	const [selectedId, setSelectedId] = useState(loaderData.start.selectedId);
 	useEffect(() => {
 		store.select(selectedId);
@@ -472,14 +637,13 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	}, [issueReveal]);
 	const [bodyRef, bodyHeight] = useMeasure(measureHeight);
 	const [codeRef, codeChrome] = useMeasure(measureCodeChrome);
-	const codeHeight = bodyHeight === undefined ? undefined : bodyHeight - (codeChrome ?? 0);
+	const codeHeight = heightBelow(bodyHeight, codeChrome);
 	const selected = playgroundNodeRef(draft, selectedId) ? selectedId : 'identity';
 	const settledDraft = useDebounced(draft, COMPILE_DEBOUNCE_MS);
 	const compiled = useMemo(() => compilePlayground(settledDraft, mode), [settledDraft, mode]);
 	// Only a draft that compiles changes the preview; while one has issues, the last good agent and its
 	// conversation stay put.
-	const [lastGood, setLastGood] = useState(compiled.ok ? compiled : null);
-	if (compiled.ok && compiled !== lastGood) setLastGood(compiled);
+	const lastGood = useLastGood(compiled);
 	const payload = useMemo(
 		() =>
 			lastGood
@@ -503,11 +667,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	/** The runner that last sent something; a new one (cleared, or another mode) has no history. */
 	const [usedRun, setUsedRun] = useState<string>();
 	const source = useMemo(() => (compiled.ok ? playgroundSource(compiled) : null), [compiled]);
-	const issues = compiled.ok
-		? undefined
-		: compiled.issues.length === 1
-			? '1 issue'
-			: `${String(compiled.issues.length)} issues`;
+	const issues = issueCount(compiled);
 	const blocked = issues && `Fix ${issues} first`;
 	const toast = useToast();
 	// Once, on arrival: say when a kept draft was set aside for a docs seed, or couldn't be read back.
@@ -582,95 +742,21 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	const pageRef = useRef(page);
 	pageRef.current = page;
 	// th30 sees and works in the playground through its surface, mounted while the page is open.
-	useEffect(() => {
-		const compileNow = () => compilePlayground(store.getDraft(), pageRef.current.mode);
-		const host: PlaygroundSurfaceHost = {
-			getDraft: store.getDraft,
-			getRevision: store.getRevision,
-			getMode: () => pageRef.current.mode,
-			update: (next) => store.update(next, 'th30'),
-			replaceDraft: (next, message) => {
-				pageRef.current.replaceDraft(next, message, 'th30');
-			},
-			select: (id) => {
-				pageRef.current.setSelectedId(id);
-				store.select(id);
-			},
-			changesSince: (since) =>
-				store.changesSince(since).map((change) => ({
-					revision: change.revision,
-					by: change.by === 'th30' ? 'agent' : 'person',
-					sections: change.sections,
-				})),
-			subscribe: store.subscribe,
-			key: (slot) => pageRef.current.connection.vault[slot] ?? '',
-			openKeys: () => {
-				pageRef.current.setKeysOpen(true);
-			},
-			testKey: async (slot) => {
-				const key = pageRef.current.connection.vault[slot]?.trim();
-				if (!key) return { ok: false, error: 'No key in this slot.' };
-				try {
-					const response = await fetch('/api/playground/test-key', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ key }),
-					});
-					return await response.json<unknown>();
-				} catch {
-					return { ok: false, error: "Couldn't reach the playground server." };
-				}
-			},
-			toolCredential,
-			testTool: (key, input) => {
-				const tool = store.getDraft().toolSpecs.find((candidate) => candidate.key === key);
-				if (!tool) return Promise.resolve({ ok: false, error: 'No such tool.' });
-				const sample = input ?? sampleToolInput(tool.toolName, tool.inputJson) ?? {};
-				return runToolProbe(tool, JSON.stringify(sample), toolCredential(key));
-			},
-			send: (text) => chatRef.current?.send(text) ?? Promise.resolve(null),
-			newConversation: () => {
-				clearConversation();
-				pageRef.current.setConversation((count) => count + 1);
-			},
-			launch: () => {
-				const result = compileNow();
-				if (!result.ok) return;
-				openInNewTab({
-					...runPayload(result),
-					connectionMode: pageRef.current.mode,
-					localBaseUrl: pageRef.current.connection.local.baseUrl,
-				});
-			},
-			exportAgent: (format) => {
-				const result = compileNow();
-				if (!result.ok) return Promise.resolve(false);
-				const code = playgroundSource(result);
-				if (format === 'tsx') {
-					download(`${result.agentId}.tsx`, exportBundle(result, code));
-				} else if (format === 'copy') {
-					pageRef.current.copy(exportBundle(result, code), 'the .tsx');
-				} else {
-					pageRef.current.copy(llmBrief(result, code), 'the .tsx and its brief');
-				}
-				return Promise.resolve(true);
-			},
-		};
-		return th30Surfaces.mount(playgroundSurface(host));
-	}, [store]);
+	useEffect(
+		() => th30Surfaces.mount(playgroundSurface(playgroundSurfaceHost(store, pageRef, chatRef))),
+		[store],
+	);
 
 	const title = editorTitle(draft, selected);
-	useReportTh30Playground({
-		agent: draft.identity.handle || draft.identity.agentId || 'unnamed',
-		type: draft.identity.profileType || 'not chosen',
-		issues: compiled.ok ? 0 : compiled.issues.length,
-		section: title,
-	});
+	useReportTh30Playground(th30Report(draft, compiled, title));
+	const heading = keysOpen ? 'Keys' : title;
+	const viewToggle = VIEW_TOGGLE[editorView];
+	const initialChat = runKey === resume.runKey ? resume.chat : undefined;
 
 	return (
 		<Layout
 			ref={layoutCallbackRef}
-			className={sheet ? `playground-frame playground-${sheet}-open` : 'playground-frame'}
+			className={frameClass(sheet)}
 			padding={0}
 			start={
 				<>
@@ -751,9 +837,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 													/>
 												</span>
 												<StackItem size="fill">
-													{(keysOpen ? 'Keys' : title) && (
-														<Heading level={4}>{keysOpen ? 'Keys' : title}</Heading>
-													)}
+													{heading && <Heading level={4}>{heading}</Heading>}
 												</StackItem>
 												{issues && !compiled.ok && (
 													<Token
@@ -817,18 +901,13 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 													}}
 												/>
 												<IconButton
-													label={editorView === 'editor' ? 'Code' : 'Editor'}
+													label={viewToggle.label}
 													variant="ghost"
-													icon={
-														<Icon
-															icon={editorView === 'editor' ? IconCode : IconAdjustmentsHorizontal}
-															size="sm"
-														/>
-													}
-													tooltip={editorView === 'editor' ? 'Show the code' : 'Show the editor'}
+													icon={<Icon icon={viewToggle.icon} size="sm" />}
+													tooltip={viewToggle.tooltip}
 													onClick={() => {
 														setKeysOpen(false);
-														setEditorView(editorView === 'editor' ? 'code' : 'editor');
+														setEditorView(viewToggle.next);
 													}}
 												/>
 												<span className="playground-phone">
@@ -857,42 +936,10 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 															);
 														}}
 														onRenameSlot={(from, to) => {
-															setDraft((current) => ({
-																...current,
-																models: {
-																	...current.models,
-																	key: current.models.key === from ? to : current.models.key,
-																	fallbackKey:
-																		current.models.fallbackKey === from
-																			? to
-																			: current.models.fallbackKey,
-																},
-																modelBindings: current.modelBindings.map((binding) => ({
-																	...binding,
-																	keySlot: binding.keySlot === from ? to : binding.keySlot,
-																	fallbackKeySlot:
-																		binding.fallbackKeySlot === from ? to : binding.fallbackKeySlot,
-																})),
-															}));
+															setDraft((current) => swapKeySlot(current, from, to));
 														}}
 														onRemoveSlot={(slot) => {
-															setDraft((current) => ({
-																...current,
-																models: {
-																	...current.models,
-																	key: current.models.key === slot ? '' : current.models.key,
-																	fallbackKey:
-																		current.models.fallbackKey === slot
-																			? ''
-																			: current.models.fallbackKey,
-																},
-																modelBindings: current.modelBindings.map((binding) => ({
-																	...binding,
-																	keySlot: binding.keySlot === slot ? '' : binding.keySlot,
-																	fallbackKeySlot:
-																		binding.fallbackKeySlot === slot ? '' : binding.fallbackKeySlot,
-																})),
-															}));
+															setDraft((current) => swapKeySlot(current, slot, ''));
 														}}
 													/>
 												</ScrollableArea>
@@ -1065,7 +1112,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 									onActivity={() => {
 										setUsedRun(runKey);
 									}}
-									initialChat={runKey === resume.runKey ? resume.chat : undefined}
+									initialChat={initialChat}
 									onChatChange={saveConversation}
 									chatRef={chatRef}
 								/>
