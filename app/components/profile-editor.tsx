@@ -189,7 +189,6 @@ import {
 import type { ListedProfileType } from '@theoremjs/playground/browser';
 import {
 	type Dispatch,
-	Fragment,
 	type ReactNode,
 	type SetStateAction,
 	useContext,
@@ -2172,100 +2171,121 @@ const ON_BLOCK_SEGMENTS: Segment<EgressOnBlock>[] = [
 	{ value: 'refuse_to_user', label: 'Refuse', icon: IconHandStop },
 ];
 
-/** A guardrail's sensitive-data groups, in the kernel's order, as the draft carries them. */
-function groupsOf<Group extends string>(groups: Readonly<Record<Group, boolean>>): Group[] {
-	return Object.keys(groups) as Group[];
-}
-
-function groupLabel(group: string): string {
-	return group === 'ids' ? 'IDs' : group;
-}
-
 type EgressChecksDraft = GuardrailsDraft['egressChecks'];
-type UrlCheckDraft = EgressChecksDraft['images'];
+type SensitiveGroup = keyof GuardrailsDraft['redactSensitive'];
 
-const URL_CHECKS = [
-	{ name: 'images', label: 'Images', hostsLabel: 'Image hosts' },
-	{ name: 'links', label: 'Links', hostsLabel: 'Link hosts' },
-] as const;
+/** Every sensitive-data group, so a group the kernel adds fails the type check until it has a row. */
+const SENSITIVE_FLAG_TEXT: Record<SensitiveGroup, Omit<Flag<SensitiveGroup>, 'key'>> = {
+	ids: { label: 'IDs', description: 'SSN, ITIN and EIN numbers.' },
+	financial: { label: 'Financial', description: 'IBANs and card numbers.' },
+	network: { label: 'Network', description: 'IP addresses.' },
+	credentials: { label: 'Credentials', description: 'API keys, tokens and private keys.' },
+};
+const SENSITIVE_FLAGS = Object.entries(SENSITIVE_FLAG_TEXT).map(([key, text]) => ({
+	key: key as SensitiveGroup,
+	...text,
+}));
 
-/** The bundled checks egress runs on each reply: one switch each, and where a URL may come from. */
-function EgressChecksEditor({
+type ReplyCheck = 'boundary' | 'injection' | 'images' | 'links';
+const REPLY_CHECK_FLAGS: Flag<ReplyCheck>[] = [
+	{
+		key: 'boundary',
+		label: 'Boundary',
+		description: 'The markers around user data, repeated back.',
+	},
+	{
+		key: 'injection',
+		label: 'Injection',
+		description: 'Prompt-injection phrasing, plain or disguised.',
+	},
+	{ key: 'images', label: 'Images', description: "Images that load a URL the model wasn't given." },
+	{ key: 'links', label: 'Links', description: "Links to a URL the model wasn't given." },
+];
+
+function replyChecks(checks: EgressChecksDraft): Record<ReplyCheck, boolean> {
+	return {
+		boundary: checks.boundary,
+		injection: checks.injection,
+		images: checks.images.on,
+		links: checks.links.on,
+	};
+}
+
+function withReplyChecks(
+	checks: EgressChecksDraft,
+	on: Record<ReplyCheck, boolean>,
+): EgressChecksDraft {
+	return {
+		...checks,
+		boundary: on.boundary,
+		injection: on.injection,
+		images: { ...checks.images, on: on.images },
+		links: { ...checks.links, on: on.links },
+	};
+}
+
+/** What egress's bundled checks look for, as the checklists the other facets use. */
+function EgressChecksSections({
 	checks,
 	onChange,
 }: {
 	checks: EgressChecksDraft;
 	onChange: (next: EgressChecksDraft) => void;
 }) {
+	const urls = (['images', 'links'] as const).filter((name) => checks[name].on);
 	return (
-		<InspectorSection title="Reply checks" note="What egress looks for. A find blocks the reply.">
-			{groupsOf(checks.sensitive).map((group) => (
-				<SwitchRow
-					key={group}
-					label={`Sensitive ${groupLabel(group)}`}
-					path={`guardrails.egress.checks.sensitive.${group}`}
-					value={checks.sensitive[group]}
-					onChange={(on) => {
-						onChange({ ...checks, sensitive: { ...checks.sensitive, [group]: on } });
+		<>
+			<InspectorSection title="Block" note="What a reply can't carry.">
+				<FlagList
+					label="Sensitive"
+					path="guardrails.egress.checks.sensitive"
+					flags={SENSITIVE_FLAGS}
+					value={checks.sensitive}
+					onChange={(sensitive) => {
+						onChange({ ...checks, sensitive });
 					}}
 				/>
-			))}
-			<SwitchRow
-				label="Boundary"
-				path="guardrails.egress.checks.boundary"
-				value={checks.boundary}
-				onChange={(boundary) => {
-					onChange({ ...checks, boundary });
-				}}
-			/>
-			<SwitchRow
-				label="Injection"
-				path="guardrails.egress.checks.injection"
-				value={checks.injection}
-				onChange={(injection) => {
-					onChange({ ...checks, injection });
-				}}
-			/>
-			{URL_CHECKS.map(({ name, label, hostsLabel }) => {
-				const check = checks[name];
-				const setCheck = (next: Partial<UrlCheckDraft>) => {
-					onChange({ ...checks, [name]: { ...check, ...next } });
-				};
-				return (
-					<Fragment key={name}>
-						<SwitchRow
-							label={label}
-							path={`guardrails.egress.checks.${name}`}
-							value={check.on}
-							onChange={(on) => {
-								setCheck({ on });
+				<FlagList
+					label="Checks"
+					path="guardrails.egress.checks"
+					flags={REPLY_CHECK_FLAGS}
+					value={replyChecks(checks)}
+					onChange={(on) => {
+						onChange(withReplyChecks(checks, on));
+					}}
+				/>
+			</InspectorSection>
+			{urls.length > 0 && (
+				<InspectorSection
+					title="Given URLs"
+					note="Where an image or link may point beyond what the model was given."
+				>
+					{urls.map((name) => (
+						<NamesRow
+							key={name}
+							label={name === 'images' ? 'Image hosts' : 'Link hosts'}
+							path={`guardrails.egress.checks.${name}.hosts`}
+							field={`egressChecks.${name}.hosts`}
+							value={checks[name].hosts}
+							onChange={(hosts) => {
+								onChange({ ...checks, [name]: { ...checks[name], hosts } });
 							}}
 						/>
-						{check.on && (
-							<>
-								<NamesRow
-									label={hostsLabel}
-									path={`guardrails.egress.checks.${name}.hosts`}
-									field={`egressChecks.${name}.hosts`}
-									value={check.hosts}
-									onChange={(hosts) => {
-										setCheck({ hosts });
-									}}
-								/>
-								<SwitchRow
-									label="From tools"
-									path={`guardrails.egress.checks.${name}.fromTools`}
-									value={check.fromTools}
-									onChange={(fromTools) => {
-										setCheck({ fromTools });
-									}}
-								/>
-							</>
-						)}
-					</Fragment>
-				);
-			})}
-		</InspectorSection>
+					))}
+					{urls.map((name) => (
+						<SwitchRow
+							key={name}
+							label={name === 'images' ? 'Image tool URLs' : 'Link tool URLs'}
+							path={`guardrails.egress.checks.${name}.fromTools`}
+							value={checks[name].fromTools}
+							onChange={(fromTools) => {
+								onChange({ ...checks, [name]: { ...checks[name], fromTools } });
+							}}
+						/>
+					))}
+				</InspectorSection>
+			)}
+		</>
 	);
 }
 
@@ -2283,17 +2303,17 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 						set({ sanitizeInput });
 					}}
 				/>
-				{groupsOf(guardrails.redactSensitive).map((group) => (
-					<SwitchRow
-						key={group}
-						label={`Redact ${groupLabel(group)}`}
-						path={`guardrails.redactSensitive.${group}`}
-						value={guardrails.redactSensitive[group]}
-						onChange={(on) => {
-							set({ redactSensitive: { ...guardrails.redactSensitive, [group]: on } });
-						}}
-					/>
-				))}
+			</InspectorSection>
+			<InspectorSection title="Redact" note="Masked in what comes in.">
+				<FlagList
+					label="Redact"
+					path="guardrails.redactSensitive"
+					flags={SENSITIVE_FLAGS}
+					value={guardrails.redactSensitive}
+					onChange={(redactSensitive) => {
+						set({ redactSensitive });
+					}}
+				/>
 			</InspectorSection>
 			{draftAllows(draft, 'guardrails.canary') && (
 				<InspectorSection
@@ -2372,7 +2392,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 				)}
 			</InspectorSection>
 			{guardrails.egressEnabled && (
-				<EgressChecksEditor
+				<EgressChecksSections
 					checks={guardrails.egressChecks}
 					onChange={(egressChecks) => {
 						set({ egressChecks });
