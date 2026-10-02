@@ -2074,19 +2074,29 @@ function ResumptionRow({
 											header: 'After',
 											width: proportional(1),
 											renderCell: ({ kind }) => (
-												<Tooltip content={kinds?.[kind]}>{STOP_KIND_LABEL[kind]}</Tooltip>
+												<Tooltip content={kinds?.[kind]} hasHoverIndication={false}>
+													{STOP_KIND_LABEL[kind]}
+												</Tooltip>
 											),
 										},
 										{
 											key: 'offer',
-											header: <Tooltip content={offerDoc}>Offer</Tooltip>,
+											header: (
+												<Tooltip content={offerDoc} hasHoverIndication={false}>
+													Offer
+												</Tooltip>
+											),
 											width: pixel(64),
 											align: 'center',
 											renderCell: ({ kind }) => box(kind, 'offer'),
 										},
 										{
 											key: 'auto',
-											header: <Tooltip content={autoDoc}>Auto</Tooltip>,
+											header: (
+												<Tooltip content={autoDoc} hasHoverIndication={false}>
+													Auto
+												</Tooltip>
+											),
 											width: pixel(64),
 											align: 'center',
 											renderCell: ({ kind }) => box(kind, 'auto'),
@@ -2175,31 +2185,23 @@ type EgressChecksDraft = GuardrailsDraft['egressChecks'];
 type SensitiveGroup = keyof GuardrailsDraft['redactSensitive'];
 
 /** Every sensitive-data group, so a group the kernel adds fails the type check until it has a row. */
-const SENSITIVE_FLAG_TEXT: Record<SensitiveGroup, Omit<Flag<SensitiveGroup>, 'key'>> = {
-	ids: { label: 'IDs', description: 'SSN, ITIN and EIN numbers.' },
-	financial: { label: 'Financial', description: 'IBANs and card numbers.' },
-	network: { label: 'Network', description: 'IP addresses.' },
-	credentials: { label: 'Credentials', description: 'API keys, tokens and private keys.' },
+const SENSITIVE_LABEL: Record<SensitiveGroup, string> = {
+	ids: 'IDs',
+	financial: 'Financial',
+	network: 'Network',
+	credentials: 'Credentials',
 };
-const SENSITIVE_FLAGS = Object.entries(SENSITIVE_FLAG_TEXT).map(([key, text]) => ({
+const SENSITIVE_FLAGS = Object.entries(SENSITIVE_LABEL).map(([key, label]) => ({
 	key: key as SensitiveGroup,
-	...text,
+	label,
 }));
 
 type ReplyCheck = 'boundary' | 'injection' | 'images' | 'links';
 const REPLY_CHECK_FLAGS: Flag<ReplyCheck>[] = [
-	{
-		key: 'boundary',
-		label: 'Boundary',
-		description: 'The markers around user data, repeated back.',
-	},
-	{
-		key: 'injection',
-		label: 'Injection',
-		description: 'Prompt-injection phrasing, plain or disguised.',
-	},
-	{ key: 'images', label: 'Images', description: "Images that load a URL the model wasn't given." },
-	{ key: 'links', label: 'Links', description: "Links to a URL the model wasn't given." },
+	{ key: 'boundary', label: 'Boundary' },
+	{ key: 'injection', label: 'Injection' },
+	{ key: 'images', label: 'Images' },
+	{ key: 'links', label: 'Links' },
 ];
 
 function replyChecks(checks: EgressChecksDraft): Record<ReplyCheck, boolean> {
@@ -2479,38 +2481,21 @@ const TRACE_SEGMENTS: Segment<'playground' | 'off'>[] = [
 interface Flag<K extends string> {
 	key: K;
 	label: string;
-	description: string;
 }
 
 const INCLUDE_FLAGS: Flag<keyof ObservabilityDraft['include']>[] = [
-	{ key: 'upstreamLog', label: 'Upstream log', description: 'Each provider row as it arrived.' },
-	{
-		key: 'outboundWire',
-		label: 'Outbound wire',
-		description: 'The request body sent on each try.',
-	},
-	{
-		key: 'evidenceRaw',
-		label: 'Raw evidence',
-		description: "The provider's own grounding payload.",
-	},
-	{ key: 'usage', label: 'Usage', description: 'Token counts.' },
-	{ key: 'guardrailDecisions', label: 'Decisions', description: 'What each guardrail decided.' },
-	{
-		key: 'guardrailMatchPreview',
-		label: 'Match preview',
-		description: 'The text a guardrail matched. For debugging.',
-	},
+	{ key: 'upstreamLog', label: 'Upstream log' },
+	{ key: 'outboundWire', label: 'Outbound wire' },
+	{ key: 'evidenceRaw', label: 'Raw evidence' },
+	{ key: 'usage', label: 'Usage' },
+	{ key: 'guardrailDecisions', label: 'Decisions' },
+	{ key: 'guardrailMatchPreview', label: 'Match preview' },
 ];
 
 const SCRUB_FLAGS: Flag<keyof ObservabilityDraft['scrub']>[] = [
-	{ key: 'sensitive', label: 'Sensitive', description: 'Credentials and personal details.' },
-	{
-		key: 'injection',
-		label: 'Injection',
-		description: 'Injection attempts in the stored request.',
-	},
-	{ key: 'canary', label: 'Canary', description: "The turn's canary token." },
+	{ key: 'sensitive', label: 'Sensitive' },
+	{ key: 'injection', label: 'Injection' },
+	{ key: 'canary', label: 'Canary' },
 ];
 
 /** A set of on-or-off flags as one checklist: the ones on are checked. */
@@ -2522,7 +2507,7 @@ function FlagList<K extends string>({
 	onChange,
 }: {
 	label: string;
-	/** The schema path the flags sit under; each flag's own entry shows on hover. */
+	/** The schema path the flags sit under; each flag's own entry shows under it. */
 	path: string;
 	flags: readonly Flag<K>[];
 	value: Record<K, boolean>;
@@ -2544,8 +2529,9 @@ function FlagList<K extends string>({
 				<CheckboxListItem
 					key={flag.key}
 					value={flag.key}
-					label={<Tooltip content={fieldMeta(`${path}.${flag.key}`)?.doc}>{flag.label}</Tooltip>}
-					description={flag.description}
+					label={flag.label}
+					// A node, not a string, so the kernel's whole entry wraps instead of truncating.
+					description={<Text type="supporting">{fieldMeta(`${path}.${flag.key}`)?.doc}</Text>}
 				/>
 			))}
 		</CheckboxList>
