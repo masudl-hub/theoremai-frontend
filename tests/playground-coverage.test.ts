@@ -8,8 +8,7 @@ import { PROFILE_FIELDS } from '@theoremjs/agents';
  * these is left out with it. Anything else in the kernel's catalog needs a row.
  */
 const NOT_IN_PLAYGROUND: Record<string, string> = {
-	'models.*.compaction':
-		'Needs a second registered profile to write the summary; the playground builds only one.',
+	'models.*.compaction.profile': 'The playground builds one agent, so it compacts itself.',
 	'tools.allow': 'Built from the tool list: every tool added is allowed.',
 	'tools.t1Policy': 'A function that picks T1 tools each turn, written in code.',
 	'inputs.state': 'Set by the Decision profile type.',

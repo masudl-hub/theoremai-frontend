@@ -135,6 +135,7 @@ import {
 	type AcceptSection,
 	acceptSections,
 	allowedBuiltinsForGemini,
+	COMPACTION_DRAFT_DEFAULTS,
 	type DecisionQuestionDraft,
 	type DecisionQuestionType,
 	defaultBindingForProfileType,
@@ -1076,33 +1077,9 @@ function ModelBindingEditor({
 				</InspectorSection>
 			)}
 			{binding.provider === 'openrouter' && binding.protocol === 'openAi' && (
-				<InspectorSection title="Prompt cache" note="Reuses the start of a prompt it has seen.">
-					<ChoiceRow
-						label="Cache"
-						path="models.*.cache.mode"
-						field="cacheMode"
-						isRequired={false}
-						placeholder={fieldMeta('models.*.cache')?.unset}
-						value={binding.cacheMode ?? ''}
-						options={catalogChoices<CacheMode>('models.*.cache.mode')}
-						onChange={(cacheMode) => {
-							set({ cacheMode });
-						}}
-					/>
-					{binding.cacheMode && (
-						<ChoiceRow
-							label="Lasts"
-							path="models.*.cache.ttl"
-							field="cacheTtl"
-							value={binding.cacheTtl ?? ''}
-							options={catalogChoices<CacheTtl>('models.*.cache.ttl')}
-							onChange={(cacheTtl) => {
-								set({ cacheTtl });
-							}}
-						/>
-					)}
-				</InspectorSection>
+				<PromptCacheSection binding={binding} set={set} />
 			)}
+			{type === 'text' && <CompactionSection binding={binding} set={set} />}
 			<InspectorSection title="Efforts" note="Named thinking levels a turn can ask for.">
 				{binding.efforts.map((effort, index) => {
 					const status = statusAt('efforts', index);
@@ -1334,8 +1311,124 @@ const SLOTS_PLACEHOLDER = `{
   "language": ["en", "fr"]
 }`;
 
+type SetBinding = (change: Partial<ModelBindingDraft>) => void;
+
+/** Prompt caching, on OpenRouter's openAi route only. */
+function PromptCacheSection({ binding, set }: { binding: ModelBindingDraft; set: SetBinding }) {
+	return (
+		<InspectorSection title="Prompt cache" note="Reuses the start of a prompt it has seen.">
+			<ChoiceRow
+				label="Cache"
+				path="models.*.cache.mode"
+				field="cacheMode"
+				isRequired={false}
+				placeholder={fieldMeta('models.*.cache')?.unset}
+				value={binding.cacheMode ?? ''}
+				options={catalogChoices<CacheMode>('models.*.cache.mode')}
+				onChange={(cacheMode) => {
+					set({ cacheMode });
+				}}
+			/>
+			{binding.cacheMode && (
+				<ChoiceRow
+					label="Lasts"
+					path="models.*.cache.ttl"
+					field="cacheTtl"
+					value={binding.cacheTtl ?? ''}
+					options={catalogChoices<CacheTtl>('models.*.cache.ttl')}
+					onChange={(cacheTtl) => {
+						set({ cacheTtl });
+					}}
+				/>
+			)}
+		</InspectorSection>
+	);
+}
+
+/** Compaction, where the agent summarises its own older history. Text agents only. */
+function CompactionSection({ binding, set }: { binding: ModelBindingDraft; set: SetBinding }) {
+	return (
+		<InspectorSection
+			title="Compaction"
+			note="The agent summarises its own older history. The playground's chat compacts before a turn; after one, your host runs it."
+		>
+			<ChoiceRow
+				label="Compact"
+				path="models.*.compaction.timing"
+				field="compactTiming"
+				isRequired={false}
+				placeholder={fieldMeta('models.*.compaction')?.unset}
+				value={binding.compactTiming ?? ''}
+				options={catalogChoices<CompactionTiming>('models.*.compaction.timing')}
+				onChange={(compactTiming) => {
+					set({
+						compactTiming,
+						compactMaxTokens:
+							binding.compactMaxTokens ?? COMPACTION_DRAFT_DEFAULTS.compactMaxTokens,
+						compactAt: binding.compactAt ?? COMPACTION_DRAFT_DEFAULTS.compactAt,
+						compactKeep: binding.compactKeep ?? COMPACTION_DRAFT_DEFAULTS.compactKeep,
+					});
+				}}
+			/>
+			{binding.compactTiming && (
+				<>
+					<NumberRow
+						label="Budget"
+						path="models.*.compaction.maxTokens"
+						field="compactMaxTokens"
+						value={binding.compactMaxTokens ?? null}
+						min={1}
+						isIntegerOnly
+						units="tokens"
+						onChange={(compactMaxTokens) => {
+							set({ compactMaxTokens });
+						}}
+					/>
+					<SliderRow
+						label="Starts at"
+						path="models.*.compaction.compactAt"
+						field="compactAt"
+						value={binding.compactAt ?? COMPACTION_DRAFT_DEFAULTS.compactAt}
+						min={0.05}
+						max={0.95}
+						step={0.05}
+						format={(at) => PERCENT.format(at)}
+						onChange={(compactAt) => {
+							set({ compactAt });
+						}}
+					/>
+					<NumberRow
+						label="Keep"
+						path="models.*.compaction.previousExchanges"
+						field="compactKeep"
+						value={binding.compactKeep ?? null}
+						min={0}
+						onChange={(compactKeep) => {
+							set({ compactKeep });
+						}}
+					/>
+					<ChoiceRow
+						label="Counts"
+						path="models.*.compaction.meter"
+						field="compactMeter"
+						isRequired={false}
+						placeholder={fieldMeta('models.*.compaction.meter')?.unset}
+						value={binding.compactMeter ?? ''}
+						options={catalogChoices<CompactionMeter>('models.*.compaction.meter')}
+						onChange={(compactMeter) => {
+							set({ compactMeter });
+						}}
+					/>
+				</>
+			)}
+		</InspectorSection>
+	);
+}
+
 type CacheMode = Exclude<NonNullable<ModelBindingDraft['cacheMode']>, ''>;
 type CacheTtl = Exclude<NonNullable<ModelBindingDraft['cacheTtl']>, ''>;
+type CompactionTiming = Exclude<NonNullable<ModelBindingDraft['compactTiming']>, ''>;
+type CompactionMeter = Exclude<NonNullable<ModelBindingDraft['compactMeter']>, ''>;
 
 /** A closed set's options as the kernel's catalog lists them, each with its own description. */
 function catalogChoices<T extends string>(path: string): Choice<T>[] {
