@@ -203,6 +203,7 @@ import {
 import { type ProbeResult, runToolProbe } from '../lib/tool-probe';
 import { IconGemini, IconGoogle, IconOpenAi, IconOpenRouter } from './brand-icons';
 import {
+	type Choice,
 	ChoiceRow,
 	InspectorRow,
 	InspectorSection,
@@ -440,6 +441,18 @@ function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 							placeholder={fieldMeta('identity.system')?.unset}
 							onChange={(system) => {
 								set({ system });
+							}}
+						/>
+						<TextAreaRow
+							label="By role"
+							path="identity.systemByRole"
+							field="systemByRoleJson"
+							value={identity.systemByRoleJson}
+							rows={4}
+							hasSpellCheck={false}
+							placeholder={SYSTEM_BY_ROLE_PLACEHOLDER}
+							onChange={(systemByRoleJson) => {
+								set({ systemByRoleJson });
 							}}
 						/>
 					</InspectorSection>
@@ -972,6 +985,19 @@ function ModelBindingEditor({
 					/>
 				)}
 
+				{binding.provider === 'local' && (
+					<TextRow
+						label="Server"
+						path="models.*.server"
+						field="server"
+						value={binding.server ?? ''}
+						placeholder="ollama"
+						onChange={(server) => {
+							set({ server });
+						}}
+					/>
+				)}
+
 				{google && (
 					<ListRow
 						label="Built-ins"
@@ -1047,6 +1073,34 @@ function ModelBindingEditor({
 							set({ store: PROVIDER_DEFAULT_SEGMENT[segment] });
 						}}
 					/>
+				</InspectorSection>
+			)}
+			{binding.provider === 'openrouter' && binding.protocol === 'openAi' && (
+				<InspectorSection title="Prompt cache" note="Reuses the start of a prompt it has seen.">
+					<ChoiceRow
+						label="Cache"
+						path="models.*.cache.mode"
+						field="cacheMode"
+						isRequired={false}
+						placeholder={fieldMeta('models.*.cache')?.unset}
+						value={binding.cacheMode ?? ''}
+						options={catalogChoices<CacheMode>('models.*.cache.mode')}
+						onChange={(cacheMode) => {
+							set({ cacheMode });
+						}}
+					/>
+					{binding.cacheMode && (
+						<ChoiceRow
+							label="Lasts"
+							path="models.*.cache.ttl"
+							field="cacheTtl"
+							value={binding.cacheTtl ?? ''}
+							options={catalogChoices<CacheTtl>('models.*.cache.ttl')}
+							onChange={(cacheTtl) => {
+								set({ cacheTtl });
+							}}
+						/>
+					)}
 				</InspectorSection>
 			)}
 			<InspectorSection title="Efforts" note="Named thinking levels a turn can ask for.">
@@ -1234,9 +1288,62 @@ function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 						set({ maxTurnBytes });
 					}}
 				/>
+				<TextAreaRow
+					label="By type"
+					path="inputs.limitsByMime"
+					field="limitsByMimeJson"
+					value={inputs.limitsByMimeJson}
+					rows={3}
+					hasSpellCheck={false}
+					placeholder={LIMITS_BY_MIME_PLACEHOLDER}
+					onChange={(limitsByMimeJson) => {
+						set({ limitsByMimeJson });
+					}}
+				/>
+			</InspectorSection>
+			<InspectorSection
+				title="Slots"
+				note="The playground's chat picks none; your host passes one with each turn."
+			>
+				<TextAreaRow
+					label="Slots"
+					path="inputs.slots"
+					field="slotsJson"
+					value={inputs.slotsJson}
+					rows={3}
+					hasSpellCheck={false}
+					placeholder={SLOTS_PLACEHOLDER}
+					onChange={(slotsJson) => {
+						set({ slotsJson });
+					}}
+				/>
 			</InspectorSection>
 		</>
 	);
+}
+
+const SYSTEM_BY_ROLE_PLACEHOLDER = `{
+  "support": "Answer as the support desk."
+}`;
+
+const LIMITS_BY_MIME_PLACEHOLDER = `{
+  "application/pdf": 5000000
+}`;
+
+const SLOTS_PLACEHOLDER = `{
+  "language": ["en", "fr"]
+}`;
+
+type CacheMode = Exclude<NonNullable<ModelBindingDraft['cacheMode']>, ''>;
+type CacheTtl = Exclude<NonNullable<ModelBindingDraft['cacheTtl']>, ''>;
+
+/** A closed set's options as the kernel's catalog lists them, each with its own description. */
+function catalogChoices<T extends string>(path: string): Choice<T>[] {
+	const meta = fieldMeta(path);
+	return (meta?.options ?? []).map((value) => ({
+		value: value as T,
+		description: meta?.optionDescriptions?.[value],
+	}));
 }
 
 /** The segment for a closed set left unset: the provider's default. */
@@ -2181,6 +2288,15 @@ const ON_BLOCK_SEGMENTS: Segment<EgressOnBlock>[] = [
 	{ value: 'refuse_to_user', label: 'Refuse', icon: IconHandStop },
 ];
 
+type TaintGate = Exclude<GuardrailsDraft['taintAfterRemoteRead'], ''>;
+
+/** Each threshold wears the icon of the tool access it starts refusing. */
+const TAINT_SEGMENTS: Segment<TaintGate>[] = [
+	{ value: 'off', label: 'None', icon: IconEye },
+	{ value: 'destructive', label: 'Destructive', icon: IconFlame },
+	{ value: 'write', label: 'Writes', icon: IconPencil },
+];
+
 type EgressChecksDraft = GuardrailsDraft['egressChecks'];
 type SensitiveGroup = keyof GuardrailsDraft['redactSensitive'];
 
@@ -2342,6 +2458,16 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 							}}
 						/>
 					)}
+					{guardrails.canary && draftAllows(draft, 'guardrails.promptEcho') && (
+						<SwitchRow
+							label="Prompt echo"
+							path="guardrails.promptEcho"
+							value={guardrails.promptEcho}
+							onChange={(promptEcho) => {
+								set({ promptEcho });
+							}}
+						/>
+					)}
 				</InspectorSection>
 			)}
 			<InspectorSection title="Egress" note="Checks each reply before anyone sees it.">
@@ -2425,7 +2551,32 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 						set({ allowedHosts });
 					}}
 				/>
+				<NamesRow
+					label="Schemes"
+					path="guardrails.network.allowedSchemes"
+					field="allowedSchemes"
+					value={guardrails.allowedSchemes}
+					onChange={(allowedSchemes) => {
+						set({ allowedSchemes });
+					}}
+				/>
 			</InspectorSection>
+			{draftAllows(draft, 'guardrails.taint') && (
+				<InspectorSection
+					title="Taint"
+					note="What tools may still do once a turn has read a remote tool's result."
+				>
+					<SegmentedRow
+						label="Refuse"
+						path="guardrails.taint.afterRemoteRead"
+						value={guardrails.taintAfterRemoteRead || 'off'}
+						segments={TAINT_SEGMENTS}
+						onChange={(gate) => {
+							set({ taintAfterRemoteRead: gate === 'off' ? '' : gate });
+						}}
+					/>
+				</InspectorSection>
+			)}
 			<InspectorSection
 				title="Quota"
 				note="Your host enforces this. Playground runs aren't counted against it."
@@ -2540,10 +2691,11 @@ function FlagList<K extends string>({
 
 const PERCENT = new Intl.NumberFormat('en-US', { style: 'percent' });
 
-/**
- * Where traces go and what they keep. Retention and rotation have no rows: the playground's
- * destination stores nothing, and rotation is only for JSONL files.
- */
+const RESOURCE_PLACEHOLDER = `{
+  "service.name": "my-agent"
+}`;
+
+/** Where traces go, what they keep, and how your host stores them. */
 function ObservabilityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
 	const { observability } = draft;
 	const set = patch(setDraft, 'observability');
@@ -2597,6 +2749,45 @@ function ObservabilityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setD
 							value={observability.scrub}
 							onChange={(scrub) => {
 								set({ scrub });
+							}}
+						/>
+					</InspectorSection>
+					<InspectorSection
+						title="Storage"
+						note="Your host's trace store uses these. The playground's stores nothing."
+					>
+						<NumberRow
+							label="Keep for"
+							path="observability.retainForDays"
+							field="retainForDays"
+							units="days"
+							value={observability.retainForDays}
+							isIntegerOnly
+							onChange={(retainForDays) => {
+								set({ retainForDays });
+							}}
+						/>
+						<NumberRow
+							label="Rotate at"
+							path="observability.rotateAfterMiB"
+							field="rotateAfterMiB"
+							units="MiB"
+							value={observability.rotateAfterMiB}
+							min={1}
+							onChange={(rotateAfterMiB) => {
+								set({ rotateAfterMiB });
+							}}
+						/>
+						<TextAreaRow
+							label="Resource"
+							path="observability.resource"
+							field="resourceJson"
+							value={observability.resourceJson}
+							rows={3}
+							hasSpellCheck={false}
+							placeholder={RESOURCE_PLACEHOLDER}
+							onChange={(resourceJson) => {
+								set({ resourceJson });
 							}}
 						/>
 					</InspectorSection>

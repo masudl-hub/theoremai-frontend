@@ -88,6 +88,7 @@ function firstTurnDraft(): PlaygroundDraft {
 			profileType: 'text',
 			handle: 'desk',
 			system: HARBOR_SYSTEM,
+			systemByRoleJson: '',
 		},
 		models: { ...draft.models, defaultModel: 'main' },
 		modelBindings: [
@@ -120,6 +121,8 @@ function firstTurnDraft(): PlaygroundDraft {
 			maxFiles: 4,
 			maxBytes: 5_000_000,
 			maxTurnBytes: 12_000_000,
+			limitsByMimeJson: '',
+			slotsJson: '',
 		},
 		outputs: {
 			...draft.outputs,
