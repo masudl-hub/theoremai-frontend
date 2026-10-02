@@ -57,6 +57,7 @@ export const models: DocArticleDef = {
 			text: [
 				'A turn binding pairs a protocol with a provider. The legal pairs are `openAi` with `openrouter`, `openAi` with `local`, `geminiInteractions` with `google`, and `geminiLive` with `google`.',
 				'`text`, `image`, and `speech` may use `openAi` or `geminiInteractions`. `live` uses `geminiLive` only. [Choosing a modality](/docs/modalities).',
+				"A `geminiInteractions` binding must set `persistViaInteractionId`: `true` lets Google rebuild the context from its stored interaction, `false` sends the history the host builds and passes, plus the turn's own steps, on every call.",
 			].join('\n\n'),
 		},
 		{

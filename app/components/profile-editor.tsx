@@ -43,6 +43,8 @@ import {
 	IconCertificate,
 	IconChartBar,
 	IconCircleDashed,
+	IconDatabase,
+	IconDatabaseOff,
 	IconDeviceDesktop,
 	IconEye,
 	IconEyeOff,
@@ -63,6 +65,7 @@ import {
 	IconInputAi,
 	IconKey,
 	IconLetterT,
+	IconLink,
 	IconListCheck,
 	IconLockOpen,
 	IconMathFunction,
@@ -293,7 +296,26 @@ const SUMMARIES_SEGMENTS: Segment<'default' | 'on' | 'off'>[] = [
 	{ value: 'on', label: 'On', icon: IconBulb },
 	{ value: 'off', label: 'Off', icon: IconBulbOff },
 ];
-const SUMMARIES_SEGMENT = { default: null, on: true, off: false } as const;
+/** A setting left to the provider (`null` in the draft), on, or off. */
+const PROVIDER_DEFAULT_SEGMENT = { default: null, on: true, off: false } as const;
+
+function providerDefaultSegment(value: boolean | null): keyof typeof PROVIDER_DEFAULT_SEGMENT {
+	if (value === null) return 'default';
+	return value ? 'on' : 'off';
+}
+
+/** Gemini Interactions storage: on, off, or left to Google (`null` in the draft). */
+const STORAGE_SEGMENTS: Segment<'default' | 'on' | 'off'>[] = [
+	{ value: 'default', label: 'Provider default', icon: IconCircleDashed },
+	{ value: 'on', label: 'On', icon: IconDatabase },
+	{ value: 'off', label: 'Off', icon: IconDatabaseOff },
+];
+
+/** Gemini Interactions context: the draft's `persistViaInteractionId`, false or true. */
+const CONTEXT_SEGMENTS: Segment<'history' | 'chain'>[] = [
+	{ value: 'history', label: 'Resend history', icon: IconRefresh },
+	{ value: 'chain', label: 'Google chains', icon: IconLink },
+];
 
 const KIND_TITLE: Record<AcceptSection['kind'], string> = {
 	image: 'Image',
@@ -992,13 +1014,40 @@ function ModelBindingEditor({
 				<SegmentedRow
 					label="Summaries"
 					path="models.*.summaries"
-					value={binding.summaries === null ? 'default' : binding.summaries ? 'on' : 'off'}
+					value={providerDefaultSegment(binding.summaries)}
 					segments={SUMMARIES_SEGMENTS}
 					onChange={(segment) => {
-						set({ summaries: SUMMARIES_SEGMENT[segment] });
+						set({ summaries: PROVIDER_DEFAULT_SEGMENT[segment] });
 					}}
 				/>
 			</InspectorSection>
+			{google && binding.protocol === 'geminiInteractions' && (
+				<InspectorSection
+					title="Conversation state"
+					note="Who carries the conversation between steps."
+				>
+					<SegmentedRow
+						label="Context"
+						path="models.*.persistViaInteractionId"
+						field="persistViaInteractionId"
+						value={binding.persistViaInteractionId ? 'chain' : 'history'}
+						segments={CONTEXT_SEGMENTS}
+						onChange={(segment) => {
+							set({ persistViaInteractionId: segment === 'chain' });
+						}}
+					/>
+					<SegmentedRow
+						label="Google storage"
+						path="models.*.store"
+						field="store"
+						value={providerDefaultSegment(binding.store)}
+						segments={STORAGE_SEGMENTS}
+						onChange={(segment) => {
+							set({ store: PROVIDER_DEFAULT_SEGMENT[segment] });
+						}}
+					/>
+				</InspectorSection>
+			)}
 			<InspectorSection title="Efforts" note="Named thinking levels a turn can ask for.">
 				{binding.efforts.map((effort, index) => {
 					const status = statusAt('efforts', index);
@@ -2572,9 +2621,7 @@ function ToolsEditor({
 }) {
 	const set = patch(setDraft, 'tools');
 	// Any custom tool can load T2 tools: one that answers with the ids to load.
-	const loaders = draft.toolSpecs
-		.map((tool) => tool.toolName.trim())
-		.filter(Boolean);
+	const loaders = draft.toolSpecs.map((tool) => tool.toolName.trim()).filter(Boolean);
 	return (
 		<>
 			<InspectorSection
