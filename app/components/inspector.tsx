@@ -50,18 +50,21 @@ function presence(path: string, isRequired?: boolean) {
 
 /**
  * A captioned group of rows. The panel stays at zero padding and each section carries the gutter.
- * Transparent, so the panel's own surface shows through. `note` says in a line what the whole
- * group is for, or what the playground does differently with it.
+ * Transparent, so the panel's own surface shows through. Under the title, the catalog doc of the
+ * field the section edits (`path`), then `note`: how the editor or the playground treats it.
  */
 export function InspectorSection({
 	title,
+	path,
 	note,
 	children,
 }: {
 	title?: string;
+	path?: string;
 	note?: string;
 	children: ReactNode;
 }) {
+	const doc = path === undefined ? undefined : fieldMeta(path)?.doc;
 	return (
 		<Section variant="transparent" padding={3}>
 			<VStack gap={3}>
@@ -71,6 +74,7 @@ export function InspectorSection({
 							{title}
 						</Text>
 					)}
+					{doc && <Text type="supporting">{doc}</Text>}
 					{note && <Text type="supporting">{note}</Text>}
 				</VStack>
 				{children}

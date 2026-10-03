@@ -391,7 +391,7 @@ function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 	const set = patch(setDraft, 'identity');
 	return (
 		<>
-			<InspectorSection title="Profile" note={sectionNote('profile')}>
+			<InspectorSection title="Profile">
 				<TextRow
 					label="Id"
 					path="id"
@@ -496,7 +496,7 @@ function ModelsEditor({
 				/>
 			</InspectorSection>
 			{draft.identity.profileType !== 'decision' && (
-				<InspectorSection title="Policy" note={sectionNote('policy')}>
+				<InspectorSection title="Policy">
 					<ChoiceRow
 						label="Default"
 						path="defaultModel"
@@ -821,7 +821,7 @@ function ModelBindingEditor({
 
 	return (
 		<>
-			<InspectorSection title="Model" note={sectionNote('model')}>
+			<InspectorSection title="Model" path="models.*">
 				<TextRow
 					label="Id"
 					path="models.*"
@@ -1004,7 +1004,7 @@ function ModelBindingEditor({
 					/>
 				)}
 			</InspectorSection>
-			<InspectorSection title="Generation" note={sectionNote('generation')}>
+			<InspectorSection title="Generation">
 				<NumberRow
 					label="Max output"
 					path="models.*.maxOutputTokens"
@@ -1039,7 +1039,7 @@ function ModelBindingEditor({
 				/>
 			</InspectorSection>
 			{google && binding.protocol === 'geminiInteractions' && (
-				<InspectorSection title="Conversation state" note={sectionNote('conversationState')}>
+				<InspectorSection title="Conversation state">
 					<SegmentedRow
 						label="Context"
 						path="models.*.persistViaInteractionId"
@@ -1066,7 +1066,7 @@ function ModelBindingEditor({
 				<PromptCacheSection binding={binding} set={set} />
 			)}
 			{type === 'text' && <CompactionSection binding={binding} set={set} />}
-			<InspectorSection title="Efforts" note={sectionNote('efforts')}>
+			<InspectorSection title="Efforts" path="models.*.efforts">
 				{binding.efforts.map((effort, index) => {
 					const status = statusAt('efforts', index);
 					return (
@@ -1175,7 +1175,7 @@ function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 	const attachmentPicker = image ? IMAGE_ATTACHMENT_PICKER : ATTACHMENT_PICKER;
 	return (
 		<>
-			<InspectorSection title="Accepts" note={sectionNote('accepts')}>
+			<InspectorSection title="Accepts" path="inputs">
 				<SwitchRow
 					label="Text"
 					path="inputs.text"
@@ -1211,7 +1211,7 @@ function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 					/>
 				)}
 			</InspectorSection>
-			<InspectorSection title="Limits" note={sectionNote('limits')}>
+			<InspectorSection title="Limits">
 				<NumberRow
 					label="Max files"
 					path="inputs.maxFiles"
@@ -1264,7 +1264,7 @@ function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection title="Slots" note={sectionNote('slots')}>
+			<InspectorSection title="Slots" path="inputs.slots" note={sectionNote('slots')}>
 				<TextAreaRow
 					label="Slots"
 					path="inputs.slots"
@@ -1299,7 +1299,7 @@ type SetBinding = (change: Partial<ModelBindingDraft>) => void;
 /** Prompt caching, on OpenRouter's openAi route only. */
 function PromptCacheSection({ binding, set }: { binding: ModelBindingDraft; set: SetBinding }) {
 	return (
-		<InspectorSection title="Prompt cache" note={sectionNote('promptCache')}>
+		<InspectorSection title="Prompt cache" path="models.*.cache">
 			<ChoiceRow
 				label="Cache"
 				path="models.*.cache.mode"
@@ -1331,7 +1331,11 @@ function PromptCacheSection({ binding, set }: { binding: ModelBindingDraft; set:
 /** Compaction, where the agent summarises its own older history. Text agents only. */
 function CompactionSection({ binding, set }: { binding: ModelBindingDraft; set: SetBinding }) {
 	return (
-		<InspectorSection title="Compaction" note={sectionNote('compaction')}>
+		<InspectorSection
+			title="Compaction"
+			path="models.*.compaction"
+			note={sectionNote('compaction')}
+		>
 			<ChoiceRow
 				label="Compact"
 				path="models.*.compaction.timing"
@@ -1540,7 +1544,7 @@ function ImageEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Se
 	const set = patch(setDraft, 'image');
 	return (
 		<>
-			<InspectorSection title="Output" note={sectionNote('image.output')}>
+			<InspectorSection title="Output" path="image">
 				<PresetRow
 					google={google}
 					label="Aspect ratio"
@@ -1664,7 +1668,7 @@ function ImageReferencesEditor({
 		onChange(references.map((reference) => (reference.key === key ? next : reference)));
 	};
 	return (
-		<InspectorSection title="References" note={sectionNote('image.references')}>
+		<InspectorSection title="References" path="image.references">
 			{references.map((reference, index) => {
 				const label = `Reference ${String(index + 1)}`;
 				const status = statusAt('references', index);
@@ -1758,7 +1762,7 @@ function SpeechEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 	// Only the OpenAI protocol makes mp3; Gemini refuses it.
 	const mp3 = draft.modelBindings.every((binding) => binding.protocol === 'openAi');
 	return (
-		<InspectorSection title="Voice" note={sectionNote('speech.voice')}>
+		<InspectorSection title="Voice" path="speech">
 			<PresetRow
 				google={google}
 				label="Voice"
@@ -1808,7 +1812,7 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 	const set = patch(setDraft, 'live');
 	return (
 		<>
-			<InspectorSection title="Ingress" note={sectionNote('live.ingress')}>
+			<InspectorSection title="Ingress" path="live.ingress">
 				<SwitchRow
 					label="Audio"
 					path="live.ingress.audio"
@@ -1834,7 +1838,7 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection title="Voice" note={sectionNote('live.voice')}>
+			<InspectorSection title="Voice" path="live.voice">
 				<PresetRow
 					google={google}
 					label="Voice"
@@ -1847,7 +1851,7 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection title="Session" note={sectionNote('live.session')}>
+			<InspectorSection title="Session" path="live.sessionResumption">
 				<SwitchRow
 					label="Resumption"
 					path="live.sessionResumption"
@@ -1857,7 +1861,7 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection title="Context compression" note={sectionNote('live.compression')}>
+			<InspectorSection title="Context compression" path="live.contextCompression">
 				<SwitchRow
 					label="Sliding window"
 					path="live.contextCompression"
@@ -1923,7 +1927,7 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 						</>
 					))}
 			</InspectorSection>
-			<InspectorSection title="Transcripts" note={sectionNote('live.transcripts')}>
+			<InspectorSection title="Transcripts" path="live.transcription">
 				<SwitchRow
 					label="Input"
 					path="live.transcription.input"
@@ -1941,7 +1945,7 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection title="Voice activity" note={sectionNote('live.voiceActivity')}>
+			<InspectorSection title="Voice activity" path="live.vad">
 				<SegmentedRow
 					label="Barge-in"
 					path="live.vad.activityHandling"
@@ -2025,7 +2029,7 @@ function OutputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: 
 	return (
 		<>
 			{shaped && (
-				<InspectorSection title="Shape" note={sectionNote('shape')}>
+				<InspectorSection title="Shape" path="outputs.structured">
 					<SegmentedRow
 						label="Mode"
 						path="outputs.structured"
@@ -2066,7 +2070,7 @@ function OutputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: 
 				</InspectorSection>
 			)}
 			{structured && (
-				<InspectorSection title="Repair" note={sectionNote('repair')}>
+				<InspectorSection title="Repair" path="outputs.validation">
 					<SwitchRow
 						label="Repair"
 						path="outputs.validation"
@@ -2103,7 +2107,7 @@ function OutputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: 
 					)}
 				</InspectorSection>
 			)}
-			<InspectorSection title="Streaming" note={sectionNote('streaming')}>
+			<InspectorSection title="Streaming" path="outputs.streaming">
 				<SegmentedRow
 					label="Delivery"
 					path="outputs.streaming.mode"
@@ -2275,7 +2279,7 @@ function TurnBehaviourEditor({ draft, setDraft }: { draft: PlaygroundDraft; setD
 	return (
 		<>
 			{draftAllows(draft, 'turnBehaviour.resumption') && (
-				<InspectorSection title="Resumption" note={sectionNote('resumption')}>
+				<InspectorSection title="Resumption" path="turnBehaviour.resumption">
 					<ResumptionRow
 						value={
 							turn.resumeEnabled
@@ -2317,7 +2321,7 @@ function TurnBehaviourEditor({ draft, setDraft }: { draft: PlaygroundDraft; setD
 				</InspectorSection>
 			)}
 			{draftAllows(draft, 'turnBehaviour.allowSteering') && (
-				<InspectorSection title="Steering" note={sectionNote('steering')}>
+				<InspectorSection title="Steering" path="turnBehaviour.allowSteering">
 					<SwitchRow
 						label="Steering"
 						path="turnBehaviour.allowSteering"
@@ -2403,7 +2407,7 @@ function EgressChecksSections({
 	const urls = (['images', 'links'] as const).filter((name) => checks[name].on);
 	return (
 		<>
-			<InspectorSection title="Block" note={sectionNote('block')}>
+			<InspectorSection title="Block" path="guardrails.egress.checks">
 				<FlagList
 					label="Sensitive"
 					path="guardrails.egress.checks.sensitive"
@@ -2424,7 +2428,7 @@ function EgressChecksSections({
 				/>
 			</InspectorSection>
 			{urls.length > 0 && (
-				<InspectorSection title="Given URLs" note={sectionNote('givenUrls')}>
+				<InspectorSection title="Given URLs">
 					{urls.map((name) => (
 						<NamesRow
 							key={name}
@@ -2459,7 +2463,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 	const set = patch(setDraft, 'guardrails');
 	return (
 		<>
-			<InspectorSection title="Input" note={sectionNote('input')}>
+			<InspectorSection title="Input" path="guardrails.sanitizeInput">
 				<SwitchRow
 					label="Sanitize"
 					path="guardrails.sanitizeInput"
@@ -2469,7 +2473,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection title="Redact" note={sectionNote('redact')}>
+			<InspectorSection title="Redact" path="guardrails.redactSensitive">
 				<FlagList
 					label="Redact"
 					path="guardrails.redactSensitive"
@@ -2481,7 +2485,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 				/>
 			</InspectorSection>
 			{draftAllows(draft, 'guardrails.canary') && (
-				<InspectorSection title="Canary" note={sectionNote('canary')}>
+				<InspectorSection title="Canary" path="guardrails.canary">
 					<SwitchRow
 						label="Canary"
 						path="guardrails.canary"
@@ -2514,7 +2518,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 					)}
 				</InspectorSection>
 			)}
-			<InspectorSection title="Egress" note={sectionNote('egress')}>
+			<InspectorSection title="Egress" path="guardrails.egress">
 				<SwitchRow
 					label="Checks"
 					path="guardrails.egress.checks"
@@ -2571,7 +2575,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 					}}
 				/>
 			)}
-			<InspectorSection title="Network" note={sectionNote('network')}>
+			<InspectorSection title="Network" path="guardrails.network" note={sectionNote('network')}>
 				<SwitchRow
 					label="Private"
 					path="guardrails.network.allowPrivateNetworks"
@@ -2603,7 +2607,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 				/>
 			</InspectorSection>
 			{draftAllows(draft, 'guardrails.taint') && (
-				<InspectorSection title="Taint" note={sectionNote('taint')}>
+				<InspectorSection title="Taint" path="guardrails.taint">
 					<SegmentedRow
 						label="Refuse"
 						path="guardrails.taint.afterRemoteRead"
@@ -2615,7 +2619,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 					/>
 				</InspectorSection>
 			)}
-			<InspectorSection title="Quota" note={sectionNote('quota')}>
+			<InspectorSection title="Quota" path="guardrails.quota" note={sectionNote('quota')}>
 				<SwitchRow
 					label="Daily cap"
 					path="guardrails.quota"
@@ -2737,7 +2741,7 @@ function ObservabilityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setD
 	const on = observability.writeTo !== false;
 	return (
 		<>
-			<InspectorSection title="Traces" note={sectionNote('traces')}>
+			<InspectorSection title="Traces" path="observability">
 				<SegmentedRow
 					label="Write to"
 					path="observability.writeTo"
@@ -2765,7 +2769,7 @@ function ObservabilityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setD
 			</InspectorSection>
 			{on && (
 				<>
-					<InspectorSection title="Keep" note={sectionNote('traces.keep')}>
+					<InspectorSection title="Keep" path="observability.include">
 						<FlagList
 							label="Keep"
 							path="observability.include"
@@ -2776,7 +2780,7 @@ function ObservabilityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setD
 							}}
 						/>
 					</InspectorSection>
-					<InspectorSection title="Scrub" note={sectionNote('traces.scrub')}>
+					<InspectorSection title="Scrub" path="observability.scrub">
 						<FlagList
 							label="Scrub"
 							path="observability.scrub"
@@ -2941,9 +2945,8 @@ function ToolsEditor({
 		<>
 			<InspectorSection
 				title="Tools"
-				note={
-					draft.identity.profileType === 'host' ? sectionNote('tools.host') : sectionNote('tools')
-				}
+				path={draft.identity.profileType === 'host' ? undefined : 'tools'}
+				note={draft.identity.profileType === 'host' ? sectionNote('tools.host') : undefined}
 			>
 				{draft.toolSpecs.length > 0 && (
 					<List density="compact">
@@ -2976,7 +2979,7 @@ function ToolsEditor({
 				/>
 			</InspectorSection>
 			{draftAllows(draft, 'tools.t2Loader') && (
-				<InspectorSection title="Loading" note={sectionNote('tools.loading')}>
+				<InspectorSection title="Loading" path="tools.t2Loader">
 					<ChoiceRow
 						label="T2 loader"
 						path="tools.t2Loader"
@@ -3254,7 +3257,7 @@ function ToolSpecEditor({
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection title="Activity" note={sectionNote('tool.activity')}>
+			<InspectorSection title="Activity" path="labels">
 				<TextRow
 					label="Running"
 					path="labels.activity"
@@ -3277,7 +3280,7 @@ function ToolSpecEditor({
 				/>
 			</InspectorSection>
 			{tool.toolType === 'function' && (
-				<InspectorSection title="Stub" note={sectionNote('tool.stub')}>
+				<InspectorSection title="Stub" path="playground.stubOutput">
 					<TextAreaRow
 						label="Returns"
 						path="playground.stubOutput"
@@ -3294,7 +3297,7 @@ function ToolSpecEditor({
 			)}
 			{tool.toolType === 'http' && (
 				<>
-					<InspectorSection title="Request" note={sectionNote('tool.request')}>
+					<InspectorSection title="Request" note={sectionNote('tool.headers')}>
 						<TextRow
 							label="Endpoint"
 							path="endpoint"
@@ -3318,7 +3321,7 @@ function ToolSpecEditor({
 						/>
 						{headersRow}
 					</InspectorSection>
-					<InspectorSection title="Mapping" note={sectionNote('tool.mapping')}>
+					<InspectorSection title="Mapping" path="mapping">
 						<NamesRow
 							label="Path"
 							path="mapping.pathParams"
@@ -3353,7 +3356,7 @@ function ToolSpecEditor({
 				</>
 			)}
 			{tool.toolType === 'mcp' && (
-				<InspectorSection title="Server" note={sectionNote('tool.server')}>
+				<InspectorSection title="Server" note={sectionNote('tool.headers')}>
 					<TextRow
 						label="Server"
 						path="serverUrl"
@@ -3380,7 +3383,7 @@ function ToolSpecEditor({
 				</InspectorSection>
 			)}
 			{remote && (
-				<InspectorSection title="Auth" note={sectionNote('tool.auth')}>
+				<InspectorSection title="Auth" path="auth" note={sectionNote('tool.auth')}>
 					<SegmentedRow
 						label="Type"
 						path="playground.authType"
@@ -3473,7 +3476,7 @@ function ToolSpecEditor({
 				</InspectorSection>
 			)}
 			{remote && <ToolTest key={tool.key} tool={tool} />}
-			<InspectorSection title="Policy" note={sectionNote('tool.policy')}>
+			<InspectorSection title="Policy">
 				<SegmentedRow
 					label="Access"
 					path="access"
@@ -4134,7 +4137,7 @@ function DecisionEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 	};
 	return (
 		<>
-			<InspectorSection title="Contract" note={sectionNote('decision.contract')}>
+			<InspectorSection title="Contract" path="decision.contract">
 				<TextRow
 					label="Contract"
 					path="decision.contract"
