@@ -4,7 +4,11 @@
  */
 import { errorKind, type ProfileDefinition, publicError, TheoremError, z } from '@theoremjs/agents';
 import { caughtStatus } from '@theoremjs/agents/host';
-import type { StructuredRegistration, ToolRegistration } from '@theoremjs/playground';
+import type {
+	PlaygroundDependency,
+	StructuredRegistration,
+	ToolRegistration,
+} from '@theoremjs/playground';
 import type { TheoremReplay, TheoremTurnRequest } from '@theoremjs/react';
 import {
 	checkRequest,
@@ -16,11 +20,10 @@ import {
 } from '@theoremjs/react/server';
 import type { SiteEnv } from '../../cloudflare';
 import { badRequestJson, errorMessage, ndjsonEventStream } from './ndjson-stream';
-import { takeAllowance } from './playground-allowance';
+import { takeAllowance, visitorAddress } from './playground-allowance';
 import { allowanceStore } from './playground-decide-allowance';
 import { playgroundSteerInbox } from './playground-steer';
 import {
-	type PlaygroundTurnEnv,
 	streamPlaygroundCall,
 	streamPlaygroundInvoke,
 	streamPlaygroundTurn,
@@ -35,7 +38,23 @@ type PlaygroundDraft = {
 	profile: ProfileDefinition;
 	customTools?: ToolRegistration[];
 	structured?: StructuredRegistration;
+	/** The agents this one's agent tools and compaction name, registered before it. */
+	dependencies?: PlaygroundDependency[];
 };
+
+/**
+ * Each agent tool call runs a real model turn, so it spends one of today's
+ * requests for this address before its agent runs. Once they are spent, the
+ * calling model reads the refusal and the turn goes on without it.
+ */
+function agentCallAllowance(request: Request, env: SiteEnv) {
+	return async () => {
+		if (!env.DECIDE_ALLOWANCE) return { refuse: 'This agent is not available here.' };
+		const store = allowanceStore(env.DECIDE_ALLOWANCE);
+		const cap = await takeAllowance(store, 'request', visitorAddress(request));
+		return cap === null ? undefined : { refuse: "Today's playground requests are spent." };
+	};
+}
 
 /** GET /api/kernel — package version and kernel checkout head. */
 export function kernelInfo(): Response {
@@ -67,6 +86,7 @@ export async function playgroundTurn(request: Request, env: SiteEnv): Promise<Re
 				profile: draft.profile,
 				customTools: draft.customTools ?? [],
 				structured: draft.structured,
+				dependencies: draft.dependencies,
 				input: turn.input,
 				previousInteractionId: turn.previousInteractionId,
 				sessionPermissions: turn.replay?.sessionPermissions,
@@ -75,6 +95,7 @@ export async function playgroundTurn(request: Request, env: SiteEnv): Promise<Re
 				effort: turn.effort,
 				signal: request.signal,
 				env,
+				onAgentCall: agentCallAllowance(request, env),
 				steer: playgroundSteerInbox(env.STEER_INBOX),
 			}),
 			draft.profile.lexicon,
@@ -85,10 +106,7 @@ export async function playgroundTurn(request: Request, env: SiteEnv): Promise<Re
 }
 
 /** POST /api/playground/invoke — NDJSON events for the user's answer to a paused call. */
-export async function playgroundInvoke(
-	request: Request,
-	env: PlaygroundTurnEnv,
-): Promise<Response> {
+export async function playgroundInvoke(request: Request, env: SiteEnv): Promise<Response> {
 	try {
 		const draft = await request.json<PlaygroundDraft>();
 		const answer = checkRequest(theoremInvokeRequestSchema, draft, 'request body');
@@ -97,8 +115,10 @@ export async function playgroundInvoke(
 				profile: draft.profile,
 				customTools: draft.customTools ?? [],
 				structured: draft.structured,
+				dependencies: draft.dependencies,
 				answer,
 				env,
+				onAgentCall: agentCallAllowance(request, env),
 			}),
 			draft.profile.lexicon,
 		);
@@ -116,8 +136,11 @@ async function takeCall(request: Request, env: SiteEnv): Promise<void> {
 		// lexicon-exempt: developer contract error
 		throw new TheoremError('config', 'playground call: no DECIDE_ALLOWANCE binding');
 	}
-	const address = request.headers.get('CF-Connecting-IP') ?? 'local';
-	const cap = await takeAllowance(allowanceStore(env.DECIDE_ALLOWANCE), 'call', address);
+	const cap = await takeAllowance(
+		allowanceStore(env.DECIDE_ALLOWANCE),
+		'call',
+		visitorAddress(request),
+	);
 	if (cap !== null) {
 		// lexicon-exempt: internal diagnostic; the user reads quota.exhausted
 		throw new TheoremError('rate_limit', "playground call: today's calls are spent", {
@@ -147,9 +170,12 @@ export async function playgroundCall(request: Request, env: SiteEnv): Promise<Re
 			streamPlaygroundCall({
 				profile: draft.profile,
 				customTools: draft.customTools ?? [],
+				dependencies: draft.dependencies,
 				call,
 				sessionPermissions,
 				signal: request.signal,
+				env,
+				onAgentCall: agentCallAllowance(request, env),
 			}),
 			draft.profile.lexicon,
 		);

@@ -6,6 +6,7 @@ import {
 	type ProfileDefinition,
 } from '@theoremjs/agents';
 import {
+	type PlaygroundRuntime,
 	streamPlaygroundCall as sharedCall,
 	streamPlaygroundInvoke as sharedInvoke,
 	streamPlaygroundTurn as sharedTurn,
@@ -81,25 +82,37 @@ export function playgroundProviders(
 	return { vault: playgroundDemoVault(env, profile) };
 }
 
-function runtime(env: PlaygroundTurnEnv = {}) {
+/** What a run needs beside its request: the site's keys, and the check each agent call passes first. */
+type RunHost = { env?: PlaygroundTurnEnv; onAgentCall?: PlaygroundRuntime['onAgentCall'] };
+
+function runtime({ env = {}, onAgentCall }: RunHost): PlaygroundRuntime {
 	return {
-		mode: 'demo' as const,
+		mode: 'demo',
 		resolveHost,
 		provider: (profile: Profile, model?: string) =>
 			createProvider(profile, playgroundProviders(env, profile), model),
+		onAgentCall,
 	};
 }
 
-export function streamPlaygroundTurn(
-	args: Omit<Parameters<typeof sharedTurn>[0], 'runtime'> & { env?: PlaygroundTurnEnv },
-) {
-	return sharedTurn({ ...args, runtime: runtime(args.env) });
+export function streamPlaygroundTurn({
+	env,
+	onAgentCall,
+	...args
+}: Omit<Parameters<typeof sharedTurn>[0], 'runtime'> & RunHost) {
+	return sharedTurn({ ...args, runtime: runtime({ env, onAgentCall }) });
 }
-export function streamPlaygroundInvoke(
-	args: Omit<Parameters<typeof sharedInvoke>[0], 'runtime'> & { env?: PlaygroundTurnEnv },
-) {
-	return sharedInvoke({ ...args, runtime: runtime(args.env) });
+export function streamPlaygroundInvoke({
+	env,
+	onAgentCall,
+	...args
+}: Omit<Parameters<typeof sharedInvoke>[0], 'runtime'> & RunHost) {
+	return sharedInvoke({ ...args, runtime: runtime({ env, onAgentCall }) });
 }
-export function streamPlaygroundCall(args: Omit<Parameters<typeof sharedCall>[0], 'runtime'>) {
-	return sharedCall({ ...args, runtime: runtime() });
+export function streamPlaygroundCall({
+	env,
+	onAgentCall,
+	...args
+}: Omit<Parameters<typeof sharedCall>[0], 'runtime'> & RunHost) {
+	return sharedCall({ ...args, runtime: runtime({ env, onAgentCall }) });
 }

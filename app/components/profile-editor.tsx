@@ -82,6 +82,7 @@ import {
 	IconPlugConnected,
 	IconPlus,
 	IconRefresh,
+	IconRobot,
 	IconSearch,
 	IconSend,
 	IconServer,
@@ -2838,6 +2839,7 @@ export const TOOL_TYPE_ICON = {
 	function: IconMathFunction,
 	http: IconWorld,
 	mcp: IconMcp,
+	agent: IconRobot,
 } satisfies Record<CustomToolType, IconType>;
 
 const TOOL_TYPE_SEGMENTS: Segment<CustomToolType>[] = [
