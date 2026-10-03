@@ -98,7 +98,7 @@ export const identity: DocArticleDef = {
 			title: 'Private and shareable parts',
 			text: [
 				'`system` is a string or a list of parts, sent joined as written. A string, or a list with no `{ private }` part, is private throughout: a reply that repeats 12 words in a row of it is stopped (`guardrails.promptEcho`, on with the canary).',
-				'Mark the secret parts `{ private: text }` and the plain parts beside them become shareable \u2014 a greeting or voice line the agent says word for word no longer stops the reply. Marks hold per source: marking the run-time `system` leaves the profile\u2019s line private. Theorem\u2019s own notes are always private. A paraphrase is not caught, so keep real secrets out of the prompt.',
+				'Mark what must not leak as `{ private: text }` and the plain parts beside them become shareable \u2014 a greeting or voice line the agent says word for word no longer stops the reply. Marks hold per source: marking the run-time `system` leaves the profile\u2019s line private. Theorem\u2019s own notes are always private. A paraphrase is not caught, and secrets never belong in the prompt.',
 				'In the [playground](/playground) you write the prompt as one text and wrap each private section as `{private: \u2026}`; the exported profile has the parts.',
 			].join('\n\n'),
 		},
