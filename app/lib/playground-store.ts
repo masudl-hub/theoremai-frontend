@@ -54,11 +54,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * True when `value` has every section `shape` has, all the way down, and lists where it has lists.
- * A draft kept before the draft grew a section fails it, so it is set aside rather than compiled.
+ * True when `value` has every section `shape` has, all the way down, and lists, text and
+ * switches where it has them. A draft kept before the draft changed shape fails it, so it is
+ * set aside rather than compiled.
  */
 function hasShapeOf(value: unknown, shape: unknown): boolean {
 	if (Array.isArray(shape)) return Array.isArray(value);
+	if (typeof shape === 'string' || typeof shape === 'boolean') return typeof value === typeof shape;
 	if (!isRecord(shape)) return true;
 	if (!isRecord(value)) return false;
 	return Object.entries(shape).every(([key, part]) => hasShapeOf(value[key], part));

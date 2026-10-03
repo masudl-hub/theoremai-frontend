@@ -431,7 +431,7 @@ function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 				identity.profileType !== 'host' && (
 					<InspectorSection
 						title="System prompt"
-						note="Standing instructions the model reads before every turn."
+						note="Standing instructions the model reads before every turn. Wrap any secret section as {private: …}: only those sections are guarded from being repeated, and the rest may be quoted. With none, all of it is guarded."
 					>
 						<TextArea
 							label="System prompt"

@@ -93,10 +93,34 @@ export const identity: DocArticleDef = {
 			].join('\n\n'),
 		},
 		{
+			id: 'private-parts',
+			kind: 'prose',
+			title: 'Private and shareable parts',
+			text: [
+				'`system` is a string or a list of parts, sent joined as written. A string, or a list with no `{ private }` part, is private throughout: a reply that repeats 12 words in a row of it is stopped (`guardrails.promptEcho`, on with the canary).',
+				'Mark the secret parts `{ private: text }` and the plain parts beside them become shareable \u2014 a greeting or voice line the agent says word for word no longer stops the reply. Marks hold per source: marking the run-time `system` leaves the profile\u2019s line private. Theorem\u2019s own notes are always private. A paraphrase is not caught, so keep real secrets out of the prompt.',
+				'In the [playground](/playground) you write the prompt as one text and wrap each private section as `{private: \u2026}`; the exported profile has the parts.',
+			].join('\n\n'),
+		},
+		{
+			id: 'private-parts-config',
+			kind: 'code',
+			source: {
+				from: 'literal',
+				lang: 'ts',
+				code: [
+					'system: [',
+					'\t\'Greet with: "Thanks for calling Harbor, how can I help?" \',',
+					"\t{ private: 'Refunds over $200 need a supervisor code.' },",
+					'],',
+				].join('\n'),
+			},
+		},
+		{
 			id: 'run-time-system',
 			kind: 'prose',
 			title: 'Run-time system',
-			text: 'A `system` string on `runTurn` or `runSession` is appended after the profile\u2019s line, with a blank line between. The profile line is author-time. The run line is assembled for that call. The model gets the role-resolved line, then the run-time line.',
+			text: 'A `system` on `runTurn` or `runSession` is appended after the profile\u2019s line, with a blank line between. The profile line is author-time. The run line is assembled for that call. The model gets the role-resolved line, then the run-time line.',
 		},
 		{
 			id: 'request-system',
