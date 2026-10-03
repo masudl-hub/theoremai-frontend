@@ -10,6 +10,7 @@ import {
 	type ModelBindingDraft,
 	modelBindingViolation,
 	type PlaygroundConnectionMode,
+	sectionNote,
 } from '@theoremjs/playground';
 import {
 	keyKind,
@@ -246,7 +247,7 @@ export function PlaygroundKeys({
 	onRemoveSlot?: (slot: string) => void;
 }) {
 	return (
-		<InspectorSection note="Kept in this tab. Sent directly to the provider.">
+		<InspectorSection note={sectionNote('connection')}>
 			<VStack gap={2}>
 				{connection.entries.map((entry) => (
 					<KeyRow

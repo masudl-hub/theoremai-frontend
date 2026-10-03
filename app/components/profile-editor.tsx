@@ -181,6 +181,7 @@ import {
 	playgroundRunsTransport,
 	removeModelBinding,
 	sampleToolInput,
+	sectionNote,
 	setProfileType,
 	type ToolSpecDraft,
 	takesContinueInstruction,
@@ -390,7 +391,7 @@ function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 	const set = patch(setDraft, 'identity');
 	return (
 		<>
-			<InspectorSection title="Profile" note="Who this agent is and what kind of thing it makes.">
+			<InspectorSection title="Profile" note={sectionNote('profile')}>
 				<TextRow
 					label="Id"
 					path="id"
@@ -429,7 +430,7 @@ function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 			{identity.profileType !== 'speech' &&
 				identity.profileType !== 'decision' &&
 				identity.profileType !== 'host' && (
-					<InspectorSection title="System prompt" note={fieldMeta('playground.system')?.doc}>
+					<InspectorSection title="System prompt" note={sectionNote('system')}>
 						<TextArea
 							label="System prompt"
 							isLabelHidden
@@ -481,8 +482,8 @@ function ModelsEditor({
 				title="Models"
 				note={
 					draft.identity.profileType === 'decision'
-						? 'A decision uses one model. Select its binding in the tree to configure it.'
-						: 'Add a model here, then select its binding in the tree to configure it.'
+						? sectionNote('models.decision')
+						: sectionNote('models')
 				}
 			>
 				<Button
@@ -495,10 +496,7 @@ function ModelsEditor({
 				/>
 			</InspectorSection>
 			{draft.identity.profileType !== 'decision' && (
-				<InspectorSection
-					title="Policy"
-					note="Which model runs by default, and how many steps a turn may take."
-				>
+				<InspectorSection title="Policy" note={sectionNote('policy')}>
 					<ChoiceRow
 						label="Default"
 						path="defaultModel"
@@ -575,10 +573,7 @@ function DecisionModelEditor({
 		setDraft((current) => updateModelBinding(current, bindingKey, change));
 	};
 	return (
-		<InspectorSection
-			title="Decision model"
-			note="This binding answers the questions configured under Decision."
-		>
+		<InspectorSection title="Decision model" note={sectionNote('decisionModel')}>
 			<TextRow
 				label="Id"
 				path="models.*"
@@ -826,7 +821,7 @@ function ModelBindingEditor({
 
 	return (
 		<>
-			<InspectorSection title="Model" note="Where this model runs and what it goes by.">
+			<InspectorSection title="Model" note={sectionNote('model')}>
 				<TextRow
 					label="Id"
 					path="models.*"
@@ -1009,10 +1004,7 @@ function ModelBindingEditor({
 					/>
 				)}
 			</InspectorSection>
-			<InspectorSection
-				title="Generation"
-				note="How long, how varied, and whether its thinking is summarized."
-			>
+			<InspectorSection title="Generation" note={sectionNote('generation')}>
 				<NumberRow
 					label="Max output"
 					path="models.*.maxOutputTokens"
@@ -1047,10 +1039,7 @@ function ModelBindingEditor({
 				/>
 			</InspectorSection>
 			{google && binding.protocol === 'geminiInteractions' && (
-				<InspectorSection
-					title="Conversation state"
-					note="Who carries the conversation between steps."
-				>
+				<InspectorSection title="Conversation state" note={sectionNote('conversationState')}>
 					<SegmentedRow
 						label="Context"
 						path="models.*.persistViaInteractionId"
@@ -1077,7 +1066,7 @@ function ModelBindingEditor({
 				<PromptCacheSection binding={binding} set={set} />
 			)}
 			{type === 'text' && <CompactionSection binding={binding} set={set} />}
-			<InspectorSection title="Efforts" note="Named thinking levels a turn can ask for.">
+			<InspectorSection title="Efforts" note={sectionNote('efforts')}>
 				{binding.efforts.map((effort, index) => {
 					const status = statusAt('efforts', index);
 					return (
@@ -1186,7 +1175,7 @@ function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 	const attachmentPicker = image ? IMAGE_ATTACHMENT_PICKER : ATTACHMENT_PICKER;
 	return (
 		<>
-			<InspectorSection title="Accepts" note="What someone can send the agent.">
+			<InspectorSection title="Accepts" note={sectionNote('accepts')}>
 				<SwitchRow
 					label="Text"
 					path="inputs.text"
@@ -1222,7 +1211,7 @@ function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 					/>
 				)}
 			</InspectorSection>
-			<InspectorSection title="Limits" note="How much they can send at once.">
+			<InspectorSection title="Limits" note={sectionNote('limits')}>
 				<NumberRow
 					label="Max files"
 					path="inputs.maxFiles"
@@ -1275,10 +1264,7 @@ function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection
-				title="Slots"
-				note="The playground's chat picks none; your host passes one with each turn."
-			>
+			<InspectorSection title="Slots" note={sectionNote('slots')}>
 				<TextAreaRow
 					label="Slots"
 					path="inputs.slots"
@@ -1313,7 +1299,7 @@ type SetBinding = (change: Partial<ModelBindingDraft>) => void;
 /** Prompt caching, on OpenRouter's openAi route only. */
 function PromptCacheSection({ binding, set }: { binding: ModelBindingDraft; set: SetBinding }) {
 	return (
-		<InspectorSection title="Prompt cache" note="Reuses the start of a prompt it has seen.">
+		<InspectorSection title="Prompt cache" note={sectionNote('promptCache')}>
 			<ChoiceRow
 				label="Cache"
 				path="models.*.cache.mode"
@@ -1345,10 +1331,7 @@ function PromptCacheSection({ binding, set }: { binding: ModelBindingDraft; set:
 /** Compaction, where the agent summarises its own older history. Text agents only. */
 function CompactionSection({ binding, set }: { binding: ModelBindingDraft; set: SetBinding }) {
 	return (
-		<InspectorSection
-			title="Compaction"
-			note="The agent summarises its own older history. The playground's chat compacts before a turn; after one, your host runs it."
-		>
+		<InspectorSection title="Compaction" note={sectionNote('compaction')}>
 			<ChoiceRow
 				label="Compact"
 				path="models.*.compaction.timing"
@@ -1557,7 +1540,7 @@ function ImageEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Se
 	const set = patch(setDraft, 'image');
 	return (
 		<>
-			<InspectorSection title="Output" note="How generated images come back.">
+			<InspectorSection title="Output" note={sectionNote('image.output')}>
 				<PresetRow
 					google={google}
 					label="Aspect ratio"
@@ -1681,10 +1664,7 @@ function ImageReferencesEditor({
 		onChange(references.map((reference) => (reference.key === key ? next : reference)));
 	};
 	return (
-		<InspectorSection
-			title="References"
-			note="Images sent with every turn, ahead of the ones the user attaches."
-		>
+		<InspectorSection title="References" note={sectionNote('image.references')}>
 			{references.map((reference, index) => {
 				const label = `Reference ${String(index + 1)}`;
 				const status = statusAt('references', index);
@@ -1778,7 +1758,7 @@ function SpeechEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 	// Only the OpenAI protocol makes mp3; Gemini refuses it.
 	const mp3 = draft.modelBindings.every((binding) => binding.protocol === 'openAi');
 	return (
-		<InspectorSection title="Voice" note="How speech sounds, and the format it comes in.">
+		<InspectorSection title="Voice" note={sectionNote('speech.voice')}>
 			<PresetRow
 				google={google}
 				label="Voice"
@@ -1828,7 +1808,7 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 	const set = patch(setDraft, 'live');
 	return (
 		<>
-			<InspectorSection title="Ingress" note="What the session listens to.">
+			<InspectorSection title="Ingress" note={sectionNote('live.ingress')}>
 				<SwitchRow
 					label="Audio"
 					path="live.ingress.audio"
@@ -1854,10 +1834,7 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection
-				title="Voice"
-				note="How the agent sounds, and whether it may choose when to speak."
-			>
+			<InspectorSection title="Voice" note={sectionNote('live.voice')}>
 				<PresetRow
 					google={google}
 					label="Voice"
@@ -1870,7 +1847,7 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection title="Session" note="Lets a dropped session pick up where it left off.">
+			<InspectorSection title="Session" note={sectionNote('live.session')}>
 				<SwitchRow
 					label="Resumption"
 					path="live.sessionResumption"
@@ -1880,10 +1857,7 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection
-				title="Context compression"
-				note="Trims older turns once a session grows past the trigger."
-			>
+			<InspectorSection title="Context compression" note={sectionNote('live.compression')}>
 				<SwitchRow
 					label="Sliding window"
 					path="live.contextCompression"
@@ -1949,7 +1923,7 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 						</>
 					))}
 			</InspectorSection>
-			<InspectorSection title="Transcripts" note="Text copies of what is said, both ways.">
+			<InspectorSection title="Transcripts" note={sectionNote('live.transcripts')}>
 				<SwitchRow
 					label="Input"
 					path="live.transcription.input"
@@ -1967,7 +1941,7 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection title="Voice activity" note="How the model hears speech start and stop.">
+			<InspectorSection title="Voice activity" note={sectionNote('live.voiceActivity')}>
 				<SegmentedRow
 					label="Barge-in"
 					path="live.vad.activityHandling"
@@ -2051,7 +2025,7 @@ function OutputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: 
 	return (
 		<>
 			{shaped && (
-				<InspectorSection title="Shape" note="Free text, or JSON held to a schema.">
+				<InspectorSection title="Shape" note={sectionNote('shape')}>
 					<SegmentedRow
 						label="Mode"
 						path="outputs.structured"
@@ -2092,10 +2066,7 @@ function OutputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: 
 				</InspectorSection>
 			)}
 			{structured && (
-				<InspectorSection
-					title="Repair"
-					note="Checks each reply against the schema and hands what fails back to the model."
-				>
+				<InspectorSection title="Repair" note={sectionNote('repair')}>
 					<SwitchRow
 						label="Repair"
 						path="outputs.validation"
@@ -2132,10 +2103,7 @@ function OutputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: 
 					)}
 				</InspectorSection>
 			)}
-			<InspectorSection
-				title="Streaming"
-				note="How a reply arrives, and whether its thinking shows."
-			>
+			<InspectorSection title="Streaming" note={sectionNote('streaming')}>
 				<SegmentedRow
 					label="Delivery"
 					path="outputs.streaming.mode"
@@ -2307,7 +2275,7 @@ function TurnBehaviourEditor({ draft, setDraft }: { draft: PlaygroundDraft; setD
 	return (
 		<>
 			{draftAllows(draft, 'turnBehaviour.resumption') && (
-				<InspectorSection title="Resumption" note="Picks a reply back up after it stops short.">
+				<InspectorSection title="Resumption" note={sectionNote('resumption')}>
 					<ResumptionRow
 						value={
 							turn.resumeEnabled
@@ -2349,7 +2317,7 @@ function TurnBehaviourEditor({ draft, setDraft }: { draft: PlaygroundDraft; setD
 				</InspectorSection>
 			)}
 			{draftAllows(draft, 'turnBehaviour.allowSteering') && (
-				<InspectorSection title="Steering" note="Lets you add to a turn while it runs.">
+				<InspectorSection title="Steering" note={sectionNote('steering')}>
 					<SwitchRow
 						label="Steering"
 						path="turnBehaviour.allowSteering"
@@ -2435,7 +2403,7 @@ function EgressChecksSections({
 	const urls = (['images', 'links'] as const).filter((name) => checks[name].on);
 	return (
 		<>
-			<InspectorSection title="Block" note="What a reply can't carry.">
+			<InspectorSection title="Block" note={sectionNote('block')}>
 				<FlagList
 					label="Sensitive"
 					path="guardrails.egress.checks.sensitive"
@@ -2456,10 +2424,7 @@ function EgressChecksSections({
 				/>
 			</InspectorSection>
 			{urls.length > 0 && (
-				<InspectorSection
-					title="Given URLs"
-					note="Where an image or link may point beyond what the model was given."
-				>
+				<InspectorSection title="Given URLs" note={sectionNote('givenUrls')}>
 					{urls.map((name) => (
 						<NamesRow
 							key={name}
@@ -2494,7 +2459,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 	const set = patch(setDraft, 'guardrails');
 	return (
 		<>
-			<InspectorSection title="Input" note="Applied to what comes in before the model sees it.">
+			<InspectorSection title="Input" note={sectionNote('input')}>
 				<SwitchRow
 					label="Sanitize"
 					path="guardrails.sanitizeInput"
@@ -2504,7 +2469,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection title="Redact" note="Masked in what comes in.">
+			<InspectorSection title="Redact" note={sectionNote('redact')}>
 				<FlagList
 					label="Redact"
 					path="guardrails.redactSensitive"
@@ -2516,10 +2481,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 				/>
 			</InspectorSection>
 			{draftAllows(draft, 'guardrails.canary') && (
-				<InspectorSection
-					title="Canary"
-					note="A fresh token in each turn's system prompt, so a leaked prompt shows."
-				>
+				<InspectorSection title="Canary" note={sectionNote('canary')}>
 					<SwitchRow
 						label="Canary"
 						path="guardrails.canary"
@@ -2552,7 +2514,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 					)}
 				</InspectorSection>
 			)}
-			<InspectorSection title="Egress" note="Checks each reply before anyone sees it.">
+			<InspectorSection title="Egress" note={sectionNote('egress')}>
 				<SwitchRow
 					label="Checks"
 					path="guardrails.egress.checks"
@@ -2609,10 +2571,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 					}}
 				/>
 			)}
-			<InspectorSection
-				title="Network"
-				note="Where HTTP and MCP tools may reach from your host. Playground runs reach public hosts only."
-			>
+			<InspectorSection title="Network" note={sectionNote('network')}>
 				<SwitchRow
 					label="Private"
 					path="guardrails.network.allowPrivateNetworks"
@@ -2644,10 +2603,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 				/>
 			</InspectorSection>
 			{draftAllows(draft, 'guardrails.taint') && (
-				<InspectorSection
-					title="Taint"
-					note="What tools may still do once a turn has read a remote tool's result."
-				>
+				<InspectorSection title="Taint" note={sectionNote('taint')}>
 					<SegmentedRow
 						label="Refuse"
 						path="guardrails.taint.afterRemoteRead"
@@ -2659,10 +2615,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 					/>
 				</InspectorSection>
 			)}
-			<InspectorSection
-				title="Quota"
-				note="Your host enforces this. Playground runs aren't counted against it."
-			>
+			<InspectorSection title="Quota" note={sectionNote('quota')}>
 				<SwitchRow
 					label="Daily cap"
 					path="guardrails.quota"
@@ -2784,7 +2737,7 @@ function ObservabilityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setD
 	const on = observability.writeTo !== false;
 	return (
 		<>
-			<InspectorSection title="Traces" note="Each run's trace comes back on its own stream.">
+			<InspectorSection title="Traces" note={sectionNote('traces')}>
 				<SegmentedRow
 					label="Write to"
 					path="observability.writeTo"
@@ -2812,7 +2765,7 @@ function ObservabilityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setD
 			</InspectorSection>
 			{on && (
 				<>
-					<InspectorSection title="Keep" note="What each trace holds.">
+					<InspectorSection title="Keep" note={sectionNote('traces.keep')}>
 						<FlagList
 							label="Keep"
 							path="observability.include"
@@ -2823,7 +2776,7 @@ function ObservabilityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setD
 							}}
 						/>
 					</InspectorSection>
-					<InspectorSection title="Scrub" note="Stripped before a trace is stored.">
+					<InspectorSection title="Scrub" note={sectionNote('traces.scrub')}>
 						<FlagList
 							label="Scrub"
 							path="observability.scrub"
@@ -2834,10 +2787,7 @@ function ObservabilityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setD
 							}}
 						/>
 					</InspectorSection>
-					<InspectorSection
-						title="Storage"
-						note="Your host's trace store uses these. The playground's stores nothing."
-					>
+					<InspectorSection title="Storage" note={sectionNote('traces.storage')}>
 						<NumberRow
 							label="Keep for"
 							path="observability.retainForDays"
@@ -2992,9 +2942,7 @@ function ToolsEditor({
 			<InspectorSection
 				title="Tools"
 				note={
-					draft.identity.profileType === 'host'
-						? 'What the host runs. Each call names one.'
-						: 'What the agent can call. Built-in tools are turned on per model.'
+					draft.identity.profileType === 'host' ? sectionNote('tools.host') : sectionNote('tools')
 				}
 			>
 				{draft.toolSpecs.length > 0 && (
@@ -3028,10 +2976,7 @@ function ToolsEditor({
 				/>
 			</InspectorSection>
 			{draftAllows(draft, 'tools.t2Loader') && (
-				<InspectorSection
-					title="Loading"
-					note="A T2 tool stays hidden until the loader tool names it."
-				>
+				<InspectorSection title="Loading" note={sectionNote('tools.loading')}>
 					<ChoiceRow
 						label="T2 loader"
 						path="tools.t2Loader"
@@ -3116,11 +3061,7 @@ function ToolTest({ tool }: { tool: ToolSpecDraft }) {
 	return (
 		<InspectorSection
 			title="Test"
-			note={
-				http
-					? `Sends one real ${method} request with the sample input.`
-					: 'Asks the server which tools it has.'
-			}
+			note={http ? sectionNote('tool.test.http', { method }) : sectionNote('tool.test.mcp')}
 		>
 			{http && (
 				<TextAreaRow
@@ -3233,9 +3174,7 @@ function ToolSpecEditor({
 			<InspectorSection
 				title="Tool"
 				note={
-					draft.identity.profileType === 'host'
-						? 'What a call runs, and what the console says it does.'
-						: "What the model calls, and what it's told the tool does."
+					draft.identity.profileType === 'host' ? sectionNote('tool.host') : sectionNote('tool')
 				}
 			>
 				<TextRow
@@ -3291,7 +3230,7 @@ function ToolSpecEditor({
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection title="Contract" note="What it takes and gives back, as JSON Schema.">
+			<InspectorSection title="Contract" note={sectionNote('tool.contract')}>
 				<TextAreaRow
 					label="Input"
 					path="playground.inputSchema"
@@ -3315,10 +3254,7 @@ function ToolSpecEditor({
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection
-				title="Activity"
-				note="What the chat says while a call runs and once it's done. {field} fills from the call, {results.0.name} steps into a list, and {field|text} shows the text when it's empty."
-			>
+			<InspectorSection title="Activity" note={sectionNote('tool.activity')}>
 				<TextRow
 					label="Running"
 					path="labels.activity"
@@ -3341,10 +3277,7 @@ function ToolSpecEditor({
 				/>
 			</InspectorSection>
 			{tool.toolType === 'function' && (
-				<InspectorSection
-					title="Stub"
-					note="The playground has no code to run, so a function tool answers with this."
-				>
+				<InspectorSection title="Stub" note={sectionNote('tool.stub')}>
 					<TextAreaRow
 						label="Returns"
 						path="playground.stubOutput"
@@ -3361,10 +3294,7 @@ function ToolSpecEditor({
 			)}
 			{tool.toolType === 'http' && (
 				<>
-					<InspectorSection
-						title="Request"
-						note="Where each call goes. Headers are saved in the profile, so keep secrets under Auth."
-					>
+					<InspectorSection title="Request" note={sectionNote('tool.request')}>
 						<TextRow
 							label="Endpoint"
 							path="endpoint"
@@ -3388,7 +3318,7 @@ function ToolSpecEditor({
 						/>
 						{headersRow}
 					</InspectorSection>
-					<InspectorSection title="Mapping" note="Which input fields fill the URL and the body.">
+					<InspectorSection title="Mapping" note={sectionNote('tool.mapping')}>
 						<NamesRow
 							label="Path"
 							path="mapping.pathParams"
@@ -3423,10 +3353,7 @@ function ToolSpecEditor({
 				</>
 			)}
 			{tool.toolType === 'mcp' && (
-				<InspectorSection
-					title="Server"
-					note="The MCP server and the tool on it. Headers are saved in the profile, so keep secrets under Auth."
-				>
+				<InspectorSection title="Server" note={sectionNote('tool.server')}>
 					<TextRow
 						label="Server"
 						path="serverUrl"
@@ -3453,10 +3380,7 @@ function ToolSpecEditor({
 				</InspectorSection>
 			)}
 			{remote && (
-				<InspectorSection
-					title="Auth"
-					note="The credential sent with each call. The playground holds none, so a tool that needs one can't sign in here."
-				>
+				<InspectorSection title="Auth" note={sectionNote('tool.auth')}>
 					<SegmentedRow
 						label="Type"
 						path="playground.authType"
@@ -3549,10 +3473,7 @@ function ToolSpecEditor({
 				</InspectorSection>
 			)}
 			{remote && <ToolTest key={tool.key} tool={tool} />}
-			<InspectorSection
-				title="Policy"
-				note="What it may change, when it asks first, and when the model sees it."
-			>
+			<InspectorSection title="Policy" note={sectionNote('tool.policy')}>
 				<SegmentedRow
 					label="Access"
 					path="access"
@@ -4213,10 +4134,7 @@ function DecisionEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 	};
 	return (
 		<>
-			<InspectorSection
-				title="Contract"
-				note="What this decision is called on every trace. The model never sees it."
-			>
+			<InspectorSection title="Contract" note={sectionNote('decision.contract')}>
 				<TextRow
 					label="Contract"
 					path="decision.contract"
@@ -4228,10 +4146,7 @@ function DecisionEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection
-				title="State"
-				note="The JSON every question is asked about. It's filled in the preview, not saved."
-			>
+			<InspectorSection title="State" note={sectionNote('decision.state')}>
 				<NumberRow
 					label="Max state"
 					path="inputs.maxStateBytes"
@@ -4247,10 +4162,7 @@ function DecisionEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection
-				title="Questions"
-				note="Asked together in one call, answered in this order."
-			>
+			<InspectorSection title="Questions" note={sectionNote('decision.questions')}>
 				{listStatus && <Banner status="error" title={listStatus.message} />}
 			</InspectorSection>
 			{decision.questions.map((question, index) => (
