@@ -6,7 +6,7 @@
 	"description": "THEOREM site: React Router v8 on Cloudflare Workers — docs, playground, and the run host.",
 	"scripts": {
 		"predev": "node --experimental-strip-types scripts/ensure-theoremai.mjs",
-		"dev": "react-router dev",
+		"dev": "react-router dev --port 5174 --strictPort",
 		"prebuild": "node --experimental-strip-types scripts/ensure-theoremai.mjs",
 		"docs:compose": "node scripts/docs-compose.mjs",
 		"lint:docs": "npm run docs:compose && node scripts/docs-lint-snippets.mjs && node scripts/docs-lint-voice.mjs && node scripts/docs-lint-dates.mjs",
