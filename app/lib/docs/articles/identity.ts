@@ -2,7 +2,7 @@ import type { DocArticleDef } from '../schema';
 
 export const identity: DocArticleDef = {
 	slug: 'identity',
-	updated: '2026-10-01',
+	updated: '2026-10-03',
 	title: 'Setting the identity',
 	entry: 'src/kernel/registry/profiles.ts',
 	summary:
