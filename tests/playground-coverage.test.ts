@@ -15,6 +15,7 @@ const NOT_IN_PLAYGROUND: Record<string, string> = {
 	'guardrails.egress.holdback': 'Read only by an enforce function; the bundled checks ignore it.',
 	'guardrails.disclosure': 'A check function on decision state, written in code.',
 	'observability.onWriteError': 'An error handler, written in code.',
+	'models.*.compaction.trigger': 'A function that decides when to compact, written in code.',
 };
 
 const components = new URL('../app/components/', import.meta.url);
