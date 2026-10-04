@@ -11,6 +11,7 @@ import { Layout, LayoutContent, LayoutPanel } from '@astryxdesign/core/Layout';
 import { ResizeHandle, useResizable } from '@astryxdesign/core/Resizable';
 import { ScrollableArea } from '@astryxdesign/core/ScrollableArea';
 import { Section } from '@astryxdesign/core/Section';
+import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { Selector } from '@astryxdesign/core/Selector';
 import { StackItem } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
@@ -90,7 +91,6 @@ import { type TheoremChatHandle, useDisclosureMotion } from '@theoremjs/react/ui
 import {
 	type CSSProperties,
 	type Dispatch,
-	type ReactNode,
 	type RefObject,
 	type SetStateAction,
 	useCallback,
@@ -364,7 +364,13 @@ function toolItems({ workspace, selectedId, onSelect, update }: WorkspaceTreeSta
 	});
 }
 
-/** The workspace's two trees: its agents, and the tool library they share. */
+/** Which of the workspace's lists the sidebar shows. */
+type WorkspaceList = 'agents' | 'tools';
+
+/**
+ * The workspace's two lists, one at a time: its agents, and the tool library they share. The
+ * toggle follows the selection, so opening a tool from elsewhere (an issue, a new tool) shows it.
+ */
 function WorkspaceTreeLists({
 	tree,
 	draft,
@@ -375,13 +381,38 @@ function WorkspaceTreeLists({
 	draft: PlaygroundDraft;
 	onAddAgent: (draft: PlaygroundDraft) => void;
 }) {
+	const listOf = (id: string): WorkspaceList =>
+		toolSpecKeyOf(id) === undefined ? 'agents' : 'tools';
+	const [list, setList] = useState(() => listOf(tree.selectedId));
+	const [shownFor, setShownFor] = useState(tree.selectedId);
+	if (shownFor !== tree.selectedId) {
+		setShownFor(tree.selectedId);
+		setList(listOf(tree.selectedId));
+	}
 	return (
-		<VStack gap={4}>
-			<TreeList
-				density="compact"
-				aria-label="Agents"
-				header={treeHeader(
-					'Agents',
+		<VStack gap={2}>
+			<HStack gap={1} vAlign="center">
+				<StackItem size="fill">
+					<SegmentedControl
+						label="Workspace list"
+						size="sm"
+						layout="fill"
+						value={list}
+						onChange={(next) => {
+							setList(next === 'tools' ? 'tools' : 'agents');
+						}}
+					>
+						<SegmentedControlItem
+							value="agents"
+							label={`Agents ${String(tree.workspace.agents.length)}`}
+						/>
+						<SegmentedControlItem
+							value="tools"
+							label={`Tools ${String(tree.workspace.toolSpecs.length)}`}
+						/>
+					</SegmentedControl>
+				</StackItem>
+				{list === 'agents' ? (
 					<DropdownMenu
 						button={{
 							label: 'Add an agent',
@@ -418,15 +449,8 @@ function WorkspaceTreeLists({
 								},
 							},
 						]}
-					/>,
-				)}
-				items={agentItems(tree)}
-			/>
-			<TreeList
-				density="compact"
-				aria-label="Tools"
-				header={treeHeader(
-					'Tools',
+					/>
+				) : (
 					<IconButton
 						label="Add a tool"
 						variant="ghost"
@@ -435,10 +459,14 @@ function WorkspaceTreeLists({
 						onClick={() => {
 							addToolSpec(draft, tree.setDraft, tree.onSelect);
 						}}
-					/>,
+					/>
 				)}
-				items={toolItems(tree)}
-			/>
+			</HStack>
+			{list === 'agents' ? (
+				<TreeList density="compact" aria-label="Agents" items={agentItems(tree)} />
+			) : (
+				<TreeList density="compact" aria-label="Tools" items={toolItems(tree)} />
+			)}
 		</VStack>
 	);
 }
@@ -469,19 +497,6 @@ function ChatPicker({
 }
 
 /** A tree group's heading and its add button. */
-function treeHeader(title: string, add: ReactNode) {
-	return (
-		<HStack gap={1} vAlign="center">
-			<StackItem size="fill">
-				<Text type="supporting" color="secondary">
-					{title}
-				</Text>
-			</StackItem>
-			{add}
-		</HStack>
-	);
-}
-
 /** Below the app shell's drawer breakpoint, where the playground shows one pane at a time. */
 const PHONE = '(width < 768px)';
 function usePhone() {
