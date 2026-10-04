@@ -82,6 +82,7 @@ import {
 	IconPlugConnected,
 	IconPlus,
 	IconRefresh,
+	IconRobot,
 	IconSearch,
 	IconSend,
 	IconServer,
@@ -134,6 +135,7 @@ import {
 import {
 	type AcceptSection,
 	acceptSections,
+	agentToolTarget,
 	allowedBuiltinsForGemini,
 	COMPACTION_DRAFT_DEFAULTS,
 	type DecisionQuestionDraft,
@@ -228,6 +230,8 @@ import {
 	LocalConnection,
 	NodeIssues,
 	useFieldStatus,
+	type WorkspaceAgent,
+	WorkspaceContext,
 } from './inspector-context';
 import { IconMcp } from './mcp-icon';
 import { slotDescription, useProviderModels } from './playground-connection';
@@ -1330,8 +1334,24 @@ function PromptCacheSection({ binding, set }: { binding: ModelBindingDraft; set:
 	);
 }
 
-/** Compaction, where the agent summarises its own older history. Text agents only. */
+/** The agents another agent can name: every one but itself, each by its id. */
+function otherAgents(
+	agents: readonly WorkspaceAgent[],
+	self: string,
+	canName: (agent: WorkspaceAgent) => boolean,
+): Choice<string>[] {
+	return agents
+		.filter((agent) => agent.key !== self)
+		.map((agent) => ({
+			value: agent.key,
+			label: agent.agentId || 'Unnamed agent',
+			disabled: !canName(agent),
+		}));
+}
+
+/** Compaction, where the agent summarises its older history, or another text agent does. */
 function CompactionSection({ binding, set }: { binding: ModelBindingDraft; set: SetBinding }) {
+	const workspace = useContext(WorkspaceContext);
 	return (
 		<InspectorSection
 			title="Compaction"
@@ -1393,6 +1413,24 @@ function CompactionSection({ binding, set }: { binding: ModelBindingDraft; set: 
 							set({ compactKeep });
 						}}
 					/>
+					{/* Kept while it names an agent, so a removed one can still be cleared here. */}
+					{workspace && (workspace.agents.length > 1 || binding.compactWith) && (
+						<ChoiceRow
+							label="Summarised by"
+							path="models.*.compaction.profile"
+							field="compactWith"
+							isRequired={false}
+							value={binding.compactWith ?? ''}
+							options={otherAgents(
+								workspace.agents,
+								workspace.self,
+								(agent) => agent.type === 'text',
+							)}
+							onChange={(compactWith) => {
+								set({ compactWith });
+							}}
+						/>
+					)}
 					<ChoiceRow
 						label="Counts"
 						path="models.*.compaction.meter"
@@ -2846,13 +2884,18 @@ export const TOOL_TYPE_ICON = {
 	function: IconMathFunction,
 	http: IconWorld,
 	mcp: IconMcp,
+	agent: IconRobot,
 } satisfies Record<CustomToolType, IconType>;
 
 const TOOL_TYPE_SEGMENTS: Segment<CustomToolType>[] = [
 	{ value: 'function', label: 'Function', icon: TOOL_TYPE_ICON.function },
 	{ value: 'http', label: 'HTTP', icon: TOOL_TYPE_ICON.http },
 	{ value: 'mcp', label: 'MCP', icon: TOOL_TYPE_ICON.mcp },
+	{ value: 'agent', label: 'Agent', icon: TOOL_TYPE_ICON.agent },
 ];
+
+/** The agents an agent tool can run. */
+const CALLABLE_TYPES = new Set(['text', 'image', 'speech']);
 
 const ACCESS_SEGMENTS: Segment<ToolAccess>[] = [
 	{ value: 'read-only', label: 'Read only', icon: IconEye },
@@ -2936,6 +2979,17 @@ const HEADERS_PLACEHOLDER = `{
   "Accept": "application/json"
 }`;
 
+/** Adds a new tool to the draft and opens it. */
+export function addToolSpec(
+	draft: PlaygroundDraft,
+	setDraft: SetDraft,
+	onSelect: (id: string) => void,
+) {
+	const tool = newToolSpec(draft);
+	setDraft((current) => ({ ...current, toolSpecs: [...current.toolSpecs, tool] }));
+	onSelect(toolSpecNodeId(tool.key));
+}
+
 /** The tools, each opening its own editor, and the T2 loader. */
 function ToolsEditor({
 	draft,
@@ -2947,45 +3001,82 @@ function ToolsEditor({
 	onSelect: (id: string) => void;
 }) {
 	const set = patch(setDraft, 'tools');
-	// Any custom tool can load T2 tools: one that answers with the ids to load.
-	const loaders = draft.toolSpecs.map((tool) => tool.toolName.trim()).filter(Boolean);
+	const workspace = useContext(WorkspaceContext);
+	const isHost = draft.identity.profileType === 'host';
+	/** In a workspace, the library's tools this agent allows; on its own, every tool it has. */
+	const allowed = workspace
+		? draft.toolSpecs.filter((tool) => workspace.allowed.includes(tool.key))
+		: draft.toolSpecs;
+	// Any custom tool it allows can load T2 tools: one that answers with the ids to load.
+	const loaders = allowed.map((tool) => tool.toolName.trim()).filter(Boolean);
+	const note = isHost ? sectionNote('tools.host') : undefined;
+	const addTool = (
+		<Button
+			label="Add tool"
+			variant="ghost"
+			size="sm"
+			icon={<Icon icon={IconPlus} size="sm" />}
+			onClick={() => {
+				addToolSpec(draft, setDraft, onSelect);
+			}}
+		/>
+	);
 	return (
 		<>
-			<InspectorSection
-				title="Tools"
-				path={draft.identity.profileType === 'host' ? undefined : 'tools'}
-				note={draft.identity.profileType === 'host' ? sectionNote('tools.host') : undefined}
-			>
-				{draft.toolSpecs.length > 0 && (
-					<List density="compact">
-						{draft.toolSpecs.map((tool) => (
-							<ListItem
-								key={tool.key}
-								label={tool.toolName.trim() || 'Unnamed tool'}
-								description={tool.description.trim() || undefined}
-								startContent={
-									<Icon icon={TOOL_TYPE_ICON[tool.toolType]} size="sm" color="secondary" />
+			{workspace ? (
+				// The library's tools, the ones this agent may use checked; each opens from the library.
+				<InspectorSection title="Tools" path="tools.allow" note={note}>
+					{draft.toolSpecs.length > 0 && (
+						<CheckboxList
+							label="Allowed"
+							isLabelHidden
+							density="compact"
+							value={allowed.map((tool) => tool.key)}
+							onChange={(checked) => {
+								for (const tool of draft.toolSpecs) {
+									workspace.setAllowed(tool.key, checked.includes(tool.key));
 								}
-								endContent={<Token label={tool.loadTier} size="sm" />}
-								onClick={() => {
-									onSelect(toolSpecNodeId(tool.key));
-								}}
-							/>
-						))}
-					</List>
-				)}
-				<Button
-					label="Add tool"
-					variant="ghost"
-					size="sm"
-					icon={<Icon icon={IconPlus} size="sm" />}
-					onClick={() => {
-						const tool = newToolSpec(draft);
-						setDraft((current) => ({ ...current, toolSpecs: [...current.toolSpecs, tool] }));
-						onSelect(toolSpecNodeId(tool.key));
-					}}
-				/>
-			</InspectorSection>
+							}}
+						>
+							{draft.toolSpecs.map((tool) => (
+								<CheckboxListItem
+									key={tool.key}
+									value={tool.key}
+									label={tool.toolName.trim() || 'Unnamed tool'}
+									description={
+										tool.description.trim() ? (
+											<Text type="supporting">{tool.description.trim()}</Text>
+										) : undefined
+									}
+								/>
+							))}
+						</CheckboxList>
+					)}
+					{addTool}
+				</InspectorSection>
+			) : (
+				<InspectorSection title="Tools" path={isHost ? undefined : 'tools'} note={note}>
+					{draft.toolSpecs.length > 0 && (
+						<List density="compact">
+							{draft.toolSpecs.map((tool) => (
+								<ListItem
+									key={tool.key}
+									label={tool.toolName.trim() || 'Unnamed tool'}
+									description={tool.description.trim() || undefined}
+									startContent={
+										<Icon icon={TOOL_TYPE_ICON[tool.toolType]} size="sm" color="secondary" />
+									}
+									endContent={<Token label={tool.loadTier} size="sm" />}
+									onClick={() => {
+										onSelect(toolSpecNodeId(tool.key));
+									}}
+								/>
+							))}
+						</List>
+					)}
+					{addTool}
+				</InspectorSection>
+			)}
 			{draftAllows(draft, 'tools.t2Loader') && (
 				<InspectorSection title="Loading" path="tools.t2Loader">
 					<ChoiceRow
@@ -3152,6 +3243,7 @@ function ToolSpecEditor({
 	toolKey: string;
 	onSelect: (id: string) => void;
 }) {
+	const workspace = useContext(WorkspaceContext);
 	const tool = draft.toolSpecs.find((candidate) => candidate.key === toolKey);
 	if (!tool) return null;
 	const set = (change: Partial<ToolSpecDraft>) => {
@@ -3162,7 +3254,7 @@ function ToolSpecEditor({
 			),
 		}));
 	};
-	const remote = tool.toolType !== 'function';
+	const remote = tool.toolType === 'http' || tool.toolType === 'mcp';
 	const authType = tool.authType ?? 'none';
 	// HTTP and MCP tools both send static headers.
 	const headersRow = (
@@ -3214,7 +3306,11 @@ function ToolSpecEditor({
 					path="registerTool.type"
 					field="toolType"
 					value={tool.toolType}
-					segments={TOOL_TYPE_SEGMENTS}
+					segments={
+						workspace
+							? TOOL_TYPE_SEGMENTS
+							: TOOL_TYPE_SEGMENTS.filter((segment) => segment.value !== 'agent')
+					}
 					onChange={(toolType) => {
 						set({ toolType });
 					}}
@@ -3372,6 +3468,36 @@ function ToolSpecEditor({
 						/>
 					</InspectorSection>
 				</>
+			)}
+			{tool.toolType === 'agent' && workspace && (
+				<InspectorSection title="Agent">
+					<ChoiceRow
+						label="Runs"
+						path="profile"
+						field="agentKey"
+						isRequired
+						value={tool.agentKey ?? ''}
+						options={otherAgents(workspace.agents, workspace.self, (agent) =>
+							CALLABLE_TYPES.has(agent.type),
+						)}
+						onChange={(agentKey) => {
+							const agentId =
+								workspace.agents.find((agent) => agent.key === agentKey)?.agentId ?? '';
+							set(agentToolTarget(tool, agentKey, agentId));
+						}}
+					/>
+					<NumberRow
+						label="Calls per turn"
+						path="maxCallsPerTurn"
+						field="maxCallsPerTurn"
+						value={tool.maxCallsPerTurn ?? null}
+						min={1}
+						isIntegerOnly
+						onChange={(maxCallsPerTurn) => {
+							set({ maxCallsPerTurn });
+						}}
+					/>
+				</InspectorSection>
 			)}
 			{tool.toolType === 'mcp' && (
 				<InspectorSection title="Server" note={sectionNote('tool.headers')}>

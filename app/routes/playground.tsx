@@ -11,8 +11,11 @@ import { Layout, LayoutContent, LayoutPanel } from '@astryxdesign/core/Layout';
 import { ResizeHandle, useResizable } from '@astryxdesign/core/Resizable';
 import { ScrollableArea } from '@astryxdesign/core/ScrollableArea';
 import { Section } from '@astryxdesign/core/Section';
+import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
+import { Selector } from '@astryxdesign/core/Selector';
 import { StackItem } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
+import { TextInput } from '@astryxdesign/core/TextInput';
 import { useToast } from '@astryxdesign/core/Toast';
 import { Token } from '@astryxdesign/core/Token';
 import { TreeList, type TreeListItemData } from '@astryxdesign/core/TreeList';
@@ -25,6 +28,7 @@ import {
 	IconChevronDown,
 	IconCode,
 	IconCopy,
+	IconCopyPlus,
 	IconDownload,
 	IconEraser,
 	IconExternalLink,
@@ -33,6 +37,7 @@ import {
 	IconPlayerPlay,
 	IconPlaylistX,
 	IconPlus,
+	IconSearch,
 	IconSparkles,
 	IconTimeline,
 	IconTool,
@@ -44,27 +49,45 @@ import {
 	resolveObservabilityPolicy,
 } from '@theoremjs/agents';
 import {
+	addAgent,
+	agentNodeId,
 	type CompiledPlayground,
-	compilePlayground,
+	type CompiledWorkspace,
+	compileWorkspace,
 	createBlankDraft,
+	createBlankWorkspace,
 	createExampleDraft,
 	createPlaygroundRunId,
 	createSpanExampleDraft,
 	draftFacets,
+	duplicateAgent,
 	excludeFacet,
 	includableFacets,
 	includeFacet,
+	libraryDraft,
 	type PlaygroundDraft,
 	type PlaygroundIssue,
 	type PlaygroundNodeRef,
 	type PlaygroundRunPayload,
 	type PlaygroundTreeNode,
+	type PlaygroundWorkspace,
 	playgroundInterface,
 	playgroundNodeRef,
 	playgroundSource,
 	playgroundTree,
+	removeAgent,
+	removeLibraryTool,
 	sampleToolInput,
 	savePlaygroundRunPayload,
+	scopedNodeId,
+	setToolAllowed,
+	toolSpecKeyOf,
+	type WorkspaceCompileResult,
+	withAgentDraft,
+	workspaceFromDraft,
+	workspaceNodeRef,
+	workspaceRunAgent,
+	workspaceTree,
 } from '@theoremjs/playground';
 import { type PlaygroundSurfaceHost, playgroundSurface } from '@theoremjs/playground/surface';
 import { type TheoremChatHandle, useDisclosureMotion } from '@theoremjs/react/ui';
@@ -85,10 +108,16 @@ import {
 	ISSUE_ROW_ATTRIBUTE,
 	ListBadges,
 	LocalConnection,
+	WorkspaceContext,
 } from '../components/inspector-context';
 import { PlaygroundKeys, usePlaygroundConnection } from '../components/playground-connection';
 import { PlaygroundRunner } from '../components/playground-runner';
-import { PROFILE_TYPE_ICON, ProfileEditor, TOOL_TYPE_ICON } from '../components/profile-editor';
+import {
+	addToolSpec,
+	PROFILE_TYPE_ICON,
+	ProfileEditor,
+	TOOL_TYPE_ICON,
+} from '../components/profile-editor';
 import { PLAYGROUND_SEED_IDS, type PlaygroundSeedId } from '../lib/docs/schema';
 import { docsSeedDraft } from '../lib/docs/seeds';
 import { exportBundle, llmBrief } from '../lib/export-agent';
@@ -135,14 +164,13 @@ export function clientLoader({ request }: Route.ClientLoaderArgs) {
 	const seed = new URL(request.url).searchParams.get('seed');
 	const kept = restorePlayground();
 	const fresh = (draft: PlaygroundDraft): RestoredPlayground => ({
-		draft,
+		workspace: workspaceFromDraft(draft),
 		revision: kept.kind === 'restored' ? kept.value.revision + 1 : 0,
-		selectedId: 'identity',
 	});
 	if (isPlaygroundSeed(seed)) {
 		return {
 			start: fresh(docsSeedDraft(seed)),
-			displaced: kept.kind === 'restored' ? kept.value.draft : undefined,
+			displaced: kept.kind === 'restored' ? kept.value.workspace : undefined,
 			discarded: kept.kind === 'discarded',
 		};
 	}
@@ -168,38 +196,46 @@ function nodeIcon(draft: PlaygroundDraft, ref: PlaygroundNodeRef) {
 	return tool ? TOOL_TYPE_ICON[tool.toolType] : IconTool;
 }
 
-/** What every tree row reads: the draft, the selection, and how to change them. */
+/**
+ * What every row of one agent's tree reads: its draft, the selection, and how to change them.
+ * Row ids are the draft's own; `scope` gives the workspace's, which the selection is in.
+ */
 interface TreeState {
 	draft: PlaygroundDraft;
+	scope: (id: string) => string;
 	selectedId: string;
 	onSelect: (id: string) => void;
-	setDraft: (update: (draft: PlaygroundDraft) => PlaygroundDraft) => void;
+	setDraft: (next: PlaygroundDraft | ((draft: PlaygroundDraft) => PlaygroundDraft)) => void;
 }
 
 /** A row's hover action: stops at the button so the row itself isn't selected. */
-function rowAction(label: string, icon: IconType, onPress: () => void) {
+function actionButton(label: string, icon: IconType, onPress: () => void) {
 	return (
-		<span className="playground-tree-action">
-			<IconButton
-				label={label}
-				variant="ghost"
-				size="sm"
-				icon={<Icon icon={icon} size="sm" />}
-				onClick={(event) => {
-					event.stopPropagation();
-					onPress();
-				}}
-			/>
-		</span>
+		<IconButton
+			label={label}
+			variant="ghost"
+			size="sm"
+			icon={<Icon icon={icon} size="sm" />}
+			tooltip={label}
+			onClick={(event) => {
+				event.stopPropagation();
+				onPress();
+			}}
+		/>
 	);
 }
 
+function rowAction(label: string, icon: IconType, onPress: () => void) {
+	return <span className="playground-tree-action">{actionButton(label, icon, onPress)}</span>;
+}
+
 function treeItem(tree: TreeState, node: PlaygroundTreeNode, isTop = false): TreeListItemData {
-	const { draft, selectedId, onSelect, setDraft } = tree;
+	const { draft, scope, selectedId, onSelect, setDraft } = tree;
 	const facet = node.ref.facet;
+	const id = scope(node.id);
 	const isOptional = isTop && facet !== 'toolSpec' && profileGraphFacet(facet)?.optional === true;
 	return {
-		id: node.id,
+		id,
 		label: node.label,
 		startContent: <Icon icon={nodeIcon(draft, node.ref)} size="sm" color="secondary" />,
 		endContent: isOptional
@@ -208,10 +244,10 @@ function treeItem(tree: TreeState, node: PlaygroundTreeNode, isTop = false): Tre
 				})
 			: undefined,
 		className: isOptional ? 'playground-tree-row' : undefined,
-		isSelected: node.id === selectedId,
+		isSelected: id === selectedId,
 		isExpanded: node.children.length > 0,
 		onClick: () => {
-			onSelect(node.id);
+			onSelect(id);
 		},
 		children: node.children.length
 			? node.children.map((child) => treeItem(tree, child))
@@ -220,14 +256,17 @@ function treeItem(tree: TreeState, node: PlaygroundTreeNode, isTop = false): Tre
 }
 
 /** An optional section the type allows but the draft leaves out: dimmed; a click adds it. */
-function offItem({ onSelect, setDraft }: TreeState, facet: ProfileGraphFacetId): TreeListItemData {
+function offItem(
+	{ scope, onSelect, setDraft }: TreeState,
+	facet: ProfileGraphFacetId,
+): TreeListItemData {
 	const label = profileGraphFacet(facet)?.label ?? facet;
 	const add = () => {
 		setDraft((current) => includeFacet(current, facet));
-		onSelect(facet);
+		onSelect(scope(facet));
 	};
 	return {
-		id: facet,
+		id: scope(facet),
 		label: <span className="playground-tree-off">{label}</span>,
 		startContent: (
 			<Icon icon={FACET_ICON[facet as keyof typeof FACET_ICON]} size="sm" color="disabled" />
@@ -239,31 +278,283 @@ function offItem({ onSelect, setDraft }: TreeState, facet: ProfileGraphFacetId):
 }
 
 /**
- * Identity, labelled with the agent's id, sits beside the facets rather than above them. Every
- * section the profile type allows is listed, in catalog order: optional ones left out, dimmed.
+ * One agent: its root row, labelled with its id, holds every section the profile type allows, in
+ * catalog order, optional ones left out dimmed. Only the open agent shows its sections. Its tools
+ * are picked in its Tools section; the library lists them once for every agent.
  */
-function treeItems(tree: TreeState): TreeListItemData[] {
-	const { draft } = tree;
+function agentItem(
+	tree: TreeState,
+	isOpen: boolean,
+	actions: TreeListItemData['endContent'],
+): TreeListItemData {
+	const draft = { ...tree.draft, toolSpecs: [] };
 	const root = playgroundTree(draft);
 	const shown = new Map(root.children.map((node) => [node.id, node]));
 	const off = includableFacets(draft);
 	const all = draftFacets({ ...draft, included: [...draft.included, ...off] }).filter(
 		(facet) => facet !== 'identity',
 	);
-	const items = [
-		treeItem(tree, { ...root, children: [] }),
-		...all.map((facet) => {
-			const node = shown.get(facet);
-			return node ? treeItem(tree, node, true) : offItem(tree, facet);
-		}),
-	];
-	// The tree keeps a column for the expand arrows only while some row has one; keep it always,
-	// so rows don't jump sideways when the last branch goes (a host's last tool, say).
-	return items.some((item) => item.children?.length)
-		? items
-		: items.map((item) => ({ ...item, style: CHEVRON_COLUMN }));
+	const children = all.map((facet) => {
+		const node = shown.get(facet);
+		return node ? treeItem(tree, node, true) : offItem(tree, facet);
+	});
+	return {
+		...treeItem(tree, { ...root, children: [] }),
+		endContent: actions,
+		className: 'playground-tree-row',
+		isExpanded: isOpen,
+		children: isOpen ? children : undefined,
+	};
 }
 
+/** What the tree reads of the page: the workspace, the open agent, and how to change them. */
+interface WorkspaceTreeState {
+	workspace: PlaygroundWorkspace;
+	focus: string;
+	selectedId: string;
+	onSelect: (id: string) => void;
+	update: (change: (workspace: PlaygroundWorkspace) => PlaygroundWorkspace) => void;
+	setDraft: TreeState['setDraft'];
+}
+
+function agentItems(state: WorkspaceTreeState): TreeListItemData[] {
+	const { workspace, focus, selectedId, onSelect, update, setDraft } = state;
+	const isOnly = workspace.agents.length === 1;
+	return workspace.agents.map((agent) => {
+		const draft = libraryDraft(workspace, agent.key) ?? createBlankDraft();
+		const name = agent.identity.agentId || 'this agent';
+		return agentItem(
+			{
+				draft,
+				scope: (id) => scopedNodeId(agent.key, id),
+				selectedId,
+				onSelect,
+				setDraft,
+			},
+			agent.key === focus,
+			<span className="playground-tree-action">
+				{actionButton(`Duplicate ${name}`, IconCopyPlus, () => {
+					update((current) => duplicateAgent(current, agent.key));
+				})}
+				{!isOnly &&
+					actionButton(`Remove ${name}`, IconX, () => {
+						update((current) => removeAgent(current, agent.key));
+					})}
+			</span>,
+		);
+	});
+}
+
+/** The tool library, every agent picks its tools from these: those whose name or description holds `query`. */
+function toolItems({ workspace, selectedId, onSelect, update }: WorkspaceTreeState, query: string) {
+	const needle = query.trim().toLowerCase();
+	return workspaceTree(workspace).tools.flatMap((node): TreeListItemData[] => {
+		const tool = workspace.toolSpecs.find((spec) => spec.key === toolSpecKeyOf(node.id));
+		const text = `${node.label} ${tool?.description ?? ''}`.toLowerCase();
+		if (needle && !text.includes(needle)) return [];
+		return [
+			{
+				id: node.id,
+				label: node.label,
+				startContent: (
+					<Icon
+						icon={tool ? TOOL_TYPE_ICON[tool.toolType] : IconTool}
+						size="sm"
+						color="secondary"
+					/>
+				),
+				endContent: rowAction(`Remove ${node.label}`, IconX, () => {
+					if (tool) update((current) => removeLibraryTool(current, tool.key));
+				}),
+				className: 'playground-tree-row',
+				isSelected: node.id === selectedId,
+				onClick: () => {
+					onSelect(node.id);
+				},
+				style: CHEVRON_COLUMN,
+			},
+		];
+	});
+}
+
+/** Which of the workspace's lists the sidebar shows. */
+type WorkspaceList = 'agents' | 'tools';
+
+/**
+ * The workspace's two lists, one at a time: its agents, and the tool library they share. The
+ * toggle follows the selection, so opening a tool from elsewhere (an issue, a new tool) shows it.
+ */
+function WorkspaceTreeLists({
+	tree,
+	draft,
+	onAddAgent,
+	listRef,
+}: {
+	tree: WorkspaceTreeState;
+	/** The open agent's draft, which a new tool joins. */
+	draft: PlaygroundDraft;
+	onAddAgent: (draft: PlaygroundDraft) => void;
+	/** The list's scroller. The toggle and search stay above it. */
+	listRef: RefObject<HTMLDivElement | null>;
+}) {
+	const listOf = (id: string): WorkspaceList =>
+		toolSpecKeyOf(id) === undefined ? 'agents' : 'tools';
+	const [list, setList] = useState(() => listOf(tree.selectedId));
+	const [shownFor, setShownFor] = useState(tree.selectedId);
+	const [query, setQuery] = useState('');
+	if (shownFor !== tree.selectedId) {
+		setShownFor(tree.selectedId);
+		setList(listOf(tree.selectedId));
+	}
+	// The open row stays in view: a tool far down the library, one an issue opened, or one a
+	// cleared search or the toggle shows again. Revealed after the list renders.
+	const revealSelected = useCallback(() => {
+		requestAnimationFrame(() => {
+			listRef.current
+				?.querySelector('[aria-selected="true"]')
+				?.scrollIntoView({ block: 'nearest' });
+		});
+	}, [listRef]);
+	const { selectedId } = tree;
+	useEffect(() => {
+		// Nothing is selected while Keys is open.
+		if (selectedId) revealSelected();
+	}, [selectedId, revealSelected]);
+	const tools = list === 'tools' ? toolItems(tree, query) : [];
+	return (
+		<VStack gap={2} height="100%">
+			<HStack gap={1} vAlign="center">
+				<StackItem size="fill">
+					<SegmentedControl
+						label="Workspace list"
+						size="sm"
+						layout="fill"
+						value={list}
+						onChange={(next) => {
+							setList(next === 'tools' ? 'tools' : 'agents');
+							revealSelected();
+						}}
+					>
+						<SegmentedControlItem
+							value="agents"
+							label={`Agents ${String(tree.workspace.agents.length)}`}
+						/>
+						<SegmentedControlItem
+							value="tools"
+							label={`Tools ${String(tree.workspace.toolSpecs.length)}`}
+						/>
+					</SegmentedControl>
+				</StackItem>
+				{list === 'agents' ? (
+					<DropdownMenu
+						button={{
+							label: 'Add an agent',
+							variant: 'ghost',
+							size: 'sm',
+							isIconOnly: true,
+							tooltip: 'Add an agent',
+							icon: <Icon icon={IconPlus} size="sm" />,
+						}}
+						hasChevron={false}
+						placement="below"
+						alignment="end"
+						items={[
+							{
+								id: 'blank',
+								label: 'Blank agent',
+								onClick: () => {
+									onAddAgent(createBlankDraft());
+								},
+							},
+							{
+								id: 'concierge',
+								label: 'Travel concierge',
+								description: 'A text agent with weather, places and currency tools.',
+								onClick: () => {
+									onAddAgent(createExampleDraft());
+								},
+							},
+							{
+								id: 'span',
+								label: 'Span decision',
+								description: 'Tool-call safety with the free Span model.',
+								onClick: () => {
+									onAddAgent(createSpanExampleDraft());
+								},
+							},
+						]}
+					/>
+				) : (
+					<IconButton
+						label="Add a tool"
+						variant="ghost"
+						size="sm"
+						icon={<Icon icon={IconPlus} size="sm" />}
+						tooltip="Add a tool"
+						onClick={() => {
+							addToolSpec(draft, tree.setDraft, tree.onSelect);
+						}}
+					/>
+				)}
+			</HStack>
+			{list === 'tools' && (
+				<TextInput
+					label="Search tools"
+					isLabelHidden
+					size="sm"
+					placeholder="Search tools"
+					value={query}
+					onChange={(next) => {
+						setQuery(next);
+						revealSelected();
+					}}
+					startIcon={IconSearch}
+					hasClear
+				/>
+			)}
+			<StackItem size="fill">
+				<ScrollableArea ref={listRef} label="Workspace" height="100%">
+					{list === 'agents' ? (
+						<TreeList density="compact" aria-label="Agents" items={agentItems(tree)} />
+					) : tools.length > 0 ? (
+						<TreeList density="compact" aria-label="Tools" items={tools} />
+					) : (
+						<Text type="supporting" color="secondary">
+							{query.trim() ? `No tool matches “${query.trim()}”.` : 'No tools yet.'}
+						</Text>
+					)}
+				</ScrollableArea>
+			</StackItem>
+		</VStack>
+	);
+}
+
+/** Which agent the preview chats with, once there is more than one. */
+function ChatPicker({
+	workspace,
+	onChange,
+}: {
+	workspace: PlaygroundWorkspace;
+	onChange: (key: string) => void;
+}) {
+	if (workspace.agents.length < 2) return null;
+	return (
+		<Selector
+			label="Chat with"
+			isLabelHidden
+			variant="ghost"
+			size="sm"
+			value={workspace.chatWith}
+			options={workspace.agents.map((agent) => ({
+				value: agent.key,
+				label: agent.identity.agentId || 'Unnamed agent',
+			}))}
+			onChange={onChange}
+		/>
+	);
+}
+
+/** A tree group's heading and its add button. */
 /** Below the app shell's drawer breakpoint, where the playground shows one pane at a time. */
 const PHONE = '(width < 768px)';
 function usePhone() {
@@ -316,8 +607,35 @@ function runPayload({
 	customTools,
 	structured,
 	questions,
-}: CompiledPlayground): PlaygroundRunPayload {
-	return { agentId, profile, customTools, structured, questions };
+	dependencies,
+}: ReturnType<typeof workspaceRunAgent> & {}): PlaygroundRunPayload {
+	return { agentId, profile, customTools, structured, questions, dependencies };
+}
+
+/** An agent's id as the workspace names it, for finding its compile. */
+function agentIdOf(workspace: PlaygroundWorkspace, key: string): string {
+	return workspace.agents.find((agent) => agent.key === key)?.identity.agentId.trim() ?? '';
+}
+
+/** One agent's compile, from a workspace that compiled. */
+function compiledAgent(
+	compiled: CompiledWorkspace,
+	workspace: PlaygroundWorkspace,
+	key: string,
+): CompiledPlayground | undefined {
+	const id = agentIdOf(workspace, key);
+	return compiled.agents.find((agent) => agent.agentId === id);
+}
+
+/**
+ * The editor's node id for a workspace one: the open agent's own ids, a library tool's as it is.
+ * `undefined` for another agent's.
+ */
+function innerNodeId(id: string, focus: string): string | undefined {
+	if (toolSpecKeyOf(id) !== undefined) return id;
+	const root = agentNodeId(focus);
+	if (id === root) return 'identity';
+	return id.startsWith(`${root}/`) ? id.slice(root.length + 1) : undefined;
 }
 
 /** Hands the compiled agent to a new tab through this browser's storage; the run route reads it back. */
@@ -419,13 +737,20 @@ function badgesPerRow(panelSize: number, layoutWidth: number | undefined): 1 | 2
 	return panelSize >= Math.round((SIDE_DEFAULT_PERCENT / 100) * layoutWidth) ? 2 : 1;
 }
 
-type Compiled = ReturnType<typeof compilePlayground>;
+/** A workspace and what it compiled to. */
+interface Compile {
+	workspace: PlaygroundWorkspace;
+	result: WorkspaceCompileResult;
+}
 
-/** The last draft that compiled; it holds while the current one has issues. */
-function useLastGood(compiled: Compiled): Extract<Compiled, { ok: true }> | null {
-	const [lastGood, setLastGood] = useState(compiled.ok ? compiled : null);
-	if (compiled.ok && compiled !== lastGood) setLastGood(compiled);
-	return compiled.ok ? compiled : lastGood;
+/** The last workspace that compiled; it holds while the current one has issues. */
+function useLastGood(compile: Compile) {
+	const good = compile.result.ok
+		? { workspace: compile.workspace, compiled: compile.result }
+		: null;
+	const [lastGood, setLastGood] = useState(good);
+	if (good && good.compiled !== lastGood?.compiled) setLastGood(good);
+	return good ?? lastGood;
 }
 
 /** The editor/code button, by the view it leaves. */
@@ -439,8 +764,12 @@ const VIEW_TOGGLE = {
 	},
 } as const;
 
-/** The draft with every use of key slot `from` pointed at `to`; `''` lets go of it. */
-function swapKeySlot(draft: PlaygroundDraft, from: string, to: string): PlaygroundDraft {
+/** The agent with every use of key slot `from` pointed at `to`; `''` lets go of it. */
+function swapKeySlot<Agent extends Pick<PlaygroundDraft, 'models' | 'modelBindings'>>(
+	draft: Agent,
+	from: string,
+	to: string,
+): Agent {
 	const swap = <Slot extends string | undefined>(slot: Slot) => (slot === from ? to : slot) as Slot;
 	return {
 		...draft,
@@ -458,7 +787,7 @@ function swapKeySlot(draft: PlaygroundDraft, from: string, to: string): Playgrou
 }
 
 /** "1 issue" or "N issues" while the draft doesn't compile; nothing once it does. */
-function issueCount(compiled: ReturnType<typeof compilePlayground>): string | undefined {
+function issueCount(compiled: WorkspaceCompileResult): string | undefined {
 	if (compiled.ok) return undefined;
 	return compiled.issues.length === 1 ? '1 issue' : `${String(compiled.issues.length)} issues`;
 }
@@ -466,7 +795,7 @@ function issueCount(compiled: ReturnType<typeof compilePlayground>): string | un
 /** What th30 is told about the draft on screen. */
 function th30Report(
 	draft: PlaygroundDraft,
-	compiled: ReturnType<typeof compilePlayground>,
+	compiled: WorkspaceCompileResult,
 	section: string | undefined,
 ) {
 	return {
@@ -481,31 +810,50 @@ function th30Report(
 type SurfacePage = {
 	mode: ReturnType<typeof usePlaygroundConnection>['mode'];
 	connection: ReturnType<typeof usePlaygroundConnection>;
-	replaceDraft: (next: PlaygroundDraft, message: string, by?: 'th30' | 'visitor') => void;
+	replaceWorkspace: (next: PlaygroundWorkspace, message: string, by?: 'th30' | 'visitor') => void;
 	copy: (text: string, what: string) => void;
-	setSelectedId: (id: string) => void;
 	setKeysOpen: (open: boolean) => void;
 	setConversation: Dispatch<SetStateAction<number>>;
 };
 
-/** The playground as th30's surface host: the draft from the store, everything else from the page. */
+/**
+ * The playground as th30's surface host: th30 works on the open agent, its draft from the store;
+ * everything else comes from the page.
+ */
 function playgroundSurfaceHost(
 	store: PlaygroundStore,
 	page: RefObject<SurfacePage>,
 	chat: RefObject<TheoremChatHandle | null>,
 ): PlaygroundSurfaceHost {
-	const compileNow = () => compilePlayground(store.getDraft(), page.current.mode);
+	/** The open agent's compile, or `undefined` while the workspace has issues. */
+	const compileNow = () => {
+		const workspace = store.getWorkspace();
+		const result = compileWorkspace(workspace, page.current.mode);
+		return result.ok ? compiledAgent(result, workspace, store.getFocus()) : undefined;
+	};
+	/** What the chatted agent runs, with the agents it names. */
+	const runNow = () => {
+		const workspace = store.getWorkspace();
+		const result = compileWorkspace(workspace, page.current.mode);
+		return result.ok
+			? workspaceRunAgent(result, agentIdOf(workspace, workspace.chatWith))
+			: undefined;
+	};
 	return {
 		getDraft: store.getDraft,
 		getRevision: store.getRevision,
 		getMode: () => page.current.mode,
-		update: (next) => store.update(next, 'th30'),
+		update: (next) => store.updateDraft(next, 'th30'),
 		replaceDraft: (next, message) => {
-			page.current.replaceDraft(next, message, 'th30');
+			const workspace = store.getWorkspace();
+			page.current.replaceWorkspace(
+				withAgentDraft(workspace, store.getFocus(), next),
+				message,
+				'th30',
+			);
 		},
 		select: (id) => {
-			page.current.setSelectedId(id);
-			store.select(id);
+			store.select(scopedNodeId(store.getFocus(), id));
 		},
 		changesSince: (since) =>
 			store.changesSince(since).map((change) => ({
@@ -541,12 +889,12 @@ function playgroundSurfaceHost(
 		},
 		send: (text) => chat.current?.send(text) ?? Promise.resolve(null),
 		newConversation: () => {
-			clearConversation();
+			clearConversation(store.getWorkspace().chatWith);
 			page.current.setConversation((count) => count + 1);
 		},
 		launch: () => {
-			const result = compileNow();
-			if (!result.ok) return;
+			const result = runNow();
+			if (!result) return;
 			openInNewTab({
 				...runPayload(result),
 				connectionMode: page.current.mode,
@@ -555,7 +903,7 @@ function playgroundSurfaceHost(
 		},
 		exportAgent: (format) => {
 			const result = compileNow();
-			if (!result.ok) return Promise.resolve(false);
+			if (!result) return Promise.resolve(false);
 			const code = playgroundSource(result);
 			if (format === 'tsx') {
 				download(`${result.agentId}.tsx`, exportBundle(result, code));
@@ -575,12 +923,21 @@ function playgroundSurfaceHost(
  * compile, the agent stays the last one that did.
  */
 export default function Playground({ loaderData }: Route.ComponentProps) {
-	// The draft lives in a store kept in this tab's sessionStorage; th30's tools read it synchronously.
+	// The workspace lives in a store kept in this tab's sessionStorage; th30's tools read it
+	// synchronously. The editor works on the open agent's draft, with the whole tool library.
 	const [store] = useState(() => createPlaygroundStore(loaderData.start));
+	const workspace = useSyncExternalStore(store.subscribe, store.getWorkspace, store.getWorkspace);
 	const draft = useSyncExternalStore(store.subscribe, store.getDraft, store.getDraft);
+	const focus = store.getFocus();
 	const setDraft = useCallback(
 		(next: PlaygroundDraft | ((current: PlaygroundDraft) => PlaygroundDraft)) => {
-			store.update(next);
+			store.updateDraft(next);
+		},
+		[store],
+	);
+	const update = useCallback(
+		(change: (current: PlaygroundWorkspace) => PlaygroundWorkspace) => {
+			store.update(change);
 		},
 		[store],
 	);
@@ -594,12 +951,16 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 			flush();
 		};
 	}, [store]);
-	const namedSlots = [
-		draft.models.key,
-		draft.models.fallbackKey,
-		...draft.modelBindings.flatMap((binding) => [binding.keySlot, binding.fallbackKeySlot]),
-	].filter((slot): slot is string => Boolean(slot));
-	const connection = usePlaygroundConnection(draft.modelBindings, undefined, namedSlots);
+	// Keys are the workspace's: every agent's slots, so a called agent's key is asked for too.
+	const bindings = workspace.agents.flatMap((agent) => agent.modelBindings);
+	const namedSlots = workspace.agents
+		.flatMap((agent) => [
+			agent.models.key,
+			agent.models.fallbackKey,
+			...agent.modelBindings.flatMap((binding) => [binding.keySlot, binding.fallbackKeySlot]),
+		])
+		.filter((slot): slot is string => Boolean(slot));
+	const connection = usePlaygroundConnection(bindings, undefined, namedSlots);
 	const { mode, runtime } = connection;
 	const [keysOpen, setKeysOpen] = useState(false);
 	const [editorView, setEditorView] = useState<'editor' | 'code'>('editor');
@@ -619,38 +980,65 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 		autoSaveId: 'playground.panel',
 	});
 	const listBadges = badgesPerRow(sidePanel.size, layoutWidth);
-	const [selectedId, setSelectedId] = useState(loaderData.start.selectedId);
-	useEffect(() => {
-		store.select(selectedId);
-	}, [store, selectedId]);
+	const setSelectedId = store.select;
 	const editorRef = useRef<HTMLDivElement>(null);
 	// The profile tree's branches mount and unmount; ease them both ways.
 	const sidebarRef = useRef<HTMLDivElement>(null);
 	useDisclosureMotion(sidebarRef);
-	/** Bumped by the issue pill; once the editor shows the node, its first failing row is revealed. */
-	const [issueReveal, setIssueReveal] = useState(0);
-	useEffect(() => {
-		if (!issueReveal) return;
-		const row = editorRef.current?.querySelector(`[${ISSUE_ROW_ATTRIBUTE}]`);
-		row?.scrollIntoView({ block: 'center' });
-		row?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus({ preventScroll: true });
-	}, [issueReveal]);
 	const [bodyRef, bodyHeight] = useMeasure(measureHeight);
 	const [codeRef, codeChrome] = useMeasure(measureCodeChrome);
 	const codeHeight = heightBelow(bodyHeight, codeChrome);
-	const selected = playgroundNodeRef(draft, selectedId) ? selectedId : 'identity';
-	const settledDraft = useDebounced(draft, COMPILE_DEBOUNCE_MS);
-	const compiled = useMemo(() => compilePlayground(settledDraft, mode), [settledDraft, mode]);
-	// Only a draft that compiles changes the preview; while one has issues, the last good agent and its
-	// conversation stay put.
-	const lastGood = useLastGood(compiled);
-	const payload = useMemo(
-		() =>
-			lastGood
-				? { ...runPayload(lastGood), connectionMode: mode, localBaseUrl: connection.local.baseUrl }
-				: null,
-		[lastGood, mode, connection.local.baseUrl],
+	const selected = workspaceNodeRef(workspace, workspace.selected)
+		? workspace.selected
+		: agentNodeId(focus);
+	/** The open node as the editor names it: the open agent's own id, or a library tool's. */
+	const editing = innerNodeId(selected, focus) ?? 'identity';
+	/**
+	 * The node the issue pill opened. Its first failing row is revealed once the editor shows that
+	 * node, which can be a render after the click, and a frame later, once the editor's new scroll
+	 * area scrolls.
+	 */
+	const [issueReveal, setIssueReveal] = useState<{ node: string }>();
+	const revealed = useRef<{ node: string }>(undefined);
+	useEffect(() => {
+		if (!issueReveal || issueReveal === revealed.current || issueReveal.node !== selected) return;
+		revealed.current = issueReveal;
+		const frame = requestAnimationFrame(() => {
+			const row = editorRef.current?.querySelector(`[${ISSUE_ROW_ATTRIBUTE}]`);
+			row?.scrollIntoView({ block: 'center' });
+			row?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus({ preventScroll: true });
+		});
+		return () => {
+			cancelAnimationFrame(frame);
+		};
+	}, [issueReveal, selected]);
+	const settled = useDebounced(workspace, COMPILE_DEBOUNCE_MS);
+	const compile = useMemo(
+		() => ({ workspace: settled, result: compileWorkspace(settled, mode) }),
+		[settled, mode],
 	);
+	const compiled = compile.result;
+	// Only a workspace that compiles changes the preview; while one has issues, the last good agent
+	// and its conversation stay put. The chatted agent is found by its key there, so renaming it
+	// doesn't lose it.
+	const lastGood = useLastGood(compile);
+	const chatWith = workspace.chatWith;
+	const payload = useMemo(() => {
+		const run =
+			lastGood && workspaceRunAgent(lastGood.compiled, agentIdOf(lastGood.workspace, chatWith));
+		return run
+			? { ...runPayload(run), connectionMode: mode, localBaseUrl: connection.local.baseUrl }
+			: null;
+	}, [lastGood, chatWith, mode, connection.local.baseUrl]);
+	/** The open agent's compile: what the code view shows and Export takes. */
+	const focused = compiled.ok ? compiledAgent(compiled, compile.workspace, focus) : undefined;
+	/** The open agent's issues and the library's, by the editor's ids. */
+	const editorIssues = compiled.ok
+		? []
+		: compiled.issues.flatMap((issue) => {
+				const nodeId = innerNodeId(issue.nodeId, focus);
+				return nodeId === undefined ? [] : [{ ...issue, nodeId }];
+			});
 	const traced = useMemo(() => isTraced(payload), [payload]);
 	const [traceOpen, setTraceOpen] = useState(false);
 	// Bumping this remounts the runner: a fresh transcript and trace feed, the same profile.
@@ -658,15 +1046,18 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	/** On a phone, the tree or the preview, each over the editor; neither shows beside it there. */
 	const [sheet, setSheet] = useState<'tree' | 'preview' | null>(null);
 	const phone = usePhone();
-	const runKey = `${mode}:${String(conversation)}`;
-	// The kept conversation resumes in the first runner only; a cleared or remade one starts empty.
-	const [resume] = useState(() => ({
-		runKey,
-		chat: restoreConversation(),
-	}));
+	const runKey = `${mode}:${chatWith}:${String(conversation)}`;
+	// Each agent's kept conversation resumes in the first runner it has here; a cleared or remade
+	// one starts empty.
+	const [firstRuns] = useState(() => new Map<string, string>());
+	if (!firstRuns.has(chatWith)) firstRuns.set(chatWith, runKey);
+	const initialChat = useMemo(
+		() => (firstRuns.get(chatWith) === runKey ? restoreConversation(chatWith) : undefined),
+		[firstRuns, chatWith, runKey],
+	);
 	/** The runner that last sent something; a new one (cleared, or another mode) has no history. */
 	const [usedRun, setUsedRun] = useState<string>();
-	const source = useMemo(() => (compiled.ok ? playgroundSource(compiled) : null), [compiled]);
+	const source = useMemo(() => (focused ? playgroundSource(focused) : null), [focused]);
 	const issues = issueCount(compiled);
 	const blocked = issues && `Fix ${issues} first`;
 	const toast = useToast();
@@ -685,25 +1076,24 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 					variant="ghost"
 					size="sm"
 					onClick={() => {
-						setDraft(displaced);
+						store.update(displaced);
 						dismiss();
 					}}
 				/>
 			),
 		});
-	}, [toast, setDraft]);
-	/** Swaps in a whole new draft from Identity; the toast can put the old one back. */
-	const replaceDraft = (
-		next: PlaygroundDraft,
+	}, [toast, store]);
+	/** Swaps in a whole new workspace; the toast can put the old one back. */
+	const replaceWorkspace = (
+		next: PlaygroundWorkspace,
 		message: string,
 		by: 'th30' | 'visitor' = 'visitor',
 	) => {
-		const previous = draft;
+		const previous = store.getWorkspace();
 		store.update(next, by);
-		setSelectedId('identity');
 		setKeysOpen(false);
 		setEditorView('editor');
-		// A new agent starts a new conversation; the old one's transcript doesn't carry over.
+		// New agents start new conversations; the old transcripts don't carry over.
 		clearConversation();
 		setConversation((count) => count + 1);
 		const dismiss = toast({
@@ -714,7 +1104,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 					variant="ghost"
 					size="sm"
 					onClick={() => {
-						setDraft(previous);
+						store.update(previous);
 						dismiss();
 					}}
 				/>
@@ -733,9 +1123,8 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	const page = {
 		mode,
 		connection,
-		replaceDraft,
+		replaceWorkspace,
 		copy,
-		setSelectedId,
 		setKeysOpen,
 		setConversation,
 	};
@@ -747,11 +1136,48 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 		[store],
 	);
 
-	const title = editorTitle(draft, selected);
+	const title = editorTitle(draft, editing);
 	useReportTh30Playground(th30Report(draft, compiled, title));
 	const heading = keysOpen ? 'Keys' : title;
 	const viewToggle = VIEW_TOGGLE[editorView];
-	const initialChat = runKey === resume.runKey ? resume.chat : undefined;
+	/** Opens a node from the tree or the editor, closing whatever stood over it. */
+	const open = (id: string) => {
+		setKeysOpen(false);
+		setSelectedId(id);
+		setEditorView('editor');
+	};
+	const tree: WorkspaceTreeState = {
+		workspace,
+		focus,
+		selectedId: keysOpen ? '' : selected,
+		onSelect: (id) => {
+			open(id);
+			setSheet(null);
+		},
+		update,
+		setDraft,
+	};
+	/** What the open agent's editor knows of the others, and its allow list. */
+	const workspaceContext = useMemo(() => {
+		const self = workspace.agents.find((agent) => agent.key === focus);
+		return {
+			agents: workspace.agents.map((agent) => ({
+				key: agent.key,
+				agentId: agent.identity.agentId.trim(),
+				type: agent.identity.profileType,
+			})),
+			self: focus,
+			allowed: self?.tools.allow ?? [],
+			setAllowed: (toolKey: string, allowed: boolean) => {
+				update((current) => setToolAllowed(current, focus, toolKey, allowed));
+			},
+		};
+	}, [workspace.agents, focus, update]);
+	/** Adds an agent and opens it. */
+	const addAgentFrom = (next: PlaygroundDraft) => {
+		update((current) => addAgent(current, next));
+		open(store.getWorkspace().selected);
+	};
 
 	return (
 		<Layout
@@ -801,23 +1227,12 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 												</span>
 											</HStack>
 											<StackItem size="fill">
-												<ScrollableArea ref={sidebarRef} label="Profile" height="100%">
-													<TreeList
-														density="compact"
-														aria-label="Profile"
-														items={treeItems({
-															draft,
-															selectedId: keysOpen ? '' : selected,
-															onSelect: (id) => {
-																setKeysOpen(false);
-																setSelectedId(id);
-																setEditorView('editor');
-																setSheet(null);
-															},
-															setDraft,
-														})}
-													/>
-												</ScrollableArea>
+												<WorkspaceTreeLists
+													tree={tree}
+													draft={draft}
+													onAddAgent={addAgentFrom}
+													listRef={sidebarRef}
+												/>
 											</StackItem>
 										</VStack>
 									</Section>
@@ -845,10 +1260,9 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 														color="orange"
 														description="Go to the next issue"
 														onClick={() => {
-															setKeysOpen(false);
-															setSelectedId(nextIssueNode(compiled.issues, selected));
-															setEditorView('editor');
-															setIssueReveal((count) => count + 1);
+															const node = nextIssueNode(compiled.issues, selected);
+															open(node);
+															setIssueReveal({ node });
 														}}
 													/>
 												)}
@@ -869,6 +1283,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 														variant: 'ghost',
 														isIconOnly: true,
 														icon: <Icon icon={IconBook} size="sm" />,
+														tooltip: 'Load an example',
 													}}
 													hasChevron={false}
 													placement="below"
@@ -877,8 +1292,12 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 														{
 															id: 'concierge',
 															label: 'Travel concierge',
+															description: 'A text agent with weather, places and currency tools.',
 															onClick: () => {
-																replaceDraft(createExampleDraft(), 'Loaded the example.');
+																replaceWorkspace(
+																	workspaceFromDraft(createExampleDraft()),
+																	'Loaded the example.',
+																);
 															},
 														},
 														{
@@ -886,7 +1305,10 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 															label: 'Span decision',
 															description: 'Tool-call safety with the free Span model.',
 															onClick: () => {
-																replaceDraft(createSpanExampleDraft(), 'Loaded the Span example.');
+																replaceWorkspace(
+																	workspaceFromDraft(createSpanExampleDraft()),
+																	'Loaded the Span example.',
+																);
 															},
 														},
 													]}
@@ -895,9 +1317,9 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 													label="Clear"
 													variant="ghost"
 													icon={<Icon icon={IconEraser} size="sm" />}
-													tooltip="Start from a blank profile"
+													tooltip="Start again from one blank agent"
 													onClick={() => {
-														replaceDraft(createBlankDraft(), 'Cleared the profile.');
+														replaceWorkspace(createBlankWorkspace(), 'Cleared the playground.');
 													}}
 												/>
 												<IconButton
@@ -936,10 +1358,16 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 															);
 														}}
 														onRenameSlot={(from, to) => {
-															setDraft((current) => swapKeySlot(current, from, to));
+															update((current) => ({
+																...current,
+																agents: current.agents.map((agent) => swapKeySlot(agent, from, to)),
+															}));
 														}}
 														onRemoveSlot={(slot) => {
-															setDraft((current) => swapKeySlot(current, slot, ''));
+															update((current) => ({
+																...current,
+																agents: current.agents.map((agent) => swapKeySlot(agent, slot, '')),
+															}));
 														}}
 													/>
 												</ScrollableArea>
@@ -948,22 +1376,22 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 													<ListBadges value={listBadges}>
 														<ConnectionMode.Provider value={mode}>
 															<LocalConnection.Provider value={connection}>
-																<ProfileEditor
-																	draft={draft}
-																	setDraft={setDraft}
-																	selectedId={selected}
-																	onSelect={(id) => {
-																		setKeysOpen(false);
-																		setSelectedId(id);
-																		setEditorView('editor');
-																	}}
-																	issues={compiled.ok ? [] : compiled.issues}
-																/>
+																<WorkspaceContext.Provider value={workspaceContext}>
+																	<ProfileEditor
+																		draft={draft}
+																		setDraft={setDraft}
+																		selectedId={editing}
+																		onSelect={(id) => {
+																			open(scopedNodeId(focus, id));
+																		}}
+																		issues={editorIssues}
+																	/>
+																</WorkspaceContext.Provider>
 															</LocalConnection.Provider>
 														</ConnectionMode.Provider>
 													</ListBadges>
 												</ScrollableArea>
-											) : source && compiled.ok ? (
+											) : source ? (
 												<Section variant="transparent" padding={3} ref={codeRef}>
 													<CodeBlock
 														code={source}
@@ -1012,7 +1440,9 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 										}}
 									/>
 								</span>
-								<StackItem size="fill" />
+								<StackItem size="fill">
+									<ChatPicker workspace={workspace} onChange={store.chatWith} />
+								</StackItem>
 								{payload && usedRun === runKey && (
 									<IconButton
 										label="Clear history"
@@ -1020,7 +1450,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 										icon={<Icon icon={IconPlaylistX} size="sm" />}
 										tooltip="Clear the conversation and its traces. Your profile stays."
 										onClick={() => {
-											clearConversation();
+											clearConversation(chatWith);
 											setConversation((count) => count + 1);
 										}}
 									/>
@@ -1043,8 +1473,8 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 										icon={<Icon icon={IconDownload} size="sm" />}
 										tooltip={blocked ?? 'Download the agent as one .tsx'}
 										onClick={() => {
-											if (compiled.ok && source) {
-												download(`${compiled.agentId}.tsx`, exportBundle(compiled, source));
+											if (focused && source) {
+												download(`${focused.agentId}.tsx`, exportBundle(focused, source));
 											}
 										}}
 									/>
@@ -1065,8 +1495,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 												description: 'The .tsx, to paste into your code.',
 												icon: <Icon icon={IconCopy} size="sm" />,
 												onClick: () => {
-													if (compiled.ok && source)
-														copy(exportBundle(compiled, source), 'the .tsx');
+													if (focused && source) copy(exportBundle(focused, source), 'the .tsx');
 												},
 											},
 											{
@@ -1076,8 +1505,8 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 													'The .tsx with a brief: what to install, where it goes, what to ask you.',
 												icon: <Icon icon={IconSparkles} size="sm" />,
 												onClick: () => {
-													if (compiled.ok && source)
-														copy(llmBrief(compiled, source), 'the .tsx and its brief');
+													if (focused && source)
+														copy(llmBrief(focused, source), 'the .tsx and its brief');
 												},
 											},
 										]}
@@ -1091,9 +1520,12 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 									isDisabled={!compiled.ok}
 									tooltip={blocked ?? 'Run the agent on its own page, in a new tab'}
 									onClick={() => {
-										if (compiled.ok)
+										const run =
+											compiled.ok &&
+											workspaceRunAgent(compiled, agentIdOf(compile.workspace, chatWith));
+										if (run)
 											openInNewTab({
-												...runPayload(compiled),
+												...runPayload(run),
 												connectionMode: mode,
 												localBaseUrl: connection.local.baseUrl,
 											});
@@ -1113,7 +1545,9 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 										setUsedRun(runKey);
 									}}
 									initialChat={initialChat}
-									onChatChange={saveConversation}
+									onChatChange={(snapshot) => {
+										saveConversation(chatWith, snapshot);
+									}}
 									chatRef={chatRef}
 								/>
 							) : (

@@ -71,6 +71,16 @@
 	mask-image: linear-gradient(to left, transparent var(--spacing-6), #000 var(--spacing-10));
 }
 
+/* A row with two buttons fades a button's width further in. */
+.playground-tree-row:has(.playground-tree-action > :nth-child(2)):is(:hover, :has(:focus-visible))
+> button:not([data-tree-toggle]) {
+	mask-image: linear-gradient(
+		to left,
+		transparent calc(var(--spacing-6) + var(--spacing-8)),
+		#000 calc(var(--spacing-10) + var(--spacing-8))
+	);
+}
+
 /* A list row's badges stay on one line: past the field's width they end in an ellipsis beside the
    count, rather than wrapping the count out of the field. */
 .inspector-list span:has(> .astryx-badge) {

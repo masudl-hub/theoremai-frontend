@@ -46,3 +46,21 @@ export const LocalConnection = createContext<Pick<
 	| 'slots'
 	| 'vault'
 > | null>(null);
+
+/** One agent of the workspace, as another agent's pickers name it. */
+export interface WorkspaceAgent {
+	key: string;
+	agentId: string;
+	type: string;
+}
+
+/**
+ * The workspace around the agent the editor shows: the agents it can name, and which of the
+ * library's tools it allows. `null` when the editor shows a single draft.
+ */
+export const WorkspaceContext = createContext<{
+	agents: readonly WorkspaceAgent[];
+	self: string;
+	allowed: readonly string[];
+	setAllowed: (toolKey: string, allowed: boolean) => void;
+} | null>(null);

@@ -52,7 +52,7 @@ export function Layout({ children }: { children: ReactNode }) {
 				<meta name="theme-color" content={theoremSiteTheme.tokens['--color-background-body']} />
 				<style>
 					{
-						'html,body{background:#000}html[data-boot-pending] body>:not([data-boot]){visibility:hidden}'
+						'html{color-scheme:dark}html,body{background:#000}html[data-boot-pending] body>:not([data-boot]){visibility:hidden}'
 					}
 				</style>
 				<noscript>
@@ -77,7 +77,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
 export default function App() {
 	return (
-		<Theme theme={theoremSiteTheme} mode="system">
+		<Theme theme={theoremSiteTheme} mode="dark">
 			<Outlet />
 		</Theme>
 	);
@@ -86,7 +86,7 @@ export default function App() {
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 	const missing = isRouteErrorResponse(error) && error.status === 404;
 	return (
-		<Theme theme={theoremSiteTheme} mode="system">
+		<Theme theme={theoremSiteTheme} mode="dark">
 			<main>
 				<Center style={{ minHeight: '100dvh', padding: 16 }}>
 					<EmptyState
