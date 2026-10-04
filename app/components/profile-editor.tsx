@@ -2133,15 +2133,6 @@ function OutputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: 
 									set({ maxRetries });
 								}}
 							/>
-							<SwitchRow
-								label="Hold until valid"
-								path="outputs.validation.holdUntilValid"
-								field="holdUntilValid"
-								value={outputs.holdUntilValid}
-								onChange={(holdUntilValid) => {
-									set({ holdUntilValid });
-								}}
-							/>
 							<TextAreaRow
 								label="Guidance"
 								path="lexicon.repair.default_guidance"
