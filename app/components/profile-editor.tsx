@@ -1410,7 +1410,8 @@ function CompactionSection({ binding, set }: { binding: ModelBindingDraft; set: 
 							set({ compactKeep });
 						}}
 					/>
-					{workspace && workspace.agents.length > 1 && (
+					{/* Kept while it names an agent, so a removed one can still be cleared here. */}
+					{workspace && (workspace.agents.length > 1 || binding.compactWith) && (
 						<ChoiceRow
 							label="Summarised by"
 							path="models.*.compaction.profile"
