@@ -1,6 +1,7 @@
 import { HStack } from '@astryxdesign/core/HStack';
 import { Icon } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
+import { Popover } from '@astryxdesign/core/Popover';
 import { IconKey } from '@tabler/icons-react';
 import {
 	loadPlaygroundRunPayload,
@@ -88,30 +89,35 @@ export default function PlaygroundRun({ loaderData }: Route.ComponentProps) {
 			<title>{`${handle} · Theorem Playground`}</title>
 			<HStack className="iface-run-link" gap={2} vAlign="center">
 				<a href={PLAYGROUND_HREF}>← Playground</a>
-				<IconButton
+				<Popover
 					label="Keys"
-					variant="ghost"
-					icon={<Icon icon={IconKey} size="sm" />}
-					aria-pressed={keysOpen}
-					tooltip="Keys"
-					onClick={() => {
-						setKeysOpen((open) => !open);
-					}}
-				/>
+					placement="below"
+					alignment="start"
+					width={360}
+					isOpen={keysOpen}
+					onOpenChange={setKeysOpen}
+					content={
+						<PlaygroundKeys
+							connection={connection}
+							onAddSlot={(slot) => {
+								setPayload((current) =>
+									current.profile.type === 'host' || current.profile.key
+										? current
+										: { ...current, profile: { ...current.profile, key: slot } },
+								);
+							}}
+							onRenameSlot={renameSlot}
+						/>
+					}
+				>
+					<IconButton
+						label="Keys"
+						variant="ghost"
+						icon={<Icon icon={IconKey} size="sm" />}
+						tooltip="Keys"
+					/>
+				</Popover>
 			</HStack>
-			{keysOpen && (
-				<PlaygroundKeys
-					connection={connection}
-					onAddSlot={(slot) => {
-						setPayload((current) =>
-							current.profile.type === 'host' || current.profile.key
-								? current
-								: { ...current, profile: { ...current.profile, key: slot } },
-						);
-					}}
-					onRenameSlot={renameSlot}
-				/>
-			)}
 			<PlaygroundRunner
 				key={mode}
 				payload={payload}
