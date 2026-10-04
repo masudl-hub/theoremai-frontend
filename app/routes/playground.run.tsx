@@ -2,7 +2,11 @@ import { HStack } from '@astryxdesign/core/HStack';
 import { Icon } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { IconKey } from '@tabler/icons-react';
-import { loadPlaygroundRunPayload, readPlaygroundRunIdFromUrl } from '@theoremjs/playground';
+import {
+	loadPlaygroundRunPayload,
+	type PlaygroundRunPayload,
+	readPlaygroundRunIdFromUrl,
+} from '@theoremjs/playground';
 import { playgroundKeySlots } from '@theoremjs/playground/browser';
 import { TheoremThemeProvider } from '@theoremjs/react/ui';
 import { useState } from 'react';
@@ -29,35 +33,50 @@ export function HydrateFallback() {
 
 export default function PlaygroundRun({ loaderData }: Route.ComponentProps) {
 	const [payload, setPayload] = useState(loaderData.payload);
-	const models = payload.profile.type === 'host' ? [] : Object.values(payload.profile.models);
+	// The agent and the agents it calls each read their own key slots.
+	const profiles = [
+		payload.profile,
+		...(payload.dependencies ?? []).map((dependency) => dependency.profile),
+	];
+	const models = profiles.flatMap((profile) =>
+		profile.type === 'host' ? [] : Object.values(profile.models),
+	);
 	const connection = usePlaygroundConnection(
 		models,
 		payload.localBaseUrl,
-		playgroundKeySlots(payload.profile),
+		profiles.flatMap((profile) => playgroundKeySlots(profile)),
 	);
 	const [keysOpen, setKeysOpen] = useState(payload.connectionMode === 'byok');
 	const { mode, runtime } = connection;
 	// A host has no handle: it's named by its id.
 	const handle = 'identity' in payload.profile ? payload.profile.identity.handle : payload.agentId;
 	const renameSlot = (from: string, to: string) => {
-		setPayload((current) => {
-			const profile = current.profile;
-			if (profile.type === 'host') return current;
-			const rename = <T extends { key?: string; fallbackKey?: string }>(value: T): T => ({
-				...value,
-				...(value.key === from ? { key: to } : {}),
-				...(value.fallbackKey === from ? { fallbackKey: to } : {}),
-			});
-			return {
-				...current,
-				profile: {
-					...rename(profile),
-					models: Object.fromEntries(
-						Object.entries(profile.models).map(([id, model]) => [id, rename(model)]),
-					),
-				},
-			};
+		const rename = <T extends { key?: string; fallbackKey?: string }>(value: T): T => ({
+			...value,
+			...(value.key === from ? { key: to } : {}),
+			...(value.fallbackKey === from ? { fallbackKey: to } : {}),
 		});
+		const renamed = (profile: PlaygroundRunPayload['profile']): PlaygroundRunPayload['profile'] =>
+			profile.type === 'host'
+				? profile
+				: {
+						...rename(profile),
+						models: Object.fromEntries(
+							Object.entries(profile.models).map(([id, model]) => [id, rename(model)]),
+						),
+					};
+		setPayload((current) => ({
+			...current,
+			profile: renamed(current.profile),
+			...(current.dependencies
+				? {
+						dependencies: current.dependencies.map((dependency) => ({
+							...dependency,
+							profile: renamed(dependency.profile),
+						})),
+					}
+				: {}),
+		}));
 	};
 
 	return (
