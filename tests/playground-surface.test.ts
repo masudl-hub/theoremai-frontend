@@ -1,21 +1,27 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createSurfaceRuntime } from '@theoremjs/agents/surface';
-import { createBlankDraft, type PlaygroundDraft, setProfileType } from '@theoremjs/playground';
+import {
+	createBlankDraft,
+	type PlaygroundDraft,
+	type PlaygroundWorkspace,
+	setProfileType,
+	workspaceFromDraft,
+} from '@theoremjs/playground';
 import { type PlaygroundSurfaceHost, playgroundSurface } from '@theoremjs/playground/surface';
 import { createPlaygroundStore } from '../app/lib/playground-store.ts';
 
 const KEY = 'AIzaSyTESTONLY0000000000000000000000000';
 
 function setup(draft: PlaygroundDraft = setProfileType(createBlankDraft(), 'text')) {
-	const store = createPlaygroundStore({ draft, revision: 0, selectedId: 'identity' });
+	const store = createPlaygroundStore({ workspace: workspaceFromDraft(draft), revision: 0 });
 	const vault: Record<string, string> = {};
 	const host: PlaygroundSurfaceHost = {
 		getDraft: store.getDraft,
 		getRevision: store.getRevision,
 		getMode: () => 'byok',
-		update: (next) => store.update(next, 'th30'),
-		replaceDraft: (next) => store.update(next, 'th30'),
+		update: (next) => store.updateDraft(next, 'th30'),
+		replaceDraft: (next) => store.updateDraft(next, 'th30'),
 		select: store.select,
 		changesSince: (since) =>
 			store.changesSince(since).map((change) => ({
@@ -50,7 +56,7 @@ test("th30's set lands in the store as its own edit, and the visitor's makes the
 	assert.equal(store.getDraft().identity.handle, 'pic');
 	assert.equal(store.changesSince(0)[0]?.by, 'th30');
 	assert.deepEqual(notes, []);
-	store.update({ ...store.getDraft(), identity: { ...store.getDraft().identity, system: 'x' } });
+	store.updateDraft({ ...store.getDraft(), identity: { ...store.getDraft().identity, system: 'x' } });
 	assert.equal(notes.length, 1);
 	const stale = (await runtime.answer(
 		'act',
@@ -85,7 +91,7 @@ test('a kept draft masks tool credentials and leaves plain settings as typed', a
 	const [weather, other] = draft.toolSpecs.slice(-2);
 	assert.ok(weather && other);
 	const plain = '{\n  "Accept": "application/json"\n}';
-	store.update({
+	store.updateDraft({
 		...draft,
 		toolSpecs: draft.toolSpecs.map((spec) =>
 			spec.key === weather.key
@@ -100,11 +106,11 @@ test('a kept draft masks tool credentials and leaves plain settings as typed', a
 		),
 	});
 	store.flush();
-	const kept = sessionStorage.getItem('theorem.playground.v1') ?? '';
+	const kept = sessionStorage.getItem('theorem.playground.v2') ?? '';
 	assert.ok(!kept.includes('s3cr3tvalue'));
 	assert.ok(!kept.includes('s3cr3theader'));
 	assert.ok(kept.includes('city=Paris'));
-	const tools = (JSON.parse(kept) as { draft: PlaygroundDraft }).draft.toolSpecs;
+	const tools = (JSON.parse(kept) as { workspace: PlaygroundWorkspace }).workspace.toolSpecs;
 	const keptOther = tools.find((spec) => spec.key === other.key);
 	assert.equal(keptOther?.endpoint, 'https://api.test');
 	assert.equal(keptOther?.headersJson, plain);
