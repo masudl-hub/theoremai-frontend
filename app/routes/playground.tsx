@@ -77,6 +77,7 @@ import {
 	sampleToolInput,
 	savePlaygroundRunPayload,
 	scopedNodeId,
+	setToolAllowed,
 	toolSpecKeyOf,
 	toolSpecNodeId,
 	type WorkspaceCompileResult,
@@ -106,6 +107,7 @@ import {
 	ISSUE_ROW_ATTRIBUTE,
 	ListBadges,
 	LocalConnection,
+	WorkspaceContext,
 } from '../components/inspector-context';
 import { PlaygroundKeys, usePlaygroundConnection } from '../components/playground-connection';
 import { PlaygroundRunner } from '../components/playground-runner';
@@ -962,6 +964,22 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 		update,
 		setDraft,
 	};
+	/** What the open agent's editor knows of the others, and its allow list. */
+	const workspaceContext = useMemo(() => {
+		const self = workspace.agents.find((agent) => agent.key === focus);
+		return {
+			agents: workspace.agents.map((agent) => ({
+				key: agent.key,
+				agentId: agent.identity.agentId.trim(),
+				type: agent.identity.profileType,
+			})),
+			self: focus,
+			allowed: self?.tools.allow ?? [],
+			setAllowed: (toolKey: string, allowed: boolean) => {
+				update((current) => setToolAllowed(current, focus, toolKey, allowed));
+			},
+		};
+	}, [workspace.agents, focus, update]);
 	/** Adds an agent and opens it. */
 	const addAgentFrom = (next: PlaygroundDraft) => {
 		update((current) => addAgent(current, next));
@@ -1194,15 +1212,17 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 													<ListBadges value={listBadges}>
 														<ConnectionMode.Provider value={mode}>
 															<LocalConnection.Provider value={connection}>
-																<ProfileEditor
-																	draft={draft}
-																	setDraft={setDraft}
-																	selectedId={editing}
-																	onSelect={(id) => {
-																		open(scopedNodeId(focus, id));
-																	}}
-																	issues={editorIssues}
-																/>
+																<WorkspaceContext.Provider value={workspaceContext}>
+																	<ProfileEditor
+																		draft={draft}
+																		setDraft={setDraft}
+																		selectedId={editing}
+																		onSelect={(id) => {
+																			open(scopedNodeId(focus, id));
+																		}}
+																		issues={editorIssues}
+																	/>
+																</WorkspaceContext.Provider>
 															</LocalConnection.Provider>
 														</ConnectionMode.Provider>
 													</ListBadges>
