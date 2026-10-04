@@ -545,6 +545,8 @@ function ChatPicker({
 			isLabelHidden
 			variant="ghost"
 			size="sm"
+			// As wide as the name, so the chevron sits right after it.
+			width="fit-content"
 			value={workspace.chatWith}
 			options={workspace.agents.map((agent) => ({
 				value: agent.key,
