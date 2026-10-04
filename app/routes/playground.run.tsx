@@ -84,7 +84,7 @@ export default function PlaygroundRun({ loaderData }: Route.ComponentProps) {
 	};
 
 	return (
-		<TheoremThemeProvider>
+		<TheoremThemeProvider mode="dark">
 			{/* The draft exists only in the browser, so the title is set after hydration. */}
 			<title>{`${handle} · Theorem Playground`}</title>
 			<HStack className="iface-run-link" gap={2} vAlign="center">

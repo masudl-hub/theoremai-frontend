@@ -314,7 +314,7 @@ export function DocsLanding({ index, version }: { index: DocIndex; version: stri
 							hasClear
 						/>
 					</div>
-					<Th30Trigger theme="system" placement="search" />
+					<Th30Trigger theme="dark" placement="search" />
 				</HStack>
 				<VStack className="docs-landing-results">
 					{tiles.length ? (
