@@ -3047,18 +3047,27 @@ function ToolsEditor({
 								}
 							}}
 						>
-							{draft.toolSpecs.map((tool) => (
-								<CheckboxListItem
-									key={tool.key}
-									value={tool.key}
-									label={tool.toolName.trim() || 'Unnamed tool'}
-									description={
-										tool.description.trim() ? (
-											<Text type="supporting">{tool.description.trim()}</Text>
-										) : undefined
-									}
-								/>
-							))}
+							{draft.toolSpecs.map((tool) => {
+								// A tool that runs this agent can't be turned on here; one already on can still be turned off.
+								const runsSelf =
+									tool.toolType === 'agent' &&
+									tool.agentKey === workspace.self &&
+									!workspace.allowed.includes(tool.key);
+								const description = runsSelf
+									? 'Runs this agent, so this agent can’t use it.'
+									: tool.description.trim();
+								return (
+									<CheckboxListItem
+										key={tool.key}
+										value={tool.key}
+										label={tool.toolName.trim() || 'Unnamed tool'}
+										isDisabled={runsSelf}
+										description={
+											description ? <Text type="supporting">{description}</Text> : undefined
+										}
+									/>
+								);
+							})}
 						</CheckboxList>
 					)}
 					{addTool}
