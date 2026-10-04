@@ -37,7 +37,14 @@ export const ConnectionMode = createContext<PlaygroundConnectionMode>('demo');
 import type { PlaygroundConnectionState } from './playground-connection';
 export const LocalConnection = createContext<Pick<
 	PlaygroundConnectionState,
-	'localModels' | 'local' | 'setLocal' | 'remoteTools' | 'setRemoteTools' | 'slots' | 'vault'
+	| 'localModels'
+	| 'local'
+	| 'setLocal'
+	| 'remoteTools'
+	| 'setRemoteTools'
+	| 'runtime'
+	| 'slots'
+	| 'vault'
 > | null>(null);
 
 /** One agent of the workspace, as another agent's pickers name it. */

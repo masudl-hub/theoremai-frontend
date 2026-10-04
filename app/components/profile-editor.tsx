@@ -174,11 +174,13 @@ import {
 	PLAYGROUND_DECISION_MAX_QUESTIONS,
 	PLAYGROUND_DECISION_MAX_STATE_BYTES,
 	PLAYGROUND_DECISION_TIMEOUT_MS,
+	PLAYGROUND_TAINT_NOTE,
 	PLAYGROUND_TRACE_DESTINATION,
 	type PlaygroundDraft,
 	type PlaygroundIssue,
 	type PlaygroundProfileType,
 	type PlaygroundTurnProfileType,
+	playgroundNetworkNote,
 	playgroundNodeRef,
 	playgroundRunsTransport,
 	removeModelBinding,
@@ -2499,6 +2501,8 @@ function EgressChecksSections({
 function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
 	const { guardrails } = draft;
 	const set = patch(setDraft, 'guardrails');
+	const mode = useContext(ConnectionMode);
+	const runtime = useContext(LocalConnection)?.runtime ?? { mode };
 	return (
 		<>
 			<InspectorSection title="Input" path="guardrails.sanitizeInput">
@@ -2613,7 +2617,11 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 					}}
 				/>
 			)}
-			<InspectorSection title="Network" path="guardrails.network" note={sectionNote('network')}>
+			<InspectorSection
+				title="Network"
+				path="guardrails.network"
+				note={playgroundNetworkNote(runtime)}
+			>
 				<SwitchRow
 					label="Private"
 					path="guardrails.network.allowPrivateNetworks"
@@ -2645,7 +2653,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 				/>
 			</InspectorSection>
 			{draftAllows(draft, 'guardrails.taint') && (
-				<InspectorSection title="Taint" path="guardrails.taint">
+				<InspectorSection title="Taint" path="guardrails.taint" note={PLAYGROUND_TAINT_NOTE}>
 					<SegmentedRow
 						label="Refuse"
 						path="guardrails.taint.afterRemoteRead"
