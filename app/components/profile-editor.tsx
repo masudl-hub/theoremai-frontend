@@ -3286,6 +3286,16 @@ function ToolSpecEditor({
 						set({ activityPast });
 					}}
 				/>
+				<TextRow
+					label="Asking"
+					path="labels.request"
+					field="request"
+					value={tool.request ?? ''}
+					hint={placeholderHint([tool.inputJson])}
+					onChange={(request) => {
+						set({ request });
+					}}
+				/>
 			</InspectorSection>
 			{tool.toolType === 'function' && (
 				<InspectorSection title="Stub" path="playground.stubOutput">
