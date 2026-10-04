@@ -15,6 +15,7 @@ import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/Segme
 import { Selector } from '@astryxdesign/core/Selector';
 import { StackItem } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
+import { TextInput } from '@astryxdesign/core/TextInput';
 import { useToast } from '@astryxdesign/core/Toast';
 import { Token } from '@astryxdesign/core/Token';
 import { TreeList, type TreeListItemData } from '@astryxdesign/core/TreeList';
@@ -36,6 +37,7 @@ import {
 	IconPlayerPlay,
 	IconPlaylistX,
 	IconPlus,
+	IconSearch,
 	IconSparkles,
 	IconTimeline,
 	IconTool,
@@ -343,26 +345,35 @@ function agentItems(state: WorkspaceTreeState): TreeListItemData[] {
 	});
 }
 
-/** The tool library: every agent picks its tools from these. */
-function toolItems({ workspace, selectedId, onSelect, update }: WorkspaceTreeState) {
-	return workspaceTree(workspace).tools.map((node): TreeListItemData => {
+/** The tool library, every agent picks its tools from these: those whose name or description holds `query`. */
+function toolItems({ workspace, selectedId, onSelect, update }: WorkspaceTreeState, query: string) {
+	const needle = query.trim().toLowerCase();
+	return workspaceTree(workspace).tools.flatMap((node): TreeListItemData[] => {
 		const tool = workspace.toolSpecs.find((spec) => spec.key === toolSpecKeyOf(node.id));
-		return {
-			id: node.id,
-			label: node.label,
-			startContent: (
-				<Icon icon={tool ? TOOL_TYPE_ICON[tool.toolType] : IconTool} size="sm" color="secondary" />
-			),
-			endContent: rowAction(`Remove ${node.label}`, IconX, () => {
-				if (tool) update((current) => removeLibraryTool(current, tool.key));
-			}),
-			className: 'playground-tree-row',
-			isSelected: node.id === selectedId,
-			onClick: () => {
-				onSelect(node.id);
+		const text = `${node.label} ${tool?.description ?? ''}`.toLowerCase();
+		if (needle && !text.includes(needle)) return [];
+		return [
+			{
+				id: node.id,
+				label: node.label,
+				startContent: (
+					<Icon
+						icon={tool ? TOOL_TYPE_ICON[tool.toolType] : IconTool}
+						size="sm"
+						color="secondary"
+					/>
+				),
+				endContent: rowAction(`Remove ${node.label}`, IconX, () => {
+					if (tool) update((current) => removeLibraryTool(current, tool.key));
+				}),
+				className: 'playground-tree-row',
+				isSelected: node.id === selectedId,
+				onClick: () => {
+					onSelect(node.id);
+				},
+				style: CHEVRON_COLUMN,
 			},
-			style: CHEVRON_COLUMN,
-		};
+		];
 	});
 }
 
@@ -377,22 +388,41 @@ function WorkspaceTreeLists({
 	tree,
 	draft,
 	onAddAgent,
+	listRef,
 }: {
 	tree: WorkspaceTreeState;
 	/** The open agent's draft, which a new tool joins. */
 	draft: PlaygroundDraft;
 	onAddAgent: (draft: PlaygroundDraft) => void;
+	/** The list's scroller. The toggle and search stay above it. */
+	listRef: RefObject<HTMLDivElement | null>;
 }) {
 	const listOf = (id: string): WorkspaceList =>
 		toolSpecKeyOf(id) === undefined ? 'agents' : 'tools';
 	const [list, setList] = useState(() => listOf(tree.selectedId));
 	const [shownFor, setShownFor] = useState(tree.selectedId);
+	const [query, setQuery] = useState('');
 	if (shownFor !== tree.selectedId) {
 		setShownFor(tree.selectedId);
 		setList(listOf(tree.selectedId));
 	}
+	// The open row stays in view: a tool far down the library, one an issue opened, or one a
+	// cleared search or the toggle shows again. Revealed after the list renders.
+	const revealSelected = useCallback(() => {
+		requestAnimationFrame(() => {
+			listRef.current
+				?.querySelector('[aria-selected="true"]')
+				?.scrollIntoView({ block: 'nearest' });
+		});
+	}, [listRef]);
+	const { selectedId } = tree;
+	useEffect(() => {
+		// Nothing is selected while Keys is open.
+		if (selectedId) revealSelected();
+	}, [selectedId, revealSelected]);
+	const tools = list === 'tools' ? toolItems(tree, query) : [];
 	return (
-		<VStack gap={2}>
+		<VStack gap={2} height="100%">
 			<HStack gap={1} vAlign="center">
 				<StackItem size="fill">
 					<SegmentedControl
@@ -402,6 +432,7 @@ function WorkspaceTreeLists({
 						value={list}
 						onChange={(next) => {
 							setList(next === 'tools' ? 'tools' : 'agents');
+							revealSelected();
 						}}
 					>
 						<SegmentedControlItem
@@ -466,11 +497,34 @@ function WorkspaceTreeLists({
 					/>
 				)}
 			</HStack>
-			{list === 'agents' ? (
-				<TreeList density="compact" aria-label="Agents" items={agentItems(tree)} />
-			) : (
-				<TreeList density="compact" aria-label="Tools" items={toolItems(tree)} />
+			{list === 'tools' && (
+				<TextInput
+					label="Search tools"
+					isLabelHidden
+					size="sm"
+					placeholder="Search tools"
+					value={query}
+					onChange={(next) => {
+						setQuery(next);
+						revealSelected();
+					}}
+					startIcon={IconSearch}
+					hasClear
+				/>
 			)}
+			<StackItem size="fill">
+				<ScrollableArea ref={listRef} label="Workspace" height="100%">
+					{list === 'agents' ? (
+						<TreeList density="compact" aria-label="Agents" items={agentItems(tree)} />
+					) : tools.length > 0 ? (
+						<TreeList density="compact" aria-label="Tools" items={tools} />
+					) : (
+						<Text type="supporting" color="secondary">
+							{query.trim() ? `No tool matches “${query.trim()}”.` : 'No tools yet.'}
+						</Text>
+					)}
+				</ScrollableArea>
+			</StackItem>
 		</VStack>
 	);
 }
@@ -1173,9 +1227,12 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 												</span>
 											</HStack>
 											<StackItem size="fill">
-												<ScrollableArea ref={sidebarRef} label="Workspace" height="100%">
-													<WorkspaceTreeLists tree={tree} draft={draft} onAddAgent={addAgentFrom} />
-												</ScrollableArea>
+												<WorkspaceTreeLists
+													tree={tree}
+													draft={draft}
+													onAddAgent={addAgentFrom}
+													listRef={sidebarRef}
+												/>
 											</StackItem>
 										</VStack>
 									</Section>
