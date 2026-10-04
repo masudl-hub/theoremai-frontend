@@ -120,7 +120,7 @@ import {
 } from '../components/profile-editor';
 import { PLAYGROUND_SEED_IDS, type PlaygroundSeedId } from '../lib/docs/schema';
 import { docsSeedDraft } from '../lib/docs/seeds';
-import { exportBundle, llmBrief } from '../lib/export-agent';
+import { exportFiles, exportText, llmBrief } from '../lib/export-agent';
 import { FACET_ICON } from '../lib/facet-icons';
 import { KERNEL_PACKAGE_VERSION } from '../lib/kernel-version';
 import {
@@ -136,6 +136,7 @@ import { type Th30PageHandle, useReportTh30Playground } from '../lib/th30-page';
 import { th30Surfaces } from '../lib/th30-surfaces';
 import { toolCredential } from '../lib/tool-credentials';
 import { runToolProbe } from '../lib/tool-probe';
+import { zipFiles } from '../lib/zip';
 import type { Route } from './+types/playground';
 import type { ShellHandle } from './shell';
 
@@ -144,7 +145,7 @@ export const handle = {
 	th30Page: () => ({
 		title: 'Playground',
 		summary:
-			"The playground, where the visitor builds an agent without code. On the left are the profile sections, a tree of the agent's settings (type, identity, models, tools, guardrails and more), and a Keys panel for their own API keys. The middle is the editor for the selected section, and the right is a live preview to chat with the agent. Load an example offers ready agents such as Travel concierge and Span decision. Issues the agent must fix before it can run are flagged, with a button to go to the next one. Export downloads the agent as one .tsx, or copies it, or copies it with a brief for an LLM. Launch opens the agent on its own page in a new tab. The docs explain each field, so th30 should search the docs for them.",
+			"The playground, where the visitor builds an agent without code. On the left are the profile sections, a tree of the agent's settings (type, identity, models, tools, guardrails and more), and a Keys panel for their own API keys. The middle is the editor for the selected section, and the right is a live preview to chat with the agent. Load an example offers ready agents such as Travel concierge and Span decision. Issues the agent must fix before it can run are flagged, with a button to go to the next one. Export downloads every agent as a .zip of source files (the shared tools, a module per agent, the file that registers them in order, and the route and chat for the agent being chatted with), or copies them, or copies them with a brief for an LLM. Launch opens the agent on its own page in a new tab. The docs explain each field, so th30 should search the docs for them.",
 	}),
 } satisfies ShellHandle & Th30PageHandle;
 
@@ -645,9 +646,14 @@ function openInNewTab(payload: PlaygroundRunPayload) {
 	window.open(`/playground/run?run=${encodeURIComponent(runId)}`, '_blank', 'noopener');
 }
 
-/** Downloads `text` as `filename`. */
-function download(filename: string, text: string) {
-	const url = URL.createObjectURL(new Blob([text], { type: 'text/typescript' }));
+/** The workspace's files as a .zip, named for the agent being chatted with. */
+function downloadExport(files: Parameters<typeof zipFiles>[0], agentId: string) {
+	download(`${agentId}.zip`, new Blob([zipFiles(files)], { type: 'application/zip' }));
+}
+
+/** Downloads `blob` as `filename`. */
+function download(filename: string, blob: Blob) {
+	const url = URL.createObjectURL(blob);
 	const link = document.createElement('a');
 	link.href = url;
 	link.download = filename;
@@ -825,12 +831,6 @@ function playgroundSurfaceHost(
 	page: RefObject<SurfacePage>,
 	chat: RefObject<TheoremChatHandle | null>,
 ): PlaygroundSurfaceHost {
-	/** The open agent's compile, or `undefined` while the workspace has issues. */
-	const compileNow = () => {
-		const workspace = store.getWorkspace();
-		const result = compileWorkspace(workspace, page.current.mode);
-		return result.ok ? compiledAgent(result, workspace, store.getFocus()) : undefined;
-	};
 	/** What the chatted agent runs, with the agents it names. */
 	const runNow = () => {
 		const workspace = store.getWorkspace();
@@ -902,15 +902,16 @@ function playgroundSurfaceHost(
 			});
 		},
 		exportAgent: (format) => {
-			const result = compileNow();
-			if (!result) return Promise.resolve(false);
-			const code = playgroundSource(result);
-			if (format === 'tsx') {
-				download(`${result.agentId}.tsx`, exportBundle(result, code));
+			const workspace = store.getWorkspace();
+			const result = compileWorkspace(workspace, page.current.mode);
+			const agent = result.ok ? compiledAgent(result, workspace, workspace.chatWith) : undefined;
+			if (!result.ok || !agent) return Promise.resolve(false);
+			if (format === 'zip') {
+				downloadExport(exportFiles(result, agent), agent.agentId);
 			} else if (format === 'copy') {
-				page.current.copy(exportBundle(result, code), 'the .tsx');
+				page.current.copy(exportText(exportFiles(result, agent)), 'the files');
 			} else {
-				page.current.copy(llmBrief(result, code), 'the .tsx and its brief');
+				page.current.copy(llmBrief(result, agent), 'the files and their brief');
 			}
 			return Promise.resolve(true);
 		},
@@ -1058,6 +1059,8 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	/** The runner that last sent something; a new one (cleared, or another mode) has no history. */
 	const [usedRun, setUsedRun] = useState<string>();
 	const source = useMemo(() => (focused ? playgroundSource(focused) : null), [focused]);
+	/** The agent being chatted with: Export adds its route and chat to the workspace's files. */
+	const chatted = compiled.ok ? compiledAgent(compiled, compile.workspace, chatWith) : undefined;
 	const issues = issueCount(compiled);
 	const blocked = issues && `Fix ${issues} first`;
 	const toast = useToast();
@@ -1471,10 +1474,10 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 										label="Export"
 										isIconOnly={phone}
 										icon={<Icon icon={IconDownload} size="sm" />}
-										tooltip={blocked ?? 'Download the agent as one .tsx'}
+										tooltip={blocked ?? 'Download every agent as a .zip'}
 										onClick={() => {
-											if (focused && source) {
-												download(`${focused.agentId}.tsx`, exportBundle(focused, source));
+											if (compiled.ok && chatted) {
+												downloadExport(exportFiles(compiled, chatted), chatted.agentId);
 											}
 										}}
 									/>
@@ -1492,21 +1495,23 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 											{
 												id: 'copy',
 												label: 'Copy',
-												description: 'The .tsx, to paste into your code.',
+												description: 'Every file, each under its path, to paste into your code.',
 												icon: <Icon icon={IconCopy} size="sm" />,
 												onClick: () => {
-													if (focused && source) copy(exportBundle(focused, source), 'the .tsx');
+													if (compiled.ok && chatted) {
+														copy(exportText(exportFiles(compiled, chatted)), 'the files');
+													}
 												},
 											},
 											{
 												id: 'copy-llm',
 												label: 'Copy for LLM',
 												description:
-													'The .tsx with a brief: what to install, where it goes, what to ask you.',
+													'Every file with a brief: what to install, where each goes, what to ask you.',
 												icon: <Icon icon={IconSparkles} size="sm" />,
 												onClick: () => {
-													if (focused && source)
-														copy(llmBrief(focused, source), 'the .tsx and its brief');
+													if (compiled.ok && chatted)
+														copy(llmBrief(compiled, chatted), 'the files and their brief');
 												},
 											},
 										]}
