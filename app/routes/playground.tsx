@@ -206,21 +206,23 @@ interface TreeState {
 }
 
 /** A row's hover action: stops at the button so the row itself isn't selected. */
-function rowAction(label: string, icon: IconType, onPress: () => void) {
+function actionButton(label: string, icon: IconType, onPress: () => void) {
 	return (
-		<span className="playground-tree-action">
-			<IconButton
-				label={label}
-				variant="ghost"
-				size="sm"
-				icon={<Icon icon={icon} size="sm" />}
-				onClick={(event) => {
-					event.stopPropagation();
-					onPress();
-				}}
-			/>
-		</span>
+		<IconButton
+			label={label}
+			variant="ghost"
+			size="sm"
+			icon={<Icon icon={icon} size="sm" />}
+			onClick={(event) => {
+				event.stopPropagation();
+				onPress();
+			}}
+		/>
 	);
+}
+
+function rowAction(label: string, icon: IconType, onPress: () => void) {
+	return <span className="playground-tree-action">{actionButton(label, icon, onPress)}</span>;
 }
 
 function treeItem(tree: TreeState, node: PlaygroundTreeNode, isTop = false): TreeListItemData {
@@ -326,15 +328,15 @@ function agentItems(state: WorkspaceTreeState): TreeListItemData[] {
 				setDraft,
 			},
 			agent.key === focus,
-			<HStack gap={0}>
-				{rowAction(`Duplicate ${name}`, IconCopyPlus, () => {
+			<span className="playground-tree-action">
+				{actionButton(`Duplicate ${name}`, IconCopyPlus, () => {
 					update((current) => duplicateAgent(current, agent.key));
 				})}
 				{!isOnly &&
-					rowAction(`Remove ${name}`, IconX, () => {
+					actionButton(`Remove ${name}`, IconX, () => {
 						update((current) => removeAgent(current, agent.key));
 					})}
-			</HStack>,
+			</span>,
 		);
 	});
 }
@@ -910,14 +912,6 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	// The profile tree's branches mount and unmount; ease them both ways.
 	const sidebarRef = useRef<HTMLDivElement>(null);
 	useDisclosureMotion(sidebarRef);
-	/** Bumped by the issue pill; once the editor shows the node, its first failing row is revealed. */
-	const [issueReveal, setIssueReveal] = useState(0);
-	useEffect(() => {
-		if (!issueReveal) return;
-		const row = editorRef.current?.querySelector(`[${ISSUE_ROW_ATTRIBUTE}]`);
-		row?.scrollIntoView({ block: 'center' });
-		row?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus({ preventScroll: true });
-	}, [issueReveal]);
 	const [bodyRef, bodyHeight] = useMeasure(measureHeight);
 	const [codeRef, codeChrome] = useMeasure(measureCodeChrome);
 	const codeHeight = heightBelow(bodyHeight, codeChrome);
@@ -926,6 +920,25 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 		: agentNodeId(focus);
 	/** The open node as the editor names it: the open agent's own id, or a library tool's. */
 	const editing = innerNodeId(selected, focus) ?? 'identity';
+	/**
+	 * The node the issue pill opened. Its first failing row is revealed once the editor shows that
+	 * node, which can be a render after the click, and a frame later, once the editor's new scroll
+	 * area scrolls.
+	 */
+	const [issueReveal, setIssueReveal] = useState<{ node: string }>();
+	const revealed = useRef<{ node: string }>(undefined);
+	useEffect(() => {
+		if (!issueReveal || issueReveal === revealed.current || issueReveal.node !== selected) return;
+		revealed.current = issueReveal;
+		const frame = requestAnimationFrame(() => {
+			const row = editorRef.current?.querySelector(`[${ISSUE_ROW_ATTRIBUTE}]`);
+			row?.scrollIntoView({ block: 'center' });
+			row?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus({ preventScroll: true });
+		});
+		return () => {
+			cancelAnimationFrame(frame);
+		};
+	}, [issueReveal, selected]);
 	const settled = useDebounced(workspace, COMPILE_DEBOUNCE_MS);
 	const compile = useMemo(
 		() => ({ workspace: settled, result: compileWorkspace(settled, mode) }),
@@ -1171,8 +1184,9 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 														color="orange"
 														description="Go to the next issue"
 														onClick={() => {
-															open(nextIssueNode(compiled.issues, selected));
-															setIssueReveal((count) => count + 1);
+															const node = nextIssueNode(compiled.issues, selected);
+															open(node);
+															setIssueReveal({ node });
 														}}
 													/>
 												)}
