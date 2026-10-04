@@ -16,6 +16,9 @@ import { PlaygroundRunner } from '../components/playground-runner';
 import type { Route } from './+types/playground.run';
 import './run.css';
 
+/** A model binding as the connection reads it. */
+type ConnectionModel = Parameters<typeof usePlaygroundConnection>[0][number];
+
 /** Where the run tab returns to. */
 const PLAYGROUND_HREF = '/playground';
 
@@ -39,7 +42,7 @@ export default function PlaygroundRun({ loaderData }: Route.ComponentProps) {
 		...(payload.dependencies ?? []).map((dependency) => dependency.profile),
 	];
 	const models = profiles.flatMap((profile) =>
-		profile.type === 'host' ? [] : Object.values(profile.models),
+		profile.type === 'host' ? [] : Object.values<ConnectionModel>(profile.models),
 	);
 	const connection = usePlaygroundConnection(
 		models,
