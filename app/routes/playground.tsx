@@ -23,6 +23,7 @@ import {
 	IconAdjustmentsHorizontal,
 	IconAlertTriangle,
 	IconArrowLeft,
+	IconBook,
 	IconChevronDown,
 	IconCode,
 	IconCopy,
@@ -213,6 +214,7 @@ function actionButton(label: string, icon: IconType, onPress: () => void) {
 			variant="ghost"
 			size="sm"
 			icon={<Icon icon={icon} size="sm" />}
+			tooltip={label}
 			onClick={(event) => {
 				event.stopPropagation();
 				onPress();
@@ -419,6 +421,7 @@ function WorkspaceTreeLists({
 							variant: 'ghost',
 							size: 'sm',
 							isIconOnly: true,
+							tooltip: 'Add an agent',
 							icon: <Icon icon={IconPlus} size="sm" />,
 						}}
 						hasChevron={false}
@@ -456,6 +459,7 @@ function WorkspaceTreeLists({
 						variant="ghost"
 						size="sm"
 						icon={<Icon icon={IconPlus} size="sm" />}
+						tooltip="Add a tool"
 						onClick={() => {
 							addToolSpec(draft, tree.setDraft, tree.onSelect);
 						}}
@@ -1215,6 +1219,42 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 														setKeysOpen((open) => !open);
 														setEditorView('editor');
 													}}
+												/>
+												<DropdownMenu
+													button={{
+														label: 'Load an example',
+														variant: 'ghost',
+														isIconOnly: true,
+														icon: <Icon icon={IconBook} size="sm" />,
+														tooltip: 'Load an example',
+													}}
+													hasChevron={false}
+													placement="below"
+													alignment="end"
+													items={[
+														{
+															id: 'concierge',
+															label: 'Travel concierge',
+															description: 'A text agent with weather, places and currency tools.',
+															onClick: () => {
+																replaceWorkspace(
+																	workspaceFromDraft(createExampleDraft()),
+																	'Loaded the example.',
+																);
+															},
+														},
+														{
+															id: 'span',
+															label: 'Span decision',
+															description: 'Tool-call safety with the free Span model.',
+															onClick: () => {
+																replaceWorkspace(
+																	workspaceFromDraft(createSpanExampleDraft()),
+																	'Loaded the Span example.',
+																);
+															},
+														},
+													]}
 												/>
 												<IconButton
 													label="Clear"
