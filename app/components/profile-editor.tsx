@@ -135,6 +135,7 @@ import {
 import {
 	type AcceptSection,
 	acceptSections,
+	agentToolTarget,
 	allowedBuiltinsForGemini,
 	COMPACTION_DRAFT_DEFAULTS,
 	type DecisionQuestionDraft,
@@ -3462,7 +3463,9 @@ function ToolSpecEditor({
 							CALLABLE_TYPES.has(agent.type),
 						)}
 						onChange={(agentKey) => {
-							set({ agentKey });
+							const agentId =
+								workspace.agents.find((agent) => agent.key === agentKey)?.agentId ?? '';
+							set(agentToolTarget(tool, agentKey, agentId));
 						}}
 					/>
 					<NumberRow
