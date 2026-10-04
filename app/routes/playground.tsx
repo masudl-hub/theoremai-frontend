@@ -61,7 +61,6 @@ import {
 	includableFacets,
 	includeFacet,
 	libraryDraft,
-	newToolSpec,
 	type PlaygroundDraft,
 	type PlaygroundIssue,
 	type PlaygroundNodeRef,
@@ -79,7 +78,6 @@ import {
 	scopedNodeId,
 	setToolAllowed,
 	toolSpecKeyOf,
-	toolSpecNodeId,
 	type WorkspaceCompileResult,
 	withAgentDraft,
 	workspaceFromDraft,
@@ -111,7 +109,12 @@ import {
 } from '../components/inspector-context';
 import { PlaygroundKeys, usePlaygroundConnection } from '../components/playground-connection';
 import { PlaygroundRunner } from '../components/playground-runner';
-import { PROFILE_TYPE_ICON, ProfileEditor, TOOL_TYPE_ICON } from '../components/profile-editor';
+import {
+	addToolSpec,
+	PROFILE_TYPE_ICON,
+	ProfileEditor,
+	TOOL_TYPE_ICON,
+} from '../components/profile-editor';
 import { PLAYGROUND_SEED_IDS, type PlaygroundSeedId } from '../lib/docs/schema';
 import { docsSeedDraft } from '../lib/docs/seeds';
 import { exportBundle, llmBrief } from '../lib/export-agent';
@@ -199,7 +202,7 @@ interface TreeState {
 	scope: (id: string) => string;
 	selectedId: string;
 	onSelect: (id: string) => void;
-	setDraft: (update: (draft: PlaygroundDraft) => PlaygroundDraft) => void;
+	setDraft: (next: PlaygroundDraft | ((draft: PlaygroundDraft) => PlaygroundDraft)) => void;
 }
 
 /** A row's hover action: stops at the button so the row itself isn't selected. */
@@ -357,6 +360,110 @@ function toolItems({ workspace, selectedId, onSelect, update }: WorkspaceTreeSta
 			style: CHEVRON_COLUMN,
 		};
 	});
+}
+
+/** The workspace's two trees: its agents, and the tool library they share. */
+function WorkspaceTreeLists({
+	tree,
+	draft,
+	onAddAgent,
+}: {
+	tree: WorkspaceTreeState;
+	/** The open agent's draft, which a new tool joins. */
+	draft: PlaygroundDraft;
+	onAddAgent: (draft: PlaygroundDraft) => void;
+}) {
+	return (
+		<VStack gap={4}>
+			<TreeList
+				density="compact"
+				aria-label="Agents"
+				header={treeHeader(
+					'Agents',
+					<DropdownMenu
+						button={{
+							label: 'Add an agent',
+							variant: 'ghost',
+							size: 'sm',
+							isIconOnly: true,
+							icon: <Icon icon={IconPlus} size="sm" />,
+						}}
+						hasChevron={false}
+						placement="below"
+						alignment="end"
+						items={[
+							{
+								id: 'blank',
+								label: 'Blank agent',
+								onClick: () => {
+									onAddAgent(createBlankDraft());
+								},
+							},
+							{
+								id: 'concierge',
+								label: 'Travel concierge',
+								description: 'A text agent with weather, places and currency tools.',
+								onClick: () => {
+									onAddAgent(createExampleDraft());
+								},
+							},
+							{
+								id: 'span',
+								label: 'Span decision',
+								description: 'Tool-call safety with the free Span model.',
+								onClick: () => {
+									onAddAgent(createSpanExampleDraft());
+								},
+							},
+						]}
+					/>,
+				)}
+				items={agentItems(tree)}
+			/>
+			<TreeList
+				density="compact"
+				aria-label="Tools"
+				header={treeHeader(
+					'Tools',
+					<IconButton
+						label="Add a tool"
+						variant="ghost"
+						size="sm"
+						icon={<Icon icon={IconPlus} size="sm" />}
+						onClick={() => {
+							addToolSpec(draft, tree.setDraft, tree.onSelect);
+						}}
+					/>,
+				)}
+				items={toolItems(tree)}
+			/>
+		</VStack>
+	);
+}
+
+/** Which agent the preview chats with, once there is more than one. */
+function ChatPicker({
+	workspace,
+	onChange,
+}: {
+	workspace: PlaygroundWorkspace;
+	onChange: (key: string) => void;
+}) {
+	if (workspace.agents.length < 2) return null;
+	return (
+		<Selector
+			label="Chat with"
+			isLabelHidden
+			variant="ghost"
+			size="sm"
+			value={workspace.chatWith}
+			options={workspace.agents.map((agent) => ({
+				value: agent.key,
+				label: agent.identity.agentId || 'Unnamed agent',
+			}))}
+			onChange={onChange}
+		/>
+	);
 }
 
 /** A tree group's heading and its add button. */
@@ -1035,76 +1142,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 											</HStack>
 											<StackItem size="fill">
 												<ScrollableArea ref={sidebarRef} label="Workspace" height="100%">
-													<VStack gap={4}>
-														<TreeList
-															density="compact"
-															aria-label="Agents"
-															header={treeHeader(
-																'Agents',
-																<DropdownMenu
-																	button={{
-																		label: 'Add an agent',
-																		variant: 'ghost',
-																		size: 'sm',
-																		isIconOnly: true,
-																		icon: <Icon icon={IconPlus} size="sm" />,
-																	}}
-																	hasChevron={false}
-																	placement="below"
-																	alignment="end"
-																	items={[
-																		{
-																			id: 'blank',
-																			label: 'Blank agent',
-																			onClick: () => {
-																				addAgentFrom(createBlankDraft());
-																			},
-																		},
-																		{
-																			id: 'concierge',
-																			label: 'Travel concierge',
-																			description:
-																				'A text agent with weather, places and currency tools.',
-																			onClick: () => {
-																				addAgentFrom(createExampleDraft());
-																			},
-																		},
-																		{
-																			id: 'span',
-																			label: 'Span decision',
-																			description: 'Tool-call safety with the free Span model.',
-																			onClick: () => {
-																				addAgentFrom(createSpanExampleDraft());
-																			},
-																		},
-																	]}
-																/>,
-															)}
-															items={agentItems(tree)}
-														/>
-														<TreeList
-															density="compact"
-															aria-label="Tools"
-															header={treeHeader(
-																'Tools',
-																<IconButton
-																	label="Add a tool"
-																	variant="ghost"
-																	size="sm"
-																	icon={<Icon icon={IconPlus} size="sm" />}
-																	onClick={() => {
-																		const tool = newToolSpec(draft);
-																		setDraft((current) => ({
-																			...current,
-																			toolSpecs: [...current.toolSpecs, tool],
-																		}));
-																		tree.onSelect(toolSpecNodeId(tool.key));
-																	}}
-																/>,
-															)}
-															items={toolItems(tree)}
-														/>
-													</VStack>
+													<WorkspaceTreeLists tree={tree} draft={draft} onAddAgent={addAgentFrom} />
 												</ScrollableArea>
 											</StackItem>
 										</VStack>
@@ -1277,20 +1315,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 									/>
 								</span>
 								<StackItem size="fill">
-									{workspace.agents.length > 1 && (
-										<Selector
-											label="Chat with"
-											isLabelHidden
-											variant="ghost"
-											size="sm"
-											value={chatWith}
-											options={workspace.agents.map((agent) => ({
-												value: agent.key,
-												label: agent.identity.agentId || 'Unnamed agent',
-											}))}
-											onChange={store.chatWith}
-										/>
-									)}
+									<ChatPicker workspace={workspace} onChange={store.chatWith} />
 								</StackItem>
 								{payload && usedRun === runKey && (
 									<IconButton

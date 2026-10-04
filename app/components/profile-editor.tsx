@@ -2969,6 +2969,17 @@ const HEADERS_PLACEHOLDER = `{
   "Accept": "application/json"
 }`;
 
+/** Adds a new tool to the draft and opens it. */
+export function addToolSpec(
+	draft: PlaygroundDraft,
+	setDraft: SetDraft,
+	onSelect: (id: string) => void,
+) {
+	const tool = newToolSpec(draft);
+	setDraft((current) => ({ ...current, toolSpecs: [...current.toolSpecs, tool] }));
+	onSelect(toolSpecNodeId(tool.key));
+}
+
 /** The tools, each opening its own editor, and the T2 loader. */
 function ToolsEditor({
 	draft,
@@ -2996,9 +3007,7 @@ function ToolsEditor({
 			size="sm"
 			icon={<Icon icon={IconPlus} size="sm" />}
 			onClick={() => {
-				const tool = newToolSpec(draft);
-				setDraft((current) => ({ ...current, toolSpecs: [...current.toolSpecs, tool] }));
-				onSelect(toolSpecNodeId(tool.key));
+				addToolSpec(draft, setDraft, onSelect);
 			}}
 		/>
 	);

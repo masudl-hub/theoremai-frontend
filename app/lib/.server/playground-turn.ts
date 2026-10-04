@@ -83,7 +83,7 @@ export function playgroundProviders(
 }
 
 /** What a run needs beside its request: the site's keys, and the check each agent call passes first. */
-type RunHost = { env?: PlaygroundTurnEnv; onAgentCall?: PlaygroundRuntime['onAgentCall'] };
+export type RunHost = { env?: PlaygroundTurnEnv; onAgentCall?: PlaygroundRuntime['onAgentCall'] };
 
 function runtime({ env = {}, onAgentCall }: RunHost): PlaygroundRuntime {
 	return {
