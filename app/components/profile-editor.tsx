@@ -2660,11 +2660,201 @@ function EgressChecksSections({
 	);
 }
 
+/** The guardrails slice of the draft and its setter, for each guardrails section. */
+interface GuardrailsSectionProps {
+	guardrails: GuardrailsDraft;
+	set: (change: Partial<GuardrailsDraft>) => void;
+}
+
+function CanarySection({
+	draft,
+	guardrails,
+	set,
+}: GuardrailsSectionProps & { draft: PlaygroundDraft }) {
+	return (
+		<InspectorSection title="Canary" path="guardrails.canary">
+			<SwitchRow
+				label="Canary"
+				path="guardrails.canary"
+				value={guardrails.canary}
+				onChange={(canary) => {
+					set({ canary });
+				}}
+			/>
+			{guardrails.canary && (
+				<TextAreaRow
+					label="Bind note"
+					path="lexicon.canary.bind_note"
+					field="canaryBindNote"
+					value={guardrails.canaryBindNote}
+					placeholder={lexiconDefault('canary.bind_note')}
+					onChange={(canaryBindNote) => {
+						set({ canaryBindNote });
+					}}
+				/>
+			)}
+			{guardrails.canary && draftAllows(draft, 'guardrails.promptEcho') && (
+				<SwitchRow
+					label="Prompt echo"
+					path="guardrails.promptEcho"
+					value={guardrails.promptEcho}
+					onChange={(promptEcho) => {
+						set({ promptEcho });
+					}}
+				/>
+			)}
+		</InspectorSection>
+	);
+}
+
+/** Retries and guidance, shown when a blocked reply goes back to the agent. */
+function EgressRepairRows({ guardrails, set }: GuardrailsSectionProps) {
+	return (
+		<>
+			<NumberRow
+				label="Retries"
+				path="guardrails.egress.maxRetries"
+				units="retries"
+				field="egressMaxRetries"
+				value={guardrails.egressMaxRetries}
+				min={0}
+				isIntegerOnly
+				onChange={(egressMaxRetries) => {
+					set({ egressMaxRetries });
+				}}
+			/>
+			<TextAreaRow
+				label="Guidance"
+				path="lexicon.egress.default_repair_guidance"
+				field="egressRepairGuidance"
+				value={guardrails.egressRepairGuidance}
+				placeholder={lexiconDefault('egress.default_repair_guidance')}
+				onChange={(egressRepairGuidance) => {
+					set({ egressRepairGuidance });
+				}}
+			/>
+		</>
+	);
+}
+
+function EgressSection({ guardrails, set }: GuardrailsSectionProps) {
+	return (
+		<InspectorSection title="Egress" path="guardrails.egress">
+			<SwitchRow
+				label="Checks"
+				path="guardrails.egress.checks"
+				value={guardrails.egressEnabled}
+				onChange={(egressEnabled) => {
+					set({ egressEnabled });
+				}}
+			/>
+			{guardrails.egressEnabled && (
+				<SegmentedRow
+					label="On block"
+					path="guardrails.egress.onBlock"
+					value={guardrails.egressOnBlock || 'reject_to_agent'}
+					segments={ON_BLOCK_SEGMENTS}
+					onChange={(onBlock) => {
+						set({ egressOnBlock: onBlock === 'reject_to_agent' ? '' : onBlock });
+					}}
+				/>
+			)}
+			{guardrails.egressEnabled && guardrails.egressOnBlock === '' && (
+				<EgressRepairRows guardrails={guardrails} set={set} />
+			)}
+		</InspectorSection>
+	);
+}
+
+function NetworkSection({ guardrails, set }: GuardrailsSectionProps) {
+	const mode = useContext(ConnectionMode);
+	const runtime = useContext(LocalConnection)?.runtime ?? { mode };
+	return (
+		<InspectorSection
+			title="Network"
+			path="guardrails.network"
+			note={playgroundNetworkNote(runtime)}
+		>
+			<SwitchRow
+				label="Private"
+				path="guardrails.network.allowPrivateNetworks"
+				value={guardrails.allowPrivateNetworks}
+				onChange={(allowPrivateNetworks) => {
+					set({ allowPrivateNetworks });
+				}}
+			/>
+			<NamesRow
+				label="Exempt hosts"
+				path="guardrails.network.allowedHosts"
+				field="allowedHosts"
+				value={guardrails.allowedHosts}
+				placeholder="None: private hosts stay blocked"
+				isDisabled={guardrails.allowPrivateNetworks}
+				disabledMessage="Every private host is already allowed."
+				onChange={(allowedHosts) => {
+					set({ allowedHosts });
+				}}
+			/>
+			<NamesRow
+				label="Schemes"
+				path="guardrails.network.allowedSchemes"
+				field="allowedSchemes"
+				value={guardrails.allowedSchemes}
+				onChange={(allowedSchemes) => {
+					set({ allowedSchemes });
+				}}
+			/>
+		</InspectorSection>
+	);
+}
+
+function QuotaSection({ guardrails, set }: GuardrailsSectionProps) {
+	return (
+		<InspectorSection title="Quota" path="guardrails.quota" note={sectionNote('quota')}>
+			<SwitchRow
+				label="Daily cap"
+				path="guardrails.quota"
+				value={guardrails.quotaEnabled}
+				onChange={(quotaEnabled) => {
+					set({ quotaEnabled });
+				}}
+			/>
+			{guardrails.quotaEnabled && (
+				<>
+					<NumberRow
+						label="Per day"
+						path="guardrails.quota.perDay"
+						field="quotaPerDay"
+						isRequired
+						value={guardrails.quotaPerDay}
+						min={1}
+						units="turns"
+						isIntegerOnly
+						onChange={(quotaPerDay) => {
+							set({ quotaPerDay });
+						}}
+					/>
+					<TextAreaRow
+						label="Message"
+						path="lexicon.quota.exhausted"
+						field="quotaMessage"
+						value={guardrails.quotaMessage}
+						placeholder={lexiconDefault('quota.exhausted', {
+							perDay: guardrails.quotaPerDay ?? '{perDay}',
+						})}
+						onChange={(quotaMessage) => {
+							set({ quotaMessage });
+						}}
+					/>
+				</>
+			)}
+		</InspectorSection>
+	);
+}
+
 function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
 	const { guardrails } = draft;
 	const set = patch(setDraft, 'guardrails');
-	const mode = useContext(ConnectionMode);
-	const runtime = useContext(LocalConnection)?.runtime ?? { mode };
 	return (
 		<>
 			<InspectorSection title="Input" path="guardrails.sanitizeInput">
@@ -2689,88 +2879,9 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 				/>
 			</InspectorSection>
 			{draftAllows(draft, 'guardrails.canary') && (
-				<InspectorSection title="Canary" path="guardrails.canary">
-					<SwitchRow
-						label="Canary"
-						path="guardrails.canary"
-						value={guardrails.canary}
-						onChange={(canary) => {
-							set({ canary });
-						}}
-					/>
-					{guardrails.canary && (
-						<TextAreaRow
-							label="Bind note"
-							path="lexicon.canary.bind_note"
-							field="canaryBindNote"
-							value={guardrails.canaryBindNote}
-							placeholder={lexiconDefault('canary.bind_note')}
-							onChange={(canaryBindNote) => {
-								set({ canaryBindNote });
-							}}
-						/>
-					)}
-					{guardrails.canary && draftAllows(draft, 'guardrails.promptEcho') && (
-						<SwitchRow
-							label="Prompt echo"
-							path="guardrails.promptEcho"
-							value={guardrails.promptEcho}
-							onChange={(promptEcho) => {
-								set({ promptEcho });
-							}}
-						/>
-					)}
-				</InspectorSection>
+				<CanarySection draft={draft} guardrails={guardrails} set={set} />
 			)}
-			<InspectorSection title="Egress" path="guardrails.egress">
-				<SwitchRow
-					label="Checks"
-					path="guardrails.egress.checks"
-					value={guardrails.egressEnabled}
-					onChange={(egressEnabled) => {
-						set({ egressEnabled });
-					}}
-				/>
-				{guardrails.egressEnabled && (
-					<>
-						<SegmentedRow
-							label="On block"
-							path="guardrails.egress.onBlock"
-							value={guardrails.egressOnBlock || 'reject_to_agent'}
-							segments={ON_BLOCK_SEGMENTS}
-							onChange={(onBlock) => {
-								set({ egressOnBlock: onBlock === 'reject_to_agent' ? '' : onBlock });
-							}}
-						/>
-						{guardrails.egressOnBlock === '' && (
-							<>
-								<NumberRow
-									label="Retries"
-									path="guardrails.egress.maxRetries"
-									units="retries"
-									field="egressMaxRetries"
-									value={guardrails.egressMaxRetries}
-									min={0}
-									isIntegerOnly
-									onChange={(egressMaxRetries) => {
-										set({ egressMaxRetries });
-									}}
-								/>
-								<TextAreaRow
-									label="Guidance"
-									path="lexicon.egress.default_repair_guidance"
-									field="egressRepairGuidance"
-									value={guardrails.egressRepairGuidance}
-									placeholder={lexiconDefault('egress.default_repair_guidance')}
-									onChange={(egressRepairGuidance) => {
-										set({ egressRepairGuidance });
-									}}
-								/>
-							</>
-						)}
-					</>
-				)}
-			</InspectorSection>
+			<EgressSection guardrails={guardrails} set={set} />
 			{guardrails.egressEnabled && (
 				<EgressChecksSections
 					checks={guardrails.egressChecks}
@@ -2779,41 +2890,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 					}}
 				/>
 			)}
-			<InspectorSection
-				title="Network"
-				path="guardrails.network"
-				note={playgroundNetworkNote(runtime)}
-			>
-				<SwitchRow
-					label="Private"
-					path="guardrails.network.allowPrivateNetworks"
-					value={guardrails.allowPrivateNetworks}
-					onChange={(allowPrivateNetworks) => {
-						set({ allowPrivateNetworks });
-					}}
-				/>
-				<NamesRow
-					label="Exempt hosts"
-					path="guardrails.network.allowedHosts"
-					field="allowedHosts"
-					value={guardrails.allowedHosts}
-					placeholder="None: private hosts stay blocked"
-					isDisabled={guardrails.allowPrivateNetworks}
-					disabledMessage="Every private host is already allowed."
-					onChange={(allowedHosts) => {
-						set({ allowedHosts });
-					}}
-				/>
-				<NamesRow
-					label="Schemes"
-					path="guardrails.network.allowedSchemes"
-					field="allowedSchemes"
-					value={guardrails.allowedSchemes}
-					onChange={(allowedSchemes) => {
-						set({ allowedSchemes });
-					}}
-				/>
-			</InspectorSection>
+			<NetworkSection guardrails={guardrails} set={set} />
 			{draftAllows(draft, 'guardrails.taint') && (
 				<InspectorSection title="Taint" path="guardrails.taint" note={PLAYGROUND_TAINT_NOTE}>
 					<SegmentedRow
@@ -2827,45 +2904,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 					/>
 				</InspectorSection>
 			)}
-			<InspectorSection title="Quota" path="guardrails.quota" note={sectionNote('quota')}>
-				<SwitchRow
-					label="Daily cap"
-					path="guardrails.quota"
-					value={guardrails.quotaEnabled}
-					onChange={(quotaEnabled) => {
-						set({ quotaEnabled });
-					}}
-				/>
-				{guardrails.quotaEnabled && (
-					<>
-						<NumberRow
-							label="Per day"
-							path="guardrails.quota.perDay"
-							field="quotaPerDay"
-							isRequired
-							value={guardrails.quotaPerDay}
-							min={1}
-							units="turns"
-							isIntegerOnly
-							onChange={(quotaPerDay) => {
-								set({ quotaPerDay });
-							}}
-						/>
-						<TextAreaRow
-							label="Message"
-							path="lexicon.quota.exhausted"
-							field="quotaMessage"
-							value={guardrails.quotaMessage}
-							placeholder={lexiconDefault('quota.exhausted', {
-								perDay: guardrails.quotaPerDay ?? '{perDay}',
-							})}
-							onChange={(quotaMessage) => {
-								set({ quotaMessage });
-							}}
-						/>
-					</>
-				)}
-			</InspectorSection>
+			<QuotaSection guardrails={guardrails} set={set} />
 		</>
 	);
 }

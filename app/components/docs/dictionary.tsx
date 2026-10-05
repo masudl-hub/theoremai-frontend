@@ -181,8 +181,8 @@ function SymbolGroups({
 	);
 }
 
-export function PageDictionary({ symbols }: { symbols: readonly PageSymbol[] }) {
-	const [query, setQuery] = useState('');
+/** The symbols matching the filter, split by kind. */
+function useFilteredSymbols(symbols: readonly PageSymbol[], query: string) {
 	const filtered = useMemo(() => {
 		const needle = query.trim().toLowerCase();
 		if (!needle) return [...symbols];
@@ -218,6 +218,12 @@ export function PageDictionary({ symbols }: { symbols: readonly PageSymbol[] }) 
 			),
 		[filtered],
 	);
+	return { filtered, fields, unions, traces, lexicon };
+}
+
+export function PageDictionary({ symbols }: { symbols: readonly PageSymbol[] }) {
+	const [query, setQuery] = useState('');
+	const { filtered, fields, unions, traces, lexicon } = useFilteredSymbols(symbols, query);
 	const groups = [fields, unions, traces, lexicon].filter((group) => group.length > 0);
 
 	if (!symbols.length) return null;

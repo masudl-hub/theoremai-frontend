@@ -94,6 +94,7 @@ import { type TheoremChatHandle, useDisclosureMotion } from '@theoremjs/react/ui
 import {
 	type CSSProperties,
 	type Dispatch,
+	type ReactNode,
 	type RefObject,
 	type SetStateAction,
 	useCallback,
@@ -385,6 +386,166 @@ function toolItems({ workspace, selectedId, onSelect, update }: WorkspaceTreeSta
 type WorkspaceList = 'agents' | 'tools';
 
 /**
+ * Which list shows, following the selection, and the tool search. The open row stays in view: a
+ * tool far down the library, one an issue opened, or one a cleared search or the toggle shows
+ * again. Revealed after the list renders.
+ */
+function useWorkspaceList(selectedId: string, listRef: RefObject<HTMLDivElement | null>) {
+	const listOf = (id: string): WorkspaceList =>
+		toolSpecKeyOf(id) === undefined ? 'agents' : 'tools';
+	const [list, setList] = useState(() => listOf(selectedId));
+	const [shownFor, setShownFor] = useState(selectedId);
+	const [query, setQuery] = useState('');
+	if (shownFor !== selectedId) {
+		setShownFor(selectedId);
+		setList(listOf(selectedId));
+	}
+	const revealSelected = useCallback(() => {
+		requestAnimationFrame(() => {
+			listRef.current
+				?.querySelector('[aria-selected="true"]')
+				?.scrollIntoView({ block: 'nearest' });
+		});
+	}, [listRef]);
+	useEffect(() => {
+		// Nothing is selected while Keys is open.
+		if (selectedId) revealSelected();
+	}, [selectedId, revealSelected]);
+	return { list, setList, query, setQuery, revealSelected };
+}
+
+/** The toggle between the agents and the tool library, each with its count. */
+function WorkspaceListToggle({
+	workspace,
+	list,
+	onChange,
+}: {
+	workspace: PlaygroundWorkspace;
+	list: WorkspaceList;
+	onChange: (next: WorkspaceList) => void;
+}) {
+	return (
+		<SegmentedControl
+			label="Workspace list"
+			size="sm"
+			layout="fill"
+			value={list}
+			onChange={(next) => {
+				onChange(next === 'tools' ? 'tools' : 'agents');
+			}}
+		>
+			<SegmentedControlItem value="agents" label={`Agents ${String(workspace.agents.length)}`} />
+			<SegmentedControlItem value="tools" label={`Tools ${String(workspace.toolSpecs.length)}`} />
+		</SegmentedControl>
+	);
+}
+
+/** Adds a blank agent or one of the examples. */
+function AddAgentMenu({ onAddAgent }: { onAddAgent: (draft: PlaygroundDraft) => void }) {
+	return (
+		<DropdownMenu
+			button={{
+				label: 'Add an agent',
+				variant: 'ghost',
+				size: 'sm',
+				isIconOnly: true,
+				tooltip: 'Add an agent',
+				icon: <Icon icon={IconPlus} size="sm" />,
+			}}
+			hasChevron={false}
+			placement="below"
+			alignment="end"
+			items={[
+				{
+					id: 'blank',
+					label: 'Blank agent',
+					onClick: () => {
+						onAddAgent(createBlankDraft());
+					},
+				},
+				{
+					id: 'concierge',
+					label: 'Travel concierge',
+					description: 'A text agent with weather, places and currency tools.',
+					onClick: () => {
+						onAddAgent(createExampleDraft());
+					},
+				},
+				{
+					id: 'decision',
+					label: 'Jev decision',
+					description: 'Tool-call safety with the Jev decision model.',
+					onClick: () => {
+						onAddAgent(createDecisionExampleDraft());
+					},
+				},
+			]}
+		/>
+	);
+}
+
+/** Adds a tool to the library, joined to the open agent, and opens it. */
+function AddToolButton({ tree, draft }: { tree: WorkspaceTreeState; draft: PlaygroundDraft }) {
+	return (
+		<IconButton
+			label="Add a tool"
+			variant="ghost"
+			size="sm"
+			icon={<Icon icon={IconPlus} size="sm" />}
+			tooltip="Add a tool"
+			onClick={() => {
+				addToolSpec(draft, tree.setDraft, tree.onSelect);
+			}}
+		/>
+	);
+}
+
+/** Filters the tool library by name or description. */
+function ToolSearchInput({ query, onChange }: { query: string; onChange: (next: string) => void }) {
+	return (
+		<TextInput
+			label="Search tools"
+			isLabelHidden
+			size="sm"
+			placeholder="Search tools"
+			value={query}
+			onChange={onChange}
+			startIcon={IconSearch}
+			hasClear
+		/>
+	);
+}
+
+/** The shown list's rows, or why there are none. */
+function WorkspaceListBody({
+	tree,
+	list,
+	tools,
+	query,
+	listRef,
+}: {
+	tree: WorkspaceTreeState;
+	list: WorkspaceList;
+	tools: TreeListItemData[];
+	query: string;
+	listRef: RefObject<HTMLDivElement | null>;
+}) {
+	return (
+		<ScrollableArea ref={listRef} label="Workspace" height="100%">
+			{list === 'agents' ? (
+				<TreeList density="compact" aria-label="Agents" items={agentItems(tree)} />
+			) : tools.length > 0 ? (
+				<TreeList density="compact" aria-label="Tools" items={tools} />
+			) : (
+				<Text type="supporting" color="secondary">
+					{query.trim() ? `No tool matches “${query.trim()}”.` : 'No tools yet.'}
+				</Text>
+			)}
+		</ScrollableArea>
+	);
+}
+
+/**
  * The workspace's two lists, one at a time: its agents, and the tool library they share. The
  * toggle follows the selection, so opening a tool from elsewhere (an issue, a new tool) shows it.
  */
@@ -401,133 +562,41 @@ function WorkspaceTreeLists({
 	/** The list's scroller. The toggle and search stay above it. */
 	listRef: RefObject<HTMLDivElement | null>;
 }) {
-	const listOf = (id: string): WorkspaceList =>
-		toolSpecKeyOf(id) === undefined ? 'agents' : 'tools';
-	const [list, setList] = useState(() => listOf(tree.selectedId));
-	const [shownFor, setShownFor] = useState(tree.selectedId);
-	const [query, setQuery] = useState('');
-	if (shownFor !== tree.selectedId) {
-		setShownFor(tree.selectedId);
-		setList(listOf(tree.selectedId));
-	}
-	// The open row stays in view: a tool far down the library, one an issue opened, or one a
-	// cleared search or the toggle shows again. Revealed after the list renders.
-	const revealSelected = useCallback(() => {
-		requestAnimationFrame(() => {
-			listRef.current
-				?.querySelector('[aria-selected="true"]')
-				?.scrollIntoView({ block: 'nearest' });
-		});
-	}, [listRef]);
-	const { selectedId } = tree;
-	useEffect(() => {
-		// Nothing is selected while Keys is open.
-		if (selectedId) revealSelected();
-	}, [selectedId, revealSelected]);
+	const { list, setList, query, setQuery, revealSelected } = useWorkspaceList(
+		tree.selectedId,
+		listRef,
+	);
 	const tools = list === 'tools' ? toolItems(tree, query) : [];
 	return (
 		<VStack gap={2} height="100%">
 			<HStack gap={1} vAlign="center">
 				<StackItem size="fill">
-					<SegmentedControl
-						label="Workspace list"
-						size="sm"
-						layout="fill"
-						value={list}
+					<WorkspaceListToggle
+						workspace={tree.workspace}
+						list={list}
 						onChange={(next) => {
-							setList(next === 'tools' ? 'tools' : 'agents');
+							setList(next);
 							revealSelected();
 						}}
-					>
-						<SegmentedControlItem
-							value="agents"
-							label={`Agents ${String(tree.workspace.agents.length)}`}
-						/>
-						<SegmentedControlItem
-							value="tools"
-							label={`Tools ${String(tree.workspace.toolSpecs.length)}`}
-						/>
-					</SegmentedControl>
+					/>
 				</StackItem>
 				{list === 'agents' ? (
-					<DropdownMenu
-						button={{
-							label: 'Add an agent',
-							variant: 'ghost',
-							size: 'sm',
-							isIconOnly: true,
-							tooltip: 'Add an agent',
-							icon: <Icon icon={IconPlus} size="sm" />,
-						}}
-						hasChevron={false}
-						placement="below"
-						alignment="end"
-						items={[
-							{
-								id: 'blank',
-								label: 'Blank agent',
-								onClick: () => {
-									onAddAgent(createBlankDraft());
-								},
-							},
-							{
-								id: 'concierge',
-								label: 'Travel concierge',
-								description: 'A text agent with weather, places and currency tools.',
-								onClick: () => {
-									onAddAgent(createExampleDraft());
-								},
-							},
-							{
-								id: 'decision',
-								label: 'Jev decision',
-								description: 'Tool-call safety with the Jev decision model.',
-								onClick: () => {
-									onAddAgent(createDecisionExampleDraft());
-								},
-							},
-						]}
-					/>
+					<AddAgentMenu onAddAgent={onAddAgent} />
 				) : (
-					<IconButton
-						label="Add a tool"
-						variant="ghost"
-						size="sm"
-						icon={<Icon icon={IconPlus} size="sm" />}
-						tooltip="Add a tool"
-						onClick={() => {
-							addToolSpec(draft, tree.setDraft, tree.onSelect);
-						}}
-					/>
+					<AddToolButton tree={tree} draft={draft} />
 				)}
 			</HStack>
 			{list === 'tools' && (
-				<TextInput
-					label="Search tools"
-					isLabelHidden
-					size="sm"
-					placeholder="Search tools"
-					value={query}
+				<ToolSearchInput
+					query={query}
 					onChange={(next) => {
 						setQuery(next);
 						revealSelected();
 					}}
-					startIcon={IconSearch}
-					hasClear
 				/>
 			)}
 			<StackItem size="fill">
-				<ScrollableArea ref={listRef} label="Workspace" height="100%">
-					{list === 'agents' ? (
-						<TreeList density="compact" aria-label="Agents" items={agentItems(tree)} />
-					) : tools.length > 0 ? (
-						<TreeList density="compact" aria-label="Tools" items={tools} />
-					) : (
-						<Text type="supporting" color="secondary">
-							{query.trim() ? `No tool matches “${query.trim()}”.` : 'No tools yet.'}
-						</Text>
-					)}
-				</ScrollableArea>
+				<WorkspaceListBody tree={tree} list={list} tools={tools} query={query} listRef={listRef} />
 			</StackItem>
 		</VStack>
 	);
@@ -836,14 +905,6 @@ function playgroundSurfaceHost(
 	page: RefObject<SurfacePage>,
 	chat: RefObject<TheoremChatHandle | null>,
 ): PlaygroundSurfaceHost {
-	/** What the chatted agent runs, with the agents it names. */
-	const runNow = () => {
-		const workspace = store.getWorkspace();
-		const result = compileWorkspace(workspace, page.current.mode);
-		return result.ok
-			? workspaceRunAgent(result, agentIdOf(workspace, workspace.chatWith))
-			: undefined;
-	};
 	return {
 		getDraft: store.getDraft,
 		getRevision: store.getRevision,
@@ -867,6 +928,17 @@ function playgroundSurfaceHost(
 				sections: change.sections,
 			})),
 		subscribe: store.subscribe,
+		...keyAndToolMembers(store, page),
+		...runMembers(store, page, chat),
+	};
+}
+
+/** th30's reach into the keys and the tool library: read and test a key, open Keys, probe a tool. */
+function keyAndToolMembers(
+	store: PlaygroundStore,
+	page: RefObject<SurfacePage>,
+): Pick<PlaygroundSurfaceHost, 'key' | 'openKeys' | 'testKey' | 'toolCredential' | 'testTool'> {
+	return {
 		key: (slot) => page.current.connection.vault[slot] ?? '',
 		openKeys: () => {
 			page.current.setKeysOpen(true);
@@ -892,6 +964,24 @@ function playgroundSurfaceHost(
 			const sample = input ?? sampleToolInput(tool.toolName, tool.inputJson) ?? {};
 			return runToolProbe(tool, JSON.stringify(sample), toolCredential(key));
 		},
+	};
+}
+
+/** th30's reach into the conversation and the chatted agent: send, start over, launch, export. */
+function runMembers(
+	store: PlaygroundStore,
+	page: RefObject<SurfacePage>,
+	chat: RefObject<TheoremChatHandle | null>,
+): Pick<PlaygroundSurfaceHost, 'send' | 'newConversation' | 'launch' | 'exportAgent'> {
+	/** What the chatted agent runs, with the agents it names. */
+	const runNow = () => {
+		const workspace = store.getWorkspace();
+		const result = compileWorkspace(workspace, page.current.mode);
+		return result.ok
+			? workspaceRunAgent(result, agentIdOf(workspace, workspace.chatWith))
+			: undefined;
+	};
+	return {
 		send: (text) => chat.current?.send(text) ?? Promise.resolve(null),
 		newConversation: () => {
 			clearConversation(store.getWorkspace().chatWith);
@@ -967,54 +1057,13 @@ function ExportActions({
 }) {
 	return (
 		<>
-			<ButtonGroup label="Export" isDisabled={!compiled}>
-				<Button
-					label="Export"
-					isIconOnly={phone}
-					icon={<Icon icon={IconDownload} size="sm" />}
-					tooltip={blocked ?? 'Download every agent as a .zip'}
-					onClick={() => {
-						if (compiled && chatted) {
-							downloadExport(exportFiles(compiled, chatted), chatted.agentId);
-						}
-					}}
-				/>
-				<DropdownMenu
-					button={{
-						label: 'More export options',
-						isIconOnly: true,
-						icon: <Icon icon={IconChevronDown} size="sm" />,
-						isDisabled: !compiled,
-					}}
-					hasChevron={false}
-					placement="below"
-					alignment="end"
-					items={[
-						{
-							id: 'copy',
-							label: 'Copy',
-							description: 'Every file, each under its path, to paste into your code.',
-							icon: <Icon icon={IconCopy} size="sm" />,
-							onClick: () => {
-								if (compiled && chatted) {
-									copy(exportText(exportFiles(compiled, chatted)), 'the files');
-								}
-							},
-						},
-						{
-							id: 'copy-llm',
-							label: 'Copy for LLM',
-							description:
-								'Every file with a brief: what to install, where each goes, what to ask you.',
-							icon: <Icon icon={IconSparkles} size="sm" />,
-							onClick: () => {
-								if (compiled && chatted)
-									copy(llmBrief(compiled, chatted), 'the files and their brief');
-							},
-						},
-					]}
-				/>
-			</ButtonGroup>
+			<ExportMenu
+				compiled={compiled}
+				chatted={chatted}
+				blocked={blocked}
+				phone={phone}
+				copy={copy}
+			/>
 			<Button
 				label="Launch"
 				isIconOnly={phone}
@@ -1028,6 +1077,66 @@ function ExportActions({
 				}}
 			/>
 		</>
+	);
+}
+
+/** Export as a .zip, with Copy and Copy for LLM under its menu. */
+function ExportMenu({
+	compiled,
+	chatted,
+	blocked,
+	phone,
+	copy,
+}: Omit<Parameters<typeof ExportActions>[0], 'chattedId' | 'connection'>) {
+	return (
+		<ButtonGroup label="Export" isDisabled={!compiled}>
+			<Button
+				label="Export"
+				isIconOnly={phone}
+				icon={<Icon icon={IconDownload} size="sm" />}
+				tooltip={blocked ?? 'Download every agent as a .zip'}
+				onClick={() => {
+					if (compiled && chatted) {
+						downloadExport(exportFiles(compiled, chatted), chatted.agentId);
+					}
+				}}
+			/>
+			<DropdownMenu
+				button={{
+					label: 'More export options',
+					isIconOnly: true,
+					icon: <Icon icon={IconChevronDown} size="sm" />,
+					isDisabled: !compiled,
+				}}
+				hasChevron={false}
+				placement="below"
+				alignment="end"
+				items={[
+					{
+						id: 'copy',
+						label: 'Copy',
+						description: 'Every file, each under its path, to paste into your code.',
+						icon: <Icon icon={IconCopy} size="sm" />,
+						onClick: () => {
+							if (compiled && chatted) {
+								copy(exportText(exportFiles(compiled, chatted)), 'the files');
+							}
+						},
+					},
+					{
+						id: 'copy-llm',
+						label: 'Copy for LLM',
+						description:
+							'Every file with a brief: what to install, where each goes, what to ask you.',
+						icon: <Icon icon={IconSparkles} size="sm" />,
+						onClick: () => {
+							if (compiled && chatted)
+								copy(llmBrief(compiled, chatted), 'the files and their brief');
+						},
+					},
+				]}
+			/>
+		</ButtonGroup>
 	);
 }
 
@@ -1330,6 +1439,32 @@ function selectedNode(workspace: PlaygroundWorkspace, focus: string): string {
 	return workspaceNodeRef(workspace, workspace.selected) ? workspace.selected : agentNodeId(focus);
 }
 
+/** A phone-only button that opens a sheet over the editor, or closes it (`null`). */
+function SheetButton({
+	label,
+	icon,
+	sheet,
+	setSheet,
+}: {
+	label: string;
+	icon: IconType;
+	sheet: Sheet;
+	setSheet: (sheet: Sheet) => void;
+}) {
+	return (
+		<span className="playground-phone">
+			<IconButton
+				label={label}
+				variant="ghost"
+				icon={<Icon icon={icon} size="sm" />}
+				onClick={() => {
+					setSheet(sheet);
+				}}
+			/>
+		</span>
+	);
+}
+
 /** The profile tree's column: the playground's name and version over the agents and tools. */
 function TreeColumn({
 	tree,
@@ -1356,22 +1491,97 @@ function TreeColumn({
 							</Text>
 						</VStack>
 					</StackItem>
-					<span className="playground-phone">
-						<IconButton
-							label="Close sections"
-							variant="ghost"
-							icon={<Icon icon={IconX} size="sm" />}
-							onClick={() => {
-								setSheet(null);
-							}}
-						/>
-					</span>
+					<SheetButton label="Close sections" icon={IconX} sheet={null} setSheet={setSheet} />
 				</HStack>
 				<StackItem size="fill">
 					<WorkspaceTreeLists tree={tree} draft={draft} onAddAgent={onAddAgent} listRef={listRef} />
 				</StackItem>
 			</VStack>
 		</Section>
+	);
+}
+
+/** The issue count, which goes to the next issue after the selected node. Hidden with none. */
+function IssueToken({
+	compile,
+	selected,
+	onIssue,
+}: {
+	compile: WorkspaceCompile;
+	selected: string;
+	onIssue: (node: string) => void;
+}) {
+	const { compiled, issues } = compile;
+	if (!issues || compiled.ok) return null;
+	return (
+		<Token
+			label={issues}
+			color="orange"
+			description="Go to the next issue"
+			onClick={() => {
+				onIssue(nextIssueNode(compiled.issues, selected));
+			}}
+		/>
+	);
+}
+
+/** Replaces the workspace with one of the examples. */
+function ExampleMenu({
+	replaceWorkspace,
+}: {
+	replaceWorkspace: (next: PlaygroundWorkspace, message: string) => void;
+}) {
+	return (
+		<DropdownMenu
+			button={{
+				label: 'Load an example',
+				variant: 'ghost',
+				isIconOnly: true,
+				icon: <Icon icon={IconBook} size="sm" />,
+				tooltip: 'Load an example',
+			}}
+			hasChevron={false}
+			placement="below"
+			alignment="end"
+			items={[
+				{
+					id: 'concierge',
+					label: 'Travel concierge',
+					description: 'A text agent with weather, places and currency tools.',
+					onClick: () => {
+						replaceWorkspace(workspaceFromDraft(createExampleDraft()), 'Loaded the example.');
+					},
+				},
+				{
+					id: 'decision',
+					label: 'Jev decision',
+					description: 'Tool-call safety with the Jev decision model.',
+					onClick: () => {
+						replaceWorkspace(
+							workspaceFromDraft(createDecisionExampleDraft()),
+							'Loaded the decision example.',
+						);
+					},
+				},
+			]}
+		/>
+	);
+}
+
+/** Switches the editor between the form and the code, closing Keys. */
+function ViewToggleButton({ view }: { view: EditorViewState }) {
+	const viewToggle = VIEW_TOGGLE[view.editorView];
+	return (
+		<IconButton
+			label={viewToggle.label}
+			variant="ghost"
+			icon={<Icon icon={viewToggle.icon} size="sm" />}
+			tooltip={viewToggle.tooltip}
+			onClick={() => {
+				view.setKeysOpen(false);
+				view.setEditorView(viewToggle.next);
+			}}
+		/>
 	);
 }
 
@@ -1393,32 +1603,12 @@ function EditorToolbar({
 	replaceWorkspace: (next: PlaygroundWorkspace, message: string) => void;
 	setSheet: (sheet: Sheet) => void;
 }) {
-	const { compiled, issues } = compile;
-	const viewToggle = VIEW_TOGGLE[view.editorView];
 	return (
 		<Section variant="transparent" padding={3} dividers={['bottom']}>
 			<HStack gap={1} vAlign="center">
-				<span className="playground-phone">
-					<IconButton
-						label="Sections"
-						variant="ghost"
-						icon={<Icon icon={IconMenu2} size="sm" />}
-						onClick={() => {
-							setSheet('tree');
-						}}
-					/>
-				</span>
+				<SheetButton label="Sections" icon={IconMenu2} sheet={'tree'} setSheet={setSheet} />
 				<StackItem size="fill">{heading && <Heading level={4}>{heading}</Heading>}</StackItem>
-				{issues && !compiled.ok && (
-					<Token
-						label={issues}
-						color="orange"
-						description="Go to the next issue"
-						onClick={() => {
-							onIssue(nextIssueNode(compiled.issues, selected));
-						}}
-					/>
-				)}
+				<IssueToken compile={compile} selected={selected} onIssue={onIssue} />
 				<IconButton
 					label="Keys"
 					variant="ghost"
@@ -1430,39 +1620,7 @@ function EditorToolbar({
 						view.setEditorView('editor');
 					}}
 				/>
-				<DropdownMenu
-					button={{
-						label: 'Load an example',
-						variant: 'ghost',
-						isIconOnly: true,
-						icon: <Icon icon={IconBook} size="sm" />,
-						tooltip: 'Load an example',
-					}}
-					hasChevron={false}
-					placement="below"
-					alignment="end"
-					items={[
-						{
-							id: 'concierge',
-							label: 'Travel concierge',
-							description: 'A text agent with weather, places and currency tools.',
-							onClick: () => {
-								replaceWorkspace(workspaceFromDraft(createExampleDraft()), 'Loaded the example.');
-							},
-						},
-						{
-							id: 'decision',
-							label: 'Jev decision',
-							description: 'Tool-call safety with the Jev decision model.',
-							onClick: () => {
-								replaceWorkspace(
-									workspaceFromDraft(createDecisionExampleDraft()),
-									'Loaded the decision example.',
-								);
-							},
-						},
-					]}
-				/>
+				<ExampleMenu replaceWorkspace={replaceWorkspace} />
 				<IconButton
 					label="Clear"
 					variant="ghost"
@@ -1472,26 +1630,8 @@ function EditorToolbar({
 						replaceWorkspace(createBlankWorkspace(), 'Cleared the playground.');
 					}}
 				/>
-				<IconButton
-					label={viewToggle.label}
-					variant="ghost"
-					icon={<Icon icon={viewToggle.icon} size="sm" />}
-					tooltip={viewToggle.tooltip}
-					onClick={() => {
-						view.setKeysOpen(false);
-						view.setEditorView(viewToggle.next);
-					}}
-				/>
-				<span className="playground-phone">
-					<IconButton
-						label="Preview"
-						variant="ghost"
-						icon={<Icon icon={IconPlayerPlay} size="sm" />}
-						onClick={() => {
-							setSheet('preview');
-						}}
-					/>
-				</span>
+				<ViewToggleButton view={view} />
+				<SheetButton label="Preview" icon={IconPlayerPlay} sheet={'preview'} setSheet={setSheet} />
 			</HStack>
 		</Section>
 	);
@@ -1613,6 +1753,22 @@ function CodeBody({
 	);
 }
 
+/** Clears the conversation and its traces; the profile stays. */
+function ClearHistoryButton({ chatWith, run }: { chatWith: string; run: ConversationRun }) {
+	return (
+		<IconButton
+			label="Clear history"
+			variant="ghost"
+			icon={<Icon icon={IconPlaylistX} size="sm" />}
+			tooltip="Clear the conversation and its traces. Your profile stays."
+			onClick={() => {
+				clearConversation(chatWith);
+				run.setConversation((count) => count + 1);
+			}}
+		/>
+	);
+}
+
 /** The preview's header: back to the editor, the agent to chat with, history, trace and Export. */
 function PreviewHeader({
 	state,
@@ -1637,30 +1793,17 @@ function PreviewHeader({
 	return (
 		<Section variant="transparent" padding={3}>
 			<HStack gap={2} vAlign="center">
-				<span className="playground-phone">
-					<IconButton
-						label="Back to the editor"
-						variant="ghost"
-						icon={<Icon icon={IconArrowLeft} size="sm" />}
-						onClick={() => {
-							setSheet(null);
-						}}
-					/>
-				</span>
+				<SheetButton
+					label="Back to the editor"
+					icon={IconArrowLeft}
+					sheet={null}
+					setSheet={setSheet}
+				/>
 				<StackItem size="fill">
 					<ChatPicker workspace={workspace} onChange={store.chatWith} />
 				</StackItem>
 				{compile.payload && run.isUsed && (
-					<IconButton
-						label="Clear history"
-						variant="ghost"
-						icon={<Icon icon={IconPlaylistX} size="sm" />}
-						tooltip="Clear the conversation and its traces. Your profile stays."
-						onClick={() => {
-							clearConversation(workspace.chatWith);
-							run.setConversation((count) => count + 1);
-						}}
-					/>
+					<ClearHistoryButton chatWith={workspace.chatWith} run={run} />
 				)}
 				{compile.traced ? (
 					<Button
@@ -1685,6 +1828,46 @@ function PreviewHeader({
 	);
 }
 
+/** The runner for the compiled agent, its conversation saved as it goes; while none compiles, why. */
+function PreviewBody({
+	compile,
+	run,
+	connection,
+	chatRef,
+	chatWith,
+	traceOpen,
+}: {
+	compile: WorkspaceCompile;
+	run: ConversationRun;
+	connection: PlaygroundConnectionState;
+	chatRef: RefObject<TheoremChatHandle | null>;
+	chatWith: string;
+	traceOpen: boolean;
+}) {
+	const { payload, traced } = compile;
+	return payload ? (
+		<PlaygroundRunner
+			key={run.runKey}
+			payload={payload}
+			mode={connection.mode}
+			runtime={connection.runtime}
+			trace={traced && traceOpen}
+			onActivity={run.markUsed}
+			initialChat={run.initialChat}
+			onChatChange={(snapshot) => {
+				saveConversation(chatWith, snapshot);
+			}}
+			chatRef={chatRef}
+		/>
+	) : (
+		<EmptyState
+			icon={<Icon icon={IconAlertTriangle} />}
+			title="No agent yet"
+			description={`${compile.blocked ?? ''} to run the agent.`}
+		/>
+	);
+}
+
 /** The compiled agent to chat with, under its header; while none compiles, why. */
 function PreviewPane({
 	state,
@@ -1704,8 +1887,6 @@ function PreviewPane({
 	setSheet: (sheet: Sheet) => void;
 }) {
 	const [traceOpen, setTraceOpen] = useState(false);
-	const { payload, traced } = compile;
-	const chatWith = state.workspace.chatWith;
 	return (
 		<LayoutContent className="playground-preview" isScrollable={false} padding={0}>
 			<VStack height="100%">
@@ -1724,39 +1905,22 @@ function PreviewPane({
 					setSheet={setSheet}
 				/>
 				<StackItem size="fill">
-					{payload ? (
-						<PlaygroundRunner
-							key={run.runKey}
-							payload={payload}
-							mode={connection.mode}
-							runtime={connection.runtime}
-							trace={traced && traceOpen}
-							onActivity={run.markUsed}
-							initialChat={run.initialChat}
-							onChatChange={(snapshot) => {
-								saveConversation(chatWith, snapshot);
-							}}
-							chatRef={chatRef}
-						/>
-					) : (
-						<EmptyState
-							icon={<Icon icon={IconAlertTriangle} />}
-							title="No agent yet"
-							description={`${compile.blocked ?? ''} to run the agent.`}
-						/>
-					)}
+					<PreviewBody
+						compile={compile}
+						run={run}
+						connection={connection}
+						chatRef={chatRef}
+						chatWith={state.workspace.chatWith}
+						traceOpen={traceOpen}
+					/>
 				</StackItem>
 			</VStack>
 		</LayoutContent>
 	);
 }
 
-/**
- * The profile tree beside the editor (or code) for the draft in a panel on the left; the compiled
- * agent on the right, under Export and Run. The draft compiles as it changes; while it doesn't
- * compile, the agent stays the last one that did.
- */
-export default function Playground({ loaderData }: Route.ComponentProps) {
+/** Everything the page holds: the workspace, its connection, the editor's view, the compile and the run. */
+function usePlaygroundPage(loaderData: Route.ComponentProps['loaderData']) {
 	const state = usePlaygroundWorkspace(loaderData.start);
 	const { store, workspace, draft, focus } = state;
 	const connection = useWorkspaceConnection(workspace);
@@ -1765,7 +1929,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	const selected = selectedNode(workspace, focus);
 	/** The open node as the editor names it: the open agent's own id, or a library tool's. */
 	const editing = innerNodeId(selected, focus) ?? 'identity';
-	const { editorRef, reveal } = useIssueReveal(selected);
+	const issueReveal = useIssueReveal(selected);
 	const compile = useWorkspaceCompile(workspace, focus, connection);
 	/** On a phone, the tree or the preview, each over the editor; neither shows beside it there. */
 	const [sheet, setSheet] = useState<Sheet>(null);
@@ -1782,17 +1946,36 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	});
 	const title = editorTitle(draft, editing);
 	useReportTh30Playground(th30Report(draft, compile.compiled, title));
-	const tree: WorkspaceTreeState = {
-		workspace,
-		focus,
-		selectedId: view.keysOpen ? '' : selected,
-		onSelect: (id) => {
-			view.open(id);
-			setSheet(null);
-		},
-		update: state.update,
-		setDraft: state.setDraft,
+	return {
+		state,
+		connection,
+		view,
+		frame,
+		selected,
+		editing,
+		issueReveal,
+		compile,
+		sheet,
+		setSheet,
+		run,
+		replaceWorkspace,
+		copy,
+		chatRef,
+		title,
 	};
+}
+
+/**
+ * The profile tree beside the editor (or code) for the draft in a panel on the left; the compiled
+ * agent on the right, under Export and Run. The draft compiles as it changes; while it doesn't
+ * compile, the agent stays the last one that did.
+ */
+export default function Playground({ loaderData }: Route.ComponentProps) {
+	const page = usePlaygroundPage(loaderData);
+	const { state, connection, view, frame, selected, editing, issueReveal, compile } = page;
+	const { sheet, setSheet, run, replaceWorkspace, copy, chatRef, title } = page;
+	const { store, draft } = state;
+	const tree = workspaceTreeState(state, view, selected, setSheet);
 	/** Adds an agent and opens it. */
 	const addAgentFrom = (next: PlaygroundDraft) => {
 		state.update((current) => addAgent(current, next));
@@ -1805,66 +1988,27 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 			className={frameClass(sheet)}
 			padding={0}
 			start={
-				<>
-					<LayoutPanel
-						resizable={frame.sidePanel.props}
-						padding={0}
-						className="playground-side"
-						role="navigation"
-						label="Playground"
-						isScrollable={false}
-					>
-						<Section variant="raised" height="100%" padding={0}>
-							<HStack height="100%">
-								{/* Static, so the editor beside it never squeezes the tree. */}
-								<StackItem size="static" className="playground-tree">
-									<TreeColumn
-										tree={tree}
-										draft={draft}
-										onAddAgent={addAgentFrom}
-										listRef={frame.sidebarRef}
-										setSheet={setSheet}
-									/>
-								</StackItem>
-								<StackItem size="fill">
-									<VStack height="100%">
-										<EditorToolbar
-											heading={view.keysOpen ? 'Keys' : title}
-											compile={compile}
-											selected={selected}
-											view={view}
-											onIssue={(node) => {
-												view.open(node);
-												reveal({ node });
-											}}
-											replaceWorkspace={replaceWorkspace}
-											setSheet={setSheet}
-										/>
-										<StackItem size="fill" ref={frame.bodyRef}>
-											<EditorColumnBody
-												state={state}
-												connection={connection}
-												view={view}
-												compile={compile}
-												selected={selected}
-												editing={editing}
-												frame={frame}
-												editorRef={editorRef}
-											/>
-										</StackItem>
-									</VStack>
-								</StackItem>
-							</HStack>
-						</Section>
-					</LayoutPanel>
-					<ResizeHandle
-						className="playground-side-handle"
-						direction="horizontal"
-						isAlwaysVisible={false}
-						resizable={frame.sidePanel.props}
-						label="Resize profile"
+				<SidePanel
+					frame={frame}
+					tree={tree}
+					draft={draft}
+					onAddAgent={addAgentFrom}
+					setSheet={setSheet}
+				>
+					<EditorColumn
+						heading={view.keysOpen ? 'Keys' : title}
+						state={state}
+						connection={connection}
+						view={view}
+						compile={compile}
+						selected={selected}
+						editing={editing}
+						frame={frame}
+						issueReveal={issueReveal}
+						replaceWorkspace={replaceWorkspace}
+						setSheet={setSheet}
 					/>
-				</>
+				</SidePanel>
 			}
 			content={
 				<PreviewPane
@@ -1878,6 +2022,136 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 				/>
 			}
 		/>
+	);
+}
+
+/** What the tree reads of the page; opening a node closes the phone's sheet, and Keys selects nothing. */
+function workspaceTreeState(
+	state: PlaygroundWorkspaceState,
+	view: EditorViewState,
+	selected: string,
+	setSheet: (sheet: Sheet) => void,
+): WorkspaceTreeState {
+	return {
+		workspace: state.workspace,
+		focus: state.focus,
+		selectedId: view.keysOpen ? '' : selected,
+		onSelect: (id) => {
+			view.open(id);
+			setSheet(null);
+		},
+		update: state.update,
+		setDraft: state.setDraft,
+	};
+}
+
+/** The resizable side panel: the tree beside the editor column (`children`), and its handle. */
+function SidePanel({
+	frame,
+	tree,
+	draft,
+	onAddAgent,
+	setSheet,
+	children,
+}: {
+	frame: ReturnType<typeof usePlaygroundFrame>;
+	tree: WorkspaceTreeState;
+	draft: PlaygroundDraft;
+	onAddAgent: (next: PlaygroundDraft) => void;
+	setSheet: (sheet: Sheet) => void;
+	children: ReactNode;
+}) {
+	return (
+		<>
+			<LayoutPanel
+				resizable={frame.sidePanel.props}
+				padding={0}
+				className="playground-side"
+				role="navigation"
+				label="Playground"
+				isScrollable={false}
+			>
+				<Section variant="raised" height="100%" padding={0}>
+					<HStack height="100%">
+						{/* Static, so the editor beside it never squeezes the tree. */}
+						<StackItem size="static" className="playground-tree">
+							<TreeColumn
+								tree={tree}
+								draft={draft}
+								onAddAgent={onAddAgent}
+								listRef={frame.sidebarRef}
+								setSheet={setSheet}
+							/>
+						</StackItem>
+						<StackItem size="fill">{children}</StackItem>
+					</HStack>
+				</Section>
+			</LayoutPanel>
+			<ResizeHandle
+				className="playground-side-handle"
+				direction="horizontal"
+				isAlwaysVisible={false}
+				resizable={frame.sidePanel.props}
+				label="Resize profile"
+			/>
+		</>
+	);
+}
+
+/** The editor column: its toolbar over the Keys panel, the open node's editor, or its code. */
+function EditorColumn({
+	heading,
+	state,
+	connection,
+	view,
+	compile,
+	selected,
+	editing,
+	frame,
+	issueReveal,
+	replaceWorkspace,
+	setSheet,
+}: {
+	heading: string | undefined;
+	state: PlaygroundWorkspaceState;
+	connection: PlaygroundConnectionState;
+	view: EditorViewState;
+	compile: WorkspaceCompile;
+	selected: string;
+	editing: string;
+	frame: ReturnType<typeof usePlaygroundFrame>;
+	issueReveal: ReturnType<typeof useIssueReveal>;
+	replaceWorkspace: (next: PlaygroundWorkspace, message: string) => void;
+	setSheet: (sheet: Sheet) => void;
+}) {
+	const { editorRef, reveal } = issueReveal;
+	return (
+		<VStack height="100%">
+			<EditorToolbar
+				heading={heading}
+				compile={compile}
+				selected={selected}
+				view={view}
+				onIssue={(node) => {
+					view.open(node);
+					reveal({ node });
+				}}
+				replaceWorkspace={replaceWorkspace}
+				setSheet={setSheet}
+			/>
+			<StackItem size="fill" ref={frame.bodyRef}>
+				<EditorColumnBody
+					state={state}
+					connection={connection}
+					view={view}
+					compile={compile}
+					selected={selected}
+					editing={editing}
+					frame={frame}
+					editorRef={editorRef}
+				/>
+			</StackItem>
+		</VStack>
 	);
 }
 

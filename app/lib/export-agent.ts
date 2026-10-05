@@ -80,9 +80,16 @@ interface Entry {
 	endpoint?: string;
 }
 
-function entryFiles(workspace: CompiledWorkspace, agent: CompiledPlayground): Entry {
+/** The route file: `factory` from the server entry, built from the agent's module with `options`. */
+function serverFile(
+	agent: CompiledPlayground,
+	exportName: string,
+	factory: string,
+	mount: string,
+	options: string[],
+): SourceFile {
 	const module = importSpecifier(agentModulePath(agent.agentId));
-	const server = (exportName: string, factory: string, mount: string, options: string[]) => ({
+	return {
 		path: 'route.ts',
 		code: `${[
 			`import { ${factory} } from '@theoremjs/react/server';`,
@@ -94,14 +101,18 @@ function entryFiles(workspace: CompiledWorkspace, agent: CompiledPlayground): En
 			...options.map((option) => `  ${option},`),
 			'});',
 		].join('\n')}\n`,
-	});
-	const browser = (
-		path: string,
-		name: string,
-		component: string,
-		endpoint: string,
-		what: string,
-	) => ({
+	};
+}
+
+/** The browser file: one component that renders `component` pointed at `endpoint`. */
+function browserFile(
+	path: string,
+	name: string,
+	component: string,
+	endpoint: string,
+	what: string,
+): SourceFile & { what: string } {
+	return {
 		path,
 		what,
 		code: `${[
@@ -111,54 +122,71 @@ function entryFiles(workspace: CompiledWorkspace, agent: CompiledPlayground): En
 			`  return <${component} endpoint="${endpoint}" />;`,
 			'}',
 		].join('\n')}\n`,
-	});
-	if (agent.profile.type === 'decision') {
-		return {
-			endpoint: DECISION_ENDPOINT,
-			route: server(
-				'decision',
-				'createTheoremDecisionHandler',
-				`Mount at ${DECISION_ENDPOINT} and ${DECISION_ENDPOINT}/decide. The questions stay here; the browser sends only the state.`,
-				['profile', 'questions', `vault: ${vaultSource(workspace)}`],
-			),
-			ui: browser(
-				'AgentDecision.tsx',
-				'AgentDecision',
-				'TheoremDecision',
-				DECISION_ENDPOINT,
-				'the state field and the answers',
-			),
-		};
-	}
-	if (agent.profile.type === 'host') {
-		return {
-			endpoint: HOST_ENDPOINT,
-			route: server(
-				'host',
-				'createTheoremHostHandler',
-				`Mount at ${HOST_ENDPOINT}/*: it describes the tools, and answers /call and /invoke. No model runs.`,
-				['profile'],
-			),
-			ui: browser(
-				'AgentHost.tsx',
-				'AgentHost',
-				'TheoremHost',
-				HOST_ENDPOINT,
-				'a form per tool and its result',
-			),
-		};
-	}
-	if (!servesTurns(agent)) return {};
+	};
+}
+
+/** A decision agent's route and its state-and-answers component. */
+function decisionEntry(workspace: CompiledWorkspace, agent: CompiledPlayground): Entry {
+	return {
+		endpoint: DECISION_ENDPOINT,
+		route: serverFile(
+			agent,
+			'decision',
+			'createTheoremDecisionHandler',
+			`Mount at ${DECISION_ENDPOINT} and ${DECISION_ENDPOINT}/decide. The questions stay here; the browser sends only the state.`,
+			['profile', 'questions', `vault: ${vaultSource(workspace)}`],
+		),
+		ui: browserFile(
+			'AgentDecision.tsx',
+			'AgentDecision',
+			'TheoremDecision',
+			DECISION_ENDPOINT,
+			'the state field and the answers',
+		),
+	};
+}
+
+/** A host agent's route and its form-per-tool component. */
+function hostEntry(agent: CompiledPlayground): Entry {
+	return {
+		endpoint: HOST_ENDPOINT,
+		route: serverFile(
+			agent,
+			'host',
+			'createTheoremHostHandler',
+			`Mount at ${HOST_ENDPOINT}/*: it describes the tools, and answers /call and /invoke. No model runs.`,
+			['profile'],
+		),
+		ui: browserFile(
+			'AgentHost.tsx',
+			'AgentHost',
+			'TheoremHost',
+			HOST_ENDPOINT,
+			'a form per tool and its result',
+		),
+	};
+}
+
+/** A turn agent's route and its chat. */
+function turnEntry(workspace: CompiledWorkspace, agent: CompiledPlayground): Entry {
 	return {
 		endpoint: ENDPOINT,
-		route: server(
+		route: serverFile(
+			agent,
 			'theorem',
 			'createTheoremHandler',
 			`Mount at ${ENDPOINT}/*: it answers /turn, /invoke and /steer.`,
 			['profile', `provider: ${providerSource(workspace)}`],
 		),
-		ui: browser('AgentChat.tsx', 'AgentChat', 'TheoremChat', ENDPOINT, 'the chat'),
+		ui: browserFile('AgentChat.tsx', 'AgentChat', 'TheoremChat', ENDPOINT, 'the chat'),
 	};
+}
+
+function entryFiles(workspace: CompiledWorkspace, agent: CompiledPlayground): Entry {
+	if (agent.profile.type === 'decision') return decisionEntry(workspace, agent);
+	if (agent.profile.type === 'host') return hostEntry(agent);
+	if (!servesTurns(agent)) return {};
+	return turnEntry(workspace, agent);
 }
 
 /** The README: what each file is, which run only on the server, and what to install. */

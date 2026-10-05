@@ -17,11 +17,47 @@ function sleep(ms: number): Promise<void> {
 	});
 }
 
+/** Resolves when the mark's dot has drawn in, at once with reduced motion, or after the cap. */
+function markDrawn(root: HTMLDivElement, reduced: boolean): Promise<void> {
+	return new Promise<void>((resolve) => {
+		if (reduced) {
+			resolve();
+			return;
+		}
+		const dot = root.querySelector('.theorem-mark-dot');
+		const cap = window.setTimeout(resolve, DRAW_CAP_MS);
+		const finish = () => {
+			window.clearTimeout(cap);
+			resolve();
+		};
+		if (!(dot instanceof SVGCircleElement)) {
+			finish();
+			return;
+		}
+		const finished = dot.getAnimations().some((animation) => animation.playState === 'finished');
+		if (finished) {
+			finish();
+			return;
+		}
+		const onEnd = (event: AnimationEvent) => {
+			if (event.animationName !== 'theorem-mark-dot-in') return;
+			dot.removeEventListener('animationend', onEnd);
+			finish();
+		};
+		dot.addEventListener('animationend', onEnd);
+	});
+}
+
+/** Resolves when the fonts are ready, or after the cap. */
+function fontsSettled(): Promise<void> {
+	return Promise.race([document.fonts.ready.then(() => undefined), sleep(FONT_CAP_MS)]);
+}
+
 /**
- * First paint is black, then the favicon mark draws, then the shell is revealed underneath.
- * The draw runs from CSS so it can start before hydration; this only decides when to lift the cover.
+ * The cover's phase: it lifts once the mark has drawn and the fonts are in, after a short hold,
+ * then fades out.
  */
-export function BootMark() {
+function useBootPhase() {
 	const [phase, setPhase] = useState<'draw' | 'leave' | 'done'>('draw');
 	const rootRef = useRef<HTMLDivElement>(null);
 
@@ -40,38 +76,8 @@ export function BootMark() {
 			setPhase(reduced ? 'done' : 'leave');
 		};
 
-		const drawDone = new Promise<void>((resolve) => {
-			if (reduced) {
-				resolve();
-				return;
-			}
-			const dot = root.querySelector('.theorem-mark-dot');
-			const cap = window.setTimeout(resolve, DRAW_CAP_MS);
-			const finish = () => {
-				window.clearTimeout(cap);
-				resolve();
-			};
-			if (!(dot instanceof SVGCircleElement)) {
-				finish();
-				return;
-			}
-			const finished = dot.getAnimations().some((animation) => animation.playState === 'finished');
-			if (finished) {
-				finish();
-				return;
-			}
-			const onEnd = (event: AnimationEvent) => {
-				if (event.animationName !== 'theorem-mark-dot-in') return;
-				dot.removeEventListener('animationend', onEnd);
-				finish();
-			};
-			dot.addEventListener('animationend', onEnd);
-		});
-
-		const fontsDone = Promise.race([
-			document.fonts.ready.then(() => undefined),
-			sleep(FONT_CAP_MS),
-		]);
+		const drawDone = markDrawn(root, reduced);
+		const fontsDone = fontsSettled();
 
 		void Promise.all([drawDone, fontsDone])
 			.then(() => sleep(reduced ? REDUCED_HOLD_MS : HOLD_MS))
@@ -91,6 +97,16 @@ export function BootMark() {
 			window.clearTimeout(id);
 		};
 	}, [phase]);
+
+	return { phase, setPhase, rootRef };
+}
+
+/**
+ * First paint is black, then the favicon mark draws, then the shell is revealed underneath.
+ * The draw runs from CSS so it can start before hydration; this only decides when to lift the cover.
+ */
+export function BootMark() {
+	const { phase, setPhase, rootRef } = useBootPhase();
 
 	if (phase === 'done') return null;
 

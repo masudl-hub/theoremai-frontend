@@ -5,7 +5,7 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { Layout, LayoutContent, LayoutPanel } from '@astryxdesign/core/Layout';
 import { Link as AstryxLink } from '@astryxdesign/core/Link';
 import { Outline, type OutlineItem } from '@astryxdesign/core/Outline';
-import { ResizeHandle, useResizable } from '@astryxdesign/core/Resizable';
+import { type ResizableProps, ResizeHandle, useResizable } from '@astryxdesign/core/Resizable';
 import { ScrollableArea } from '@astryxdesign/core/ScrollableArea';
 import { Section } from '@astryxdesign/core/Section';
 import { SideNavItem, SideNavSection } from '@astryxdesign/core/SideNav';
@@ -89,6 +89,46 @@ function treeFromHits(nodes: readonly DocTreeNode[], hits: readonly DocSearchHit
 	return out;
 }
 
+type DocsNavItemProps = {
+	node: DocTreeNode;
+	article: DocArticle | undefined;
+	hashId: string | undefined;
+	expandAll: boolean;
+	opened: ReadonlySet<string>;
+	onOpenChange: (id: string, collapsed: boolean) => void;
+	onSection: (blockId: string) => void;
+};
+
+/** A plain click on a section of the open chapter scrolls there; modified clicks keep the link. */
+function sectionClick(
+	sectionId: string | undefined,
+	onSection: (blockId: string) => void,
+): ((event: React.MouseEvent) => void) | undefined {
+	return sectionId === undefined
+		? undefined
+		: (event) => {
+				if (event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) return;
+				event.preventDefault();
+				onSection(sectionId);
+			};
+}
+
+/** A node with children folds; a leaf does not. */
+function navCollapsible(
+	node: DocTreeNode,
+	open: boolean,
+	onOpenChange: (id: string, collapsed: boolean) => void,
+) {
+	return node.children.length
+		? {
+				isCollapsed: !open,
+				onCollapsedChange: (collapsed: boolean) => {
+					onOpenChange(node.id, collapsed);
+				},
+			}
+		: false;
+}
+
 function DocsNavItem({
 	node,
 	article,
@@ -97,15 +137,7 @@ function DocsNavItem({
 	opened,
 	onOpenChange,
 	onSection,
-}: {
-	node: DocTreeNode;
-	article: DocArticle | undefined;
-	hashId: string | undefined;
-	expandAll: boolean;
-	opened: ReadonlySet<string>;
-	onOpenChange: (id: string, collapsed: boolean) => void;
-	onSection: (blockId: string) => void;
-}) {
+}: DocsNavItemProps) {
 	const onArticle = article !== undefined && node.slug === article.slug;
 	const selected = onArticle && (node.blockId ? node.blockId === hashId : hashId === undefined);
 	const open =
@@ -121,25 +153,8 @@ function DocsNavItem({
 			href={href}
 			icon={node.blockId === undefined ? chapterIcon(node.id) : undefined}
 			isSelected={selected}
-			onClick={
-				sectionId === undefined
-					? undefined
-					: (event) => {
-							if (event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) return;
-							event.preventDefault();
-							onSection(sectionId);
-						}
-			}
-			collapsible={
-				node.children.length
-					? {
-							isCollapsed: !open,
-							onCollapsedChange: (collapsed) => {
-								onOpenChange(node.id, collapsed);
-							},
-						}
-					: false
-			}
+			onClick={sectionClick(sectionId, onSection)}
+			collapsible={navCollapsible(node, open, onOpenChange)}
 		>
 			{node.children.length
 				? node.children.map((child) => (
@@ -170,6 +185,51 @@ function outlineNodes(index: DocIndex, article: DocArticle): readonly DocTreeNod
 	return index.tree.find((node) => node.id === article.slug)?.children ?? [];
 }
 
+type ChapterPaneProps = {
+	updated: string | undefined;
+	query: string;
+	onQueryChange: (value: string) => void;
+	tree: readonly DocTreeNode[];
+	article: DocArticle | undefined;
+	hashId: string | undefined;
+	searching: boolean;
+	opened: ReadonlySet<string>;
+	onOpenChange: (id: string, collapsed: boolean) => void;
+	onSection: (blockId: string) => void;
+	onClose?: () => void;
+};
+
+/** The docs title, the close button on the sheet, and when the docs last changed. */
+function ChapterPaneHeader({
+	updated,
+	onClose,
+}: {
+	updated: string | undefined;
+	onClose?: () => void;
+}) {
+	return (
+		<VStack gap={1}>
+			<HStack vAlign="center" gap={2}>
+				<StackItem size="fill">
+					<Heading level={3}>
+						<AstryxLink href="/docs" type="inherit" color="inherit" hasUnderline={false}>
+							Theorem Docs
+						</AstryxLink>
+					</Heading>
+				</StackItem>
+				{onClose ? (
+					<IconButton label="Close chapters" icon={<IconX />} variant="ghost" onClick={onClose} />
+				) : null}
+			</HStack>
+			{updated ? (
+				<Text type="supporting" color="secondary">
+					{updated}
+				</Text>
+			) : null}
+		</VStack>
+	);
+}
+
 function ChapterPane({
 	updated,
 	query,
@@ -182,46 +242,11 @@ function ChapterPane({
 	onOpenChange,
 	onSection,
 	onClose,
-}: {
-	updated: string | undefined;
-	query: string;
-	onQueryChange: (value: string) => void;
-	tree: readonly DocTreeNode[];
-	article: DocArticle | undefined;
-	hashId: string | undefined;
-	searching: boolean;
-	opened: ReadonlySet<string>;
-	onOpenChange: (id: string, collapsed: boolean) => void;
-	onSection: (blockId: string) => void;
-	onClose?: () => void;
-}) {
+}: ChapterPaneProps) {
 	return (
 		<Section variant="raised" height="100%" padding={4}>
 			<VStack gap={4} height="100%">
-				<VStack gap={1}>
-					<HStack vAlign="center" gap={2}>
-						<StackItem size="fill">
-							<Heading level={3}>
-								<AstryxLink href="/docs" type="inherit" color="inherit" hasUnderline={false}>
-									Theorem Docs
-								</AstryxLink>
-							</Heading>
-						</StackItem>
-						{onClose ? (
-							<IconButton
-								label="Close chapters"
-								icon={<IconX />}
-								variant="ghost"
-								onClick={onClose}
-							/>
-						) : null}
-					</HStack>
-					{updated ? (
-						<Text type="supporting" color="secondary">
-							{updated}
-						</Text>
-					) : null}
-				</VStack>
+				<ChapterPaneHeader updated={updated} onClose={onClose} />
 				<TextInput
 					label="Search docs"
 					isLabelHidden
@@ -289,6 +314,101 @@ function latestModified(index: DocIndex): string | undefined {
 		.at(-1);
 }
 
+function toggledOpen(prev: ReadonlySet<string>, id: string, collapsed: boolean): Set<string> {
+	const next = new Set(prev);
+	if (collapsed) next.delete(id);
+	else next.add(id);
+	return next;
+}
+
+/** The small-screen chapters sheet: closes on navigation and on Escape. */
+function useChaptersSheet(pathname: string, hash: string) {
+	const [chaptersOpen, setChaptersOpen] = useState(false);
+	useEffect(() => {
+		const here = `${pathname}${hash}`;
+		if (here.length > 0) setChaptersOpen(false);
+	}, [pathname, hash]);
+	useEffect(() => {
+		if (!chaptersOpen) return;
+		const onKey = (event: KeyboardEvent) => {
+			if (event.key === 'Escape') setChaptersOpen(false);
+		};
+		document.addEventListener('keydown', onKey);
+		return () => {
+			document.removeEventListener('keydown', onKey);
+		};
+	}, [chaptersOpen]);
+	return [chaptersOpen, setChaptersOpen] as const;
+}
+
+function ChaptersLaunch({ onOpen }: { onOpen: () => void }) {
+	return (
+		<div className="docs-chapters-launch">
+			<MediaTheme mode="dark">
+				<IconButton label="Chapters" icon={<IconMenu2 />} onClick={onOpen} />
+			</MediaTheme>
+		</div>
+	);
+}
+
+/** The chapter tree's search, fold state and filtered tree, as props for a chapter pane. */
+function useChapterPane(
+	index: DocIndex,
+	article: DocArticle | undefined,
+	hashId: string | undefined,
+	onSection: (blockId: string) => void,
+): ChapterPaneProps {
+	const [query, setQuery] = useState('');
+	const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
+	const updated = docsUpdatedOn(latestModified(index));
+	const searching = query.trim().length > 0;
+	const tree = useMemo(() => {
+		if (!searching) return [...index.tree];
+		return treeFromHits(index.tree, searchDocs(index, query, SEARCH_LIMIT).results);
+	}, [index, query, searching]);
+	const onOpenChange = (id: string, collapsed: boolean) => {
+		setOpened((prev) => toggledOpen(prev, id, collapsed));
+	};
+	return {
+		updated,
+		query,
+		onQueryChange: setQuery,
+		tree,
+		article,
+		hashId,
+		searching,
+		opened,
+		onOpenChange,
+		onSection,
+	};
+}
+
+/** The resizable chapter tree beside the reader on wide screens. */
+function DocsTreePanel({ resizable, pane }: { resizable: ResizableProps; pane: ChapterPaneProps }) {
+	return (
+		<>
+			<LayoutPanel
+				className="docs-tree"
+				resizable={resizable}
+				padding={0}
+				role="navigation"
+				label="Docs"
+				isScrollable={false}
+				hasDivider
+			>
+				<ChapterPane {...pane} />
+			</LayoutPanel>
+			<ResizeHandle
+				className="docs-tree-handle"
+				direction="horizontal"
+				isAlwaysVisible={false}
+				resizable={resizable}
+				label="Resize docs"
+			/>
+		</>
+	);
+}
+
 export function DocsFrame({
 	index,
 	article,
@@ -310,23 +430,7 @@ export function DocsFrame({
 		containerRef: layoutRef,
 		autoSaveId: 'docs.tree',
 	});
-	const [query, setQuery] = useState('');
-	const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
-	const [chaptersOpen, setChaptersOpen] = useState(false);
-	useEffect(() => {
-		const here = `${pathname}${hash}`;
-		if (here.length > 0) setChaptersOpen(false);
-	}, [pathname, hash]);
-	useEffect(() => {
-		if (!chaptersOpen) return;
-		const onKey = (event: KeyboardEvent) => {
-			if (event.key === 'Escape') setChaptersOpen(false);
-		};
-		document.addEventListener('keydown', onKey);
-		return () => {
-			document.removeEventListener('keydown', onKey);
-		};
-	}, [chaptersOpen]);
+	const [chaptersOpen, setChaptersOpen] = useChaptersSheet(pathname, hash);
 	const closeChapters = () => {
 		setChaptersOpen(false);
 	};
@@ -334,88 +438,25 @@ export function DocsFrame({
 		setChaptersOpen(false);
 		onSection?.(blockId);
 	};
-	const updated = docsUpdatedOn(latestModified(index));
-	const searching = query.trim().length > 0;
-	const tree = useMemo(() => {
-		if (!searching) return [...index.tree];
-		return treeFromHits(index.tree, searchDocs(index, query, SEARCH_LIMIT).results);
-	}, [index, query, searching]);
-	const onOpenChange = (id: string, collapsed: boolean) => {
-		setOpened((prev) => {
-			const next = new Set(prev);
-			if (collapsed) next.delete(id);
-			else next.add(id);
-			return next;
-		});
-	};
+	const pane = useChapterPane(index, article, hashId, chooseSection);
 
 	return (
 		<Layout
 			ref={layoutRef}
 			className="docs-frame"
 			padding={0}
-			start={
-				<>
-					<LayoutPanel
-						className="docs-tree"
-						resizable={treePanel.props}
-						padding={0}
-						role="navigation"
-						label="Docs"
-						isScrollable={false}
-						hasDivider
-					>
-						<ChapterPane
-							updated={updated}
-							query={query}
-							onQueryChange={setQuery}
-							tree={tree}
-							article={article}
-							hashId={hashId}
-							searching={searching}
-							opened={opened}
-							onOpenChange={onOpenChange}
-							onSection={chooseSection}
-						/>
-					</LayoutPanel>
-					<ResizeHandle
-						className="docs-tree-handle"
-						direction="horizontal"
-						isAlwaysVisible={false}
-						resizable={treePanel.props}
-						label="Resize docs"
-					/>
-				</>
-			}
+			start={<DocsTreePanel resizable={treePanel.props} pane={pane} />}
 			content={
 				<>
-					<div className="docs-chapters-launch">
-						<MediaTheme mode="dark">
-							<IconButton
-								label="Chapters"
-								icon={<IconMenu2 />}
-								onClick={() => {
-									setChaptersOpen(true);
-								}}
-							/>
-						</MediaTheme>
-					</div>
+					<ChaptersLaunch
+						onOpen={() => {
+							setChaptersOpen(true);
+						}}
+					/>
 					{children}
 					{chaptersOpen ? (
 						<div className="docs-chapters-sheet" role="dialog" aria-label="Chapters">
-							<ChapterPane
-								updated={updated}
-								query={query}
-								onQueryChange={setQuery}
-								tree={tree}
-								article={article}
-								hashId={hashId}
-								searching={searching}
-								opened={opened}
-								onOpenChange={onOpenChange}
-								onSection={chooseSection}
-								onClose={closeChapters}
-							/>
+							<ChapterPane {...pane} onClose={closeChapters} />
 						</div>
 					) : null}
 				</>
@@ -510,43 +551,65 @@ function ChapterNeighbors({ prev, next }: ReturnType<typeof chapterNeighbors>) {
 	);
 }
 
-export function DocsReader({ index, article }: { index: DocIndex; article: DocArticle }) {
+/**
+ * The section in view: the one just picked, else the URL hash once hydrated. `pick` records a
+ * pick for this chapter and hash.
+ */
+function useSectionId(slug: string) {
 	const { hash } = useLocation();
 	// location.hash is not on the request. First paint must match SSR or the nav hydrates wrong.
 	const [hashReady, setHashReady] = useState(false);
 	useEffect(() => {
 		setHashReady(true);
 	}, []);
-	const locationKey = `${article.slug}\n${hash}`;
+	const locationKey = `${slug}\n${hash}`;
 	const [sectionPick, setSectionPick] = useState<{ key: string; id: string } | null>(null);
 	const pickedId =
 		sectionPick !== null && sectionPick.key === locationKey ? sectionPick.id : undefined;
 	const hashId = pickedId ?? (hashReady ? hashBlockId(hash) : undefined);
-	const outline = outlineItems(outlineNodes(index, article));
-	const { prev, next } = chapterNeighbors(index, article.slug);
+	const pick = (id: string) => {
+		setSectionPick({ key: locationKey, id });
+	};
+	return { hashId, pick };
+}
+
+/**
+ * A new chapter starts at the top with the article transition held; otherwise the reader scrolls
+ * to the section in view.
+ */
+function useArticleScroll(slug: string, hashId: string | undefined) {
 	const contentRef = useRef<HTMLDivElement>(null);
 	const slugRef = useRef<string | null>(null);
 	const suppressScrollSlug = useRef<string | null>(null);
 
 	useLayoutEffect(() => {
 		const previous = slugRef.current;
-		slugRef.current = article.slug;
-		if (previous === null || previous === article.slug) return;
-		suppressScrollSlug.current = article.slug;
+		slugRef.current = slug;
+		if (previous === null || previous === slug) return;
+		suppressScrollSlug.current = slug;
 		const container = contentRef.current;
 		if (container) container.scrollTop = 0;
 		concealHashTarget();
 		holdDocsArticleTransition();
-	}, [article.slug]);
+	}, [slug]);
 
 	useEffect(() => {
-		if (suppressScrollSlug.current === article.slug) {
+		if (suppressScrollSlug.current === slug) {
 			suppressScrollSlug.current = null;
 			return;
 		}
 		if (!hashId) return;
 		scrollToOutlineTarget(hashId);
-	}, [article.slug, hashId]);
+	}, [slug, hashId]);
+
+	return contentRef;
+}
+
+export function DocsReader({ index, article }: { index: DocIndex; article: DocArticle }) {
+	const { hashId, pick } = useSectionId(article.slug);
+	const outline = outlineItems(outlineNodes(index, article));
+	const { prev, next } = chapterNeighbors(index, article.slug);
+	const contentRef = useArticleScroll(article.slug, hashId);
 
 	const selectSection = (blockId: string) => {
 		const nextHash = `#${blockId}`;
@@ -558,7 +621,7 @@ export function DocsReader({ index, article }: { index: DocIndex; article: DocAr
 			scrollToOutlineTarget(blockId);
 			return;
 		}
-		setSectionPick({ key: locationKey, id: blockId });
+		pick(blockId);
 	};
 
 	return (

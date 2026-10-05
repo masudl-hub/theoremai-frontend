@@ -100,6 +100,65 @@ export function QuestionsStrip({ questions }: { questions: readonly { question: 
 	);
 }
 
+type BlockOf<K extends ResolvedBlock['kind']> = Extract<ResolvedBlock, { kind: K }>;
+
+function MediaFigure({ block }: { block: BlockOf<'media'> }) {
+	return (
+		<figure className="docs-media">
+			{block.media === 'video' ? (
+				<video src={block.src} aria-label={block.alt} controls muted playsInline />
+			) : (
+				<img src={block.src} alt={block.alt} loading="lazy" style={{ filter: block.filter }} />
+			)}
+			{block.caption ? (
+				<figcaption>
+					<Text type="supporting" color="secondary">
+						{block.caption}
+					</Text>
+				</figcaption>
+			) : null}
+		</figure>
+	);
+}
+
+function AgentPasteCard({ prompt }: { prompt: string }) {
+	return (
+		<Card padding={3} style={{ maxWidth: '40rem', minWidth: 0, width: '100%' }}>
+			<VStack gap={2} style={{ minWidth: 0, maxWidth: '100%' }}>
+				<HStack justify="between" align="center">
+					<Text type="label" color="secondary">
+						Paste into your coding agent
+					</Text>
+					<CopyPromptButton text={prompt} />
+				</HStack>
+				<p className="docs-agent-prompt">{prompt}</p>
+			</VStack>
+		</Card>
+	);
+}
+
+function CodeSection({ block }: { block: BlockOf<'code'> }) {
+	return (
+		<VStack gap={2}>
+			{block.title ? <Heading level={2}>{block.title}</Heading> : null}
+			{block.id === 'install-npm' ? (
+				<Text type="supporting" color="secondary">
+					or
+				</Text>
+			) : null}
+			<CodeBlock
+				language={codeLanguage(block.lang)}
+				code={block.code}
+				hasCopyButton
+				hasLineNumbers={block.lang === 'ts'}
+				highlightMode="spans"
+				isWrapped={block.lang === 'ts'}
+				width="100%"
+			/>
+		</VStack>
+	);
+}
+
 export function DocsBlock({ block }: { block: ResolvedBlock }) {
 	switch (block.kind) {
 		case 'lede':
@@ -130,63 +189,19 @@ export function DocsBlock({ block }: { block: ResolvedBlock }) {
 		case 'media':
 			return (
 				<BlockAnchor id={block.id}>
-					<figure className="docs-media">
-						{block.media === 'video' ? (
-							<video src={block.src} aria-label={block.alt} controls muted playsInline />
-						) : (
-							<img
-								src={block.src}
-								alt={block.alt}
-								loading="lazy"
-								style={{ filter: block.filter }}
-							/>
-						)}
-						{block.caption ? (
-							<figcaption>
-								<Text type="supporting" color="secondary">
-									{block.caption}
-								</Text>
-							</figcaption>
-						) : null}
-					</figure>
+					<MediaFigure block={block} />
 				</BlockAnchor>
 			);
 		case 'agent.paste':
 			return (
 				<BlockAnchor id={block.id}>
-					<Card padding={3} style={{ maxWidth: '40rem', minWidth: 0, width: '100%' }}>
-						<VStack gap={2} style={{ minWidth: 0, maxWidth: '100%' }}>
-							<HStack justify="between" align="center">
-								<Text type="label" color="secondary">
-									Paste into your coding agent
-								</Text>
-								<CopyPromptButton text={block.prompt} />
-							</HStack>
-							<p className="docs-agent-prompt">{block.prompt}</p>
-						</VStack>
-					</Card>
+					<AgentPasteCard prompt={block.prompt} />
 				</BlockAnchor>
 			);
 		case 'code':
 			return (
 				<BlockAnchor id={block.id}>
-					<VStack gap={2}>
-						{block.title ? <Heading level={2}>{block.title}</Heading> : null}
-						{block.id === 'install-npm' ? (
-							<Text type="supporting" color="secondary">
-								or
-							</Text>
-						) : null}
-						<CodeBlock
-							language={codeLanguage(block.lang)}
-							code={block.code}
-							hasCopyButton
-							hasLineNumbers={block.lang === 'ts'}
-							highlightMode="spans"
-							isWrapped={block.lang === 'ts'}
-							width="100%"
-						/>
-					</VStack>
+					<CodeSection block={block} />
 				</BlockAnchor>
 			);
 		case 'embed.playground':

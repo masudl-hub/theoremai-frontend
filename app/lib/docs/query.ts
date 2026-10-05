@@ -195,6 +195,70 @@ function isChildFragment(child: string, parent: string): boolean {
 /** The most hits one chapter may take, so a single page can't fill the list. */
 const HITS_PER_CHAPTER = 3;
 
+/** Typos allowed per edit by the shortest word's length: none under 4 letters, two from 8. */
+function typoTolerance(term: string): number {
+	const shortest = Math.min(...term.split(/\s+/).map((word) => word.length));
+	return shortest >= 8 ? 2 : shortest >= 4 ? 1 : 0;
+}
+
+/** Hits matching every word first, then those matching only some. */
+function matchingHits(db: SearchDb, term: string, size: number) {
+	const tolerance = typoTolerance(term);
+	const run = (threshold: number) => {
+		const result = search(db, {
+			term,
+			properties: ['title', 'key', 'body'],
+			boost: { title: 3, key: 2 },
+			tolerance,
+			threshold,
+			limit: size,
+		});
+		if (result instanceof Promise) throw new Error('Docs search must stay synchronous');
+		return result.hits;
+	};
+	const every = run(0);
+	const seen = new Set(every.map((hit) => hit.id));
+	return [...every, ...run(1).filter((hit) => !seen.has(hit.id))];
+}
+
+/** A section already listed stands for its own sub-entries. */
+function coveredByListedSection(ranked: DocSearchHit[], slug: string, blockId: string): boolean {
+	return ranked.some(
+		(kept) =>
+			kept.slug === slug && kept.blockId !== undefined && isChildFragment(blockId, kept.blockId),
+	);
+}
+
+/** Hits in order as links, capped per chapter and without sub-entries of listed sections. */
+function rankHits(
+	index: DocIndex,
+	entries: Map<string, SearchEntry>,
+	hits: { id: string; score: number }[],
+): DocSearchHit[] {
+	const ranked: DocSearchHit[] = [];
+	const perChapter = new Map<string, number>();
+	for (const hit of hits) {
+		const entry = entries.get(hit.id);
+		if (!entry) continue;
+		const taken = perChapter.get(entry.slug) ?? 0;
+		if (taken >= HITS_PER_CHAPTER) continue;
+		const { blockId } = entry;
+		if (blockId && coveredByListedSection(ranked, entry.slug, blockId)) continue;
+		perChapter.set(entry.slug, taken + 1);
+		const article = index.bySlug[entry.slug];
+		if (!article) continue;
+		ranked.push({
+			slug: entry.slug,
+			title: entry.title,
+			href: articleHref(article, blockId),
+			excerpt: entry.excerpt,
+			score: hit.score,
+			blockId,
+		});
+	}
+	return ranked;
+}
+
 /**
  * Full-text search over chapters, sections and dictionary entries: stemmed, prefix-matched as you
  * type, and forgiving of typos in longer words. Places matching every word come first, then those
@@ -212,57 +276,7 @@ export function searchDocs(
 	const term = query.trim();
 	if (!term) return { query, results: [], totalMatches: 0 };
 	const { db, entries } = searchIndex(index);
-	// Typos allowed per edit by the shortest word's length: none under 4 letters, two from 8.
-	const shortest = Math.min(...term.split(/\s+/).map((word) => word.length));
-	const tolerance = shortest >= 8 ? 2 : shortest >= 4 ? 1 : 0;
-	const run = (threshold: number) => {
-		const result = search(db, {
-			term,
-			properties: ['title', 'key', 'body'],
-			boost: { title: 3, key: 2 },
-			tolerance,
-			threshold,
-			limit: entries.size,
-		});
-		if (result instanceof Promise) throw new Error('Docs search must stay synchronous');
-		return result.hits;
-	};
-	const every = run(0);
-	const seen = new Set(every.map((hit) => hit.id));
-	const hits = [...every, ...run(1).filter((hit) => !seen.has(hit.id))];
-
-	const ranked: DocSearchHit[] = [];
-	const perChapter = new Map<string, number>();
-	for (const hit of hits) {
-		const entry = entries.get(hit.id);
-		if (!entry) continue;
-		const taken = perChapter.get(entry.slug) ?? 0;
-		if (taken >= HITS_PER_CHAPTER) continue;
-		// A section already listed stands for its own sub-entries.
-		const { blockId } = entry;
-		if (
-			blockId &&
-			ranked.some(
-				(kept) =>
-					kept.slug === entry.slug &&
-					kept.blockId !== undefined &&
-					isChildFragment(blockId, kept.blockId),
-			)
-		) {
-			continue;
-		}
-		perChapter.set(entry.slug, taken + 1);
-		const article = index.bySlug[entry.slug];
-		if (!article) continue;
-		ranked.push({
-			slug: entry.slug,
-			title: entry.title,
-			href: articleHref(article, blockId),
-			excerpt: entry.excerpt,
-			score: hit.score,
-			blockId,
-		});
-	}
+	const ranked = rankHits(index, entries, matchingHits(db, term, entries.size));
 	return { query, results: ranked.slice(0, limit), totalMatches: ranked.length };
 }
 

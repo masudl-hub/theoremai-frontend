@@ -164,6 +164,154 @@ void main() {
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+function compileShader(gl: WebGL2RenderingContext, type: number, source: string) {
+	const s = gl.createShader(type);
+	if (!s) return null;
+	gl.shaderSource(s, source);
+	gl.compileShader(s);
+	return s;
+}
+
+/** Compiles both shaders and links them; null when a shader could not be created. */
+function linkLightProgram(gl: WebGL2RenderingContext) {
+	const vert = compileShader(gl, gl.VERTEX_SHADER, VERTEX);
+	const frag = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT);
+	const program = gl.createProgram();
+	if (!vert || !frag) return null;
+	gl.attachShader(program, vert);
+	gl.attachShader(program, frag);
+	gl.linkProgram(program);
+	return { program, vert, frag };
+}
+
+/** One triangle that covers the canvas, fed to `a_position`. */
+function bindCoverTriangle(gl: WebGL2RenderingContext, program: WebGLProgram) {
+	// biome-ignore lint/correctness/useHookAtTopLevel: WebGL, not a React hook.
+	gl.useProgram(program);
+	const buffer = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+	const position = gl.getAttribLocation(program, 'a_position');
+	gl.enableVertexAttribArray(position);
+	gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+	return buffer;
+}
+
+function lightUniforms(gl: WebGL2RenderingContext, program: WebGLProgram) {
+	return {
+		uResolution: gl.getUniformLocation(program, 'u_resolution'),
+		uTime: gl.getUniformLocation(program, 'u_time'),
+		uAudio: gl.getUniformLocation(program, 'u_audio'),
+		uLight: gl.getUniformLocation(program, 'u_lightMode'),
+		uHover: gl.getUniformLocation(program, 'u_hover'),
+	};
+}
+
+type LightUniforms = ReturnType<typeof lightUniforms>;
+
+/** Light colours on a light system theme, screened on dark. Returns the unsubscribe. */
+function followScheme(
+	gl: WebGL2RenderingContext,
+	canvas: HTMLCanvasElement,
+	theme: 'dark' | 'system',
+	uLight: WebGLUniformLocation | null,
+) {
+	const scheme = window.matchMedia('(prefers-color-scheme: light)');
+	const paintScheme = () => {
+		const light = theme === 'system' && scheme.matches;
+		gl.uniform1i(uLight, light ? 1 : 0);
+		canvas.style.mixBlendMode = light ? '' : 'screen';
+	};
+	paintScheme();
+	scheme.addEventListener('change', paintScheme);
+	return () => {
+		scheme.removeEventListener('change', paintScheme);
+	};
+}
+
+/**
+ * The light's clock and easing. `draw` advances it by `dt` seconds; `tick` is the frame loop,
+ * which skips to about 30fps while all is calm.
+ */
+function lightAnimator(gl: WebGL2RenderingContext, u: LightUniforms, still: boolean) {
+	let clock = 4;
+	let audio = 0;
+	let hover = 0;
+	const state = { hovering: 0, frame: 0, last: performance.now(), visible: false };
+	const draw = (dt: number) => {
+		audio += (voiceLevel() - audio) * 0.18;
+		// Slow both ways, so the colour has time to swirl in and ebb out rather than switch.
+		const rate = state.hovering ? 1.3 : 0.8;
+		hover = still ? state.hovering : hover + (state.hovering - hover) * Math.min(1, dt * rate);
+		// Hover quickens the drift as well as tightening the knot.
+		clock += dt * (0.8 + hover * 0.9);
+		gl.uniform1f(u.uTime, clock);
+		gl.uniform1f(u.uAudio, audio);
+		gl.uniform1f(u.uHover, hover);
+		gl.drawArrays(gl.TRIANGLES, 0, 3);
+	};
+	const tick = (now: number) => {
+		state.frame = requestAnimationFrame(tick);
+		const calm = audio < 0.02 && state.hovering === 0 && hover < 0.01;
+		if (calm && now - state.last < 32) return;
+		draw(Math.min(0.1, (now - state.last) / 1000));
+		state.last = now;
+	};
+	return { state, draw, tick };
+}
+
+type LightAnimator = ReturnType<typeof lightAnimator>;
+
+/** Hovering or focusing the button around the light. Returns the unsubscribe. */
+function listenForHover(target: HTMLElement | null, light: LightAnimator, still: boolean) {
+	const setHover = (on: boolean) => () => {
+		light.state.hovering = on ? 1 : 0;
+		if (still && light.state.visible) light.draw(0);
+	};
+	const enter = setHover(true);
+	const leave = setHover(false);
+	target?.addEventListener('pointerenter', enter);
+	target?.addEventListener('pointerleave', leave);
+	target?.addEventListener('focusin', enter);
+	target?.addEventListener('focusout', leave);
+	return () => {
+		target?.removeEventListener('pointerenter', enter);
+		target?.removeEventListener('pointerleave', leave);
+		target?.removeEventListener('focusin', enter);
+		target?.removeEventListener('focusout', leave);
+	};
+}
+
+/** Runs the loop only while on screen, and resizes with the canvas. Returns the disconnect. */
+function observeCanvas(
+	canvas: HTMLCanvasElement,
+	light: LightAnimator,
+	still: boolean,
+	size: () => void,
+) {
+	const { state } = light;
+	const observer = new IntersectionObserver((entries) => {
+		state.visible = entries.some((entry) => entry.isIntersecting);
+		cancelAnimationFrame(state.frame);
+		if (!state.visible) return;
+		if (still) light.draw(0);
+		else {
+			state.last = performance.now();
+			state.frame = requestAnimationFrame(light.tick);
+		}
+	});
+	observer.observe(canvas);
+	const resize = new ResizeObserver(() => {
+		size();
+		if (still && state.visible) light.draw(0);
+	});
+	resize.observe(canvas);
+	return () => {
+		observer.disconnect();
+		resize.disconnect();
+	};
+}
+
 /**
  * th30's light. One tiny WebGL canvas with no dependencies. It draws only while on screen, at
  * about 30fps when the call is quiet and every frame while someone speaks, and holds a single
@@ -179,122 +327,36 @@ export function Th30Light({ theme, className }: { theme: 'dark' | 'system'; clas
 			canvas?.setAttribute('data-fallback', '');
 			return;
 		}
-		const shader = (type: number, source: string) => {
-			const s = gl.createShader(type);
-			if (!s) return null;
-			gl.shaderSource(s, source);
-			gl.compileShader(s);
-			return s;
-		};
-		const vert = shader(gl.VERTEX_SHADER, VERTEX);
-		const frag = shader(gl.FRAGMENT_SHADER, FRAGMENT);
-		const program = gl.createProgram();
-		if (!vert || !frag) return;
-		gl.attachShader(program, vert);
-		gl.attachShader(program, frag);
-		gl.linkProgram(program);
+		const linked = linkLightProgram(gl);
+		if (!linked) return;
+		const { program, vert, frag } = linked;
 		if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
 			canvas.setAttribute('data-fallback', '');
 			return;
 		}
-		// biome-ignore lint/correctness/useHookAtTopLevel: WebGL, not a React hook.
-		gl.useProgram(program);
-		const buffer = gl.createBuffer();
-		gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-		const position = gl.getAttribLocation(program, 'a_position');
-		gl.enableVertexAttribArray(position);
-		gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-		const uResolution = gl.getUniformLocation(program, 'u_resolution');
-		const uTime = gl.getUniformLocation(program, 'u_time');
-		const uAudio = gl.getUniformLocation(program, 'u_audio');
-		const uLight = gl.getUniformLocation(program, 'u_lightMode');
-		const uHover = gl.getUniformLocation(program, 'u_hover');
-
-		const scheme = window.matchMedia('(prefers-color-scheme: light)');
-		const paintScheme = () => {
-			const light = theme === 'system' && scheme.matches;
-			gl.uniform1i(uLight, light ? 1 : 0);
-			canvas.style.mixBlendMode = light ? '' : 'screen';
-		};
-		paintScheme();
-		scheme.addEventListener('change', paintScheme);
+		const buffer = bindCoverTriangle(gl, program);
+		const uniforms = lightUniforms(gl, program);
+		const stopScheme = followScheme(gl, canvas, theme, uniforms.uLight);
 
 		const size = () => {
 			const dpr = Math.min(window.devicePixelRatio || 1, 2);
 			canvas.width = Math.max(1, Math.round(canvas.clientWidth * dpr));
 			canvas.height = Math.max(1, Math.round(canvas.clientHeight * dpr));
 			gl.viewport(0, 0, canvas.width, canvas.height);
-			gl.uniform2f(uResolution, canvas.width, canvas.height);
+			gl.uniform2f(uniforms.uResolution, canvas.width, canvas.height);
 		};
 		size();
 
 		const still = reducedMotion();
-		let clock = 4;
-		let audio = 0;
-		let hovering = 0;
-		let hover = 0;
-		let frame = 0;
-		let last = performance.now();
-		let visible = false;
-		const draw = (dt: number) => {
-			audio += (voiceLevel() - audio) * 0.18;
-			// Slow both ways, so the colour has time to swirl in and ebb out rather than switch.
-			const rate = hovering ? 1.3 : 0.8;
-			hover = still ? hovering : hover + (hovering - hover) * Math.min(1, dt * rate);
-			// Hover quickens the drift as well as tightening the knot.
-			clock += dt * (0.8 + hover * 0.9);
-			gl.uniform1f(uTime, clock);
-			gl.uniform1f(uAudio, audio);
-			gl.uniform1f(uHover, hover);
-			gl.drawArrays(gl.TRIANGLES, 0, 3);
-		};
-		const tick = (now: number) => {
-			frame = requestAnimationFrame(tick);
-			const calm = audio < 0.02 && hovering === 0 && hover < 0.01;
-			if (calm && now - last < 32) return;
-			draw(Math.min(0.1, (now - last) / 1000));
-			last = now;
-		};
-
-		// Hovering or focusing the button around the light.
-		const target = canvas.parentElement;
-		const setHover = (on: boolean) => () => {
-			hovering = on ? 1 : 0;
-			if (still && visible) draw(0);
-		};
-		const enter = setHover(true);
-		const leave = setHover(false);
-		target?.addEventListener('pointerenter', enter);
-		target?.addEventListener('pointerleave', leave);
-		target?.addEventListener('focusin', enter);
-		target?.addEventListener('focusout', leave);
-		const observer = new IntersectionObserver((entries) => {
-			visible = entries.some((entry) => entry.isIntersecting);
-			cancelAnimationFrame(frame);
-			if (!visible) return;
-			if (still) draw(0);
-			else {
-				last = performance.now();
-				frame = requestAnimationFrame(tick);
-			}
-		});
-		observer.observe(canvas);
-		const resize = new ResizeObserver(() => {
-			size();
-			if (still && visible) draw(0);
-		});
-		resize.observe(canvas);
+		const light = lightAnimator(gl, uniforms, still);
+		const stopHover = listenForHover(canvas.parentElement, light, still);
+		const stopObserving = observeCanvas(canvas, light, still, size);
 
 		return () => {
-			cancelAnimationFrame(frame);
-			observer.disconnect();
-			resize.disconnect();
-			target?.removeEventListener('pointerenter', enter);
-			target?.removeEventListener('pointerleave', leave);
-			target?.removeEventListener('focusin', enter);
-			target?.removeEventListener('focusout', leave);
-			scheme.removeEventListener('change', paintScheme);
+			cancelAnimationFrame(light.state.frame);
+			stopObserving();
+			stopHover();
+			stopScheme();
 			gl.deleteBuffer(buffer);
 			gl.deleteProgram(program);
 			gl.deleteShader(vert);

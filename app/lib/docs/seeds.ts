@@ -70,6 +70,36 @@ function demoSpecs(...names: string[]) {
 		.map((seed) => defaultToolSpec(seed.data));
 }
 
+/** The Harbor hold lookup the desk calls first. */
+function harborHoldToolSpec() {
+	return defaultToolSpec({
+		toolName: 'harbor_holdStatus',
+		description: 'Look up why a Harbor shipment is on hold.',
+		category: 'ops',
+		access: 'read-only',
+		permission: 'auto',
+		loadTier: 'T0',
+		paths: ['*'],
+		inputJson: HARBOR_HOLD_INPUT,
+		outputJson: HARBOR_HOLD_OUTPUT,
+		stubOutputJson: HARBOR_HOLD_STUB,
+	});
+}
+
+/** What the desk accepts in a turn: text, images and PDFs. */
+function harborDeskInputs(): PlaygroundDraft['inputs'] {
+	return {
+		text: true,
+		attachmentsAccept: ['image/*', 'application/pdf'],
+		voiceAccept: [],
+		maxFiles: 4,
+		maxBytes: 5_000_000,
+		maxTurnBytes: 12_000_000,
+		limitsByMimeJson: '',
+		slotsJson: '',
+	};
+}
+
 /**
  * Harbor front desk — Getting started fence.
  * Guardrails stay omitted: resolve-on defaults. Authored `canary: true` would
@@ -99,31 +129,8 @@ function firstTurnDraft(): PlaygroundDraft {
 				apiId: 'openrouter/free',
 			}),
 		],
-		toolSpecs: [
-			defaultToolSpec({
-				toolName: 'harbor_holdStatus',
-				description: 'Look up why a Harbor shipment is on hold.',
-				category: 'ops',
-				access: 'read-only',
-				permission: 'auto',
-				loadTier: 'T0',
-				paths: ['*'],
-				inputJson: HARBOR_HOLD_INPUT,
-				outputJson: HARBOR_HOLD_OUTPUT,
-				stubOutputJson: HARBOR_HOLD_STUB,
-			}),
-			...demoSpecs('haversine_distance', 'convert_units'),
-		],
-		inputs: {
-			text: true,
-			attachmentsAccept: ['image/*', 'application/pdf'],
-			voiceAccept: [],
-			maxFiles: 4,
-			maxBytes: 5_000_000,
-			maxTurnBytes: 12_000_000,
-			limitsByMimeJson: '',
-			slotsJson: '',
-		},
+		toolSpecs: [harborHoldToolSpec(), ...demoSpecs('haversine_distance', 'convert_units')],
+		inputs: harborDeskInputs(),
 		outputs: {
 			...draft.outputs,
 			mode: 'structured',

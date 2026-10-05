@@ -208,6 +208,122 @@ function tilesFromIndex(index: DocIndex, query: string): LandingTile[] {
 	});
 }
 
+/** The result cards for one layout: a carousel row, or the narrow-screen column. */
+function landingTileCards(tiles: LandingTile[], layout: 'row' | 'column', motion: CSSProperties) {
+	return tiles.map(({ article, href, title, excerpt, showMeta }) => (
+		<ClickableCard
+			key={href}
+			label={title}
+			href={href}
+			variant="transparent"
+			padding={0}
+			width={layout === 'row' ? 300 : undefined}
+			className={layout === 'column' ? 'docs-landing-tile' : undefined}
+			style={motion}
+		>
+			<VStack gap={3}>
+				<Card padding={0}>
+					<AspectRatio className="docs-landing-tile-still" ratio={16 / 10} fit="cover">
+						<img
+							src={article.cover.src}
+							alt={article.cover.alt}
+							style={{ filter: article.cover.filter, objectPosition: article.cover.position }}
+						/>
+					</AspectRatio>
+				</Card>
+				<VStack gap={1} minHeight={layout === 'row' ? 132 : undefined}>
+					<Heading level={3}>{title}</Heading>
+					{showMeta ? (
+						<HStack gap={2} wrap="wrap">
+							<Token label={article.slug} />
+							<Token label={`${String(article.ttrMinutes)} min`} />
+						</HStack>
+					) : null}
+					<Text color="secondary" maxLines={3}>
+						{excerpt}
+					</Text>
+				</VStack>
+			</VStack>
+		</ClickableCard>
+	));
+}
+
+/** The landing still with the package version and the page title over it. */
+function LandingHero({ landing, version }: { landing: DocIndex['landing']; version: string }) {
+	const stillPaint = {
+		position: 'absolute',
+		inset: 0,
+		backgroundImage: `url("${landing.src}")`,
+		backgroundPosition: landing.position,
+		pointerEvents: 'none',
+		filter: landing.filter,
+	} as CSSProperties;
+	return (
+		<StackItem className="docs-landing-hero" size="fill">
+			<VStack className="docs-landing-still">
+				<Card padding={0} height="100%">
+					<div className="hero-video-frame">
+						<div aria-hidden className="docs-landing-paint" style={stillPaint} />
+						<div className="hero-scrim">
+							<MediaTheme mode="dark">
+								<VStack
+									className="docs-landing-hero-copy"
+									height="100%"
+									justify="end"
+									gap={2}
+									padding={10}
+									paddingInlineStart={4}
+								>
+									<Text type="label">@theoremjs/agents {version}</Text>
+									<Heading level={1} type="display-1" hasCapsize>
+										Documentation
+									</Heading>
+								</VStack>
+							</MediaTheme>
+						</div>
+					</div>
+				</Card>
+			</VStack>
+		</StackItem>
+	);
+}
+
+/** The result cards, or an empty state when nothing matches. */
+function LandingResults({
+	tiles,
+	motion,
+	label,
+}: {
+	tiles: LandingTile[];
+	motion: CSSProperties;
+	label: string;
+}) {
+	return (
+		<VStack className="docs-landing-results">
+			{tiles.length ? (
+				<>
+					<div className="docs-landing-row">
+						<Carousel gap={4} aria-label={label}>
+							{landingTileCards(tiles, 'row', motion)}
+						</Carousel>
+					</div>
+					<VStack className="docs-landing-column" gap={4} role="region" aria-label={label}>
+						{landingTileCards(tiles, 'column', motion)}
+					</VStack>
+				</>
+			) : (
+				<VStack style={motion}>
+					<EmptyState
+						title="No matching articles"
+						description="Try a chapter name, or a word from a summary."
+						isCompact
+					/>
+				</VStack>
+			)}
+		</VStack>
+	);
+}
+
 export function DocsLanding({ index, version }: { index: DocIndex; version: string }) {
 	const [query, setQuery] = useState('');
 	const target = useMemo(() => tilesFromIndex(index, query), [index, query]);
@@ -215,82 +331,12 @@ export function DocsLanding({ index, version }: { index: DocIndex; version: stri
 	const searching = query.trim().length > 0;
 	const [focused, setFocused] = useState(false);
 	const hint = useSearchHint(focused || query.length > 0);
-	const stillPaint = {
-		position: 'absolute',
-		inset: 0,
-		backgroundImage: `url("${index.landing.src}")`,
-		backgroundPosition: index.landing.position,
-		pointerEvents: 'none',
-		filter: index.landing.filter,
-	} as CSSProperties;
 	const motion = tileMotionStyle(phase);
 	const resultsLabel = searching ? 'Search results' : 'Suggested chapters';
-	const resultCards = (layout: 'row' | 'column') =>
-		tiles.map(({ article, href, title, excerpt, showMeta }) => (
-			<ClickableCard
-				key={href}
-				label={title}
-				href={href}
-				variant="transparent"
-				padding={0}
-				width={layout === 'row' ? 300 : undefined}
-				className={layout === 'column' ? 'docs-landing-tile' : undefined}
-				style={motion}
-			>
-				<VStack gap={3}>
-					<Card padding={0}>
-						<AspectRatio className="docs-landing-tile-still" ratio={16 / 10} fit="cover">
-							<img
-								src={article.cover.src}
-								alt={article.cover.alt}
-								style={{ filter: article.cover.filter, objectPosition: article.cover.position }}
-							/>
-						</AspectRatio>
-					</Card>
-					<VStack gap={1} minHeight={layout === 'row' ? 132 : undefined}>
-						<Heading level={3}>{title}</Heading>
-						{showMeta ? (
-							<HStack gap={2} wrap="wrap">
-								<Token label={article.slug} />
-								<Token label={`${String(article.ttrMinutes)} min`} />
-							</HStack>
-						) : null}
-						<Text color="secondary" maxLines={3}>
-							{excerpt}
-						</Text>
-					</VStack>
-				</VStack>
-			</ClickableCard>
-		));
 
 	return (
 		<VStack className="docs-landing" height="100%">
-			<StackItem className="docs-landing-hero" size="fill">
-				<VStack className="docs-landing-still">
-					<Card padding={0} height="100%">
-						<div className="hero-video-frame">
-							<div aria-hidden className="docs-landing-paint" style={stillPaint} />
-							<div className="hero-scrim">
-								<MediaTheme mode="dark">
-									<VStack
-										className="docs-landing-hero-copy"
-										height="100%"
-										justify="end"
-										gap={2}
-										padding={10}
-										paddingInlineStart={4}
-									>
-										<Text type="label">@theoremjs/agents {version}</Text>
-										<Heading level={1} type="display-1" hasCapsize>
-											Documentation
-										</Heading>
-									</VStack>
-								</MediaTheme>
-							</div>
-						</div>
-					</Card>
-				</VStack>
-			</StackItem>
+			<LandingHero landing={index.landing} version={version} />
 			<VStack className="docs-landing-body" gap={6} padding={8}>
 				<HStack className="docs-landing-search" justify="center" align="center" gap={4}>
 					<div
@@ -316,33 +362,7 @@ export function DocsLanding({ index, version }: { index: DocIndex; version: stri
 					</div>
 					<Th30Trigger theme="dark" placement="search" />
 				</HStack>
-				<VStack className="docs-landing-results">
-					{tiles.length ? (
-						<>
-							<div className="docs-landing-row">
-								<Carousel gap={4} aria-label={resultsLabel}>
-									{resultCards('row')}
-								</Carousel>
-							</div>
-							<VStack
-								className="docs-landing-column"
-								gap={4}
-								role="region"
-								aria-label={resultsLabel}
-							>
-								{resultCards('column')}
-							</VStack>
-						</>
-					) : (
-						<VStack style={motion}>
-							<EmptyState
-								title="No matching articles"
-								description="Try a chapter name, or a word from a summary."
-								isCompact
-							/>
-						</VStack>
-					)}
-				</VStack>
+				<LandingResults tiles={tiles} motion={motion} label={resultsLabel} />
 			</VStack>
 		</VStack>
 	);

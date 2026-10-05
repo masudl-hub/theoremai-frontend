@@ -94,6 +94,125 @@ function agentOf(workspace: PlaygroundWorkspace, id: string): string | undefined
 	})?.key;
 }
 
+/** The store's mutable state, shared by the helpers below. */
+interface StoreState {
+	workspace: PlaygroundWorkspace;
+	revision: number;
+	focus: string;
+	changes: DraftChange[];
+	listeners: Set<() => void>;
+	timer: ReturnType<typeof setTimeout> | undefined;
+	view: { agents: unknown; toolSpecs: unknown; focus: string; draft: PlaygroundDraft } | undefined;
+}
+
+/** Writes the workspace, masked, to sessionStorage. */
+function writeWorkspace(state: StoreState): void {
+	state.timer = undefined;
+	const record: StoredWorkspace = {
+		v: PLAYGROUND_WORKSPACE_VERSION,
+		workspace: keptWorkspace(state.workspace),
+		revision: state.revision,
+	};
+	try {
+		session()?.setItem(WORKSPACE_KEY, JSON.stringify(record));
+	} catch {
+		// Quota or a blocked store: the page keeps working on what is in memory.
+	}
+}
+
+/** Queues a write, unless one is already queued. */
+function scheduleWrite(state: StoreState): void {
+	state.timer ??= setTimeout(() => {
+		writeWorkspace(state);
+	}, WRITE_MS);
+}
+
+function notifyListeners(state: StoreState): void {
+	for (const listener of state.listeners) listener();
+}
+
+/** The focused agent: the last one opened, or the first once that one is gone. */
+function focusOf(state: StoreState): string {
+	return state.workspace.agents.some((agent) => agent.key === state.focus)
+		? state.focus
+		: (state.workspace.agents[0]?.key ?? '');
+}
+
+/** The focused agent's draft; the same object until the workspace or the focus changes. */
+function draftOf(state: StoreState): PlaygroundDraft {
+	const { workspace } = state;
+	let { view } = state;
+	const key = focusOf(state);
+	if (
+		view?.agents !== workspace.agents ||
+		view.toolSpecs !== workspace.toolSpecs ||
+		view.focus !== key
+	) {
+		view = {
+			agents: workspace.agents,
+			toolSpecs: workspace.toolSpecs,
+			focus: key,
+			draft: libraryDraft(workspace, key) ?? createBlankDraft(),
+		};
+		state.view = view;
+	}
+	return view.draft;
+}
+
+/** Moves to `next`, as the visitor's or th30's change, with the move in the open node. */
+function updateWorkspace(
+	state: StoreState,
+	next: PlaygroundWorkspace | ((current: PlaygroundWorkspace) => PlaygroundWorkspace),
+	by: DraftAuthor,
+): PlaygroundWorkspace {
+	const value = typeof next === 'function' ? next(state.workspace) : next;
+	if (value === state.workspace) return state.workspace;
+	const before = draftOf(state);
+	const agentsBefore = state.workspace.agents.map((agent) => agent.key).join();
+	state.workspace = value;
+	state.focus = agentOf(state.workspace, state.workspace.selected) ?? state.focus;
+	const sections = changedSections(before, draftOf(state));
+	if (state.workspace.agents.map((agent) => agent.key).join() !== agentsBefore) {
+		sections.push('agents');
+	}
+	state.revision += 1;
+	state.changes = [...state.changes, { revision: state.revision, by, sections }].slice(
+		-CHANGES_SIZE,
+	);
+	scheduleWrite(state);
+	notifyListeners(state);
+	return state.workspace;
+}
+
+/** Changes the workspace without an edit: no revision, no change record. */
+function moveWorkspace(state: StoreState, workspace: PlaygroundWorkspace): void {
+	state.workspace = workspace;
+	scheduleWrite(state);
+	notifyListeners(state);
+}
+
+/** Changes the focused agent's draft; a no-op keeps the revision. Returns the draft now held. */
+function updateFocusedDraft(
+	state: StoreState,
+	next: PlaygroundDraft | ((current: PlaygroundDraft) => PlaygroundDraft),
+	by: DraftAuthor,
+): PlaygroundDraft {
+	const current = draftOf(state);
+	const value = typeof next === 'function' ? next(current) : next;
+	if (value !== current) {
+		updateWorkspace(state, withLibraryDraft(state.workspace, focusOf(state), value), by);
+	}
+	return draftOf(state);
+}
+
+/** Opens a node: not an edit, so the revision stays. An agent's node focuses that agent. */
+function selectNode(state: StoreState, id: string): void {
+	if (id === state.workspace.selected) return;
+	const workspace = { ...state.workspace, selected: id };
+	state.focus = agentOf(workspace, id) ?? state.focus;
+	moveWorkspace(state, workspace);
+}
+
 export type PlaygroundStore = ReturnType<typeof createPlaygroundStore>;
 
 /**
@@ -103,80 +222,25 @@ export type PlaygroundStore = ReturnType<typeof createPlaygroundStore>;
  * the whole tool library as its tools.
  */
 export function createPlaygroundStore(initial: RestoredPlayground) {
-	let workspace = initial.workspace;
-	let revision = initial.revision;
-	let focus = agentOf(workspace, workspace.selected) ?? workspace.chatWith;
-	let changes: DraftChange[] = [];
-	const listeners = new Set<() => void>();
-	let timer: ReturnType<typeof setTimeout> | undefined;
-	let view:
-		| { agents: unknown; toolSpecs: unknown; focus: string; draft: PlaygroundDraft }
-		| undefined;
-
-	const write = () => {
-		timer = undefined;
-		const record: StoredWorkspace = {
-			v: PLAYGROUND_WORKSPACE_VERSION,
-			workspace: keptWorkspace(workspace),
-			revision,
-		};
-		try {
-			session()?.setItem(WORKSPACE_KEY, JSON.stringify(record));
-		} catch {
-			// Quota or a blocked store: the page keeps working on what is in memory.
-		}
+	const state: StoreState = {
+		workspace: initial.workspace,
+		revision: initial.revision,
+		focus: agentOf(initial.workspace, initial.workspace.selected) ?? initial.workspace.chatWith,
+		changes: [],
+		listeners: new Set(),
+		timer: undefined,
+		view: undefined,
 	};
-	const schedule = () => {
-		timer ??= setTimeout(write, WRITE_MS);
-	};
-	const notify = () => {
-		for (const listener of listeners) listener();
-	};
-	/** The focused agent: the last one opened, or the first once that one is gone. */
-	const getFocus = () =>
-		workspace.agents.some((agent) => agent.key === focus)
-			? focus
-			: (workspace.agents[0]?.key ?? '');
-	/** The focused agent's draft; the same object until the workspace or the focus changes. */
-	const getDraft = (): PlaygroundDraft => {
-		const key = getFocus();
-		if (
-			view?.agents !== workspace.agents ||
-			view.toolSpecs !== workspace.toolSpecs ||
-			view.focus !== key
-		) {
-			view = {
-				agents: workspace.agents,
-				toolSpecs: workspace.toolSpecs,
-				focus: key,
-				draft: libraryDraft(workspace, key) ?? createBlankDraft(),
-			};
-		}
-		return view.draft;
-	};
-	/** Moves to `next`, as the visitor's or th30's change, with the move in the open node. */
+	const getFocus = () => focusOf(state);
+	const getDraft = (): PlaygroundDraft => draftOf(state);
 	const update = (
 		next: PlaygroundWorkspace | ((current: PlaygroundWorkspace) => PlaygroundWorkspace),
 		by: DraftAuthor = 'visitor',
-	): PlaygroundWorkspace => {
-		const value = typeof next === 'function' ? next(workspace) : next;
-		if (value === workspace) return workspace;
-		const before = getDraft();
-		const agentsBefore = workspace.agents.map((agent) => agent.key).join();
-		workspace = value;
-		focus = agentOf(workspace, workspace.selected) ?? focus;
-		const sections = changedSections(before, getDraft());
-		if (workspace.agents.map((agent) => agent.key).join() !== agentsBefore) sections.push('agents');
-		revision += 1;
-		changes = [...changes, { revision, by, sections }].slice(-CHANGES_SIZE);
-		schedule();
-		notify();
-		return workspace;
-	};
+	): PlaygroundWorkspace => updateWorkspace(state, next, by);
 
 	return {
-		getWorkspace: () => workspace,
-		getRevision: () => revision,
+		getWorkspace: () => state.workspace,
+		getRevision: () => state.revision,
 		getFocus,
 		getDraft,
 		update,
@@ -184,41 +248,30 @@ export function createPlaygroundStore(initial: RestoredPlayground) {
 		updateDraft: (
 			next: PlaygroundDraft | ((current: PlaygroundDraft) => PlaygroundDraft),
 			by: DraftAuthor = 'visitor',
-		): PlaygroundDraft => {
-			const current = getDraft();
-			const value = typeof next === 'function' ? next(current) : next;
-			if (value !== current) update(withLibraryDraft(workspace, getFocus(), value), by);
-			return getDraft();
-		},
+		): PlaygroundDraft => updateFocusedDraft(state, next, by),
 		/** Opens a node: not an edit, so the revision stays. An agent's node focuses that agent. */
 		select: (id: string) => {
-			if (id === workspace.selected) return;
-			workspace = { ...workspace, selected: id };
-			focus = agentOf(workspace, id) ?? focus;
-			schedule();
-			notify();
+			selectNode(state, id);
 		},
 		/** Picks the agent the preview talks to; not an edit either. */
 		chatWith: (key: string) => {
-			if (key === workspace.chatWith) return;
-			workspace = { ...workspace, chatWith: key };
-			schedule();
-			notify();
+			if (key === state.workspace.chatWith) return;
+			moveWorkspace(state, { ...state.workspace, chatWith: key });
 		},
 		/** Changes after `since`, oldest first; only the last 50 are kept. */
 		changesSince: (since: number): DraftChange[] =>
-			changes.filter((change) => change.revision > since),
+			state.changes.filter((change) => change.revision > since),
 		subscribe: (listener: () => void) => {
-			listeners.add(listener);
+			state.listeners.add(listener);
 			return () => {
-				listeners.delete(listener);
+				state.listeners.delete(listener);
 			};
 		},
 		/** Writes now if a write is pending; the route calls it on pagehide and unmount. */
 		flush() {
-			if (timer === undefined) return;
-			clearTimeout(timer);
-			write();
+			if (state.timer === undefined) return;
+			clearTimeout(state.timer);
+			writeWorkspace(state);
 		},
 	};
 }

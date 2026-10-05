@@ -427,6 +427,18 @@ export interface Segment<T extends string> {
 	disabledMessage?: string;
 }
 
+type SegmentedRowProps<T extends string> = {
+	label: string;
+	path: string;
+	/** The draft field whose issues show on this row. */
+	field?: string;
+	value: T;
+	segments: readonly Segment<T>[];
+	isDisabled?: boolean;
+	warning?: string;
+	onChange: (next: T) => void;
+} & IsRequired;
+
 /**
  * A closed set, as icon-only segments. Each segment's label is its accessible name, and on hover
  * it shows with the schema's description of that option. `warning` says, under it, when the pick
@@ -442,17 +454,7 @@ export function SegmentedRow<T extends string>({
 	isRequired,
 	warning,
 	onChange,
-}: {
-	label: string;
-	path: string;
-	/** The draft field whose issues show on this row. */
-	field?: string;
-	value: T;
-	segments: readonly Segment<T>[];
-	isDisabled?: boolean;
-	warning?: string;
-	onChange: (next: T) => void;
-} & IsRequired) {
+}: SegmentedRowProps<T>) {
 	const options = fieldMeta(path)?.optionDescriptions;
 	const issue = useFieldStatus()(field);
 	const status = issue ?? (warning ? { type: 'warning' as const, message: warning } : undefined);
@@ -503,6 +505,26 @@ export type Choice<T extends string> =
 	| T
 	| { value: T; label?: string; description?: string; disabled?: boolean };
 
+type ChoiceRowProps<T extends string> = {
+	label: string;
+	path: string;
+	/** The draft field whose issues show on this row. */
+	field?: string;
+	value: T | '';
+	options: readonly Choice<T>[];
+	isDisabled?: boolean;
+	hasSearch?: boolean;
+	/** The options are still arriving. */
+	isLoading?: boolean;
+	/** What an empty list says. */
+	emptyText?: string;
+	/** What the blank row says, in place of what leaving the field out does. */
+	placeholder?: string;
+	/** A status of the row's own, such as a list that failed to load; the field's issues win. */
+	status?: InputStatus;
+	onChange: (next: T | '') => void;
+} & IsRequired;
+
 /**
  * A choice from a list, `''` when none is chosen. An optional one can be cleared, and shows what
  * leaving it out does while blank. `hasSearch` filters a long list.
@@ -521,25 +543,7 @@ export function ChoiceRow<T extends string>({
 	placeholder,
 	status: given,
 	onChange,
-}: {
-	label: string;
-	path: string;
-	/** The draft field whose issues show on this row. */
-	field?: string;
-	value: T | '';
-	options: readonly Choice<T>[];
-	isDisabled?: boolean;
-	hasSearch?: boolean;
-	/** The options are still arriving. */
-	isLoading?: boolean;
-	/** What an empty list says. */
-	emptyText?: string;
-	/** What the blank row says, in place of what leaving the field out does. */
-	placeholder?: string;
-	/** A status of the row's own, such as a list that failed to load; the field's issues win. */
-	status?: InputStatus;
-	onChange: (next: T | '') => void;
-} & IsRequired) {
+}: ChoiceRowProps<T>) {
 	const status = useFieldStatus()(field) ?? given;
 	const { required, unset } = presence(path, isRequired);
 	// The Selector hands back a plain string; take the option's own value for it.

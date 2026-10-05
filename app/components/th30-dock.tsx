@@ -7,8 +7,10 @@ import { LiveSessionClient } from '@theoremjs/react/client';
 import { InkWaveform, type InkWaveStatus } from '@theoremjs/react/ui';
 import {
 	createContext,
+	type Dispatch,
 	type ReactNode,
 	type RefObject,
+	type SetStateAction,
 	useCallback,
 	useContext,
 	useEffect,
@@ -188,6 +190,134 @@ type Th30Call = {
 	mute: () => void;
 };
 
+type CallOptions = ConstructorParameters<typeof LiveSessionClient>[0];
+
+/** The state a call's events set. */
+type CallSetters = {
+	setStatus: (status: InkWaveStatus) => void;
+	setPhase: (phase: Phase) => void;
+	setFailure: (failure: string | null) => void;
+	setLevels: Dispatch<SetStateAction<{ input: number; output: number }>>;
+};
+
+/** Answers a `look` or `act` from the page; an applied call whose answer is lost is noted. */
+async function answerSurface(
+	clientRef: RefObject<LiveSessionClient | null>,
+	name: string,
+	args: Record<string, unknown>,
+	callId: string,
+): Promise<void> {
+	const output = await th30Surfaces.answer(name, args, callId);
+	try {
+		await clientRef.current?.executeToolOnRelay({ callId, output });
+	} catch {
+		th30Surfaces.settled(callId, 'undelivered');
+	}
+}
+
+/**
+ * The live client's callbacks: status and phase, failures, voice levels, tool calls and cancels.
+ * Events from a client that is no longer current are ignored. `greet` runs on each `listening`.
+ */
+function callCallbacks(
+	isCurrent: () => boolean,
+	greet: () => void,
+	set: CallSetters,
+	onToolCall: CallOptions['onToolCall'],
+): Pick<
+	CallOptions,
+	'onStatusChange' | 'onError' | 'onVolumeLevel' | 'onToolCall' | 'onTurnEvent'
+> {
+	return {
+		onStatusChange: (next) => {
+			if (!isCurrent()) return;
+			set.setStatus(next);
+			if (next === 'error') set.setPhase('failed');
+			else if (next !== 'connecting' && next !== 'disconnected') set.setPhase('live');
+			if (next === 'listening') greet();
+		},
+		onError: (err) => {
+			if (!isCurrent()) return;
+			console.warn('[th30]', err);
+			set.setFailure(err.message);
+			set.setPhase('failed');
+		},
+		onVolumeLevel: (level, isUser) => {
+			if (isUser) th30Voice.user = level;
+			else th30Voice.agent = level;
+			set.setLevels((prev) => (isUser ? { ...prev, input: level } : { ...prev, output: level }));
+		},
+		// Th30's tools never gate. The relay runs the server ones; the page answers look and act.
+		onToolCall,
+		onTurnEvent: (event) => {
+			if (event.type !== 'tool' || event.tool.phase !== 'cancel') return;
+			th30Surfaces.settled(event.tool.callId, 'cancelled');
+		},
+	};
+}
+
+/** What starting a call needs from the hook that owns it. */
+type CallContext = Pick<PageRefs, 'pageLineRef' | 'toldRef'> & {
+	navigate: NavigateFunction;
+	clientRef: RefObject<LiveSessionClient | null>;
+	chimeRef: RefObject<ReturnType<typeof makeChime> | null>;
+	set: CallSetters;
+};
+
+/** Opens a call unless one is on: chimes and greets once through, and records a failure. */
+async function startCall({
+	navigate,
+	clientRef,
+	chimeRef,
+	pageLineRef,
+	toldRef,
+	set,
+}: CallContext): Promise<void> {
+	if (clientRef.current) return;
+	const chime = makeChime();
+	chimeRef.current = chime;
+	let greeted = false;
+	toldRef.current = undefined;
+	// Through: chime, then nudge th30 to greet first, knowing the page, rather than wait.
+	const greet = () => {
+		if (greeted) return;
+		greeted = true;
+		chime.play();
+		const line = pageLineRef.current;
+		toldRef.current = line;
+		const state = th30Surfaces.stateLine();
+		client.sendText(['(call connected)', line, state].filter((part) => part).join(' '));
+	};
+	const client: LiveSessionClient = new LiveSessionClient({
+		profile: TH30_PROFILE_ID,
+		voiceIngress: true,
+		...callCallbacks(
+			() => clientRef.current === client,
+			greet,
+			set,
+			async (name, args, meta) => {
+				if (th30Surfaces.isSurfaceTool(name)) {
+					await answerSurface(clientRef, name, args, meta.callId);
+					return;
+				}
+				applyDocsTool(navigate, name, args);
+				await clientRef.current?.executeToolOnRelay({ callId: meta.callId });
+			},
+		),
+	});
+	clientRef.current = client;
+	set.setFailure(null);
+	set.setPhase('connecting');
+	try {
+		await client.connect();
+	} catch (err) {
+		if (clientRef.current !== client) return;
+		console.warn('[th30]', err);
+		set.setFailure(err instanceof Error ? err.message : null);
+		set.setPhase('failed');
+	}
+}
+
 function useTh30Call(navigate: NavigateFunction, { pageLineRef, toldRef }: PageRefs): Th30Call {
 	const [phase, setPhase] = useState<Phase>('idle');
 	const [isMuted, setMuted] = useState(false);
@@ -196,19 +326,6 @@ function useTh30Call(navigate: NavigateFunction, { pageLineRef, toldRef }: PageR
 	const [levels, setLevels] = useState({ input: 0, output: 0 });
 	const clientRef = useRef<LiveSessionClient | null>(null);
 	const chimeRef = useRef<ReturnType<typeof makeChime> | null>(null);
-
-	/** Answers a `look` or `act` from the page; an applied call whose answer is lost is noted. */
-	const answerSurface = useCallback(
-		async (name: string, args: Record<string, unknown>, callId: string) => {
-			const output = await th30Surfaces.answer(name, args, callId);
-			try {
-				await clientRef.current?.executeToolOnRelay({ callId, output });
-			} catch {
-				th30Surfaces.settled(callId, 'undelivered');
-			}
-		},
-		[],
-	);
 
 	const stop = useCallback(() => {
 		clientRef.current?.disconnect();
@@ -223,67 +340,18 @@ function useTh30Call(navigate: NavigateFunction, { pageLineRef, toldRef }: PageR
 		setPhase('idle');
 	}, []);
 
-	const start = useCallback(async () => {
-		if (clientRef.current) return;
-		const chime = makeChime();
-		chimeRef.current = chime;
-		let greeted = false;
-		toldRef.current = undefined;
-		const client = new LiveSessionClient({
-			profile: TH30_PROFILE_ID,
-			voiceIngress: true,
-			onStatusChange: (next) => {
-				if (clientRef.current !== client) return;
-				setStatus(next);
-				if (next === 'error') setPhase('failed');
-				else if (next !== 'connecting' && next !== 'disconnected') setPhase('live');
-				// Through: chime, then nudge th30 to greet first, knowing the page, rather than wait.
-				if (next === 'listening' && !greeted) {
-					greeted = true;
-					chime.play();
-					const line = pageLineRef.current;
-					toldRef.current = line;
-					const state = th30Surfaces.stateLine();
-					client.sendText(['(call connected)', line, state].filter((part) => part).join(' '));
-				}
-			},
-			onError: (err) => {
-				if (clientRef.current !== client) return;
-				console.warn('[th30]', err);
-				setFailure(err.message);
-				setPhase('failed');
-			},
-			onVolumeLevel: (level, isUser) => {
-				if (isUser) th30Voice.user = level;
-				else th30Voice.agent = level;
-				setLevels((prev) => (isUser ? { ...prev, input: level } : { ...prev, output: level }));
-			},
-			// Th30's tools never gate. The relay runs the server ones; the page answers look and act.
-			onToolCall: async (name, args, meta) => {
-				if (th30Surfaces.isSurfaceTool(name)) {
-					await answerSurface(name, args, meta.callId);
-					return;
-				}
-				applyDocsTool(navigate, name, args);
-				await clientRef.current?.executeToolOnRelay({ callId: meta.callId });
-			},
-			onTurnEvent: (event) => {
-				if (event.type !== 'tool' || event.tool.phase !== 'cancel') return;
-				th30Surfaces.settled(event.tool.callId, 'cancelled');
-			},
-		});
-		clientRef.current = client;
-		setFailure(null);
-		setPhase('connecting');
-		try {
-			await client.connect();
-		} catch (err) {
-			if (clientRef.current !== client) return;
-			console.warn('[th30]', err);
-			setFailure(err instanceof Error ? err.message : null);
-			setPhase('failed');
-		}
-	}, [navigate, answerSurface, pageLineRef, toldRef]);
+	const start = useCallback(
+		() =>
+			startCall({
+				navigate,
+				clientRef,
+				chimeRef,
+				pageLineRef,
+				toldRef,
+				set: { setStatus, setPhase, setFailure, setLevels },
+			}),
+		[navigate, pageLineRef, toldRef],
+	);
 
 	const toggle = useCallback(() => {
 		if (clientRef.current) stop();

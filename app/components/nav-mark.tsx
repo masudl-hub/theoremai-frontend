@@ -11,11 +11,18 @@ function prefersReducedMotion(): boolean {
 	return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-/**
- * Covers the page panel while a navigation is actually pending. The rail stays.
- * A fast client transition never mounts this.
- */
-export function NavMark() {
+/** The page panel to cover, looked up once the cover first shows. */
+function useMainHost(shown: boolean): HTMLElement | null {
+	const [host, setHost] = useState<HTMLElement | null>(null);
+	useEffect(() => {
+		if (!shown) return;
+		setHost(document.getElementById(MAIN_ID));
+	}, [shown]);
+	return host;
+}
+
+/** When the cover shows and leaves: after a short wait for a pending navigation, until the mark has drawn. */
+function useNavMarkCover() {
 	const pending = useNavigation().state === 'loading';
 	const pendingRef = useRef(pending);
 	pendingRef.current = pending;
@@ -23,7 +30,6 @@ export function NavMark() {
 	const [shown, setShown] = useState(false);
 	const [leaving, setLeaving] = useState(false);
 	const [drawn, setDrawn] = useState(false);
-	const [host, setHost] = useState<HTMLElement | null>(null);
 
 	useEffect(() => {
 		if (!pending) return;
@@ -37,10 +43,7 @@ export function NavMark() {
 		};
 	}, [pending]);
 
-	useEffect(() => {
-		if (!shown) return;
-		setHost(document.getElementById(MAIN_ID));
-	}, [shown]);
+	const host = useMainHost(shown);
 
 	useEffect(() => {
 		if (!leaving) return;
@@ -69,6 +72,16 @@ export function NavMark() {
 			window.clearTimeout(id);
 		};
 	}, [pending, shown, drawn]);
+
+	return { shown, leaving, host, setShown, setLeaving, setDrawn };
+}
+
+/**
+ * Covers the page panel while a navigation is actually pending. The rail stays.
+ * A fast client transition never mounts this.
+ */
+export function NavMark() {
+	const { shown, leaving, host, setShown, setLeaving, setDrawn } = useNavMarkCover();
 
 	if (!shown || !host) return null;
 

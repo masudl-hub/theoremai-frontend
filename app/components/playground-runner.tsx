@@ -21,6 +21,20 @@ import { noting } from '../lib/playground-activity';
 import { PLAYGROUND_LABELS } from '../lib/playground-labels';
 import { PlaygroundDecision } from './playground-decision';
 
+interface PlaygroundRunnerProps {
+	payload: PlaygroundRunPayload;
+	mode: PlaygroundConnectionMode;
+	runtime: PlaygroundBrowserRuntime | null;
+	trace?: boolean;
+	className?: string;
+	/** Called on each request the conversation sends: a turn, call, decision or live session. */
+	onActivity?: () => void;
+	/** A chat conversation to resume, as `onChatChange` reported it (text and image agents). */
+	initialChat?: ChatProps['initialChat'];
+	onChatChange?: ChatProps['onChatChange'];
+	chatRef?: ChatProps['chatRef'];
+}
+
 /**
  * The builder preview and existing run page select transports under the same runner UI.
  *
@@ -37,19 +51,7 @@ export function PlaygroundRunner({
 	initialChat,
 	onChatChange,
 	chatRef,
-}: {
-	payload: PlaygroundRunPayload;
-	mode: PlaygroundConnectionMode;
-	runtime: PlaygroundBrowserRuntime | null;
-	trace?: boolean;
-	className?: string;
-	/** Called on each request the conversation sends: a turn, call, decision or live session. */
-	onActivity?: () => void;
-	/** A chat conversation to resume, as `onChatChange` reported it (text and image agents). */
-	initialChat?: ChatProps['initialChat'];
-	onChatChange?: ChatProps['onChatChange'];
-	chatRef?: ChatProps['chatRef'];
-}) {
+}: PlaygroundRunnerProps) {
 	const [traces] = useState(createTraceFeed);
 	const activity = useRef(onActivity);
 	activity.current = onActivity;

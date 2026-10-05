@@ -35,6 +35,83 @@ export function HydrateFallback() {
 	return null;
 }
 
+/** `payload` with each `from` slot, on its agent and the agents it calls, renamed to `to`. */
+function withRenamedSlot(
+	current: PlaygroundRunPayload,
+	from: string,
+	to: string,
+): PlaygroundRunPayload {
+	const rename = <T extends { key?: string; fallbackKey?: string }>(value: T): T => ({
+		...value,
+		...(value.key === from ? { key: to } : {}),
+		...(value.fallbackKey === from ? { fallbackKey: to } : {}),
+	});
+	const renamed = (profile: PlaygroundRunPayload['profile']): PlaygroundRunPayload['profile'] =>
+		profile.type === 'host'
+			? profile
+			: {
+					...rename(profile),
+					models: Object.fromEntries(
+						Object.entries(profile.models).map(([id, model]) => [id, rename(model)]),
+					),
+				};
+	return {
+		...current,
+		profile: renamed(current.profile),
+		...(current.dependencies
+			? {
+					dependencies: current.dependencies.map((dependency) => ({
+						...dependency,
+						profile: renamed(dependency.profile),
+					})),
+				}
+			: {}),
+	};
+}
+
+/** `payload` with `slot` as its agent's key, unless it is a host or has a key already. */
+function withAddedSlot(current: PlaygroundRunPayload, slot: string): PlaygroundRunPayload {
+	return current.profile.type === 'host' || current.profile.key
+		? current
+		: { ...current, profile: { ...current.profile, key: slot } };
+}
+
+/** The Keys button and the popover it opens. */
+function KeysPopover({
+	connection,
+	isOpen,
+	onOpenChange,
+	onAddSlot,
+	onRenameSlot,
+}: {
+	connection: ReturnType<typeof usePlaygroundConnection>;
+	isOpen: boolean;
+	onOpenChange: (open: boolean) => void;
+	onAddSlot: (slot: string) => void;
+	onRenameSlot: (from: string, to: string) => void;
+}) {
+	return (
+		<Popover
+			label="Keys"
+			placement="below"
+			alignment="start"
+			width={360}
+			isOpen={isOpen}
+			onOpenChange={onOpenChange}
+			content={
+				<PlaygroundKeys connection={connection} onAddSlot={onAddSlot} onRenameSlot={onRenameSlot} />
+			}
+		>
+			<IconButton
+				label="Keys"
+				variant="ghost"
+				icon={<Icon icon={IconKey} size="sm" />}
+				tooltip="Keys"
+			/>
+		</Popover>
+	);
+}
+
 export default function PlaygroundRun({ loaderData }: Route.ComponentProps) {
 	const [payload, setPayload] = useState(loaderData.payload);
 	// The agent and the agents it calls each read their own key slots.
@@ -55,32 +132,7 @@ export default function PlaygroundRun({ loaderData }: Route.ComponentProps) {
 	// A host has no handle: it's named by its id.
 	const handle = 'identity' in payload.profile ? payload.profile.identity.handle : payload.agentId;
 	const renameSlot = (from: string, to: string) => {
-		const rename = <T extends { key?: string; fallbackKey?: string }>(value: T): T => ({
-			...value,
-			...(value.key === from ? { key: to } : {}),
-			...(value.fallbackKey === from ? { fallbackKey: to } : {}),
-		});
-		const renamed = (profile: PlaygroundRunPayload['profile']): PlaygroundRunPayload['profile'] =>
-			profile.type === 'host'
-				? profile
-				: {
-						...rename(profile),
-						models: Object.fromEntries(
-							Object.entries(profile.models).map(([id, model]) => [id, rename(model)]),
-						),
-					};
-		setPayload((current) => ({
-			...current,
-			profile: renamed(current.profile),
-			...(current.dependencies
-				? {
-						dependencies: current.dependencies.map((dependency) => ({
-							...dependency,
-							profile: renamed(dependency.profile),
-						})),
-					}
-				: {}),
-		}));
+		setPayload((current) => withRenamedSlot(current, from, to));
 	};
 
 	return (
@@ -89,34 +141,15 @@ export default function PlaygroundRun({ loaderData }: Route.ComponentProps) {
 			<title>{`${handle} · Theorem Playground`}</title>
 			<HStack className="iface-run-link" gap={2} vAlign="center">
 				<a href={PLAYGROUND_HREF}>← Playground</a>
-				<Popover
-					label="Keys"
-					placement="below"
-					alignment="start"
-					width={360}
+				<KeysPopover
+					connection={connection}
 					isOpen={keysOpen}
 					onOpenChange={setKeysOpen}
-					content={
-						<PlaygroundKeys
-							connection={connection}
-							onAddSlot={(slot) => {
-								setPayload((current) =>
-									current.profile.type === 'host' || current.profile.key
-										? current
-										: { ...current, profile: { ...current.profile, key: slot } },
-								);
-							}}
-							onRenameSlot={renameSlot}
-						/>
-					}
-				>
-					<IconButton
-						label="Keys"
-						variant="ghost"
-						icon={<Icon icon={IconKey} size="sm" />}
-						tooltip="Keys"
-					/>
-				</Popover>
+					onAddSlot={(slot) => {
+						setPayload((current) => withAddedSlot(current, slot));
+					}}
+					onRenameSlot={renameSlot}
+				/>
 			</HStack>
 			<PlaygroundRunner
 				key={mode}

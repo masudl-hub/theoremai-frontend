@@ -25,7 +25,7 @@ import {
 	type ProviderModel,
 	playgroundVault,
 } from '@theoremjs/playground/browser';
-import { useEffect, useMemo, useState } from 'react';
+import { type Dispatch, type SetStateAction, useEffect, useMemo, useState } from 'react';
 import { IconGemini, IconOpenRouter } from './brand-icons';
 import { InspectorSection } from './inspector';
 
@@ -104,24 +104,12 @@ function localRuntimeConfig(
 	}
 }
 
-/** Models select execution; the vault and connection settings remain in this tab's memory. */
-export function usePlaygroundConnection(
-	models: readonly (Pick<ModelBindingDraft, 'protocol' | 'provider' | 'apiId'> & {
-		builtInTools?: string[];
-	})[],
-	initialBaseUrl = 'http://127.0.0.1:11434',
-	namedSlots: readonly string[] = [],
-) {
+/**
+ * The key rows: one per slot the draft names or key the vault holds. Typing a slot name in the
+ * editor must not leave a row behind for every prefix. Unnamed rows stay until removed.
+ */
+function useKeyEntries(slots: readonly string[]) {
 	const [entries, setEntries] = useState<KeyEntry[]>([]);
-	const [vault, setVault] = useState<KeyVault>({});
-	const [local, setLocal] = useState<PlaygroundBrowserConnection['local']>({
-		baseUrl: initialBaseUrl,
-	});
-	const [remoteTools, setRemoteTools] = useState(false);
-	const slotNames = [...new Set([...namedSlots, ...Object.keys(vault)])].join('\n');
-	const slots = useMemo(() => (slotNames ? slotNames.split('\n') : []), [slotNames]);
-	// A row follows a slot the draft names or a key the vault holds; typing a slot name in the
-	// editor must not leave a row behind for every prefix. Unnamed rows stay until removed.
 	useEffect(() => {
 		setEntries((current) => [
 			...current.filter((entry) => !entry.slot || slots.includes(entry.slot)),
@@ -130,10 +118,18 @@ export function usePlaygroundConnection(
 				.map((slot) => ({ id: crypto.randomUUID(), slot })),
 		]);
 	}, [slots]);
-	const hasLocal = models.some((model) => model.provider === 'local');
-	const localModels = useLocalModels(hasLocal, local);
-	const hasKeys = Object.values(vault).some((key) => Boolean(key?.trim()));
-	const mode = connectionMode(models, hasLocal, hasKeys);
+	return [entries, setEntries] as const;
+}
+
+/** The runtime the runner executes on, or null for the demo; each new one aborts the last. */
+function useConnectionRuntime(
+	mode: PlaygroundConnectionMode,
+	hasLocal: boolean,
+	vault: KeyVault,
+	local: PlaygroundBrowserConnection['local'],
+	remoteTools: boolean,
+	slots: readonly string[],
+): PlaygroundBrowserRuntime | null {
 	const connection = useMemo(() => {
 		if (mode === 'demo') return null;
 		const controller = new AbortController();
@@ -156,12 +152,36 @@ export function usePlaygroundConnection(
 		},
 		[connection],
 	);
+	return connection?.runtime ?? null;
+}
+
+/** Models select execution; the vault and connection settings remain in this tab's memory. */
+export function usePlaygroundConnection(
+	models: readonly (Pick<ModelBindingDraft, 'protocol' | 'provider' | 'apiId'> & {
+		builtInTools?: string[];
+	})[],
+	initialBaseUrl = 'http://127.0.0.1:11434',
+	namedSlots: readonly string[] = [],
+) {
+	const [vault, setVault] = useState<KeyVault>({});
+	const [local, setLocal] = useState<PlaygroundBrowserConnection['local']>({
+		baseUrl: initialBaseUrl,
+	});
+	const [remoteTools, setRemoteTools] = useState(false);
+	const slotNames = [...new Set([...namedSlots, ...Object.keys(vault)])].join('\n');
+	const slots = useMemo(() => (slotNames ? slotNames.split('\n') : []), [slotNames]);
+	const [entries, setEntries] = useKeyEntries(slots);
+	const hasLocal = models.some((model) => model.provider === 'local');
+	const localModels = useLocalModels(hasLocal, local);
+	const hasKeys = Object.values(vault).some((key) => Boolean(key?.trim()));
+	const mode = connectionMode(models, hasLocal, hasKeys);
+	const runtime = useConnectionRuntime(mode, hasLocal, vault, local, remoteTools, slots);
 	return {
 		entries,
 		setEntries,
 		localModels,
 		mode,
-		runtime: connection?.runtime ?? null,
+		runtime,
 		vault,
 		setVault,
 		slots,
@@ -298,31 +318,118 @@ export function PlaygroundKeys({
 	);
 }
 
-function KeyRow({
-	entry,
-	connection,
-	onRenameSlot,
-	onAddSlot,
-	onRemoveSlot,
-}: {
+interface KeyRowProps {
 	entry: KeyEntry;
 	connection: PlaygroundConnectionState;
 	onRenameSlot?: (from: string, to: string) => void;
 	onAddSlot?: (slot: string) => void;
 	onRemoveSlot?: (slot: string) => void;
+}
+
+function KeyRow({ entry, connection, onRenameSlot, onAddSlot, onRemoveSlot }: KeyRowProps) {
+	const secret = Object.hasOwn(connection.vault, entry.slot)
+		? (connection.vault[entry.slot] ?? '')
+		: '';
+	const { name, setName, error, rename } = useSlotName(
+		entry,
+		connection,
+		secret,
+		onRenameSlot,
+		onAddSlot,
+	);
+	const [visible, setVisible] = useState(false);
+	return (
+		<HStack gap={2} vAlign="center">
+			<StackItem size="static">
+				<KeyKindIcon secret={secret} />
+			</StackItem>
+			<StackItem size="fill">
+				<TextInput
+					label="Key name"
+					hasAutoFocus={!entry.slot}
+					isLabelHidden
+					size="sm"
+					value={name}
+					placeholder="Key name"
+					onChange={setName}
+					onBlur={rename}
+					status={error ? { type: 'error', message: error } : undefined}
+				/>
+			</StackItem>
+			<StackItem size="fill">
+				<KeySecretInput entry={entry} connection={connection} secret={secret} visible={visible} />
+			</StackItem>
+			<StackItem size="static">
+				<KeyRowActions
+					entry={entry}
+					connection={connection}
+					visible={visible}
+					setVisible={setVisible}
+					onRemoveSlot={onRemoveSlot}
+				/>
+			</StackItem>
+		</HStack>
+	);
+}
+
+/** The pasted key's service, or a plain key. */
+function KeyKindIcon({ secret }: { secret: string }) {
+	const kind = keyKind(secret);
+	return (
+		<Icon
+			icon={kind ? KEY_KINDS[kind].icon : IconKey}
+			size="sm"
+			color="secondary"
+			label={kind ? KEY_KINDS[kind].label : 'Key'}
+		/>
+	);
+}
+
+/** The key itself, written to the vault under the row's slot; disabled until the slot has a name. */
+function KeySecretInput({
+	entry,
+	connection,
+	secret,
+	visible,
+}: {
+	entry: KeyEntry;
+	connection: PlaygroundConnectionState;
+	secret: string;
+	visible: boolean;
 }) {
+	return (
+		<TextInput
+			label="API key"
+			isLabelHidden
+			size="sm"
+			type={visible ? 'text' : 'password'}
+			value={secret}
+			placeholder="API key"
+			autoComplete="off"
+			isDisabled={!entry.slot}
+			onChange={(value) => {
+				connection.setVault((current) => ({
+					...current,
+					[entry.slot]: value.trim() || undefined,
+				}));
+			}}
+		/>
+	);
+}
+
+/** A row's slot name as typed, committed on blur once it is valid and free. */
+function useSlotName(
+	entry: KeyEntry,
+	connection: PlaygroundConnectionState,
+	secret: string,
+	onRenameSlot: ((from: string, to: string) => void) | undefined,
+	onAddSlot: ((slot: string) => void) | undefined,
+) {
 	const [name, setName] = useState(entry.slot);
 	useEffect(() => {
 		setName(entry.slot);
 	}, [entry.slot]);
 	const [error, setError] = useState<string>();
-	const [visible, setVisible] = useState(false);
-	const secret = Object.hasOwn(connection.vault, entry.slot)
-		? (connection.vault[entry.slot] ?? '')
-		: '';
-	const kind = keyKind(secret);
-	// Where the profile can't drop a slot it names (the run tab), its row stays and only the key goes.
-	const removable = onRemoveSlot !== undefined || !entry.slot;
 	const rename = () => {
 		if (name === entry.slot) return;
 		if (!isKeySlotName(name)) {
@@ -344,72 +451,48 @@ function KeyRow({
 		else onAddSlot?.(name);
 		setError(undefined);
 	};
+	return { name, setName, error, rename };
+}
+
+/** Show or hide the key, and remove the row (or, where the profile names its slot, clear the key). */
+function KeyRowActions({
+	entry,
+	connection,
+	visible,
+	setVisible,
+	onRemoveSlot,
+}: {
+	entry: KeyEntry;
+	connection: PlaygroundConnectionState;
+	visible: boolean;
+	setVisible: Dispatch<SetStateAction<boolean>>;
+	onRemoveSlot?: (slot: string) => void;
+}) {
+	// Where the profile can't drop a slot it names (the run tab), its row stays and only the key goes.
+	const removable = onRemoveSlot !== undefined || !entry.slot;
 	return (
-		<HStack gap={2} vAlign="center">
-			<StackItem size="static">
-				<Icon
-					icon={kind ? KEY_KINDS[kind].icon : IconKey}
-					size="sm"
-					color="secondary"
-					label={kind ? KEY_KINDS[kind].label : 'Key'}
-				/>
-			</StackItem>
-			<StackItem size="fill">
-				<TextInput
-					label="Key name"
-					hasAutoFocus={!entry.slot}
-					isLabelHidden
-					size="sm"
-					value={name}
-					placeholder="Key name"
-					onChange={setName}
-					onBlur={rename}
-					status={error ? { type: 'error', message: error } : undefined}
-				/>
-			</StackItem>
-			<StackItem size="fill">
-				<TextInput
-					label="API key"
-					isLabelHidden
-					size="sm"
-					type={visible ? 'text' : 'password'}
-					value={secret}
-					placeholder="API key"
-					autoComplete="off"
-					isDisabled={!entry.slot}
-					onChange={(value) => {
-						connection.setVault((current) => ({
-							...current,
-							[entry.slot]: value.trim() || undefined,
-						}));
-					}}
-				/>
-			</StackItem>
-			<StackItem size="static">
-				<HStack gap={1}>
-					<IconButton
-						label={visible ? 'Hide key' : 'Show key'}
-						variant="ghost"
-						size="sm"
-						icon={<Icon icon={visible ? IconEyeOff : IconEye} size="sm" />}
-						onClick={() => {
-							setVisible((current) => !current);
-						}}
-					/>
-					<IconButton
-						label={removable ? 'Remove key' : 'Clear key'}
-						variant="ghost"
-						size="sm"
-						icon={<Icon icon={IconTrash} size="sm" />}
-						onClick={() => {
-							connection.setVault((current) => withoutSlot(current, entry.slot));
-							if (!removable) return;
-							connection.setEntries((current) => current.filter((other) => other.id !== entry.id));
-							onRemoveSlot?.(entry.slot);
-						}}
-					/>
-				</HStack>
-			</StackItem>
+		<HStack gap={1}>
+			<IconButton
+				label={visible ? 'Hide key' : 'Show key'}
+				variant="ghost"
+				size="sm"
+				icon={<Icon icon={visible ? IconEyeOff : IconEye} size="sm" />}
+				onClick={() => {
+					setVisible((current) => !current);
+				}}
+			/>
+			<IconButton
+				label={removable ? 'Remove key' : 'Clear key'}
+				variant="ghost"
+				size="sm"
+				icon={<Icon icon={IconTrash} size="sm" />}
+				onClick={() => {
+					connection.setVault((current) => withoutSlot(current, entry.slot));
+					if (!removable) return;
+					connection.setEntries((current) => current.filter((other) => other.id !== entry.id));
+					onRemoveSlot?.(entry.slot);
+				}}
+			/>
 		</HStack>
 	);
 }
