@@ -58,8 +58,8 @@ export const SITE_ARTICLES: readonly DocArticleDef[] = [
 	outputs,
 	turnBehaviour,
 	guardrails,
-	traces,
-	statuses,
 	runner,
 	interfaceChapter,
+	statuses,
+	traces,
 ];

@@ -9,7 +9,7 @@ import type { DocArticle, ResolvedBlock } from './schema';
 
 /** Heading for a block in markdown and search: its title, else its id. */
 export function blockHeading(block: ResolvedBlock): string {
-	if (block.kind === 'prose') return block.title;
+	if (block.kind === 'prose' || block.kind === 'table') return block.title;
 	if (block.kind === 'code' && block.title) return block.title;
 	return block.id;
 }

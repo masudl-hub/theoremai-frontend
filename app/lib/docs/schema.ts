@@ -17,10 +17,10 @@ export const DOC_SECTIONS = [
 	'outputs',
 	'turn-behaviour',
 	'guardrails',
-	'traces',
-	'statuses',
 	'runner',
 	'interface',
+	'statuses',
+	'traces',
 ] as const;
 export type DocSection = (typeof DOC_SECTIONS)[number];
 
@@ -34,11 +34,14 @@ export type ArrayUnionName = {
 
 export type CodeSource =
 	| { from: 'seed'; seed: PlaygroundSeedId }
-	| { from: 'literal'; lang: 'ts' | 'bash'; code: string };
+	| { from: 'literal'; lang: 'ts' | 'bash' | 'text'; code: string };
 
 export type AuthoredBlock =
 	| { id: string; kind: 'lede'; text: string }
+	/** `text` may hold numbered (`1. `) or bulleted (`- `) paragraphs, one item per line. */
 	| { id: string; kind: 'prose'; title: string; text: string }
+	/** A Markdown pipe table: a header row, a `---` row, then one row per line. For names, options and defaults only. */
+	| { id: string; kind: 'table'; title: string; text: string }
 	| { id: string; kind: 'code'; title?: string; source: CodeSource }
 	/** An image or video from public/; the caption also feeds search and the .md twin. */
 	| {
@@ -101,7 +104,7 @@ export type ResolvedBlock =
 			id: string;
 			kind: 'code';
 			title?: string;
-			lang: 'ts' | 'bash';
+			lang: 'ts' | 'bash' | 'text';
 			code: string;
 			source: CodeSource;
 	  };

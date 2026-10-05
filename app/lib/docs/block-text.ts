@@ -5,6 +5,7 @@ export function projectBlockText(block: ResolvedBlock): string {
 	switch (block.kind) {
 		case 'lede':
 		case 'prose':
+		case 'table':
 		case 'callout':
 			return block.text;
 		case 'agent.paste':

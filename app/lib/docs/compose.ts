@@ -190,7 +190,10 @@ function buildTree(articles: readonly DocArticle[]): DocTreeNode[] {
 		label: article.title,
 		slug: article.slug,
 		children: article.blocks.flatMap((block) => {
-			const label = block.kind === 'prose' || block.kind === 'code' ? block.title : undefined;
+			const label =
+				block.kind === 'prose' || block.kind === 'table' || block.kind === 'code'
+					? block.title
+					: undefined;
 			if (label === undefined) return [];
 			return [
 				{

@@ -5,12 +5,15 @@ import { CodeBlock } from '@astryxdesign/core/CodeBlock';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
 import { List, ListItem } from '@astryxdesign/core/List';
+import { proportional, Table } from '@astryxdesign/core/Table';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { ResolvedBlock } from '../../lib/docs/schema';
 import { CopyIconButton } from './copy-button';
+
+type BlockOf<K extends ResolvedBlock['kind']> = Extract<ResolvedBlock, { kind: K }>;
 
 function BlockAnchor({ id, children }: { id: string; children: React.ReactNode }) {
 	return (
@@ -21,8 +24,9 @@ function BlockAnchor({ id, children }: { id: string; children: React.ReactNode }
 }
 
 /** Astryx CodeBlock wants full language ids (`typescript`, not `ts`). */
-function codeLanguage(lang: 'ts' | 'bash'): string {
-	return lang === 'ts' ? 'typescript' : 'bash';
+function codeLanguage(lang: 'ts' | 'bash' | 'text'): string {
+	if (lang === 'ts') return 'typescript';
+	return lang === 'bash' ? 'bash' : 'text';
 }
 
 /** Inline `code` and [label](href) — enough for authored prose, not a Markdown engine. */
@@ -64,13 +68,64 @@ function inlineMarks(text: string): ReactNode[] {
 	return nodes;
 }
 
+const NUMBERED = /^\d+\. /;
+const BULLETED = /^- /;
+
+/** One paragraph: a numbered list, a bulleted list or plain text. A list has one item per line. */
+function Paragraph({ paragraph }: { paragraph: string }) {
+	const lines = paragraph.split('\n');
+	const marker = lines.every((line) => NUMBERED.test(line))
+		? NUMBERED
+		: lines.every((line) => BULLETED.test(line))
+			? BULLETED
+			: null;
+	if (!marker) return <Text>{inlineMarks(paragraph)}</Text>;
+	return (
+		<List listStyle={marker === NUMBERED ? 'decimal' : 'disc'} density="compact">
+			{lines.map((line) => (
+				<ListItem key={line} label={inlineMarks(line.replace(marker, ''))} />
+			))}
+		</List>
+	);
+}
+
 function ProseParagraphs({ text }: { text: string }) {
 	const paragraphs = text.split(/\n\n+/).filter(Boolean);
 	return (
 		<VStack gap={3}>
 			{paragraphs.map((paragraph) => (
-				<Text key={paragraph.slice(0, 48)}>{inlineMarks(paragraph)}</Text>
+				<Paragraph key={paragraph.slice(0, 48)} paragraph={paragraph} />
 			))}
+		</VStack>
+	);
+}
+
+/** A Markdown pipe table as a header row and body rows. The `---` row is skipped. */
+function parseTable(text: string): { head: string[]; rows: string[][] } {
+	const split = (line: string) =>
+		line
+			.replace(/^\s*\||\|\s*$/g, '')
+			.split('|')
+			.map((cell) => cell.trim());
+	const [head = '', , ...rows] = text.split('\n');
+	return { head: split(head), rows: rows.map(split) };
+}
+
+function TableBlock({ block }: { block: BlockOf<'table'> }) {
+	const { head, rows } = parseTable(block.text);
+	const columns = head.map((label, at) => ({
+		key: `c${String(at)}`,
+		header: label,
+		width: proportional(at === 0 ? 1 : 2),
+		renderCell: (row: Record<string, string>) => inlineMarks(row[`c${String(at)}`] ?? ''),
+	}));
+	const data = rows.map((cells) =>
+		Object.fromEntries(cells.map((cell, at) => [`c${String(at)}`, cell])),
+	);
+	return (
+		<VStack gap={2}>
+			<Heading level={2}>{block.title}</Heading>
+			<Table data={data} columns={columns} density="compact" verticalAlign="top" />
 		</VStack>
 	);
 }
@@ -99,8 +154,6 @@ export function QuestionsStrip({ questions }: { questions: readonly { question: 
 		</VStack>
 	);
 }
-
-type BlockOf<K extends ResolvedBlock['kind']> = Extract<ResolvedBlock, { kind: K }>;
 
 function MediaFigure({ block }: { block: BlockOf<'media'> }) {
 	return (
@@ -174,6 +227,12 @@ export function DocsBlock({ block }: { block: ResolvedBlock }) {
 						<Heading level={2}>{block.title}</Heading>
 						<ProseParagraphs text={block.text} />
 					</VStack>
+				</BlockAnchor>
+			);
+		case 'table':
+			return (
+				<BlockAnchor id={block.id}>
+					<TableBlock block={block} />
 				</BlockAnchor>
 			);
 		case 'callout':

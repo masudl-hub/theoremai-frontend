@@ -2,25 +2,29 @@ import type { DocArticleDef } from '../schema';
 
 export const models: DocArticleDef = {
 	slug: 'models',
-	updated: '2026-10-01',
+	updated: '2026-10-05',
 	title: 'Binding models',
 	entry: 'src/providers/mod.ts',
 	summary:
-		'A binding is protocol, provider, and apiId under a name. Legal pairs are a catalog table; the pair, pick, or key fails closed.',
+		'Bind a model with a protocol, a provider and an apiId. Give it a key slot, pick a model per request, and fix a binding that fails.',
 	cover: {
 		src: '/imagery/th30_midnightblueberries.png',
 		alt: 'Blueberry bushes at night',
 		position: '0% 95%',
 	},
 	questions: [
-		{ question: 'How do I bind a model so a turn can call it?' },
-		{ question: 'Where does the pair, the pick, or the key fail?' },
+		{ question: 'How do I bind a model to my agent?' },
+		{ question: 'Where does the key come from?' },
+		{ question: 'How do I let a request pick between models?' },
+		{ question: 'Why does my binding fail?' },
 	],
 	blocks: [
 		{
 			id: 'lede',
 			kind: 'lede',
-			text: 'A binding is one named entry in `models`: protocol, provider, and `apiId` under an id you use later. That differs from passing a bare model string on each request with no profile contract. `type` decides whether you get a full pair, an `apiId` alone (`decision`), or no models (`host`).',
+			text: [
+				'Bind a model when the agent needs something to call. A binding is one entry under `models`, stored under an id you choose. It names the protocol, the provider, the provider’s model id and the key slot.',
+			].join('\n\n'),
 		},
 		{
 			id: 'binding-config',
@@ -28,107 +32,26 @@ export const models: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
-				code: [
-					"type: 'text',",
-					'models: {',
-					'\tmain: {',
-					"\t\tprotocol: 'openAi',",
-					"\t\tprovider: 'openrouter',",
-					"\t\tapiId: 'openrouter/free',",
-					'\t},',
-					'},',
-				].join('\n'),
+				code: "type: 'text',\nmodels: {\n	main: {\n		protocol: 'openAi',\n		provider: 'openrouter',\n		apiId: 'openrouter/free',\n		key: 'openrouter',\n	},\n},",
 			},
 		},
 		{
 			id: 'binding-requirements',
 			kind: 'prose',
-			title: 'Binding requirements',
+			title: 'Declare the bindings',
 			text: [
-				'`text`, `image`, `speech`, and `live` must declare at least one binding. One key and no `defaultModel` writes that key as the default. Two or more keys require `defaultModel`.',
-				'A `decision` profile declares exactly one model, by `apiId` only. A `host` profile has no models.',
-				'`apiId` is the provider\u2019s model id. Theorem does not catalog which strings a provider accepts.',
+				'- `protocol` and `provider` say how Theorem talks to the model. They must be a legal pair (see the table below).\n- `apiId` is the model’s name at the provider.\n- `key` names the vault slot that holds the key. You can set `key` once on the profile instead.',
+				'A `text`, `image`, `speech` or `live` profile declares at least one binding. With one binding and no `defaultModel`, that binding is the default. With two or more, set `defaultModel`.',
+				'A `decision` profile declares exactly one binding. A `host` profile declares none.',
 			].join('\n\n'),
 		},
 		{
-			id: 'legal-pairs',
+			id: 'key-slots',
 			kind: 'prose',
-			title: 'Legal pairs',
+			title: 'Give the model a key',
 			text: [
-				'A turn binding pairs a protocol with a provider. The legal pairs are `openAi` with `openrouter`, `openAi` with `local`, `geminiInteractions` with `google`, and `geminiLive` with `google`.',
-				'`text`, `image`, and `speech` may use `openAi` or `geminiInteractions`. `live` uses `geminiLive` only. [Choosing a modality](/docs/modalities).',
-				"A `geminiInteractions` binding must set `persistViaInteractionId`: `true` lets Google rebuild the context from its stored interaction, `false` sends the history the host builds and passes, plus the turn's own steps, on every call.",
-			].join('\n\n'),
-		},
-		{
-			id: 'local-config',
-			kind: 'code',
-			source: {
-				from: 'literal',
-				lang: 'ts',
-				code: [
-					"type: 'text',",
-					'models: {',
-					'\tlocal: {',
-					"\t\tprotocol: 'openAi',",
-					"\t\tprovider: 'local',",
-					"\t\tapiId: 'llama3.2',",
-					"\t\tserver: 'ollama',",
-					'\t},',
-					'},',
-				].join('\n'),
-			},
-		},
-		{
-			id: 'create-the-provider',
-			kind: 'prose',
-			title: 'Create the provider',
-			text: [
-				'`server` is a label for traces. It is not a URL. The host passes the URL when it creates the provider.',
-				'`createProvider` takes the `openAi` + `openrouter` pair and the `openAi` + `local` pair (not image). `geminiInteractions` + `google` needs a Gemini transport. `geminiLive` + `google` is a legal pair; the door is `runSession`, not `createProvider`. [Running a turn](/docs/runner).',
-			].join('\n\n'),
-		},
-		{
-			id: 'model-selection',
-			kind: 'prose',
-			title: 'Model selection',
-			text: [
-				'The turn runs `defaultModel` unless it names another key.',
-				'`allowModelSelect` is off when omitted. It requires two or more keys. When it is on, the run may pass `model`.',
-			].join('\n\n'),
-		},
-		{
-			id: 'multi-model',
-			kind: 'code',
-			source: {
-				from: 'literal',
-				lang: 'ts',
-				code: [
-					"type: 'text',",
-					'models: {',
-					'\tflash: {',
-					"\t\tprotocol: 'openAi',",
-					"\t\tprovider: 'openrouter',",
-					"\t\tapiId: 'openrouter/free',",
-					'\t},',
-					'\tpro: {',
-					"\t\tprotocol: 'openAi',",
-					"\t\tprovider: 'openrouter',",
-					"\t\tapiId: 'example/other',",
-					'\t},',
-					'},',
-					"defaultModel: 'flash',",
-					'allowModelSelect: true,',
-				].join('\n'),
-			},
-		},
-		{
-			id: 'where-it-fails',
-			kind: 'prose',
-			title: 'Where it fails',
-			text: [
-				'The pair, the pick, or the key fails you when: the protocol and provider are not a legal pair; the protocol is illegal for the profile type; you name a `model` that is not a key, or name one when selection is off; `createProvider` is asked for `geminiLive`, or for image + `local`; a live session has no `model` on the request \u2014 it always runs `defaultModel`.',
-				'A Google binding has no vault slot (`models.*.key`, else `profile.key`) at resolve. Theorem does not read keys from the environment.',
+				'A profile never holds a key. It names a **key slot**. You fill the slot in a **vault**, an object that maps slot names to keys. The profile can then live in your repository and the keys stay in your secrets store.',
+				'Pass the vault when you create the provider.',
 			].join('\n\n'),
 		},
 		{
@@ -137,12 +60,90 @@ export const models: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
-				code: [
-					'createProvider(profile, { openAiGateway: { apiKey } })',
-					"createProvider(profile, { local: { baseUrl: 'http://127.0.0.1:11434' } }, 'local')",
-					'createProvider(profile, { gemini: { vault } })',
-				].join('\n'),
+				code: 'const provider = createProvider(profile, {\n	vault: { openrouter: process.env.OPENROUTER_API_KEY },\n});',
 			},
+		},
+		{
+			id: 'key-slot-rules',
+			kind: 'prose',
+			title: 'Key slot rules',
+			text: [
+				'- Every model except a `local` one needs a slot. Set `models.*.key` on the binding or `key` on the profile. Without one, `defineProfile` throws.\n- A slot name has at most 32 characters. It uses letters, digits, `-` and `_`.\n- `fallbackKey` names a second slot. If the provider refuses the first key for quota, Theorem retries once on the second. It must differ from `key`.',
+				'`createProvider(profile, options, modelId)` binds one model. If you leave out `modelId`, it uses `defaultModel`.',
+				'`createProvider` does not open live sessions. For a `live` profile, call `runSession` and pass the `vault` there ([Running a turn](/docs/runner)).',
+			].join('\n\n'),
+		},
+		{
+			id: 'legal-pairs',
+			kind: 'table',
+			title: 'Choose a legal pair',
+			text: 'Protocol | Provider | Profile types\n--- | --- | ---\n`openAi` | `openrouter` | `text`, `image`, `speech`\n`openAi` | `local` | `text`\n`geminiInteractions` | `google` | `text`, `image`, `speech`\n`geminiLive` | `google` | `live`\n`decision` | `typesafe` or `openrouter` | `decision`',
+		},
+		{
+			id: 'gemini-persist',
+			kind: 'prose',
+			title: 'Set persistViaInteractionId on Gemini',
+			text: [
+				'A `geminiInteractions` binding must set `persistViaInteractionId`.',
+				'- `true`: Google builds the context from its stored interaction. This needs `store` left on.\n- `false`: every call sends the history that you pass and the steps of the turn.',
+			].join('\n\n'),
+		},
+		{
+			id: 'local-models',
+			kind: 'prose',
+			title: 'Run a model on your machine',
+			text: [
+				'Use a `local` model to call a server such as Ollama. The binding sets `server`, a label that traces record. It is not a URL. Only a `local` binding takes `server`, and it must not be empty.',
+				'You pass the URL when you create the provider. A `local` model serves `text` profiles only.',
+			].join('\n\n'),
+		},
+		{
+			id: 'local-config',
+			kind: 'code',
+			source: {
+				from: 'literal',
+				lang: 'ts',
+				code: "type: 'text',\nmodels: {\n	local: {\n		protocol: 'openAi',\n		provider: 'local',\n		apiId: 'llama3.2',\n		server: 'ollama',\n	},\n},",
+			},
+		},
+		{
+			id: 'local-provider',
+			kind: 'code',
+			source: {
+				from: 'literal',
+				lang: 'ts',
+				code: "createProvider(profile, { local: { baseUrl: 'http://127.0.0.1:11434' } }, 'local');",
+			},
+		},
+		{
+			id: 'model-selection',
+			kind: 'prose',
+			title: 'Let a request pick the model',
+			text: [
+				'Use model selection when one agent needs a fast model and a deep one. A turn runs `defaultModel` unless the request names another key.',
+				'Set `allowModelSelect: true` on the profile. It needs two or more bindings. The request then passes `model`. Create the provider for that model.',
+			].join('\n\n'),
+		},
+		{
+			id: 'multi-model',
+			kind: 'code',
+			source: {
+				from: 'literal',
+				lang: 'ts',
+				code: "type: 'text',\nmodels: {\n	flash: {\n		protocol: 'openAi',\n		provider: 'openrouter',\n		apiId: 'openrouter/free',\n		key: 'openrouter',\n	},\n	pro: {\n		protocol: 'openAi',\n		provider: 'openrouter',\n		apiId: 'example/other',\n		key: 'openrouter',\n	},\n},\ndefaultModel: 'flash',\nallowModelSelect: true,",
+			},
+		},
+		{
+			id: 'where-it-fails',
+			kind: 'table',
+			title: 'Fix a binding that fails',
+			text: "Where | What you see | Fix\n--- | --- | ---\n`defineProfile`, kind `config` | The protocol is not valid for the provider | Use a pair from the table above\n`defineProfile`, kind `config` | The model needs `models.*.key` or the profile `key` | Set a key slot\n`defineProfile`, kind `config` | `persistViaInteractionId` is required on a `geminiInteractions` binding | Set it to `true` or `false`\n`defineProfile`, kind `config` | The profile must set `defaultModel` when it declares more than one model | Set `defaultModel`\n`defineProfile`, kind `config` | `allowModelSelect` requires at least two models | Add a model, or remove the flag\n`defineProfile`, kind `config` | `fallbackKey` is the same slot as `key` | Name a different slot\n`defineProfile`, kind `config` | The key is not a key slot name | Use up to 32 letters, digits, `-` or `_`\n`defineProfile`, kind `config` | `server` is only valid when the provider is `local` | Remove `server`\n`defineProfile`, kind `config` | A local server serves text profiles only | Use a `text` profile\n`createProvider`, kind `config` | It requires a vault, or `local` options | Pass `vault`, or `local` for a `local` model\n`createProvider`, kind `request` | It does not support `live`, `host` or `decision` | Use `runSession`, `invokeTool` or `runDecision`\nA turn, kind `request` | The profile does not allow model selection, or the model is not a key of `models` | Set `allowModelSelect`, or name a key of `models`\nA turn, `error` event with `errorKind: 'auth'` | The vault has no key in the slot that the model names | Fill the slot. The stream reports this as an event, not a throw",
+		},
+		{
+			id: 'live-model',
+			kind: 'callout',
+			tone: 'note',
+			text: 'A live session takes no `model`. It always runs `defaultModel`.',
 		},
 	],
 };

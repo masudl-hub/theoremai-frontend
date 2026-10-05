@@ -127,6 +127,7 @@ function firstTurnDraft(): PlaygroundDraft {
 				protocol: 'openAi',
 				provider: 'openrouter',
 				apiId: 'openrouter/free',
+				keySlot: 'openrouter',
 			}),
 		],
 		toolSpecs: [harborHoldToolSpec(), ...demoSpecs('haversine_distance', 'convert_units')],
@@ -164,7 +165,7 @@ function withFirstTurnDoor(source: string, profileId: string): string {
 	return `${imports}
 export async function firstTurn(apiKey: string) {
   const provider = createProvider(profile, {
-    openAiGateway: { apiKey },
+    vault: { openrouter: apiKey },
   });
 
   for await (const event of runTurn(
