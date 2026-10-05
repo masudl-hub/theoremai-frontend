@@ -299,8 +299,13 @@ export function ensureTh30ProfileRegistered(): void {
 		},
 		guardrails: {
 			canary: true,
-			sanitizeInput: true,
-			redactSensitive: true,
+			// A reply that carries sensitive data or injection phrasing is refused. Addresses are cited.
+			detect: {
+				ids: { reply: 'block' },
+				financial: { reply: 'block' },
+				credentials: { reply: 'block' },
+				injection: { reply: 'block' },
+			},
 			egress: {
 				onBlock: 'refuse_to_user',
 				enforce: standardEgressEnforce,

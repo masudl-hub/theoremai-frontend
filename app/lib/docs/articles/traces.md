@@ -54,7 +54,7 @@ To capture a single call, for a test or a one-off check, pass a sink to that cal
 
 `scrub` removes sensitive values, injection text and the canary token from stored text. All three are on by default.
 
-Both settings are independent of `guardrails` ([Setting guardrails](/docs/guardrails)). Scrubbing stays on when `guardrails.redactSensitive` is `false`.
+Both settings are independent of `guardrails` ([Setting guardrails](/docs/guardrails)). Scrubbing stays on when `guardrails.detect` is `'ignore'`.
 
 Set `include` to keep less. Set `scrub` to `false` on a key only when you must store that text. Treat the destination like a server log, because records hold conversation content.
 

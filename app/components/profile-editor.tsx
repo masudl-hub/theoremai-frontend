@@ -33,6 +33,7 @@ import {
 	IconAntennaBarsOff,
 	IconArrowDown,
 	IconArrowUp,
+	IconBan,
 	IconBandage,
 	IconBiohazard,
 	IconBolt,
@@ -46,9 +47,11 @@ import {
 	IconDatabase,
 	IconDatabaseOff,
 	IconDeviceDesktop,
+	IconEraser,
 	IconEye,
 	IconEyeOff,
 	IconFeather,
+	IconFlag,
 	IconFlame,
 	IconFlask,
 	IconGauge,
@@ -132,6 +135,19 @@ import {
 	type ToolPermission,
 	VOICE_ACCEPT_MIMES,
 } from '@theoremjs/agents';
+import {
+	BOUNDARIES,
+	BOUNDARY_META,
+	type Boundary,
+	DETECT_ACTION_META,
+	DETECT_ACTIONS,
+	DETECTOR_META,
+	DETECTORS,
+	type DetectAction,
+	type Detector,
+	TOOL_BOUNDARIES,
+	TOOL_KINDS,
+} from '@theoremjs/agents/guardrails';
 import {
 	type AcceptSection,
 	acceptSections,
@@ -2764,24 +2780,9 @@ const TAINT_SEGMENTS: Segment<TaintGate>[] = [
 ];
 
 type EgressChecksDraft = GuardrailsDraft['egressChecks'];
-type SensitiveGroup = keyof GuardrailsDraft['redactSensitive'];
-
-/** Every sensitive-data group, so a group the kernel adds fails the type check until it has a row. */
-const SENSITIVE_LABEL: Record<SensitiveGroup, string> = {
-	ids: 'IDs',
-	financial: 'Financial',
-	network: 'Network',
-	credentials: 'Credentials',
-};
-const SENSITIVE_FLAGS = Object.entries(SENSITIVE_LABEL).map(([key, label]) => ({
-	key: key as SensitiveGroup,
-	label,
-}));
-
-type ReplyCheck = 'boundary' | 'injection' | 'images' | 'links';
+type ReplyCheck = 'boundary' | 'images' | 'links';
 const REPLY_CHECK_FLAGS: Flag<ReplyCheck>[] = [
 	{ key: 'boundary', label: 'Boundary' },
-	{ key: 'injection', label: 'Injection' },
 	{ key: 'images', label: 'Images' },
 	{ key: 'links', label: 'Links' },
 ];
@@ -2789,7 +2790,6 @@ const REPLY_CHECK_FLAGS: Flag<ReplyCheck>[] = [
 function replyChecks(checks: EgressChecksDraft): Record<ReplyCheck, boolean> {
 	return {
 		boundary: checks.boundary,
-		injection: checks.injection,
 		images: checks.images.on,
 		links: checks.links.on,
 	};
@@ -2802,7 +2802,6 @@ function withReplyChecks(
 	return {
 		...checks,
 		boundary: on.boundary,
-		injection: on.injection,
 		images: { ...checks.images, on: on.images },
 		links: { ...checks.links, on: on.links },
 	};
@@ -2820,15 +2819,6 @@ function EgressChecksSections({
 	return (
 		<>
 			<InspectorSection title="Block" path="guardrails.egress.checks">
-				<FlagList
-					label="Sensitive"
-					path="guardrails.egress.checks.sensitive"
-					flags={SENSITIVE_FLAGS}
-					value={checks.sensitive}
-					onChange={(sensitive) => {
-						onChange({ ...checks, sensitive });
-					}}
-				/>
 				<FlagList
 					label="Checks"
 					path="guardrails.egress.checks"
@@ -3062,32 +3052,179 @@ function QuotaSection({ guardrails, set }: GuardrailsSectionProps) {
 	);
 }
 
+type DetectDraft = GuardrailsDraft['detect'];
+
+/** Every action, so one the kernel adds fails the type check until it has an icon. */
+const DETECT_ACTION_ICON: Record<DetectAction, IconType> = {
+	ignore: IconEyeOff,
+	flag: IconFlag,
+	redact: IconEraser,
+	block: IconBan,
+};
+const DETECT_SEGMENTS: Segment<DetectAction>[] = DETECT_ACTIONS.map((action) => ({
+	value: action,
+	label: DETECT_ACTION_META[action].label,
+	icon: DETECT_ACTION_ICON[action],
+}));
+
+type ToolKind = (typeof TOOL_KINDS)[number];
+const TOOL_KIND_LABEL: Record<ToolKind, string> = {
+	function: 'Function',
+	http: 'HTTP',
+	mcp: 'MCP',
+	agent: 'Agent',
+};
+/** Where a tool's text crosses, with the boundary each kind of tool has there. */
+const TOOL_CROSSINGS: { title: string; boundary: (kind: ToolKind) => Boundary }[] = [
+	{ title: 'Tool arguments', boundary: (kind) => `tool_arguments_${kind}` },
+	{ title: 'Tool output', boundary: (kind) => `tool_output_${kind}` },
+	{ title: 'Tool errors', boundary: (kind) => `tool_failure_${kind}` },
+];
+const TOOL_BOUNDARY_SET: ReadonlySet<Boundary> = new Set(TOOL_BOUNDARIES);
+
+/** One boundary of one detector: what happens to a match there. */
+function BoundaryRow({
+	label,
+	detector,
+	boundary,
+	actions,
+	onChange,
+}: {
+	label: string;
+	detector: Detector;
+	boundary: Boundary;
+	actions: Record<Boundary, DetectAction>;
+	onChange: (next: Record<Boundary, DetectAction>) => void;
+}) {
+	return (
+		<SegmentedRow
+			label={label}
+			path={`guardrails.detect.${detector}.${boundary}`}
+			value={actions[boundary]}
+			segments={DETECT_SEGMENTS}
+			onChange={(action) => {
+				onChange({ ...actions, [boundary]: action });
+			}}
+		/>
+	);
+}
+
+/**
+ * One detector: a control that sets every boundary at once, and under it each boundary on its own,
+ * in the kernel's order. The control shows no pick when the boundaries differ.
+ */
+function DetectorRows({
+	detector,
+	boundaries,
+	actions,
+	onChange,
+}: {
+	detector: Detector;
+	boundaries: readonly Boundary[];
+	actions: Record<Boundary, DetectAction>;
+	onChange: (next: Record<Boundary, DetectAction>) => void;
+}) {
+	const taken = [...new Set(boundaries.map((boundary) => actions[boundary]))];
+	const uniform = taken.length === 1;
+	// The boundaries that are not a tool's, which sit either side of the tool ones in the kernel's order.
+	const plain = boundaries.filter((boundary) => !TOOL_BOUNDARY_SET.has(boundary));
+	const firstTool = BOUNDARIES.findIndex((boundary) => TOOL_BOUNDARY_SET.has(boundary));
+	const row = (boundary: Boundary, label: string) => (
+		<BoundaryRow
+			key={boundary}
+			label={label}
+			detector={detector}
+			boundary={boundary}
+			actions={actions}
+			onChange={onChange}
+		/>
+	);
+	const { label } = DETECTOR_META[detector];
+	return (
+		<VStack gap={2}>
+			<SegmentedRow
+				label={label}
+				path={`guardrails.detect.${detector}`}
+				value={uniform ? taken[0] : 'mixed'}
+				segments={DETECT_SEGMENTS}
+				onChange={(action) => {
+					if (action === 'mixed') return;
+					const next = { ...actions };
+					for (const boundary of boundaries) next[boundary] = action;
+					onChange(next);
+				}}
+			/>
+			<CollapsibleGroup type="multiple" density="compact">
+				<Collapsible
+					value={detector}
+					trigger={
+						<HStack gap={2} vAlign="center">
+							<Text type="supporting">{`${label} by boundary`}</Text>
+							{!uniform && <Token label="Mixed" size="sm" />}
+						</HStack>
+					}
+				>
+					<VStack gap={2}>
+						{plain
+							.filter((boundary) => BOUNDARIES.indexOf(boundary) < firstTool)
+							.map((boundary) => row(boundary, BOUNDARY_META[boundary].label))}
+						{TOOL_CROSSINGS.map((crossing) => (
+							<VStack key={crossing.title} gap={2}>
+								<Text type="supporting" weight="semibold">
+									{crossing.title}
+								</Text>
+								{TOOL_KINDS.map((kind) => row(crossing.boundary(kind), TOOL_KIND_LABEL[kind]))}
+							</VStack>
+						))}
+						{plain
+							.filter((boundary) => BOUNDARIES.indexOf(boundary) > firstTool)
+							.map((boundary) => row(boundary, BOUNDARY_META[boundary].label))}
+					</VStack>
+				</Collapsible>
+			</CollapsibleGroup>
+		</VStack>
+	);
+}
+
+/** What happens to each detector's matches, at every boundary the profile has. */
+function DetectSection({
+	detect,
+	boundaries,
+	onChange,
+}: {
+	detect: DetectDraft;
+	boundaries: readonly Boundary[];
+	onChange: (next: DetectDraft) => void;
+}) {
+	return (
+		<InspectorSection title="Detect" path="guardrails.detect">
+			{DETECTORS.map((detector) => (
+				<DetectorRows
+					key={detector}
+					detector={detector}
+					boundaries={boundaries}
+					actions={detect[detector]}
+					onChange={(actions) => {
+						onChange({ ...detect, [detector]: actions });
+					}}
+				/>
+			))}
+		</InspectorSection>
+	);
+}
+
 function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
 	const { guardrails } = draft;
 	const set = patch(setDraft, 'guardrails');
 	return (
 		<>
-			<InspectorSection title="Input" path="guardrails.sanitizeInput">
-				<SwitchRow
-					label="Sanitize"
-					path="guardrails.sanitizeInput"
-					value={guardrails.sanitizeInput}
-					onChange={(sanitizeInput) => {
-						set({ sanitizeInput });
-					}}
-				/>
-			</InspectorSection>
-			<InspectorSection title="Redact" path="guardrails.redactSensitive">
-				<FlagList
-					label="Redact"
-					path="guardrails.redactSensitive"
-					flags={SENSITIVE_FLAGS}
-					value={guardrails.redactSensitive}
-					onChange={(redactSensitive) => {
-						set({ redactSensitive });
-					}}
-				/>
-			</InspectorSection>
+			<DetectSection
+				detect={guardrails.detect}
+				boundaries={draft.identity.profileType === 'host' ? TOOL_BOUNDARIES : BOUNDARIES}
+				onChange={(detect) => {
+					set({ detect });
+				}}
+			/>
 			{draftAllows(draft, 'guardrails.canary') && (
 				<CanarySection draft={draft} guardrails={guardrails} set={set} />
 			)}

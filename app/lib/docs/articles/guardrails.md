@@ -9,14 +9,13 @@ coverAlt: Black rocks where the surf meets the shore
 coverPosition: 100% 0%
 ---
 
-Guardrails keep injected instructions, secrets and leaks out of a turn. Each guardrail is a field under `guardrails` on the profile. Four run when you set nothing: `sanitizeInput`, `redactSensitive`, `canary` and `promptEcho`. The reply check, `egress`, runs only when you set it.
+Guardrails keep injected instructions, secrets and leaks out of a turn. Each guardrail is a field under `guardrails` on the profile. Three run when you set nothing: `detect`, `canary` and `promptEcho`. The reply check, `egress`, runs only when you set it.
 
 ## Know the defaults
 
 Guardrail | Without a setting | What it does
 --- | --- | ---
-`sanitizeInput` | On | Replaces injection phrasing in what goes in
-`redactSensitive` | On, every group | Replaces credentials and personal data in what goes in
+`detect` | Redacts what goes to the model | Finds credentials, personal data and injection phrasing in text, and acts on each match
 `canary` | On | Catches a reply that repeats a secret token from the system prompt
 `promptEcho` | On | Catches a reply that repeats 12 words in a row from the system prompt
 `egress` | No check | Checks each reply before the user sees it
@@ -55,9 +54,9 @@ egress: {
 
 ## What each check stops
 
-`sensitive` stops credentials and personal data in the reply, by group: `ids`, `financial`, `network` and `credentials`. In a reply, `network` is off by default, because replies cite addresses.
+`boundary` stops a reply that repeats the markers Theorem puts around user data.
 
-`boundary` stops a reply that repeats the markers Theorem puts around user data. `injection` stops injection phrasing.
+To stop credentials, personal data or injection phrasing in a reply, set `detect` at the `reply` boundary ([Clean what goes in](#clean-what-goes-in)).
 
 `images` stops an image that loads a URL the model never saw, because the image can carry data to that server. `links` does the same for links. `hosts` lists hostnames that always pass. A URL that a tool returned counts as given unless you set `fromTools` to `false`.
 
@@ -98,6 +97,8 @@ With the canary only, the window holds a tail of 4 or more characters that could
 
 With the bundled `egress.checks`, or an `egressPolicy`, the window holds only the text that could still become a match. A blocked match shows none of its characters.
 
+With `detect` at the `reply` boundary, the same window holds the text that could still become a match. No character of a match shows before its action is taken.
+
 With your own `egress.enforce`, the window holds `egress.holdback` characters. The default is 256, or 96 on a live session, where held transcript also holds its audio.
 
 The verdict at the end of the attempt is final. Text that was held back and then cleared is released, not dropped.
@@ -106,11 +107,13 @@ The verdict at the end of the attempt is final. Text that was held back and then
 
 A thought that trips a guardrail is edited, never stopped. Set `outputs.streaming.streamThoughts` to show thoughts to your user. Each thought then arrives with the canary, the system-prompt echo, the user-data markers, and any image or link that the bundled checks would block, swapped for a placeholder. A `guardrail` event at stage `thought` reports the swap. The rest of the thought streams on.
 
-In a live session, the transcript of the spoken reply goes through the same window. A native-audio model sends its transcript after its audio, with no timing. A guarded profile therefore holds each audio chunk until the transcript of its own message has passed, or until the next transcript when the message has none. A profile is guarded when it has a canary or `egress.enforce`.
+`detect` reads thoughts at the `thought` boundary. `block` there hides the rest of the thought, and the turn goes on.
+
+In a live session, the transcript of the spoken reply goes through the same window. A native-audio model sends its transcript after its audio, with no timing. A guarded profile therefore holds each audio chunk until the transcript of its own message has passed, or until the next transcript when the message has none. A profile is guarded when it has a canary, `egress.enforce` or a detector at `live_reply`.
 
 The held chunk then streams, so its words are read before they are heard. What the user heard before a later hit stays heard. The gate withholds from the hit onward.
 
-A guarded live profile always asks the provider for the output transcript: it forces `live.transcription.output` on. Audio from a reply that has no transcript is dropped, not played. A profile with neither a canary nor `egress.enforce` streams audio as it arrives.
+A guarded live profile always asks the provider for the output transcript: it forces `live.transcription.output` on. Audio from a reply that has no transcript is dropped, not played. A profile with none of the three streams audio as it arrives.
 
 ## Protect the system prompt
 
@@ -122,17 +125,42 @@ A speech profile has no system prompt, so its canary is always off.
 
 ## Clean what goes in
 
-`sanitizeInput` replaces injection phrasing with a marker. `redactSensitive` does the same for credentials and personal data. Both clean the input text, slots, history, the turn’s `system` text and tool results. The turn then continues with the cleaned text.
+`detect` says what Theorem does with a match: you name a detector, a boundary and an action.
 
-`identity.system` is your own text, so Theorem does not clean it.
+A detector is what Theorem finds. There are five: `ids`, `financial`, `network`, `credentials` and `injection`.
 
-`redactSensitive` takes `true`, `false` or an object that switches single groups. On input, every group is on by default, including `network`.
+A boundary is a place where text crosses: `user`, `attachment`, `voice`, `slots`, `history`, `injected`, `system`, `repair` and `live_user` on the way in, `reply`, `reply_structured`, `live_reply` and `thought` on the way out, and three for each type of tool. The tool boundaries are `tool_arguments_<kind>`, `tool_output_<kind>` and `tool_failure_<kind>`, where `<kind>` is `function`, `http`, `mcp` or `agent`.
+
+Action | What happens to a match
+--- | ---
+`ignore` | The text is not read
+`flag` | A `guardrail` event reports the match, and the text crosses unchanged
+`redact` | A placeholder replaces the match, and the rest crosses
+`block` | The text does not cross
+
+If you set nothing, these are the actions:
+
+Boundaries | `ids`, `financial`, `network`, `credentials` | `injection`
+--- | --- | ---
+The way in, `tool_output_<kind>`, `tool_failure_<kind>` | `redact` | `redact`
+`tool_arguments_<kind>` | `flag` | `ignore`
+The way out | `ignore` | `ignore`
+
+`detect` takes one action for everything, or a rule for each detector you name. A rule is one action for every boundary, or an action for each boundary you name. What you leave out keeps its default.
 
 ```ts frame=profile:text
 guardrails: {
-	redactSensitive: { network: false },
+	detect: { network: 'ignore', credentials: { reply: 'block' } },
 },
 ```
+
+`identity.system` is your own text, so Theorem does not read it.
+
+## What block does
+
+On the way in, `block` refuses the turn before the model is called, with an `input` error. At `tool_arguments_<kind>`, the tool is not called and the model is told so. At `tool_output_<kind>`, the model does not read the output and the call fails.
+
+At `reply`, the reply stops before the match. It then goes the way `egress.onBlock` sets. Each match is reported under the rule `detect.<detector>`, and the `guardrail` event names the boundary.
 
 ## Treat remote tool results as data
 
@@ -144,7 +172,7 @@ A tool result can be the way an attack gets in. Theorem treats remote content as
 
 **Directive advisory.** Some content names a tool that the model can call, gives the agent orders, or claims authority that it cannot have, and points at an external address or URL. That content gets an `advisory` attribute, a short notice, and your lexicon line `advisory.guidance` ([Describing statuses](/docs/statuses)). The advisory informs the model. It does not block.
 
-**Argument inspection.** Theorem scans the model’s arguments before the tool runs. A credential-shaped value that is about to leave as a parameter raises a `tool_call.sensitive-argument` event. Theorem reports it and does not rewrite it.
+**Argument inspection.** Theorem scans the model’s arguments before the tool runs. By default, a credential or personal data that is about to leave as a parameter is flagged: a `guardrail` event reports it under `detect.<detector>`, and the arguments go unchanged. Set `detect` at `tool_arguments_<kind>` to redact or block instead.
 
 **Redaction.** The result, its structured data and its failure messages go through the same detection as user input before the model reads them.
 
@@ -174,7 +202,7 @@ A decision profile sets `disclosure.enforce`. `runDecision` calls it before it s
 
 Guardrail | `text`, `image` | `live` | `speech` | `host` | `decision`
 --- | --- | --- | --- | --- | ---
-`sanitizeInput`, `redactSensitive` | Yes | Yes | Yes | Yes | No
+`detect` | Yes | Yes | Yes | Tool boundaries only | No
 `canary`, `promptEcho` | Yes | Yes | Off only | No | No
 `egress`, `taint` | Yes | Yes | No | No | No
 `network` | Yes | Yes | No | Yes | No
@@ -187,4 +215,4 @@ Guardrail | `text`, `image` | `live` | `speech` | `host` | `decision`
 
 ## Try the input checks without a model
 
-Pass a string to `detectText` to see what the input checks do. It returns the cleaned `text` and the `hits`. For `Ignore all previous instructions.`, `text` is `[omitted - injection].` and the hit rule is `sanitize.injection`. The `@theoremjs/agents/guardrails/testing` entry exports Theorem’s attack corpus and fuzz runners.
+Call `detectAt(text, boundary, resolveDetect())` to see what `detect` does at a boundary. Both come from `@theoremjs/agents/guardrails`. It returns the `action` taken, the `text` to let through and the `hits`. For `Ignore all previous instructions.` at `user`, `action` is `redact`, `text` is `[omitted - injection].` and the hit rule is `detect.injection`. The `@theoremjs/agents/guardrails/testing` entry exports Theorem’s attack corpus and fuzz runners.

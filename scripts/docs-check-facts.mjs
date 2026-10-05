@@ -128,13 +128,12 @@ const sameSet = (what, docSet, kernelSet) => {
 // guardrails#know-the-defaults: the "Without a setting" cell against the field's `unset`.
 {
 	const unsetOf = {
-		sanitizeInput: 'guardrails.sanitizeInput',
+		detect: 'guardrails.detect',
 		canary: 'guardrails.canary',
 		egress: 'guardrails.egress',
 		quota: 'guardrails.quota',
 		disclosure: 'guardrails.disclosure',
 		taint: 'guardrails.taint.afterRemoteRead',
-		redactSensitive: 'guardrails.redactSensitive',
 	};
 	for (const row of tableCells('guardrails', 'know-the-defaults')) {
 		const name = row[0].code[0];

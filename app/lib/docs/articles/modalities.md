@@ -186,13 +186,13 @@ The toolbox measures a road leg for a page that has no chat. Use `host` to run r
 
 - Must set: `tools`.
 - Cannot set: `identity`, `models`, `inputs` or `outputs`.
-- Guardrails: only `sanitizeInput`, `redactSensitive` and `network`.
+- Guardrails: only `detect` and `network`.
 
 ```ts frame=statements
 const toolbox = defineProfile({
 	type: 'host',
 	id: 'harbor.tools',
 	tools: { allow: ['haversine_distance'] },
-	guardrails: { sanitizeInput: true, redactSensitive: true },
+	guardrails: { detect: { credentials: 'block' } },
 })
 ```
