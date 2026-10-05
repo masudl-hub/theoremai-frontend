@@ -202,7 +202,7 @@ A decision profile sets `disclosure.enforce`. `runDecision` calls it before it s
 
 Guardrail | `text`, `image` | `live` | `speech` | `host` | `decision`
 --- | --- | --- | --- | --- | ---
-`detect` | Yes | Yes | Yes | Tool boundaries only | No
+`detect` | Yes | Yes | Yes | Yes | No
 `canary`, `promptEcho` | Yes | Yes | Off only | No | No
 `egress`, `taint` | Yes | Yes | No | No | No
 `network` | Yes | Yes | No | Yes | No
@@ -211,7 +211,7 @@ Guardrail | `text`, `image` | `live` | `speech` | `host` | `decision`
 
 ## Know what defineProfile refuses
 
-`defineProfile` refuses any other field with a `config` error. A speech profile has no system prompt, so it takes `canary: false` only.
+`defineProfile` refuses any other field with a `config` error. On a `host` profile, `detect` takes the tool boundaries only. A speech profile has no system prompt, so it takes `canary: false` only.
 
 ## Try the input checks without a model
 

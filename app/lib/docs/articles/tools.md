@@ -69,6 +69,8 @@ Code | Cause | Fix
 `not_gated` | The request’s `path` is not in the tool’s `paths` | Add the path, or use `paths: ['*']`
 `not_loaded` | The tool’s `loadTier` has not loaded it yet | Call the loader tool first, or use tier `T0`
 `tainted_turn` | The turn read a remote result, and `guardrails.taint.afterRemoteRead` refuses this tool’s `access` | Change the profile’s taint setting, or the tool’s `access`
+`arguments_blocked` | `guardrails.detect` blocks a match in the arguments | Change the action at `tool_arguments_<kind>`, or keep that data from the model
+`output_blocked` | `guardrails.detect` blocks a match in the tool’s output | Change the action at `tool_output_<kind>`, or return less from the tool
 `invalid_input` | The arguments do not match `input` | Fix the schema, or the description that the model reads
 `invalid_output` | The result does not match `output` | Fix the handler, or the `output` schema
 `handler_error` | The handler threw an error | Fix the handler. The model reads the error text
