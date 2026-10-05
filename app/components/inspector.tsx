@@ -427,6 +427,8 @@ export interface Segment<T extends string> {
 	isDisabled?: boolean;
 	/** Why it can't be picked, on hover, when `isDisabled`. */
 	disabledMessage?: string;
+	/** The pick the kernel recommends here: its name says so, on hover and to a screen reader. */
+	isRecommended?: boolean;
 }
 
 export type SegmentedRowProps<T extends string> = {
@@ -483,14 +485,12 @@ export function SegmentedRow<T extends string>({
 							(segment.isDisabled && segment.disabledMessage) ||
 							options?.[segment.value] ||
 							segment.description;
+						const name = segment.isRecommended ? `${segment.label} (recommended)` : segment.label;
 						return (
-							<Tooltip
-								key={segment.value}
-								content={description ? `${segment.label}: ${description}` : segment.label}
-							>
+							<Tooltip key={segment.value} content={description ? `${name}: ${description}` : name}>
 								<SegmentedControlItem
 									value={segment.value}
-									label={segment.label}
+									label={name}
 									isLabelHidden
 									isDisabled={segment.isDisabled}
 									icon={<Icon icon={segment.icon} size="sm" />}

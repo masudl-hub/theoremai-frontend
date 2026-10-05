@@ -144,6 +144,9 @@ import {
 	type Boundary,
 	DETECT_ACTION_META,
 	DETECT_ACTIONS,
+	DETECTOR_BOUNDARIES,
+	DETECTOR_GROUP_META,
+	DETECTOR_GROUPS,
 	DETECTOR_META,
 	DETECTORS,
 	type DetectAction,
@@ -3047,24 +3050,22 @@ const DETECT_ACTION_ICON: Record<DetectAction, IconType> = {
 	redact: IconEraser,
 	block: IconBan,
 };
-const DETECT_SEGMENTS: Segment<DetectAction>[] = DETECT_ACTIONS.map((action) => ({
-	value: action,
-	label: DETECT_ACTION_META[action].label,
-	icon: DETECT_ACTION_ICON[action],
-}));
-/**
- * The actions, then "Mixed": the pick a detector shows while its boundaries differ. It is offered
- * only then, already picked, so it can't be chosen.
- */
-const MIXED_SEGMENTS: Segment<DetectAction | 'mixed'>[] = [
-	...DETECT_SEGMENTS,
-	{
-		value: 'mixed',
-		label: 'Mixed',
-		icon: IconAdjustmentsHorizontal,
-		description: sectionNote('detect.mixed'),
-	},
-];
+/** Every action, with the one the kernel recommends marked. */
+function detectSegments(recommended?: DetectAction): Segment<DetectAction>[] {
+	return DETECT_ACTIONS.map((action) => ({
+		value: action,
+		label: DETECT_ACTION_META[action].label,
+		icon: DETECT_ACTION_ICON[action],
+		isRecommended: action === recommended,
+	}));
+}
+/** "Mixed": the pick a detector shows while its boundaries differ. Offered only then, already picked. */
+const MIXED_SEGMENT: Segment<'mixed'> = {
+	value: 'mixed',
+	label: 'Mixed',
+	icon: IconAdjustmentsHorizontal,
+	description: sectionNote('detect.mixed'),
+};
 
 type ToolKind = (typeof TOOL_KINDS)[number];
 const TOOL_KIND_LABEL: Record<ToolKind, string> = {
@@ -3100,7 +3101,7 @@ function BoundaryRow({
 			label={label}
 			path={`guardrails.detect.${detector}.at.${boundary}`}
 			value={actions[boundary]}
-			segments={DETECT_SEGMENTS}
+			segments={detectSegments(DETECTOR_META[detector].defaults[boundary])}
 			onChange={(action) => {
 				onChange({ ...actions, [boundary]: action });
 			}}
@@ -3124,8 +3125,13 @@ function DetectorRows({
 	onChange: (next: Record<Boundary, DetectAction>) => void;
 }) {
 	const [isOpen, setIsOpen] = useState(false);
+	const has = new Set(boundaries);
 	const taken = [...new Set(boundaries.map((boundary) => actions[boundary]))];
 	const uniform = taken.length === 1;
+	// One action is recommended for the whole detector only when every boundary recommends the same.
+	const { defaults } = DETECTOR_META[detector];
+	const recommended = [...new Set(boundaries.map((boundary) => defaults[boundary]))];
+	const segments = detectSegments(recommended.length === 1 ? recommended[0] : undefined);
 	// The boundaries that are not a tool's, which sit either side of the tool ones in the kernel's order.
 	const plain = boundaries.filter((boundary) => !TOOL_BOUNDARY_SET.has(boundary));
 	const firstTool = BOUNDARIES.findIndex((boundary) => TOOL_BOUNDARY_SET.has(boundary));
@@ -3147,7 +3153,7 @@ function DetectorRows({
 				label={label}
 				path={`guardrails.detect.${detector}.action`}
 				value={uniform ? taken[0] : 'mixed'}
-				segments={uniform ? DETECT_SEGMENTS : MIXED_SEGMENTS}
+				segments={uniform ? segments : [...segments, MIXED_SEGMENT]}
 				onChange={(action) => {
 					if (action === 'mixed') return;
 					const next = { ...actions };
@@ -3174,12 +3180,16 @@ function DetectorRows({
 					{plain
 						.filter((boundary) => BOUNDARIES.indexOf(boundary) < firstTool)
 						.map((boundary) => row(boundary, BOUNDARY_META[boundary].label))}
-					{TOOL_CROSSINGS.map((crossing) => (
+					{TOOL_CROSSINGS.filter((crossing) =>
+						TOOL_KINDS.some((kind) => has.has(crossing.boundary(kind))),
+					).map((crossing) => (
 						<VStack key={crossing.title} gap={2}>
 							<Text type="supporting" weight="semibold">
 								{crossing.title}
 							</Text>
-							{TOOL_KINDS.map((kind) => row(crossing.boundary(kind), TOOL_KIND_LABEL[kind]))}
+							{TOOL_KINDS.filter((kind) => has.has(crossing.boundary(kind))).map((kind) =>
+								row(crossing.boundary(kind), TOOL_KIND_LABEL[kind]),
+							)}
 						</VStack>
 					))}
 					{plain
@@ -3191,7 +3201,10 @@ function DetectorRows({
 	);
 }
 
-/** What happens to each detector's matches, at every boundary the profile has. */
+/**
+ * What happens to each detector's matches, at every boundary the profile has and the detector
+ * applies at. Detectors sit under their group, and one that applies nowhere here is left out.
+ */
 function DetectSection({
 	detect,
 	boundaries,
@@ -3201,18 +3214,37 @@ function DetectSection({
 	boundaries: readonly Boundary[];
 	onChange: (next: DetectDraft) => void;
 }) {
+	const has = new Set(boundaries);
+	const groups = DETECTOR_GROUPS.map((group) => ({
+		group,
+		rows: DETECTORS.filter((detector) => DETECTOR_META[detector].group === group)
+			.map((detector) => ({
+				detector,
+				applies: DETECTOR_BOUNDARIES[detector].filter((boundary) => has.has(boundary)),
+			}))
+			.filter(({ applies }) => applies.length > 0),
+	})).filter(({ rows }) => rows.length > 0);
 	return (
 		<InspectorSection title="Detect" path="guardrails.detect">
-			{DETECTORS.map((detector) => (
-				<DetectorRows
-					key={detector}
-					detector={detector}
-					boundaries={boundaries}
-					actions={detect[detector]}
-					onChange={(actions) => {
-						onChange({ ...detect, [detector]: actions });
-					}}
-				/>
+			{groups.map(({ group, rows }) => (
+				<VStack key={group} gap={2}>
+					<Tooltip content={DETECTOR_GROUP_META[group].doc}>
+						<Text type="supporting" weight="semibold">
+							{DETECTOR_GROUP_META[group].label}
+						</Text>
+					</Tooltip>
+					{rows.map(({ detector, applies }) => (
+						<DetectorRows
+							key={detector}
+							detector={detector}
+							boundaries={applies}
+							actions={detect[detector]}
+							onChange={(actions) => {
+								onChange({ ...detect, [detector]: actions });
+							}}
+						/>
+					))}
+				</VStack>
 			))}
 		</InspectorSection>
 	);
