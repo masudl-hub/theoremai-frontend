@@ -1,6 +1,7 @@
 import { Badge } from '@astryxdesign/core/Badge';
 import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
+import { Card } from '@astryxdesign/core/Card';
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { HStack } from '@astryxdesign/core/HStack';
@@ -82,7 +83,7 @@ function Decisions({ result }: { result: GuardrailProbeResult }) {
 		<VStack gap={1}>
 			{decisions.map((event) => (
 				<Text key={`${event.stage}:${event.hits.map((hit) => hit.rule).join()}`} type="supporting">
-					{`${event.stage} · ${event.action} · ${event.hits.map((hit) => hit.label ?? hit.rule).join(', ')}`}
+					{`${event.stage} · ${event.action} · ${[...new Set(event.hits.map((hit) => hit.label ?? hit.rule))].join(', ')}`}
 				</Text>
 			))}
 		</VStack>
@@ -92,7 +93,7 @@ function Decisions({ result }: { result: GuardrailProbeResult }) {
 function SentProbe({ sent }: { sent: Sent }) {
 	const { result, error } = sent;
 	return (
-		<Section variant="raised" padding={3}>
+		<Card variant="muted" padding={3}>
 			<VStack gap={2}>
 				<HStack gap={2} vAlign="center">
 					{result && verdict(result)}
@@ -119,7 +120,7 @@ function SentProbe({ sent }: { sent: Sent }) {
 					/>
 				)}
 			</VStack>
-		</Section>
+		</Card>
 	);
 }
 
