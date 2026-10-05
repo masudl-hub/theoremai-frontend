@@ -14,6 +14,8 @@ export type SiteEnv = {
 	'theoremai.typesafe_api_key'?: string;
 	/** Each day's playground allowances (every request, decisions, host tool calls), per visitor address and for the site (`wrangler.jsonc` `durable_objects`). */
 	DECIDE_ALLOWANCE?: DurableObjectNamespace<PlaygroundDecideAllowance>;
+	/** Guardrail probes no guardrail acted on (`wrangler.jsonc` `d1_databases`). */
+	PROBE_LOG?: D1Database;
 };
 
 /** Per-request Cloudflare bindings, set by `workers/app.ts` and read in loaders/actions. */

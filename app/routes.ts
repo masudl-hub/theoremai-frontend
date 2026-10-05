@@ -18,6 +18,7 @@ export default [
 	route('api/playground/invoke', 'routes/api.playground.invoke.ts'),
 	route('api/playground/call', 'routes/api.playground.call.ts'),
 	route('api/playground/decide', 'routes/api.playground.decide.ts'),
+	route('api/playground/probe', 'routes/api.playground.probe.ts'),
 	route('api/playground/test-connection', 'routes/api.playground.test-connection.ts'),
 	route('api/playground/test-key', 'routes/api.playground.test-key.ts'),
 ] satisfies RouteConfig;

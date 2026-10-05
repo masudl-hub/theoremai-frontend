@@ -17,6 +17,16 @@
 			{ "name": "DECIDE_ALLOWANCE", "class_name": "PlaygroundDecideAllowance" }
 		]
 	},
+	// Guardrail probes no guardrail acted on, kept for review. With no
+	// database_id, the first deploy creates the database; its table is
+	// `wrangler d1 migrations apply theorem-probe-log` (add --local for dev).
+	"d1_databases": [
+		{
+			"binding": "PROBE_LOG",
+			"database_name": "theorem-probe-log",
+			"migrations_dir": "migrations"
+		}
+	],
 	"migrations": [
 		{ "tag": "v1", "new_sqlite_classes": ["PlaygroundSteerInbox"] },
 		{ "tag": "v2", "new_sqlite_classes": ["PlaygroundDecideAllowance"] }

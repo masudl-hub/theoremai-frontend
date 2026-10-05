@@ -38,6 +38,7 @@ import {
 	IconPlaylistX,
 	IconPlus,
 	IconSearch,
+	IconShieldSearch,
 	IconSparkles,
 	IconTimeline,
 	IconTool,
@@ -105,6 +106,7 @@ import {
 	useState,
 	useSyncExternalStore,
 } from 'react';
+import { GuardrailTester } from '../components/guardrail-tester';
 import {
 	ConnectionMode,
 	ISSUE_ROW_ATTRIBUTE,
@@ -1807,6 +1809,7 @@ function PreviewHeader({
 	run,
 	connection,
 	trace,
+	testing,
 	copy,
 	setSheet,
 }: {
@@ -1817,6 +1820,7 @@ function PreviewHeader({
 	run: ConversationRun;
 	connection: PlaygroundConnectionState;
 	trace: { open: boolean; toggle: () => void };
+	testing: { open: boolean; toggle: () => void };
 	copy: (text: string, what: string) => void;
 	setSheet: (sheet: Sheet) => void;
 }) {
@@ -1834,8 +1838,19 @@ function PreviewHeader({
 				<StackItem size="fill">
 					<ChatPicker agents={chatAgents} chatWith={chatWith} onChange={store.chatWith} />
 				</StackItem>
-				{compile.payload && run.isUsed && <ClearHistoryButton chatWith={chatWith} run={run} />}
-				{compile.traced ? (
+				{compile.payload && run.isUsed && !testing.open && (
+					<ClearHistoryButton chatWith={chatWith} run={run} />
+				)}
+				{compile.payload && (
+					<Button
+						label={testing.open ? 'Back to chat' : 'Test guardrails'}
+						isIconOnly={phone}
+						icon={<Icon icon={IconShieldSearch} size="sm" />}
+						aria-pressed={testing.open}
+						onClick={testing.toggle}
+					/>
+				)}
+				{compile.traced && !testing.open ? (
 					<Button
 						label={trace.open ? 'Hide trace' : 'View trace'}
 						isIconOnly={phone}
@@ -1858,7 +1873,10 @@ function PreviewHeader({
 	);
 }
 
-/** The runner for the compiled agent, its conversation saved as it goes; while none compiles, why. */
+/**
+ * The runner for the compiled agent, its conversation saved as it goes, or the guardrail tester
+ * over it; while none compiles, why.
+ */
 function PreviewBody({
 	compile,
 	run,
@@ -1866,6 +1884,7 @@ function PreviewBody({
 	chatRef,
 	chatWith,
 	traceOpen,
+	testing,
 }: {
 	compile: WorkspaceCompile;
 	run: ConversationRun;
@@ -1873,8 +1892,10 @@ function PreviewBody({
 	chatRef: RefObject<TheoremChatHandle | null>;
 	chatWith: string;
 	traceOpen: boolean;
+	testing: boolean;
 }) {
 	const { payload, traced } = compile;
+	if (payload && testing) return <GuardrailTester payload={payload} />;
 	return payload ? (
 		<PlaygroundRunner
 			key={run.runKey}
@@ -1924,6 +1945,7 @@ const PreviewPane = memo(function PreviewPane({
 	setSheet: (sheet: Sheet) => void;
 }) {
 	const [traceOpen, setTraceOpen] = useState(false);
+	const [testing, setTesting] = useState(false);
 	return (
 		<LayoutContent className="playground-preview" isScrollable={false} padding={0}>
 			<VStack height="100%">
@@ -1940,6 +1962,12 @@ const PreviewPane = memo(function PreviewPane({
 							setTraceOpen((open) => !open);
 						},
 					}}
+					testing={{
+						open: testing,
+						toggle: () => {
+							setTesting((open) => !open);
+						},
+					}}
 					copy={copy}
 					setSheet={setSheet}
 				/>
@@ -1951,6 +1979,7 @@ const PreviewPane = memo(function PreviewPane({
 						chatRef={chatRef}
 						chatWith={chatWith}
 						traceOpen={traceOpen}
+						testing={testing}
 					/>
 				</StackItem>
 			</VStack>
