@@ -9,11 +9,33 @@ coverAlt: Sienna dunes
 coverPosition: 0% 0%
 ---
 
-Add an `observability` block to the profile and point `writeTo` at a destination. Each recorded run then becomes one `TraceRecord`: the timed steps of the run and the text they used.
+Record what each run did. A trace shows the steps of a run, how long each step took and the text that it used.
 
+## The idea
+
+When an agent gives a wrong answer, you must see what happened: which model ran, which tool it called, and which guardrail made a decision. A **trace** is that record.
+
+Theorem makes one `TraceRecord` for each recorded run. The `observability` block of the profile says where the record goes and what it keeps.
+
+```text
+┌──────────┐  one TraceRecord   ┌───────────────────┐   write    ┌───────────────┐
+│ a run    │ ─────────────────► │ observability     │ ─────────► │ destination   │
+└──────────┘  timed steps and   │ sampleRate        │            │ JSONL files,  │
+              their text        │ include · scrub   │            │ or your sink  │
+                                └───────────────────┘            └───────────────┘
+```
+
+```note
 Recording is off by default. If the profile has no `observability` block, or `writeTo` is `false` or missing, Theorem stores nothing.
+```
 
-## Register a destination
+## Record the runs of the Harbor desk
+
+These four steps write each run of the Harbor front desk to a file, then send the records to a trace viewer.
+
+### 1. Register a destination
+
+A **destination** is a place that records go to, registered under an id. `jsonlSink(dir)` is a destination that writes JSONL files.
 
 ```ts
 import { registerTraceDestination } from '@theoremjs/agents';
@@ -22,7 +44,9 @@ import { jsonlSink } from '@theoremjs/agents/observability/jsonl';
 registerTraceDestination('jsonl.local', jsonlSink('/var/log/theorem'));
 ```
 
-## Point the profile at it
+The directory must be an absolute path outside the project folder. If not, `jsonlSink` throws a `config` error.
+
+### 2. Point the profile at the destination
 
 ```ts frame=profile:text
 type: 'text',
@@ -32,39 +56,54 @@ observability: {
 },
 ```
 
-## Choose where records go
+- `writeTo` is `false`, the id of a registered destination, or a `TraceSink`.
+- `sampleRate` is a number from 0 to 1. The default is 1. Theorem decides by trace id, so it keeps or drops one trace as a whole.
 
-`writeTo` is `false`, the id of a registered destination, or a `TraceSink`. A `TraceSink` has a `write(record, context)` method and an optional `onError`.
+### 3. Choose what a record keeps
 
-`jsonlSink(dir)` writes JSONL files, at least one for each day. The directory must be an absolute path outside the project folder, or `jsonlSink` throws a `config` error. It deletes day files older than `retainForDays` (14 by default). It starts a new file at `rotateAfterMiB` (32 by default).
+A record holds conversation content. Two settings control how much.
 
-`sampleRate` is a number from 0 to 1. The default is 1. Theorem decides by trace id, so one trace is kept or dropped as a whole.
+- `include` selects the optional content of a record. With an `observability` block, the upstream log, the usage and the guardrail decisions are on. The outbound wire bodies, the raw grounding evidence and the matched text of a guardrail hit are off.
+- `scrub` removes sensitive values, injection text and the canary token from stored text. All three are on by default.
 
-A failed write never fails the run. Theorem passes the error to `onWriteError` or to the sink’s `onError`.
+Both settings are independent of `guardrails` ([Setting guardrails](/docs/guardrails)). A profile that turns a guardrail off still scrubs its records.
 
-## Record one call to a sink
+Set `include` to keep less. Set a key of `scrub` to `false` only if you must store that text.
 
-To capture a single call, for a test or a one-off check, pass a sink to that call. It replaces `writeTo` for the call, always records and ignores `sampleRate`.
+```warning
+Treat the destination like a server log. Records hold conversation content.
+```
 
-`runTurn`, `runSession`, `compactHistory` and `invokeTool` take the sink as the last argument ([Running a turn](/docs/runner)). `runDecision` takes it as `options.sink`.
-
-## Choose what a record keeps
-
-`include` picks the optional content of a record. With an `observability` block, upstream log, usage and guardrail decisions are on. Outbound wire bodies, raw grounding evidence and the matched text of a guardrail hit are off.
-
-`scrub` removes sensitive values, injection text and the canary token from stored text. All three are on by default.
-
-Both settings are independent of `guardrails` ([Setting guardrails](/docs/guardrails)). Scrubbing stays on when `guardrails.detect` is `'ignore'`.
-
-Set `include` to keep less. Set `scrub` to `false` on a key only when you must store that text. Treat the destination like a server log, because records hold conversation content.
-
-## Export records
+### 4. Export the records
 
 `toOtlpJson(records)` turns records into an OTLP/JSON request, the body of `POST /v1/traces`. You send the request. Theorem runs no exporter.
 
 To add OpenInference attributes for a viewer such as Phoenix, call `toOtlpJson(withOpenInference(records))`. Import `withOpenInference` from `@theoremjs/agents/observability/openinference`.
 
+## Write to your own sink
+
+Use a `TraceSink` when records must go to your own store. A `TraceSink` has a `write(record, context)` method and an optional `onError`. Register it as a destination, or pass it as `writeTo`.
+
+A failed write never fails the run. Theorem passes the error to `onWriteError` or to the `onError` of the sink.
+
+## Know how the JSONL files rotate
+
+`jsonlSink` keeps the files small and removes old ones.
+
+- It writes one file or more for each day.
+- It starts a new file at `rotateAfterMiB` (32 by default).
+- It deletes day files older than `retainForDays` (14 by default).
+
+## Record one call to a sink
+
+To capture a single call, for a test or a single check, pass a sink to that call. The sink replaces `writeTo` for the call. The call always records, and it ignores `sampleRate`.
+
+- `runTurn`, `runSession`, `compactHistory` and `invokeTool` take the sink as the last argument ([Running a turn](/docs/runner)).
+- `runDecision` takes it as `options.sink`.
+
 ## Fix a missing record
+
+Each row is one sign, its cause and its fix.
 
 What you see | Cause | Fix
 --- | --- | ---
