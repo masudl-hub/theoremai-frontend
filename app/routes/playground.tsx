@@ -2016,16 +2016,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	const { store, draft } = state;
 	const tree = useWorkspaceTree(state, view, selected, setSheet);
 	const chatAgents = useChatAgents(state.workspace.agents);
-	const { update } = state;
-	const { open } = view;
-	/** Adds an agent and opens it. */
-	const addAgentFrom = useCallback(
-		(next: PlaygroundDraft) => {
-			update((current) => addAgent(current, next));
-			open(store.getWorkspace().selected);
-		},
-		[store, update, open],
-	);
+	const addAgentFrom = useAddAgent(store, state.update, view.open);
 
 	return (
 		<Layout
@@ -2069,6 +2060,21 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 				/>
 			}
 		/>
+	);
+}
+
+/** Adds an agent and opens it. */
+function useAddAgent(
+	store: PlaygroundStore,
+	update: PlaygroundWorkspaceState['update'],
+	open: (id: string) => void,
+) {
+	return useCallback(
+		(next: PlaygroundDraft) => {
+			update((current) => addAgent(current, next));
+			open(store.getWorkspace().selected);
+		},
+		[store, update, open],
 	);
 }
 
