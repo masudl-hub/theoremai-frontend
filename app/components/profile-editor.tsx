@@ -249,6 +249,9 @@ function patch<K extends SettingsSection>(setDraft: SetDraft, key: K) {
 	};
 }
 
+/** The setter `patch` returns for one section, as a section's component takes it. */
+type SetSection<K extends SettingsSection> = (change: Partial<PlaygroundDraft[K]>) => void;
+
 /** Each profile type's icon: the Type control's segments and the tree's Identity row. */
 export const PROFILE_TYPE_ICON = {
 	text: IconLetterT,
@@ -393,6 +396,42 @@ function withNewSections(before: PlaygroundDraft, after: PlaygroundDraft): Playg
 		.reduce(includeFacet, after);
 }
 
+function SystemPromptSection({
+	identity,
+	set,
+}: {
+	identity: PlaygroundDraft['identity'];
+	set: SetSection<'identity'>;
+}) {
+	return (
+		<InspectorSection title="System prompt" note={sectionNote('system')}>
+			<TextArea
+				label="System prompt"
+				isLabelHidden
+				size="sm"
+				rows={8}
+				value={identity.system}
+				placeholder={fieldMeta('identity.system')?.unset}
+				onChange={(system) => {
+					set({ system });
+				}}
+			/>
+			<TextAreaRow
+				label="By role"
+				path="identity.systemByRole"
+				field="systemByRoleJson"
+				value={identity.systemByRoleJson}
+				rows={4}
+				hasSpellCheck={false}
+				placeholder={SYSTEM_BY_ROLE_PLACEHOLDER}
+				onChange={(systemByRoleJson) => {
+					set({ systemByRoleJson });
+				}}
+			/>
+		</InspectorSection>
+	);
+}
+
 function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
 	const { identity } = draft;
 	const set = patch(setDraft, 'identity');
@@ -436,34 +475,70 @@ function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 			</InspectorSection>
 			{identity.profileType !== 'speech' &&
 				identity.profileType !== 'decision' &&
-				identity.profileType !== 'host' && (
-					<InspectorSection title="System prompt" note={sectionNote('system')}>
-						<TextArea
-							label="System prompt"
-							isLabelHidden
-							size="sm"
-							rows={8}
-							value={identity.system}
-							placeholder={fieldMeta('identity.system')?.unset}
-							onChange={(system) => {
-								set({ system });
-							}}
-						/>
-						<TextAreaRow
-							label="By role"
-							path="identity.systemByRole"
-							field="systemByRoleJson"
-							value={identity.systemByRoleJson}
-							rows={4}
-							hasSpellCheck={false}
-							placeholder={SYSTEM_BY_ROLE_PLACEHOLDER}
-							onChange={(systemByRoleJson) => {
-								set({ systemByRoleJson });
-							}}
-						/>
-					</InspectorSection>
-				)}
+				identity.profileType !== 'host' && <SystemPromptSection identity={identity} set={set} />}
 		</>
+	);
+}
+
+/** The policy every model of the profile shares: default, switching, steps and key slots. */
+function ModelPolicySection({ draft, set }: { draft: PlaygroundDraft; set: SetSection<'models'> }) {
+	const { models } = draft;
+	return (
+		<InspectorSection title="Policy">
+			<ChoiceRow
+				label="Default"
+				path="defaultModel"
+				field="defaultModel"
+				value={models.defaultModel}
+				isRequired={defaultModelRequired(draft)}
+				options={draft.modelBindings.map((binding) => binding.modelId)}
+				onChange={(defaultModel) => {
+					set({ defaultModel });
+				}}
+			/>
+			<SwitchRow
+				label="Switching"
+				path="allowModelSelect"
+				field="allowModelSelect"
+				value={models.allowModelSelect}
+				isDisabled={draft.modelBindings.length < 2}
+				disabledMessage="Add a second model to let people switch."
+				onChange={(allowModelSelect) => {
+					set({ allowModelSelect });
+				}}
+			/>
+			<NumberRow
+				label="Max steps"
+				path="maxSteps"
+				units="steps"
+				field="maxSteps"
+				value={models.maxSteps}
+				min={1}
+				isIntegerOnly
+				onChange={(maxSteps) => {
+					set({ maxSteps });
+				}}
+			/>
+			<SlotRow
+				label="Key slot"
+				path="key"
+				field="key"
+				value={models.key}
+				isRequired={keySlotRequired(draft)}
+				onChange={(key) => {
+					set({ key });
+				}}
+			/>
+			<SlotRow
+				label="Fallback slot"
+				path="fallbackKey"
+				field="fallbackKey"
+				value={models.fallbackKey ?? ''}
+				onChange={(fallbackKey) => {
+					set({ fallbackKey });
+				}}
+			/>
+		</InspectorSection>
 	);
 }
 
@@ -476,7 +551,6 @@ function ModelsEditor({
 	setDraft: SetDraft;
 	onSelect: (id: string) => void;
 }) {
-	const { models } = draft;
 	const set = patch(setDraft, 'models');
 	const addModel = () => {
 		const binding = newModelBinding(draft);
@@ -502,95 +576,51 @@ function ModelsEditor({
 					onClick={addModel}
 				/>
 			</InspectorSection>
-			{draft.identity.profileType !== 'decision' && (
-				<InspectorSection title="Policy">
-					<ChoiceRow
-						label="Default"
-						path="defaultModel"
-						field="defaultModel"
-						value={models.defaultModel}
-						isRequired={defaultModelRequired(draft)}
-						options={draft.modelBindings.map((binding) => binding.modelId)}
-						onChange={(defaultModel) => {
-							set({ defaultModel });
-						}}
-					/>
-					<SwitchRow
-						label="Switching"
-						path="allowModelSelect"
-						field="allowModelSelect"
-						value={models.allowModelSelect}
-						isDisabled={draft.modelBindings.length < 2}
-						disabledMessage="Add a second model to let people switch."
-						onChange={(allowModelSelect) => {
-							set({ allowModelSelect });
-						}}
-					/>
-					<NumberRow
-						label="Max steps"
-						path="maxSteps"
-						units="steps"
-						field="maxSteps"
-						value={models.maxSteps}
-						min={1}
-						isIntegerOnly
-						onChange={(maxSteps) => {
-							set({ maxSteps });
-						}}
-					/>
-					<SlotRow
-						label="Key slot"
-						path="key"
-						field="key"
-						value={models.key}
-						isRequired={keySlotRequired(draft)}
-						onChange={(key) => {
-							set({ key });
-						}}
-					/>
-					<SlotRow
-						label="Fallback slot"
-						path="fallbackKey"
-						field="fallbackKey"
-						value={models.fallbackKey ?? ''}
-						onChange={(fallbackKey) => {
-							set({ fallbackKey });
-						}}
-					/>
-				</InspectorSection>
-			)}
+			{draft.identity.profileType !== 'decision' && <ModelPolicySection draft={draft} set={set} />}
 		</>
 	);
 }
 
-/** Decision model binding, using the same protocol/provider/API id symbols as other models. */
-function DecisionModelEditor({
-	draft,
-	setDraft,
-	bindingKey,
-}: {
-	draft: PlaygroundDraft;
-	setDraft: SetDraft;
-	bindingKey: string;
-}) {
+/** A decision binding's wire model: picked from the demo's list, typed outside the demo. */
+function DecisionApiModelRow({ binding, set }: { binding: ModelBindingDraft; set: SetBinding }) {
 	const mode = useContext(ConnectionMode);
-	const binding = draft.modelBindings.find((candidate) => candidate.key === bindingKey);
-	if (!binding) return null;
-	const set = (change: Partial<ModelBindingDraft>) => {
-		setDraft((current) => updateModelBinding(current, bindingKey, change));
-	};
-	return (
-		<InspectorSection title="Decision model" note={sectionNote('decisionModel')}>
+	if (mode !== 'demo')
+		return (
 			<TextRow
-				label="Id"
-				path="models.*"
-				field="modelId"
-				value={binding.modelId}
+				label="API model"
+				path="models.*.apiId"
+				field="apiId"
+				value={binding.apiId}
 				isRequired
-				onChange={(modelId) => {
-					set({ modelId });
+				onChange={(apiId) => {
+					set({ apiId });
 				}}
 			/>
+		);
+	return (
+		<ChoiceRow
+			label="API model"
+			path="models.*.apiId"
+			field="apiId"
+			value={binding.apiId}
+			options={(binding.provider === 'typesafe'
+				? [{ id: JEV_PLAYGROUND_API_ID, label: 'Jev' }]
+				: OPENROUTER_DECISION_MODELS
+			).map((model) => ({
+				value: model.id,
+				label: model.label,
+				description: model.id,
+			}))}
+			onChange={(apiId) => {
+				set({ apiId });
+			}}
+		/>
+	);
+}
+
+function DecisionTransportRows({ binding, set }: { binding: ModelBindingDraft; set: SetBinding }) {
+	return (
+		<>
 			<SegmentedRow<Protocol>
 				label="Protocol"
 				path="models.*.protocol"
@@ -615,36 +645,39 @@ function DecisionModelEditor({
 					});
 				}}
 			/>
-			{mode === 'demo' ? (
-				<ChoiceRow
-					label="API model"
-					path="models.*.apiId"
-					field="apiId"
-					value={binding.apiId}
-					options={(binding.provider === 'typesafe'
-						? [{ id: JEV_PLAYGROUND_API_ID, label: 'Jev' }]
-						: OPENROUTER_DECISION_MODELS
-					).map((model) => ({
-						value: model.id,
-						label: model.label,
-						description: model.id,
-					}))}
-					onChange={(apiId) => {
-						set({ apiId });
-					}}
-				/>
-			) : (
-				<TextRow
-					label="API model"
-					path="models.*.apiId"
-					field="apiId"
-					value={binding.apiId}
-					isRequired
-					onChange={(apiId) => {
-						set({ apiId });
-					}}
-				/>
-			)}
+			<DecisionApiModelRow binding={binding} set={set} />
+		</>
+	);
+}
+
+/** Decision model binding, using the same protocol/provider/API id symbols as other models. */
+function DecisionModelEditor({
+	draft,
+	setDraft,
+	bindingKey,
+}: {
+	draft: PlaygroundDraft;
+	setDraft: SetDraft;
+	bindingKey: string;
+}) {
+	const binding = draft.modelBindings.find((candidate) => candidate.key === bindingKey);
+	if (!binding) return null;
+	const set = (change: Partial<ModelBindingDraft>) => {
+		setDraft((current) => updateModelBinding(current, bindingKey, change));
+	};
+	return (
+		<InspectorSection title="Decision model" note={sectionNote('decisionModel')}>
+			<TextRow
+				label="Id"
+				path="models.*"
+				field="modelId"
+				value={binding.modelId}
+				isRequired
+				onChange={(modelId) => {
+					set({ modelId });
+				}}
+			/>
+			<DecisionTransportRows binding={binding} set={set} />
 			<SlotRow
 				label="Key slot"
 				path="key"
@@ -1334,104 +1367,122 @@ function ModelBindingEditor({
 	);
 }
 
+/** The inputs slice of the draft and its setter, for each inputs section. */
+interface InputsSectionProps {
+	inputs: PlaygroundDraft['inputs'];
+	set: SetSection<'inputs'>;
+}
+
+function InputAcceptsSection({ inputs, set, image }: InputsSectionProps & { image: boolean }) {
+	const attachmentPicker = image ? IMAGE_ATTACHMENT_PICKER : ATTACHMENT_PICKER;
+	return (
+		<InspectorSection title="Accepts" path="inputs">
+			<SwitchRow
+				label="Text"
+				path="inputs.text"
+				value={inputs.text}
+				onChange={(text) => {
+					set({ text });
+				}}
+			/>
+			<ListRow
+				label="Attachments"
+				path="inputs.attachments.accept"
+				value={expandAccept(inputs.attachmentsAccept, attachmentPicker.sections)}
+				options={attachmentPicker.options}
+				onChange={(selected) => {
+					set({
+						attachmentsAccept: nextAccept(
+							inputs.attachmentsAccept,
+							selected,
+							attachmentPicker.sections,
+						),
+					});
+				}}
+			/>
+			{!image && (
+				<ListRow
+					label="Voice"
+					path="inputs.voice.accept"
+					value={expandAccept(inputs.voiceAccept, VOICE_PICKER.sections)}
+					options={VOICE_PICKER.options}
+					onChange={(selected) => {
+						set({ voiceAccept: nextAccept(inputs.voiceAccept, selected, VOICE_PICKER.sections) });
+					}}
+				/>
+			)}
+		</InspectorSection>
+	);
+}
+
+function InputLimitsSection({ inputs, set }: InputsSectionProps) {
+	const limitsRequired = inputLimitsRequired(inputs);
+	return (
+		<InspectorSection title="Limits">
+			<NumberRow
+				label="Max files"
+				path="inputs.maxFiles"
+				units="files"
+				field="maxFiles"
+				isRequired={limitsRequired}
+				value={inputs.maxFiles}
+				min={0}
+				isIntegerOnly
+				onChange={(maxFiles) => {
+					set({ maxFiles });
+				}}
+			/>
+			<NumberRow
+				label="Max bytes"
+				path="inputs.maxBytes"
+				units="bytes"
+				field="maxBytes"
+				isRequired={limitsRequired}
+				value={inputs.maxBytes}
+				min={0}
+				isIntegerOnly
+				onChange={(maxBytes) => {
+					set({ maxBytes });
+				}}
+			/>
+			<NumberRow
+				label="Turn bytes"
+				path="inputs.maxTurnBytes"
+				units="bytes"
+				field="maxTurnBytes"
+				isRequired={limitsRequired}
+				value={inputs.maxTurnBytes}
+				min={0}
+				isIntegerOnly
+				onChange={(maxTurnBytes) => {
+					set({ maxTurnBytes });
+				}}
+			/>
+			<TextAreaRow
+				label="By type"
+				path="inputs.limitsByMime"
+				field="limitsByMimeJson"
+				value={inputs.limitsByMimeJson}
+				rows={3}
+				hasSpellCheck={false}
+				placeholder={LIMITS_BY_MIME_PLACEHOLDER}
+				onChange={(limitsByMimeJson) => {
+					set({ limitsByMimeJson });
+				}}
+			/>
+		</InspectorSection>
+	);
+}
+
 function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
 	const { inputs } = draft;
 	const set = patch(setDraft, 'inputs');
-	const limitsRequired = inputLimitsRequired(inputs);
 	/** An image profile takes images, video and PDF as references, and no voice. */
 	const image = draft.identity.profileType === 'image';
-	const attachmentPicker = image ? IMAGE_ATTACHMENT_PICKER : ATTACHMENT_PICKER;
 	return (
 		<>
-			<InspectorSection title="Accepts" path="inputs">
-				<SwitchRow
-					label="Text"
-					path="inputs.text"
-					value={inputs.text}
-					onChange={(text) => {
-						set({ text });
-					}}
-				/>
-				<ListRow
-					label="Attachments"
-					path="inputs.attachments.accept"
-					value={expandAccept(inputs.attachmentsAccept, attachmentPicker.sections)}
-					options={attachmentPicker.options}
-					onChange={(selected) => {
-						set({
-							attachmentsAccept: nextAccept(
-								inputs.attachmentsAccept,
-								selected,
-								attachmentPicker.sections,
-							),
-						});
-					}}
-				/>
-				{!image && (
-					<ListRow
-						label="Voice"
-						path="inputs.voice.accept"
-						value={expandAccept(inputs.voiceAccept, VOICE_PICKER.sections)}
-						options={VOICE_PICKER.options}
-						onChange={(selected) => {
-							set({ voiceAccept: nextAccept(inputs.voiceAccept, selected, VOICE_PICKER.sections) });
-						}}
-					/>
-				)}
-			</InspectorSection>
-			<InspectorSection title="Limits">
-				<NumberRow
-					label="Max files"
-					path="inputs.maxFiles"
-					units="files"
-					field="maxFiles"
-					isRequired={limitsRequired}
-					value={inputs.maxFiles}
-					min={0}
-					isIntegerOnly
-					onChange={(maxFiles) => {
-						set({ maxFiles });
-					}}
-				/>
-				<NumberRow
-					label="Max bytes"
-					path="inputs.maxBytes"
-					units="bytes"
-					field="maxBytes"
-					isRequired={limitsRequired}
-					value={inputs.maxBytes}
-					min={0}
-					isIntegerOnly
-					onChange={(maxBytes) => {
-						set({ maxBytes });
-					}}
-				/>
-				<NumberRow
-					label="Turn bytes"
-					path="inputs.maxTurnBytes"
-					units="bytes"
-					field="maxTurnBytes"
-					isRequired={limitsRequired}
-					value={inputs.maxTurnBytes}
-					min={0}
-					isIntegerOnly
-					onChange={(maxTurnBytes) => {
-						set({ maxTurnBytes });
-					}}
-				/>
-				<TextAreaRow
-					label="By type"
-					path="inputs.limitsByMime"
-					field="limitsByMimeJson"
-					value={inputs.limitsByMimeJson}
-					rows={3}
-					hasSpellCheck={false}
-					placeholder={LIMITS_BY_MIME_PLACEHOLDER}
-					onChange={(limitsByMimeJson) => {
-						set({ limitsByMimeJson });
-					}}
-				/>
-			</InspectorSection>
+			<InputAcceptsSection inputs={inputs} set={set} image={image} />
+			<InputLimitsSection inputs={inputs} set={set} />
 			<InspectorSection title="Slots" path="inputs.slots" note={sectionNote('slots')}>
 				<TextAreaRow
 					label="Slots"
@@ -1511,9 +1562,90 @@ function otherAgents(
 		}));
 }
 
+/** The other text agent that writes the summary, where the workspace has one to name. */
+function CompactionSummariserRow({
+	binding,
+	set,
+}: {
+	binding: ModelBindingDraft;
+	set: SetBinding;
+}) {
+	const workspace = useContext(WorkspaceContext);
+	// Kept while it names an agent, so a removed one can still be cleared here.
+	if (!workspace || !(workspace.agents.length > 1 || binding.compactWith)) return null;
+	return (
+		<ChoiceRow
+			label="Summarised by"
+			path="models.*.compaction.profile"
+			field="compactWith"
+			isRequired={false}
+			value={binding.compactWith ?? ''}
+			options={otherAgents(workspace.agents, workspace.self, (agent) => agent.type === 'text')}
+			onChange={(compactWith) => {
+				set({ compactWith });
+			}}
+		/>
+	);
+}
+
+/** How compaction runs once it has a timing: its budget, threshold, kept turns and meter. */
+function CompactionRows({ binding, set }: { binding: ModelBindingDraft; set: SetBinding }) {
+	return (
+		<>
+			<NumberRow
+				label="Budget"
+				path="models.*.compaction.maxTokens"
+				field="compactMaxTokens"
+				value={binding.compactMaxTokens ?? null}
+				min={1}
+				isIntegerOnly
+				units="tokens"
+				onChange={(compactMaxTokens) => {
+					set({ compactMaxTokens });
+				}}
+			/>
+			<SliderRow
+				label="Starts at"
+				path="models.*.compaction.compactAt"
+				field="compactAt"
+				value={binding.compactAt ?? COMPACTION_DRAFT_DEFAULTS.compactAt}
+				min={0.05}
+				max={0.95}
+				step={0.05}
+				format={(at) => PERCENT.format(at)}
+				onChange={(compactAt) => {
+					set({ compactAt });
+				}}
+			/>
+			<NumberRow
+				label="Keep"
+				path="models.*.compaction.previousExchanges"
+				field="compactKeep"
+				value={binding.compactKeep ?? null}
+				min={0}
+				onChange={(compactKeep) => {
+					set({ compactKeep });
+				}}
+			/>
+			<CompactionSummariserRow binding={binding} set={set} />
+			<ChoiceRow
+				label="Counts"
+				path="models.*.compaction.meter"
+				field="compactMeter"
+				isRequired={false}
+				placeholder={fieldMeta('models.*.compaction.meter')?.unset}
+				value={binding.compactMeter ?? ''}
+				options={catalogChoices<CompactionMeter>('models.*.compaction.meter')}
+				onChange={(compactMeter) => {
+					set({ compactMeter });
+				}}
+			/>
+		</>
+	);
+}
+
 /** Compaction, where the agent summarises its older history, or another text agent does. */
 function CompactionSection({ binding, set }: { binding: ModelBindingDraft; set: SetBinding }) {
-	const workspace = useContext(WorkspaceContext);
 	return (
 		<InspectorSection
 			title="Compaction"
@@ -1538,75 +1670,7 @@ function CompactionSection({ binding, set }: { binding: ModelBindingDraft; set: 
 					});
 				}}
 			/>
-			{binding.compactTiming && (
-				<>
-					<NumberRow
-						label="Budget"
-						path="models.*.compaction.maxTokens"
-						field="compactMaxTokens"
-						value={binding.compactMaxTokens ?? null}
-						min={1}
-						isIntegerOnly
-						units="tokens"
-						onChange={(compactMaxTokens) => {
-							set({ compactMaxTokens });
-						}}
-					/>
-					<SliderRow
-						label="Starts at"
-						path="models.*.compaction.compactAt"
-						field="compactAt"
-						value={binding.compactAt ?? COMPACTION_DRAFT_DEFAULTS.compactAt}
-						min={0.05}
-						max={0.95}
-						step={0.05}
-						format={(at) => PERCENT.format(at)}
-						onChange={(compactAt) => {
-							set({ compactAt });
-						}}
-					/>
-					<NumberRow
-						label="Keep"
-						path="models.*.compaction.previousExchanges"
-						field="compactKeep"
-						value={binding.compactKeep ?? null}
-						min={0}
-						onChange={(compactKeep) => {
-							set({ compactKeep });
-						}}
-					/>
-					{/* Kept while it names an agent, so a removed one can still be cleared here. */}
-					{workspace && (workspace.agents.length > 1 || binding.compactWith) && (
-						<ChoiceRow
-							label="Summarised by"
-							path="models.*.compaction.profile"
-							field="compactWith"
-							isRequired={false}
-							value={binding.compactWith ?? ''}
-							options={otherAgents(
-								workspace.agents,
-								workspace.self,
-								(agent) => agent.type === 'text',
-							)}
-							onChange={(compactWith) => {
-								set({ compactWith });
-							}}
-						/>
-					)}
-					<ChoiceRow
-						label="Counts"
-						path="models.*.compaction.meter"
-						field="compactMeter"
-						isRequired={false}
-						placeholder={fieldMeta('models.*.compaction.meter')?.unset}
-						value={binding.compactMeter ?? ''}
-						options={catalogChoices<CompactionMeter>('models.*.compaction.meter')}
-						onChange={(compactMeter) => {
-							set({ compactMeter });
-						}}
-					/>
-				</>
-			)}
+			{binding.compactTiming && <CompactionRows binding={binding} set={set} />}
 		</InspectorSection>
 	);
 }
@@ -1734,6 +1798,103 @@ async function referenceFromFile(file: File): Promise<ImageReferenceDraft> {
 	};
 }
 
+/** The image slice of the draft and its setter, for each group of image rows. */
+interface ImageRowsProps {
+	image: PlaygroundDraft['image'];
+	set: SetSection<'image'>;
+}
+
+/** An image's aspect ratio, resolution and format. */
+function ImageShapeRows({ image, set, google }: ImageRowsProps & { google: boolean }) {
+	return (
+		<>
+			<PresetRow
+				google={google}
+				label="Aspect ratio"
+				path="image.aspectRatio"
+				value={image.aspectRatio}
+				preset={GOOGLE_IMAGE_ASPECT_RATIOS}
+				onChange={(aspectRatio) => {
+					set({ aspectRatio });
+				}}
+			/>
+			<PresetRow
+				google={google}
+				label="Resolution"
+				path="image.resolution"
+				value={image.resolution}
+				preset={GOOGLE_IMAGE_RESOLUTIONS}
+				onChange={(resolution) => {
+					set({ resolution });
+				}}
+			/>
+			<PresetRow
+				google={google}
+				label="Format"
+				path="image.mimeType"
+				value={image.mimeType}
+				preset={GOOGLE_IMAGE_OUTPUT_MIMES}
+				onChange={(mimeType) => {
+					set({ mimeType });
+				}}
+			/>
+		</>
+	);
+}
+
+/** The pins only OpenRouter takes: quality, background, compression and image count. */
+function OpenRouterImageRows({ image, set }: ImageRowsProps) {
+	return (
+		<>
+			<ChoiceRow
+				label="Quality"
+				path="image.quality"
+				field="quality"
+				value={image.quality}
+				options={OPENROUTER_IMAGE_QUALITIES}
+				onChange={(quality) => {
+					set({ quality });
+				}}
+			/>
+			<ChoiceRow
+				label="Background"
+				path="image.background"
+				field="background"
+				value={image.background}
+				options={OPENROUTER_IMAGE_BACKGROUNDS}
+				onChange={(background) => {
+					set({ background });
+				}}
+			/>
+			<NumberRow
+				label="Compression"
+				path="image.outputCompression"
+				field="outputCompression"
+				value={image.outputCompression}
+				min={0}
+				max={100}
+				isIntegerOnly
+				onChange={(outputCompression) => {
+					set({ outputCompression });
+				}}
+			/>
+			<NumberRow
+				label="Images"
+				path="image.n"
+				field="n"
+				units="per turn"
+				value={image.n}
+				min={1}
+				max={10}
+				isIntegerOnly
+				onChange={(n) => {
+					set({ n });
+				}}
+			/>
+		</>
+	);
+}
+
 /** Image output pins. OpenRouter-only pins show when every model is on OpenRouter. */
 function ImageEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
 	const google = allGoogle(draft);
@@ -1747,85 +1908,8 @@ function ImageEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Se
 	return (
 		<>
 			<InspectorSection title="Output" path="image">
-				<PresetRow
-					google={google}
-					label="Aspect ratio"
-					path="image.aspectRatio"
-					value={image.aspectRatio}
-					preset={GOOGLE_IMAGE_ASPECT_RATIOS}
-					onChange={(aspectRatio) => {
-						set({ aspectRatio });
-					}}
-				/>
-				<PresetRow
-					google={google}
-					label="Resolution"
-					path="image.resolution"
-					value={image.resolution}
-					preset={GOOGLE_IMAGE_RESOLUTIONS}
-					onChange={(resolution) => {
-						set({ resolution });
-					}}
-				/>
-				<PresetRow
-					google={google}
-					label="Format"
-					path="image.mimeType"
-					value={image.mimeType}
-					preset={GOOGLE_IMAGE_OUTPUT_MIMES}
-					onChange={(mimeType) => {
-						set({ mimeType });
-					}}
-				/>
-				{openRouter && (
-					<>
-						<ChoiceRow
-							label="Quality"
-							path="image.quality"
-							field="quality"
-							value={image.quality}
-							options={OPENROUTER_IMAGE_QUALITIES}
-							onChange={(quality) => {
-								set({ quality });
-							}}
-						/>
-						<ChoiceRow
-							label="Background"
-							path="image.background"
-							field="background"
-							value={image.background}
-							options={OPENROUTER_IMAGE_BACKGROUNDS}
-							onChange={(background) => {
-								set({ background });
-							}}
-						/>
-						<NumberRow
-							label="Compression"
-							path="image.outputCompression"
-							field="outputCompression"
-							value={image.outputCompression}
-							min={0}
-							max={100}
-							isIntegerOnly
-							onChange={(outputCompression) => {
-								set({ outputCompression });
-							}}
-						/>
-						<NumberRow
-							label="Images"
-							path="image.n"
-							field="n"
-							units="per turn"
-							value={image.n}
-							min={1}
-							max={10}
-							isIntegerOnly
-							onChange={(n) => {
-								set({ n });
-							}}
-						/>
-					</>
-				)}
+				<ImageShapeRows image={image} set={set} google={google} />
+				{openRouter && <OpenRouterImageRows image={image} set={set} />}
 				<NumberRow
 					label="Seed"
 					path="image.seed"
@@ -1856,6 +1940,62 @@ function ImageEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Se
 	);
 }
 
+/** One reference: a pinned file's thumbnail and name, or a link's field, and a remove button. */
+function ImageReferenceRow({
+	reference,
+	index,
+	onReplace,
+	onRemove,
+}: {
+	reference: ImageReferenceDraft;
+	index: number;
+	onReplace: (next: ImageReferenceDraft) => void;
+	onRemove: () => void;
+}) {
+	const statusAt = useFieldStatus();
+	const label = `Reference ${String(index + 1)}`;
+	const status = statusAt('references', index);
+	return (
+		<InspectorRow label={label} path="image.references" hasIssue={status !== undefined}>
+			{'data' in reference ? (
+				<StackItem size="fill">
+					<HStack gap={2} vAlign="center">
+						<Thumbnail
+							src={`data:${reference.mimeType};base64,${reference.data}`}
+							alt={reference.name}
+							label={reference.name}
+						/>
+						<Text size="sm" maxLines={1}>
+							{reference.name}
+						</Text>
+					</HStack>
+				</StackItem>
+			) : (
+				<StackItem size="fill">
+					<TextInput
+						label={`${label} link`}
+						isLabelHidden
+						size="sm"
+						status={status}
+						value={reference.uri}
+						placeholder="https://…/image.png"
+						onChange={(uri) => {
+							onReplace({ ...reference, uri });
+						}}
+					/>
+				</StackItem>
+			)}
+			<IconButton
+				label={`Remove ${label.toLowerCase()}`}
+				variant="ghost"
+				size="sm"
+				icon={<Icon icon={IconX} size="sm" />}
+				onClick={onRemove}
+			/>
+		</InspectorRow>
+	);
+}
+
 /** Reference images sent with every turn, ahead of what the user attaches: files or links. */
 function ImageReferencesEditor({
 	references,
@@ -1864,63 +2004,25 @@ function ImageReferencesEditor({
 	references: ImageReferenceDraft[];
 	onChange: (references: ImageReferenceDraft[]) => void;
 }) {
-	const statusAt = useFieldStatus();
 	const [reading, setReading] = useState(false);
 	const replace = (key: string, next: ImageReferenceDraft) => {
 		onChange(references.map((reference) => (reference.key === key ? next : reference)));
 	};
 	return (
 		<InspectorSection title="References" path="image.references">
-			{references.map((reference, index) => {
-				const label = `Reference ${String(index + 1)}`;
-				const status = statusAt('references', index);
-				return (
-					<InspectorRow
-						key={reference.key}
-						label={label}
-						path="image.references"
-						hasIssue={status !== undefined}
-					>
-						{'data' in reference ? (
-							<StackItem size="fill">
-								<HStack gap={2} vAlign="center">
-									<Thumbnail
-										src={`data:${reference.mimeType};base64,${reference.data}`}
-										alt={reference.name}
-										label={reference.name}
-									/>
-									<Text size="sm" maxLines={1}>
-										{reference.name}
-									</Text>
-								</HStack>
-							</StackItem>
-						) : (
-							<StackItem size="fill">
-								<TextInput
-									label={`${label} link`}
-									isLabelHidden
-									size="sm"
-									status={status}
-									value={reference.uri}
-									placeholder="https://…/image.png"
-									onChange={(uri) => {
-										replace(reference.key, { ...reference, uri });
-									}}
-								/>
-							</StackItem>
-						)}
-						<IconButton
-							label={`Remove ${label.toLowerCase()}`}
-							variant="ghost"
-							size="sm"
-							icon={<Icon icon={IconX} size="sm" />}
-							onClick={() => {
-								onChange(references.filter((candidate) => candidate.key !== reference.key));
-							}}
-						/>
-					</InspectorRow>
-				);
-			})}
+			{references.map((reference, index) => (
+				<ImageReferenceRow
+					key={reference.key}
+					reference={reference}
+					index={index}
+					onReplace={(next) => {
+						replace(reference.key, next);
+					}}
+					onRemove={() => {
+						onChange(references.filter((candidate) => candidate.key !== reference.key));
+					}}
+				/>
+			))}
 			<FileInput
 				label="Add images"
 				isLabelHidden
@@ -2007,199 +2109,254 @@ const COMPRESSION_STEP = 1024;
 const COMPRESSION_TRIGGER_DEFAULT = Math.round(GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS * 0.8);
 const COMPRESSION_TARGET_DEFAULT = Math.round(COMPRESSION_TRIGGER_DEFAULT / 2);
 
-function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+/** The live slice of the draft and its setter, for each live section. */
+interface LiveSectionProps {
+	live: PlaygroundDraft['live'];
+	set: SetSection<'live'>;
+}
+
+function LiveIngressSection({ live, set }: LiveSectionProps) {
+	return (
+		<InspectorSection title="Ingress" path="live.ingress">
+			<SwitchRow
+				label="Audio"
+				path="live.ingress.audio"
+				value={live.ingressAudio}
+				onChange={(ingressAudio) => {
+					set({ ingressAudio });
+				}}
+			/>
+			<SwitchRow
+				label="Video"
+				path="live.ingress.video"
+				value={live.ingressVideo}
+				onChange={(ingressVideo) => {
+					set({ ingressVideo });
+				}}
+			/>
+			<SwitchRow
+				label="Text"
+				path="live.ingress.text"
+				value={live.ingressText}
+				onChange={(ingressText) => {
+					set({ ingressText });
+				}}
+			/>
+		</InspectorSection>
+	);
+}
+
+function LiveVoiceSection({ live, set, google }: LiveSectionProps & { google: boolean }) {
+	return (
+		<InspectorSection title="Voice" path="live.voice">
+			<PresetRow
+				google={google}
+				label="Voice"
+				path="live.voice"
+				value={live.voice}
+				preset={GOOGLE_SPEECH_VOICES}
+				hasSearch
+				onChange={(voice) => {
+					set({ voice });
+				}}
+			/>
+		</InspectorSection>
+	);
+}
+
+function LiveSessionSection({ live, set }: LiveSectionProps) {
+	return (
+		<InspectorSection title="Session" path="live.sessionResumption">
+			<SwitchRow
+				label="Resumption"
+				path="live.sessionResumption"
+				value={live.sessionResumption}
+				onChange={(sessionResumption) => {
+					set({ sessionResumption });
+				}}
+			/>
+		</InspectorSection>
+	);
+}
+
+/** The sliding window: in the demo its sizes are sliders, capped at the free key's window. */
+function LiveCompressionSection({ live, set }: LiveSectionProps) {
 	const mode = useContext(ConnectionMode);
+	return (
+		<InspectorSection title="Context compression" path="live.contextCompression">
+			<SwitchRow
+				label="Sliding window"
+				path="live.contextCompression"
+				value={live.contextCompression}
+				onChange={(contextCompression) => {
+					set({ contextCompression });
+				}}
+			/>
+			{live.contextCompression &&
+				(mode === 'demo' ? (
+					<CompressionSliderRows live={live} set={set} />
+				) : (
+					<CompressionNumberRows live={live} set={set} />
+				))}
+		</InspectorSection>
+	);
+}
+
+function CompressionSliderRows({ live, set }: LiveSectionProps) {
+	return (
+		<>
+			<SliderRow
+				label="Trigger"
+				path="live.contextCompression.triggerTokens"
+				field="compressionTriggerTokens"
+				value={live.compressionTriggerTokens}
+				fallback={COMPRESSION_TRIGGER_DEFAULT}
+				min={COMPRESSION_STEP}
+				max={GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS}
+				step={COMPRESSION_STEP}
+				onChange={(compressionTriggerTokens) => {
+					set({ compressionTriggerTokens });
+				}}
+			/>
+			<SliderRow
+				label="Keep"
+				path="live.contextCompression.slidingWindow.targetTokens"
+				field="compressionTargetTokens"
+				value={live.compressionTargetTokens}
+				fallback={COMPRESSION_TARGET_DEFAULT}
+				min={COMPRESSION_STEP}
+				max={GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS - COMPRESSION_STEP}
+				step={COMPRESSION_STEP}
+				onChange={(compressionTargetTokens) => {
+					set({ compressionTargetTokens });
+				}}
+			/>
+		</>
+	);
+}
+
+function CompressionNumberRows({ live, set }: LiveSectionProps) {
+	return (
+		<>
+			<NumberRow
+				label="Trigger"
+				path="live.contextCompression.triggerTokens"
+				field="compressionTriggerTokens"
+				value={live.compressionTriggerTokens}
+				min={1}
+				isIntegerOnly
+				onChange={(compressionTriggerTokens) => {
+					set({ compressionTriggerTokens });
+				}}
+			/>
+			<NumberRow
+				label="Keep"
+				path="live.contextCompression.slidingWindow.targetTokens"
+				field="compressionTargetTokens"
+				value={live.compressionTargetTokens}
+				min={1}
+				isIntegerOnly
+				onChange={(compressionTargetTokens) => {
+					set({ compressionTargetTokens });
+				}}
+			/>
+		</>
+	);
+}
+
+function LiveTranscriptsSection({ live, set }: LiveSectionProps) {
+	return (
+		<InspectorSection title="Transcripts" path="live.transcription">
+			<SwitchRow
+				label="Input"
+				path="live.transcription.input"
+				value={live.transcriptionInput}
+				onChange={(transcriptionInput) => {
+					set({ transcriptionInput });
+				}}
+			/>
+			<SwitchRow
+				label="Output"
+				path="live.transcription.output"
+				value={live.transcriptionOutput}
+				onChange={(transcriptionOutput) => {
+					set({ transcriptionOutput });
+				}}
+			/>
+		</InspectorSection>
+	);
+}
+
+function LiveVadSection({ live, set }: LiveSectionProps) {
+	return (
+		<InspectorSection title="Voice activity" path="live.vad">
+			<SegmentedRow
+				label="Barge-in"
+				path="live.vad.activityHandling"
+				value={segmentOf(live.vadActivityHandling)}
+				segments={BARGE_IN_SEGMENTS}
+				onChange={(segment) => {
+					set({ vadActivityHandling: pinOf(segment) });
+				}}
+			/>
+			<SegmentedRow
+				label="Start"
+				path="live.vad.startSensitivity"
+				value={segmentOf(live.vadStartSensitivity)}
+				segments={START_SENSITIVITY_SEGMENTS}
+				onChange={(segment) => {
+					set({ vadStartSensitivity: pinOf(segment) });
+				}}
+			/>
+			<SegmentedRow
+				label="End"
+				path="live.vad.endSensitivity"
+				value={segmentOf(live.vadEndSensitivity)}
+				segments={END_SENSITIVITY_SEGMENTS}
+				onChange={(segment) => {
+					set({ vadEndSensitivity: pinOf(segment) });
+				}}
+			/>
+			<NumberRow
+				label="Padding"
+				path="live.vad.prefixPaddingMs"
+				field="vadPrefixPaddingMs"
+				value={live.vadPrefixPaddingMs}
+				min={0}
+				units="ms"
+				isIntegerOnly
+				onChange={(vadPrefixPaddingMs) => {
+					set({ vadPrefixPaddingMs });
+				}}
+			/>
+			<NumberRow
+				label="Silence"
+				path="live.vad.silenceDurationMs"
+				field="vadSilenceDurationMs"
+				value={live.vadSilenceDurationMs}
+				min={0}
+				units="ms"
+				isIntegerOnly
+				onChange={(vadSilenceDurationMs) => {
+					set({ vadSilenceDurationMs });
+				}}
+			/>
+		</InspectorSection>
+	);
+}
+
+function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
 	const google = allGoogle(draft);
 	const { live } = draft;
 	const set = patch(setDraft, 'live');
 	return (
 		<>
-			<InspectorSection title="Ingress" path="live.ingress">
-				<SwitchRow
-					label="Audio"
-					path="live.ingress.audio"
-					value={live.ingressAudio}
-					onChange={(ingressAudio) => {
-						set({ ingressAudio });
-					}}
-				/>
-				<SwitchRow
-					label="Video"
-					path="live.ingress.video"
-					value={live.ingressVideo}
-					onChange={(ingressVideo) => {
-						set({ ingressVideo });
-					}}
-				/>
-				<SwitchRow
-					label="Text"
-					path="live.ingress.text"
-					value={live.ingressText}
-					onChange={(ingressText) => {
-						set({ ingressText });
-					}}
-				/>
-			</InspectorSection>
-			<InspectorSection title="Voice" path="live.voice">
-				<PresetRow
-					google={google}
-					label="Voice"
-					path="live.voice"
-					value={live.voice}
-					preset={GOOGLE_SPEECH_VOICES}
-					hasSearch
-					onChange={(voice) => {
-						set({ voice });
-					}}
-				/>
-			</InspectorSection>
-			<InspectorSection title="Session" path="live.sessionResumption">
-				<SwitchRow
-					label="Resumption"
-					path="live.sessionResumption"
-					value={live.sessionResumption}
-					onChange={(sessionResumption) => {
-						set({ sessionResumption });
-					}}
-				/>
-			</InspectorSection>
-			<InspectorSection title="Context compression" path="live.contextCompression">
-				<SwitchRow
-					label="Sliding window"
-					path="live.contextCompression"
-					value={live.contextCompression}
-					onChange={(contextCompression) => {
-						set({ contextCompression });
-					}}
-				/>
-				{live.contextCompression &&
-					(mode === 'demo' ? (
-						<>
-							<SliderRow
-								label="Trigger"
-								path="live.contextCompression.triggerTokens"
-								field="compressionTriggerTokens"
-								value={live.compressionTriggerTokens}
-								fallback={COMPRESSION_TRIGGER_DEFAULT}
-								min={COMPRESSION_STEP}
-								max={GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS}
-								step={COMPRESSION_STEP}
-								onChange={(compressionTriggerTokens) => {
-									set({ compressionTriggerTokens });
-								}}
-							/>
-							<SliderRow
-								label="Keep"
-								path="live.contextCompression.slidingWindow.targetTokens"
-								field="compressionTargetTokens"
-								value={live.compressionTargetTokens}
-								fallback={COMPRESSION_TARGET_DEFAULT}
-								min={COMPRESSION_STEP}
-								max={GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS - COMPRESSION_STEP}
-								step={COMPRESSION_STEP}
-								onChange={(compressionTargetTokens) => {
-									set({ compressionTargetTokens });
-								}}
-							/>
-						</>
-					) : (
-						<>
-							<NumberRow
-								label="Trigger"
-								path="live.contextCompression.triggerTokens"
-								field="compressionTriggerTokens"
-								value={live.compressionTriggerTokens}
-								min={1}
-								isIntegerOnly
-								onChange={(compressionTriggerTokens) => {
-									set({ compressionTriggerTokens });
-								}}
-							/>
-							<NumberRow
-								label="Keep"
-								path="live.contextCompression.slidingWindow.targetTokens"
-								field="compressionTargetTokens"
-								value={live.compressionTargetTokens}
-								min={1}
-								isIntegerOnly
-								onChange={(compressionTargetTokens) => {
-									set({ compressionTargetTokens });
-								}}
-							/>
-						</>
-					))}
-			</InspectorSection>
-			<InspectorSection title="Transcripts" path="live.transcription">
-				<SwitchRow
-					label="Input"
-					path="live.transcription.input"
-					value={live.transcriptionInput}
-					onChange={(transcriptionInput) => {
-						set({ transcriptionInput });
-					}}
-				/>
-				<SwitchRow
-					label="Output"
-					path="live.transcription.output"
-					value={live.transcriptionOutput}
-					onChange={(transcriptionOutput) => {
-						set({ transcriptionOutput });
-					}}
-				/>
-			</InspectorSection>
-			<InspectorSection title="Voice activity" path="live.vad">
-				<SegmentedRow
-					label="Barge-in"
-					path="live.vad.activityHandling"
-					value={segmentOf(live.vadActivityHandling)}
-					segments={BARGE_IN_SEGMENTS}
-					onChange={(segment) => {
-						set({ vadActivityHandling: pinOf(segment) });
-					}}
-				/>
-				<SegmentedRow
-					label="Start"
-					path="live.vad.startSensitivity"
-					value={segmentOf(live.vadStartSensitivity)}
-					segments={START_SENSITIVITY_SEGMENTS}
-					onChange={(segment) => {
-						set({ vadStartSensitivity: pinOf(segment) });
-					}}
-				/>
-				<SegmentedRow
-					label="End"
-					path="live.vad.endSensitivity"
-					value={segmentOf(live.vadEndSensitivity)}
-					segments={END_SENSITIVITY_SEGMENTS}
-					onChange={(segment) => {
-						set({ vadEndSensitivity: pinOf(segment) });
-					}}
-				/>
-				<NumberRow
-					label="Padding"
-					path="live.vad.prefixPaddingMs"
-					field="vadPrefixPaddingMs"
-					value={live.vadPrefixPaddingMs}
-					min={0}
-					units="ms"
-					isIntegerOnly
-					onChange={(vadPrefixPaddingMs) => {
-						set({ vadPrefixPaddingMs });
-					}}
-				/>
-				<NumberRow
-					label="Silence"
-					path="live.vad.silenceDurationMs"
-					field="vadSilenceDurationMs"
-					value={live.vadSilenceDurationMs}
-					min={0}
-					units="ms"
-					isIntegerOnly
-					onChange={(vadSilenceDurationMs) => {
-						set({ vadSilenceDurationMs });
-					}}
-				/>
-			</InspectorSection>
+			<LiveIngressSection live={live} set={set} />
+			<LiveVoiceSection live={live} set={set} google={google} />
+			<LiveSessionSection live={live} set={set} />
+			<LiveCompressionSection live={live} set={set} />
+			<LiveTranscriptsSection live={live} set={set} />
+			<LiveVadSection live={live} set={set} />
 		</>
 	);
 }
@@ -2223,6 +2380,102 @@ const SCHEMA_PLACEHOLDER = `{
   "required": ["answer"]
 }`;
 
+/** The outputs slice of the draft and its setter, for each outputs section. */
+interface OutputsSectionProps {
+	outputs: OutputsDraft;
+	set: SetSection<'outputs'>;
+}
+
+/** Free text or structured, and a structured reply's schema. */
+function OutputShapeSection({
+	outputs,
+	set,
+	structured,
+}: OutputsSectionProps & { structured: boolean }) {
+	return (
+		<InspectorSection title="Shape" path="outputs.structured">
+			<SegmentedRow
+				label="Mode"
+				path="outputs.structured"
+				value={outputs.mode}
+				segments={OUTPUT_MODE_SEGMENTS}
+				onChange={(mode) => {
+					set({ mode });
+				}}
+			/>
+			{structured && (
+				<>
+					<TextRow
+						label="Schema id"
+						path="outputs.structured"
+						field="schemaId"
+						isRequired
+						value={outputs.schemaId}
+						placeholder="reply"
+						onChange={(schemaId) => {
+							set({ schemaId });
+						}}
+					/>
+					<TextAreaRow
+						label="JSON Schema"
+						path="outputs.structured"
+						field="schemaJson"
+						isRequired
+						rows={8}
+						hasSpellCheck={false}
+						value={outputs.schemaJson}
+						placeholder={SCHEMA_PLACEHOLDER}
+						onChange={(schemaJson) => {
+							set({ schemaJson });
+						}}
+					/>
+				</>
+			)}
+		</InspectorSection>
+	);
+}
+
+function OutputRepairSection({ outputs, set }: OutputsSectionProps) {
+	return (
+		<InspectorSection title="Repair" path="outputs.validation">
+			<SwitchRow
+				label="Repair"
+				path="outputs.validation"
+				value={outputs.validationEnabled}
+				onChange={(validationEnabled) => {
+					set({ validationEnabled });
+				}}
+			/>
+			{outputs.validationEnabled && (
+				<>
+					<NumberRow
+						label="Retries"
+						path="outputs.validation.maxRetries"
+						units="retries"
+						field="maxRetries"
+						value={outputs.maxRetries}
+						min={0}
+						isIntegerOnly
+						onChange={(maxRetries) => {
+							set({ maxRetries });
+						}}
+					/>
+					<TextAreaRow
+						label="Guidance"
+						path="lexicon.repair.default_guidance"
+						field="repairGuidance"
+						value={outputs.repairGuidance}
+						placeholder={lexiconDefault('repair.default_guidance')}
+						onChange={(repairGuidance) => {
+							set({ repairGuidance });
+						}}
+					/>
+				</>
+			)}
+		</InspectorSection>
+	);
+}
+
 function OutputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
 	const { outputs } = draft;
 	const set = patch(setDraft, 'outputs');
@@ -2230,85 +2483,8 @@ function OutputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: 
 	const structured = shaped && outputs.mode === 'structured';
 	return (
 		<>
-			{shaped && (
-				<InspectorSection title="Shape" path="outputs.structured">
-					<SegmentedRow
-						label="Mode"
-						path="outputs.structured"
-						value={outputs.mode}
-						segments={OUTPUT_MODE_SEGMENTS}
-						onChange={(mode) => {
-							set({ mode });
-						}}
-					/>
-					{structured && (
-						<>
-							<TextRow
-								label="Schema id"
-								path="outputs.structured"
-								field="schemaId"
-								isRequired
-								value={outputs.schemaId}
-								placeholder="reply"
-								onChange={(schemaId) => {
-									set({ schemaId });
-								}}
-							/>
-							<TextAreaRow
-								label="JSON Schema"
-								path="outputs.structured"
-								field="schemaJson"
-								isRequired
-								rows={8}
-								hasSpellCheck={false}
-								value={outputs.schemaJson}
-								placeholder={SCHEMA_PLACEHOLDER}
-								onChange={(schemaJson) => {
-									set({ schemaJson });
-								}}
-							/>
-						</>
-					)}
-				</InspectorSection>
-			)}
-			{structured && (
-				<InspectorSection title="Repair" path="outputs.validation">
-					<SwitchRow
-						label="Repair"
-						path="outputs.validation"
-						value={outputs.validationEnabled}
-						onChange={(validationEnabled) => {
-							set({ validationEnabled });
-						}}
-					/>
-					{outputs.validationEnabled && (
-						<>
-							<NumberRow
-								label="Retries"
-								path="outputs.validation.maxRetries"
-								units="retries"
-								field="maxRetries"
-								value={outputs.maxRetries}
-								min={0}
-								isIntegerOnly
-								onChange={(maxRetries) => {
-									set({ maxRetries });
-								}}
-							/>
-							<TextAreaRow
-								label="Guidance"
-								path="lexicon.repair.default_guidance"
-								field="repairGuidance"
-								value={outputs.repairGuidance}
-								placeholder={lexiconDefault('repair.default_guidance')}
-								onChange={(repairGuidance) => {
-									set({ repairGuidance });
-								}}
-							/>
-						</>
-					)}
-				</InspectorSection>
-			)}
+			{shaped && <OutputShapeSection outputs={outputs} set={set} structured={structured} />}
+			{structured && <OutputRepairSection outputs={outputs} set={set} />}
 			<InspectorSection title="Streaming" path="outputs.streaming">
 				<SegmentedRow
 					label="Delivery"
@@ -2386,6 +2562,85 @@ function ResumptionTokens({ allow, auto }: Resumption) {
 	);
 }
 
+/** The picks in the open picker, and the callback that changes them. */
+interface ResumptionGridProps {
+	current: Resumption;
+	change: (next: Resumption) => void;
+}
+
+/** One box of the grid: whether a stop kind is offered, or continues on its own. */
+function ResumptionBox({
+	current,
+	change,
+	kind,
+	column,
+}: ResumptionGridProps & { kind: ContinueStopKind; column: 'offer' | 'auto' }) {
+	return (
+		<CheckboxInput
+			label={`${column === 'offer' ? 'Offer Continue' : 'Continue on its own'} after ${STOP_KIND_LABEL[kind].toLowerCase()}`}
+			isLabelHidden
+			value={(column === 'offer' ? current.allow : current.auto).includes(kind)}
+			onChange={(checked) => {
+				change(pickKind(current, kind, column, checked));
+			}}
+		/>
+	);
+}
+
+/** The picker's grid: a row per stop kind, with an Offer box and an Auto box. */
+function ResumptionGrid({ current, change }: ResumptionGridProps) {
+	const kinds = fieldMeta('turnBehaviour.resumption.allowContinue')?.optionDescriptions;
+	const offerDoc = fieldMeta('turnBehaviour.resumption.allowContinue')?.doc;
+	const autoDoc = fieldMeta('turnBehaviour.resumption.autoContinue')?.doc;
+	const box = (kind: ContinueStopKind, column: 'offer' | 'auto') => (
+		<ResumptionBox current={current} change={change} kind={kind} column={column} />
+	);
+	return (
+		<VStack width={280} padding={2}>
+			<Table
+				density="compact"
+				dividers="rows"
+				idKey="kind"
+				data={CONTINUE_STOP_KINDS.map((kind) => ({ kind }))}
+				columns={[
+					{
+						key: 'kind',
+						header: 'After',
+						width: proportional(1),
+						renderCell: ({ kind }) => (
+							<Tooltip content={kinds?.[kind]} hasHoverIndication={false}>
+								{STOP_KIND_LABEL[kind]}
+							</Tooltip>
+						),
+					},
+					{
+						key: 'offer',
+						header: (
+							<Tooltip content={offerDoc} hasHoverIndication={false}>
+								Offer
+							</Tooltip>
+						),
+						width: pixel(64),
+						align: 'center',
+						renderCell: ({ kind }) => box(kind, 'offer'),
+					},
+					{
+						key: 'auto',
+						header: (
+							<Tooltip content={autoDoc} hasHoverIndication={false}>
+								Auto
+							</Tooltip>
+						),
+						width: pixel(64),
+						align: 'center',
+						renderCell: ({ kind }) => box(kind, 'auto'),
+					},
+				]}
+			/>
+		</VStack>
+	);
+}
+
 /**
  * Resumption as one picker, a checklist per stop kind. Picking anything turns resumption on, and
  * clearing everything turns it off, so there is no separate switch.
@@ -2397,9 +2652,6 @@ function ResumptionRow({
 	value: Resumption;
 	onChange: (next: Resumption) => void;
 }) {
-	const kinds = fieldMeta('turnBehaviour.resumption.allowContinue')?.optionDescriptions;
-	const offerDoc = fieldMeta('turnBehaviour.resumption.allowContinue')?.doc;
-	const autoDoc = fieldMeta('turnBehaviour.resumption.autoContinue')?.doc;
 	return (
 		<InspectorRow label="Continue after" path="turnBehaviour.resumption">
 			<StackItem size="fill">
@@ -2413,65 +2665,62 @@ function ResumptionRow({
 					placeholder="Never"
 					onChange={onChange}
 				>
-					{(current, change) => {
-						const box = (kind: ContinueStopKind, column: 'offer' | 'auto') => (
-							<CheckboxInput
-								label={`${column === 'offer' ? 'Offer Continue' : 'Continue on its own'} after ${STOP_KIND_LABEL[kind].toLowerCase()}`}
-								isLabelHidden
-								value={(column === 'offer' ? current.allow : current.auto).includes(kind)}
-								onChange={(checked) => {
-									change(pickKind(current, kind, column, checked));
-								}}
-							/>
-						);
-						return (
-							<VStack width={280} padding={2}>
-								<Table
-									density="compact"
-									dividers="rows"
-									idKey="kind"
-									data={CONTINUE_STOP_KINDS.map((kind) => ({ kind }))}
-									columns={[
-										{
-											key: 'kind',
-											header: 'After',
-											width: proportional(1),
-											renderCell: ({ kind }) => (
-												<Tooltip content={kinds?.[kind]} hasHoverIndication={false}>
-													{STOP_KIND_LABEL[kind]}
-												</Tooltip>
-											),
-										},
-										{
-											key: 'offer',
-											header: (
-												<Tooltip content={offerDoc} hasHoverIndication={false}>
-													Offer
-												</Tooltip>
-											),
-											width: pixel(64),
-											align: 'center',
-											renderCell: ({ kind }) => box(kind, 'offer'),
-										},
-										{
-											key: 'auto',
-											header: (
-												<Tooltip content={autoDoc} hasHoverIndication={false}>
-													Auto
-												</Tooltip>
-											),
-											width: pixel(64),
-											align: 'center',
-											renderCell: ({ kind }) => box(kind, 'auto'),
-										},
-									]}
-								/>
-							</VStack>
-						);
-					}}
+					{(current, change) => <ResumptionGrid current={current} change={change} />}
 				</ComplexSelector>
 			</StackItem>
 		</InspectorRow>
+	);
+}
+
+function ResumptionSection({
+	draft,
+	set,
+}: {
+	draft: PlaygroundDraft;
+	set: SetSection<'turnBehaviour'>;
+}) {
+	const turn = draft.turnBehaviour;
+	return (
+		<InspectorSection title="Resumption" path="turnBehaviour.resumption">
+			<ResumptionRow
+				value={
+					turn.resumeEnabled
+						? { allow: turn.allowContinue, auto: turn.autoContinue }
+						: { allow: [], auto: [] }
+				}
+				onChange={({ allow, auto }) => {
+					set({ resumeEnabled: allow.length > 0, allowContinue: allow, autoContinue: auto });
+				}}
+			/>
+			{turn.resumeEnabled && (
+				<>
+					<NumberRow
+						label="Max rounds"
+						path="turnBehaviour.resumption.maxContinues"
+						units="rounds"
+						field="maxContinues"
+						value={turn.maxContinues}
+						min={1}
+						isIntegerOnly
+						onChange={(maxContinues) => {
+							set({ maxContinues });
+						}}
+					/>
+					{takesContinueInstruction(draft) && (
+						<TextAreaRow
+							label="Instruction"
+							path="lexicon.continue.instruction"
+							field="continueInstruction"
+							value={turn.continueInstruction}
+							placeholder={lexiconDefault('continue.instruction')}
+							onChange={(continueInstruction) => {
+								set({ continueInstruction });
+							}}
+						/>
+					)}
+				</>
+			)}
+		</InspectorSection>
 	);
 }
 
@@ -2481,46 +2730,7 @@ function TurnBehaviourEditor({ draft, setDraft }: { draft: PlaygroundDraft; setD
 	return (
 		<>
 			{draftAllows(draft, 'turnBehaviour.resumption') && (
-				<InspectorSection title="Resumption" path="turnBehaviour.resumption">
-					<ResumptionRow
-						value={
-							turn.resumeEnabled
-								? { allow: turn.allowContinue, auto: turn.autoContinue }
-								: { allow: [], auto: [] }
-						}
-						onChange={({ allow, auto }) => {
-							set({ resumeEnabled: allow.length > 0, allowContinue: allow, autoContinue: auto });
-						}}
-					/>
-					{turn.resumeEnabled && (
-						<>
-							<NumberRow
-								label="Max rounds"
-								path="turnBehaviour.resumption.maxContinues"
-								units="rounds"
-								field="maxContinues"
-								value={turn.maxContinues}
-								min={1}
-								isIntegerOnly
-								onChange={(maxContinues) => {
-									set({ maxContinues });
-								}}
-							/>
-							{takesContinueInstruction(draft) && (
-								<TextAreaRow
-									label="Instruction"
-									path="lexicon.continue.instruction"
-									field="continueInstruction"
-									value={turn.continueInstruction}
-									placeholder={lexiconDefault('continue.instruction')}
-									onChange={(continueInstruction) => {
-										set({ continueInstruction });
-									}}
-								/>
-							)}
-						</>
-					)}
-				</InspectorSection>
+				<ResumptionSection draft={draft} set={set} />
 			)}
 			{draftAllows(draft, 'turnBehaviour.allowSteering') && (
 				<InspectorSection title="Steering" path="turnBehaviour.allowSteering">
@@ -2981,6 +3191,116 @@ const RESOURCE_PLACEHOLDER = `{
   "service.name": "my-agent"
 }`;
 
+/** The observability slice of the draft and its setter, for each observability section. */
+interface ObservabilitySectionProps {
+	observability: ObservabilityDraft;
+	set: SetSection<'observability'>;
+}
+
+/** Whether traces are written, and how many turns are sampled. */
+function TracesSection({ observability, set }: ObservabilitySectionProps) {
+	const on = observability.writeTo !== false;
+	return (
+		<InspectorSection title="Traces" path="observability">
+			<SegmentedRow
+				label="Write to"
+				path="observability.writeTo"
+				value={on ? 'playground' : 'off'}
+				segments={TRACE_SEGMENTS}
+				onChange={(segment) => {
+					set({ writeTo: segment === 'off' ? false : PLAYGROUND_TRACE_DESTINATION });
+				}}
+			/>
+			{on && (
+				<SliderRow
+					label="Sample"
+					path="observability.sampleRate"
+					field="sampleRate"
+					value={observability.sampleRate}
+					min={0}
+					max={1}
+					step={0.05}
+					format={(rate) => PERCENT.format(rate)}
+					onChange={(sampleRate) => {
+						set({ sampleRate });
+					}}
+				/>
+			)}
+		</InspectorSection>
+	);
+}
+
+/** What a trace keeps, and what is scrubbed from it. */
+function TraceContentSections({ observability, set }: ObservabilitySectionProps) {
+	return (
+		<>
+			<InspectorSection title="Keep" path="observability.include">
+				<FlagList
+					label="Keep"
+					path="observability.include"
+					flags={INCLUDE_FLAGS}
+					value={observability.include}
+					onChange={(include) => {
+						set({ include });
+					}}
+				/>
+			</InspectorSection>
+			<InspectorSection title="Scrub" path="observability.scrub">
+				<FlagList
+					label="Scrub"
+					path="observability.scrub"
+					flags={SCRUB_FLAGS}
+					value={observability.scrub}
+					onChange={(scrub) => {
+						set({ scrub });
+					}}
+				/>
+			</InspectorSection>
+		</>
+	);
+}
+
+function TraceStorageSection({ observability, set }: ObservabilitySectionProps) {
+	return (
+		<InspectorSection title="Storage" note={sectionNote('traces.storage')}>
+			<NumberRow
+				label="Keep for"
+				path="observability.retainForDays"
+				field="retainForDays"
+				units="days"
+				value={observability.retainForDays}
+				isIntegerOnly
+				onChange={(retainForDays) => {
+					set({ retainForDays });
+				}}
+			/>
+			<NumberRow
+				label="Rotate at"
+				path="observability.rotateAfterMiB"
+				field="rotateAfterMiB"
+				units="MiB"
+				value={observability.rotateAfterMiB}
+				min={1}
+				onChange={(rotateAfterMiB) => {
+					set({ rotateAfterMiB });
+				}}
+			/>
+			<TextAreaRow
+				label="Resource"
+				path="observability.resource"
+				field="resourceJson"
+				value={observability.resourceJson}
+				rows={3}
+				hasSpellCheck={false}
+				placeholder={RESOURCE_PLACEHOLDER}
+				onChange={(resourceJson) => {
+					set({ resourceJson });
+				}}
+			/>
+		</InspectorSection>
+	);
+}
+
 /** Where traces go, what they keep, and how your host stores them. */
 function ObservabilityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
 	const { observability } = draft;
@@ -2988,92 +3308,11 @@ function ObservabilityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setD
 	const on = observability.writeTo !== false;
 	return (
 		<>
-			<InspectorSection title="Traces" path="observability">
-				<SegmentedRow
-					label="Write to"
-					path="observability.writeTo"
-					value={on ? 'playground' : 'off'}
-					segments={TRACE_SEGMENTS}
-					onChange={(segment) => {
-						set({ writeTo: segment === 'off' ? false : PLAYGROUND_TRACE_DESTINATION });
-					}}
-				/>
-				{on && (
-					<SliderRow
-						label="Sample"
-						path="observability.sampleRate"
-						field="sampleRate"
-						value={observability.sampleRate}
-						min={0}
-						max={1}
-						step={0.05}
-						format={(rate) => PERCENT.format(rate)}
-						onChange={(sampleRate) => {
-							set({ sampleRate });
-						}}
-					/>
-				)}
-			</InspectorSection>
+			<TracesSection observability={observability} set={set} />
 			{on && (
 				<>
-					<InspectorSection title="Keep" path="observability.include">
-						<FlagList
-							label="Keep"
-							path="observability.include"
-							flags={INCLUDE_FLAGS}
-							value={observability.include}
-							onChange={(include) => {
-								set({ include });
-							}}
-						/>
-					</InspectorSection>
-					<InspectorSection title="Scrub" path="observability.scrub">
-						<FlagList
-							label="Scrub"
-							path="observability.scrub"
-							flags={SCRUB_FLAGS}
-							value={observability.scrub}
-							onChange={(scrub) => {
-								set({ scrub });
-							}}
-						/>
-					</InspectorSection>
-					<InspectorSection title="Storage" note={sectionNote('traces.storage')}>
-						<NumberRow
-							label="Keep for"
-							path="observability.retainForDays"
-							field="retainForDays"
-							units="days"
-							value={observability.retainForDays}
-							isIntegerOnly
-							onChange={(retainForDays) => {
-								set({ retainForDays });
-							}}
-						/>
-						<NumberRow
-							label="Rotate at"
-							path="observability.rotateAfterMiB"
-							field="rotateAfterMiB"
-							units="MiB"
-							value={observability.rotateAfterMiB}
-							min={1}
-							onChange={(rotateAfterMiB) => {
-								set({ rotateAfterMiB });
-							}}
-						/>
-						<TextAreaRow
-							label="Resource"
-							path="observability.resource"
-							field="resourceJson"
-							value={observability.resourceJson}
-							rows={3}
-							hasSpellCheck={false}
-							placeholder={RESOURCE_PLACEHOLDER}
-							onChange={(resourceJson) => {
-								set({ resourceJson });
-							}}
-						/>
-					</InspectorSection>
+					<TraceContentSections observability={observability} set={set} />
+					<TraceStorageSection observability={observability} set={set} />
 				</>
 			)}
 		</>
@@ -3191,6 +3430,71 @@ export function addToolSpec(
 	onSelect(toolSpecNodeId(tool.key));
 }
 
+/** The library's tools as a checklist, the ones this agent may use checked. */
+function AllowedToolsList({
+	tools,
+	allowed,
+	workspace,
+}: {
+	tools: ToolSpecDraft[];
+	allowed: ToolSpecDraft[];
+	workspace: Workspace;
+}) {
+	return (
+		<CheckboxList
+			label="Allowed"
+			isLabelHidden
+			density="compact"
+			value={allowed.map((tool) => tool.key)}
+			onChange={(checked) => {
+				for (const tool of tools) {
+					workspace.setAllowed(tool.key, checked.includes(tool.key));
+				}
+			}}
+		>
+			{tools.map((tool) => {
+				// A tool that runs this agent can't be turned on here; one already on can still be turned off.
+				const runsSelf =
+					tool.toolType === 'agent' &&
+					tool.agentKey === workspace.self &&
+					!workspace.allowed.includes(tool.key);
+				const description = runsSelf
+					? 'Runs this agent, so this agent can’t use it.'
+					: tool.description.trim();
+				return (
+					<CheckboxListItem
+						key={tool.key}
+						value={tool.key}
+						label={tool.toolName.trim() || 'Unnamed tool'}
+						isDisabled={runsSelf}
+						description={description ? <Text type="supporting">{description}</Text> : undefined}
+					/>
+				);
+			})}
+		</CheckboxList>
+	);
+}
+
+/** An agent's own tools, each opening its editor. */
+function ToolList({ tools, onSelect }: { tools: ToolSpecDraft[]; onSelect: (id: string) => void }) {
+	return (
+		<List density="compact">
+			{tools.map((tool) => (
+				<ListItem
+					key={tool.key}
+					label={tool.toolName.trim() || 'Unnamed tool'}
+					description={tool.description.trim() || undefined}
+					startContent={<Icon icon={TOOL_TYPE_ICON[tool.toolType]} size="sm" color="secondary" />}
+					endContent={<Token label={tool.loadTier} size="sm" />}
+					onClick={() => {
+						onSelect(toolSpecNodeId(tool.key));
+					}}
+				/>
+			))}
+		</List>
+	);
+}
+
 /** The tools, each opening its own editor, and the T2 loader. */
 function ToolsEditor({
 	draft,
@@ -3228,80 +3532,46 @@ function ToolsEditor({
 				// The library's tools, the ones this agent may use checked; each opens from the library.
 				<InspectorSection title="Tools" path="tools.allow" note={note}>
 					{draft.toolSpecs.length > 0 && (
-						<CheckboxList
-							label="Allowed"
-							isLabelHidden
-							density="compact"
-							value={allowed.map((tool) => tool.key)}
-							onChange={(checked) => {
-								for (const tool of draft.toolSpecs) {
-									workspace.setAllowed(tool.key, checked.includes(tool.key));
-								}
-							}}
-						>
-							{draft.toolSpecs.map((tool) => {
-								// A tool that runs this agent can't be turned on here; one already on can still be turned off.
-								const runsSelf =
-									tool.toolType === 'agent' &&
-									tool.agentKey === workspace.self &&
-									!workspace.allowed.includes(tool.key);
-								const description = runsSelf
-									? 'Runs this agent, so this agent can’t use it.'
-									: tool.description.trim();
-								return (
-									<CheckboxListItem
-										key={tool.key}
-										value={tool.key}
-										label={tool.toolName.trim() || 'Unnamed tool'}
-										isDisabled={runsSelf}
-										description={
-											description ? <Text type="supporting">{description}</Text> : undefined
-										}
-									/>
-								);
-							})}
-						</CheckboxList>
+						<AllowedToolsList tools={draft.toolSpecs} allowed={allowed} workspace={workspace} />
 					)}
 					{addTool}
 				</InspectorSection>
 			) : (
 				<InspectorSection title="Tools" path={isHost ? undefined : 'tools'} note={note}>
-					{draft.toolSpecs.length > 0 && (
-						<List density="compact">
-							{draft.toolSpecs.map((tool) => (
-								<ListItem
-									key={tool.key}
-									label={tool.toolName.trim() || 'Unnamed tool'}
-									description={tool.description.trim() || undefined}
-									startContent={
-										<Icon icon={TOOL_TYPE_ICON[tool.toolType]} size="sm" color="secondary" />
-									}
-									endContent={<Token label={tool.loadTier} size="sm" />}
-									onClick={() => {
-										onSelect(toolSpecNodeId(tool.key));
-									}}
-								/>
-							))}
-						</List>
-					)}
+					{draft.toolSpecs.length > 0 && <ToolList tools={draft.toolSpecs} onSelect={onSelect} />}
 					{addTool}
 				</InspectorSection>
 			)}
 			{draftAllows(draft, 'tools.t2Loader') && (
-				<InspectorSection title="Loading" path="tools.t2Loader">
-					<ChoiceRow
-						label="T2 loader"
-						path="tools.t2Loader"
-						field="t2Loader"
-						value={draft.tools.t2Loader}
-						options={loaders}
-						onChange={(t2Loader) => {
-							set({ t2Loader });
-						}}
-					/>
-				</InspectorSection>
+				<ToolLoadingSection value={draft.tools.t2Loader} loaders={loaders} set={set} />
 			)}
 		</>
+	);
+}
+
+/** The tool that loads T2 tools, picked from the custom tools the agent allows. */
+function ToolLoadingSection({
+	value,
+	loaders,
+	set,
+}: {
+	value: string;
+	loaders: string[];
+	set: SetSection<'tools'>;
+}) {
+	return (
+		<InspectorSection title="Loading" path="tools.t2Loader">
+			<ChoiceRow
+				label="T2 loader"
+				path="tools.t2Loader"
+				field="t2Loader"
+				value={value}
+				options={loaders}
+				onChange={(t2Loader) => {
+					set({ t2Loader });
+				}}
+			/>
+		</InspectorSection>
 	);
 }
 
@@ -3397,6 +3667,36 @@ function TestCredentialRow({
 	);
 }
 
+/** The input an HTTP tool's test sends. */
+function SampleInputRow({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+	return (
+		<TextAreaRow
+			label="Sample input"
+			path="playground.sampleInput"
+			value={value}
+			rows={4}
+			hasSpellCheck={false}
+			placeholder="{}"
+			onChange={onChange}
+		/>
+	);
+}
+
+function TestConnectionButton({ isLoading, onClick }: { isLoading: boolean; onClick: () => void }) {
+	return (
+		<HStack>
+			<Button
+				label="Test connection"
+				variant="secondary"
+				size="sm"
+				icon={<Icon icon={IconPlugConnected} size="sm" />}
+				isLoading={isLoading}
+				onClick={onClick}
+			/>
+		</HStack>
+	);
+}
+
 /**
  * Tries the tool's endpoint or MCP server once, from the server, which reaches public hosts only.
  * The sample input and credential live here only: neither is saved to the draft.
@@ -3439,32 +3739,16 @@ function ToolTest({ tool }: { tool: ToolSpecDraft }) {
 			title="Test"
 			note={http ? sectionNote('tool.test.http', { method }) : sectionNote('tool.test.mcp')}
 		>
-			{http && (
-				<TextAreaRow
-					label="Sample input"
-					path="playground.sampleInput"
-					value={sampleInput}
-					rows={4}
-					hasSpellCheck={false}
-					placeholder="{}"
-					onChange={setTypedInput}
-				/>
-			)}
+			{http && <SampleInputRow value={sampleInput} onChange={setTypedInput} />}
 			{(tool.authType ?? 'none') !== 'none' && (
 				<TestCredentialRow value={credential} onChange={setCredential} />
 			)}
-			<HStack>
-				<Button
-					label="Test connection"
-					variant="secondary"
-					size="sm"
-					icon={<Icon icon={IconPlugConnected} size="sm" />}
-					isLoading={pending}
-					onClick={() => {
-						void run();
-					}}
-				/>
-			</HStack>
+			<TestConnectionButton
+				isLoading={pending}
+				onClick={() => {
+					void run();
+				}}
+			/>
 			{result && (
 				<Banner
 					status={probeStatus(result)}
@@ -3514,6 +3798,23 @@ function removeToolSpec(draft: PlaygroundDraft, toolKey: string, name: string): 
 	};
 }
 
+/** The tool's type, from the types on offer here. */
+function ToolTypeRow({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
+	const workspace = useContext(WorkspaceContext);
+	return (
+		<SegmentedRow
+			label="Type"
+			path="registerTool.type"
+			field="toolType"
+			value={tool.toolType}
+			segments={toolTypeSegments(workspace)}
+			onChange={(toolType) => {
+				set({ toolType });
+			}}
+		/>
+	);
+}
+
 /** What the tool is: its name, type, description and category. */
 function ToolSection({
 	draft,
@@ -3526,7 +3827,6 @@ function ToolSection({
 	tool: ToolSpecDraft;
 	set: SetTool;
 }) {
-	const workspace = useContext(WorkspaceContext);
 	return (
 		<InspectorSection
 			title="Tool"
@@ -3543,16 +3843,7 @@ function ToolSection({
 					setDraft((current) => renameToolSpec(current, tool.key, tool.toolName, toolName));
 				}}
 			/>
-			<SegmentedRow
-				label="Type"
-				path="registerTool.type"
-				field="toolType"
-				value={tool.toolType}
-				segments={toolTypeSegments(workspace)}
-				onChange={(toolType) => {
-					set({ toolType });
-				}}
-			/>
+			<ToolTypeRow tool={tool} set={set} />
 			<TextAreaRow
 				label="Description"
 				path="description"
@@ -3688,63 +3979,75 @@ function HeadersRow({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
 function HttpSections({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
 	return (
 		<>
-			<InspectorSection title="Request" note={sectionNote('tool.headers')}>
-				<TextRow
-					label="Endpoint"
-					path="endpoint"
-					field="endpoint"
-					isRequired
-					value={tool.endpoint ?? ''}
-					placeholder="https://api.example.com/flights/{id}"
-					onChange={(endpoint) => {
-						set({ endpoint });
-					}}
-				/>
-				<SegmentedRow
-					label="Method"
-					path="method"
-					field="method"
-					value={tool.method ?? HTTP_METHODS[0]}
-					segments={METHOD_SEGMENTS}
-					onChange={(method) => {
-						set({ method });
-					}}
-				/>
-				<HeadersRow tool={tool} set={set} />
-			</InspectorSection>
-			<InspectorSection title="Mapping" path="mapping">
-				<NamesRow
-					label="Path"
-					path="mapping.pathParams"
-					field="pathParams"
-					value={tool.pathParams ?? []}
-					placeholder="Names in {braces}"
-					onChange={(pathParams) => {
-						set({ pathParams });
-					}}
-				/>
-				<NamesRow
-					label="Query"
-					path="mapping.queryParams"
-					field="queryParams"
-					value={tool.queryParams ?? []}
-					placeholder="None"
-					onChange={(queryParams) => {
-						set({ queryParams });
-					}}
-				/>
-				<TextRow
-					label="Body"
-					path="mapping.bodyParam"
-					field="bodyParam"
-					value={tool.bodyParam ?? ''}
-					hint="None"
-					onChange={(bodyParam) => {
-						set({ bodyParam });
-					}}
-				/>
-			</InspectorSection>
+			<HttpRequestSection tool={tool} set={set} />
+			<HttpMappingSection tool={tool} set={set} />
 		</>
+	);
+}
+
+function HttpRequestSection({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
+	return (
+		<InspectorSection title="Request" note={sectionNote('tool.headers')}>
+			<TextRow
+				label="Endpoint"
+				path="endpoint"
+				field="endpoint"
+				isRequired
+				value={tool.endpoint ?? ''}
+				placeholder="https://api.example.com/flights/{id}"
+				onChange={(endpoint) => {
+					set({ endpoint });
+				}}
+			/>
+			<SegmentedRow
+				label="Method"
+				path="method"
+				field="method"
+				value={tool.method ?? HTTP_METHODS[0]}
+				segments={METHOD_SEGMENTS}
+				onChange={(method) => {
+					set({ method });
+				}}
+			/>
+			<HeadersRow tool={tool} set={set} />
+		</InspectorSection>
+	);
+}
+
+function HttpMappingSection({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
+	return (
+		<InspectorSection title="Mapping" path="mapping">
+			<NamesRow
+				label="Path"
+				path="mapping.pathParams"
+				field="pathParams"
+				value={tool.pathParams ?? []}
+				placeholder="Names in {braces}"
+				onChange={(pathParams) => {
+					set({ pathParams });
+				}}
+			/>
+			<NamesRow
+				label="Query"
+				path="mapping.queryParams"
+				field="queryParams"
+				value={tool.queryParams ?? []}
+				placeholder="None"
+				onChange={(queryParams) => {
+					set({ queryParams });
+				}}
+			/>
+			<TextRow
+				label="Body"
+				path="mapping.bodyParam"
+				field="bodyParam"
+				value={tool.bodyParam ?? ''}
+				hint="None"
+				onChange={(bodyParam) => {
+					set({ bodyParam });
+				}}
+			/>
+		</InspectorSection>
 	);
 }
 
@@ -4321,28 +4624,10 @@ function WordingEditor({
 	setDraft: SetDraft;
 	onSelect: (id: string) => void;
 }) {
-	const set = patch(setDraft, 'wording');
 	const [audience, setAudience] = useState<WordingAudience>('visitor');
 	const [query, setQuery] = useState('');
 	const needle = query.trim().toLowerCase();
-	/** A search spans both readers: a line matches on its area, its name, its default or its text. */
-	const areas = WORDING_AREAS.filter((area) => needle || area.audience === audience)
-		.map((area) => {
-			const all = LEXICON_KEYS.filter((key) => key.startsWith(`${area.prefix}.`));
-			const keys = needle
-				? all.filter((key) =>
-						[
-							area.title,
-							wordingLabel(key),
-							wordingPlaceholder(draft, key),
-							wordingValue(draft, key),
-						].some((text) => text.toLowerCase().includes(needle)),
-					)
-				: all;
-			const edited = all.filter((key) => wordingValue(draft, key)).length;
-			return { ...area, keys, edited };
-		})
-		.filter((area) => area.keys.length > 0);
+	const areas = wordingAreas(draft, needle, audience);
 	const note = WORDING_AUDIENCES.find((entry) => entry.value === audience)?.note;
 	return (
 		<Section variant="transparent" padding={3}>
@@ -4356,27 +4641,7 @@ function WordingEditor({
 					startIcon={IconSearch}
 					hasClear
 				/>
-				{!needle && (
-					<SegmentedControl
-						label="Who reads it"
-						size="sm"
-						layout="fill"
-						value={audience}
-						onChange={(next) => {
-							const picked = WORDING_AUDIENCES.find((entry) => entry.value === next);
-							if (picked) setAudience(picked.value);
-						}}
-					>
-						{WORDING_AUDIENCES.map((entry) => (
-							<SegmentedControlItem
-								key={entry.value}
-								value={entry.value}
-								label={entry.label}
-								icon={<Icon icon={entry.icon} size="sm" />}
-							/>
-						))}
-					</SegmentedControl>
-				)}
+				{!needle && <WordingAudiencePicker value={audience} onChange={setAudience} />}
 				{!needle && <Text type="supporting">{note}</Text>}
 				{needle && areas.length === 0 && (
 					<Text type="supporting">No wording matches “{query.trim()}”.</Text>
@@ -4393,58 +4658,139 @@ function WordingEditor({
 						<Collapsible
 							key={area.prefix}
 							value={area.prefix}
-							trigger={
-								<HStack gap={2} align="center">
-									<Icon icon={area.icon} size="sm" color="secondary" />
-									<StackItem size="fill">
-										<VStack gap={0}>
-											<Text type="label" weight="semibold">
-												{area.title}
-											</Text>
-											<Text type="supporting">{area.note}</Text>
-										</VStack>
-									</StackItem>
-									{area.edited > 0 && (
-										<Badge variant="info" label={`${String(area.edited)} edited`} />
-									)}
-								</HStack>
-							}
+							trigger={<WordingAreaTrigger area={area} />}
 						>
-							<VStack gap={3} paddingBlock={2}>
-								{area.keys.map((key) => {
-									const facet = INLINE_WORDING[key];
-									if (facet)
-										return (
-											<SharedWordingRow
-												key={key}
-												lexiconKey={key}
-												facet={facet}
-												draft={draft}
-												setDraft={setDraft}
-												onSelect={onSelect}
-											/>
-										);
-									return (
-										<TextAreaRow
-											key={key}
-											label={wordingLabel(key)}
-											path={`lexicon.${key}`}
-											field={key}
-											rows={2}
-											value={draft.wording[key] ?? ''}
-											placeholder={wordingPlaceholder(draft, key)}
-											onChange={(text) => {
-												set({ [key]: text });
-											}}
-										/>
-									);
-								})}
-							</VStack>
+							<WordingAreaLines
+								keys={area.keys}
+								draft={draft}
+								setDraft={setDraft}
+								onSelect={onSelect}
+							/>
 						</Collapsible>
 					))}
 				</CollapsibleGroup>
 			</VStack>
 		</Section>
+	);
+}
+
+/**
+ * The areas on show, each with its lines. A search spans both readers: a line matches on its area,
+ * its name, its default or its text.
+ */
+function wordingAreas(draft: PlaygroundDraft, needle: string, audience: WordingAudience) {
+	return WORDING_AREAS.filter((area) => needle || area.audience === audience)
+		.map((area) => {
+			const all = LEXICON_KEYS.filter((key) => key.startsWith(`${area.prefix}.`));
+			const keys = needle
+				? all.filter((key) =>
+						[
+							area.title,
+							wordingLabel(key),
+							wordingPlaceholder(draft, key),
+							wordingValue(draft, key),
+						].some((text) => text.toLowerCase().includes(needle)),
+					)
+				: all;
+			const edited = all.filter((key) => wordingValue(draft, key)).length;
+			return { ...area, keys, edited };
+		})
+		.filter((area) => area.keys.length > 0);
+}
+
+/** Who reads the lines on show: the visitor, or the model. */
+function WordingAudiencePicker({
+	value,
+	onChange,
+}: {
+	value: WordingAudience;
+	onChange: (audience: WordingAudience) => void;
+}) {
+	return (
+		<SegmentedControl
+			label="Who reads it"
+			size="sm"
+			layout="fill"
+			value={value}
+			onChange={(next) => {
+				const picked = WORDING_AUDIENCES.find((entry) => entry.value === next);
+				if (picked) onChange(picked.value);
+			}}
+		>
+			{WORDING_AUDIENCES.map((entry) => (
+				<SegmentedControlItem
+					key={entry.value}
+					value={entry.value}
+					label={entry.label}
+					icon={<Icon icon={entry.icon} size="sm" />}
+				/>
+			))}
+		</SegmentedControl>
+	);
+}
+
+/** An area's heading: its icon, title and note, and how many of its lines are edited. */
+function WordingAreaTrigger({ area }: { area: ReturnType<typeof wordingAreas>[number] }) {
+	return (
+		<HStack gap={2} align="center">
+			<Icon icon={area.icon} size="sm" color="secondary" />
+			<StackItem size="fill">
+				<VStack gap={0}>
+					<Text type="label" weight="semibold">
+						{area.title}
+					</Text>
+					<Text type="supporting">{area.note}</Text>
+				</VStack>
+			</StackItem>
+			{area.edited > 0 && <Badge variant="info" label={`${String(area.edited)} edited`} />}
+		</HStack>
+	);
+}
+
+/** An area's lines; one that also sits beside its setting edits that setting's field. */
+function WordingAreaLines({
+	keys,
+	draft,
+	setDraft,
+	onSelect,
+}: {
+	keys: LexiconKey[];
+	draft: PlaygroundDraft;
+	setDraft: SetDraft;
+	onSelect: (id: string) => void;
+}) {
+	const set = patch(setDraft, 'wording');
+	return (
+		<VStack gap={3} paddingBlock={2}>
+			{keys.map((key) => {
+				const facet = INLINE_WORDING[key];
+				if (facet)
+					return (
+						<SharedWordingRow
+							key={key}
+							lexiconKey={key}
+							facet={facet}
+							draft={draft}
+							setDraft={setDraft}
+							onSelect={onSelect}
+						/>
+					);
+				return (
+					<TextAreaRow
+						key={key}
+						label={wordingLabel(key)}
+						path={`lexicon.${key}`}
+						field={key}
+						rows={2}
+						value={draft.wording[key] ?? ''}
+						placeholder={wordingPlaceholder(draft, key)}
+						onChange={(text) => {
+							set({ [key]: text });
+						}}
+					/>
+				);
+			})}
+		</VStack>
 	);
 }
 
@@ -4482,56 +4828,18 @@ function DecisionQuestionEditor({
 	onRemove: () => void;
 }) {
 	const status = useFieldStatus()('questions', index);
-	const copy = CRITERIA_COPY[question.type];
-	const name = question.id || `question ${String(index + 1)}`;
-	const setCriteria = (criteria: DecisionQuestionDraft['criteria']) => {
-		onChange({ criteria });
-	};
 	return (
 		<Section variant="transparent" padding={3}>
 			<VStack gap={3} {...{ [ISSUE_ROW_ATTRIBUTE]: status !== undefined || undefined }}>
-				<HStack gap={1} vAlign="center">
-					<StackItem size="fill">
-						<TextInput
-							label={`Question ${String(index + 1)} id`}
-							isLabelHidden
-							size="sm"
-							status={status}
-							value={question.id}
-							placeholder="verdict"
-							onChange={(id) => {
-								onChange({ id });
-							}}
-						/>
-					</StackItem>
-					<IconButton
-						label={`Move ${name} up`}
-						variant="ghost"
-						size="sm"
-						isDisabled={index === 0}
-						icon={<Icon icon={IconArrowUp} size="sm" />}
-						onClick={() => {
-							onMove(index - 1);
-						}}
-					/>
-					<IconButton
-						label={`Move ${name} down`}
-						variant="ghost"
-						size="sm"
-						isDisabled={index === count - 1}
-						icon={<Icon icon={IconArrowDown} size="sm" />}
-						onClick={() => {
-							onMove(index + 1);
-						}}
-					/>
-					<IconButton
-						label={`Remove ${name}`}
-						variant="ghost"
-						size="sm"
-						icon={<Icon icon={IconTrash} size="sm" />}
-						onClick={onRemove}
-					/>
-				</HStack>
+				<QuestionHeader
+					question={question}
+					index={index}
+					count={count}
+					status={status}
+					onChange={onChange}
+					onMove={onMove}
+					onRemove={onRemove}
+				/>
 				<SegmentedRow
 					label="Answer"
 					path="decision.questions.type"
@@ -4553,77 +4861,249 @@ function DecisionQuestionEditor({
 						onChange({ instructions });
 					}}
 				/>
-				<VStack gap={2}>
-					<VStack gap={0}>
-						<Text type="label">{copy.title}</Text>
-						<Text type="supporting">{copy.note}</Text>
-					</VStack>
-					{question.criteria.map((row, at) => (
-						<HStack key={row.key} gap={1} vAlign="center">
-							{question.type === 'score' ? (
-								<StackItem size="static">
-									<Text type="supporting" color="secondary" hasTabularNumbers>
-										{String(at)}
-									</Text>
-								</StackItem>
-							) : (
-								<div style={{ flex: '0 0 38%', minWidth: 0 }}>
-									<TextInput
-										label={`${copy.row} ${String(at + 1)} label`}
-										isLabelHidden
-										size="sm"
-										value={row.label}
-										placeholder="label"
-										onChange={(label) => {
-											setCriteria(
-												question.criteria.map((r) => (r.key === row.key ? { ...r, label } : r)),
-											);
-										}}
-									/>
-								</div>
-							)}
-							<StackItem size="fill">
-								<TextInput
-									label={`${copy.row} ${String(at + 1)} description`}
-									isLabelHidden
-									size="sm"
-									value={row.text}
-									placeholder={
-										question.type === 'score' ? 'What this level means' : 'When to pick it'
-									}
-									onChange={(text) => {
-										setCriteria(
-											question.criteria.map((r) => (r.key === row.key ? { ...r, text } : r)),
-										);
-									}}
-								/>
-							</StackItem>
-							<IconButton
-								label={`Remove ${copy.row.toLowerCase()} ${String(at + 1)}`}
-								variant="ghost"
-								size="sm"
-								icon={<Icon icon={IconX} size="sm" />}
-								onClick={() => {
-									setCriteria(question.criteria.filter((r) => r.key !== row.key));
-								}}
-							/>
-						</HStack>
-					))}
-					<HStack>
-						<Button
-							label={`Add ${copy.row.toLowerCase()}`}
-							variant="ghost"
-							size="sm"
-							icon={<Icon icon={IconPlus} size="sm" />}
-							isDisabled={question.criteria.length >= PLAYGROUND_DECISION_MAX_CRITERIA}
-							onClick={() => {
-								setCriteria([...question.criteria, ...newCriteria('score').slice(0, 1)]);
-							}}
-						/>
-					</HStack>
-				</VStack>
+				<CriteriaList question={question} onChange={onChange} />
 			</VStack>
 		</Section>
+	);
+}
+
+/** A question's id, and the buttons that move and remove it. */
+function QuestionHeader({
+	question,
+	index,
+	count,
+	status,
+	onChange,
+	onMove,
+	onRemove,
+}: {
+	question: DecisionQuestionDraft;
+	index: number;
+	count: number;
+	status: ReturnType<ReturnType<typeof useFieldStatus>>;
+	onChange: (change: Partial<DecisionQuestionDraft>) => void;
+	onMove: (to: number) => void;
+	onRemove: () => void;
+}) {
+	return (
+		<HStack gap={1} vAlign="center">
+			<StackItem size="fill">
+				<TextInput
+					label={`Question ${String(index + 1)} id`}
+					isLabelHidden
+					size="sm"
+					status={status}
+					value={question.id}
+					placeholder="verdict"
+					onChange={(id) => {
+						onChange({ id });
+					}}
+				/>
+			</StackItem>
+			<QuestionActions
+				name={question.id || `question ${String(index + 1)}`}
+				index={index}
+				count={count}
+				onMove={onMove}
+				onRemove={onRemove}
+			/>
+		</HStack>
+	);
+}
+
+function QuestionActions({
+	name,
+	index,
+	count,
+	onMove,
+	onRemove,
+}: {
+	name: string;
+	index: number;
+	count: number;
+	onMove: (to: number) => void;
+	onRemove: () => void;
+}) {
+	return (
+		<>
+			<IconButton
+				label={`Move ${name} up`}
+				variant="ghost"
+				size="sm"
+				isDisabled={index === 0}
+				icon={<Icon icon={IconArrowUp} size="sm" />}
+				onClick={() => {
+					onMove(index - 1);
+				}}
+			/>
+			<IconButton
+				label={`Move ${name} down`}
+				variant="ghost"
+				size="sm"
+				isDisabled={index === count - 1}
+				icon={<Icon icon={IconArrowDown} size="sm" />}
+				onClick={() => {
+					onMove(index + 1);
+				}}
+			/>
+			<IconButton
+				label={`Remove ${name}`}
+				variant="ghost"
+				size="sm"
+				icon={<Icon icon={IconTrash} size="sm" />}
+				onClick={onRemove}
+			/>
+		</>
+	);
+}
+
+/** One row of a question's options, levels or criteria, and the setter for the whole list. */
+interface CriterionProps {
+	question: DecisionQuestionDraft;
+	row: DecisionQuestionDraft['criteria'][number];
+	at: number;
+	setCriteria: (criteria: DecisionQuestionDraft['criteria']) => void;
+}
+
+/** What a row leads with: a score level's number, or the label of an option or criterion. */
+function CriterionLabel({ question, row, at, setCriteria }: CriterionProps) {
+	const copy = CRITERIA_COPY[question.type];
+	return question.type === 'score' ? (
+		<StackItem size="static">
+			<Text type="supporting" color="secondary" hasTabularNumbers>
+				{String(at)}
+			</Text>
+		</StackItem>
+	) : (
+		<div style={{ flex: '0 0 38%', minWidth: 0 }}>
+			<TextInput
+				label={`${copy.row} ${String(at + 1)} label`}
+				isLabelHidden
+				size="sm"
+				value={row.label}
+				placeholder="label"
+				onChange={(label) => {
+					setCriteria(question.criteria.map((r) => (r.key === row.key ? { ...r, label } : r)));
+				}}
+			/>
+		</div>
+	);
+}
+
+function CriterionRow({ question, row, at, setCriteria }: CriterionProps) {
+	const copy = CRITERIA_COPY[question.type];
+	return (
+		<HStack gap={1} vAlign="center">
+			<CriterionLabel question={question} row={row} at={at} setCriteria={setCriteria} />
+			<StackItem size="fill">
+				<TextInput
+					label={`${copy.row} ${String(at + 1)} description`}
+					isLabelHidden
+					size="sm"
+					value={row.text}
+					placeholder={question.type === 'score' ? 'What this level means' : 'When to pick it'}
+					onChange={(text) => {
+						setCriteria(question.criteria.map((r) => (r.key === row.key ? { ...r, text } : r)));
+					}}
+				/>
+			</StackItem>
+			<IconButton
+				label={`Remove ${copy.row.toLowerCase()} ${String(at + 1)}`}
+				variant="ghost"
+				size="sm"
+				icon={<Icon icon={IconX} size="sm" />}
+				onClick={() => {
+					setCriteria(question.criteria.filter((r) => r.key !== row.key));
+				}}
+			/>
+		</HStack>
+	);
+}
+
+/** A question's options, levels or criteria, and the button that adds one. */
+function CriteriaList({
+	question,
+	onChange,
+}: {
+	question: DecisionQuestionDraft;
+	onChange: (change: Partial<DecisionQuestionDraft>) => void;
+}) {
+	const copy = CRITERIA_COPY[question.type];
+	const setCriteria = (criteria: DecisionQuestionDraft['criteria']) => {
+		onChange({ criteria });
+	};
+	return (
+		<VStack gap={2}>
+			<VStack gap={0}>
+				<Text type="label">{copy.title}</Text>
+				<Text type="supporting">{copy.note}</Text>
+			</VStack>
+			{question.criteria.map((row, at) => (
+				<CriterionRow
+					key={row.key}
+					question={question}
+					row={row}
+					at={at}
+					setCriteria={setCriteria}
+				/>
+			))}
+			<HStack>
+				<Button
+					label={`Add ${copy.row.toLowerCase()}`}
+					variant="ghost"
+					size="sm"
+					icon={<Icon icon={IconPlus} size="sm" />}
+					isDisabled={question.criteria.length >= PLAYGROUND_DECISION_MAX_CRITERIA}
+					onClick={() => {
+						setCriteria([...question.criteria, ...newCriteria('score').slice(0, 1)]);
+					}}
+				/>
+			</HStack>
+		</VStack>
+	);
+}
+
+/** The decision slice of the draft and its setter, for each decision section. */
+interface DecisionSectionProps {
+	decision: PlaygroundDraft['decision'];
+	set: SetSection<'decision'>;
+}
+
+function DecisionContractSection({ decision, set }: DecisionSectionProps) {
+	return (
+		<InspectorSection title="Contract" path="decision.contract">
+			<TextRow
+				label="Contract"
+				path="decision.contract"
+				field="contract"
+				value={decision.contract}
+				placeholder="guardrails.tool_call.v1"
+				onChange={(contract) => {
+					set({ contract });
+				}}
+			/>
+		</InspectorSection>
+	);
+}
+
+function DecisionStateSection({ decision, set }: DecisionSectionProps) {
+	return (
+		<InspectorSection title="State" note={sectionNote('decision.state')}>
+			<NumberRow
+				label="Max state"
+				path="inputs.maxStateBytes"
+				units="bytes"
+				field="maxStateBytes"
+				value={decision.maxStateBytes}
+				min={1}
+				max={PLAYGROUND_DECISION_MAX_STATE_BYTES}
+				hint={`${String(PLAYGROUND_DECISION_MAX_STATE_BYTES)} by default`}
+				isIntegerOnly
+				onChange={(maxStateBytes) => {
+					set({ maxStateBytes });
+				}}
+			/>
+		</InspectorSection>
 	);
 }
 
@@ -4642,34 +5122,8 @@ function DecisionEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 	};
 	return (
 		<>
-			<InspectorSection title="Contract" path="decision.contract">
-				<TextRow
-					label="Contract"
-					path="decision.contract"
-					field="contract"
-					value={decision.contract}
-					placeholder="guardrails.tool_call.v1"
-					onChange={(contract) => {
-						set({ contract });
-					}}
-				/>
-			</InspectorSection>
-			<InspectorSection title="State" note={sectionNote('decision.state')}>
-				<NumberRow
-					label="Max state"
-					path="inputs.maxStateBytes"
-					units="bytes"
-					field="maxStateBytes"
-					value={decision.maxStateBytes}
-					min={1}
-					max={PLAYGROUND_DECISION_MAX_STATE_BYTES}
-					hint={`${String(PLAYGROUND_DECISION_MAX_STATE_BYTES)} by default`}
-					isIntegerOnly
-					onChange={(maxStateBytes) => {
-						set({ maxStateBytes });
-					}}
-				/>
-			</InspectorSection>
+			<DecisionContractSection decision={decision} set={set} />
+			<DecisionStateSection decision={decision} set={set} />
 			<InspectorSection title="Questions" note={sectionNote('decision.questions')}>
 				{listStatus && <Banner status="error" title={listStatus.message} />}
 			</InspectorSection>
@@ -4696,28 +5150,81 @@ function DecisionEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 					}}
 				/>
 			))}
-			<Section variant="transparent" padding={3}>
-				<HStack>
-					<Button
-						label="Add question"
-						variant="ghost"
-						size="sm"
-						icon={<Icon icon={IconPlus} size="sm" />}
-						isDisabled={decision.questions.length >= PLAYGROUND_DECISION_MAX_QUESTIONS}
-						onClick={() => {
-							setDraft((current) => ({
-								...current,
-								decision: {
-									...current.decision,
-									questions: [...current.decision.questions, newDecisionQuestion(current)],
-								},
-							}));
-						}}
-					/>
-				</HStack>
-			</Section>
+			<AddQuestionSection count={decision.questions.length} setDraft={setDraft} />
 		</>
 	);
+}
+
+/** Adds a question, up to the most a decision takes. */
+function AddQuestionSection({ count, setDraft }: { count: number; setDraft: SetDraft }) {
+	return (
+		<Section variant="transparent" padding={3}>
+			<HStack>
+				<Button
+					label="Add question"
+					variant="ghost"
+					size="sm"
+					icon={<Icon icon={IconPlus} size="sm" />}
+					isDisabled={count >= PLAYGROUND_DECISION_MAX_QUESTIONS}
+					onClick={() => {
+						setDraft((current) => ({
+							...current,
+							decision: {
+								...current.decision,
+								questions: [...current.decision.questions, newDecisionQuestion(current)],
+							},
+						}));
+					}}
+				/>
+			</HStack>
+		</Section>
+	);
+}
+
+/** The editor for a node's facet: one per section of the profile, model and tool. */
+function facetEditor(
+	ref: NonNullable<ReturnType<typeof playgroundNodeRef>>,
+	draft: PlaygroundDraft,
+	setDraft: SetDraft,
+	onSelect: (id: string) => void,
+): ReactNode {
+	const props = { draft, setDraft };
+	switch (ref.facet) {
+		case 'identity':
+			return <IdentityEditor {...props} />;
+		case 'models':
+			return <ModelsEditor {...props} onSelect={onSelect} />;
+		case 'modelBinding':
+			return draft.identity.profileType === 'decision' ? (
+				<DecisionModelEditor {...props} bindingKey={ref.key} />
+			) : (
+				<ModelBindingEditor {...props} bindingKey={ref.key} onSelect={onSelect} />
+			);
+		case 'tools':
+			return <ToolsEditor {...props} onSelect={onSelect} />;
+		case 'toolSpec':
+			return <ToolSpecEditor {...props} toolKey={ref.key} onSelect={onSelect} />;
+		case 'inputs':
+			return <InputsEditor {...props} />;
+		case 'image':
+			return <ImageEditor {...props} />;
+		case 'speech':
+			return <SpeechEditor {...props} />;
+		case 'live':
+			return <LiveEditor {...props} />;
+		case 'outputs':
+			return <OutputsEditor {...props} />;
+		case 'turnBehaviour':
+			return <TurnBehaviourEditor {...props} />;
+		case 'guardrails':
+			return <GuardrailsEditor {...props} />;
+		case 'observability':
+			return <ObservabilityEditor {...props} />;
+		case 'wording':
+			return <WordingEditor {...props} onSelect={onSelect} />;
+		case 'decision':
+			return <DecisionEditor {...props} />;
+	}
 }
 
 /**
@@ -4742,62 +5249,6 @@ export function ProfileEditor({
 	const ref = playgroundNodeRef(draft, selectedId);
 	if (!ref) return null;
 	const nodeIssues = issues.filter((issue) => issue.nodeId === selectedId);
-	const props = { draft, setDraft };
-
-	let editor: ReactNode;
-	switch (ref.facet) {
-		case 'identity':
-			editor = <IdentityEditor {...props} />;
-			break;
-		case 'models':
-			editor = <ModelsEditor {...props} onSelect={onSelect} />;
-			break;
-		case 'modelBinding':
-			editor =
-				draft.identity.profileType === 'decision' ? (
-					<DecisionModelEditor {...props} bindingKey={ref.key} />
-				) : (
-					<ModelBindingEditor {...props} bindingKey={ref.key} onSelect={onSelect} />
-				);
-			break;
-		case 'tools':
-			editor = <ToolsEditor {...props} onSelect={onSelect} />;
-			break;
-		case 'toolSpec':
-			editor = <ToolSpecEditor {...props} toolKey={ref.key} onSelect={onSelect} />;
-			break;
-		case 'inputs':
-			editor = <InputsEditor {...props} />;
-			break;
-		case 'image':
-			editor = <ImageEditor {...props} />;
-			break;
-		case 'speech':
-			editor = <SpeechEditor {...props} />;
-			break;
-		case 'live':
-			editor = <LiveEditor {...props} />;
-			break;
-		case 'outputs':
-			editor = <OutputsEditor {...props} />;
-			break;
-		case 'turnBehaviour':
-			editor = <TurnBehaviourEditor {...props} />;
-			break;
-		case 'guardrails':
-			editor = <GuardrailsEditor {...props} />;
-			break;
-		case 'observability':
-			editor = <ObservabilityEditor {...props} />;
-			break;
-		case 'wording':
-			editor = <WordingEditor {...props} onSelect={onSelect} />;
-			break;
-		case 'decision':
-			editor = <DecisionEditor {...props} />;
-			break;
-	}
-
 	const banners = nodeIssues.filter((issue) => issue.field === undefined);
 	return (
 		<NodeIssues value={nodeIssues}>
@@ -4811,7 +5262,7 @@ export function ProfileEditor({
 						</VStack>
 					</Section>
 				)}
-				{editor}
+				{facetEditor(ref, draft, setDraft, onSelect)}
 			</VStack>
 		</NodeIssues>
 	);
