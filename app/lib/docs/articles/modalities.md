@@ -10,31 +10,51 @@ coverPosition: 44% 82%
 suggest: 2
 ---
 
-Set `type` on the profile to say what the agent does. The type is the modality. It is the first choice you make, because it decides which fields you may set and which function runs the agent.
+Choose what kind of agent you build. The **type** of a profile is its modality: text, image, speech, live, decision or host.
 
-`defineProfile` throws when a profile sets a field its type does not allow or leaves out a field its type needs. The error appears when your application starts, not in the middle of a turn.
+## The idea
+
+The type is the first field that you set. It decides two things:
+
+- which fields the profile can set, and which fields it must set
+- which function runs the agent
+
+`defineProfile` checks both. It throws if a profile sets a field that its type does not allow. It also throws if the profile leaves out a field that its type needs. You see the error when your application starts, not in the middle of a turn.
+
+```text
+                          type
+   ┌────────┬────────┬─────┴────┬───────────┬───────────┐
+  text    image    speech      live      decision      host
+   └────────┼────────┘          │           │           │
+            ▼                   ▼           ▼           ▼
+         runTurn           runSession  runDecision  invokeTool
+```
 
 ## Pick a type
 
-The agent should | Type | Run it with
---- | --- | ---
-Chat in turns and call tools | `text` | `runTurn`
-Return a picture | `image` | `runTurn`
-Read a transcript aloud | `speech` | `runTurn`
-Hold a realtime voice or video call | `live` | `runSession`
-Answer typed questions about JSON state | `decision` | `runDecision`
-Run your tools with no model | `host` | `invokeTool`
+Harbor, the freight company in this guide, uses all six types. Each row is one job and the agent that does it.
+
+The agent must | Type | Run it with | At Harbor
+--- | --- | --- | ---
+Chat in turns and call tools | `text` | `runTurn` | The front desk
+Return a picture | `image` | `runTurn` | The label artist
+Read a transcript aloud | `speech` | `runTurn` | The dock announcer
+Hold a realtime voice or video call | `live` | `runSession` | The phone line
+Answer typed questions about JSON state | `decision` | `runDecision` | The router
+Run your tools with no model | `host` | `invokeTool` | The toolbox
+
+If you are not sure, start with `text`.
 
 ```note
-Every example on this page sets `key`. That field names the vault slot that holds the provider key ([Binding models](/docs/models)). If you are not sure, start with `text`.
+Every example on this page sets `key`. That field names the vault slot that holds the provider key ([Binding models](/docs/models)).
 ```
 
 ## Text
 
-Use `text` for an agent that chats in turns and may call tools. Run it with `runTurn`.
+The Harbor front desk answers questions and looks up shipments. Use `text` for an agent that chats in turns and can call tools. Run it with `runTurn`.
 
 - Must set: `identity`, `models`, `tools` and `inputs`.
-- May set: `outputs` and `turnBehaviour`.
+- Can set: `outputs` and `turnBehaviour`.
 - Protocol: `openAi` or `geminiInteractions`.
 
 ```ts frame=statements
@@ -53,7 +73,7 @@ const desk = defineProfile({
 
 ## Image
 
-Use `image` for an agent that returns a picture. Run it with `runTurn`.
+The label artist draws the art for a shipping label. Use `image` for an agent that returns a picture. Run it with `runTurn`.
 
 - Must set: the same fields as `text`, plus `image`.
 - Cannot set: `inputs.voice`, `outputs.structured` or `turnBehaviour.allowSteering`.
@@ -81,7 +101,7 @@ const illustrator = defineProfile({
 
 ## Speech
 
-Use `speech` to read a transcript aloud. Run it with `runTurn`. The input text is the transcript.
+The dock announcer reads a notice to the dock. Use `speech` to read a transcript aloud. Run it with `runTurn`. The input text is the transcript.
 
 - Must set: `identity` with a `handle` only, `models` and `speech`.
 - Cannot set: `identity.system`, `tools` or `inputs`.
@@ -109,7 +129,7 @@ const announcer = defineProfile({
 
 ## Live
 
-Use `live` for a realtime voice or video call. Run it with `runSession`.
+The phone line talks with a shipper in real time. Use `live` for a realtime voice or video call. Run it with `runSession`.
 
 - Must set: `identity`, `models`, `tools` and `live`.
 - Cannot set: `inputs` or `outputs`. `live.ingress` replaces `inputs`.
@@ -138,7 +158,7 @@ const line = defineProfile({
 
 ## Decision
 
-Use `decision` to get typed answers about JSON state. Run it with `runDecision`.
+The router decides which dock takes a shipment. Use `decision` to get typed answers about JSON state. Run it with `runDecision`.
 
 - Must set: `identity` with a `handle` only, one model with protocol `decision`, `inputs.state: "json"` and `decision.contract`.
 - Cannot set: `identity.system`, `tools`, `outputs` or `turnBehaviour`.
@@ -162,7 +182,7 @@ const router = defineProfile({
 
 ## Host
 
-Use `host` to run registered tools with no model, for example from your own API route. Run it with `invokeTool` ([Running a turn](/docs/runner)).
+The toolbox measures a road leg for a page that has no chat. Use `host` to run registered tools with no model, for example from your own API route. Run it with `invokeTool` ([Running a turn](/docs/runner)).
 
 - Must set: `tools`.
 - Cannot set: `identity`, `models`, `inputs` or `outputs`.
