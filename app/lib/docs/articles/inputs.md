@@ -9,7 +9,38 @@ coverAlt: Cobalt waves on a black beach
 coverPosition: 0% 81%
 ---
 
-Use `inputs` to declare what one turn of a `text` or `image` agent may send. A turn that sends more than the profile declares is refused. This profile accepts text, PDF and image files, and nothing else.
+State what one turn can send to the agent: text, files, voice or fixed choices. Theorem refuses a turn that sends more.
+
+## The idea
+
+Most applications check input in the route. One route checks the size of a file. A second route forgets. The agent then accepts different input on different pages.
+
+In Theorem, `inputs` is part of the profile. Theorem checks each turn against it before the model sees anything. If the turn breaks the profile, `runTurn` throws, and no model call happens.
+
+```text
+┌──────── the turn ────────┐     ┌─────── inputs ───────┐
+│ text                     │     │ is this kind of      │
+│ files                    │ ──► │ input declared?      │ ── yes ─► the model
+│ voice clips              │     │ is the type allowed? │
+│ slot choices             │     │ is it under the caps?│ ── no ──► TheoremError
+└──────────────────────────┘     └──────────────────────┘
+```
+
+`inputs` belongs to `text` and `image` profiles. The other types state their input in a different field ([Other agent types](/docs/inputs#other-agent-types)).
+
+## Declare what the Harbor desk accepts
+
+A shipper sends the Harbor desk a question, and often a manifest or a photo of a container. These steps declare each kind of input. Use only the steps that your agent needs.
+
+### 1. Accept text
+
+A `text` or `image` profile must set `inputs`. A profile that leaves out `inputs.text` accepts text, so `inputs: {}` is a profile that takes text only.
+
+Set `inputs.text` to `false` to refuse text.
+
+### 2. Accept files
+
+Set `inputs.attachments.accept` to the file types that a turn can send. A file type is a MIME type, such as `application/pdf`. A type such as `image/*` matches a whole family. A profile without `attachments` accepts no files.
 
 ```ts frame=profile:text
 inputs: {
@@ -21,31 +52,26 @@ inputs: {
 },
 ```
 
-## Accept text
+A profile with `attachments` or `voice` must also set three caps. Each cap is a positive whole number. `defineProfile` throws without them.
 
-A `text` or `image` profile must set `inputs`. A profile that leaves `inputs.text` out accepts text.
-
-Set `inputs.text` to `false` to refuse text.
-
-## Accept files
-
-Set `inputs.attachments.accept` to the file types a turn may send. A file type is a MIME type, such as `application/pdf`. A type such as `image/*` matches a whole family.
-
-A profile without `attachments` accepts no files.
-
-A profile with `attachments` or `voice` must also set `maxFiles`, `maxBytes` and `maxTurnBytes`. Each is a positive whole number. Theorem refuses to register the profile without them.
-
-`maxFiles` counts files and voice clips together. `maxBytes` caps one file. `maxTurnBytes` caps all files and clips in one turn.
+- `maxFiles` counts files and voice clips together.
+- `maxBytes` is the cap for one file.
+- `maxTurnBytes` is the cap for all files and clips in one turn.
 
 To give one file type its own cap, set `limitsByMime`. Its keys are MIME types or families such as `video/*`. Each value replaces `maxBytes` for those files.
 
-The byte caps apply to files sent inline. Theorem checks a file sent by reference, with a `uri`, for type and count only.
+```warning
+The byte caps apply to files that a turn sends inline. For a file that a turn sends by reference, with a `uri`, Theorem checks the type and the count only.
+```
 
-An `image` profile accepts images, video and PDF only. It takes no voice.
+Two more limits apply:
 
-A file must be a media type that Theorem knows: an image, audio, video or document type. Any other type is refused, even when `accept` lists it.
+- An `image` profile accepts images, video and PDF only. It takes no voice.
+- A file must be a media type that Theorem knows: an image, audio, video or document type. Theorem refuses any other type, even if `accept` lists it.
 
-## Send a file
+### 3. Send a file
+
+The request carries the file in `input.attachments`.
 
 ```ts frame=request
 input: {
@@ -56,13 +82,16 @@ input: {
 },
 ```
 
-`data` is the file as base64 text. `name` only tells the user which file Theorem refused. Theorem never sends it to the model.
+- `data` is the file as base64 text.
+- `name` tells the user which file Theorem refused. Theorem never sends it to the model.
 
 Theorem cleans a `text/plain`, `text/markdown` or `text/csv` file before the model reads it. It replaces injection text and sensitive data with an omitted marker. In a CSV file, it adds an apostrophe before a cell that starts like a formula.
 
-## Accept voice
+### 4. Accept voice
 
-Only a `text` profile takes voice clips. Set `inputs.voice.accept` to the audio types a clip may be. The same three caps apply. A turn sends clips in `input.voice`.
+A driver can send the desk a short voice clip from the road. Set `inputs.voice.accept` to the audio types that a clip can have. The same three caps apply. A turn sends clips in `input.voice`.
+
+Only a `text` profile takes voice clips.
 
 ```ts frame=profile:text
 inputs: {
@@ -73,11 +102,9 @@ inputs: {
 },
 ```
 
-## Offer choices
+### 5. Offer fixed choices
 
-Use `inputs.slots` when a turn must pick from a fixed list, such as a language. Each key is a slot name. Its value lists the choices.
-
-A turn passes its pick in `input.slots`. A profile can also use the pick to choose its reply schema. [Declaring outputs](/docs/outputs).
+The desk answers by email or by chat, and the reply is different for each. Use `inputs.slots` when a turn must pick from a fixed list. Each key is a slot name. Its value lists the choices.
 
 ```ts frame=profile:text
 inputs: {
@@ -85,13 +112,16 @@ inputs: {
 },
 ```
 
+A turn passes its choice in `input.slots`. A profile can also use the choice to select its reply schema ([Declaring outputs](/docs/outputs)).
+
 ## Other agent types
 
-A `speech` profile has no `inputs`. The text of the turn is the transcript.
+The other four types do not use the fields above ([Choosing a modality](/docs/modalities)).
 
-A `host` profile runs tools and takes no turn, so it has no `inputs`.
-
-A `live` profile sets its channels in `live.ingress`. A `decision` profile reads JSON state in `inputs`. [Choosing a modality](/docs/modalities).
+- A `speech` profile has no `inputs`. The text of the turn is the transcript.
+- A `host` profile runs tools and takes no turn, so it has no `inputs`.
+- A `live` profile sets its channels in `live.ingress`.
+- A `decision` profile reads JSON state. Its `inputs` holds `state` and `maxStateBytes` only.
 
 ## Open live channels
 
@@ -105,17 +135,21 @@ live: {
 
 ## Cap decision state
 
-A decision call sends JSON state. The state must not be `null`. Set `inputs.maxStateBytes` to a positive whole number to cap its size. Without it, the state has no cap. A state that is `null`, cannot become JSON or passes the cap makes `runDecision` throw a `DecisionError` with code `invalid_request` ([Running a turn](/docs/runner)).
+A decision call sends JSON state. The state must not be `null`. Set `inputs.maxStateBytes` to a positive whole number to cap its size. Without it, the state has no cap.
+
+`runDecision` throws a `DecisionError` with code `invalid_request` in three cases ([Running a turn](/docs/runner)):
+
+- The state is `null`.
+- The state cannot become JSON.
+- The state is over the cap.
 
 ```ts frame=profile:decision
 inputs: { state: 'json', maxStateBytes: 65_536 },
 ```
 
-## Read a refused turn
-
-`runTurn` throws a `TheoremError` when a turn breaks the profile. A file error lists one code for each problem. `runDecision` throws when the state is over `maxStateBytes`.
-
 ## Fix a refused turn
+
+`runTurn` throws a `TheoremError` when a turn breaks the profile. A file error lists one code for each problem.
 
 Error | Cause | Fix
 --- | --- | ---
