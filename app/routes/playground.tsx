@@ -921,6 +921,116 @@ function playgroundSurfaceHost(
 }
 
 /**
+ * Reveals the node the issue pill opened. Its first failing row is revealed once the editor shows
+ * that node, which can be a render after the click, and a frame later, once the editor's new scroll
+ * area scrolls.
+ */
+function useIssueReveal(
+	editorRef: RefObject<HTMLDivElement | null>,
+	selected: string,
+): (reveal: { node: string }) => void {
+	const [issueReveal, setIssueReveal] = useState<{ node: string }>();
+	const revealed = useRef<{ node: string }>(undefined);
+	useEffect(() => {
+		if (!issueReveal || issueReveal === revealed.current || issueReveal.node !== selected) return;
+		revealed.current = issueReveal;
+		const frame = requestAnimationFrame(() => {
+			const row = editorRef.current?.querySelector(`[${ISSUE_ROW_ATTRIBUTE}]`);
+			row?.scrollIntoView({ block: 'center' });
+			row?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus({ preventScroll: true });
+		});
+		return () => {
+			cancelAnimationFrame(frame);
+		};
+	}, [editorRef, issueReveal, selected]);
+	return setIssueReveal;
+}
+
+/** Export (a .zip, or copied) and Launch, for the agent being chatted with; off while the workspace has issues. */
+function ExportActions({
+	compiled,
+	chatted,
+	chattedId,
+	blocked,
+	phone,
+	copy,
+	connection,
+}: {
+	compiled: CompiledWorkspace | undefined;
+	chatted: CompiledPlayground | undefined;
+	chattedId: string;
+	blocked: string | undefined;
+	phone: boolean;
+	copy: (text: string, what: string) => void;
+	connection: Pick<PlaygroundRunPayload, 'connectionMode' | 'localBaseUrl'>;
+}) {
+	return (
+		<>
+			<ButtonGroup label="Export" isDisabled={!compiled}>
+				<Button
+					label="Export"
+					isIconOnly={phone}
+					icon={<Icon icon={IconDownload} size="sm" />}
+					tooltip={blocked ?? 'Download every agent as a .zip'}
+					onClick={() => {
+						if (compiled && chatted) {
+							downloadExport(exportFiles(compiled, chatted), chatted.agentId);
+						}
+					}}
+				/>
+				<DropdownMenu
+					button={{
+						label: 'More export options',
+						isIconOnly: true,
+						icon: <Icon icon={IconChevronDown} size="sm" />,
+						isDisabled: !compiled,
+					}}
+					hasChevron={false}
+					placement="below"
+					alignment="end"
+					items={[
+						{
+							id: 'copy',
+							label: 'Copy',
+							description: 'Every file, each under its path, to paste into your code.',
+							icon: <Icon icon={IconCopy} size="sm" />,
+							onClick: () => {
+								if (compiled && chatted) {
+									copy(exportText(exportFiles(compiled, chatted)), 'the files');
+								}
+							},
+						},
+						{
+							id: 'copy-llm',
+							label: 'Copy for LLM',
+							description:
+								'Every file with a brief: what to install, where each goes, what to ask you.',
+							icon: <Icon icon={IconSparkles} size="sm" />,
+							onClick: () => {
+								if (compiled && chatted)
+									copy(llmBrief(compiled, chatted), 'the files and their brief');
+							},
+						},
+					]}
+				/>
+			</ButtonGroup>
+			<Button
+				label="Launch"
+				isIconOnly={phone}
+				variant="primary"
+				icon={<Icon icon={IconExternalLink} size="sm" />}
+				isDisabled={!compiled}
+				tooltip={blocked ?? 'Run the agent on its own page, in a new tab'}
+				onClick={() => {
+					const run = compiled && workspaceRunAgent(compiled, chattedId);
+					if (run) openInNewTab({ ...runPayload(run), ...connection });
+				}}
+			/>
+		</>
+	);
+}
+
+/**
  * The profile tree beside the editor (or code) for the draft in a panel on the left; the compiled
  * agent on the right, under Export and Run. The draft compiles as it changes; while it doesn't
  * compile, the agent stays the last one that did.
@@ -996,25 +1106,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 		: agentNodeId(focus);
 	/** The open node as the editor names it: the open agent's own id, or a library tool's. */
 	const editing = innerNodeId(selected, focus) ?? 'identity';
-	/**
-	 * The node the issue pill opened. Its first failing row is revealed once the editor shows that
-	 * node, which can be a render after the click, and a frame later, once the editor's new scroll
-	 * area scrolls.
-	 */
-	const [issueReveal, setIssueReveal] = useState<{ node: string }>();
-	const revealed = useRef<{ node: string }>(undefined);
-	useEffect(() => {
-		if (!issueReveal || issueReveal === revealed.current || issueReveal.node !== selected) return;
-		revealed.current = issueReveal;
-		const frame = requestAnimationFrame(() => {
-			const row = editorRef.current?.querySelector(`[${ISSUE_ROW_ATTRIBUTE}]`);
-			row?.scrollIntoView({ block: 'center' });
-			row?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus({ preventScroll: true });
-		});
-		return () => {
-			cancelAnimationFrame(frame);
-		};
-	}, [issueReveal, selected]);
+	const setIssueReveal = useIssueReveal(editorRef, selected);
 	const settled = useDebounced(workspace, COMPILE_DEBOUNCE_MS);
 	const compile = useMemo(
 		() => ({ workspace: settled, result: compileWorkspace(settled, mode) }),
@@ -1471,72 +1563,14 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 										}}
 									/>
 								) : null}
-								<ButtonGroup label="Export" isDisabled={!compiled.ok}>
-									<Button
-										label="Export"
-										isIconOnly={phone}
-										icon={<Icon icon={IconDownload} size="sm" />}
-										tooltip={blocked ?? 'Download every agent as a .zip'}
-										onClick={() => {
-											if (compiled.ok && chatted) {
-												downloadExport(exportFiles(compiled, chatted), chatted.agentId);
-											}
-										}}
-									/>
-									<DropdownMenu
-										button={{
-											label: 'More export options',
-											isIconOnly: true,
-											icon: <Icon icon={IconChevronDown} size="sm" />,
-											isDisabled: !compiled.ok,
-										}}
-										hasChevron={false}
-										placement="below"
-										alignment="end"
-										items={[
-											{
-												id: 'copy',
-												label: 'Copy',
-												description: 'Every file, each under its path, to paste into your code.',
-												icon: <Icon icon={IconCopy} size="sm" />,
-												onClick: () => {
-													if (compiled.ok && chatted) {
-														copy(exportText(exportFiles(compiled, chatted)), 'the files');
-													}
-												},
-											},
-											{
-												id: 'copy-llm',
-												label: 'Copy for LLM',
-												description:
-													'Every file with a brief: what to install, where each goes, what to ask you.',
-												icon: <Icon icon={IconSparkles} size="sm" />,
-												onClick: () => {
-													if (compiled.ok && chatted)
-														copy(llmBrief(compiled, chatted), 'the files and their brief');
-												},
-											},
-										]}
-									/>
-								</ButtonGroup>
-								<Button
-									label="Launch"
-									isIconOnly={phone}
-									variant="primary"
-									icon={<Icon icon={IconExternalLink} size="sm" />}
-									isDisabled={!compiled.ok}
-									tooltip={blocked ?? 'Run the agent on its own page, in a new tab'}
-									onClick={() => {
-										const run =
-											compiled.ok &&
-											workspaceRunAgent(compiled, agentIdOf(compile.workspace, chatWith));
-										if (run)
-											openInNewTab({
-												...runPayload(run),
-												connectionMode: mode,
-												localBaseUrl: connection.local.baseUrl,
-											});
-									}}
+								<ExportActions
+									compiled={compiled.ok ? compiled : undefined}
+									chatted={chatted}
+									chattedId={agentIdOf(compile.workspace, chatWith)}
+									blocked={blocked}
+									phone={phone}
+									copy={copy}
+									connection={{ connectionMode: mode, localBaseUrl: connection.local.baseUrl }}
 								/>
 							</HStack>
 						</Section>
