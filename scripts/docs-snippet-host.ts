@@ -31,7 +31,6 @@ export declare const onEvent: (event: unknown) => void;
 export declare const transport: {
 	invoke(request: { gateId: string; decision: 'approve' | 'deny' }, onEvent: (event: unknown) => void): Promise<void>;
 };
-type InvokeToolRequest = Parameters<typeof invokeTool>[0];
 export declare const request: TurnRequest;
 export declare const secrets: { oauthStateSecret: string };
 export declare const session: { id: string };
@@ -39,11 +38,11 @@ export declare const user: { id: string };
 export declare const params: URLSearchParams;
 export declare function redirect(url: string): void;
 export declare function send(event: unknown): void;
-export declare function vaultCredentials(userId: string): NonNullable<InvokeToolRequest['credentials']>;
+export declare function vaultCredentials(userId: string): NonNullable<Parameters<typeof invokeTool>[0]['credentials']>;
 export declare const gated: {
 	name: string;
 	arguments: Record<string, unknown>;
-	snapshot: NonNullable<InvokeToolRequest['snapshot']>;
+	snapshot: NonNullable<Parameters<typeof invokeTool>[0]['snapshot']>;
 };
 
 /** A valid profile of each type: `profile:<type>` samples spread it, then add their own members. */

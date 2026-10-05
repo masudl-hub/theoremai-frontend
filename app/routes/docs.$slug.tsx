@@ -3,7 +3,6 @@ import { DocsNotFound } from '../components/docs/not-found';
 import { DocsReader } from '../components/docs/reader';
 import { getDocIndex } from '../lib/docs/.server/load-index';
 import { articleJsonLd } from '../lib/docs/machine';
-import { blockHeading } from '../lib/docs/project-text';
 import type { Th30PageHandle } from '../lib/th30-page';
 import type { Route } from './+types/docs.$slug';
 
@@ -13,11 +12,11 @@ export const handle = {
 			return { title: 'Not found', summary: `There is no docs chapter called '${data.slug}'.` };
 		}
 		const id = decodeURIComponent(hash.replace(/^#/, ''));
-		const block = id ? data.article.blocks.find((candidate) => candidate.id === id) : undefined;
+		const section = id ? data.article.sections.find((candidate) => candidate.id === id) : undefined;
 		return {
 			title: data.article.title,
 			summary: data.article.summary,
-			viewing: block ? blockHeading(block) : undefined,
+			viewing: section?.title,
 		};
 	},
 } satisfies Th30PageHandle;

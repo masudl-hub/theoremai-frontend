@@ -14,19 +14,15 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { docsIndexPlugin } from './docs-index-plugin.mjs';
+import { loadDocs } from './docs-index-plugin.mjs';
+import { failOn } from './docs-report.mjs';
 import { resolveTheoremaiRoot } from './resolve-theoremai-root.mjs';
 
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const lockPath = path.join(repoRoot, 'docs-review.json');
 const theoremai = resolveTheoremaiRoot(repoRoot);
 
-const loaded = await docsIndexPlugin({ repoRoot, theoremai }).load('\0virtual:docs/index');
-const prefix = 'export const docIndex = ';
-if (typeof loaded !== 'string' || !loaded.startsWith(prefix)) {
-	throw new Error('docs-covers: virtual:docs/index did not load');
-}
-const { articles } = JSON.parse(loaded.slice(prefix.length).replace(/;\s*$/, ''));
+const { articles } = (await loadDocs({ repoRoot, theoremai })).index;
 
 /** The committed blob id of every file under `covers`, keyed by path. */
 function blobs(covers) {
@@ -91,8 +87,5 @@ for (const article of articles) {
 		);
 	}
 }
-if (problems.length > 0) {
-	console.error(problems.join('\n'));
-	process.exit(1);
-}
+failOn(problems);
 console.log(`docs-covers ok (${String(articles.length)} chapters reviewed against current code)`);

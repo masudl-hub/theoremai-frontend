@@ -31,22 +31,6 @@
 	overflow-wrap: anywhere;
 }
 
-.docs-media {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-	margin: 0;
-	max-width: 100%;
-}
-
-.docs-media img,
-.docs-media video {
-	display: block;
-	width: 100%;
-	height: auto;
-	border-radius: var(--radius-2, 6px);
-}
-
 .docs-agent-prompt {
 	margin: 0;
 	max-width: 100%;

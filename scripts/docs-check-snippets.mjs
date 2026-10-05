@@ -1,15 +1,16 @@
 /**
  * Type-check every `ts` sample /docs authors against the real package. A sample with an `import`
- * and no `frame` is a whole program. Any other must name a `frame` (see `SnippetFrame`), which
- * says how to complete it; its own imports stay at the top. A sample that names none fails here,
- * so no sample goes unchecked.
+ * and no `frame` is a whole program. Any other must name a frame on its fence line
+ * (` ```ts frame=statements `, see `SNIPPET_FRAMES`), which says how to complete it; its own imports
+ * stay at the top. A sample that names none fails here, so no sample goes unchecked.
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { docsIndexPlugin } from './docs-index-plugin.mjs';
+import { loadDocs } from './docs-index-plugin.mjs';
+import { failOn } from './docs-report.mjs';
 import { resolveTheoremaiRoot } from './resolve-theoremai-root.mjs';
 
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -17,13 +18,7 @@ const outDir = path.join(repoRoot, 'tmp/docs-typecheck');
 const theoremai = resolveTheoremaiRoot(repoRoot);
 const theoremaiRoot = theoremai.root;
 
-const plugin = docsIndexPlugin({ repoRoot, theoremai });
-const loaded = await plugin.load('\0virtual:docs/index');
-const prefix = 'export const docIndex = ';
-if (typeof loaded !== 'string' || !loaded.startsWith(prefix)) {
-	throw new Error('docs-check-snippets: virtual:docs/index did not load');
-}
-const index = JSON.parse(loaded.slice(prefix.length).replace(/;\s*$/, ''));
+const { index, authoredSamples } = await loadDocs({ repoRoot, theoremai });
 
 const rootNames = JSON.parse(
 	execFileSync(
@@ -57,10 +52,9 @@ mkdirSync(outDir, { recursive: true });
 const problems = [];
 let count = 0;
 for (const article of index.articles) {
-	for (const block of article.blocks) {
-		if (block.kind !== 'code' || block.source.from !== 'literal' || block.lang !== 'ts') continue;
+	for (const block of authoredSamples(article)) {
 		const id = `${article.slug}/${block.id}`;
-		const frame = block.source.frame;
+		const frame = block.frame;
 		const isProgram = !frame && /^\s*import\s/m.test(block.code);
 		if (!isProgram && !frame) {
 			problems.push(`${id}: a ts sample without an import needs a frame`);
@@ -94,10 +88,7 @@ for (const article of index.articles) {
 		writeFileSync(path.join(outDir, `${article.slug}--${block.id}.ts`), `${body}\n`);
 	}
 }
-if (problems.length > 0) {
-	console.error(problems.join('\n'));
-	process.exit(1);
-}
+failOn(problems);
 
 const tsconfig = {
 	extends: '../../tsconfig.json',

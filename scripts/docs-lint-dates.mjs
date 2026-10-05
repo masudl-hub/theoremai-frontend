@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const articlesRel = 'app/lib/docs/articles';
-const UPDATED = /^\tupdated: '(\d{4}-\d{2}-\d{2})',$/m;
+const UPDATED = /^updated: (\d{4}-\d{2}-\d{2})$/m;
 
 function git(args) {
 	return execFileSync('git', ['-C', repoRoot, ...args], {
@@ -37,12 +37,12 @@ const base = baseRef();
 const today = localDay();
 const stale = [];
 for (const name of readdirSync(path.join(repoRoot, articlesRel))) {
-	if (!name.endsWith('.ts') || name === 'chapters.ts') continue;
+	if (!name.endsWith('.md')) continue;
 	const rel = `${articlesRel}/${name}`;
 	const current = readFileSync(path.join(repoRoot, rel), 'utf8');
 	const updated = UPDATED.exec(current)?.[1];
 	if (updated === undefined) {
-		stale.push(`${rel}: no \`updated: 'YYYY-MM-DD',\` line`);
+		stale.push(`${rel}: no \`updated: YYYY-MM-DD\` line in its front matter`);
 		continue;
 	}
 	let before;

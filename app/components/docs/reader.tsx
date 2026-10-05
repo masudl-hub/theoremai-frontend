@@ -32,7 +32,7 @@ import { articleHref, chapterNeighbors, type DocSearchHit, searchDocs } from '..
 import type { DocArticle, DocIndex, DocTreeNode } from '../../lib/docs/schema';
 import { NewTabLink } from '../links';
 import { holdDocsArticleTransition } from './article-transition';
-import { DocsBlock } from './blocks';
+import { DocsBody } from './body';
 import { CopyIconButton } from './copy-button';
 import { PageDictionary } from './dictionary';
 import '../hero-video.css';
@@ -631,9 +631,7 @@ export function DocsReader({ index, article }: { index: DocIndex; article: DocAr
 				<HStack className="docs-article" align="start">
 					<StackItem size="fill">
 						<VStack gap={6} padding={8} className="docs-prose">
-							{article.blocks.map((block) => (
-								<DocsBlock key={block.id} block={block} />
-							))}
+							<DocsBody body={article.body} />
 							<PageDictionary symbols={article.symbols} />
 							<ChapterNeighbors prev={prev} next={next} />
 						</VStack>

@@ -184,7 +184,7 @@ function tilesFromIndex(index: DocIndex, query: string): LandingTile[] {
 				: [
 						{
 							article,
-							href: articleHref(article, pick.blockId),
+							href: articleHref(article),
 							title: article.title,
 							excerpt: article.summary,
 							showMeta: false,

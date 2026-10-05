@@ -23,17 +23,20 @@ function escapeRegExp(value) {
 }
 
 /**
+ * The authored copy of a chapter file: its front-matter title, summary and cover text, then its
+ * prose. Fenced `ts`, `bash` and `text` blocks are code, not copy.
+ *
  * @param {string} source
- * @returns {{ key: string, text: string, index: number }[]}
+ * @returns {{ key: string, text: string }[]}
  */
 function extractAuthored(source) {
-	const keys = 'summary|text|question|answer|title|alt';
-	const re = new RegExp(String.raw`\b(${keys}):\s*(['"])((?:\\.|[^\\])*?)\2`, 'g');
+	const [, head = '', body = ''] = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/.exec(source) ?? [];
 	const chunks = [];
-	for (const match of source.matchAll(re)) {
-		const text = (match[3] ?? '').replace(/\\n/g, '\n').replace(/\\'/g, "'").replace(/\\"/g, '"');
-		chunks.push({ key: match[1] ?? '', text, index: match.index ?? 0 });
+	for (const match of head.matchAll(/^(title|summary|coverAlt): (.*)$/gm)) {
+		chunks.push({ key: match[1], text: match[2] });
 	}
+	const prose = body.replace(/^(`{3,})(?:ts|bash|text)\b[^\n]*\n[\s\S]*?\n\1$/gm, '');
+	chunks.push({ key: 'body', text: prose });
 	return chunks;
 }
 
@@ -82,7 +85,7 @@ function hitsIn(text, banned) {
 
 function articleFiles() {
 	return readdirSync(articlesDir)
-		.filter((name) => name.endsWith('.ts'))
+		.filter((name) => name.endsWith('.md'))
 		.map((name) => path.join(articlesDir, name));
 }
 

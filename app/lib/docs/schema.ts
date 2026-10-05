@@ -1,5 +1,5 @@
 /**
- * Docs data model. Authored chapters and the composed index share these types.
+ * Docs data model. A chapter is a Markdown file in `articles/`; compose turns each into a `DocArticle`.
  * Catalog rows are imported at compose time — nothing here copies FieldMeta.doc.
  */
 
@@ -34,44 +34,37 @@ export type ArrayUnionName = {
 
 /**
  * How `npm run lint:docs` completes a `ts` sample before it type-checks it. A sample with an
- * `import` is a whole program and needs no frame. Any other `ts` sample must name one.
+ * `import` is a whole program and needs no frame. Any other `ts` sample must name one in its
+ * fence line: ` ```ts frame=statements `.
  * - `statements`: statements that run in a function.
  * - `request`: members of the `TurnRequest` that `runTurn` takes.
  * - `request-object`: a whole `TurnRequest`.
  * - `profile:<type>`: members of a `defineProfile` call of that type.
  * - `guardrails`: members of a text profile's `guardrails`.
  */
-export type SnippetFrame =
-	| 'statements'
-	| 'request'
-	| 'request-object'
-	| 'guardrails'
-	| `profile:${'text' | 'image' | 'speech' | 'live' | 'decision' | 'host'}`;
+export const SNIPPET_FRAMES = [
+	'statements',
+	'request',
+	'request-object',
+	'guardrails',
+	'profile:text',
+	'profile:image',
+	'profile:speech',
+	'profile:live',
+	'profile:decision',
+	'profile:host',
+] as const;
 
-export type CodeSource =
-	| { from: 'seed'; seed: PlaygroundSeedId }
-	| { from: 'literal'; lang: 'ts' | 'bash' | 'text'; code: string; frame?: SnippetFrame };
-
-export type AuthoredBlock =
-	| { id: string; kind: 'lede'; text: string }
-	/** `text` may hold numbered (`1. `) or bulleted (`- `) paragraphs, one item per line. */
-	| { id: string; kind: 'prose'; title: string; text: string }
-	/** A Markdown pipe table: a header row, a `---` row, then one row per line. For names, options and defaults only. */
-	| { id: string; kind: 'table'; title: string; text: string }
-	| { id: string; kind: 'code'; title?: string; source: CodeSource }
-	/** An image or video from public/; the caption also feeds search and the .md twin. */
-	| {
-			id: string;
-			kind: 'media';
-			media: 'image' | 'video';
-			src: string;
-			alt: string;
-			caption?: string;
-	  }
-	| { id: string; kind: 'callout'; tone: 'note' | 'warn'; text: string }
-	/** Copyable prompt for a coding agent. */
-	| { id: string; kind: 'agent.paste'; prompt: string }
-	| { id: string; kind: 'embed.playground'; seed: PlaygroundSeedId };
+/** The fence languages a chapter may use. `ts`, `bash` and `text` are code; the rest are cards. */
+export const FENCE_LANGUAGES = [
+	'ts',
+	'bash',
+	'text',
+	'note',
+	'warning',
+	'prompt',
+	'playground',
+] as const;
 
 /** What an authored chapter and its composed article share. */
 export type DocArticleHead = {
@@ -95,10 +88,22 @@ export type DocArticleHead = {
 		position: string;
 	};
 	/** Idle landing card position. */
-	suggest?: { rank: 1 | 2 | 3 | 4; blockId?: string };
+	suggest?: { rank: 1 | 2 | 3 | 4 };
 };
 
-export type DocArticleDef = DocArticleHead & { blocks: readonly AuthoredBlock[] };
+/**
+ * A heading and what follows it, up to the next heading. `start` and `end` are offsets into the
+ * article's `body`; the slice starts at the heading line.
+ */
+export type DocSectionEntry = {
+	/** The id Astryx `Markdown` renders on the heading. */
+	id: string;
+	title: string;
+	/** Heading depth, 2 to 6. */
+	level: number;
+	start: number;
+	end: number;
+};
 
 /** Catalog rows owned by a topic page — rendered as a filterable dictionary. */
 export type PageSymbol =
@@ -113,28 +118,15 @@ export type PageSymbol =
 	| { kind: 'trace'; id: string; key: string; label: string; doc: string }
 	| { kind: 'lexicon'; id: string; key: string; text: string };
 
-export type ResolvedBlock =
-	| Exclude<AuthoredBlock, { kind: 'code' | 'media' }>
-	| (Extract<AuthoredBlock, { kind: 'media' }> & {
-			/** Exposure match as a CSS filter; compose sets it for public/imagery stills only. */
-			filter?: string;
-	  })
-	| {
-			id: string;
-			kind: 'code';
-			title?: string;
-			lang: 'ts' | 'bash' | 'text';
-			code: string;
-			source: CodeSource;
-	  };
-
 export type DocArticle = Omit<DocArticleHead, 'cover'> & {
 	cover: DocArticleHead['cover'] & { filter?: string };
 	canonicalPath: string;
 	ttrMinutes: number;
 	/** The chapter's `updated` day. */
 	dateModified: string;
-	blocks: readonly ResolvedBlock[];
+	/** The chapter as Markdown, without its front matter and with every seed fence filled. */
+	body: string;
+	sections: readonly DocSectionEntry[];
 	/** Facet fields, worthy-union members, and the trace or lexicon catalog this topic owns. */
 	symbols: readonly PageSymbol[];
 };
@@ -150,7 +142,7 @@ export type DocTreeNode = {
 export type DocIndex = {
 	articles: readonly DocArticle[];
 	tree: readonly DocTreeNode[];
-	suggested: readonly { slug: string; blockId?: string; rank: 1 | 2 | 3 | 4 }[];
+	suggested: readonly { slug: string; rank: 1 | 2 | 3 | 4 }[];
 	bySlug: Readonly<Record<string, DocArticle | undefined>>;
 	redirects: readonly { from: string; to: string; reason?: string }[];
 	/** The /docs landing backdrop. */

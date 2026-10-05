@@ -3,9 +3,9 @@
  */
 
 import { create, insert, type Orama, search } from '@orama/orama';
-import { projectBlockText } from './block-text';
 import { symbolTerm } from './catalog-rows';
-import { blockHeading, projectArticleText } from './project-text';
+import { introText, sectionText } from './chapter-markdown';
+import { projectArticleText } from './project-text';
 import type { DocArticle, DocIndex } from './schema';
 import { formatWithLineNumbers } from './text-format';
 
@@ -30,17 +30,17 @@ export function chapterNeighbors(
 
 export function articleHasBlock(article: DocArticle, blockId: string): boolean {
 	if (article.symbols.some((symbol) => symbol.id === blockId)) return true;
-	return article.blocks.some((block) => block.id === blockId);
+	return article.sections.some((section) => section.id === blockId);
 }
 
-function isolateFragment(article: DocArticle, fragment: string): DocArticle | undefined {
-	const exact = article.blocks.find((block) => block.id === fragment);
-	if (exact) return { ...article, blocks: [exact], symbols: [] };
-
+/** One section or one dictionary entry of the article, as text. */
+function fragmentText(article: DocArticle, fragment: string): string | undefined {
+	const section = article.sections.find((entry) => entry.id === fragment);
+	if (section) return sectionText(article, section);
 	const symbol = article.symbols.find((item) => item.id === fragment);
-	if (symbol) return { ...article, blocks: [], symbols: [symbol] };
-
-	return undefined;
+	if (!symbol) return undefined;
+	const { name, text } = symbolTerm(symbol);
+	return `${name} — ${text}`;
 }
 
 export function resolveNavigate(
@@ -87,10 +87,9 @@ export function readDoc(
 		};
 	}
 
-	const isolated = fragment ? isolateFragment(article, fragment) : undefined;
-	if (fragment && isolated) {
-		const title = `${article.title}#${fragment}`;
-		return read(articleHref(article, fragment), title, projectArticleText(isolated, detail));
+	const isolated = fragment ? fragmentText(article, fragment) : undefined;
+	if (fragment && isolated !== undefined) {
+		return read(articleHref(article, fragment), `${article.title}#${fragment}`, isolated);
 	}
 	return read(article.canonicalPath, article.title, projectArticleText(article, detail));
 }
@@ -142,36 +141,31 @@ function searchIndex(index: DocIndex) {
 		components: { tokenizer: { language: 'english', stemming: true } },
 	});
 	const entries = new Map<string, SearchEntry>();
-	/** `titled` false: the title is an id (a code example's), so it ranks as one rather than as a heading. */
-	const add = (entry: SearchEntry, key: string, body: string, titled = true) => {
+	const add = (entry: SearchEntry, key: string, body: string) => {
 		const id = String(entries.size);
 		entries.set(id, entry);
 		// No async hooks are configured, so insert completes synchronously.
-		void insert(db, {
-			id,
-			title: titled ? entry.title : '',
-			key: titled ? key : `${key} ${idWords(entry.title)}`,
-			body,
-		});
+		void insert(db, { id, title: entry.title, key, body });
 	};
 	for (const article of index.articles) {
 		add(
 			{ slug: article.slug, title: article.title, excerpt: article.summary },
 			idWords(article.slug),
-			article.summary,
+			`${article.summary}\n${introText(article)}`,
 		);
-		for (const block of article.blocks) {
-			const text = projectBlockText(block);
+		for (const section of article.sections) {
+			const text = article.body.slice(section.start, section.end);
+			// The excerpt starts under the heading line; the title already shows it.
+			const under = text.slice(text.indexOf('\n') + 1);
 			add(
 				{
 					slug: article.slug,
-					blockId: block.id,
-					title: blockHeading(block),
-					excerpt: clipExcerpt(text),
+					blockId: section.id,
+					title: section.title,
+					excerpt: clipExcerpt(under),
 				},
-				idWords(block.id),
+				idWords(section.id),
 				text,
-				block.kind !== 'code',
 			);
 		}
 		for (const symbol of article.symbols) {

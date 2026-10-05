@@ -1,22 +1,8 @@
 /**
- * Chapter order and retired URLs. Each chapter lives in its own file; catalog symbols compose into its
- * dictionary — do not paste FieldMeta.doc here.
+ * The chapters' Markdown sources and the retired URLs. Each chapter is one `.md` file here, named
+ * for its section in `DOC_SECTIONS`. Catalog symbols compose into its dictionary: do not paste
+ * `FieldMeta.doc` into a chapter.
  */
-
-import type { DocArticleDef } from '../schema';
-import { guardrails } from './guardrails';
-import { identity } from './identity';
-import { inputs } from './inputs';
-import { interfaceChapter } from './interface';
-import { modalities } from './modalities';
-import { models } from './models';
-import { outputs } from './outputs';
-import { runner } from './runner';
-import { start } from './start';
-import { statuses } from './statuses';
-import { tools } from './tools';
-import { traces } from './traces';
-import { turnBehaviour } from './turn-behaviour';
 
 /** The /docs landing backdrop; position as for a chapter cover. */
 export const LANDING_STILL = { src: '/imagery/th30_marigolds.png', position: '75% 73%' };
@@ -48,18 +34,9 @@ export const SITE_REDIRECTS = [
 	{ from: '/docs/playground', to: '/playground', reason: 'playground chapter retired' },
 ] as const;
 
-export const SITE_ARTICLES: readonly DocArticleDef[] = [
-	start,
-	modalities,
-	identity,
-	models,
-	tools,
-	inputs,
-	outputs,
-	turnBehaviour,
-	guardrails,
-	runner,
-	interfaceChapter,
-	statuses,
-	traces,
-];
+/** Each chapter's Markdown source, keyed by its path from this folder (`./start.md`). */
+export const CHAPTER_SOURCES = import.meta.glob<string>('./*.md', {
+	query: '?raw',
+	import: 'default',
+	eager: true,
+});

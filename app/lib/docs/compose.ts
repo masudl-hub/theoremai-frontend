@@ -1,41 +1,103 @@
 /// <reference types="node" />
 /**
- * Compose the docs index from kernel catalogs + SITE_ARTICLES.
+ * Compose the docs index from the kernel catalogs and the chapters in `articles/`.
  * Throws on drift. The reader and Th30 only see the composed index.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { createMarkdownFrontmatter } from '@astryxdesign/core/Markdown/plugins';
 import { EXTRA_FIELDS, fieldMeta, PROFILE_GRAPH, PROFILE_TYPES } from '@theoremjs/agents/schema';
-import { LANDING_STILL, SITE_ARTICLES, SITE_REDIRECTS } from './articles/chapters';
+import { CHAPTER_SOURCES, LANDING_STILL, SITE_REDIRECTS } from './articles/chapters';
 import { lexiconCatalogRows, traceCatalogRows } from './catalog-rows';
+import { type Fence, fenceMarkdown, markdownFences, markdownSections } from './chapter-markdown';
 import { stillFilters } from './exposure';
 import { fieldsByFacet } from './ownership';
 import { FACET_SECTION, UNION_SECTION } from './placement';
 import { projectArticleText } from './project-text';
 import {
-	type AuthoredBlock,
 	type ComposeOptions,
 	DOC_SECTIONS,
 	type DocArticle,
-	type DocArticleDef,
+	type DocArticleHead,
 	type DocIndex,
 	type DocSection,
+	type DocSectionEntry,
 	type DocTreeNode,
+	FENCE_LANGUAGES,
 	type PageSymbol,
-	type ResolvedBlock,
+	PLAYGROUND_SEED_IDS,
+	type PlaygroundSeedId,
+	SNIPPET_FRAMES,
 } from './schema';
 import { compileSeedSource } from './seeds';
 import { ttrMinutesFromText } from './text-format';
 import { unionMembers } from './union-docs';
 
-const KEBAB_ID = /^[a-z][a-z0-9-]*$/;
 /** Search-result description length. */
 const SUMMARY_MIN = 110;
 const SUMMARY_MAX = 160;
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 /** Covers are headers: nothing narrower than 16:9. */
 const COVER_MIN_RATIO = 16 / 9 - 0.01;
+const SUGGEST_RANKS = [1, 2, 3, 4] as const;
+
+/** A chapter as authored: its front matter and its Markdown, seed fences still empty. */
+type Chapter = DocArticleHead & { markdown: string };
+
+const frontmatter = createMarkdownFrontmatter({
+	name: 'docs-chapter',
+	parse: (fields) => ({ ...fields }),
+});
+
+function isOneOf<T extends string>(values: readonly T[], value: string): value is T {
+	return values.some((candidate) => candidate === value);
+}
+
+/** One chapter file as its head and Markdown. Throws on a missing or unknown front-matter field. */
+function readChapter(slug: DocSection, source: string | undefined): Chapter {
+	if (source === undefined) throw new Error(`articles/${slug}.md is missing`);
+	const parsed = frontmatter.parse(source);
+	if (parsed.status !== 'match') throw new Error(`${slug}.md has no front matter`);
+	const fields = new Map(Object.entries(parsed.metadata));
+	const take = (key: string): string => {
+		const value = fields.get(key);
+		if (!value) throw new Error(`${slug}.md front matter needs ${key}`);
+		fields.delete(key);
+		return value;
+	};
+	const rank = SUGGEST_RANKS.find((candidate) => String(candidate) === fields.get('suggest'));
+	if (fields.has('suggest') && rank === undefined) {
+		throw new Error(`${slug}.md suggest must be one of ${SUGGEST_RANKS.join(', ')}`);
+	}
+	fields.delete('suggest');
+	const chapter: Chapter = {
+		slug,
+		title: take('title'),
+		updated: take('updated'),
+		summary: take('summary'),
+		entry: take('entry'),
+		covers: take('covers')
+			.split(',')
+			.map((covered) => covered.trim()),
+		cover: { src: take('cover'), alt: take('coverAlt'), position: take('coverPosition') },
+		suggest: rank === undefined ? undefined : { rank },
+		markdown: source.slice(parsed.contentStart).trim(),
+	};
+	if (fields.size > 0) {
+		throw new Error(`${slug}.md front matter has unknown fields: ${[...fields.keys()].join(', ')}`);
+	}
+	return chapter;
+}
+
+/** Every chapter, one per `DOC_SECTIONS` entry, in that order. */
+function readChapters(): Chapter[] {
+	const files = Object.keys(CHAPTER_SOURCES);
+	const extra = files.filter((file) => !DOC_SECTIONS.some((slug) => file === `./${slug}.md`));
+	if (extra.length > 0)
+		throw new Error(`articles/ has files outside DOC_SECTIONS: ${extra.join()}`);
+	return DOC_SECTIONS.map((slug) => readChapter(slug, CHAPTER_SOURCES[`./${slug}.md`]));
+}
 
 /** Width over height from a PNG's IHDR chunk. */
 function pngRatio(file: string): number {
@@ -50,47 +112,37 @@ function assertPublic(options: ComposeOptions, slug: string, src: string): strin
 	return file;
 }
 
-function assertChapters(options: ComposeOptions): void {
-	const slugs = SITE_ARTICLES.map((def) => def.slug);
-	if (slugs.join() !== DOC_SECTIONS.join()) {
-		throw new Error(
-			`SITE_ARTICLES must be one chapter per DOC_SECTIONS, in order: ${slugs.join()}`,
-		);
-	}
+function assertChapters(options: ComposeOptions, chapters: readonly Chapter[]): void {
 	assertPublic(options, 'landing', LANDING_STILL.src);
 	const covers = new Set<string>([LANDING_STILL.src]);
 	const ranks = new Set<number>();
-	for (const def of SITE_ARTICLES) {
-		assertChapter(def);
-		assertChapterFiles(options, def);
-		claimOnce(covers, def.cover.src, `cover ${def.cover.src} is used twice`);
-		if (def.suggest) {
-			const rank = def.suggest.rank;
+	for (const chapter of chapters) {
+		assertChapter(chapter);
+		assertChapterFiles(options, chapter);
+		claimOnce(covers, chapter.cover.src, `cover ${chapter.cover.src} is used twice`);
+		if (chapter.suggest) {
+			const rank = chapter.suggest.rank;
 			claimOnce(ranks, rank, `suggest rank ${String(rank)} is used twice`);
 		}
 	}
 }
 
-/** The chapter's kernel entry, PNG cover and media files exist. */
-function assertChapterFiles(options: ComposeOptions, def: DocArticleDef): void {
-	if (!existsSync(path.join(options.kernelRoot, def.entry))) {
-		throw new Error(`${def.slug} entry missing in the kernel: ${def.entry}`);
+/** The chapter's kernel entry, covered files and PNG cover exist. */
+function assertChapterFiles(options: ComposeOptions, chapter: Chapter): void {
+	if (!existsSync(path.join(options.kernelRoot, chapter.entry))) {
+		throw new Error(`${chapter.slug} entry missing in the kernel: ${chapter.entry}`);
 	}
-	if (def.covers.length === 0) throw new Error(`${def.slug} covers no package files`);
-	for (const covered of def.covers) {
+	for (const covered of chapter.covers) {
 		if (covered.startsWith('/') || covered.includes('..')) {
-			throw new Error(`${def.slug} covers ${covered}: use a path relative to the package root`);
+			throw new Error(`${chapter.slug} covers ${covered}: use a path relative to the package root`);
 		}
 		if (!existsSync(path.join(options.kernelRoot, covered))) {
-			throw new Error(`${def.slug} covers ${covered}, which is not in the package`);
+			throw new Error(`${chapter.slug} covers ${covered}, which is not in the package`);
 		}
 	}
-	const cover = assertPublic(options, def.slug, def.cover.src);
+	const cover = assertPublic(options, chapter.slug, chapter.cover.src);
 	if (!cover.endsWith('.png') || pngRatio(cover) < COVER_MIN_RATIO) {
-		throw new Error(`${def.slug} cover ${def.cover.src} must be a PNG at least 16:9 wide`);
-	}
-	for (const block of def.blocks) {
-		if (block.kind === 'media') assertPublic(options, def.slug, block.src);
+		throw new Error(`${chapter.slug} cover ${chapter.cover.src} must be a PNG at least 16:9 wide`);
 	}
 }
 
@@ -100,39 +152,75 @@ function claimOnce<T>(seen: Set<T>, value: T, message: string): void {
 	seen.add(value);
 }
 
-function assertChapter(def: DocArticleDef): void {
+function assertChapter(chapter: Chapter): void {
+	const { slug, updated, entry, summary } = chapter;
 	const today = new Date().toISOString().slice(0, 10);
-	if (!ISO_DAY.test(def.updated) || Number.isNaN(Date.parse(def.updated)) || def.updated > today) {
-		throw new Error(`${def.slug} updated must be a past or present YYYY-MM-DD day`);
+	if (!ISO_DAY.test(updated) || Number.isNaN(Date.parse(updated)) || updated > today) {
+		throw new Error(`${slug} updated must be a past or present YYYY-MM-DD day`);
 	}
-	if (def.entry.startsWith('/') || def.entry.includes('..')) {
-		throw new Error(`${def.slug} entry must be a kernel-relative path`);
+	if (entry.startsWith('/') || entry.includes('..')) {
+		throw new Error(`${slug} entry must be a kernel-relative path`);
 	}
-	if (def.summary.length < SUMMARY_MIN || def.summary.length > SUMMARY_MAX) {
+	if (summary.length < SUMMARY_MIN || summary.length > SUMMARY_MAX) {
 		throw new Error(
-			`${def.slug} summary is ${String(def.summary.length)} chars; need ${String(SUMMARY_MIN)}–${String(SUMMARY_MAX)}`,
+			`${slug} summary is ${String(summary.length)} chars; need ${String(SUMMARY_MIN)}–${String(SUMMARY_MAX)}`,
 		);
 	}
-	for (const block of def.blocks) {
-		if (!KEBAB_ID.test(block.id))
-			throw new Error(`${def.slug} block id "${block.id}" is not kebab-case`);
+}
+
+/** The seed a fence names in `seed=`, or in its body for a `playground` fence. */
+function fenceSeed(slug: string, name: string | undefined): PlaygroundSeedId | undefined {
+	if (name === undefined) return undefined;
+	if (!isOneOf(PLAYGROUND_SEED_IDS, name))
+		throw new Error(`${slug} names an unknown seed: ${name}`);
+	return name;
+}
+
+/** Throws on a fence language, meta, frame or seed the reader and the checks do not know. */
+function assertFence(slug: string, fence: Fence): void {
+	if (!isOneOf(FENCE_LANGUAGES, fence.lang)) {
+		throw new Error(`${slug} has a fence in "${fence.lang}"; use ${FENCE_LANGUAGES.join(', ')}`);
 	}
-	if (def.slug === 'modalities') {
+	const { frame, seed, ...unknown } = fence.meta;
+	if (Object.keys(unknown).length > 0 || (fence.lang !== 'ts' && (frame ?? seed) !== undefined)) {
+		throw new Error(`${slug} has a ${fence.lang} fence with meta it cannot take`);
+	}
+	if (frame !== undefined && !isOneOf(SNIPPET_FRAMES, frame)) {
+		throw new Error(`${slug} has a fence with an unknown frame: ${frame}`);
+	}
+	if (fence.lang === 'playground') fenceSeed(slug, fence.code.trim());
+}
+
+/** The chapter's Markdown with each `ts seed=<id>` fence filled with that seed's program. */
+function resolveBody(chapter: Chapter): string {
+	const { slug, markdown } = chapter;
+	let body = markdown;
+	// Last fence first, so the earlier offsets stay true while the text grows.
+	for (const fence of markdownFences(markdown).reverse()) {
+		assertFence(slug, fence);
+		const filled = fenceSeed(slug, fence.meta.seed);
+		if (filled === undefined) continue;
+		if (fence.code.trim() !== '') throw new Error(`${slug}: a seed fence must be empty`);
+		const program = fenceMarkdown(`ts seed=${filled}`, compileSeedSource(filled).trim());
+		body = `${body.slice(0, fence.start)}${program}${body.slice(fence.end)}`;
+	}
+	return body;
+}
+
+/** The chapter's sections. Modalities must have one per profile type, for `/docs/modalities#host`. */
+function chapterSections(slug: DocSection, body: string): DocSectionEntry[] {
+	const sections = markdownSections(body);
+	const shallow = sections.find((section) => section.level < 2);
+	if (shallow)
+		throw new Error(`${slug} "${shallow.title}": headings start at ##; the title is the #`);
+	if (slug === 'modalities') {
 		for (const type of PROFILE_TYPES) {
-			if (!def.blocks.some((block) => block.id === type)) {
+			if (!sections.some((section) => section.id === type)) {
 				throw new Error(`modalities is missing the #${type} section`);
 			}
 		}
 	}
-}
-
-/** Code blocks get their source text; the reader never compiles or calls fieldMeta. */
-function resolveBlock(block: AuthoredBlock, filters: Map<string, string>): ResolvedBlock {
-	if (block.kind === 'media') return { ...block, filter: filters.get(block.src) };
-	if (block.kind !== 'code') return block;
-	const { source } = block;
-	if (source.from === 'seed') return { ...block, lang: 'ts', code: compileSeedSource(source.seed) };
-	return { ...block, lang: source.lang, code: source.code };
+	return sections;
 }
 
 function fieldSymbol(fieldPath: string): PageSymbol {
@@ -178,14 +266,13 @@ function catalogSymbols(section: DocSection, byFacet: Map<string, string[]>): Pa
 	return symbols;
 }
 
-/** Catalog rows, minus any an authored block already explains, once each. */
+/** Catalog rows, minus any a section's id already takes, once each. */
 function pageSymbols(
 	section: DocSection,
-	blocks: readonly ResolvedBlock[],
+	sections: readonly DocSectionEntry[],
 	byFacet: Map<string, string[]>,
 ): PageSymbol[] {
-	const taken = new Set(blocks.map((block) => block.id));
-	if (taken.size !== blocks.length) throw new Error(`/${section} repeats a block id`);
+	const taken = new Set(sections.map((entry) => entry.id));
 	return catalogSymbols(section, byFacet).filter((symbol) => {
 		if (taken.has(symbol.id)) return false;
 		taken.add(symbol.id);
@@ -193,50 +280,55 @@ function pageSymbols(
 	});
 }
 
+/** A chapter's sections as nav nodes: each heading nests under the last shallower one. */
+function sectionNodes(slug: string, sections: readonly DocSectionEntry[]): DocTreeNode[] {
+	const roots: DocTreeNode[] = [];
+	const open: { level: number; children: DocTreeNode[] }[] = [];
+	for (const section of sections) {
+		while (open.length > 0 && (open.at(-1)?.level ?? 0) >= section.level) open.pop();
+		const children: DocTreeNode[] = [];
+		const node = {
+			id: `${slug}#${section.id}`,
+			label: section.title,
+			slug,
+			blockId: section.id,
+			children,
+		};
+		(open.at(-1)?.children ?? roots).push(node);
+		open.push({ level: section.level, children });
+	}
+	return roots;
+}
+
 function buildTree(articles: readonly DocArticle[]): DocTreeNode[] {
 	return articles.map((article) => ({
 		id: article.slug,
 		label: article.title,
 		slug: article.slug,
-		children: article.blocks.flatMap((block) => {
-			const label =
-				block.kind === 'prose' || block.kind === 'table' || block.kind === 'code'
-					? block.title
-					: undefined;
-			if (label === undefined) return [];
-			return [
-				{
-					id: `${article.slug}#${block.id}`,
-					label,
-					slug: article.slug,
-					blockId: block.id,
-					children: [],
-				},
-			];
-		}),
+		children: sectionNodes(article.slug, article.sections),
 	}));
 }
 
 export async function composeDocIndex(options: ComposeOptions): Promise<DocIndex> {
-	assertChapters(options);
+	const chapters = readChapters();
+	assertChapters(options, chapters);
 	const byFacet = fieldsByFacet();
 	const filters = await stillFilters(options.publicRoot, [
 		LANDING_STILL.src,
-		...SITE_ARTICLES.flatMap((def) => [
-			def.cover.src,
-			...def.blocks.flatMap((block) => (block.kind === 'media' ? [block.src] : [])),
-		]),
+		...chapters.map((chapter) => chapter.cover.src),
 	]);
 
-	const articles = SITE_ARTICLES.map((def): DocArticle => {
-		const blocks = def.blocks.map((block) => resolveBlock(block, filters));
+	const articles = chapters.map(({ markdown, ...head }): DocArticle => {
+		const body = resolveBody({ markdown, ...head });
+		const sections = chapterSections(head.slug, body);
 		const article = {
-			...def,
-			cover: { ...def.cover, filter: filters.get(def.cover.src) },
-			canonicalPath: `/docs/${def.slug}`,
-			dateModified: def.updated,
-			blocks,
-			symbols: pageSymbols(def.slug, blocks, byFacet),
+			...head,
+			cover: { ...head.cover, filter: filters.get(head.cover.src) },
+			canonicalPath: `/docs/${head.slug}`,
+			dateModified: head.updated,
+			body,
+			sections,
+			symbols: pageSymbols(head.slug, sections, byFacet),
 		};
 		return { ...article, ttrMinutes: ttrMinutesFromText(projectArticleText(article)) };
 	});
