@@ -176,20 +176,24 @@ export function usePlaygroundConnection(
 	const hasKeys = Object.values(vault).some((key) => Boolean(key?.trim()));
 	const mode = connectionMode(models, hasLocal, hasKeys);
 	const runtime = useConnectionRuntime(mode, hasLocal, vault, local, remoteTools, slots);
-	return {
-		entries,
-		setEntries,
-		localModels,
-		mode,
-		runtime,
-		vault,
-		setVault,
-		slots,
-		local,
-		setLocal,
-		remoteTools,
-		setRemoteTools,
-	};
+	// One object while nothing in it changes, so panes that only read the connection can sit out a render.
+	return useMemo(
+		() => ({
+			entries,
+			setEntries,
+			localModels,
+			mode,
+			runtime,
+			vault,
+			setVault,
+			slots,
+			local,
+			setLocal,
+			remoteTools,
+			setRemoteTools,
+		}),
+		[entries, setEntries, localModels, mode, runtime, vault, slots, local, remoteTools],
+	);
 }
 
 export type PlaygroundConnectionState = ReturnType<typeof usePlaygroundConnection>;

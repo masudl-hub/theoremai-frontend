@@ -94,6 +94,7 @@ import { type TheoremChatHandle, useDisclosureMotion } from '@theoremjs/react/ui
 import {
 	type CSSProperties,
 	type Dispatch,
+	memo,
 	type ReactNode,
 	type RefObject,
 	type SetStateAction,
@@ -604,13 +605,15 @@ function WorkspaceTreeLists({
 
 /** Which agent the preview chats with, once there is more than one. */
 function ChatPicker({
-	workspace,
+	agents,
+	chatWith,
 	onChange,
 }: {
-	workspace: PlaygroundWorkspace;
+	agents: ChatAgent[];
+	chatWith: string;
 	onChange: (key: string) => void;
 }) {
-	if (workspace.agents.length < 2) return null;
+	if (agents.length < 2) return null;
 	return (
 		<Selector
 			label="Chat with"
@@ -619,13 +622,28 @@ function ChatPicker({
 			size="sm"
 			// As wide as the name, so the chevron sits right after it.
 			width="fit-content"
-			value={workspace.chatWith}
-			options={workspace.agents.map((agent) => ({
-				value: agent.key,
-				label: agent.identity.agentId || 'Unnamed agent',
-			}))}
+			value={chatWith}
+			options={agents}
 			onChange={onChange}
 		/>
+	);
+}
+
+interface ChatAgent {
+	value: string;
+	label: string;
+}
+
+/** The agents the preview can chat with: the same list while their keys and names stand. */
+function useChatAgents(agents: PlaygroundWorkspace['agents']): ChatAgent[] {
+	const names = JSON.stringify(agents.map((agent) => [agent.key, agent.identity.agentId]));
+	return useMemo(
+		() =>
+			(JSON.parse(names) as [string, string][]).map(([value, agentId]) => ({
+				value,
+				label: agentId || 'Unnamed agent',
+			})),
+		[names],
 	);
 }
 
@@ -1255,19 +1273,22 @@ function useWorkspaceCompile(
 	/** The open agent's compile: what the code view shows and Export takes. */
 	const focused = compiled.ok ? compiledAgent(compiled, compile.workspace, focus) : undefined;
 	const source = useMemo(() => (focused ? playgroundSource(focused) : null), [focused]);
-	const issues = issueCount(compiled);
-	return {
-		compiled,
-		payload,
-		traced: isTraced(payload),
-		source,
-		editorIssues: editorIssuesOf(compiled, focus),
-		/** The agent being chatted with: Export adds its route and chat to the workspace's files. */
-		chatted: compiled.ok ? compiledAgent(compiled, compile.workspace, chatWith) : undefined,
-		chattedId: agentIdOf(compile.workspace, chatWith),
-		issues,
-		blocked: issues && `Fix ${issues} first`,
-	};
+	// One object per compile, so the panes that read it sit out the renders between.
+	return useMemo(() => {
+		const issues = issueCount(compiled);
+		return {
+			compiled,
+			payload,
+			traced: isTraced(payload),
+			source,
+			editorIssues: editorIssuesOf(compiled, focus),
+			/** The agent being chatted with: Export adds its route and chat to the workspace's files. */
+			chatted: compiled.ok ? compiledAgent(compiled, compile.workspace, chatWith) : undefined,
+			chattedId: agentIdOf(compile.workspace, chatWith),
+			issues,
+			blocked: issues && `Fix ${issues} first`,
+		};
+	}, [compiled, compile.workspace, payload, source, focus, chatWith]);
 }
 
 type WorkspaceCompile = ReturnType<typeof useWorkspaceCompile>;
@@ -1287,15 +1308,19 @@ function useConversationRun(mode: string, chatWith: string) {
 	);
 	/** The runner that last sent something; a new one (cleared, or another mode) has no history. */
 	const [usedRun, setUsedRun] = useState<string>();
-	return {
-		runKey,
-		initialChat,
-		isUsed: usedRun === runKey,
-		markUsed: () => {
-			setUsedRun(runKey);
-		},
-		setConversation,
-	};
+	const isUsed = usedRun === runKey;
+	return useMemo(
+		() => ({
+			runKey,
+			initialChat,
+			isUsed,
+			markUsed: () => {
+				setUsedRun(runKey);
+			},
+			setConversation,
+		}),
+		[runKey, initialChat, isUsed],
+	);
 }
 
 type ConversationRun = ReturnType<typeof useConversationRun>;
@@ -1333,18 +1358,16 @@ function useArrivalToast(
 function useEditorView(store: PlaygroundStore) {
 	const [keysOpen, setKeysOpen] = useState(false);
 	const [editorView, setEditorView] = useState<'editor' | 'code'>('editor');
-	return {
-		keysOpen,
-		setKeysOpen,
-		editorView,
-		setEditorView,
-		/** Opens a node from the tree or the editor, closing whatever stood over it. */
-		open: (id: string) => {
+	/** Opens a node from the tree or the editor, closing whatever stood over it. */
+	const open = useCallback(
+		(id: string) => {
 			setKeysOpen(false);
 			store.select(id);
 			setEditorView('editor');
 		},
-	};
+		[store],
+	);
+	return { keysOpen, setKeysOpen, editorView, setEditorView, open };
 }
 
 type EditorViewState = ReturnType<typeof useEditorView>;
@@ -1356,40 +1379,43 @@ function usePageActions(
 	setConversation: Dispatch<SetStateAction<number>>,
 ) {
 	const toast = useToast();
+	const { setKeysOpen, setEditorView } = view;
 	/** Swaps in a whole new workspace; the toast can put the old one back. */
-	const replaceWorkspace = (
-		next: PlaygroundWorkspace,
-		message: string,
-		by: 'th30' | 'visitor' = 'visitor',
-	) => {
-		const previous = store.getWorkspace();
-		store.update(next, by);
-		view.setKeysOpen(false);
-		view.setEditorView('editor');
-		// New agents start new conversations; the old transcripts don't carry over.
-		clearConversation();
-		setConversation((count) => count + 1);
-		const dismiss = toast({
-			body: message,
-			endContent: (
-				<Button
-					label="Undo"
-					variant="ghost"
-					size="sm"
-					onClick={() => {
-						store.update(previous);
-						dismiss();
-					}}
-				/>
-			),
-		});
-	};
-	const copy = (text: string, what: string) => {
-		navigator.clipboard.writeText(text).then(
-			() => toast({ body: `Copied ${what}.` }),
-			() => toast({ body: "Couldn't reach the clipboard.", type: 'error' }),
-		);
-	};
+	const replaceWorkspace = useCallback(
+		(next: PlaygroundWorkspace, message: string, by: 'th30' | 'visitor' = 'visitor') => {
+			const previous = store.getWorkspace();
+			store.update(next, by);
+			setKeysOpen(false);
+			setEditorView('editor');
+			// New agents start new conversations; the old transcripts don't carry over.
+			clearConversation();
+			setConversation((count) => count + 1);
+			const dismiss = toast({
+				body: message,
+				endContent: (
+					<Button
+						label="Undo"
+						variant="ghost"
+						size="sm"
+						onClick={() => {
+							store.update(previous);
+							dismiss();
+						}}
+					/>
+				),
+			});
+		},
+		[store, setKeysOpen, setEditorView, setConversation, toast],
+	);
+	const copy = useCallback(
+		(text: string, what: string) => {
+			navigator.clipboard.writeText(text).then(
+				() => toast({ body: `Copied ${what}.` }),
+				() => toast({ body: "Couldn't reach the clipboard.", type: 'error' }),
+			);
+		},
+		[toast],
+	);
 	return { replaceWorkspace, copy };
 }
 
@@ -1465,8 +1491,11 @@ function SheetButton({
 	);
 }
 
-/** The profile tree's column: the playground's name and version over the agents and tools. */
-function TreeColumn({
+/**
+ * The profile tree's column: the playground's name and version over the agents and tools. It sits
+ * out renders that change nothing it shows, such as the code view or a new compile.
+ */
+const TreeColumn = memo(function TreeColumn({
 	tree,
 	draft,
 	onAddAgent,
@@ -1499,7 +1528,7 @@ function TreeColumn({
 			</VStack>
 		</Section>
 	);
-}
+});
 
 /** The issue count, which goes to the next issue after the selected node. Hidden with none. */
 function IssueToken({
@@ -1771,7 +1800,9 @@ function ClearHistoryButton({ chatWith, run }: { chatWith: string; run: Conversa
 
 /** The preview's header: back to the editor, the agent to chat with, history, trace and Export. */
 function PreviewHeader({
-	state,
+	store,
+	chatAgents,
+	chatWith,
 	compile,
 	run,
 	connection,
@@ -1779,7 +1810,9 @@ function PreviewHeader({
 	copy,
 	setSheet,
 }: {
-	state: PlaygroundWorkspaceState;
+	store: PlaygroundStore;
+	chatAgents: ChatAgent[];
+	chatWith: string;
 	compile: WorkspaceCompile;
 	run: ConversationRun;
 	connection: PlaygroundConnectionState;
@@ -1788,7 +1821,6 @@ function PreviewHeader({
 	setSheet: (sheet: Sheet) => void;
 }) {
 	const phone = usePhone();
-	const { store, workspace } = state;
 	const { compiled } = compile;
 	return (
 		<Section variant="transparent" padding={3}>
@@ -1800,11 +1832,9 @@ function PreviewHeader({
 					setSheet={setSheet}
 				/>
 				<StackItem size="fill">
-					<ChatPicker workspace={workspace} onChange={store.chatWith} />
+					<ChatPicker agents={chatAgents} chatWith={chatWith} onChange={store.chatWith} />
 				</StackItem>
-				{compile.payload && run.isUsed && (
-					<ClearHistoryButton chatWith={workspace.chatWith} run={run} />
-				)}
+				{compile.payload && run.isUsed && <ClearHistoryButton chatWith={chatWith} run={run} />}
 				{compile.traced ? (
 					<Button
 						label={trace.open ? 'Hide trace' : 'View trace'}
@@ -1868,9 +1898,14 @@ function PreviewBody({
 	);
 }
 
-/** The compiled agent to chat with, under its header; while none compiles, why. */
-function PreviewPane({
-	state,
+/**
+ * The compiled agent to chat with, under its header; while none compiles, why. It sits out renders
+ * that change nothing it shows: typing in the editor, opening a node, Keys.
+ */
+const PreviewPane = memo(function PreviewPane({
+	store,
+	chatAgents,
+	chatWith,
 	compile,
 	run,
 	connection,
@@ -1878,7 +1913,9 @@ function PreviewPane({
 	copy,
 	setSheet,
 }: {
-	state: PlaygroundWorkspaceState;
+	store: PlaygroundStore;
+	chatAgents: ChatAgent[];
+	chatWith: string;
 	compile: WorkspaceCompile;
 	run: ConversationRun;
 	connection: PlaygroundConnectionState;
@@ -1891,7 +1928,9 @@ function PreviewPane({
 		<LayoutContent className="playground-preview" isScrollable={false} padding={0}>
 			<VStack height="100%">
 				<PreviewHeader
-					state={state}
+					store={store}
+					chatAgents={chatAgents}
+					chatWith={chatWith}
 					compile={compile}
 					run={run}
 					connection={connection}
@@ -1910,14 +1949,14 @@ function PreviewPane({
 						run={run}
 						connection={connection}
 						chatRef={chatRef}
-						chatWith={state.workspace.chatWith}
+						chatWith={chatWith}
 						traceOpen={traceOpen}
 					/>
 				</StackItem>
 			</VStack>
 		</LayoutContent>
 	);
-}
+});
 
 /** Everything the page holds: the workspace, its connection, the editor's view, the compile and the run. */
 function usePlaygroundPage(loaderData: Route.ComponentProps['loaderData']) {
@@ -1975,12 +2014,18 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	const { state, connection, view, frame, selected, editing, issueReveal, compile } = page;
 	const { sheet, setSheet, run, replaceWorkspace, copy, chatRef, title } = page;
 	const { store, draft } = state;
-	const tree = workspaceTreeState(state, view, selected, setSheet);
+	const tree = useWorkspaceTree(state, view, selected, setSheet);
+	const chatAgents = useChatAgents(state.workspace.agents);
+	const { update } = state;
+	const { open } = view;
 	/** Adds an agent and opens it. */
-	const addAgentFrom = (next: PlaygroundDraft) => {
-		state.update((current) => addAgent(current, next));
-		view.open(store.getWorkspace().selected);
-	};
+	const addAgentFrom = useCallback(
+		(next: PlaygroundDraft) => {
+			update((current) => addAgent(current, next));
+			open(store.getWorkspace().selected);
+		},
+		[store, update, open],
+	);
 
 	return (
 		<Layout
@@ -2012,7 +2057,9 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 			}
 			content={
 				<PreviewPane
-					state={state}
+					store={store}
+					chatAgents={chatAgents}
+					chatWith={state.workspace.chatWith}
 					compile={compile}
 					run={run}
 					connection={connection}
@@ -2026,23 +2073,29 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 }
 
 /** What the tree reads of the page; opening a node closes the phone's sheet, and Keys selects nothing. */
-function workspaceTreeState(
+function useWorkspaceTree(
 	state: PlaygroundWorkspaceState,
 	view: EditorViewState,
 	selected: string,
 	setSheet: (sheet: Sheet) => void,
 ): WorkspaceTreeState {
-	return {
-		workspace: state.workspace,
-		focus: state.focus,
-		selectedId: view.keysOpen ? '' : selected,
-		onSelect: (id) => {
-			view.open(id);
-			setSheet(null);
-		},
-		update: state.update,
-		setDraft: state.setDraft,
-	};
+	const { workspace, focus, update, setDraft } = state;
+	const { open } = view;
+	const selectedId = view.keysOpen ? '' : selected;
+	return useMemo(
+		() => ({
+			workspace,
+			focus,
+			selectedId,
+			onSelect: (id) => {
+				open(id);
+				setSheet(null);
+			},
+			update,
+			setDraft,
+		}),
+		[workspace, focus, selectedId, open, setSheet, update, setDraft],
+	);
 }
 
 /** The resizable side panel: the tree beside the editor column (`children`), and its handle. */
