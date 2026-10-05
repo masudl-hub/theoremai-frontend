@@ -215,6 +215,123 @@ async function handleHttpProbe(
 	}
 }
 
+/** One MCP probe attempt: a response to send, or the protocol error that sends it to the next version. */
+type McpAttempt =
+	| { response: Response }
+	| { status: number; protocolError: NonNullable<McpRpcResponse['error']> };
+
+/** A `tools/list` call under one protocol version. */
+function mcpToolsListRequest(
+	baseHeaders: Record<string, string>,
+	protocolVersion: string,
+): Parameters<typeof fetchWithTimeout>[1] {
+	const rpcPayload = {
+		jsonrpc: '2.0',
+		id: 'test-ping-1',
+		method: 'tools/list',
+		params: {
+			_meta: {
+				'io.modelcontextprotocol/protocolVersion': protocolVersion,
+			},
+		},
+	};
+	return {
+		method: 'POST',
+		headers: { ...baseHeaders, 'MCP-Protocol-Version': protocolVersion },
+		body: JSON.stringify(rpcPayload),
+	};
+}
+
+/** A body that isn't JSON-RPC: a plain-text version refusal tries the next version, else it fails. */
+function nonJsonAttempt(
+	res: Response,
+	text: string,
+	protocolVersion: string,
+	start: number,
+): McpAttempt {
+	if (
+		!res.ok &&
+		text.toLowerCase().includes('unsupported protocol version') &&
+		protocolVersion !== MCP_PROTOCOL_VERSIONS.at(-1)
+	) {
+		return { status: res.status, protocolError: { code: -32600, message: text.slice(0, 300) } };
+	}
+	return {
+		response: Response.json({
+			ok: false,
+			status: res.status,
+			code: 'invalid_json',
+			error: `MCP server returned non-JSON response: ${text.slice(0, 200)}`,
+			elapsedMs: elapsedSince(start),
+		}),
+	};
+}
+
+/** What a JSON-RPC answer to `tools/list` says: an MCP error, not MCP at all, or the tool list. */
+function mcpAnswerResponse(
+	body: Extract<TestConnectionRequest, { type: 'mcp' }>,
+	res: Response,
+	rpcData: McpRpcResponse,
+	protocolVersion: string,
+	start: number,
+): Response {
+	if (rpcData.error) {
+		return Response.json({
+			ok: false,
+			status: res.status,
+			code: `mcp_error_${String(rpcData.error.code)}`,
+			error: rpcData.error.message,
+			elapsedMs: elapsedSince(start),
+		});
+	}
+	if (rpcData.jsonrpc !== '2.0' || !Array.isArray(rpcData.result?.tools)) {
+		return Response.json({
+			ok: false,
+			status: res.status,
+			code: 'not_mcp',
+			error: "Answered, but not as an MCP server: tools/list didn't return a tool list.",
+			elapsedMs: elapsedSince(start),
+		});
+	}
+	const tools = rpcData.result.tools;
+	const toolNames = tools.map((t) => t.name);
+	const targetName = body.mcpToolName?.trim();
+	return Response.json({
+		ok: res.ok,
+		status: res.status,
+		protocolVersion,
+		toolCount: tools.length,
+		tools: toolNames,
+		targetToolFound: targetName ? toolNames.includes(targetName) : undefined,
+		preview: JSON.stringify(rpcData.result ?? rpcData, null, 2).slice(0, 300),
+		elapsedMs: elapsedSince(start),
+	});
+}
+
+/** Asks the server for its tools under one protocol version. */
+async function attemptMcpProbe(
+	body: Extract<TestConnectionRequest, { type: 'mcp' }>,
+	baseHeaders: Record<string, string>,
+	protocolVersion: string,
+	start: number,
+): Promise<McpAttempt> {
+	const { res, text } = await fetchWithTimeout(
+		body.serverUrl,
+		mcpToolsListRequest(baseHeaders, protocolVersion),
+	);
+	if (isRedirect(res)) return { response: redirectResponse(res, start) };
+	let rpcData: McpRpcResponse;
+	try {
+		rpcData = parseMcpRpcResponse(text);
+	} catch {
+		return nonJsonAttempt(res, text, protocolVersion, start);
+	}
+	if (rpcData.error && isUnsupportedMcpProtocolError(rpcData.error)) {
+		return { status: res.status, protocolError: rpcData.error };
+	}
+	return { response: mcpAnswerResponse(body, res, rpcData, protocolVersion, start) };
+}
+
 async function handleMcpProbe(
 	body: Extract<TestConnectionRequest, { type: 'mcp' }>,
 	start: number,
@@ -234,88 +351,12 @@ async function handleMcpProbe(
 		let lastStatus = 0;
 		let lastProtocolError: McpRpcResponse['error'];
 
+		// Preferred version first; a server that refuses one is asked again under the next.
 		for (const protocolVersion of MCP_PROTOCOL_VERSIONS) {
-			const headers = {
-				...baseHeaders,
-				'MCP-Protocol-Version': protocolVersion,
-			};
-			const rpcPayload = {
-				jsonrpc: '2.0',
-				id: 'test-ping-1',
-				method: 'tools/list',
-				params: {
-					_meta: {
-						'io.modelcontextprotocol/protocolVersion': protocolVersion,
-					},
-				},
-			};
-
-			const { res, text } = await fetchWithTimeout(body.serverUrl, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify(rpcPayload),
-			});
-			if (isRedirect(res)) return redirectResponse(res, start);
-			lastStatus = res.status;
-
-			let rpcData: McpRpcResponse;
-			try {
-				rpcData = parseMcpRpcResponse(text);
-			} catch {
-				if (
-					!res.ok &&
-					text.toLowerCase().includes('unsupported protocol version') &&
-					protocolVersion !== MCP_PROTOCOL_VERSIONS.at(-1)
-				) {
-					lastProtocolError = { code: -32600, message: text.slice(0, 300) };
-					continue;
-				}
-				return Response.json({
-					ok: false,
-					status: lastStatus,
-					code: 'invalid_json',
-					error: `MCP server returned non-JSON response: ${text.slice(0, 200)}`,
-					elapsedMs: elapsedSince(start),
-				});
-			}
-
-			if (rpcData.error && isUnsupportedMcpProtocolError(rpcData.error)) {
-				lastProtocolError = rpcData.error;
-				continue;
-			}
-
-			if (rpcData.error) {
-				return Response.json({
-					ok: false,
-					status: lastStatus,
-					code: `mcp_error_${String(rpcData.error.code)}`,
-					error: rpcData.error.message,
-					elapsedMs: elapsedSince(start),
-				});
-			}
-
-			if (rpcData.jsonrpc !== '2.0' || !Array.isArray(rpcData.result?.tools)) {
-				return Response.json({
-					ok: false,
-					status: lastStatus,
-					code: 'not_mcp',
-					error: "Answered, but not as an MCP server: tools/list didn't return a tool list.",
-					elapsedMs: elapsedSince(start),
-				});
-			}
-			const tools = rpcData.result.tools;
-			const toolNames = tools.map((t) => t.name);
-			const targetName = body.mcpToolName?.trim();
-			return Response.json({
-				ok: res.ok,
-				status: lastStatus,
-				protocolVersion,
-				toolCount: tools.length,
-				tools: toolNames,
-				targetToolFound: targetName ? toolNames.includes(targetName) : undefined,
-				preview: JSON.stringify(rpcData.result ?? rpcData, null, 2).slice(0, 300),
-				elapsedMs: elapsedSince(start),
-			});
+			const attempt = await attemptMcpProbe(body, baseHeaders, protocolVersion, start);
+			if ('response' in attempt) return attempt.response;
+			lastStatus = attempt.status;
+			lastProtocolError = attempt.protocolError;
 		}
 
 		return Response.json({

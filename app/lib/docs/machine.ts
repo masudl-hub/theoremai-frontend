@@ -2,7 +2,8 @@
  * Machine twins of the composed index. Same projector as Th30 read.
  */
 
-import { projectArticleText, symbolTerm } from './project-text';
+import { symbolTerm } from './catalog-rows';
+import { projectArticleText } from './project-text';
 import type { DocIndex } from './schema';
 
 export function articleMarkdown(index: DocIndex, slug: string): string | undefined {

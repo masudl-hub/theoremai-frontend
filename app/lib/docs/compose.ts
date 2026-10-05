@@ -12,7 +12,7 @@ import { lexiconCatalogRows, traceCatalogRows } from './catalog-rows';
 import { stillFilters } from './exposure';
 import { fieldsByFacet } from './ownership';
 import { FACET_SECTION, UNION_SECTION } from './placement';
-import { projectArticleText, ttrMinutesFromText } from './project-text';
+import { projectArticleText } from './project-text';
 import {
 	type AuthoredBlock,
 	type ComposeOptions,
@@ -26,6 +26,7 @@ import {
 	type ResolvedBlock,
 } from './schema';
 import { compileSeedSource } from './seeds';
+import { ttrMinutesFromText } from './text-format';
 import { unionMembers } from './union-docs';
 
 const KEBAB_ID = /^[a-z][a-z0-9-]*$/;
@@ -61,24 +62,33 @@ function assertChapters(options: ComposeOptions): void {
 	const ranks = new Set<number>();
 	for (const def of SITE_ARTICLES) {
 		assertChapter(def);
-		if (!existsSync(path.join(options.kernelRoot, def.entry))) {
-			throw new Error(`${def.slug} entry missing in the kernel: ${def.entry}`);
-		}
-		const cover = assertPublic(options, def.slug, def.cover.src);
-		if (!cover.endsWith('.png') || pngRatio(cover) < COVER_MIN_RATIO) {
-			throw new Error(`${def.slug} cover ${def.cover.src} must be a PNG at least 16:9 wide`);
-		}
-		for (const block of def.blocks) {
-			if (block.kind === 'media') assertPublic(options, def.slug, block.src);
-		}
-		if (covers.has(def.cover.src)) throw new Error(`cover ${def.cover.src} is used twice`);
-		covers.add(def.cover.src);
+		assertChapterFiles(options, def);
+		claimOnce(covers, def.cover.src, `cover ${def.cover.src} is used twice`);
 		if (def.suggest) {
-			if (ranks.has(def.suggest.rank))
-				throw new Error(`suggest rank ${String(def.suggest.rank)} is used twice`);
-			ranks.add(def.suggest.rank);
+			const rank = def.suggest.rank;
+			claimOnce(ranks, rank, `suggest rank ${String(rank)} is used twice`);
 		}
 	}
+}
+
+/** The chapter's kernel entry, PNG cover and media files exist. */
+function assertChapterFiles(options: ComposeOptions, def: DocArticleDef): void {
+	if (!existsSync(path.join(options.kernelRoot, def.entry))) {
+		throw new Error(`${def.slug} entry missing in the kernel: ${def.entry}`);
+	}
+	const cover = assertPublic(options, def.slug, def.cover.src);
+	if (!cover.endsWith('.png') || pngRatio(cover) < COVER_MIN_RATIO) {
+		throw new Error(`${def.slug} cover ${def.cover.src} must be a PNG at least 16:9 wide`);
+	}
+	for (const block of def.blocks) {
+		if (block.kind === 'media') assertPublic(options, def.slug, block.src);
+	}
+}
+
+/** Adds `value` to `seen`; throws `message` if it was already there. */
+function claimOnce<T>(seen: Set<T>, value: T, message: string): void {
+	if (seen.has(value)) throw new Error(message);
+	seen.add(value);
 }
 
 function assertChapter(def: DocArticleDef): void {

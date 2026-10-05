@@ -33,38 +33,18 @@ const withoutSlot = (vault: KeyVault, slot: string): KeyVault =>
 	Object.fromEntries(Object.entries(vault).filter(([name]) => name !== slot));
 type KeyEntry = { id: string; slot: string };
 
-/** Models select execution; the vault and connection settings remain in this tab's memory. */
-export function usePlaygroundConnection(
-	models: readonly (Pick<ModelBindingDraft, 'protocol' | 'provider' | 'apiId'> & {
-		builtInTools?: string[];
-	})[],
-	initialBaseUrl = 'http://127.0.0.1:11434',
-	namedSlots: readonly string[] = [],
-) {
-	const [entries, setEntries] = useState<KeyEntry[]>([]);
-	const [vault, setVault] = useState<KeyVault>({});
-	const [local, setLocal] = useState<PlaygroundBrowserConnection['local']>({
-		baseUrl: initialBaseUrl,
-	});
-	const [localModels, setLocalModels] = useState<{
-		status: 'idle' | 'loading' | 'ready' | 'error';
-		ids: string[];
-		error?: string;
-	}>({ status: 'idle', ids: [] });
-	const [remoteTools, setRemoteTools] = useState(false);
-	const slotNames = [...new Set([...namedSlots, ...Object.keys(vault)])].join('\n');
-	const slots = useMemo(() => (slotNames ? slotNames.split('\n') : []), [slotNames]);
-	// A row follows a slot the draft names or a key the vault holds; typing a slot name in the
-	// editor must not leave a row behind for every prefix. Unnamed rows stay until removed.
-	useEffect(() => {
-		setEntries((current) => [
-			...current.filter((entry) => !entry.slot || slots.includes(entry.slot)),
-			...slots
-				.filter((slot) => !current.some((entry) => entry.slot === slot))
-				.map((slot) => ({ id: crypto.randomUUID(), slot })),
-		]);
-	}, [slots]);
-	const hasLocal = models.some((model) => model.provider === 'local');
+type LocalModels = {
+	status: 'idle' | 'loading' | 'ready' | 'error';
+	ids: string[];
+	error?: string;
+};
+
+/** The models a local server offers at `local`, listed again shortly after the endpoint settles. */
+function useLocalModels(
+	hasLocal: boolean,
+	local: PlaygroundBrowserConnection['local'],
+): LocalModels {
+	const [localModels, setLocalModels] = useState<LocalModels>({ status: 'idle', ids: [] });
 	useEffect(() => {
 		if (!hasLocal || !local.baseUrl.trim()) {
 			setLocalModels({ status: 'idle', ids: [] });
@@ -94,31 +74,70 @@ export function usePlaygroundConnection(
 			controller.abort();
 		};
 	}, [hasLocal, local]);
-	const hasKeys = Object.values(vault).some((key) => Boolean(key?.trim()));
+	return localModels;
+}
+
+/** Local when every model is local; your keys when any is local, keyed or not hosted; else the demo. */
+function connectionMode(
+	models: Parameters<typeof usePlaygroundConnection>[0],
+	hasLocal: boolean,
+	hasKeys: boolean,
+): PlaygroundConnectionMode {
+	if (hasLocal && models.every((model) => model.provider === 'local')) return 'local';
 	const hasProvidedModels = models.every(
 		(model) => modelBindingViolation({ ...model, builtInTools: model.builtInTools ?? [] }) === null,
 	);
-	const mode: PlaygroundConnectionMode =
-		hasLocal && models.every((model) => model.provider === 'local')
-			? 'local'
-			: hasLocal || hasKeys || !hasProvidedModels
-				? 'byok'
-				: 'demo';
+	return hasLocal || hasKeys || !hasProvidedModels ? 'byok' : 'demo';
+}
+
+/** The local server's config; an invalid edit refuses execution rather than falling back to the hosted demo. */
+function localRuntimeConfig(
+	local: PlaygroundBrowserConnection['local'],
+): ReturnType<typeof localPlaygroundConfig> {
+	try {
+		return localPlaygroundConfig(local);
+	} catch (error) {
+		return {
+			baseUrl: local.baseUrl,
+			fetch: () => Promise.reject(error instanceof Error ? error : new Error(String(error))),
+		};
+	}
+}
+
+/** Models select execution; the vault and connection settings remain in this tab's memory. */
+export function usePlaygroundConnection(
+	models: readonly (Pick<ModelBindingDraft, 'protocol' | 'provider' | 'apiId'> & {
+		builtInTools?: string[];
+	})[],
+	initialBaseUrl = 'http://127.0.0.1:11434',
+	namedSlots: readonly string[] = [],
+) {
+	const [entries, setEntries] = useState<KeyEntry[]>([]);
+	const [vault, setVault] = useState<KeyVault>({});
+	const [local, setLocal] = useState<PlaygroundBrowserConnection['local']>({
+		baseUrl: initialBaseUrl,
+	});
+	const [remoteTools, setRemoteTools] = useState(false);
+	const slotNames = [...new Set([...namedSlots, ...Object.keys(vault)])].join('\n');
+	const slots = useMemo(() => (slotNames ? slotNames.split('\n') : []), [slotNames]);
+	// A row follows a slot the draft names or a key the vault holds; typing a slot name in the
+	// editor must not leave a row behind for every prefix. Unnamed rows stay until removed.
+	useEffect(() => {
+		setEntries((current) => [
+			...current.filter((entry) => !entry.slot || slots.includes(entry.slot)),
+			...slots
+				.filter((slot) => !current.some((entry) => entry.slot === slot))
+				.map((slot) => ({ id: crypto.randomUUID(), slot })),
+		]);
+	}, [slots]);
+	const hasLocal = models.some((model) => model.provider === 'local');
+	const localModels = useLocalModels(hasLocal, local);
+	const hasKeys = Object.values(vault).some((key) => Boolean(key?.trim()));
+	const mode = connectionMode(models, hasLocal, hasKeys);
 	const connection = useMemo(() => {
 		if (mode === 'demo') return null;
 		const controller = new AbortController();
-		let localConfig: ReturnType<typeof localPlaygroundConfig>;
-		if (hasLocal) {
-			// Invalid edits refuse execution; never fall back to the hosted demo.
-			try {
-				localConfig = localPlaygroundConfig(local);
-			} catch (error) {
-				localConfig = {
-					baseUrl: local.baseUrl,
-					fetch: () => Promise.reject(error instanceof Error ? error : new Error(String(error))),
-				};
-			}
-		}
+		const localConfig = hasLocal ? localRuntimeConfig(local) : undefined;
 		const slotted = playgroundVault(slots, vault);
 		return {
 			controller,

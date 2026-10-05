@@ -8,13 +8,14 @@ import { InkWaveform, type InkWaveStatus } from '@theoremjs/react/ui';
 import {
 	createContext,
 	type ReactNode,
+	type RefObject,
 	useCallback,
 	useContext,
 	useEffect,
 	useRef,
 	useState,
 } from 'react';
-import { useLocation, useMatches, useNavigate } from 'react-router';
+import { type NavigateFunction, useLocation, useMatches, useNavigate } from 'react-router';
 import { z } from 'zod';
 import { theoremSiteTheme } from '../built/theorem-site';
 import { docsPath, highlightBlock } from '../lib/docs/th30-client';
@@ -90,23 +91,8 @@ function useTh30PageLine(): string | null {
 	return null;
 }
 
-export function Th30Provider({ children }: { children: ReactNode }) {
-	const [phase, setPhase] = useState<Phase>('idle');
-	const [isMuted, setMuted] = useState(false);
-	/** Why the last call failed, in the profile's own wording. */
-	const [failure, setFailure] = useState<string | null>(null);
-	const [status, setStatus] = useState<InkWaveStatus>('disconnected');
-	const [levels, setLevels] = useState({ input: 0, output: 0 });
-	const clientRef = useRef<LiveSessionClient | null>(null);
-	const chimeRef = useRef<ReturnType<typeof makeChime> | null>(null);
-	const navigate = useNavigate();
-	const pageLine = useTh30PageLine();
-	const pageLineRef = useRef(pageLine);
-	pageLineRef.current = pageLine;
-	/** The last page line th30 was told, so an unchanged page says nothing; `undefined` until the call is greeted. */
-	const toldRef = useRef<string | null | undefined>(undefined);
-
-	// th30 opens a surface's page when it asks for one that isn't mounted, and can always move the person.
+/** th30 opens a surface's page when it asks for one that isn't mounted, and can always move the person. */
+function useSiteSurface(navigate: NavigateFunction): void {
 	const { pathname } = useLocation();
 	const pathnameRef = useRef(pathname);
 	pathnameRef.current = pathname;
@@ -143,29 +129,73 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 			unmount();
 		};
 	}, [navigate]);
+}
 
-	const applyTool = useCallback(
-		(name: string, args: Record<string, unknown>) => {
-			if (name === 'navigate') {
-				const slug = typeof args.slug === 'string' ? args.slug : '';
-				const blockId = typeof args.blockId === 'string' ? args.blockId : undefined;
-				if (slug) {
-					void navigate(docsPath(slug, blockId));
-					if (blockId) {
-						window.setTimeout(() => {
-							highlightBlock(blockId);
-						}, 400);
-					}
-				}
-			}
-			if (name === 'highlight') {
-				const blockId = typeof args.blockId === 'string' ? args.blockId : '';
-				const label = typeof args.label === 'string' ? args.label : undefined;
-				if (blockId) highlightBlock(blockId, label);
-			}
-		},
-		[navigate],
-	);
+/** th30's docs tools, applied on the page: open an article (at a block), or point at a block. */
+function applyDocsTool(
+	navigate: NavigateFunction,
+	name: string,
+	args: Record<string, unknown>,
+): void {
+	const blockId = typeof args.blockId === 'string' ? args.blockId : undefined;
+	if (name === 'highlight' && blockId) {
+		highlightBlock(blockId, typeof args.label === 'string' ? args.label : undefined);
+		return;
+	}
+	if (name !== 'navigate' || typeof args.slug !== 'string' || !args.slug) return;
+	void navigate(docsPath(args.slug, blockId));
+	if (blockId) {
+		window.setTimeout(() => {
+			highlightBlock(blockId);
+		}, 400);
+	}
+}
+
+/** What the strip says while a call connects or after it failed. */
+function stripStatus(phase: Phase, failure: string | null): string {
+	if (phase === 'connecting') return 'Connecting to th30…';
+	if (phase !== 'failed') return '';
+	return `th30 couldn’t connect${failure ? `: ${failure}` : '.'} Click the light to close, then try again.`;
+}
+
+/** The page line th30 hears, and the last one it was told. */
+type PageRefs = {
+	pageLine: string | null;
+	pageLineRef: RefObject<string | null>;
+	/** The last page line th30 was told, so an unchanged page says nothing; `undefined` until the call is greeted. */
+	toldRef: RefObject<string | null | undefined>;
+};
+
+function usePageRefs(): PageRefs {
+	const pageLine = useTh30PageLine();
+	const pageLineRef = useRef(pageLine);
+	pageLineRef.current = pageLine;
+	const toldRef = useRef<string | null | undefined>(undefined);
+	return { pageLine, pageLineRef, toldRef };
+}
+
+/** A call with th30: its phase, voice levels and mute, and how to start, end and mute it. */
+type Th30Call = {
+	phase: Phase;
+	isMuted: boolean;
+	/** Why the last call failed, in the profile's own wording. */
+	failure: string | null;
+	status: InkWaveStatus;
+	levels: { input: number; output: number };
+	clientRef: RefObject<LiveSessionClient | null>;
+	toggle: () => void;
+	stop: () => void;
+	mute: () => void;
+};
+
+function useTh30Call(navigate: NavigateFunction, { pageLineRef, toldRef }: PageRefs): Th30Call {
+	const [phase, setPhase] = useState<Phase>('idle');
+	const [isMuted, setMuted] = useState(false);
+	const [failure, setFailure] = useState<string | null>(null);
+	const [status, setStatus] = useState<InkWaveStatus>('disconnected');
+	const [levels, setLevels] = useState({ input: 0, output: 0 });
+	const clientRef = useRef<LiveSessionClient | null>(null);
+	const chimeRef = useRef<ReturnType<typeof makeChime> | null>(null);
 
 	/** Answers a `look` or `act` from the page; an applied call whose answer is lost is noted. */
 	const answerSurface = useCallback(
@@ -234,7 +264,7 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 					await answerSurface(name, args, meta.callId);
 					return;
 				}
-				applyTool(name, args);
+				applyDocsTool(navigate, name, args);
 				await clientRef.current?.executeToolOnRelay({ callId: meta.callId });
 			},
 			onTurnEvent: (event) => {
@@ -253,8 +283,28 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 			setFailure(err instanceof Error ? err.message : null);
 			setPhase('failed');
 		}
-	}, [applyTool, answerSurface]);
+	}, [navigate, answerSurface, pageLineRef, toldRef]);
 
+	const toggle = useCallback(() => {
+		if (clientRef.current) stop();
+		else void start();
+	}, [start, stop]);
+
+	useEffect(() => stop, [stop]);
+
+	const mute = () => {
+		const client = clientRef.current;
+		if (client) setMuted(client.toggleMute());
+	};
+	return { phase, isMuted, failure, status, levels, clientRef, toggle, stop, mute };
+}
+
+/** While a call is live, tells th30 what the page notes and where the person goes, each debounced. */
+function useTh30Feed(
+	phase: Phase,
+	clientRef: RefObject<LiveSessionClient | null>,
+	{ pageLine, toldRef }: PageRefs,
+): void {
 	useEffect(() => {
 		if (phase !== 'live') return;
 		let pending: string[] = [];
@@ -272,7 +322,7 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 			off();
 			window.clearTimeout(timer);
 		};
-	}, [phase]);
+	}, [phase, clientRef]);
 
 	useEffect(() => {
 		if (phase !== 'live' || !pageLine || pageLine === toldRef.current) return;
@@ -285,14 +335,11 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 		return () => {
 			window.clearTimeout(timer);
 		};
-	}, [pageLine, phase]);
+	}, [pageLine, phase, clientRef, toldRef]);
+}
 
-	const isLive = phase !== 'idle';
-	const toggle = useCallback(() => {
-		if (clientRef.current) stop();
-		else void start();
-	}, [start, stop]);
-
+/** Marks the page while a call is on, and lets Escape end it. */
+function useLiveCallKeys(isLive: boolean, stop: () => void): void {
 	useEffect(() => {
 		document.documentElement.classList.toggle('th30-live', isLive);
 		if (!isLive) return;
@@ -304,45 +351,54 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 			window.removeEventListener('keydown', onKey);
 		};
 	}, [isLive, stop]);
+}
 
-	useEffect(() => stop, [stop]);
+export function Th30Provider({ children }: { children: ReactNode }) {
+	const navigate = useNavigate();
+	useSiteSurface(navigate);
+	const page = usePageRefs();
+	const call = useTh30Call(navigate, page);
+	useTh30Feed(call.phase, call.clientRef, page);
+	const isLive = call.phase !== 'idle';
+	useLiveCallKeys(isLive, call.stop);
 
 	return (
-		<Th30Context.Provider value={{ isLive, toggle }}>
+		<Th30Context.Provider value={{ isLive, toggle: call.toggle }}>
 			{children}
 			<Theme theme={theoremSiteTheme} mode="dark">
-				<div className="th30-strip" inert={!isLive} aria-hidden={!isLive}>
-					<IconButton
-						label={isMuted ? 'Unmute' : 'Mute'}
-						icon={isMuted ? <IconMicrophoneOff /> : <IconMicrophone />}
-						variant="ghost"
-						size="sm"
-						isDisabled={phase !== 'live'}
-						onClick={() => {
-							const client = clientRef.current;
-							if (client) setMuted(client.toggleMute());
-						}}
-					/>
-					<div className="th30-wave" aria-hidden>
-						{phase === 'live' ? (
-							<InkWaveform
-								status={status}
-								inputLevel={levels.input}
-								outputLevel={levels.output}
-								variant="strip"
-							/>
-						) : null}
-					</div>
-					<span className="th30-strip-status" role="status">
-						{phase === 'connecting'
-							? 'Connecting to th30…'
-							: phase === 'failed'
-								? `th30 couldn’t connect${failure ? `: ${failure}` : '.'} Click the light to close, then try again.`
-								: ''}
-					</span>
-				</div>
+				<Th30Strip call={call} isLive={isLive} />
 			</Theme>
 		</Th30Context.Provider>
+	);
+}
+
+/** The strip along the page while a call is on: mute, th30's voice, and how the call is going. */
+function Th30Strip({ call, isLive }: { call: Th30Call; isLive: boolean }) {
+	const { phase, isMuted, status, levels } = call;
+	return (
+		<div className="th30-strip" inert={!isLive} aria-hidden={!isLive}>
+			<IconButton
+				label={isMuted ? 'Unmute' : 'Mute'}
+				icon={isMuted ? <IconMicrophoneOff /> : <IconMicrophone />}
+				variant="ghost"
+				size="sm"
+				isDisabled={phase !== 'live'}
+				onClick={call.mute}
+			/>
+			<div className="th30-wave" aria-hidden>
+				{phase === 'live' ? (
+					<InkWaveform
+						status={status}
+						inputLevel={levels.input}
+						outputLevel={levels.output}
+						variant="strip"
+					/>
+				) : null}
+			</div>
+			<span className="th30-strip-status" role="status">
+				{stripStatus(phase, call.failure)}
+			</span>
+		</div>
 	);
 }
 

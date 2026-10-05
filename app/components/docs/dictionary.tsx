@@ -111,6 +111,76 @@ function LexiconSymbolItem({ symbol }: { symbol: Extract<PageSymbol, { kind: 'le
 	);
 }
 
+/** One kind of symbol; its label shows only when several kinds are listed. */
+function SymbolGroup({
+	label,
+	labeled,
+	children,
+}: {
+	label: string;
+	labeled: boolean;
+	children: ReactNode;
+}) {
+	return (
+		<VStack gap={2}>
+			{labeled ? (
+				<Text type="label" color="secondary">
+					{label}
+				</Text>
+			) : null}
+			<MetadataList>{children}</MetadataList>
+		</VStack>
+	);
+}
+
+/** The filtered symbols, grouped by kind in catalog order. Empty groups drop out. */
+function SymbolGroups({
+	fields,
+	unions,
+	traces,
+	lexicon,
+	labeled,
+}: {
+	fields: readonly Extract<PageSymbol, { kind: 'field' }>[];
+	unions: readonly Extract<PageSymbol, { kind: 'union-member' }>[];
+	traces: readonly Extract<PageSymbol, { kind: 'trace' }>[];
+	lexicon: readonly Extract<PageSymbol, { kind: 'lexicon' }>[];
+	labeled: boolean;
+}) {
+	return (
+		<VStack gap={5}>
+			{fields.length ? (
+				<SymbolGroup label="Fields" labeled={labeled}>
+					{fields.map((symbol) => (
+						<FieldSymbolItem key={symbol.id} symbol={symbol} />
+					))}
+				</SymbolGroup>
+			) : null}
+			{unions.length ? (
+				<SymbolGroup label="Union members" labeled={labeled}>
+					{unions.map((symbol) => (
+						<UnionSymbolItem key={symbol.id} symbol={symbol} />
+					))}
+				</SymbolGroup>
+			) : null}
+			{traces.length ? (
+				<SymbolGroup label="Trace records" labeled={labeled}>
+					{traces.map((symbol) => (
+						<TraceSymbolItem key={symbol.id} symbol={symbol} />
+					))}
+				</SymbolGroup>
+			) : null}
+			{lexicon.length ? (
+				<SymbolGroup label="Status lines" labeled={labeled}>
+					{lexicon.map((symbol) => (
+						<LexiconSymbolItem key={symbol.id} symbol={symbol} />
+					))}
+				</SymbolGroup>
+			) : null}
+		</VStack>
+	);
+}
+
 export function PageDictionary({ symbols }: { symbols: readonly PageSymbol[] }) {
 	const [query, setQuery] = useState('');
 	const filtered = useMemo(() => {
@@ -172,64 +242,13 @@ export function PageDictionary({ symbols }: { symbols: readonly PageSymbol[] }) 
 			{filtered.length === 0 ? (
 				<Text color="secondary">No symbols match that filter.</Text>
 			) : (
-				<VStack gap={5}>
-					{fields.length ? (
-						<VStack gap={2}>
-							{groups.length > 1 ? (
-								<Text type="label" color="secondary">
-									Fields
-								</Text>
-							) : null}
-							<MetadataList>
-								{fields.map((symbol) => (
-									<FieldSymbolItem key={symbol.id} symbol={symbol} />
-								))}
-							</MetadataList>
-						</VStack>
-					) : null}
-					{unions.length ? (
-						<VStack gap={2}>
-							{groups.length > 1 ? (
-								<Text type="label" color="secondary">
-									Union members
-								</Text>
-							) : null}
-							<MetadataList>
-								{unions.map((symbol) => (
-									<UnionSymbolItem key={symbol.id} symbol={symbol} />
-								))}
-							</MetadataList>
-						</VStack>
-					) : null}
-					{traces.length ? (
-						<VStack gap={2}>
-							{groups.length > 1 ? (
-								<Text type="label" color="secondary">
-									Trace records
-								</Text>
-							) : null}
-							<MetadataList>
-								{traces.map((symbol) => (
-									<TraceSymbolItem key={symbol.id} symbol={symbol} />
-								))}
-							</MetadataList>
-						</VStack>
-					) : null}
-					{lexicon.length ? (
-						<VStack gap={2}>
-							{groups.length > 1 ? (
-								<Text type="label" color="secondary">
-									Status lines
-								</Text>
-							) : null}
-							<MetadataList>
-								{lexicon.map((symbol) => (
-									<LexiconSymbolItem key={symbol.id} symbol={symbol} />
-								))}
-							</MetadataList>
-						</VStack>
-					) : null}
-				</VStack>
+				<SymbolGroups
+					fields={fields}
+					unions={unions}
+					traces={traces}
+					lexicon={lexicon}
+					labeled={groups.length > 1}
+				/>
 			)}
 		</VStack>
 	);

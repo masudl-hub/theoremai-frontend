@@ -194,6 +194,7 @@ import {
 } from '@theoremjs/playground';
 import type { ListedProfileType } from '@theoremjs/playground/browser';
 import {
+	type ContextType,
 	type Dispatch,
 	type ReactNode,
 	type SetStateAction,
@@ -777,6 +778,512 @@ function ProviderModelRow({
 	);
 }
 
+type LocalConnectionValue = NonNullable<ContextType<typeof LocalConnection>>;
+
+/** The profile type a model runs as: a decision has its own binding editor; a host has no model. */
+function bindingProfileType(chosen: PlaygroundDraft['identity']['profileType']): ListedProfileType {
+	return chosen && chosen !== 'decision' && chosen !== 'host' ? chosen : 'text';
+}
+
+/** A provider's segment, disabled with the reason when the playground can't run it here. */
+function providerSegment(
+	provider: Provider,
+	binding: ModelBindingDraft,
+	type: ListedProfileType,
+	mode: ContextType<typeof ConnectionMode>,
+) {
+	const local = provider === 'local';
+	return {
+		...PROVIDER_SEGMENT[provider],
+		isDisabled: !playgroundRunsTransport(type, binding.protocol, provider, local ? 'local' : mode),
+		disabledMessage:
+			mode === 'demo' && !local
+				? 'Add your own key under Keys to use it.'
+				: `It doesn't run ${type} agents.`,
+	};
+}
+
+/** The protocol's providers, each enabled only where the playground runs it. */
+function ProviderRow({
+	binding,
+	type,
+	set,
+}: {
+	binding: ModelBindingDraft;
+	type: ListedProfileType;
+	set: SetBinding;
+}) {
+	const mode = useContext(ConnectionMode);
+	return (
+		<SegmentedRow<Provider>
+			label="Provider"
+			path="models.*.provider"
+			field="provider"
+			value={binding.provider}
+			segments={PROTOCOL_PROVIDERS[binding.protocol].map((provider) =>
+				providerSegment(provider, binding, type, mode),
+			)}
+			onChange={(provider) => {
+				set(retransport(binding, type, binding.protocol, provider));
+			}}
+		/>
+	);
+}
+
+/** A local model's endpoint, with help when the page's origin can't reach it. */
+function LocalEndpointRows({ set }: { set: SetBinding }) {
+	const localConnection = useContext(LocalConnection);
+	if (!localConnection) return null;
+	const failed = localConnection.localModels.status === 'error';
+	return (
+		<>
+			<TextRow
+				label="Endpoint"
+				path="local.baseUrl"
+				value={localConnection.local.baseUrl}
+				placeholder="http://127.0.0.1:11434"
+				status={
+					failed ? { type: 'error', message: localConnection.localModels.error ?? '' } : undefined
+				}
+				onChange={(baseUrl) => {
+					localConnection.setLocal((current) => ({ ...current, baseUrl }));
+					set({ apiId: '' });
+				}}
+			/>
+			{failed && !isLocalPage() && <LocalOriginHelp />}
+		</>
+	);
+}
+
+/** A hosted model's key slot and fallback slot. */
+function KeySlotRows({ binding, set }: { binding: ModelBindingDraft; set: SetBinding }) {
+	return (
+		<>
+			<SlotRow
+				label="Key slot"
+				path="models.*.key"
+				field="keySlot"
+				value={binding.keySlot ?? ''}
+				onChange={(keySlot) => {
+					set({ keySlot });
+				}}
+			/>
+			<SlotRow
+				label="Fallback slot"
+				path="models.*.fallbackKey"
+				field="fallbackKeySlot"
+				value={binding.fallbackKeySlot ?? ''}
+				onChange={(fallbackKeySlot) => {
+					set({ fallbackKeySlot });
+				}}
+			/>
+		</>
+	);
+}
+
+/** Why a local model can't be picked yet, if it can't. */
+function localModelsPlaceholder(status: LocalConnectionValue['localModels']['status']) {
+	if (status === 'error') return "Can't reach the endpoint";
+	if (status === 'idle') return 'Enter the endpoint first';
+	return undefined;
+}
+
+/** A local model, picked from what the endpoint lists. */
+function LocalApiModelRow({
+	binding,
+	localConnection,
+	set,
+}: {
+	binding: ModelBindingDraft;
+	localConnection: LocalConnectionValue;
+	set: SetBinding;
+}) {
+	const { status } = localConnection.localModels;
+	return (
+		<ChoiceRow
+			label="API model"
+			path="models.*.apiId"
+			field="apiId"
+			value={binding.apiId}
+			options={localConnection.localModels.ids}
+			isDisabled={status === 'idle' || status === 'error'}
+			isLoading={status === 'loading'}
+			placeholder={localModelsPlaceholder(status)}
+			emptyText="This server has no models."
+			hasSearch
+			isRequired
+			onChange={(apiId) => {
+				set({ apiId });
+			}}
+		/>
+	);
+}
+
+/** The demo's models for the transport: its Gemini models for the type, or OpenRouter's one. */
+function demoModelOptions(google: boolean, type: ListedProfileType) {
+	if (!google) return [OPENROUTER_PLAYGROUND_API_ID];
+	return GEMINI_PLAYGROUND_MODELS.filter((model) => model.profileType === type).map((model) => ({
+		value: model.id,
+		label: model.label,
+		description: model.id,
+	}));
+}
+
+/** A demo model, from the demo's own list; built-ins the model doesn't allow are dropped. */
+function DemoApiModelRow({
+	binding,
+	type,
+	google,
+	set,
+}: {
+	binding: ModelBindingDraft;
+	type: ListedProfileType;
+	google: boolean;
+	set: SetBinding;
+}) {
+	return (
+		<ChoiceRow
+			label="API model"
+			path="models.*.apiId"
+			field="apiId"
+			value={binding.apiId}
+			options={demoModelOptions(google, type)}
+			onChange={(apiId) => {
+				const allowed = new Set(allowedBuiltinsForGemini(apiId));
+				set({ apiId, builtInTools: binding.builtInTools.filter((id) => allowed.has(id)) });
+			}}
+		/>
+	);
+}
+
+/** The model's API id: from the local endpoint, the demo's list, or the provider's list. */
+function ApiModelRow({
+	draft,
+	binding,
+	type,
+	google,
+	set,
+}: {
+	draft: PlaygroundDraft;
+	binding: ModelBindingDraft;
+	type: ListedProfileType;
+	google: boolean;
+	set: SetBinding;
+}) {
+	const mode = useContext(ConnectionMode);
+	const localConnection = useContext(LocalConnection);
+	if (binding.provider === 'local' && localConnection)
+		return <LocalApiModelRow binding={binding} localConnection={localConnection} set={set} />;
+	if (mode === 'demo')
+		return <DemoApiModelRow binding={binding} type={type} google={google} set={set} />;
+	return (
+		<ProviderModelRow
+			provider={binding.provider}
+			type={type}
+			slot={binding.keySlot || draft.models.key}
+			value={binding.apiId}
+			onChange={(apiId) => {
+				set({ apiId });
+			}}
+		/>
+	);
+}
+
+/** A local model's remote tools switch and server. */
+function LocalServerRows({ binding, set }: { binding: ModelBindingDraft; set: SetBinding }) {
+	const localConnection = useContext(LocalConnection);
+	return (
+		<>
+			{localConnection && (
+				<SwitchRow
+					label="Remote tools"
+					path="playground.remoteTools"
+					value={localConnection.remoteTools}
+					onChange={localConnection.setRemoteTools}
+				/>
+			)}
+			<TextRow
+				label="Server"
+				path="models.*.server"
+				field="server"
+				value={binding.server ?? ''}
+				placeholder="ollama"
+				onChange={(server) => {
+					set({ server });
+				}}
+			/>
+		</>
+	);
+}
+
+/** A Google model's built-ins: in the demo, those its model allows. */
+function BuiltinsRow({ binding, set }: { binding: ModelBindingDraft; set: SetBinding }) {
+	const mode = useContext(ConnectionMode);
+	const builtins =
+		mode === 'demo'
+			? allowedBuiltinsForGemini(binding.apiId)
+			: GOOGLE_BUILTIN_TOOLS.map((tool) => tool.name);
+	return (
+		<ListRow
+			label="Built-ins"
+			path="models.*.builtInTools"
+			field="builtInTools"
+			value={binding.builtInTools}
+			options={builtins}
+			onChange={(builtInTools) => {
+				set({ builtInTools });
+			}}
+		/>
+	);
+}
+
+/** Which model the binding runs: its id, transport, key slots and API model. */
+function ModelSection({
+	draft,
+	binding,
+	type,
+	set,
+}: {
+	draft: PlaygroundDraft;
+	binding: ModelBindingDraft;
+	type: ListedProfileType;
+	set: SetBinding;
+}) {
+	const google = isGoogleTransport(binding.protocol, binding.provider);
+	const local = binding.provider === 'local';
+	return (
+		<InspectorSection title="Model" path="models.*">
+			<TextRow
+				label="Id"
+				path="models.*"
+				field="modelId"
+				// A model\'s id is its key in the profile\'s models, so it can\'t be left out.
+				isRequired
+				value={binding.modelId}
+				placeholder="fast"
+				onChange={(modelId) => {
+					set({ modelId });
+				}}
+			/>
+			<SegmentedRow<Protocol>
+				label="Protocol"
+				path="models.*.protocol"
+				field="protocol"
+				value={binding.protocol}
+				segments={PROFILE_TYPE_PROTOCOLS[type].map((protocol) => PROTOCOL_SEGMENT[protocol])}
+				onChange={(protocol) => {
+					const provider = PROTOCOL_PROVIDERS[protocol][0];
+					set(retransport(binding, type, protocol, provider));
+				}}
+			/>
+			<ProviderRow binding={binding} type={type} set={set} />
+			{local ? <LocalEndpointRows set={set} /> : <KeySlotRows binding={binding} set={set} />}
+			<ApiModelRow draft={draft} binding={binding} type={type} google={google} set={set} />
+
+			{local && <LocalServerRows binding={binding} set={set} />}
+
+			{google && <BuiltinsRow binding={binding} set={set} />}
+		</InspectorSection>
+	);
+}
+
+/** How the model generates: its output cap, temperature and summaries. */
+function GenerationSection({ binding, set }: { binding: ModelBindingDraft; set: SetBinding }) {
+	return (
+		<InspectorSection title="Generation">
+			<NumberRow
+				label="Max output"
+				path="models.*.maxOutputTokens"
+				units="tokens"
+				field="maxOutputTokens"
+				value={binding.maxOutputTokens}
+				min={1}
+				isIntegerOnly
+				onChange={(maxOutputTokens) => {
+					set({ maxOutputTokens });
+				}}
+			/>
+			<NumberRow
+				label="Temperature"
+				path="models.*.temperature"
+				field="temperature"
+				value={binding.temperature}
+				min={0}
+				step={0.1}
+				onChange={(temperature) => {
+					set({ temperature });
+				}}
+			/>
+			<SegmentedRow
+				label="Summaries"
+				path="models.*.summaries"
+				value={providerDefaultSegment(binding.summaries)}
+				segments={SUMMARIES_SEGMENTS}
+				onChange={(segment) => {
+					set({ summaries: PROVIDER_DEFAULT_SEGMENT[segment] });
+				}}
+			/>
+		</InspectorSection>
+	);
+}
+
+/** A Gemini Interactions model's context and Google storage. */
+function ConversationStateSection({
+	binding,
+	set,
+}: {
+	binding: ModelBindingDraft;
+	set: SetBinding;
+}) {
+	return (
+		<InspectorSection title="Conversation state">
+			<SegmentedRow
+				label="Context"
+				path="models.*.persistViaInteractionId"
+				field="persistViaInteractionId"
+				value={binding.persistViaInteractionId ? 'chain' : 'history'}
+				segments={CONTEXT_SEGMENTS}
+				onChange={(segment) => {
+					set({ persistViaInteractionId: segment === 'chain' });
+				}}
+			/>
+			<SegmentedRow
+				label="Google storage"
+				path="models.*.store"
+				field="store"
+				value={providerDefaultSegment(binding.store)}
+				segments={STORAGE_SEGMENTS}
+				onChange={(segment) => {
+					set({ store: PROVIDER_DEFAULT_SEGMENT[segment] });
+				}}
+			/>
+		</InspectorSection>
+	);
+}
+
+type SetEfforts = (
+	efforts: ModelBindingDraft['efforts'],
+	renamed?: { from: string; to: string },
+) => void;
+
+/** One effort: its alias, a remove button and its level. */
+function EffortRow({
+	efforts,
+	index,
+	setEfforts,
+}: {
+	efforts: ModelBindingDraft['efforts'];
+	index: number;
+	setEfforts: SetEfforts;
+}) {
+	const statusAt = useFieldStatus();
+	const status = statusAt('efforts', index);
+	const effort = efforts[index];
+	return (
+		<VStack gap={3}>
+			<InspectorRow
+				label={`Effort ${String(index + 1)}`}
+				path="models.*.efforts"
+				hasIssue={status !== undefined}
+			>
+				<StackItem size="fill">
+					<TextInput
+						label={`Effort ${String(index + 1)} alias`}
+						isLabelHidden
+						size="sm"
+						status={status}
+						value={effort.alias}
+						placeholder="Alias"
+						onChange={(alias) => {
+							setEfforts(
+								efforts.map((e, i) => (i === index ? { ...e, alias } : e)),
+								{ from: effort.alias, to: alias },
+							);
+						}}
+					/>
+				</StackItem>
+				<IconButton
+					label={`Remove effort ${String(index + 1)}`}
+					variant="ghost"
+					size="sm"
+					icon={<Icon icon={IconX} size="sm" />}
+					onClick={() => {
+						setEfforts(efforts.filter((_, i) => i !== index));
+					}}
+				/>
+			</InspectorRow>
+			<SegmentedRow
+				label="Level"
+				path="models.*.efforts.*"
+				value={effort.level}
+				segments={LEVEL_SEGMENTS}
+				onChange={(level) => {
+					setEfforts(efforts.map((e, i) => (i === index ? { ...e, level } : e)));
+				}}
+			/>
+		</VStack>
+	);
+}
+
+/** The model's named efforts, its default effort and whether people can switch. */
+function EffortsSection({ binding, set }: { binding: ModelBindingDraft; set: SetBinding }) {
+	const aliases = binding.efforts.map((effort) => effort.alias).filter(Boolean);
+	/**
+	 * Sets the efforts and keeps the settings that depend on them valid: the default follows its
+	 * alias through a rename (`renamed`) and is cleared when the alias goes, and effort switching
+	 * turns off below two aliases, where its switch is disabled and couldn't be turned off.
+	 */
+	const setEfforts: SetEfforts = (efforts, renamed) => {
+		const next = new Set(efforts.map((effort) => effort.alias).filter(Boolean));
+		const defaultEffort =
+			renamed && binding.defaultEffort === renamed.from ? renamed.to : binding.defaultEffort;
+		set({
+			efforts,
+			defaultEffort: next.has(defaultEffort) ? defaultEffort : '',
+			allowEffortSelect: binding.allowEffortSelect && next.size >= 2,
+		});
+	};
+	return (
+		<InspectorSection title="Efforts" path="models.*.efforts">
+			{binding.efforts.map((_, index) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: efforts have no id and are only appended or removed
+				<EffortRow key={index} efforts={binding.efforts} index={index} setEfforts={setEfforts} />
+			))}
+			<Button
+				label="Add effort"
+				variant="ghost"
+				size="sm"
+				icon={<Icon icon={IconPlus} size="sm" />}
+				onClick={() => {
+					setEfforts([...binding.efforts, { alias: '', level: 'medium' }]);
+				}}
+			/>
+			<ChoiceRow
+				label="Default"
+				path="models.*.defaultEffort"
+				field="defaultEffort"
+				value={binding.defaultEffort}
+				isRequired={defaultEffortRequired(binding)}
+				options={aliases}
+				onChange={(defaultEffort) => {
+					set({ defaultEffort });
+				}}
+			/>
+			<SwitchRow
+				label="Switching"
+				path="models.*.allowEffortSelect"
+				field="allowEffortSelect"
+				value={binding.allowEffortSelect}
+				isDisabled={aliases.length < 2}
+				disabledMessage="Add a second effort to let people switch."
+				onChange={(allowEffortSelect) => {
+					set({ allowEffortSelect });
+				}}
+			/>
+		</InspectorSection>
+	);
+}
+
 function ModelBindingEditor({
 	draft,
 	setDraft,
@@ -788,371 +1295,26 @@ function ModelBindingEditor({
 	bindingKey: string;
 	onSelect: (id: string) => void;
 }) {
-	const mode = useContext(ConnectionMode);
-	const localConnection = useContext(LocalConnection);
-	const statusAt = useFieldStatus();
 	const binding = draft.modelBindings.find((candidate) => candidate.key === bindingKey);
 	if (!binding) return null;
-	// A decision has its own binding editor; a host has no model.
-	const chosen = draft.identity.profileType;
-	const type = chosen && chosen !== 'decision' && chosen !== 'host' ? chosen : 'text';
+	const type = bindingProfileType(draft.identity.profileType);
 	const set = (change: Partial<ModelBindingDraft>) => {
 		setDraft((current) => updateModelBinding(current, bindingKey, change));
 	};
 	const google = isGoogleTransport(binding.protocol, binding.provider);
-	const builtins = google
-		? mode === 'demo'
-			? allowedBuiltinsForGemini(binding.apiId)
-			: GOOGLE_BUILTIN_TOOLS.map((tool) => tool.name)
-		: [];
-	const aliases = binding.efforts.map((effort) => effort.alias).filter(Boolean);
-	/**
-	 * Sets the efforts and keeps the settings that depend on them valid: the default follows its
-	 * alias through a rename (`renamed`) and is cleared when the alias goes, and effort switching
-	 * turns off below two aliases, where its switch is disabled and couldn't be turned off.
-	 */
-	const setEfforts = (
-		efforts: ModelBindingDraft['efforts'],
-		renamed?: { from: string; to: string },
-	) => {
-		const next = new Set(efforts.map((effort) => effort.alias).filter(Boolean));
-		const defaultEffort =
-			renamed && binding.defaultEffort === renamed.from ? renamed.to : binding.defaultEffort;
-		set({
-			efforts,
-			defaultEffort: next.has(defaultEffort) ? defaultEffort : '',
-			allowEffortSelect: binding.allowEffortSelect && next.size >= 2,
-		});
-	};
 
 	return (
 		<>
-			<InspectorSection title="Model" path="models.*">
-				<TextRow
-					label="Id"
-					path="models.*"
-					field="modelId"
-					// A model\'s id is its key in the profile\'s models, so it can\'t be left out.
-					isRequired
-					value={binding.modelId}
-					placeholder="fast"
-					onChange={(modelId) => {
-						set({ modelId });
-					}}
-				/>
-				<SegmentedRow<Protocol>
-					label="Protocol"
-					path="models.*.protocol"
-					field="protocol"
-					value={binding.protocol}
-					segments={PROFILE_TYPE_PROTOCOLS[type].map((protocol) => PROTOCOL_SEGMENT[protocol])}
-					onChange={(protocol) => {
-						const provider = PROTOCOL_PROVIDERS[protocol][0];
-						set(retransport(binding, type, protocol, provider));
-					}}
-				/>
-				<SegmentedRow<Provider>
-					label="Provider"
-					path="models.*.provider"
-					field="provider"
-					value={binding.provider}
-					segments={PROTOCOL_PROVIDERS[binding.protocol].map((provider) => ({
-						...PROVIDER_SEGMENT[provider],
-						isDisabled: !playgroundRunsTransport(
-							type,
-							binding.protocol,
-							provider,
-							provider === 'local' ? 'local' : mode,
-						),
-						disabledMessage:
-							mode === 'demo' && provider !== 'local'
-								? 'Add your own key under Keys to use it.'
-								: `It doesn't run ${type} agents.`,
-					}))}
-					onChange={(provider) => {
-						set(retransport(binding, type, binding.protocol, provider));
-					}}
-				/>
-				{binding.provider === 'local' && localConnection && (
-					<TextRow
-						label="Endpoint"
-						path="local.baseUrl"
-						value={localConnection.local.baseUrl}
-						placeholder="http://127.0.0.1:11434"
-						status={
-							localConnection.localModels.status === 'error'
-								? { type: 'error', message: localConnection.localModels.error ?? '' }
-								: undefined
-						}
-						onChange={(baseUrl) => {
-							localConnection.setLocal((current) => ({ ...current, baseUrl }));
-							set({ apiId: '' });
-						}}
-					/>
-				)}
-				{binding.provider === 'local' &&
-					localConnection?.localModels.status === 'error' &&
-					!isLocalPage() && <LocalOriginHelp />}
-				{binding.provider !== 'local' && (
-					<>
-						<SlotRow
-							label="Key slot"
-							path="models.*.key"
-							field="keySlot"
-							value={binding.keySlot ?? ''}
-							onChange={(keySlot) => {
-								set({ keySlot });
-							}}
-						/>
-						<SlotRow
-							label="Fallback slot"
-							path="models.*.fallbackKey"
-							field="fallbackKeySlot"
-							value={binding.fallbackKeySlot ?? ''}
-							onChange={(fallbackKeySlot) => {
-								set({ fallbackKeySlot });
-							}}
-						/>
-					</>
-				)}
-				{binding.provider === 'local' && localConnection ? (
-					<ChoiceRow
-						label="API model"
-						path="models.*.apiId"
-						field="apiId"
-						value={binding.apiId}
-						options={localConnection.localModels.ids}
-						isDisabled={
-							localConnection.localModels.status === 'idle' ||
-							localConnection.localModels.status === 'error'
-						}
-						isLoading={localConnection.localModels.status === 'loading'}
-						placeholder={
-							localConnection.localModels.status === 'error'
-								? "Can't reach the endpoint"
-								: localConnection.localModels.status === 'idle'
-									? 'Enter the endpoint first'
-									: undefined
-						}
-						emptyText="This server has no models."
-						hasSearch
-						isRequired
-						onChange={(apiId) => {
-							set({ apiId });
-						}}
-					/>
-				) : mode === 'demo' ? (
-					<ChoiceRow
-						label="API model"
-						path="models.*.apiId"
-						field="apiId"
-						value={binding.apiId}
-						options={
-							google
-								? GEMINI_PLAYGROUND_MODELS.filter((model) => model.profileType === type).map(
-										(model) => ({
-											value: model.id,
-											label: model.label,
-											description: model.id,
-										}),
-									)
-								: [OPENROUTER_PLAYGROUND_API_ID]
-						}
-						onChange={(apiId) => {
-							const allowed = new Set(allowedBuiltinsForGemini(apiId));
-							set({ apiId, builtInTools: binding.builtInTools.filter((id) => allowed.has(id)) });
-						}}
-					/>
-				) : (
-					<ProviderModelRow
-						provider={binding.provider}
-						type={type}
-						slot={binding.keySlot || draft.models.key}
-						value={binding.apiId}
-						onChange={(apiId) => {
-							set({ apiId });
-						}}
-					/>
-				)}
-
-				{binding.provider === 'local' && localConnection && (
-					<SwitchRow
-						label="Remote tools"
-						path="playground.remoteTools"
-						value={localConnection.remoteTools}
-						onChange={localConnection.setRemoteTools}
-					/>
-				)}
-
-				{binding.provider === 'local' && (
-					<TextRow
-						label="Server"
-						path="models.*.server"
-						field="server"
-						value={binding.server ?? ''}
-						placeholder="ollama"
-						onChange={(server) => {
-							set({ server });
-						}}
-					/>
-				)}
-
-				{google && (
-					<ListRow
-						label="Built-ins"
-						path="models.*.builtInTools"
-						field="builtInTools"
-						value={binding.builtInTools}
-						options={builtins}
-						onChange={(builtInTools) => {
-							set({ builtInTools });
-						}}
-					/>
-				)}
-			</InspectorSection>
-			<InspectorSection title="Generation">
-				<NumberRow
-					label="Max output"
-					path="models.*.maxOutputTokens"
-					units="tokens"
-					field="maxOutputTokens"
-					value={binding.maxOutputTokens}
-					min={1}
-					isIntegerOnly
-					onChange={(maxOutputTokens) => {
-						set({ maxOutputTokens });
-					}}
-				/>
-				<NumberRow
-					label="Temperature"
-					path="models.*.temperature"
-					field="temperature"
-					value={binding.temperature}
-					min={0}
-					step={0.1}
-					onChange={(temperature) => {
-						set({ temperature });
-					}}
-				/>
-				<SegmentedRow
-					label="Summaries"
-					path="models.*.summaries"
-					value={providerDefaultSegment(binding.summaries)}
-					segments={SUMMARIES_SEGMENTS}
-					onChange={(segment) => {
-						set({ summaries: PROVIDER_DEFAULT_SEGMENT[segment] });
-					}}
-				/>
-			</InspectorSection>
+			<ModelSection draft={draft} binding={binding} type={type} set={set} />
+			<GenerationSection binding={binding} set={set} />
 			{google && binding.protocol === 'geminiInteractions' && (
-				<InspectorSection title="Conversation state">
-					<SegmentedRow
-						label="Context"
-						path="models.*.persistViaInteractionId"
-						field="persistViaInteractionId"
-						value={binding.persistViaInteractionId ? 'chain' : 'history'}
-						segments={CONTEXT_SEGMENTS}
-						onChange={(segment) => {
-							set({ persistViaInteractionId: segment === 'chain' });
-						}}
-					/>
-					<SegmentedRow
-						label="Google storage"
-						path="models.*.store"
-						field="store"
-						value={providerDefaultSegment(binding.store)}
-						segments={STORAGE_SEGMENTS}
-						onChange={(segment) => {
-							set({ store: PROVIDER_DEFAULT_SEGMENT[segment] });
-						}}
-					/>
-				</InspectorSection>
+				<ConversationStateSection binding={binding} set={set} />
 			)}
 			{binding.provider === 'openrouter' && binding.protocol === 'openAi' && (
 				<PromptCacheSection binding={binding} set={set} />
 			)}
 			{type === 'text' && <CompactionSection binding={binding} set={set} />}
-			<InspectorSection title="Efforts" path="models.*.efforts">
-				{binding.efforts.map((effort, index) => {
-					const status = statusAt('efforts', index);
-					return (
-						// biome-ignore lint/suspicious/noArrayIndexKey: efforts have no id and are only appended or removed
-						<VStack key={index} gap={3}>
-							<InspectorRow
-								label={`Effort ${String(index + 1)}`}
-								path="models.*.efforts"
-								hasIssue={status !== undefined}
-							>
-								<StackItem size="fill">
-									<TextInput
-										label={`Effort ${String(index + 1)} alias`}
-										isLabelHidden
-										size="sm"
-										status={status}
-										value={effort.alias}
-										placeholder="Alias"
-										onChange={(alias) => {
-											setEfforts(
-												binding.efforts.map((e, i) => (i === index ? { ...e, alias } : e)),
-												{ from: effort.alias, to: alias },
-											);
-										}}
-									/>
-								</StackItem>
-								<IconButton
-									label={`Remove effort ${String(index + 1)}`}
-									variant="ghost"
-									size="sm"
-									icon={<Icon icon={IconX} size="sm" />}
-									onClick={() => {
-										setEfforts(binding.efforts.filter((_, i) => i !== index));
-									}}
-								/>
-							</InspectorRow>
-							<SegmentedRow
-								label="Level"
-								path="models.*.efforts.*"
-								value={effort.level}
-								segments={LEVEL_SEGMENTS}
-								onChange={(level) => {
-									setEfforts(binding.efforts.map((e, i) => (i === index ? { ...e, level } : e)));
-								}}
-							/>
-						</VStack>
-					);
-				})}
-				<Button
-					label="Add effort"
-					variant="ghost"
-					size="sm"
-					icon={<Icon icon={IconPlus} size="sm" />}
-					onClick={() => {
-						setEfforts([...binding.efforts, { alias: '', level: 'medium' }]);
-					}}
-				/>
-				<ChoiceRow
-					label="Default"
-					path="models.*.defaultEffort"
-					field="defaultEffort"
-					value={binding.defaultEffort}
-					isRequired={defaultEffortRequired(binding)}
-					options={aliases}
-					onChange={(defaultEffort) => {
-						set({ defaultEffort });
-					}}
-				/>
-				<SwitchRow
-					label="Switching"
-					path="models.*.allowEffortSelect"
-					field="allowEffortSelect"
-					value={binding.allowEffortSelect}
-					isDisabled={aliases.length < 2}
-					disabledMessage="Add a second effort to let people switch."
-					onChange={(allowEffortSelect) => {
-						set({ allowEffortSelect });
-					}}
-				/>
-			</InspectorSection>
+			<EffortsSection binding={binding} set={set} />
 			{/* A profile runs on at least one model, so the last one stays. */}
 			{draft.modelBindings.length > 1 && (
 				<Section variant="transparent" padding={3}>
@@ -3120,6 +3282,82 @@ function probeTitle(result: ProbeResult, tool: ToolSpecDraft): string {
 	return `${String(result.status ?? '')} ${result.statusText ?? ''}`.trim() + took;
 }
 
+/** The sample input for the tool, which follows its input schema, as JSON; blank without one. */
+function defaultSampleInput(tool: ToolSpecDraft): string {
+	const sample = sampleToolInput(tool.toolName, tool.inputJson);
+	return sample ? JSON.stringify(sample, null, 2) : '';
+}
+
+/** What a test reaches and sends, as one comparable string. */
+function probeTarget(tool: ToolSpecDraft, method: string): string {
+	return JSON.stringify([
+		tool.toolType,
+		tool.endpoint,
+		method,
+		tool.serverUrl,
+		tool.mcpToolName,
+		tool.headersJson,
+		tool.authType,
+		tool.authHeaderName,
+		tool.authHeaderPrefix,
+	]);
+}
+
+/** The result's banner status: a missing remote tool warns even though the server answered. */
+function probeStatus(result: ProbeResult): 'warning' | 'success' | 'error' {
+	if (result.ok && result.targetToolFound === false) return 'warning';
+	return result.ok ? 'success' : 'error';
+}
+
+/** The result's detail: an MCP server's tools, or the start of the response. */
+function probeDetails(result: ProbeResult): ReactNode {
+	if (result.tools?.length)
+		return (
+			<HStack gap={1} wrap="wrap">
+				{result.tools.map((name) => (
+					<Token key={name} label={name} size="sm" />
+				))}
+			</HStack>
+		);
+	if (!result.preview) return undefined;
+	return (
+		<CodeBlock
+			code={result.preview}
+			language={result.preview.trimStart().startsWith('{') ? 'json' : 'text'}
+			hasLanguageLabel={false}
+			isWrapped
+			size="sm"
+			maxHeight={200}
+		/>
+	);
+}
+
+/** The test's credential, typed for this test only. */
+function TestCredentialRow({
+	value,
+	onChange,
+}: {
+	value: string;
+	onChange: (value: string) => void;
+}) {
+	return (
+		<InspectorRow label="Credential" path="playground.testCredential">
+			<StackItem size="fill">
+				<TextInput
+					label="Credential"
+					isLabelHidden
+					size="sm"
+					type="password"
+					autoComplete="off"
+					value={value}
+					placeholder="Used once, never saved"
+					onChange={onChange}
+				/>
+			</StackItem>
+		</InspectorRow>
+	);
+}
+
 /**
  * Tries the tool's endpoint or MCP server once, from the server, which reaches public hosts only.
  * The sample input and credential live here only: neither is saved to the draft.
@@ -3127,8 +3365,7 @@ function probeTitle(result: ProbeResult, tool: ToolSpecDraft): string {
 function ToolTest({ tool }: { tool: ToolSpecDraft }) {
 	/** What the user typed; until then, the sample for the tool, which follows its input schema. */
 	const [typedInput, setTypedInput] = useState<string>();
-	const sample = sampleToolInput(tool.toolName, tool.inputJson);
-	const sampleInput = typedInput ?? (sample ? JSON.stringify(sample, null, 2) : '');
+	const sampleInput = typedInput ?? defaultSampleInput(tool);
 	const credential = useSyncExternalStore(
 		subscribeToolCredentials,
 		() => toolCredential(tool.key),
@@ -3142,17 +3379,7 @@ function ToolTest({ tool }: { tool: ToolSpecDraft }) {
 	const http = tool.toolType === 'http';
 	const method = tool.method ?? HTTP_METHODS[0];
 	// A result answers the request as it was: once what it reaches or sends changes, it's dropped.
-	const target = JSON.stringify([
-		tool.toolType,
-		tool.endpoint,
-		method,
-		tool.serverUrl,
-		tool.mcpToolName,
-		tool.headersJson,
-		tool.authType,
-		tool.authHeaderName,
-		tool.authHeaderPrefix,
-	]);
+	const target = probeTarget(tool, method);
 	const [testedTarget, setTestedTarget] = useState(target);
 	if (target !== testedTarget) {
 		setTestedTarget(target);
@@ -3168,7 +3395,6 @@ function ToolTest({ tool }: { tool: ToolSpecDraft }) {
 		}
 	};
 
-	const warned = result?.ok && result.targetToolFound === false;
 	return (
 		<InspectorSection
 			title="Test"
@@ -3186,20 +3412,7 @@ function ToolTest({ tool }: { tool: ToolSpecDraft }) {
 				/>
 			)}
 			{(tool.authType ?? 'none') !== 'none' && (
-				<InspectorRow label="Credential" path="playground.testCredential">
-					<StackItem size="fill">
-						<TextInput
-							label="Credential"
-							isLabelHidden
-							size="sm"
-							type="password"
-							autoComplete="off"
-							value={credential}
-							placeholder="Used once, never saved"
-							onChange={setCredential}
-						/>
-					</StackItem>
-				</InspectorRow>
+				<TestCredentialRow value={credential} onChange={setCredential} />
 			)}
 			<HStack>
 				<Button
@@ -3215,28 +3428,528 @@ function ToolTest({ tool }: { tool: ToolSpecDraft }) {
 			</HStack>
 			{result && (
 				<Banner
-					status={warned ? 'warning' : result.ok ? 'success' : 'error'}
+					status={probeStatus(result)}
 					title={probeTitle(result, tool)}
-					description={
-						result.tools?.length ? (
-							<HStack gap={1} wrap="wrap">
-								{result.tools.map((name) => (
-									<Token key={name} label={name} size="sm" />
-								))}
-							</HStack>
-						) : result.preview ? (
-							<CodeBlock
-								code={result.preview}
-								language={result.preview.trimStart().startsWith('{') ? 'json' : 'text'}
-								hasLanguageLabel={false}
-								isWrapped
-								size="sm"
-								maxHeight={200}
-							/>
-						) : undefined
-					}
+					description={probeDetails(result)}
 				/>
 			)}
+		</InspectorSection>
+	);
+}
+
+type SetTool = (change: Partial<ToolSpecDraft>) => void;
+type Workspace = NonNullable<ContextType<typeof WorkspaceContext>>;
+
+/** The tool types offered: an agent tool only where there are agents to run. */
+function toolTypeSegments(workspace: ContextType<typeof WorkspaceContext>) {
+	return workspace
+		? TOOL_TYPE_SEGMENTS
+		: TOOL_TYPE_SEGMENTS.filter((segment) => segment.value !== 'agent');
+}
+
+/** Renames a tool; the T2 loader names this tool, so it follows the rename. */
+function renameToolSpec(
+	draft: PlaygroundDraft,
+	toolKey: string,
+	from: string,
+	toolName: string,
+): PlaygroundDraft {
+	return {
+		...draft,
+		tools:
+			draft.tools.t2Loader === from.trim()
+				? { ...draft.tools, t2Loader: toolName.trim() }
+				: draft.tools,
+		toolSpecs: draft.toolSpecs.map((candidate) =>
+			candidate.key === toolKey ? { ...candidate, toolName } : candidate,
+		),
+	};
+}
+
+/** Removes a tool, and the T2 loader with it when it names the tool. */
+function removeToolSpec(draft: PlaygroundDraft, toolKey: string, name: string): PlaygroundDraft {
+	return {
+		...draft,
+		tools: draft.tools.t2Loader === name.trim() ? { ...draft.tools, t2Loader: '' } : draft.tools,
+		toolSpecs: draft.toolSpecs.filter((candidate) => candidate.key !== toolKey),
+	};
+}
+
+/** What the tool is: its name, type, description and category. */
+function ToolSection({
+	draft,
+	setDraft,
+	tool,
+	set,
+}: {
+	draft: PlaygroundDraft;
+	setDraft: SetDraft;
+	tool: ToolSpecDraft;
+	set: SetTool;
+}) {
+	const workspace = useContext(WorkspaceContext);
+	return (
+		<InspectorSection
+			title="Tool"
+			note={draft.identity.profileType === 'host' ? sectionNote('tool.host') : sectionNote('tool')}
+		>
+			<TextRow
+				label="Name"
+				path="name"
+				field="toolName"
+				isRequired
+				value={tool.toolName}
+				placeholder="search_flights"
+				onChange={(toolName) => {
+					setDraft((current) => renameToolSpec(current, tool.key, tool.toolName, toolName));
+				}}
+			/>
+			<SegmentedRow
+				label="Type"
+				path="registerTool.type"
+				field="toolType"
+				value={tool.toolType}
+				segments={toolTypeSegments(workspace)}
+				onChange={(toolType) => {
+					set({ toolType });
+				}}
+			/>
+			<TextAreaRow
+				label="Description"
+				path="description"
+				field="description"
+				isRequired
+				value={tool.description}
+				placeholder="Finds flights between two airports on a date."
+				onChange={(description) => {
+					set({ description });
+				}}
+			/>
+			<TextRow
+				label="Category"
+				path="category"
+				field="category"
+				value={tool.category}
+				placeholder="playground"
+				onChange={(category) => {
+					set({ category });
+				}}
+			/>
+		</InspectorSection>
+	);
+}
+
+/** The tool's input and output schemas. */
+function ContractSection({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
+	return (
+		<InspectorSection title="Contract" note={sectionNote('tool.contract')}>
+			<TextAreaRow
+				label="Input"
+				path="playground.inputSchema"
+				field="inputJson"
+				value={tool.inputJson}
+				rows={8}
+				hasSpellCheck={false}
+				onChange={(inputJson) => {
+					set({ inputJson });
+				}}
+			/>
+			<TextAreaRow
+				label="Output"
+				path="playground.outputSchema"
+				field="outputJson"
+				value={tool.outputJson}
+				rows={8}
+				hasSpellCheck={false}
+				onChange={(outputJson) => {
+					set({ outputJson });
+				}}
+			/>
+		</InspectorSection>
+	);
+}
+
+/** What the chat says while the tool runs, once it's done and when it asks. */
+function ActivitySection({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
+	return (
+		<InspectorSection title="Activity" path="labels">
+			<TextRow
+				label="Running"
+				path="labels.activity"
+				field="activity"
+				value={tool.activity ?? ''}
+				hint={placeholderHint([tool.inputJson])}
+				onChange={(activity) => {
+					set({ activity });
+				}}
+			/>
+			<TextRow
+				label="Done"
+				path="labels.activityPast"
+				field="activityPast"
+				value={tool.activityPast ?? ''}
+				hint={placeholderHint([tool.inputJson, tool.outputJson])}
+				onChange={(activityPast) => {
+					set({ activityPast });
+				}}
+			/>
+			<TextRow
+				label="Asking"
+				path="labels.request"
+				field="request"
+				value={tool.request ?? ''}
+				hint={placeholderHint([tool.inputJson])}
+				onChange={(request) => {
+					set({ request });
+				}}
+			/>
+		</InspectorSection>
+	);
+}
+
+/** What a function tool returns in the playground. */
+function StubSection({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
+	return (
+		<InspectorSection title="Stub" path="playground.stubOutput">
+			<TextAreaRow
+				label="Returns"
+				path="playground.stubOutput"
+				field="stubOutputJson"
+				value={tool.stubOutputJson ?? ''}
+				rows={6}
+				hasSpellCheck={false}
+				hint="Left blank, a stand-in built from the output schema."
+				onChange={(stubOutputJson) => {
+					set({ stubOutputJson });
+				}}
+			/>
+		</InspectorSection>
+	);
+}
+
+/** The static headers HTTP and MCP tools both send. */
+function HeadersRow({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
+	return (
+		<TextAreaRow
+			label="Headers"
+			path="headers"
+			field="headersJson"
+			value={tool.headersJson ?? ''}
+			rows={4}
+			hasSpellCheck={false}
+			placeholder={HEADERS_PLACEHOLDER}
+			onChange={(headersJson) => {
+				set({ headersJson });
+			}}
+		/>
+	);
+}
+
+/** An HTTP tool's request, and how its input maps onto it. */
+function HttpSections({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
+	return (
+		<>
+			<InspectorSection title="Request" note={sectionNote('tool.headers')}>
+				<TextRow
+					label="Endpoint"
+					path="endpoint"
+					field="endpoint"
+					isRequired
+					value={tool.endpoint ?? ''}
+					placeholder="https://api.example.com/flights/{id}"
+					onChange={(endpoint) => {
+						set({ endpoint });
+					}}
+				/>
+				<SegmentedRow
+					label="Method"
+					path="method"
+					field="method"
+					value={tool.method ?? HTTP_METHODS[0]}
+					segments={METHOD_SEGMENTS}
+					onChange={(method) => {
+						set({ method });
+					}}
+				/>
+				<HeadersRow tool={tool} set={set} />
+			</InspectorSection>
+			<InspectorSection title="Mapping" path="mapping">
+				<NamesRow
+					label="Path"
+					path="mapping.pathParams"
+					field="pathParams"
+					value={tool.pathParams ?? []}
+					placeholder="Names in {braces}"
+					onChange={(pathParams) => {
+						set({ pathParams });
+					}}
+				/>
+				<NamesRow
+					label="Query"
+					path="mapping.queryParams"
+					field="queryParams"
+					value={tool.queryParams ?? []}
+					placeholder="None"
+					onChange={(queryParams) => {
+						set({ queryParams });
+					}}
+				/>
+				<TextRow
+					label="Body"
+					path="mapping.bodyParam"
+					field="bodyParam"
+					value={tool.bodyParam ?? ''}
+					hint="None"
+					onChange={(bodyParam) => {
+						set({ bodyParam });
+					}}
+				/>
+			</InspectorSection>
+		</>
+	);
+}
+
+/** The agent an agent tool runs, and how often a turn may call it. */
+function AgentSection({
+	tool,
+	set,
+	workspace,
+}: {
+	tool: ToolSpecDraft;
+	set: SetTool;
+	workspace: Workspace;
+}) {
+	return (
+		<InspectorSection title="Agent">
+			<ChoiceRow
+				label="Runs"
+				path="profile"
+				field="agentKey"
+				isRequired
+				value={tool.agentKey ?? ''}
+				options={otherAgents(workspace.agents, workspace.self, (agent) =>
+					CALLABLE_TYPES.has(agent.type),
+				)}
+				onChange={(agentKey) => {
+					const agentId = workspace.agents.find((agent) => agent.key === agentKey)?.agentId ?? '';
+					set(agentToolTarget(tool, agentKey, agentId));
+				}}
+			/>
+			<NumberRow
+				label="Calls per turn"
+				path="maxCallsPerTurn"
+				field="maxCallsPerTurn"
+				value={tool.maxCallsPerTurn ?? null}
+				min={1}
+				isIntegerOnly
+				onChange={(maxCallsPerTurn) => {
+					set({ maxCallsPerTurn });
+				}}
+			/>
+		</InspectorSection>
+	);
+}
+
+/** An MCP tool's server and the tool it calls there. */
+function McpServerSection({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
+	return (
+		<InspectorSection title="Server" note={sectionNote('tool.headers')}>
+			<TextRow
+				label="Server"
+				path="serverUrl"
+				field="serverUrl"
+				isRequired
+				value={tool.serverUrl ?? ''}
+				placeholder="https://mcp.example.com/mcp"
+				onChange={(serverUrl) => {
+					set({ serverUrl });
+				}}
+			/>
+			<TextRow
+				label="Remote tool"
+				path="mcpToolName"
+				field="mcpToolName"
+				isRequired
+				value={tool.mcpToolName ?? ''}
+				placeholder="search_flights"
+				onChange={(mcpToolName) => {
+					set({ mcpToolName });
+				}}
+			/>
+			<HeadersRow tool={tool} set={set} />
+		</InspectorSection>
+	);
+}
+
+/** Where an authenticated tool's credential comes from, how it's sent, and what signed out does. */
+function AuthCredentialRows({
+	tool,
+	authType,
+	set,
+}: {
+	tool: ToolSpecDraft;
+	authType: Exclude<NonNullable<ToolSpecDraft['authType']>, 'none'>;
+	set: SetTool;
+}) {
+	return (
+		<>
+			<TextRow
+				label="Slot"
+				path="auth.slot"
+				field="authSlot"
+				value={tool.authSlot ?? ''}
+				placeholder="default"
+				onChange={(authSlot) => {
+					set({ authSlot });
+				}}
+			/>
+			<TextRow
+				label="Header"
+				path="auth.headerName"
+				field="authHeaderName"
+				value={tool.authHeaderName ?? ''}
+				placeholder="Authorization"
+				onChange={(authHeaderName) => {
+					set({ authHeaderName });
+				}}
+			/>
+			<TextRow
+				label="Prefix"
+				path="auth.headerPrefix"
+				field="authHeaderPrefix"
+				value={tool.authHeaderPrefix ?? ''}
+				placeholder={AUTH_HEADER_PREFIX[authType] || undefined}
+				hint="None"
+				onChange={(prefix) => {
+					// Blank is the kernel's prefix for the type, which the placeholder shows.
+					set({ authHeaderPrefix: prefix || undefined });
+				}}
+			/>
+			<SegmentedRow
+				label="Signed out"
+				path="auth.onUnauthenticated"
+				field="authUnauthenticated"
+				value={tool.authUnauthenticated ?? 'gate'}
+				segments={UNAUTHENTICATED_SEGMENTS}
+				onChange={(authUnauthenticated) => {
+					set({ authUnauthenticated });
+				}}
+			/>
+		</>
+	);
+}
+
+/** An OAuth tool's scopes, client id and redirect. */
+function OAuthRows({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
+	return (
+		<>
+			<NamesRow
+				label="Scopes"
+				path="auth.scopes"
+				field="authScopes"
+				value={tool.authScopes ?? []}
+				placeholder="None"
+				onChange={(authScopes) => {
+					set({ authScopes });
+				}}
+			/>
+			<TextRow
+				label="Client id"
+				path="auth.clientId"
+				field="authClientId"
+				value={tool.authClientId ?? ''}
+				onChange={(authClientId) => {
+					set({ authClientId });
+				}}
+			/>
+			<TextRow
+				label="Redirect"
+				path="auth.redirectUri"
+				field="authRedirectUri"
+				value={tool.authRedirectUri ?? ''}
+				placeholder="https://example.com/oauth/callback"
+				onChange={(authRedirectUri) => {
+					set({ authRedirectUri });
+				}}
+			/>
+		</>
+	);
+}
+
+/** How a remote tool authenticates. */
+function AuthSection({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
+	const authType = tool.authType ?? 'none';
+	return (
+		<InspectorSection title="Auth" path="auth" note={sectionNote('tool.auth')}>
+			<SegmentedRow
+				label="Type"
+				path="playground.authType"
+				field="authType"
+				value={authType}
+				segments={AUTH_TYPE_SEGMENTS}
+				onChange={(next) => {
+					set({ authType: next });
+				}}
+			/>
+			{authType !== 'none' && <AuthCredentialRows tool={tool} authType={authType} set={set} />}
+			{authType === 'oauth2' && <OAuthRows tool={tool} set={set} />}
+		</InspectorSection>
+	);
+}
+
+/** Who may call the tool, whether it asks first, when it loads and on which paths. */
+function PolicySection({
+	draft,
+	tool,
+	set,
+}: {
+	draft: PlaygroundDraft;
+	tool: ToolSpecDraft;
+	set: SetTool;
+}) {
+	return (
+		<InspectorSection title="Policy">
+			<SegmentedRow
+				label="Access"
+				path="access"
+				field="access"
+				value={tool.access}
+				segments={ACCESS_SEGMENTS}
+				onChange={(access) => {
+					set({ access });
+				}}
+			/>
+			<SegmentedRow
+				label="Permission"
+				path="permission"
+				field="permission"
+				value={tool.permission}
+				segments={PERMISSION_SEGMENTS}
+				onChange={(permission) => {
+					set({ permission });
+				}}
+			/>
+			<SegmentedRow
+				label="Load tier"
+				path="loadTier"
+				field="loadTier"
+				value={tool.loadTier}
+				segments={LOAD_TIER_SEGMENTS}
+				warning={loadTierWarning(draft, tool.loadTier)}
+				onChange={(loadTier) => {
+					set({ loadTier });
+				}}
+			/>
+			<NamesRow
+				label="Paths"
+				path="paths"
+				field="paths"
+				value={tool.paths}
+				placeholder="Every path (*)"
+				onChange={(paths) => {
+					set({ paths });
+				}}
+			/>
 		</InspectorSection>
 	);
 }
@@ -3264,414 +3977,21 @@ function ToolSpecEditor({
 		}));
 	};
 	const remote = tool.toolType === 'http' || tool.toolType === 'mcp';
-	const authType = tool.authType ?? 'none';
-	// HTTP and MCP tools both send static headers.
-	const headersRow = (
-		<TextAreaRow
-			label="Headers"
-			path="headers"
-			field="headersJson"
-			value={tool.headersJson ?? ''}
-			rows={4}
-			hasSpellCheck={false}
-			placeholder={HEADERS_PLACEHOLDER}
-			onChange={(headersJson) => {
-				set({ headersJson });
-			}}
-		/>
-	);
 
 	return (
 		<>
-			<InspectorSection
-				title="Tool"
-				note={
-					draft.identity.profileType === 'host' ? sectionNote('tool.host') : sectionNote('tool')
-				}
-			>
-				<TextRow
-					label="Name"
-					path="name"
-					field="toolName"
-					isRequired
-					value={tool.toolName}
-					placeholder="search_flights"
-					onChange={(toolName) => {
-						// The T2 loader names this tool, so it follows the rename.
-						setDraft((current) => ({
-							...current,
-							tools:
-								current.tools.t2Loader === tool.toolName.trim()
-									? { ...current.tools, t2Loader: toolName.trim() }
-									: current.tools,
-							toolSpecs: current.toolSpecs.map((candidate) =>
-								candidate.key === toolKey ? { ...candidate, toolName } : candidate,
-							),
-						}));
-					}}
-				/>
-				<SegmentedRow
-					label="Type"
-					path="registerTool.type"
-					field="toolType"
-					value={tool.toolType}
-					segments={
-						workspace
-							? TOOL_TYPE_SEGMENTS
-							: TOOL_TYPE_SEGMENTS.filter((segment) => segment.value !== 'agent')
-					}
-					onChange={(toolType) => {
-						set({ toolType });
-					}}
-				/>
-				<TextAreaRow
-					label="Description"
-					path="description"
-					field="description"
-					isRequired
-					value={tool.description}
-					placeholder="Finds flights between two airports on a date."
-					onChange={(description) => {
-						set({ description });
-					}}
-				/>
-				<TextRow
-					label="Category"
-					path="category"
-					field="category"
-					value={tool.category}
-					placeholder="playground"
-					onChange={(category) => {
-						set({ category });
-					}}
-				/>
-			</InspectorSection>
-			<InspectorSection title="Contract" note={sectionNote('tool.contract')}>
-				<TextAreaRow
-					label="Input"
-					path="playground.inputSchema"
-					field="inputJson"
-					value={tool.inputJson}
-					rows={8}
-					hasSpellCheck={false}
-					onChange={(inputJson) => {
-						set({ inputJson });
-					}}
-				/>
-				<TextAreaRow
-					label="Output"
-					path="playground.outputSchema"
-					field="outputJson"
-					value={tool.outputJson}
-					rows={8}
-					hasSpellCheck={false}
-					onChange={(outputJson) => {
-						set({ outputJson });
-					}}
-				/>
-			</InspectorSection>
-			<InspectorSection title="Activity" path="labels">
-				<TextRow
-					label="Running"
-					path="labels.activity"
-					field="activity"
-					value={tool.activity ?? ''}
-					hint={placeholderHint([tool.inputJson])}
-					onChange={(activity) => {
-						set({ activity });
-					}}
-				/>
-				<TextRow
-					label="Done"
-					path="labels.activityPast"
-					field="activityPast"
-					value={tool.activityPast ?? ''}
-					hint={placeholderHint([tool.inputJson, tool.outputJson])}
-					onChange={(activityPast) => {
-						set({ activityPast });
-					}}
-				/>
-				<TextRow
-					label="Asking"
-					path="labels.request"
-					field="request"
-					value={tool.request ?? ''}
-					hint={placeholderHint([tool.inputJson])}
-					onChange={(request) => {
-						set({ request });
-					}}
-				/>
-			</InspectorSection>
-			{tool.toolType === 'function' && (
-				<InspectorSection title="Stub" path="playground.stubOutput">
-					<TextAreaRow
-						label="Returns"
-						path="playground.stubOutput"
-						field="stubOutputJson"
-						value={tool.stubOutputJson ?? ''}
-						rows={6}
-						hasSpellCheck={false}
-						hint="Left blank, a stand-in built from the output schema."
-						onChange={(stubOutputJson) => {
-							set({ stubOutputJson });
-						}}
-					/>
-				</InspectorSection>
-			)}
-			{tool.toolType === 'http' && (
-				<>
-					<InspectorSection title="Request" note={sectionNote('tool.headers')}>
-						<TextRow
-							label="Endpoint"
-							path="endpoint"
-							field="endpoint"
-							isRequired
-							value={tool.endpoint ?? ''}
-							placeholder="https://api.example.com/flights/{id}"
-							onChange={(endpoint) => {
-								set({ endpoint });
-							}}
-						/>
-						<SegmentedRow
-							label="Method"
-							path="method"
-							field="method"
-							value={tool.method ?? HTTP_METHODS[0]}
-							segments={METHOD_SEGMENTS}
-							onChange={(method) => {
-								set({ method });
-							}}
-						/>
-						{headersRow}
-					</InspectorSection>
-					<InspectorSection title="Mapping" path="mapping">
-						<NamesRow
-							label="Path"
-							path="mapping.pathParams"
-							field="pathParams"
-							value={tool.pathParams ?? []}
-							placeholder="Names in {braces}"
-							onChange={(pathParams) => {
-								set({ pathParams });
-							}}
-						/>
-						<NamesRow
-							label="Query"
-							path="mapping.queryParams"
-							field="queryParams"
-							value={tool.queryParams ?? []}
-							placeholder="None"
-							onChange={(queryParams) => {
-								set({ queryParams });
-							}}
-						/>
-						<TextRow
-							label="Body"
-							path="mapping.bodyParam"
-							field="bodyParam"
-							value={tool.bodyParam ?? ''}
-							hint="None"
-							onChange={(bodyParam) => {
-								set({ bodyParam });
-							}}
-						/>
-					</InspectorSection>
-				</>
-			)}
+			<ToolSection draft={draft} setDraft={setDraft} tool={tool} set={set} />
+			<ContractSection tool={tool} set={set} />
+			<ActivitySection tool={tool} set={set} />
+			{tool.toolType === 'function' && <StubSection tool={tool} set={set} />}
+			{tool.toolType === 'http' && <HttpSections tool={tool} set={set} />}
 			{tool.toolType === 'agent' && workspace && (
-				<InspectorSection title="Agent">
-					<ChoiceRow
-						label="Runs"
-						path="profile"
-						field="agentKey"
-						isRequired
-						value={tool.agentKey ?? ''}
-						options={otherAgents(workspace.agents, workspace.self, (agent) =>
-							CALLABLE_TYPES.has(agent.type),
-						)}
-						onChange={(agentKey) => {
-							const agentId =
-								workspace.agents.find((agent) => agent.key === agentKey)?.agentId ?? '';
-							set(agentToolTarget(tool, agentKey, agentId));
-						}}
-					/>
-					<NumberRow
-						label="Calls per turn"
-						path="maxCallsPerTurn"
-						field="maxCallsPerTurn"
-						value={tool.maxCallsPerTurn ?? null}
-						min={1}
-						isIntegerOnly
-						onChange={(maxCallsPerTurn) => {
-							set({ maxCallsPerTurn });
-						}}
-					/>
-				</InspectorSection>
+				<AgentSection tool={tool} set={set} workspace={workspace} />
 			)}
-			{tool.toolType === 'mcp' && (
-				<InspectorSection title="Server" note={sectionNote('tool.headers')}>
-					<TextRow
-						label="Server"
-						path="serverUrl"
-						field="serverUrl"
-						isRequired
-						value={tool.serverUrl ?? ''}
-						placeholder="https://mcp.example.com/mcp"
-						onChange={(serverUrl) => {
-							set({ serverUrl });
-						}}
-					/>
-					<TextRow
-						label="Remote tool"
-						path="mcpToolName"
-						field="mcpToolName"
-						isRequired
-						value={tool.mcpToolName ?? ''}
-						placeholder="search_flights"
-						onChange={(mcpToolName) => {
-							set({ mcpToolName });
-						}}
-					/>
-					{headersRow}
-				</InspectorSection>
-			)}
-			{remote && (
-				<InspectorSection title="Auth" path="auth" note={sectionNote('tool.auth')}>
-					<SegmentedRow
-						label="Type"
-						path="playground.authType"
-						field="authType"
-						value={authType}
-						segments={AUTH_TYPE_SEGMENTS}
-						onChange={(next) => {
-							set({ authType: next });
-						}}
-					/>
-					{authType !== 'none' && (
-						<>
-							<TextRow
-								label="Slot"
-								path="auth.slot"
-								field="authSlot"
-								value={tool.authSlot ?? ''}
-								placeholder="default"
-								onChange={(authSlot) => {
-									set({ authSlot });
-								}}
-							/>
-							<TextRow
-								label="Header"
-								path="auth.headerName"
-								field="authHeaderName"
-								value={tool.authHeaderName ?? ''}
-								placeholder="Authorization"
-								onChange={(authHeaderName) => {
-									set({ authHeaderName });
-								}}
-							/>
-							<TextRow
-								label="Prefix"
-								path="auth.headerPrefix"
-								field="authHeaderPrefix"
-								value={tool.authHeaderPrefix ?? ''}
-								placeholder={AUTH_HEADER_PREFIX[authType] || undefined}
-								hint="None"
-								onChange={(prefix) => {
-									// Blank is the kernel's prefix for the type, which the placeholder shows.
-									set({ authHeaderPrefix: prefix || undefined });
-								}}
-							/>
-							<SegmentedRow
-								label="Signed out"
-								path="auth.onUnauthenticated"
-								field="authUnauthenticated"
-								value={tool.authUnauthenticated ?? 'gate'}
-								segments={UNAUTHENTICATED_SEGMENTS}
-								onChange={(authUnauthenticated) => {
-									set({ authUnauthenticated });
-								}}
-							/>
-						</>
-					)}
-					{authType === 'oauth2' && (
-						<>
-							<NamesRow
-								label="Scopes"
-								path="auth.scopes"
-								field="authScopes"
-								value={tool.authScopes ?? []}
-								placeholder="None"
-								onChange={(authScopes) => {
-									set({ authScopes });
-								}}
-							/>
-							<TextRow
-								label="Client id"
-								path="auth.clientId"
-								field="authClientId"
-								value={tool.authClientId ?? ''}
-								onChange={(authClientId) => {
-									set({ authClientId });
-								}}
-							/>
-							<TextRow
-								label="Redirect"
-								path="auth.redirectUri"
-								field="authRedirectUri"
-								value={tool.authRedirectUri ?? ''}
-								placeholder="https://example.com/oauth/callback"
-								onChange={(authRedirectUri) => {
-									set({ authRedirectUri });
-								}}
-							/>
-						</>
-					)}
-				</InspectorSection>
-			)}
+			{tool.toolType === 'mcp' && <McpServerSection tool={tool} set={set} />}
+			{remote && <AuthSection tool={tool} set={set} />}
 			{remote && <ToolTest key={tool.key} tool={tool} />}
-			<InspectorSection title="Policy">
-				<SegmentedRow
-					label="Access"
-					path="access"
-					field="access"
-					value={tool.access}
-					segments={ACCESS_SEGMENTS}
-					onChange={(access) => {
-						set({ access });
-					}}
-				/>
-				<SegmentedRow
-					label="Permission"
-					path="permission"
-					field="permission"
-					value={tool.permission}
-					segments={PERMISSION_SEGMENTS}
-					onChange={(permission) => {
-						set({ permission });
-					}}
-				/>
-				<SegmentedRow
-					label="Load tier"
-					path="loadTier"
-					field="loadTier"
-					value={tool.loadTier}
-					segments={LOAD_TIER_SEGMENTS}
-					warning={loadTierWarning(draft, tool.loadTier)}
-					onChange={(loadTier) => {
-						set({ loadTier });
-					}}
-				/>
-				<NamesRow
-					label="Paths"
-					path="paths"
-					field="paths"
-					value={tool.paths}
-					placeholder="Every path (*)"
-					onChange={(paths) => {
-						set({ paths });
-					}}
-				/>
-			</InspectorSection>
+			<PolicySection draft={draft} tool={tool} set={set} />
 			<Section variant="transparent" padding={3}>
 				<Button
 					label="Remove tool"
@@ -3679,14 +3999,7 @@ function ToolSpecEditor({
 					size="sm"
 					icon={<Icon icon={IconTrash} size="sm" />}
 					onClick={() => {
-						setDraft((current) => ({
-							...current,
-							tools:
-								current.tools.t2Loader === tool.toolName.trim()
-									? { ...current.tools, t2Loader: '' }
-									: current.tools,
-							toolSpecs: current.toolSpecs.filter((candidate) => candidate.key !== toolKey),
-						}));
+						setDraft((current) => removeToolSpec(current, toolKey, tool.toolName));
 						onSelect('tools');
 					}}
 				/>

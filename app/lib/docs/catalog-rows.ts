@@ -5,6 +5,7 @@
 
 import { LEXICON_KEYS, lexiconDefault } from '@theoremjs/agents/guardrails';
 import { TRACE_FIELDS, TRACE_SPAN_TYPES } from '@theoremjs/agents/observability';
+import type { PageSymbol } from './schema';
 
 export function traceCatalogRows() {
 	const spans = Object.entries(TRACE_SPAN_TYPES).map(([key, meta]) => ({
@@ -25,4 +26,20 @@ export function lexiconCatalogRows() {
 		key,
 		text: lexiconDefault(key),
 	}));
+}
+
+/** A catalog row as a name and its one-line doc. Search, markdown and JSON-LD all read this. */
+export function symbolTerm(symbol: PageSymbol): { name: string; text: string } {
+	switch (symbol.kind) {
+		case 'field': {
+			const unset = symbol.meta.unset ? ` Omit → ${symbol.meta.unset}.` : '';
+			return { name: symbol.path, text: `${symbol.meta.doc}${unset}` };
+		}
+		case 'union-member':
+			return { name: symbol.value, text: symbol.doc };
+		case 'trace':
+			return { name: symbol.key, text: `${symbol.label}: ${symbol.doc}` };
+		case 'lexicon':
+			return { name: symbol.key, text: symbol.text };
+	}
 }

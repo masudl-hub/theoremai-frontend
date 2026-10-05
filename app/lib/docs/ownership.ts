@@ -24,22 +24,36 @@ function prefixScore(path: string, profilePath: string): number {
 	return -1;
 }
 
-function ownerForField(path: string): ProfileGraphFacetId {
-	let best: { id: ProfileGraphFacetId; score: number } | undefined;
+type ProfileGraphFacet = (typeof PROFILE_GRAPH)[number];
+type Owner = { id: ProfileGraphFacetId; score: number };
+
+/** The higher score wins; a tie keeps the owner already found. */
+function better(best: Owner | undefined, next: Owner): Owner {
+	return !best || next.score > best.score ? next : best;
+}
+
+/** Owner by the most specific profilePath prefix, if any facet matches. */
+function prefixOwner(path: string): Owner | undefined {
+	let best: Owner | undefined;
 	for (const facet of PROFILE_GRAPH) {
 		const score = prefixScore(path, facet.profilePath);
-		if (score < 0) continue;
-		if (!best || score > best.score) best = { id: facet.id, score };
+		if (score >= 0) best = better(best, { id: facet.id, score });
 	}
+	return best;
+}
 
+/** True when the facet lists `top` in ownsFields and it is not a cross-link. */
+function ownsTopField(facet: ProfileGraphFacet, top: string): boolean {
+	const extra = facet.ownsFields ?? [];
+	const skipped = CROSS_LINK_OWNS[facet.id] ?? [];
+	return extra.includes(top) && !skipped.includes(top);
+}
+
+function ownerForField(path: string): ProfileGraphFacetId {
+	let best = prefixOwner(path);
 	const top = path.split('.')[0] ?? path;
 	for (const facet of PROFILE_GRAPH) {
-		const extra = facet.ownsFields ?? [];
-		const skipped = CROSS_LINK_OWNS[facet.id] ?? [];
-		if (extra.includes(top) && !skipped.includes(top)) {
-			const ownedScore = 500 + top.length;
-			if (!best || ownedScore > best.score) best = { id: facet.id, score: ownedScore };
-		}
+		if (ownsTopField(facet, top)) best = better(best, { id: facet.id, score: 500 + top.length });
 	}
 
 	if (!best) throw new Error(`No PROFILE_GRAPH owner for field ${path}`);

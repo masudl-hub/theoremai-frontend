@@ -10,11 +10,11 @@ import {
 } from '@theoremjs/playground';
 import {
 	clearConversation,
-	createPlaygroundStore,
 	restoreConversation,
-	restorePlayground,
 	saveConversation,
-} from '../app/lib/playground-store.ts';
+} from '../app/lib/playground-conversation.ts';
+import { restorePlayground } from '../app/lib/playground-restore.ts';
+import { createPlaygroundStore } from '../app/lib/playground-store.ts';
 
 const KEY = 'theorem.playground.v2';
 const V1_KEY = 'theorem.playground.v1';

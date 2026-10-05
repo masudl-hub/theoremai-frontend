@@ -97,10 +97,10 @@
 		"threshold": 1
 	},
 	"health": {
-		"maxCyclomatic": 42,
-		"maxCognitive": 67,
-		"maxCrap": 1723,
-		"maxUnitSize": 1040
+		"maxCyclomatic": 20,
+		"maxCognitive": 15,
+		"maxCrap": 381,
+		"maxUnitSize": 210
 	},
 	"audit": {
 		"gate": "all"

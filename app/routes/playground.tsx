@@ -110,7 +110,11 @@ import {
 	LocalConnection,
 	WorkspaceContext,
 } from '../components/inspector-context';
-import { PlaygroundKeys, usePlaygroundConnection } from '../components/playground-connection';
+import {
+	type PlaygroundConnectionState,
+	PlaygroundKeys,
+	usePlaygroundConnection,
+} from '../components/playground-connection';
 import { PlaygroundRunner } from '../components/playground-runner';
 import {
 	addToolSpec,
@@ -125,13 +129,12 @@ import { FACET_ICON } from '../lib/facet-icons';
 import { KERNEL_PACKAGE_VERSION } from '../lib/kernel-version';
 import {
 	clearConversation,
-	createPlaygroundStore,
-	type PlaygroundStore,
-	type RestoredPlayground,
 	restoreConversation,
-	restorePlayground,
 	saveConversation,
-} from '../lib/playground-store';
+} from '../lib/playground-conversation';
+import { restorePlayground } from '../lib/playground-restore';
+import type { RestoredPlayground } from '../lib/playground-session';
+import { createPlaygroundStore, type PlaygroundStore } from '../lib/playground-store';
 import { type Th30PageHandle, useReportTh30Playground } from '../lib/th30-page';
 import { th30Surfaces } from '../lib/th30-surfaces';
 import { toolCredential } from '../lib/tool-credentials';
@@ -925,10 +928,8 @@ function playgroundSurfaceHost(
  * that node, which can be a render after the click, and a frame later, once the editor's new scroll
  * area scrolls.
  */
-function useIssueReveal(
-	editorRef: RefObject<HTMLDivElement | null>,
-	selected: string,
-): (reveal: { node: string }) => void {
+function useIssueReveal(selected: string) {
+	const editorRef = useRef<HTMLDivElement>(null);
 	const [issueReveal, setIssueReveal] = useState<{ node: string }>();
 	const revealed = useRef<{ node: string }>(undefined);
 	useEffect(() => {
@@ -942,8 +943,8 @@ function useIssueReveal(
 		return () => {
 			cancelAnimationFrame(frame);
 		};
-	}, [editorRef, issueReveal, selected]);
-	return setIssueReveal;
+	}, [issueReveal, selected]);
+	return { editorRef, reveal: setIssueReveal };
 }
 
 /** Export (a .zip, or copied) and Launch, for the agent being chatted with; off while the workspace has issues. */
@@ -1030,18 +1031,13 @@ function ExportActions({
 	);
 }
 
-/**
- * The profile tree beside the editor (or code) for the draft in a panel on the left; the compiled
- * agent on the right, under Export and Run. The draft compiles as it changes; while it doesn't
- * compile, the agent stays the last one that did.
- */
-export default function Playground({ loaderData }: Route.ComponentProps) {
-	// The workspace lives in a store kept in this tab's sessionStorage; th30's tools read it
-	// synchronously. The editor works on the open agent's draft, with the whole tool library.
-	const [store] = useState(() => createPlaygroundStore(loaderData.start));
+/** The workspace's store, kept in this tab's sessionStorage, and the open agent's draft from it. */
+function usePlaygroundWorkspace(start: RestoredPlayground) {
+	// th30's tools read the store synchronously. The editor works on the open agent's draft, with the
+	// whole tool library.
+	const [store] = useState(() => createPlaygroundStore(start));
 	const workspace = useSyncExternalStore(store.subscribe, store.getWorkspace, store.getWorkspace);
 	const draft = useSyncExternalStore(store.subscribe, store.getDraft, store.getDraft);
-	const focus = store.getFocus();
 	const setDraft = useCallback(
 		(next: PlaygroundDraft | ((current: PlaygroundDraft) => PlaygroundDraft)) => {
 			store.updateDraft(next);
@@ -1064,7 +1060,11 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 			flush();
 		};
 	}, [store]);
-	// Keys are the workspace's: every agent's slots, so a called agent's key is asked for too.
+	return { store, workspace, draft, focus: store.getFocus(), setDraft, update };
+}
+
+/** Keys are the workspace's: every agent's slots, so a called agent's key is asked for too. */
+function useWorkspaceConnection(workspace: PlaygroundWorkspace): PlaygroundConnectionState {
 	const bindings = workspace.agents.flatMap((agent) => agent.modelBindings);
 	const namedSlots = workspace.agents
 		.flatMap((agent) => [
@@ -1073,10 +1073,11 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 			...agent.modelBindings.flatMap((binding) => [binding.keySlot, binding.fallbackKeySlot]),
 		])
 		.filter((slot): slot is string => Boolean(slot));
-	const connection = usePlaygroundConnection(bindings, undefined, namedSlots);
-	const { mode, runtime } = connection;
-	const [keysOpen, setKeysOpen] = useState(false);
-	const [editorView, setEditorView] = useState<'editor' | 'code'>('editor');
+	return usePlaygroundConnection(bindings, undefined, namedSlots);
+}
+
+/** The frame: the resizable panel on the left, and the editor body measured for the code view. */
+function usePlaygroundFrame() {
 	const layoutRef = useRef<HTMLDivElement>(null);
 	const [measureLayout, layoutWidth] = useMeasure(measureWidth);
 	const layoutCallbackRef = useCallback(
@@ -1092,55 +1093,80 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 		containerRef: layoutRef,
 		autoSaveId: 'playground.panel',
 	});
-	const listBadges = badgesPerRow(sidePanel.size, layoutWidth);
-	const setSelectedId = store.select;
-	const editorRef = useRef<HTMLDivElement>(null);
 	// The profile tree's branches mount and unmount; ease them both ways.
 	const sidebarRef = useRef<HTMLDivElement>(null);
 	useDisclosureMotion(sidebarRef);
 	const [bodyRef, bodyHeight] = useMeasure(measureHeight);
 	const [codeRef, codeChrome] = useMeasure(measureCodeChrome);
-	const codeHeight = heightBelow(bodyHeight, codeChrome);
-	const selected = workspaceNodeRef(workspace, workspace.selected)
-		? workspace.selected
-		: agentNodeId(focus);
-	/** The open node as the editor names it: the open agent's own id, or a library tool's. */
-	const editing = innerNodeId(selected, focus) ?? 'identity';
-	const setIssueReveal = useIssueReveal(editorRef, selected);
+	return {
+		layoutCallbackRef,
+		sidePanel,
+		listBadges: badgesPerRow(sidePanel.size, layoutWidth),
+		sidebarRef,
+		bodyRef,
+		codeRef,
+		codeHeight: heightBelow(bodyHeight, codeChrome),
+	};
+}
+
+/** The open agent's issues and the library's, by the editor's ids. */
+function editorIssuesOf(compiled: WorkspaceCompileResult, focus: string): PlaygroundIssue[] {
+	if (compiled.ok) return [];
+	return compiled.issues.flatMap((issue) => {
+		const nodeId = innerNodeId(issue.nodeId, focus);
+		return nodeId === undefined ? [] : [{ ...issue, nodeId }];
+	});
+}
+
+/**
+ * The workspace compiled once edits settle. Only a workspace that compiles changes the preview;
+ * while one has issues, the last good agent and its conversation stay put. The chatted agent is
+ * found by its key there, so renaming it doesn't lose it.
+ */
+function useWorkspaceCompile(
+	workspace: PlaygroundWorkspace,
+	focus: string,
+	connection: PlaygroundConnectionState,
+) {
+	const { mode } = connection;
 	const settled = useDebounced(workspace, COMPILE_DEBOUNCE_MS);
 	const compile = useMemo(
 		() => ({ workspace: settled, result: compileWorkspace(settled, mode) }),
 		[settled, mode],
 	);
 	const compiled = compile.result;
-	// Only a workspace that compiles changes the preview; while one has issues, the last good agent
-	// and its conversation stay put. The chatted agent is found by its key there, so renaming it
-	// doesn't lose it.
 	const lastGood = useLastGood(compile);
 	const chatWith = workspace.chatWith;
+	const localBaseUrl = connection.local.baseUrl;
 	const payload = useMemo(() => {
 		const run =
 			lastGood && workspaceRunAgent(lastGood.compiled, agentIdOf(lastGood.workspace, chatWith));
-		return run
-			? { ...runPayload(run), connectionMode: mode, localBaseUrl: connection.local.baseUrl }
-			: null;
-	}, [lastGood, chatWith, mode, connection.local.baseUrl]);
+		return run ? { ...runPayload(run), connectionMode: mode, localBaseUrl } : null;
+	}, [lastGood, chatWith, mode, localBaseUrl]);
 	/** The open agent's compile: what the code view shows and Export takes. */
 	const focused = compiled.ok ? compiledAgent(compiled, compile.workspace, focus) : undefined;
-	/** The open agent's issues and the library's, by the editor's ids. */
-	const editorIssues = compiled.ok
-		? []
-		: compiled.issues.flatMap((issue) => {
-				const nodeId = innerNodeId(issue.nodeId, focus);
-				return nodeId === undefined ? [] : [{ ...issue, nodeId }];
-			});
-	const traced = useMemo(() => isTraced(payload), [payload]);
-	const [traceOpen, setTraceOpen] = useState(false);
+	const source = useMemo(() => (focused ? playgroundSource(focused) : null), [focused]);
+	const issues = issueCount(compiled);
+	return {
+		compiled,
+		payload,
+		traced: isTraced(payload),
+		source,
+		editorIssues: editorIssuesOf(compiled, focus),
+		/** The agent being chatted with: Export adds its route and chat to the workspace's files. */
+		chatted: compiled.ok ? compiledAgent(compiled, compile.workspace, chatWith) : undefined,
+		chattedId: agentIdOf(compile.workspace, chatWith),
+		issues,
+		blocked: issues && `Fix ${issues} first`,
+	};
+}
+
+type WorkspaceCompile = ReturnType<typeof useWorkspaceCompile>;
+
+/** The preview's conversation with the chatted agent: which runner holds it, and what it resumes. */
+function useConversationRun(mode: string, chatWith: string) {
 	// Bumping this remounts the runner: a fresh transcript and trace feed, the same profile.
 	const [conversation, setConversation] = useState(0);
-	/** On a phone, the tree or the preview, each over the editor; neither shows beside it there. */
-	const [sheet, setSheet] = useState<'tree' | 'preview' | null>(null);
-	const phone = usePhone();
 	const runKey = `${mode}:${chatWith}:${String(conversation)}`;
 	// Each agent's kept conversation resumes in the first runner it has here; a cleared or remade
 	// one starts empty.
@@ -1152,14 +1178,26 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	);
 	/** The runner that last sent something; a new one (cleared, or another mode) has no history. */
 	const [usedRun, setUsedRun] = useState<string>();
-	const source = useMemo(() => (focused ? playgroundSource(focused) : null), [focused]);
-	/** The agent being chatted with: Export adds its route and chat to the workspace's files. */
-	const chatted = compiled.ok ? compiledAgent(compiled, compile.workspace, chatWith) : undefined;
-	const issues = issueCount(compiled);
-	const blocked = issues && `Fix ${issues} first`;
+	return {
+		runKey,
+		initialChat,
+		isUsed: usedRun === runKey,
+		markUsed: () => {
+			setUsedRun(runKey);
+		},
+		setConversation,
+	};
+}
+
+type ConversationRun = ReturnType<typeof useConversationRun>;
+
+/** Once, on arrival: say when a kept draft was set aside for a docs seed, or couldn't be read back. */
+function useArrivalToast(
+	{ displaced, discarded }: Pick<Route.ComponentProps['loaderData'], 'displaced' | 'discarded'>,
+	store: PlaygroundStore,
+) {
 	const toast = useToast();
-	// Once, on arrival: say when a kept draft was set aside for a docs seed, or couldn't be read back.
-	const arrival = useRef({ displaced: loaderData.displaced, discarded: loaderData.discarded });
+	const arrival = useRef({ displaced, discarded });
 	useEffect(() => {
 		const { displaced, discarded } = arrival.current;
 		arrival.current = { displaced: undefined, discarded: false };
@@ -1180,6 +1218,35 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 			),
 		});
 	}, [toast, store]);
+}
+
+/** Which view stands in the editor column, and opening a node there. */
+function useEditorView(store: PlaygroundStore) {
+	const [keysOpen, setKeysOpen] = useState(false);
+	const [editorView, setEditorView] = useState<'editor' | 'code'>('editor');
+	return {
+		keysOpen,
+		setKeysOpen,
+		editorView,
+		setEditorView,
+		/** Opens a node from the tree or the editor, closing whatever stood over it. */
+		open: (id: string) => {
+			setKeysOpen(false);
+			store.select(id);
+			setEditorView('editor');
+		},
+	};
+}
+
+type EditorViewState = ReturnType<typeof useEditorView>;
+
+/** What the page does for its buttons and for th30: swap in a workspace (with undo), and copy. */
+function usePageActions(
+	store: PlaygroundStore,
+	view: EditorViewState,
+	setConversation: Dispatch<SetStateAction<number>>,
+) {
+	const toast = useToast();
 	/** Swaps in a whole new workspace; the toast can put the old one back. */
 	const replaceWorkspace = (
 		next: PlaygroundWorkspace,
@@ -1188,8 +1255,8 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	) => {
 		const previous = store.getWorkspace();
 		store.update(next, by);
-		setKeysOpen(false);
-		setEditorView('editor');
+		view.setKeysOpen(false);
+		view.setEditorView('editor');
 		// New agents start new conversations; the old transcripts don't carry over.
 		clearConversation();
 		setConversation((count) => count + 1);
@@ -1214,51 +1281,34 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 			() => toast({ body: "Couldn't reach the clipboard.", type: 'error' }),
 		);
 	};
+	return { replaceWorkspace, copy };
+}
 
+/**
+ * th30 sees and works in the playground through its surface, mounted while the page is open. Its
+ * tools read the page through a ref, so they register once and always see the latest.
+ */
+function usePlaygroundSurface(store: PlaygroundStore, page: SurfacePage) {
 	const chatRef = useRef<TheoremChatHandle>(null);
-	// th30's tools read the page through this ref, so they register once and always see the latest.
-	const page = {
-		mode,
-		connection,
-		replaceWorkspace,
-		copy,
-		setKeysOpen,
-		setConversation,
-	};
 	const pageRef = useRef(page);
 	pageRef.current = page;
-	// th30 sees and works in the playground through its surface, mounted while the page is open.
 	useEffect(
 		() => th30Surfaces.mount(playgroundSurface(playgroundSurfaceHost(store, pageRef, chatRef))),
 		[store],
 	);
+	return chatRef;
+}
 
-	const title = editorTitle(draft, editing);
-	useReportTh30Playground(th30Report(draft, compiled, title));
-	const heading = keysOpen ? 'Keys' : title;
-	const viewToggle = VIEW_TOGGLE[editorView];
-	/** Opens a node from the tree or the editor, closing whatever stood over it. */
-	const open = (id: string) => {
-		setKeysOpen(false);
-		setSelectedId(id);
-		setEditorView('editor');
-	};
-	const tree: WorkspaceTreeState = {
-		workspace,
-		focus,
-		selectedId: keysOpen ? '' : selected,
-		onSelect: (id) => {
-			open(id);
-			setSheet(null);
-		},
-		update,
-		setDraft,
-	};
-	/** What the open agent's editor knows of the others, and its allow list. */
-	const workspaceContext = useMemo(() => {
-		const self = workspace.agents.find((agent) => agent.key === focus);
+/** What the open agent's editor knows of the others, and its allow list. */
+function useWorkspaceContext(
+	agents: PlaygroundWorkspace['agents'],
+	focus: string,
+	update: (change: (current: PlaygroundWorkspace) => PlaygroundWorkspace) => void,
+) {
+	return useMemo(() => {
+		const self = agents.find((agent) => agent.key === focus);
 		return {
-			agents: workspace.agents.map((agent) => ({
+			agents: agents.map((agent) => ({
 				key: agent.key,
 				agentId: agent.identity.agentId.trim(),
 				type: agent.identity.profileType,
@@ -1269,22 +1319,495 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 				update((current) => setToolAllowed(current, focus, toolKey, allowed));
 			},
 		};
-	}, [workspace.agents, focus, update]);
+	}, [agents, focus, update]);
+}
+
+type PlaygroundWorkspaceState = ReturnType<typeof usePlaygroundWorkspace>;
+type Sheet = 'tree' | 'preview' | null;
+
+/** The node the editor has open: the selected one while it exists, else the open agent's identity. */
+function selectedNode(workspace: PlaygroundWorkspace, focus: string): string {
+	return workspaceNodeRef(workspace, workspace.selected) ? workspace.selected : agentNodeId(focus);
+}
+
+/** The profile tree's column: the playground's name and version over the agents and tools. */
+function TreeColumn({
+	tree,
+	draft,
+	onAddAgent,
+	listRef,
+	setSheet,
+}: {
+	tree: WorkspaceTreeState;
+	draft: PlaygroundDraft;
+	onAddAgent: (next: PlaygroundDraft) => void;
+	listRef: RefObject<HTMLDivElement | null>;
+	setSheet: (sheet: Sheet) => void;
+}) {
+	return (
+		<Section variant="transparent" width={TREE_WIDTH} height="100%" padding={4} dividers={['end']}>
+			<VStack gap={4} height="100%">
+				<HStack gap={2} vAlign="start">
+					<StackItem size="fill">
+						<VStack gap={1}>
+							<Heading level={3}>Theorem Playground</Heading>
+							<Text type="supporting" color="secondary">
+								{`@theoremjs/agents ${KERNEL_PACKAGE_VERSION}`}
+							</Text>
+						</VStack>
+					</StackItem>
+					<span className="playground-phone">
+						<IconButton
+							label="Close sections"
+							variant="ghost"
+							icon={<Icon icon={IconX} size="sm" />}
+							onClick={() => {
+								setSheet(null);
+							}}
+						/>
+					</span>
+				</HStack>
+				<StackItem size="fill">
+					<WorkspaceTreeLists tree={tree} draft={draft} onAddAgent={onAddAgent} listRef={listRef} />
+				</StackItem>
+			</VStack>
+		</Section>
+	);
+}
+
+/** The editor column's header: its title, the next issue, Keys, examples, Clear and the view toggle. */
+function EditorToolbar({
+	heading,
+	compile,
+	selected,
+	view,
+	onIssue,
+	replaceWorkspace,
+	setSheet,
+}: {
+	heading: string | undefined;
+	compile: WorkspaceCompile;
+	selected: string;
+	view: EditorViewState;
+	onIssue: (node: string) => void;
+	replaceWorkspace: (next: PlaygroundWorkspace, message: string) => void;
+	setSheet: (sheet: Sheet) => void;
+}) {
+	const { compiled, issues } = compile;
+	const viewToggle = VIEW_TOGGLE[view.editorView];
+	return (
+		<Section variant="transparent" padding={3} dividers={['bottom']}>
+			<HStack gap={1} vAlign="center">
+				<span className="playground-phone">
+					<IconButton
+						label="Sections"
+						variant="ghost"
+						icon={<Icon icon={IconMenu2} size="sm" />}
+						onClick={() => {
+							setSheet('tree');
+						}}
+					/>
+				</span>
+				<StackItem size="fill">{heading && <Heading level={4}>{heading}</Heading>}</StackItem>
+				{issues && !compiled.ok && (
+					<Token
+						label={issues}
+						color="orange"
+						description="Go to the next issue"
+						onClick={() => {
+							onIssue(nextIssueNode(compiled.issues, selected));
+						}}
+					/>
+				)}
+				<IconButton
+					label="Keys"
+					variant="ghost"
+					icon={<Icon icon={IconKey} size="sm" />}
+					aria-pressed={view.keysOpen}
+					tooltip="Keys"
+					onClick={() => {
+						view.setKeysOpen((open) => !open);
+						view.setEditorView('editor');
+					}}
+				/>
+				<DropdownMenu
+					button={{
+						label: 'Load an example',
+						variant: 'ghost',
+						isIconOnly: true,
+						icon: <Icon icon={IconBook} size="sm" />,
+						tooltip: 'Load an example',
+					}}
+					hasChevron={false}
+					placement="below"
+					alignment="end"
+					items={[
+						{
+							id: 'concierge',
+							label: 'Travel concierge',
+							description: 'A text agent with weather, places and currency tools.',
+							onClick: () => {
+								replaceWorkspace(workspaceFromDraft(createExampleDraft()), 'Loaded the example.');
+							},
+						},
+						{
+							id: 'span',
+							label: 'Span decision',
+							description: 'Tool-call safety with the free Span model.',
+							onClick: () => {
+								replaceWorkspace(
+									workspaceFromDraft(createSpanExampleDraft()),
+									'Loaded the Span example.',
+								);
+							},
+						},
+					]}
+				/>
+				<IconButton
+					label="Clear"
+					variant="ghost"
+					icon={<Icon icon={IconEraser} size="sm" />}
+					tooltip="Start again from one blank agent"
+					onClick={() => {
+						replaceWorkspace(createBlankWorkspace(), 'Cleared the playground.');
+					}}
+				/>
+				<IconButton
+					label={viewToggle.label}
+					variant="ghost"
+					icon={<Icon icon={viewToggle.icon} size="sm" />}
+					tooltip={viewToggle.tooltip}
+					onClick={() => {
+						view.setKeysOpen(false);
+						view.setEditorView(viewToggle.next);
+					}}
+				/>
+				<span className="playground-phone">
+					<IconButton
+						label="Preview"
+						variant="ghost"
+						icon={<Icon icon={IconPlayerPlay} size="sm" />}
+						onClick={() => {
+							setSheet('preview');
+						}}
+					/>
+				</span>
+			</HStack>
+		</Section>
+	);
+}
+
+/** The Keys panel, its slots renamed or let go across every agent. */
+function KeysBody({
+	connection,
+	state,
+}: {
+	connection: PlaygroundConnectionState;
+	state: PlaygroundWorkspaceState;
+}) {
+	const { setDraft, update } = state;
+	return (
+		<ScrollableArea label="Keys" height="100%">
+			<PlaygroundKeys
+				connection={connection}
+				onAddSlot={(slot) => {
+					setDraft((current) =>
+						current.models.key ? current : { ...current, models: { ...current.models, key: slot } },
+					);
+				}}
+				onRenameSlot={(from, to) => {
+					update((current) => ({
+						...current,
+						agents: current.agents.map((agent) => swapKeySlot(agent, from, to)),
+					}));
+				}}
+				onRemoveSlot={(slot) => {
+					update((current) => ({
+						...current,
+						agents: current.agents.map((agent) => swapKeySlot(agent, slot, '')),
+					}));
+				}}
+			/>
+		</ScrollableArea>
+	);
+}
+
+/** The open node's editor, keyed by node so each one opens at its top. */
+function EditorBody({
+	state,
+	connection,
+	selected,
+	editing,
+	issues,
+	listBadges,
+	editorRef,
+	open,
+}: {
+	state: PlaygroundWorkspaceState;
+	connection: PlaygroundConnectionState;
+	selected: string;
+	editing: string;
+	issues: PlaygroundIssue[];
+	listBadges: 1 | 2;
+	editorRef: RefObject<HTMLDivElement | null>;
+	open: (id: string) => void;
+}) {
+	const { workspace, draft, focus, setDraft, update } = state;
+	const workspaceContext = useWorkspaceContext(workspace.agents, focus, update);
+	return (
+		<ScrollableArea key={selected} label="Editor" height="100%" ref={editorRef}>
+			<ListBadges value={listBadges}>
+				<ConnectionMode.Provider value={connection.mode}>
+					<LocalConnection.Provider value={connection}>
+						<WorkspaceContext.Provider value={workspaceContext}>
+							<ProfileEditor
+								draft={draft}
+								setDraft={setDraft}
+								selectedId={editing}
+								onSelect={(id) => {
+									open(scopedNodeId(focus, id));
+								}}
+								issues={issues}
+							/>
+						</WorkspaceContext.Provider>
+					</LocalConnection.Provider>
+				</ConnectionMode.Provider>
+			</ListBadges>
+		</ScrollableArea>
+	);
+}
+
+/** The open agent's TypeScript, or why there is none yet. */
+function CodeBody({
+	source,
+	blocked,
+	codeRef,
+	codeHeight,
+}: {
+	source: string | null;
+	blocked: string | undefined;
+	codeRef: (node: HTMLElement | null) => void;
+	codeHeight: number | undefined;
+}) {
+	if (!source) {
+		return (
+			<EmptyState
+				icon={<Icon icon={IconAlertTriangle} />}
+				title="No code yet"
+				description={`${blocked ?? ''} to generate the TypeScript.`}
+			/>
+		);
+	}
+	return (
+		<Section variant="transparent" padding={3} ref={codeRef}>
+			<CodeBlock
+				code={source}
+				language="typescript"
+				hasLanguageLabel={false}
+				hasLineNumbers
+				isWrapped
+				width="100%"
+				maxHeight={codeHeight}
+			/>
+		</Section>
+	);
+}
+
+/** The preview's header: back to the editor, the agent to chat with, history, trace and Export. */
+function PreviewHeader({
+	state,
+	compile,
+	run,
+	connection,
+	trace,
+	copy,
+	setSheet,
+}: {
+	state: PlaygroundWorkspaceState;
+	compile: WorkspaceCompile;
+	run: ConversationRun;
+	connection: PlaygroundConnectionState;
+	trace: { open: boolean; toggle: () => void };
+	copy: (text: string, what: string) => void;
+	setSheet: (sheet: Sheet) => void;
+}) {
+	const phone = usePhone();
+	const { store, workspace } = state;
+	const { compiled } = compile;
+	return (
+		<Section variant="transparent" padding={3}>
+			<HStack gap={2} vAlign="center">
+				<span className="playground-phone">
+					<IconButton
+						label="Back to the editor"
+						variant="ghost"
+						icon={<Icon icon={IconArrowLeft} size="sm" />}
+						onClick={() => {
+							setSheet(null);
+						}}
+					/>
+				</span>
+				<StackItem size="fill">
+					<ChatPicker workspace={workspace} onChange={store.chatWith} />
+				</StackItem>
+				{compile.payload && run.isUsed && (
+					<IconButton
+						label="Clear history"
+						variant="ghost"
+						icon={<Icon icon={IconPlaylistX} size="sm" />}
+						tooltip="Clear the conversation and its traces. Your profile stays."
+						onClick={() => {
+							clearConversation(workspace.chatWith);
+							run.setConversation((count) => count + 1);
+						}}
+					/>
+				)}
+				{compile.traced ? (
+					<Button
+						label={trace.open ? 'Hide trace' : 'View trace'}
+						isIconOnly={phone}
+						icon={<Icon icon={IconTimeline} size="sm" />}
+						aria-pressed={trace.open}
+						onClick={trace.toggle}
+					/>
+				) : null}
+				<ExportActions
+					compiled={compiled.ok ? compiled : undefined}
+					chatted={compile.chatted}
+					chattedId={compile.chattedId}
+					blocked={compile.blocked}
+					phone={phone}
+					copy={copy}
+					connection={{ connectionMode: connection.mode, localBaseUrl: connection.local.baseUrl }}
+				/>
+			</HStack>
+		</Section>
+	);
+}
+
+/** The compiled agent to chat with, under its header; while none compiles, why. */
+function PreviewPane({
+	state,
+	compile,
+	run,
+	connection,
+	chatRef,
+	copy,
+	setSheet,
+}: {
+	state: PlaygroundWorkspaceState;
+	compile: WorkspaceCompile;
+	run: ConversationRun;
+	connection: PlaygroundConnectionState;
+	chatRef: RefObject<TheoremChatHandle | null>;
+	copy: (text: string, what: string) => void;
+	setSheet: (sheet: Sheet) => void;
+}) {
+	const [traceOpen, setTraceOpen] = useState(false);
+	const { payload, traced } = compile;
+	const chatWith = state.workspace.chatWith;
+	return (
+		<LayoutContent className="playground-preview" isScrollable={false} padding={0}>
+			<VStack height="100%">
+				<PreviewHeader
+					state={state}
+					compile={compile}
+					run={run}
+					connection={connection}
+					trace={{
+						open: traceOpen,
+						toggle: () => {
+							setTraceOpen((open) => !open);
+						},
+					}}
+					copy={copy}
+					setSheet={setSheet}
+				/>
+				<StackItem size="fill">
+					{payload ? (
+						<PlaygroundRunner
+							key={run.runKey}
+							payload={payload}
+							mode={connection.mode}
+							runtime={connection.runtime}
+							trace={traced && traceOpen}
+							onActivity={run.markUsed}
+							initialChat={run.initialChat}
+							onChatChange={(snapshot) => {
+								saveConversation(chatWith, snapshot);
+							}}
+							chatRef={chatRef}
+						/>
+					) : (
+						<EmptyState
+							icon={<Icon icon={IconAlertTriangle} />}
+							title="No agent yet"
+							description={`${compile.blocked ?? ''} to run the agent.`}
+						/>
+					)}
+				</StackItem>
+			</VStack>
+		</LayoutContent>
+	);
+}
+
+/**
+ * The profile tree beside the editor (or code) for the draft in a panel on the left; the compiled
+ * agent on the right, under Export and Run. The draft compiles as it changes; while it doesn't
+ * compile, the agent stays the last one that did.
+ */
+export default function Playground({ loaderData }: Route.ComponentProps) {
+	const state = usePlaygroundWorkspace(loaderData.start);
+	const { store, workspace, draft, focus } = state;
+	const connection = useWorkspaceConnection(workspace);
+	const view = useEditorView(store);
+	const frame = usePlaygroundFrame();
+	const selected = selectedNode(workspace, focus);
+	/** The open node as the editor names it: the open agent's own id, or a library tool's. */
+	const editing = innerNodeId(selected, focus) ?? 'identity';
+	const { editorRef, reveal } = useIssueReveal(selected);
+	const compile = useWorkspaceCompile(workspace, focus, connection);
+	/** On a phone, the tree or the preview, each over the editor; neither shows beside it there. */
+	const [sheet, setSheet] = useState<Sheet>(null);
+	const run = useConversationRun(connection.mode, workspace.chatWith);
+	useArrivalToast(loaderData, store);
+	const { replaceWorkspace, copy } = usePageActions(store, view, run.setConversation);
+	const chatRef = usePlaygroundSurface(store, {
+		mode: connection.mode,
+		connection,
+		replaceWorkspace,
+		copy,
+		setKeysOpen: view.setKeysOpen,
+		setConversation: run.setConversation,
+	});
+	const title = editorTitle(draft, editing);
+	useReportTh30Playground(th30Report(draft, compile.compiled, title));
+	const tree: WorkspaceTreeState = {
+		workspace,
+		focus,
+		selectedId: view.keysOpen ? '' : selected,
+		onSelect: (id) => {
+			view.open(id);
+			setSheet(null);
+		},
+		update: state.update,
+		setDraft: state.setDraft,
+	};
 	/** Adds an agent and opens it. */
 	const addAgentFrom = (next: PlaygroundDraft) => {
-		update((current) => addAgent(current, next));
-		open(store.getWorkspace().selected);
+		state.update((current) => addAgent(current, next));
+		view.open(store.getWorkspace().selected);
 	};
 
 	return (
 		<Layout
-			ref={layoutCallbackRef}
+			ref={frame.layoutCallbackRef}
 			className={frameClass(sheet)}
 			padding={0}
 			start={
 				<>
 					<LayoutPanel
-						resizable={sidePanel.props}
+						resizable={frame.sidePanel.props}
 						padding={0}
 						className="playground-side"
 						role="navigation"
@@ -1295,218 +1818,39 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 							<HStack height="100%">
 								{/* Static, so the editor beside it never squeezes the tree. */}
 								<StackItem size="static" className="playground-tree">
-									<Section
-										variant="transparent"
-										width={TREE_WIDTH}
-										height="100%"
-										padding={4}
-										dividers={['end']}
-									>
-										<VStack gap={4} height="100%">
-											<HStack gap={2} vAlign="start">
-												<StackItem size="fill">
-													<VStack gap={1}>
-														<Heading level={3}>Theorem Playground</Heading>
-														<Text type="supporting" color="secondary">
-															{`@theoremjs/agents ${KERNEL_PACKAGE_VERSION}`}
-														</Text>
-													</VStack>
-												</StackItem>
-												<span className="playground-phone">
-													<IconButton
-														label="Close sections"
-														variant="ghost"
-														icon={<Icon icon={IconX} size="sm" />}
-														onClick={() => {
-															setSheet(null);
-														}}
-													/>
-												</span>
-											</HStack>
-											<StackItem size="fill">
-												<WorkspaceTreeLists
-													tree={tree}
-													draft={draft}
-													onAddAgent={addAgentFrom}
-													listRef={sidebarRef}
-												/>
-											</StackItem>
-										</VStack>
-									</Section>
+									<TreeColumn
+										tree={tree}
+										draft={draft}
+										onAddAgent={addAgentFrom}
+										listRef={frame.sidebarRef}
+										setSheet={setSheet}
+									/>
 								</StackItem>
 								<StackItem size="fill">
 									<VStack height="100%">
-										<Section variant="transparent" padding={3} dividers={['bottom']}>
-											<HStack gap={1} vAlign="center">
-												<span className="playground-phone">
-													<IconButton
-														label="Sections"
-														variant="ghost"
-														icon={<Icon icon={IconMenu2} size="sm" />}
-														onClick={() => {
-															setSheet('tree');
-														}}
-													/>
-												</span>
-												<StackItem size="fill">
-													{heading && <Heading level={4}>{heading}</Heading>}
-												</StackItem>
-												{issues && !compiled.ok && (
-													<Token
-														label={issues}
-														color="orange"
-														description="Go to the next issue"
-														onClick={() => {
-															const node = nextIssueNode(compiled.issues, selected);
-															open(node);
-															setIssueReveal({ node });
-														}}
-													/>
-												)}
-												<IconButton
-													label="Keys"
-													variant="ghost"
-													icon={<Icon icon={IconKey} size="sm" />}
-													aria-pressed={keysOpen}
-													tooltip="Keys"
-													onClick={() => {
-														setKeysOpen((open) => !open);
-														setEditorView('editor');
-													}}
-												/>
-												<DropdownMenu
-													button={{
-														label: 'Load an example',
-														variant: 'ghost',
-														isIconOnly: true,
-														icon: <Icon icon={IconBook} size="sm" />,
-														tooltip: 'Load an example',
-													}}
-													hasChevron={false}
-													placement="below"
-													alignment="end"
-													items={[
-														{
-															id: 'concierge',
-															label: 'Travel concierge',
-															description: 'A text agent with weather, places and currency tools.',
-															onClick: () => {
-																replaceWorkspace(
-																	workspaceFromDraft(createExampleDraft()),
-																	'Loaded the example.',
-																);
-															},
-														},
-														{
-															id: 'span',
-															label: 'Span decision',
-															description: 'Tool-call safety with the free Span model.',
-															onClick: () => {
-																replaceWorkspace(
-																	workspaceFromDraft(createSpanExampleDraft()),
-																	'Loaded the Span example.',
-																);
-															},
-														},
-													]}
-												/>
-												<IconButton
-													label="Clear"
-													variant="ghost"
-													icon={<Icon icon={IconEraser} size="sm" />}
-													tooltip="Start again from one blank agent"
-													onClick={() => {
-														replaceWorkspace(createBlankWorkspace(), 'Cleared the playground.');
-													}}
-												/>
-												<IconButton
-													label={viewToggle.label}
-													variant="ghost"
-													icon={<Icon icon={viewToggle.icon} size="sm" />}
-													tooltip={viewToggle.tooltip}
-													onClick={() => {
-														setKeysOpen(false);
-														setEditorView(viewToggle.next);
-													}}
-												/>
-												<span className="playground-phone">
-													<IconButton
-														label="Preview"
-														variant="ghost"
-														icon={<Icon icon={IconPlayerPlay} size="sm" />}
-														onClick={() => {
-															setSheet('preview');
-														}}
-													/>
-												</span>
-											</HStack>
-										</Section>
-										<StackItem size="fill" ref={bodyRef}>
-											{/* The editor is keyed by node, so each one opens at its top. */}
-											{keysOpen ? (
-												<ScrollableArea label="Keys" height="100%">
-													<PlaygroundKeys
-														connection={connection}
-														onAddSlot={(slot) => {
-															setDraft((current) =>
-																current.models.key
-																	? current
-																	: { ...current, models: { ...current.models, key: slot } },
-															);
-														}}
-														onRenameSlot={(from, to) => {
-															update((current) => ({
-																...current,
-																agents: current.agents.map((agent) => swapKeySlot(agent, from, to)),
-															}));
-														}}
-														onRemoveSlot={(slot) => {
-															update((current) => ({
-																...current,
-																agents: current.agents.map((agent) => swapKeySlot(agent, slot, '')),
-															}));
-														}}
-													/>
-												</ScrollableArea>
-											) : editorView === 'editor' ? (
-												<ScrollableArea key={selected} label="Editor" height="100%" ref={editorRef}>
-													<ListBadges value={listBadges}>
-														<ConnectionMode.Provider value={mode}>
-															<LocalConnection.Provider value={connection}>
-																<WorkspaceContext.Provider value={workspaceContext}>
-																	<ProfileEditor
-																		draft={draft}
-																		setDraft={setDraft}
-																		selectedId={editing}
-																		onSelect={(id) => {
-																			open(scopedNodeId(focus, id));
-																		}}
-																		issues={editorIssues}
-																	/>
-																</WorkspaceContext.Provider>
-															</LocalConnection.Provider>
-														</ConnectionMode.Provider>
-													</ListBadges>
-												</ScrollableArea>
-											) : source ? (
-												<Section variant="transparent" padding={3} ref={codeRef}>
-													<CodeBlock
-														code={source}
-														language="typescript"
-														hasLanguageLabel={false}
-														hasLineNumbers
-														isWrapped
-														width="100%"
-														maxHeight={codeHeight}
-													/>
-												</Section>
-											) : (
-												<EmptyState
-													icon={<Icon icon={IconAlertTriangle} />}
-													title="No code yet"
-													description={`${blocked ?? ''} to generate the TypeScript.`}
-												/>
-											)}
+										<EditorToolbar
+											heading={view.keysOpen ? 'Keys' : title}
+											compile={compile}
+											selected={selected}
+											view={view}
+											onIssue={(node) => {
+												view.open(node);
+												reveal({ node });
+											}}
+											replaceWorkspace={replaceWorkspace}
+											setSheet={setSheet}
+										/>
+										<StackItem size="fill" ref={frame.bodyRef}>
+											<EditorColumnBody
+												state={state}
+												connection={connection}
+												view={view}
+												compile={compile}
+												selected={selected}
+												editing={editing}
+												frame={frame}
+												editorRef={editorRef}
+											/>
 										</StackItem>
 									</VStack>
 								</StackItem>
@@ -1517,91 +1861,67 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 						className="playground-side-handle"
 						direction="horizontal"
 						isAlwaysVisible={false}
-						resizable={sidePanel.props}
+						resizable={frame.sidePanel.props}
 						label="Resize profile"
 					/>
 				</>
 			}
 			content={
-				<LayoutContent className="playground-preview" isScrollable={false} padding={0}>
-					<VStack height="100%">
-						<Section variant="transparent" padding={3}>
-							<HStack gap={2} vAlign="center">
-								<span className="playground-phone">
-									<IconButton
-										label="Back to the editor"
-										variant="ghost"
-										icon={<Icon icon={IconArrowLeft} size="sm" />}
-										onClick={() => {
-											setSheet(null);
-										}}
-									/>
-								</span>
-								<StackItem size="fill">
-									<ChatPicker workspace={workspace} onChange={store.chatWith} />
-								</StackItem>
-								{payload && usedRun === runKey && (
-									<IconButton
-										label="Clear history"
-										variant="ghost"
-										icon={<Icon icon={IconPlaylistX} size="sm" />}
-										tooltip="Clear the conversation and its traces. Your profile stays."
-										onClick={() => {
-											clearConversation(chatWith);
-											setConversation((count) => count + 1);
-										}}
-									/>
-								)}
-								{traced ? (
-									<Button
-										label={traceOpen ? 'Hide trace' : 'View trace'}
-										isIconOnly={phone}
-										icon={<Icon icon={IconTimeline} size="sm" />}
-										aria-pressed={traceOpen}
-										onClick={() => {
-											setTraceOpen((open) => !open);
-										}}
-									/>
-								) : null}
-								<ExportActions
-									compiled={compiled.ok ? compiled : undefined}
-									chatted={chatted}
-									chattedId={agentIdOf(compile.workspace, chatWith)}
-									blocked={blocked}
-									phone={phone}
-									copy={copy}
-									connection={{ connectionMode: mode, localBaseUrl: connection.local.baseUrl }}
-								/>
-							</HStack>
-						</Section>
-						<StackItem size="fill">
-							{payload ? (
-								<PlaygroundRunner
-									key={runKey}
-									payload={payload}
-									mode={mode}
-									runtime={runtime}
-									trace={traced && traceOpen}
-									onActivity={() => {
-										setUsedRun(runKey);
-									}}
-									initialChat={initialChat}
-									onChatChange={(snapshot) => {
-										saveConversation(chatWith, snapshot);
-									}}
-									chatRef={chatRef}
-								/>
-							) : (
-								<EmptyState
-									icon={<Icon icon={IconAlertTriangle} />}
-									title="No agent yet"
-									description={`${blocked ?? ''} to run the agent.`}
-								/>
-							)}
-						</StackItem>
-					</VStack>
-				</LayoutContent>
+				<PreviewPane
+					state={state}
+					compile={compile}
+					run={run}
+					connection={connection}
+					chatRef={chatRef}
+					copy={copy}
+					setSheet={setSheet}
+				/>
 			}
+		/>
+	);
+}
+
+/** Under the editor's header: the Keys panel, the open node's editor, or its code. */
+function EditorColumnBody({
+	state,
+	connection,
+	view,
+	compile,
+	selected,
+	editing,
+	frame,
+	editorRef,
+}: {
+	state: PlaygroundWorkspaceState;
+	connection: PlaygroundConnectionState;
+	view: EditorViewState;
+	compile: WorkspaceCompile;
+	selected: string;
+	editing: string;
+	frame: ReturnType<typeof usePlaygroundFrame>;
+	editorRef: RefObject<HTMLDivElement | null>;
+}) {
+	if (view.keysOpen) return <KeysBody connection={connection} state={state} />;
+	if (view.editorView === 'code') {
+		return (
+			<CodeBody
+				source={compile.source}
+				blocked={compile.blocked}
+				codeRef={frame.codeRef}
+				codeHeight={frame.codeHeight}
+			/>
+		);
+	}
+	return (
+		<EditorBody
+			state={state}
+			connection={connection}
+			selected={selected}
+			editing={editing}
+			issues={compile.editorIssues}
+			listBadges={frame.listBadges}
+			editorRef={editorRef}
+			open={view.open}
 		/>
 	);
 }

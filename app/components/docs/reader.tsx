@@ -485,6 +485,31 @@ function ArticleStill({ article }: { article: DocArticle }) {
 	);
 }
 
+/** Previous and next chapter links at the foot of an article. */
+function ChapterNeighbors({ prev, next }: ReturnType<typeof chapterNeighbors>) {
+	if (!prev && !next) return null;
+	return (
+		<HStack justify={prev ? 'between' : 'end'} wrap="wrap" gap={4}>
+			{prev ? (
+				<VStack gap={1}>
+					<Text type="supporting" color="secondary">
+						Previous
+					</Text>
+					<AstryxLink href={prev.canonicalPath}>{prev.title}</AstryxLink>
+				</VStack>
+			) : null}
+			{next ? (
+				<VStack gap={1} align="end">
+					<Text type="supporting" color="secondary">
+						Next
+					</Text>
+					<AstryxLink href={next.canonicalPath}>{next.title}</AstryxLink>
+				</VStack>
+			) : null}
+		</HStack>
+	);
+}
+
 export function DocsReader({ index, article }: { index: DocIndex; article: DocArticle }) {
 	const { hash } = useLocation();
 	// location.hash is not on the request. First paint must match SSR or the nav hydrates wrong.
@@ -548,26 +573,7 @@ export function DocsReader({ index, article }: { index: DocIndex; article: DocAr
 								<DocsBlock key={block.id} block={block} />
 							))}
 							<PageDictionary symbols={article.symbols} />
-							{prev || next ? (
-								<HStack justify={prev ? 'between' : 'end'} wrap="wrap" gap={4}>
-									{prev ? (
-										<VStack gap={1}>
-											<Text type="supporting" color="secondary">
-												Previous
-											</Text>
-											<AstryxLink href={prev.canonicalPath}>{prev.title}</AstryxLink>
-										</VStack>
-									) : null}
-									{next ? (
-										<VStack gap={1} align="end">
-											<Text type="supporting" color="secondary">
-												Next
-											</Text>
-											<AstryxLink href={next.canonicalPath}>{next.title}</AstryxLink>
-										</VStack>
-									) : null}
-								</HStack>
-							) : null}
+							<ChapterNeighbors prev={prev} next={next} />
 						</VStack>
 					</StackItem>
 					{outline.length ? (

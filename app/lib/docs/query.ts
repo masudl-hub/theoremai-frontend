@@ -3,14 +3,11 @@
  */
 
 import { create, insert, type Orama, search } from '@orama/orama';
-import {
-	blockHeading,
-	formatWithLineNumbers,
-	projectArticleText,
-	projectBlockText,
-	symbolTerm,
-} from './project-text';
+import { projectBlockText } from './block-text';
+import { symbolTerm } from './catalog-rows';
+import { blockHeading, projectArticleText } from './project-text';
 import type { DocArticle, DocIndex } from './schema';
+import { formatWithLineNumbers } from './text-format';
 
 export function articleHref(article: Pick<DocArticle, 'canonicalPath'>, blockId?: string): string {
 	return blockId ? `${article.canonicalPath}#${blockId}` : article.canonicalPath;
