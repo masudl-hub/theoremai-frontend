@@ -44,7 +44,7 @@ import {
 	IconCertificate,
 	IconChartBar,
 	IconChevronDown,
-	IconChevronRight,
+	IconChevronUp,
 	IconCircleDashed,
 	IconDatabase,
 	IconDatabaseOff,
@@ -3143,6 +3143,7 @@ function DetectorRows({
 		/>
 	);
 	const { label } = DETECTOR_META[detector];
+	const byBoundary = `${isOpen ? 'Hide' : 'Set'} ${label} by boundary${uniform ? '' : ' (mixed)'}`;
 	return (
 		<VStack gap={2}>
 			<SegmentedRow
@@ -3157,16 +3158,18 @@ function DetectorRows({
 					onChange(next);
 				}}
 				trailing={
-					<IconButton
-						label={`${isOpen ? 'Hide' : 'Set'} ${label} by boundary${uniform ? '' : ' (mixed)'}`}
-						variant="ghost"
-						size="sm"
-						aria-expanded={isOpen}
-						icon={<Icon icon={isOpen ? IconChevronDown : IconChevronRight} size="sm" />}
-						onClick={() => {
-							setIsOpen(!isOpen);
-						}}
-					/>
+					<Tooltip content={byBoundary}>
+						<IconButton
+							label={byBoundary}
+							variant="ghost"
+							size="sm"
+							aria-expanded={isOpen}
+							icon={<Icon icon={isOpen ? IconChevronUp : IconChevronDown} size="sm" />}
+							onClick={() => {
+								setIsOpen(!isOpen);
+							}}
+						/>
+					</Tooltip>
 				}
 			/>
 			{isOpen && (
