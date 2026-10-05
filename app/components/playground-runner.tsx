@@ -26,6 +26,8 @@ export interface PlaygroundRunnerProps {
 	mode: PlaygroundConnectionMode;
 	runtime: PlaygroundBrowserRuntime | null;
 	trace?: boolean;
+	/** Show each reply's tokens and cost, and what an agent tool's called agent used (chat only). */
+	usage?: boolean;
 	className?: string;
 	/** Called on each request the conversation sends: a turn, call, decision or live session. */
 	onActivity?: () => void;
@@ -46,6 +48,7 @@ export function PlaygroundRunner({
 	mode,
 	runtime,
 	trace,
+	usage,
 	className,
 	onActivity,
 	initialChat,
@@ -90,6 +93,7 @@ export function PlaygroundRunner({
 			runtime={runtime}
 			traces={traces}
 			trace={trace}
+			usage={usage}
 			className={className}
 			note={note}
 			initialChat={initialChat}
@@ -129,6 +133,7 @@ function TurnRun({
 	runtime,
 	traces,
 	trace,
+	usage,
 	className,
 	note,
 	initialChat,
@@ -163,6 +168,7 @@ function TurnRun({
 			labels={PLAYGROUND_LABELS}
 			transport={transport}
 			trace={trace}
+			usage={usage}
 			className={className}
 			initialChat={initialChat}
 			onChatChange={onChatChange}

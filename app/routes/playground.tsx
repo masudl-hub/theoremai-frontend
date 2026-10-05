@@ -27,6 +27,7 @@ import {
 	IconBook,
 	IconChevronDown,
 	IconCode,
+	IconCoins,
 	IconCopy,
 	IconCopyPlus,
 	IconDownload,
@@ -1798,7 +1799,13 @@ function ClearHistoryButton({ chatWith, run }: { chatWith: string; run: Conversa
 	);
 }
 
-/** The preview's header: back to the editor, the agent to chat with, history, trace and Export. */
+/** True for an agent the chat runs: its replies and tool calls are where usage shows. */
+function chatsInTranscript(payload: PlaygroundRunPayload | null): boolean {
+	const type = payload?.profile.type;
+	return type === 'text' || type === 'image' || type === 'speech';
+}
+
+/** The preview's header: back to the editor, the agent to chat with, history, trace, usage and Export. */
 function PreviewHeader({
 	store,
 	chatAgents,
@@ -1807,6 +1814,7 @@ function PreviewHeader({
 	run,
 	connection,
 	trace,
+	usage,
 	copy,
 	setSheet,
 }: {
@@ -1817,6 +1825,7 @@ function PreviewHeader({
 	run: ConversationRun;
 	connection: PlaygroundConnectionState;
 	trace: { open: boolean; toggle: () => void };
+	usage: { shown: boolean; toggle: () => void };
 	copy: (text: string, what: string) => void;
 	setSheet: (sheet: Sheet) => void;
 }) {
@@ -1844,6 +1853,15 @@ function PreviewHeader({
 						onClick={trace.toggle}
 					/>
 				) : null}
+				{chatsInTranscript(compile.payload) ? (
+					<Button
+						label={usage.shown ? 'Hide usage' : 'Show usage'}
+						isIconOnly={phone}
+						icon={<Icon icon={IconCoins} size="sm" />}
+						aria-pressed={usage.shown}
+						onClick={usage.toggle}
+					/>
+				) : null}
 				<ExportActions
 					compiled={compiled.ok ? compiled : undefined}
 					chatted={compile.chatted}
@@ -1866,6 +1884,7 @@ function PreviewBody({
 	chatRef,
 	chatWith,
 	traceOpen,
+	usageShown,
 }: {
 	compile: WorkspaceCompile;
 	run: ConversationRun;
@@ -1873,6 +1892,7 @@ function PreviewBody({
 	chatRef: RefObject<TheoremChatHandle | null>;
 	chatWith: string;
 	traceOpen: boolean;
+	usageShown: boolean;
 }) {
 	const { payload, traced } = compile;
 	return payload ? (
@@ -1882,6 +1902,7 @@ function PreviewBody({
 			mode={connection.mode}
 			runtime={connection.runtime}
 			trace={traced && traceOpen}
+			usage={usageShown}
 			onActivity={run.markUsed}
 			initialChat={run.initialChat}
 			onChatChange={(snapshot) => {
@@ -1924,6 +1945,7 @@ const PreviewPane = memo(function PreviewPane({
 	setSheet: (sheet: Sheet) => void;
 }) {
 	const [traceOpen, setTraceOpen] = useState(false);
+	const [usageShown, setUsageShown] = useState(false);
 	return (
 		<LayoutContent className="playground-preview" isScrollable={false} padding={0}>
 			<VStack height="100%">
@@ -1940,6 +1962,12 @@ const PreviewPane = memo(function PreviewPane({
 							setTraceOpen((open) => !open);
 						},
 					}}
+					usage={{
+						shown: usageShown,
+						toggle: () => {
+							setUsageShown((shown) => !shown);
+						},
+					}}
 					copy={copy}
 					setSheet={setSheet}
 				/>
@@ -1951,6 +1979,7 @@ const PreviewPane = memo(function PreviewPane({
 						chatRef={chatRef}
 						chatWith={chatWith}
 						traceOpen={traceOpen}
+						usageShown={usageShown}
 					/>
 				</StackItem>
 			</VStack>
