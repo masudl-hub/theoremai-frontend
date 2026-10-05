@@ -193,7 +193,7 @@ export const guardrails: DocArticleDef = {
 				'A tool result can be the way an attack gets in. Theorem treats remote content as data, never as an instruction.',
 				'**Provenance.** Each result records where it came from (`local`, `builtin`, `http`, `mcp` or `delegated`) and how deep the call chain went.',
 				'**Fencing.** Remote results reach the model inside `<tool_data tool="..." origin="...">`. Theorem first strips any forged `tool_data` marker from the body, so content cannot claim a friendlier origin than it has.',
-				'**Directive advisory.** Some content names a tool that the model can call, gives the agent orders, or claims authority that it cannot have, and points at an external address or URL. That content gets an `advisory` attribute, a short notice, and your lexicon `advisory.guidance`. The advisory informs the model. It does not block.',
+				'**Directive advisory.** Some content names a tool that the model can call, gives the agent orders, or claims authority that it cannot have, and points at an external address or URL. That content gets an `advisory` attribute, a short notice, and your lexicon line `advisory.guidance` ([Describing statuses](/docs/statuses)). The advisory informs the model. It does not block.',
 				'**Argument inspection.** Theorem scans the model’s arguments before the tool runs. A credential-shaped value that is about to leave as a parameter raises a `tool_call.sensitive-argument` event. Theorem reports it and does not rewrite it.',
 				'**Redaction.** The result, its structured data and its failure messages go through the same detection as user input before the model reads them.',
 			].join('\n\n'),
@@ -221,7 +221,7 @@ export const guardrails: DocArticleDef = {
 			kind: 'prose',
 			title: 'Limit turns per day',
 			text: [
-				'`quota.perDay` sets how many turns each client IP may run on one profile per UTC day. `runTurn` does not count turns. Your server middleware calls `takeSlot(profile, ip, now)` before a turn and `releaseSlot(profile, ip)` after it.',
+				'`quota.perDay` sets how many turns each client IP may run on one profile per UTC day. `runTurn` does not count turns ([Running a turn](/docs/runner)). Your server middleware calls `takeSlot(profile, ip, now)` before a turn and `releaseSlot(profile, ip)` after it.',
 				'`takeSlot` returns `ok`, `busy`, `quota` or `not_configured`. `busy` means that the client has a turn running on this profile. `quota` means that the day\u2019s turns are used. For `quota`, `quotaExhausted(profile)` returns a `rate_limit` error that carries the `quota.exhausted` line. `releaseSlot` frees the slot but does not give the turn back.',
 			].join('\n\n'),
 		},

@@ -100,7 +100,7 @@ export const identity: DocArticleDef = {
 			text: [
 				'Use this when the instruction holds text that the agent must not repeat, such as an internal rule. Write `system` as a list of parts. Mark each secret part as `{ private: text }`.',
 				'Without a mark, the whole instruction is private. The agent cannot repeat any of it. Once you mark one part, the plain parts beside it become shareable. The agent can then say a greeting word for word.',
-				'The **canary** is a secret token that Theorem plants at the end of the instruction. While `guardrails.canary` is on, `guardrails.promptEcho` stops a reply that repeats 12 words in a row of a private part. Both are on by default.',
+				'The **canary** is a secret token that Theorem plants at the end of the instruction. While `guardrails.canary` is on ([Setting guardrails](/docs/guardrails)), `guardrails.promptEcho` stops a reply that repeats 12 words in a row of a private part. Both are on by default.',
 			].join('\n\n'),
 		},
 		{

@@ -107,7 +107,7 @@ export const outputs: DocArticleDef = {
 				'The function receives that part of the reply and the turn’s slots. It returns `{ isValid, error? }`.',
 				'Checks in `fields` need a `structured` schema. Every path must reach a property through object properties. Theorem refuses to register the profile otherwise.',
 				'When a check fails, Theorem sends its `error` to the model and asks for a new reply. `maxRetries` sets how many times it asks. Without it, no retry happens, and the reply goes out as it is.',
-				'`guardrails.egress.maxRetries` also sets retries. Theorem uses the larger of the two numbers. `maxRetries` must be a whole number of 0 or more.',
+				'`guardrails.egress.maxRetries` also sets retries ([Setting guardrails](/docs/guardrails)). Theorem uses the larger of the two numbers. `maxRetries` must be a whole number of 0 or more.',
 			].join('\n\n'),
 		},
 		{

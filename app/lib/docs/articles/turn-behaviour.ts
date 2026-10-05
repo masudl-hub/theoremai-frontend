@@ -52,7 +52,7 @@ export const turnBehaviour: DocArticleDef = {
 			title: 'Continue a reply',
 			text: [
 				'Use a continue when a reply stops before it ends and the user wants the rest. You send the continue as one more `runTurn` call with `continueFrom`. The kernel does not send it for you.',
-				'Three stop kinds can be continued. `length` means the reply reached the output token limit. `stream_incomplete` means the connection dropped. `provider_error` means the provider returned an error or timed out. A profile that lists any other kind fails with a `config` error.',
+				'Three stop kinds can be continued ([Describing statuses](/docs/statuses)). `length` means the reply reached the output token limit. `stream_incomplete` means the connection dropped. `provider_error` means the provider returned an error or timed out. A profile that lists any other kind fails with a `config` error.',
 			].join('\n\n'),
 		},
 		{

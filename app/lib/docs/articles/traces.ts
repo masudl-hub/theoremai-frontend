@@ -78,7 +78,7 @@ export const traces: DocArticleDef = {
 			title: 'Record one call to a sink',
 			text: [
 				'To capture a single call, for a test or a one-off check, pass a sink to that call. It replaces `writeTo` for the call, always records and ignores `sampleRate`.',
-				'`runTurn`, `runSession`, `compactHistory` and `invokeTool` take the sink as the last argument. `runDecision` takes it as `options.sink`.',
+				'`runTurn`, `runSession`, `compactHistory` and `invokeTool` take the sink as the last argument ([Running a turn](/docs/runner)). `runDecision` takes it as `options.sink`.',
 			].join('\n\n'),
 		},
 		{
@@ -88,7 +88,7 @@ export const traces: DocArticleDef = {
 			text: [
 				'`include` picks the optional content of a record. With an `observability` block, upstream log, usage and guardrail decisions are on. Outbound wire bodies, raw grounding evidence and the matched text of a guardrail hit are off.',
 				'`scrub` removes sensitive values, injection text and the canary token from stored text. All three are on by default.',
-				'Both settings are independent of `guardrails`. Scrubbing stays on when `guardrails.redactSensitive` is `false`.',
+				'Both settings are independent of `guardrails` ([Setting guardrails](/docs/guardrails)). Scrubbing stays on when `guardrails.redactSensitive` is `false`.',
 				'Set `include` to keep less. Set `scrub` to `false` on a key only when you must store that text. Treat the destination like a server log, because records hold conversation content.',
 			].join('\n\n'),
 		},

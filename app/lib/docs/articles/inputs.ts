@@ -171,7 +171,7 @@ export const inputs: DocArticleDef = {
 			id: 'decision-state',
 			kind: 'prose',
 			title: 'Cap decision state',
-			text: 'A decision call sends JSON state. The state must not be `null`. Set `inputs.maxStateBytes` to a positive whole number to cap its size. Without it, the state has no cap.',
+			text: 'A decision call sends JSON state. The state must not be `null`. Set `inputs.maxStateBytes` to a positive whole number to cap its size. Without it, the state has no cap. A state that is `null`, cannot become JSON or passes the cap makes `runDecision` throw a `DecisionError` with code `invalid_request` ([Running a turn](/docs/runner)).',
 		},
 		{
 			id: 'decision-inputs',

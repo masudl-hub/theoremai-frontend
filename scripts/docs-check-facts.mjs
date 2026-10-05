@@ -173,6 +173,28 @@ const sameSet = (what, docSet, kernelSet) => {
 	sameSet('tools/failure-codes', docCodes, kernelCodes);
 }
 
+// runner: the `DecisionError` codes the chapter lists are the keys the kernel maps to error kinds.
+{
+	const source = readFileSync(path.join(theoremai.root, 'src/kernel/engine/decision.ts'), 'utf8');
+	const block = /DECISION_ERROR_KINDS = \{([^}]*)\}/.exec(source)?.[1] ?? '';
+	const kernelCodes = new Set([...block.matchAll(/^\s*(\w+):/gm)].map((m) => m[1]));
+	const runner = index.articles.find((a) => a.slug === 'runner');
+	const listed = runner?.blocks.map(textOf).join('\n').match(/Its `code` is one of ([^.]*)\./)?.[1] ?? '';
+	sameSet('runner/decision-error-codes', new Set(ticks(listed)), kernelCodes);
+}
+
+// Every link to another chapter must reach one that exists.
+{
+	const slugs = new Set(index.articles.map((a) => a.slug));
+	for (const article of index.articles) {
+		for (const block of article.blocks) {
+			for (const m of textOf(block).matchAll(/\]\(\/docs\/([^)#]*)[^)]*\)/g)) {
+				if (!slugs.has(m[1])) problems.push(`${article.slug}: link to /docs/${m[1]} reaches no chapter`);
+			}
+		}
+	}
+}
+
 if (problems.length > 0) {
 	console.error(problems.join('\n'));
 	process.exit(1);
