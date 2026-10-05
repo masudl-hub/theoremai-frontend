@@ -56,9 +56,9 @@ import {
 	compileWorkspace,
 	createBlankDraft,
 	createBlankWorkspace,
+	createDecisionExampleDraft,
 	createExampleDraft,
 	createPlaygroundRunId,
-	createSpanExampleDraft,
 	draftFacets,
 	duplicateAgent,
 	excludeFacet,
@@ -148,7 +148,7 @@ export const handle = {
 	th30Page: () => ({
 		title: 'Playground',
 		summary:
-			"The playground, where the visitor builds an agent without code. On the left are the profile sections, a tree of the agent's settings (type, identity, models, tools, guardrails and more), and a Keys panel for their own API keys. The middle is the editor for the selected section, and the right is a live preview to chat with the agent. Load an example offers ready agents such as Travel concierge and Span decision. Issues the agent must fix before it can run are flagged, with a button to go to the next one. Export downloads every agent as a .zip of source files (the shared tools, a module per agent, the file that registers them in order, and the route and chat for the agent being chatted with), or copies them, or copies them with a brief for an LLM. Launch opens the agent on its own page in a new tab. The docs explain each field, so th30 should search the docs for them.",
+			"The playground, where the visitor builds an agent without code. On the left are the profile sections, a tree of the agent's settings (type, identity, models, tools, guardrails and more), and a Keys panel for their own API keys. The middle is the editor for the selected section, and the right is a live preview to chat with the agent. Load an example offers ready agents such as Travel concierge and Jev decision. Issues the agent must fix before it can run are flagged, with a button to go to the next one. Export downloads every agent as a .zip of source files (the shared tools, a module per agent, the file that registers them in order, and the route and chat for the agent being chatted with), or copies them, or copies them with a brief for an LLM. Launch opens the agent on its own page in a new tab. The docs explain each field, so th30 should search the docs for them.",
 	}),
 } satisfies ShellHandle & Th30PageHandle;
 
@@ -479,11 +479,11 @@ function WorkspaceTreeLists({
 								},
 							},
 							{
-								id: 'span',
-								label: 'Span decision',
-								description: 'Tool-call safety with the free Span model.',
+								id: 'decision',
+								label: 'Jev decision',
+								description: 'Tool-call safety with the Jev decision model.',
 								onClick: () => {
-									onAddAgent(createSpanExampleDraft());
+									onAddAgent(createDecisionExampleDraft());
 								},
 							},
 						]}
@@ -1451,13 +1451,13 @@ function EditorToolbar({
 							},
 						},
 						{
-							id: 'span',
-							label: 'Span decision',
-							description: 'Tool-call safety with the free Span model.',
+							id: 'decision',
+							label: 'Jev decision',
+							description: 'Tool-call safety with the Jev decision model.',
 							onClick: () => {
 								replaceWorkspace(
-									workspaceFromDraft(createSpanExampleDraft()),
-									'Loaded the Span example.',
+									workspaceFromDraft(createDecisionExampleDraft()),
+									'Loaded the decision example.',
 								);
 							},
 						},
