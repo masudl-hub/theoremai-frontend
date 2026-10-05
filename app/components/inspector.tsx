@@ -427,7 +427,7 @@ export interface Segment<T extends string> {
 	disabledMessage?: string;
 }
 
-type SegmentedRowProps<T extends string> = {
+export type SegmentedRowProps<T extends string> = {
 	label: string;
 	path: string;
 	/** The draft field whose issues show on this row. */
@@ -505,7 +505,7 @@ export type Choice<T extends string> =
 	| T
 	| { value: T; label?: string; description?: string; disabled?: boolean };
 
-type ChoiceRowProps<T extends string> = {
+export type ChoiceRowProps<T extends string> = {
 	label: string;
 	path: string;
 	/** The draft field whose issues show on this row. */

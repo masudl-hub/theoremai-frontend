@@ -21,7 +21,7 @@ import { noting } from '../lib/playground-activity';
 import { PLAYGROUND_LABELS } from '../lib/playground-labels';
 import { PlaygroundDecision } from './playground-decision';
 
-interface PlaygroundRunnerProps {
+export interface PlaygroundRunnerProps {
 	payload: PlaygroundRunPayload;
 	mode: PlaygroundConnectionMode;
 	runtime: PlaygroundBrowserRuntime | null;
