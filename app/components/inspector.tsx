@@ -422,6 +422,8 @@ export interface Segment<T extends string> {
 	value: T;
 	label: string;
 	icon: IconType;
+	/** What it means, on hover, for a segment the catalog has no option for. */
+	description?: string;
 	isDisabled?: boolean;
 	/** Why it can't be picked, on hover, when `isDisabled`. */
 	disabledMessage?: string;
@@ -478,7 +480,9 @@ export function SegmentedRow<T extends string>({
 				>
 					{segments.map((segment) => {
 						const description =
-							(segment.isDisabled && segment.disabledMessage) || options?.[segment.value];
+							(segment.isDisabled && segment.disabledMessage) ||
+							options?.[segment.value] ||
+							segment.description;
 						return (
 							<Tooltip
 								key={segment.value}

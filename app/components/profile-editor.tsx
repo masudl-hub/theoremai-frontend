@@ -2810,8 +2810,8 @@ function withReplyChecks(
 	};
 }
 
-/** What egress's bundled checks look for, as the checklists the other facets use. */
-function EgressChecksSections({
+/** Which URLs the image and link checks let through, for the ones that are on. */
+function GivenUrlsSection({
 	checks,
 	onChange,
 }: {
@@ -2819,47 +2819,33 @@ function EgressChecksSections({
 	onChange: (next: EgressChecksDraft) => void;
 }) {
 	const urls = (['images', 'links'] as const).filter((name) => checks[name].on);
+	if (urls.length === 0) return null;
 	return (
-		<>
-			<InspectorSection title="Block" path="guardrails.egress.checks">
-				<FlagList
-					label="Checks"
-					path="guardrails.egress.checks"
-					flags={REPLY_CHECK_FLAGS}
-					value={replyChecks(checks)}
-					onChange={(on) => {
-						onChange(withReplyChecks(checks, on));
+		<InspectorSection title="Given URLs">
+			{urls.map((name) => (
+				<NamesRow
+					key={name}
+					label={name === 'images' ? 'Image hosts' : 'Link hosts'}
+					path={`guardrails.egress.checks.${name}.hosts`}
+					field={`egressChecks.${name}.hosts`}
+					value={checks[name].hosts}
+					onChange={(hosts) => {
+						onChange({ ...checks, [name]: { ...checks[name], hosts } });
 					}}
 				/>
-			</InspectorSection>
-			{urls.length > 0 && (
-				<InspectorSection title="Given URLs">
-					{urls.map((name) => (
-						<NamesRow
-							key={name}
-							label={name === 'images' ? 'Image hosts' : 'Link hosts'}
-							path={`guardrails.egress.checks.${name}.hosts`}
-							field={`egressChecks.${name}.hosts`}
-							value={checks[name].hosts}
-							onChange={(hosts) => {
-								onChange({ ...checks, [name]: { ...checks[name], hosts } });
-							}}
-						/>
-					))}
-					{urls.map((name) => (
-						<SwitchRow
-							key={name}
-							label={name === 'images' ? 'Image tool URLs' : 'Link tool URLs'}
-							path={`guardrails.egress.checks.${name}.fromTools`}
-							value={checks[name].fromTools}
-							onChange={(fromTools) => {
-								onChange({ ...checks, [name]: { ...checks[name], fromTools } });
-							}}
-						/>
-					))}
-				</InspectorSection>
-			)}
-		</>
+			))}
+			{urls.map((name) => (
+				<SwitchRow
+					key={name}
+					label={name === 'images' ? 'Image tool URLs' : 'Link tool URLs'}
+					path={`guardrails.egress.checks.${name}.fromTools`}
+					value={checks[name].fromTools}
+					onChange={(fromTools) => {
+						onChange({ ...checks, [name]: { ...checks[name], fromTools } });
+					}}
+				/>
+			))}
+		</InspectorSection>
 	);
 }
 
@@ -2875,7 +2861,7 @@ function CanarySection({
 	set,
 }: GuardrailsSectionProps & { draft: PlaygroundDraft }) {
 	return (
-		<InspectorSection title="Canary" path="guardrails.canary">
+		<InspectorSection title="Canary">
 			<SwitchRow
 				label="Canary"
 				path="guardrails.canary"
@@ -2943,28 +2929,25 @@ function EgressRepairRows({ guardrails, set }: GuardrailsSectionProps) {
 function EgressSection({ guardrails, set }: GuardrailsSectionProps) {
 	return (
 		<InspectorSection title="Egress" path="guardrails.egress">
-			<SwitchRow
-				label="Checks"
-				path="guardrails.egress.checks"
-				value={guardrails.egressEnabled}
-				onChange={(egressEnabled) => {
-					set({ egressEnabled });
+			<SegmentedRow
+				label="On block"
+				path="guardrails.egress.onBlock"
+				value={guardrails.egressOnBlock || 'reject_to_agent'}
+				segments={ON_BLOCK_SEGMENTS}
+				onChange={(onBlock) => {
+					set({ egressOnBlock: onBlock === 'reject_to_agent' ? '' : onBlock });
 				}}
 			/>
-			{guardrails.egressEnabled && (
-				<SegmentedRow
-					label="On block"
-					path="guardrails.egress.onBlock"
-					value={guardrails.egressOnBlock || 'reject_to_agent'}
-					segments={ON_BLOCK_SEGMENTS}
-					onChange={(onBlock) => {
-						set({ egressOnBlock: onBlock === 'reject_to_agent' ? '' : onBlock });
-					}}
-				/>
-			)}
-			{guardrails.egressEnabled && guardrails.egressOnBlock === '' && (
-				<EgressRepairRows guardrails={guardrails} set={set} />
-			)}
+			{guardrails.egressOnBlock === '' && <EgressRepairRows guardrails={guardrails} set={set} />}
+			<FlagList
+				label="Checks"
+				path="guardrails.egress.checks"
+				flags={REPLY_CHECK_FLAGS}
+				value={replyChecks(guardrails.egressChecks)}
+				onChange={(on) => {
+					set({ egressChecks: withReplyChecks(guardrails.egressChecks, on) });
+				}}
+			/>
 		</InspectorSection>
 	);
 }
@@ -3075,7 +3058,12 @@ const DETECT_SEGMENTS: Segment<DetectAction>[] = DETECT_ACTIONS.map((action) => 
  */
 const MIXED_SEGMENTS: Segment<DetectAction | 'mixed'>[] = [
 	...DETECT_SEGMENTS,
-	{ value: 'mixed', label: 'Mixed', icon: IconAdjustmentsHorizontal },
+	{
+		value: 'mixed',
+		label: 'Mixed',
+		icon: IconAdjustmentsHorizontal,
+		description: sectionNote('detect.mixed'),
+	},
 ];
 
 type ToolKind = (typeof TOOL_KINDS)[number];
@@ -3246,14 +3234,12 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 				<CanarySection draft={draft} guardrails={guardrails} set={set} />
 			)}
 			<EgressSection guardrails={guardrails} set={set} />
-			{guardrails.egressEnabled && (
-				<EgressChecksSections
-					checks={guardrails.egressChecks}
-					onChange={(egressChecks) => {
-						set({ egressChecks });
-					}}
-				/>
-			)}
+			<GivenUrlsSection
+				checks={guardrails.egressChecks}
+				onChange={(egressChecks) => {
+					set({ egressChecks });
+				}}
+			/>
 			<NetworkSection guardrails={guardrails} set={set} />
 			{draftAllows(draft, 'guardrails.taint') && (
 				<InspectorSection title="Taint" path="guardrails.taint" note={PLAYGROUND_TAINT_NOTE}>
@@ -4712,7 +4698,7 @@ const SHARED_WORDING: Partial<
 		write: (setDraft, egressRepairGuidance) => {
 			patch(setDraft, 'guardrails')({ egressRepairGuidance });
 		},
-		isOn: (draft) => draft.guardrails.egressEnabled,
+		isOn: (draft) => draft.guardrails.egressOnBlock === '',
 	},
 };
 
