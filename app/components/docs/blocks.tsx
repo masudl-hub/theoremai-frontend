@@ -5,7 +5,7 @@ import { Code } from '@astryxdesign/core/Code';
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
-import { List, ListItem } from '@astryxdesign/core/List';
+import { Markdown } from '@astryxdesign/core/Markdown';
 import { proportional, Table } from '@astryxdesign/core/Table';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
@@ -30,76 +30,26 @@ function codeLanguage(lang: 'ts' | 'bash' | 'text'): string {
 	return lang === 'bash' ? 'bash' : 'text';
 }
 
-/** Inline `code`, **bold** and [label](href) — enough for authored prose, not a Markdown engine. */
-function inlineMarks(text: string): ReactNode[] {
-	const nodes: ReactNode[] = [];
-	const pattern = /(\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`|\*\*([^*]+)\*\*)/g;
-	let last = 0;
-	let match = pattern.exec(text);
-	let key = 0;
-	while (match) {
-		if (match.index > last) nodes.push(text.slice(last, match.index));
-		const full = match[0];
-		if (full.startsWith('[')) {
-			const label = match[2];
-			const href = match[3];
-			nodes.push(
-				href.startsWith('/') ? (
-					<Link key={key} to={href}>
-						{label}
-					</Link>
-				) : (
-					<a key={key} href={href}>
-						{label}
-					</a>
-				),
-			);
-		} else if (full.startsWith('`')) {
-			nodes.push(
-				<Code key={key} className="docs-code-wrap" size="inherit">
-					{match[4]}
-				</Code>,
-			);
-		} else {
-			nodes.push(<strong key={key}>{inlineMarks(match[5])}</strong>);
-		}
-		key += 1;
-		last = match.index + match[0].length;
-		match = pattern.exec(text);
-	}
-	if (last < text.length) nodes.push(text.slice(last));
-	return nodes;
+/** In-app links go through the router; the rest are plain anchors. */
+function ProseLink({ href, children }: { href: string; children: ReactNode }) {
+	return href.startsWith('/') ? <Link to={href}>{children}</Link> : <a href={href}>{children}</a>;
 }
 
-const NUMBERED = /^\d+\. /;
-const BULLETED = /^- /;
-
-/** One paragraph: a numbered list, a bulleted list or plain text. A list has one item per line. */
-function Paragraph({ paragraph }: { paragraph: string }) {
-	const lines = paragraph.split('\n');
-	const marker = lines.every((line) => NUMBERED.test(line))
-		? NUMBERED
-		: lines.every((line) => BULLETED.test(line))
-			? BULLETED
-			: null;
-	if (!marker) return <Text>{inlineMarks(paragraph)}</Text>;
+function InlineCode({ children }: { children: string }) {
 	return (
-		<List listStyle={marker === NUMBERED ? 'decimal' : 'disc'} density="compact">
-			{lines.map((line) => (
-				<ListItem key={line} label={inlineMarks(line.replace(marker, ''))} />
-			))}
-		</List>
+		<Code className="docs-code-wrap" size="inherit">
+			{children}
+		</Code>
 	);
 }
 
-function ProseParagraphs({ text }: { text: string }) {
-	const paragraphs = text.split(/\n\n+/).filter(Boolean);
+const PROSE_COMPONENTS = { link: ProseLink, inlineCode: InlineCode };
+
+function Prose({ text, inline = false }: { text: string; inline?: boolean }) {
 	return (
-		<VStack gap={3}>
-			{paragraphs.map((paragraph) => (
-				<Paragraph key={paragraph.slice(0, 48)} paragraph={paragraph} />
-			))}
-		</VStack>
+		<Markdown display={inline ? 'inline' : 'block'} components={PROSE_COMPONENTS}>
+			{text}
+		</Markdown>
 	);
 }
 
@@ -120,7 +70,9 @@ function TableBlock({ block }: { block: BlockOf<'table'> }) {
 		key: `c${String(at)}`,
 		header: label,
 		width: proportional(at === 0 ? 1 : 2),
-		renderCell: (row: Record<string, string>) => inlineMarks(row[`c${String(at)}`] ?? ''),
+		renderCell: (row: Record<string, string>) => (
+			<Prose inline text={row[`c${String(at)}`] ?? ''} />
+		),
 	}));
 	const data = rows.map((cells) =>
 		Object.fromEntries(cells.map((cell, at) => [`c${String(at)}`, cell])),
@@ -199,7 +151,7 @@ export function DocsBlock({ block }: { block: ResolvedBlock }) {
 		case 'lede':
 			return (
 				<BlockAnchor id={block.id}>
-					<ProseParagraphs text={block.text} />
+					<Prose text={block.text} />
 				</BlockAnchor>
 			);
 		case 'prose':
@@ -207,7 +159,7 @@ export function DocsBlock({ block }: { block: ResolvedBlock }) {
 				<BlockAnchor id={block.id}>
 					<VStack gap={2}>
 						<Heading level={2}>{block.title}</Heading>
-						<ProseParagraphs text={block.text} />
+						<Prose text={block.text} />
 					</VStack>
 				</BlockAnchor>
 			);
@@ -223,7 +175,7 @@ export function DocsBlock({ block }: { block: ResolvedBlock }) {
 					<Banner
 						status={block.tone === 'warn' ? 'warning' : 'info'}
 						title={block.tone === 'warn' ? 'Warning' : 'Note'}
-						description={block.text}
+						description={<Prose inline text={block.text} />}
 					/>
 				</BlockAnchor>
 			);
