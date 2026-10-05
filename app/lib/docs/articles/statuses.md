@@ -9,11 +9,41 @@ coverAlt: Coral reefs in turquoise water
 coverPosition: 96% 6%
 ---
 
-Use `lexicon` when the words Theorem shows your users do not match your product, such as an error line or a file-size notice. Each key names one line. A replacement changes the words only. It does not change whether a check runs ([Setting guardrails](/docs/guardrails)) or whether a tool asks for consent ([Registering tools](/docs/tools)).
+Change the words that Theorem says. Each line that a user reads has a key that you can replace. So does each line that Theorem sends to the model.
 
-## Replace a line
+## The idea
 
-Add `lexicon` to the profile and name each key you replace. A key you leave out keeps its default wording.
+An agent says more than its replies. It tells a user that a file is too large, or that the model is not available. In most applications, these lines are strings in many files, and no one knows the full list.
+
+In Theorem, each line is in the **lexicon** under a key. `LEXICON_KEYS` lists all the keys, and the dictionary on this page shows the default wording of each one.
+
+To change a line, you replace it by key. Theorem looks for the wording in three places, in this order:
+
+```text
+┌────────────────────┐      ┌────────────────────┐      ┌────────────────────┐
+│ profile.lexicon    │ then │ overrideLexicon    │ then │ the default line   │
+│ one profile        │ ───► │ every profile      │ ───► │ from Theorem       │
+└────────────────────┘      └────────────────────┘      └────────────────────┘
+```
+
+A replacement changes the words only. It does not change if a check runs ([Setting guardrails](/docs/guardrails)), or if a tool asks for consent ([Registering tools](/docs/tools)).
+
+## Give the Harbor desk its own words
+
+Harbor wants its sign-in error to sound like Harbor. These steps replace that line, then replace a line for all Harbor agents.
+
+### 1. Find the key
+
+There are two groups of keys:
+
+- Lines that a person reads, such as `error.safety` and `attachments.file_too_large`.
+- Notes that the model reads, such as `canary.bind_note` and `taint.blocked`.
+
+`defineProfile` refuses a key that is not in `LEXICON_KEYS`.
+
+### 2. Replace the line in the profile
+
+Add `lexicon` to the profile, and name each key that you replace. A key that you leave out keeps its default wording. Every type of profile takes `lexicon`.
 
 ```ts frame=profile:text
 lexicon: {
@@ -21,13 +51,9 @@ lexicon: {
 },
 ```
 
-## Which keys exist
+### 3. Replace a line for every profile
 
-Most keys are lines a person reads, such as `error.safety` and `attachments.file_too_large`. Some keys are notes the model reads, such as `canary.bind_note` and `taint.blocked`. `LEXICON_KEYS` lists them all, and the dictionary on this page shows each default wording. `defineProfile` refuses a key that is not in the list.
-
-## Replace a line for every profile
-
-Call `overrideLexicon` once to replace lines for every profile in the process. A profile’s own `lexicon` wins over `overrideLexicon`, and `overrideLexicon` wins over the defaults. `resetLexicon` removes every process-wide replacement.
+Call `overrideLexicon` one time to replace lines for every profile in the process. The `lexicon` of a profile wins over `overrideLexicon`. `resetLexicon` removes every replacement that `overrideLexicon` made.
 
 ```ts frame=statements
 overrideLexicon({
@@ -35,19 +61,12 @@ overrideLexicon({
 })
 ```
 
-## Where a replacement applies
+### 4. Keep the placeholders
 
-Every profile type takes `lexicon`. Each `error` event that `runTurn` delivers carries its line in the `error` field.
+A line can hold placeholders in curly braces, such as `{canary}`. Theorem fills them when it uses the line.
 
-If your server shows an error itself, call `publicError(err, profile.lexicon)`. Without the second argument, the profile’s wording is skipped. For a refused file, call `attachmentIssueText(issue, profile.lexicon)`.
-
-The browser interface receives only the keys in `CLIENT_LEXICON_KEYS`: errors, file and voice notices, session states and two tool lines. The repair, canary, taint and egress lines stay on the server. See [Building the interface](/docs/interface).
-
-## Keep the placeholders
-
-A line can hold placeholders in curly braces, such as `{canary}`. Use only the placeholders that the key fills. `defineProfile` refuses a replacement that names any other.
-
-One placeholder is required. `canary.bind_note` must keep `{canary}`, because Theorem uses that line to tell the model its canary token.
+- Use only the placeholders that the key fills. `defineProfile` refuses a replacement that names any other.
+- `canary.bind_note` must keep `{canary}`. Theorem uses that line to tell the model its canary token.
 
 ```ts frame=profile:text
 lexicon: {
@@ -55,7 +74,17 @@ lexicon: {
 },
 ```
 
+## Where a replacement applies
+
+A replacement reaches the user by three paths. Know which one your code uses.
+
+- **Events.** Each `error` event that `runTurn` delivers carries its line in the `error` field.
+- **Your server.** If your server shows an error, call `publicError(err, profile.lexicon)`. Without the second argument, the wording of the profile is skipped. For a refused file, call `attachmentIssueText(issue, profile.lexicon)`.
+- **The browser.** The interface receives only the keys in `CLIENT_LEXICON_KEYS`: errors, file and voice notices, session states and two tool lines. The repair, canary, taint and egress lines stay on the server ([Building the interface](/docs/interface)).
+
 ## Fix a refused replacement
+
+`defineProfile` checks each replacement. Each row is one error and its fix.
 
 What you see | Cause | Fix
 --- | --- | ---
