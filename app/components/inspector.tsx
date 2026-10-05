@@ -436,6 +436,8 @@ export type SegmentedRowProps<T extends string> = {
 	segments: readonly Segment<T>[];
 	isDisabled?: boolean;
 	warning?: string;
+	/** A control after the segments, on the same line. */
+	trailing?: ReactNode;
 	onChange: (next: T) => void;
 } & IsRequired;
 
@@ -453,6 +455,7 @@ export function SegmentedRow<T extends string>({
 	isDisabled,
 	isRequired,
 	warning,
+	trailing,
 	onChange,
 }: SegmentedRowProps<T>) {
 	const options = fieldMeta(path)?.optionDescriptions;
@@ -496,6 +499,7 @@ export function SegmentedRow<T extends string>({
 					<FieldStatus type={status.type} message={status.message} variant="detached" />
 				)}
 			</StackItem>
+			{trailing}
 		</InspectorRow>
 	);
 }

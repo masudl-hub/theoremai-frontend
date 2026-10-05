@@ -43,6 +43,8 @@ import {
 	IconBulbOff,
 	IconCertificate,
 	IconChartBar,
+	IconChevronDown,
+	IconChevronRight,
 	IconCircleDashed,
 	IconDatabase,
 	IconDatabaseOff,
@@ -3110,8 +3112,8 @@ function BoundaryRow({
 }
 
 /**
- * One detector: a control that sets every boundary at once, and under it each boundary on its own,
- * in the kernel's order. The control shows no pick when the boundaries differ.
+ * One detector: a control that sets every boundary at once, and a chevron after it that opens each
+ * boundary on its own, in the kernel's order. The control shows no pick when the boundaries differ.
  */
 function DetectorRows({
 	detector,
@@ -3124,6 +3126,7 @@ function DetectorRows({
 	actions: Record<Boundary, DetectAction>;
 	onChange: (next: Record<Boundary, DetectAction>) => void;
 }) {
+	const [isOpen, setIsOpen] = useState(false);
 	const taken = [...new Set(boundaries.map((boundary) => actions[boundary]))];
 	const uniform = taken.length === 1;
 	// The boundaries that are not a tool's, which sit either side of the tool ones in the kernel's order.
@@ -3153,35 +3156,37 @@ function DetectorRows({
 					for (const boundary of boundaries) next[boundary] = action;
 					onChange(next);
 				}}
+				trailing={
+					<IconButton
+						label={`${isOpen ? 'Hide' : 'Set'} ${label} by boundary${uniform ? '' : ' (mixed)'}`}
+						variant="ghost"
+						size="sm"
+						aria-expanded={isOpen}
+						icon={<Icon icon={isOpen ? IconChevronDown : IconChevronRight} size="sm" />}
+						onClick={() => {
+							setIsOpen(!isOpen);
+						}}
+					/>
+				}
 			/>
-			<CollapsibleGroup type="multiple" density="compact">
-				<Collapsible
-					value={detector}
-					trigger={
-						<HStack gap={2} vAlign="center">
-							<Text type="supporting">{`${label} by boundary`}</Text>
-							{!uniform && <Token label="Mixed" size="sm" />}
-						</HStack>
-					}
-				>
-					<VStack gap={2}>
-						{plain
-							.filter((boundary) => BOUNDARIES.indexOf(boundary) < firstTool)
-							.map((boundary) => row(boundary, BOUNDARY_META[boundary].label))}
-						{TOOL_CROSSINGS.map((crossing) => (
-							<VStack key={crossing.title} gap={2}>
-								<Text type="supporting" weight="semibold">
-									{crossing.title}
-								</Text>
-								{TOOL_KINDS.map((kind) => row(crossing.boundary(kind), TOOL_KIND_LABEL[kind]))}
-							</VStack>
-						))}
-						{plain
-							.filter((boundary) => BOUNDARIES.indexOf(boundary) > firstTool)
-							.map((boundary) => row(boundary, BOUNDARY_META[boundary].label))}
-					</VStack>
-				</Collapsible>
-			</CollapsibleGroup>
+			{isOpen && (
+				<VStack gap={2}>
+					{plain
+						.filter((boundary) => BOUNDARIES.indexOf(boundary) < firstTool)
+						.map((boundary) => row(boundary, BOUNDARY_META[boundary].label))}
+					{TOOL_CROSSINGS.map((crossing) => (
+						<VStack key={crossing.title} gap={2}>
+							<Text type="supporting" weight="semibold">
+								{crossing.title}
+							</Text>
+							{TOOL_KINDS.map((kind) => row(crossing.boundary(kind), TOOL_KIND_LABEL[kind]))}
+						</VStack>
+					))}
+					{plain
+						.filter((boundary) => BOUNDARIES.indexOf(boundary) > firstTool)
+						.map((boundary) => row(boundary, BOUNDARY_META[boundary].label))}
+				</VStack>
+			)}
 		</VStack>
 	);
 }
