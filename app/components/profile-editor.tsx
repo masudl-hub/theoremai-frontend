@@ -3122,7 +3122,7 @@ function BoundaryRow({
 
 /**
  * One detector: a control that sets every boundary at once, and a chevron after it that opens each
- * boundary on its own, in the kernel's order. The control shows no pick when the boundaries differ.
+ * boundary on its own, in the kernel's order. The control shows "Mixed" when the boundaries differ.
  */
 function DetectorRows({
 	detector,
