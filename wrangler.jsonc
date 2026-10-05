@@ -17,8 +17,8 @@
 			{ "name": "DECIDE_ALLOWANCE", "class_name": "PlaygroundDecideAllowance" }
 		]
 	},
-	// Guardrail probes no guardrail acted on, kept for review. With no
-	// database_id, the first deploy creates the database; its table is
+	// Guardrail probes some boundary let through, kept for review. With no
+	// database_id, the first deploy creates the database; its tables are
 	// `wrangler d1 migrations apply theorem-probe-log` (add --local for dev).
 	"d1_databases": [
 		{

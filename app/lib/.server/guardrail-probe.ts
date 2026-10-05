@@ -1,51 +1,61 @@
 /**
- * POST /api/playground/probe — one text sent across one guardrail boundary of
- * the draft, on a scripted model: no key is spent and no host is reached. A
- * probe no guardrail acted on is kept as sent, for review.
+ * POST /api/playground/probe — one text sent across every guardrail boundary of
+ * the draft, each on a scripted model: no key is spent and no host is reached.
+ * A text some boundary let through untouched is kept as sent, with every
+ * boundary's answer, for review.
  */
 import { errorKind, type ProfileDefinition, publicError, z } from '@theoremjs/agents';
 import { caughtStatus } from '@theoremjs/agents/host';
 import {
-	type GuardrailProbeResult,
+	type GuardrailProbeAnswer,
 	type PlaygroundDependency,
-	PROBE_BOUNDARIES,
+	PROBE_BATTERY,
 	PROBE_TEXT_LIMIT,
-	type ProbeBoundary,
-	runGuardrailProbe,
+	runGuardrailProbes,
 	type StructuredRegistration,
 	type ToolRegistration,
 } from '@theoremjs/playground';
 import { readBody } from '@theoremjs/react/server';
 
-/** A probe no guardrail acted on. */
-export type ProbeMiss = {
-	boundary: ProbeBoundary;
+/** A probed text and what each boundary's guardrails did with it. */
+export type ProbeEntry = {
 	text: string;
 	/** The draft's guardrails as written. */
 	guardrails: unknown;
-	events: GuardrailProbeResult['guardrails'];
-	passed?: string;
+	answers: readonly Pick<
+		GuardrailProbeAnswer,
+		'boundary' | 'status' | 'taint' | 'guardrails' | 'passed'
+	>[];
 };
 
-export type ProbeMissLog = (miss: ProbeMiss, at: Date) => Promise<void>;
+export type ProbeLog = (entry: ProbeEntry, at: Date) => Promise<void>;
 
-/** The misses table (`migrations/0001_probe_misses.sql`), each row with the kernel version that ran it. */
-export function d1MissLog(db: D1Database, kernel: string): ProbeMissLog {
-	return async (miss, at) => {
-		await db
-			.prepare(
-				'INSERT INTO probe_misses (at, boundary, text, guardrails, events, passed, kernel) VALUES (?, ?, ?, ?, ?, ?, ?)',
-			)
-			.bind(
-				at.toISOString(),
-				miss.boundary,
-				miss.text,
-				JSON.stringify(miss.guardrails ?? null),
-				JSON.stringify(miss.events),
-				miss.passed ?? null,
-				kernel,
-			)
-			.run();
+/**
+ * The probe tables (`migrations/0001_probe_log.sql`): one `probes` row with the
+ * kernel version that ran it, and one `probe_answers` row a boundary.
+ */
+export function d1ProbeLog(db: D1Database, kernel: string): ProbeLog {
+	return async (entry, at) => {
+		const id = crypto.randomUUID();
+		await db.batch([
+			db
+				.prepare('INSERT INTO probes (id, at, text, guardrails, kernel) VALUES (?, ?, ?, ?, ?)')
+				.bind(id, at.toISOString(), entry.text, JSON.stringify(entry.guardrails ?? null), kernel),
+			...entry.answers.map((answer) =>
+				db
+					.prepare(
+						'INSERT INTO probe_answers (probe, boundary, status, taint, events, passed) VALUES (?, ?, ?, ?, ?, ?)',
+					)
+					.bind(
+						id,
+						answer.boundary,
+						answer.status,
+						answer.taint ?? null,
+						JSON.stringify(answer.guardrails),
+						answer.passed ?? null,
+					),
+			),
+		]);
 	};
 }
 
@@ -53,58 +63,56 @@ function part<T>() {
 	return z.custom<T>((value) => typeof value === 'object' && value !== null);
 }
 
-/** The draft as every playground request carries it, and the probe. The kernel checks the draft when it registers it. */
+/** The draft as every playground request carries it, and the text to probe with. The kernel checks the draft when it registers it. */
 const probeRequestSchema = z.object({
 	profile: part<ProfileDefinition>(),
 	customTools: z.array(part<ToolRegistration>()).optional(),
 	structured: part<StructuredRegistration>().optional(),
 	dependencies: z.array(part<PlaygroundDependency>()).optional(),
-	probe: z.object({
-		boundary: z.enum(PROBE_BOUNDARIES),
-		text: z.string().min(1).max(PROBE_TEXT_LIMIT),
-	}),
+	text: z.string().min(1).max(PROBE_TEXT_LIMIT),
 });
 
 function json(status: number, body: unknown): Response {
 	return Response.json(body, { status, headers: { 'cache-control': 'no-store' } });
 }
 
+/** A battery text is known already: what passes it is no news to a reviewer. */
+function isBatteryText(text: string): boolean {
+	return PROBE_BATTERY.some((entry) => entry.text === text);
+}
+
 /**
- * Runs the probe and answers with what the guardrails did. `log` gets a miss
- * through `defer`, after the answer: a log that fails never fails a probe.
+ * Runs the text across every boundary and answers with what the guardrails did
+ * at each. `log` gets a text some boundary passed through `defer`, after the
+ * answer: a log that fails never fails a probe.
  */
 export async function playgroundProbe(
 	request: Request,
-	log: ProbeMissLog | undefined,
+	log: ProbeLog | undefined,
 	defer: (work: Promise<unknown>) => void,
 ): Promise<Response> {
 	let lexicon: ProfileDefinition['lexicon'];
 	try {
 		const body = await readBody(request, probeRequestSchema);
 		lexicon = body.profile.lexicon;
-		const result = await runGuardrailProbe({
+		const answers = await runGuardrailProbes({
 			profile: body.profile,
 			customTools: body.customTools ?? [],
 			structured: body.structured,
 			dependencies: body.dependencies,
-			probe: body.probe,
+			text: body.text,
 			signal: request.signal,
 		});
-		if (!result.hit && log) {
-			const miss: ProbeMiss = {
-				boundary: body.probe.boundary,
-				text: body.probe.text,
-				guardrails: body.profile.guardrails,
-				events: result.guardrails,
-				passed: result.passed,
-			};
+		if (log && answers.some((answer) => answer.status === 'passed') && !isBatteryText(body.text)) {
 			defer(
-				log(miss, new Date()).catch((error: unknown) => {
-					console.error('probe miss not logged', error);
-				}),
+				log({ text: body.text, guardrails: body.profile.guardrails, answers }, new Date()).catch(
+					(error: unknown) => {
+						console.error('probe not logged', error);
+					},
+				),
 			);
 		}
-		return json(200, result);
+		return json(200, { answers });
 	} catch (err) {
 		return json(caughtStatus(err), { error: publicError(err, lexicon), errorKind: errorKind(err) });
 	}

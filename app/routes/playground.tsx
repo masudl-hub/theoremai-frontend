@@ -92,7 +92,12 @@ import {
 	workspaceTree,
 } from '@theoremjs/playground';
 import { type PlaygroundSurfaceHost, playgroundSurface } from '@theoremjs/playground/surface';
-import { type TheoremChatHandle, useDisclosureMotion } from '@theoremjs/react/ui';
+import {
+	InPlace,
+	RaisedPane,
+	type TheoremChatHandle,
+	useDisclosureMotion,
+} from '@theoremjs/react/ui';
 import {
 	type CSSProperties,
 	type Dispatch,
@@ -1848,7 +1853,7 @@ function PreviewHeader({
 				)}
 				{compile.payload && (
 					<Button
-						label={testing.open ? 'Back to chat' : 'Test guardrails'}
+						label={testing.open ? 'Hide guardrail test' : 'Test guardrails'}
 						isIconOnly={phone}
 						icon={<Icon icon={IconShieldSearch} size="sm" />}
 						aria-pressed={testing.open}
@@ -1900,27 +1905,39 @@ function PreviewBody({
 	testing: boolean;
 }) {
 	const { payload, traced } = compile;
-	if (payload && testing) return <GuardrailTester payload={payload} />;
-	return payload ? (
-		<PlaygroundRunner
-			key={run.runKey}
-			payload={payload}
-			mode={connection.mode}
-			runtime={connection.runtime}
-			trace={traced && traceOpen}
-			onActivity={run.markUsed}
-			initialChat={run.initialChat}
-			onChatChange={(snapshot) => {
-				saveConversation(chatWith, snapshot);
-			}}
-			chatRef={chatRef}
-		/>
-	) : (
-		<EmptyState
-			icon={<Icon icon={IconAlertTriangle} />}
-			title="No agent yet"
-			description={`${compile.blocked ?? ''} to run the agent.`}
-		/>
+	if (!payload) {
+		return (
+			<EmptyState
+				icon={<Icon icon={IconAlertTriangle} />}
+				title="No agent yet"
+				description={`${compile.blocked ?? ''} to run the agent.`}
+			/>
+		);
+	}
+	return (
+		<InPlace
+			view={
+				testing ? (
+					<RaisedPane>
+						{(isWide) => <GuardrailTester payload={payload} isWide={isWide} />}
+					</RaisedPane>
+				) : null
+			}
+		>
+			<PlaygroundRunner
+				key={run.runKey}
+				payload={payload}
+				mode={connection.mode}
+				runtime={connection.runtime}
+				trace={traced && traceOpen}
+				onActivity={run.markUsed}
+				initialChat={run.initialChat}
+				onChatChange={(snapshot) => {
+					saveConversation(chatWith, snapshot);
+				}}
+				chatRef={chatRef}
+			/>
+		</InPlace>
 	);
 }
 

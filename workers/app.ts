@@ -22,10 +22,13 @@ export default {
 			return handleLiveRelay(request, env);
 		}
 		// Every playground API request spends one of the visitor's and the site's day.
-		const refused = await gatePlaygroundRequest(
-			request,
-			env.DECIDE_ALLOWANCE && allowanceStore(env.DECIDE_ALLOWANCE),
-		);
+		// The dev server counts nothing: a build never has DEV set, so a deploy always counts.
+		const refused = import.meta.env.DEV
+			? null
+			: await gatePlaygroundRequest(
+					request,
+					env.DECIDE_ALLOWANCE && allowanceStore(env.DECIDE_ALLOWANCE),
+				);
 		if (refused) return refused;
 		const context = new RouterContextProvider();
 		context.set(cloudflareContext, { env, ctx });

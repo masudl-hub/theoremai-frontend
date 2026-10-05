@@ -1,72 +1,138 @@
-import { Badge } from '@astryxdesign/core/Badge';
 import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
-import { Card } from '@astryxdesign/core/Card';
-import { CodeBlock } from '@astryxdesign/core/CodeBlock';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
+import { HoverCard } from '@astryxdesign/core/HoverCard';
 import { HStack } from '@astryxdesign/core/HStack';
 import { Icon } from '@astryxdesign/core/Icon';
+import { IconButton } from '@astryxdesign/core/IconButton';
+import { Item } from '@astryxdesign/core/Item';
 import { ScrollableArea } from '@astryxdesign/core/ScrollableArea';
-import { Section } from '@astryxdesign/core/Section';
-import { Selector } from '@astryxdesign/core/Selector';
 import { StackItem } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
 import { TextArea } from '@astryxdesign/core/TextArea';
+import { Token } from '@astryxdesign/core/Token';
 import { VStack } from '@astryxdesign/core/VStack';
-import { IconShieldSearch } from '@tabler/icons-react';
 import {
-	type GuardrailProbeResult,
+	IconArrowLeft,
+	IconBiohazard,
+	IconBraces,
+	IconBrain,
+	IconEye,
+	IconEyeOff,
+	IconFileText,
+	IconHandStop,
+	IconHistory,
+	IconInfoCircle,
+	IconListDetails,
+	IconMessage,
+	IconPlaylistAdd,
+	IconShield,
+	IconShieldSearch,
+	IconTool,
+	IconUser,
+	IconWorld,
+	IconX,
+} from '@tabler/icons-react';
+import {
+	type GuardrailProbeAnswer,
 	type PlaygroundRunPayload,
-	PROBE_BOUNDARIES,
+	PROBE_BATTERY,
 	PROBE_BOUNDARY_NOTES,
-	PROBE_TEXT_LIMIT,
+	PROBE_STATUSES,
+	type ProbeBatteryCase,
 	type ProbeBoundary,
+	type ProbeStatus,
 	probeDraft,
 	probeRefusal,
 } from '@theoremjs/playground';
-import { useState } from 'react';
+import { PaneLayout, PanePanel, Prose, TraceGuardrailsView } from '@theoremjs/react/ui';
+import { type ReactNode, useState } from 'react';
 
-const BOUNDARY_OPTIONS = PROBE_BOUNDARIES.map((value) => ({
-	value,
-	label: PROBE_BOUNDARY_NOTES[value].label,
-}));
+const BOUNDARY_ICONS: Record<ProbeBoundary, typeof IconUser> = {
+	user: IconUser,
+	history: IconHistory,
+	system: IconFileText,
+	tool_result_local: IconTool,
+	tool_result_remote: IconWorld,
+	tool_arguments: IconBraces,
+	reply: IconMessage,
+	thought: IconBrain,
+};
 
-/** One probe sent, and what came back: the guardrails' answer, or why there is none. */
+/** One text sent, and what came back: each boundary's answer, or why there is none. */
 type Sent = {
 	id: number;
-	boundary: ProbeBoundary;
 	text: string;
-	result?: GuardrailProbeResult;
+	answers?: GuardrailProbeAnswer[];
 	error?: string;
 };
 
-type Outcome = Pick<Sent, 'result' | 'error'>;
+type Outcome = Pick<Sent, 'answers' | 'error'>;
 
-async function sendProbe(
-	payload: PlaygroundRunPayload,
-	boundary: ProbeBoundary,
-	text: string,
-): Promise<Outcome> {
+async function sendProbe(payload: PlaygroundRunPayload, text: string): Promise<Outcome> {
 	try {
 		const response = await fetch('/api/playground/probe', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ ...probeDraft(payload), probe: { boundary, text } }),
+			body: JSON.stringify({ ...probeDraft(payload), text }),
 		});
-		const body = await response.json<GuardrailProbeResult | { error?: string }>();
-		if (response.ok && 'hit' in body) return { result: body };
+		const body = await response.json<{ answers: GuardrailProbeAnswer[] } | { error?: string }>();
+		if (response.ok && 'answers' in body) return { answers: body.answers };
 		return { error: ('error' in body && body.error) || "The probe didn't run." };
 	} catch {
 		return { error: "Couldn't reach the playground server." };
 	}
 }
 
-function verdict(result: GuardrailProbeResult) {
-	if (result.refused) return <Badge variant="success" label="Refused" />;
-	return result.hit ? (
-		<Badge variant="success" label="Hit" />
-	) : (
-		<Badge variant="warning" label="No hit" />
+/** A status as its token: the label, colour and icon the trace's guardrail checks wear. */
+const STATUS_TOKENS: Record<
+	ProbeStatus,
+	{ label: string; color: 'green' | 'blue' | 'orange' | 'red'; icon: typeof IconEye }
+> = {
+	passed: { label: 'Passed', color: 'green', icon: IconEye },
+	flagged: { label: 'Flagged', color: 'blue', icon: IconInfoCircle },
+	redacted: { label: 'Redacted', color: 'orange', icon: IconEyeOff },
+	blocked: { label: 'Blocked', color: 'red', icon: IconHandStop },
+};
+
+function StatusToken({ status, count }: { status: ProbeStatus; count?: number }) {
+	const { label, color, icon } = STATUS_TOKENS[status];
+	return (
+		<Token
+			label={count === undefined ? label : `${label} ${String(count)}`}
+			color={color}
+			icon={<Icon icon={icon} size="sm" />}
+		/>
+	);
+}
+
+/** What one boundary's guardrails did, and whether its turn was tainted by what it read. */
+function Verdict({ answer }: { answer: GuardrailProbeAnswer }) {
+	return (
+		<HStack gap={1} wrap="wrap">
+			<StatusToken status={answer.status} />
+			{answer.taint && (
+				<Token
+					label={answer.taint === 'steered' ? 'Steered' : 'Tainted'}
+					color="yellow"
+					icon={<Icon icon={IconBiohazard} size="sm" />}
+				/>
+			)}
+		</HStack>
+	);
+}
+
+/** A sent text's answers in short: how many boundaries did each thing, strongest first. */
+function Tally({ sent }: { sent: Sent }) {
+	const { answers } = sent;
+	if (!answers) return <Token label={sent.error ?? ''} color="gray" />;
+	return (
+		<HStack gap={1} wrap="wrap">
+			{PROBE_STATUSES.toReversed().map((status) => {
+				const count = answers.filter((answer) => answer.status === status).length;
+				return count > 0 && <StatusToken key={status} status={status} count={count} />;
+			})}
+		</HStack>
 	);
 }
 
@@ -76,124 +142,463 @@ function passedLabel(boundary: ProbeBoundary): string {
 	return boundary === 'tool_arguments' ? 'The tool got' : 'The model read';
 }
 
-function Decisions({ result }: { result: GuardrailProbeResult }) {
-	const decisions = result.guardrails.filter((event) => event.hits.length > 0);
-	if (!decisions.length) return null;
+/**
+ * A boundary on hover, as the editor's field labels show a field: what crosses it, then when the
+ * kernel reads it and what the kernel does there.
+ */
+function BoundaryCard({ boundary, children }: { boundary: ProbeBoundary; children: ReactNode }) {
+	const { label, note, when, checks } = PROBE_BOUNDARY_NOTES[boundary];
 	return (
-		<VStack gap={1}>
-			{decisions.map((event) => (
-				<Text key={`${event.stage}:${event.hits.map((hit) => hit.rule).join()}`} type="supporting">
-					{`${event.stage} · ${event.action} · ${[...new Set(event.hits.map((hit) => hit.label ?? hit.rule))].join(', ')}`}
+		<HoverCard
+			label={label}
+			content={
+				<VStack gap={2} maxWidth={280}>
+					<Text>{note}</Text>
+					<HStack gap={1} wrap="wrap">
+						<Token label={label} size="sm" />
+					</HStack>
+					<Text color="secondary">{when}</Text>
+					<Text color="secondary">{checks}</Text>
+				</VStack>
+			}
+		>
+			{children}
+		</HoverCard>
+	);
+}
+
+function SectionTitle({ title, children }: { title: string; children?: ReactNode }) {
+	return (
+		<HStack gap={2} align="center" justify="between">
+			<Text weight="semibold">{title}</Text>
+			{children}
+		</HStack>
+	);
+}
+
+/** A battery case: what it is and what makes it hard. */
+function BatteryRow({
+	entry,
+	isDisabled,
+	onSend,
+}: {
+	entry: ProbeBatteryCase;
+	isDisabled: boolean;
+	onSend: () => void;
+}) {
+	return (
+		<Item
+			startContent={<Icon icon={BOUNDARY_ICONS[entry.boundary]} size="sm" color="secondary" />}
+			label={
+				<Text weight="medium" maxLines={1}>
+					{entry.title}
 				</Text>
-			))}
+			}
+			description={
+				<Text type="supporting" color="secondary" maxLines={2}>
+					{entry.why}
+				</Text>
+			}
+			align="start"
+			density="compact"
+			isDisabled={isDisabled}
+			onClick={onSend}
+		/>
+	);
+}
+
+/** The examples in the row: one hard text from each kind of boundary. */
+const ROW_EXAMPLES = [
+	'user.zero_width',
+	'user.split_key',
+	'tool_result_remote.approved',
+	'tool_arguments.base64_key',
+	'reply.image_reference',
+].flatMap((id) => PROBE_BATTERY.filter((entry) => entry.id === id));
+
+/** The battery as a row of tokens to scroll through, one click to send one; and the ways to all of them. */
+function ExampleRow({
+	isShown,
+	isDisabled,
+	onShow,
+	onSend,
+}: {
+	isShown: boolean;
+	isDisabled: boolean;
+	onShow: () => void;
+	onSend: (texts: readonly string[]) => void;
+}) {
+	return (
+		<HStack gap={2} align="center">
+			<StackItem size="fill">
+				<ScrollableArea label="Examples" axis="inline" style={{ scrollbarWidth: 'none' }}>
+					<HStack gap={1}>
+						{ROW_EXAMPLES.map((entry) => (
+							<Token
+								key={entry.id}
+								label={entry.title}
+								size="sm"
+								description={entry.why}
+								isDisabled={isDisabled}
+								onClick={() => {
+									onSend([entry.text]);
+								}}
+							/>
+						))}
+					</HStack>
+				</ScrollableArea>
+			</StackItem>
+			<StackItem size="static">
+				<HStack gap={1}>
+					<IconButton
+						label={isShown ? 'Hide all examples' : 'Show all examples'}
+						tooltip={isShown ? 'Hide all examples' : 'Show all examples'}
+						variant="ghost"
+						size="sm"
+						icon={<Icon icon={IconListDetails} size="sm" />}
+						aria-pressed={isShown}
+						onClick={onShow}
+					/>
+					<IconButton
+						label="Load all examples"
+						tooltip="Load all examples"
+						variant="ghost"
+						size="sm"
+						icon={<Icon icon={IconPlaylistAdd} size="sm" />}
+						isDisabled={isDisabled}
+						onClick={() => {
+							onSend(PROBE_BATTERY.map((entry) => entry.text));
+						}}
+					/>
+				</HStack>
+			</StackItem>
+		</HStack>
+	);
+}
+
+/** The battery's texts, beside the results or in their place; one click sends one. */
+function Examples({
+	isClose,
+	isDisabled,
+	onBack,
+	onSend,
+}: {
+	isClose: boolean;
+	isDisabled: boolean;
+	onBack: () => void;
+	onSend: (texts: readonly string[]) => void;
+}) {
+	return (
+		<VStack padding={4}>
+			<VStack gap={4}>
+				<VStack gap={2}>
+					<HStack>
+						<Button
+							label={isClose ? 'Close' : 'Back'}
+							variant="ghost"
+							size="sm"
+							icon={<Icon icon={isClose ? IconX : IconArrowLeft} />}
+							onClick={onBack}
+						/>
+					</HStack>
+					<Item
+						startContent={<Icon icon={IconShieldSearch} size="sm" color="secondary" />}
+						label={<Text weight="semibold">Examples</Text>}
+						align="start"
+					/>
+				</VStack>
+				<VStack gap={0}>
+					{PROBE_BATTERY.map((entry) => (
+						<BatteryRow
+							key={entry.id}
+							entry={entry}
+							isDisabled={isDisabled}
+							onSend={() => {
+								onSend([entry.text]);
+							}}
+						/>
+					))}
+				</VStack>
+			</VStack>
 		</VStack>
 	);
 }
 
-function SentProbe({ sent }: { sent: Sent }) {
-	const { result, error } = sent;
+/** A row of the sent list: the text and its answers in short. */
+function SentRow({ sent, onOpen }: { sent: Sent; onOpen: () => void }) {
 	return (
-		<Card variant="muted" padding={3}>
-			<VStack gap={2}>
-				<HStack gap={2} vAlign="center">
-					{result && verdict(result)}
-					<Text type="supporting" color="secondary">
-						{PROBE_BOUNDARY_NOTES[sent.boundary].label}
-					</Text>
-				</HStack>
-				<Text>{sent.text}</Text>
-				{error && <Banner status="error" title={error} />}
-				{result && <Decisions result={result} />}
-				{result?.refused?.message && (
-					<Text type="supporting" color="secondary">
-						{result.refused.message}
-					</Text>
-				)}
-				{result?.passed !== undefined && (
-					<CodeBlock
-						title={passedLabel(sent.boundary)}
-						code={result.passed}
-						language="text"
-						hasLanguageLabel={false}
-						isWrapped
-						width="100%"
+		<Item
+			startContent={<Icon icon={IconShield} size="sm" color="secondary" />}
+			label={
+				<Text weight="medium" maxLines={1}>
+					{sent.text}
+				</Text>
+			}
+			description={<Tally sent={sent} />}
+			align="start"
+			density="compact"
+			onClick={onOpen}
+		/>
+	);
+}
+
+/** A boundary of an open text: where it went in and what the guardrails did there. */
+function AnswerRow({ answer, onOpen }: { answer: GuardrailProbeAnswer; onOpen: () => void }) {
+	return (
+		<Item
+			startContent={<Icon icon={BOUNDARY_ICONS[answer.boundary]} size="sm" color="secondary" />}
+			label={
+				<BoundaryCard boundary={answer.boundary}>
+					<Text weight="medium">{PROBE_BOUNDARY_NOTES[answer.boundary].label}</Text>
+				</BoundaryCard>
+			}
+			endContent={<Verdict answer={answer} />}
+			density="compact"
+			onClick={onOpen}
+		/>
+	);
+}
+
+/** An open text: the way back, the text as sent, and each boundary's answer. */
+function SentOverview({
+	sent,
+	onBack,
+	onOpen,
+}: {
+	sent: Sent;
+	onBack: () => void;
+	onOpen: (boundary: ProbeBoundary) => void;
+}) {
+	return (
+		<VStack gap={5} padding={4}>
+			<VStack gap={4}>
+				<HStack>
+					<Button
+						label="All probes"
+						variant="ghost"
+						size="sm"
+						icon={<Icon icon={IconArrowLeft} />}
+						onClick={onBack}
 					/>
-				)}
+				</HStack>
+				{sent.error && <Banner status="error" title={sent.error} />}
+				<PanePanel title="Sent">
+					<Prose text={sent.text} />
+				</PanePanel>
 			</VStack>
-		</Card>
+			{sent.answers && (
+				<VStack gap={2}>
+					<SectionTitle title="Boundaries" />
+					<VStack gap={0}>
+						{sent.answers.map((answer) => (
+							<AnswerRow
+								key={answer.boundary}
+								answer={answer}
+								onOpen={() => {
+									onOpen(answer.boundary);
+								}}
+							/>
+						))}
+					</VStack>
+				</VStack>
+			)}
+		</VStack>
+	);
+}
+
+/** What leads one boundary's answer: the way back, the boundary and its answer, and what got through. */
+function AnswerHead({
+	answer,
+	isClose,
+	onBack,
+}: {
+	answer: GuardrailProbeAnswer;
+	isClose: boolean;
+	onBack: () => void;
+}) {
+	const { label, checks } = PROBE_BOUNDARY_NOTES[answer.boundary];
+	return (
+		<VStack gap={4}>
+			<VStack gap={2}>
+				<HStack>
+					<Button
+						label={isClose ? 'Close' : 'Back'}
+						variant="ghost"
+						size="sm"
+						icon={<Icon icon={isClose ? IconX : IconArrowLeft} />}
+						onClick={onBack}
+					/>
+				</HStack>
+				<Item
+					startContent={<Icon icon={BOUNDARY_ICONS[answer.boundary]} size="sm" color="secondary" />}
+					label={<Text weight="semibold">{label}</Text>}
+					description={checks}
+					align="start"
+				/>
+				<Verdict answer={answer} />
+				{answer.refused?.message && <Text color="secondary">{answer.refused.message}</Text>}
+			</VStack>
+			{answer.passed !== undefined && (
+				<PanePanel title={passedLabel(answer.boundary)}>
+					<Prose text={answer.passed} />
+				</PanePanel>
+			)}
+		</VStack>
 	);
 }
 
 /**
- * Sends texts across one guardrail boundary of the compiled agent and lists what its guardrails
- * did with each, newest first. The model is scripted, so a probe spends no key.
+ * Sends texts across every guardrail boundary of the compiled agent and lists what its guardrails
+ * did with each, newest first. A sent text opens on its boundaries, and a boundary on what its
+ * trace says of guardrails. The model is scripted, so a probe spends no key.
  */
-export function GuardrailTester({ payload }: { payload: PlaygroundRunPayload }) {
-	const [boundary, setBoundary] = useState<ProbeBoundary>('user');
+export function GuardrailTester({
+	payload,
+	isWide,
+}: {
+	payload: PlaygroundRunPayload;
+	isWide: boolean;
+}) {
 	const [text, setText] = useState('');
 	const [busy, setBusy] = useState(false);
 	const [sent, setSent] = useState<Sent[]>([]);
+	const [openId, setOpenId] = useState<number | null>(null);
+	const [boundary, setBoundary] = useState<ProbeBoundary | null>(null);
+	const [examples, setExamples] = useState(false);
 	const refusal = probeRefusal(payload.profile);
 	if (refusal) {
-		return <EmptyState icon={<Icon icon={IconShieldSearch} />} title={refusal} />;
+		return (
+			<VStack height="100%" vAlign="center" padding={4}>
+				<EmptyState
+					icon={<Icon icon={IconShieldSearch} size="lg" color="secondary" />}
+					title={refusal}
+					isCompact
+				/>
+			</VStack>
+		);
 	}
-	const send = async () => {
-		const probe = text.trim();
-		if (!probe || busy) return;
+	const send = async (texts: readonly string[]) => {
+		if (busy) return;
 		setBusy(true);
-		const outcome = await sendProbe(payload, boundary, probe);
-		setSent((before) => [{ id: before.length, boundary, text: probe, ...outcome }, ...before]);
+		for (const each of texts) {
+			const outcome = await sendProbe(payload, each);
+			setSent((before) => [{ id: before.length, text: each, ...outcome }, ...before]);
+		}
 		setBusy(false);
 	};
-	return (
-		<VStack height="100%">
-			<Section variant="transparent" padding={3}>
-				<VStack gap={2}>
-					<Selector
-						label="Send as"
-						size="sm"
-						value={boundary}
-						options={BOUNDARY_OPTIONS}
-						description={PROBE_BOUNDARY_NOTES[boundary].note}
-						onChange={(next) => {
-							const picked = PROBE_BOUNDARIES.find((candidate) => candidate === next);
-							if (picked) setBoundary(picked);
+	const open = sent.find((entry) => entry.id === openId);
+	if (open) {
+		const answer = open.answers?.find((candidate) => candidate.boundary === boundary);
+		return (
+			<PaneLayout
+				isWide={isWide}
+				label="Test guardrails"
+				detailLabel={answer ? PROBE_BOUNDARY_NOTES[answer.boundary].label : ''}
+				overview={
+					<SentOverview
+						sent={open}
+						onBack={() => {
+							setOpenId(null);
+							setBoundary(null);
+						}}
+						onOpen={setBoundary}
+					/>
+				}
+				detail={
+					answer && (
+						<TraceGuardrailsView
+							records={answer.traces}
+							head={
+								<AnswerHead
+									answer={answer}
+									isClose={isWide}
+									onBack={() => {
+										setBoundary(null);
+									}}
+								/>
+							}
+						/>
+					)
+				}
+			/>
+		);
+	}
+	const probe = text.trim();
+	const overview = (
+		<VStack gap={5} padding={4}>
+			<Text weight="semibold">Test guardrails</Text>
+			<VStack gap={3}>
+				<ExampleRow
+					isShown={examples}
+					isDisabled={busy}
+					onShow={() => {
+						setExamples(!examples);
+					}}
+					onSend={(texts) => {
+						void send(texts);
+					}}
+				/>
+				<TextArea
+					label="Text"
+					isLabelHidden
+					size="sm"
+					rows={3}
+					placeholder="Sent across every boundary"
+					value={text}
+					onChange={setText}
+				/>
+				<HStack hAlign="end">
+					<Button
+						label="Send"
+						variant="primary"
+						isLoading={busy}
+						isDisabled={!probe}
+						onClick={() => {
+							void send([probe]);
 						}}
 					/>
-					<TextArea
-						label="Text"
-						isLabelHidden
-						rows={4}
-						maxLength={PROBE_TEXT_LIMIT}
-						hasSpellCheck={false}
-						placeholder="Text to send across this boundary"
-						value={text}
-						onChange={setText}
-					/>
-					<HStack>
-						<Button
-							label="Send"
-							variant="primary"
-							isLoading={busy}
-							isDisabled={!text.trim()}
-							onClick={() => {
-								void send();
-							}}
-						/>
-					</HStack>
+				</HStack>
+			</VStack>
+			{sent.length > 0 && (
+				<VStack gap={2}>
+					<SectionTitle title="Sent" />
+					<VStack gap={0}>
+						{sent.map((entry) => (
+							<SentRow
+								key={entry.id}
+								sent={entry}
+								onOpen={() => {
+									setOpenId(entry.id);
+								}}
+							/>
+						))}
+					</VStack>
 				</VStack>
-			</Section>
-			<StackItem size="fill">
-				<ScrollableArea label="Probes sent">
-					<Section variant="transparent" padding={3}>
-						<VStack gap={3}>
-							{sent.map((probe) => (
-								<SentProbe key={probe.id} sent={probe} />
-							))}
-						</VStack>
-					</Section>
-				</ScrollableArea>
-			</StackItem>
+			)}
 		</VStack>
+	);
+	return (
+		<PaneLayout
+			isWide={isWide}
+			label="Test guardrails"
+			detailLabel="Examples"
+			overview={overview}
+			detail={
+				examples && (
+					<Examples
+						isClose={isWide}
+						isDisabled={busy}
+						onBack={() => {
+							setExamples(false);
+						}}
+						onSend={(texts) => {
+							// Narrow, the examples sit over the results: sending one shows them again.
+							if (!isWide) setExamples(false);
+							void send(texts);
+						}}
+					/>
+				)
+			}
+		/>
 	);
 }
