@@ -2,6 +2,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { Center } from '@astryxdesign/core/Center';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { Icon } from '@astryxdesign/core/Icon';
+import { LayerProvider } from '@astryxdesign/core/Layer';
 import { Theme } from '@astryxdesign/core/theme';
 import { IconAlertTriangle, IconMapOff } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
@@ -78,7 +79,10 @@ export function Layout({ children }: { children: ReactNode }) {
 export default function App() {
 	return (
 		<Theme theme={theoremSiteTheme} mode="dark">
-			<Outlet />
+			{/* AppShell doesn't mount the layer systems; toasts need this to have a viewport. */}
+			<LayerProvider>
+				<Outlet />
+			</LayerProvider>
 		</Theme>
 	);
 }
