@@ -5,6 +5,7 @@ export const guardrails: DocArticleDef = {
 	updated: '2026-10-05',
 	title: 'Setting guardrails',
 	entry: 'src/guardrails/mod.ts',
+	covers: ['src/guardrails'],
 	summary:
 		'Choose which checks run on a turn: input cleaning, the system-prompt canary, reply checks, tool limits and a daily quota.',
 	cover: {

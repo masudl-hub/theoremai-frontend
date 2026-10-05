@@ -5,6 +5,7 @@ export const interfaceChapter: DocArticleDef = {
 	updated: '2026-10-05',
 	title: 'Building the interface',
 	entry: 'src/interface/mod.ts',
+	covers: ['src/interface'],
 	summary:
 		'Serve one profile from your server and show a chat in the browser that reads its inputs, models and tools from that profile.',
 	cover: {

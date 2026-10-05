@@ -5,6 +5,12 @@ export const statuses: DocArticleDef = {
 	updated: '2026-10-05',
 	title: 'Describing statuses',
 	entry: 'src/guardrails/lexicon.ts',
+	covers: [
+		'src/kernel/turn-events.ts',
+		'src/kernel/stop.ts',
+		'src/guardrails/lexicon.ts',
+		'src/guardrails/error.ts',
+	],
 	summary:
 		'Replace the words Theorem shows people, such as error and file notices, and the notes it sends to the model, key by key.',
 	cover: {

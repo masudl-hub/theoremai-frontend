@@ -5,6 +5,7 @@ export const modalities: DocArticleDef = {
 	updated: '2026-10-05',
 	title: 'Choosing a modality',
 	entry: 'src/kernel/registry/profiles.ts',
+	covers: ['src/kernel/registry/profiles.ts', 'src/kernel/schema.ts'],
 	summary:
 		'Pick the profile type that fits your agent: text, image, speech, live, decision or host. Each type has its own fields and its own door.',
 	cover: {

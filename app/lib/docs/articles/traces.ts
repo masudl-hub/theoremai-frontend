@@ -5,6 +5,7 @@ export const traces: DocArticleDef = {
 	updated: '2026-10-05',
 	title: 'Recording traces',
 	entry: 'src/observability/mod.ts',
+	covers: ['src/observability'],
 	summary:
 		'Record what each run did: register a destination, point writeTo at it, then choose what a trace record keeps and scrubs.',
 	cover: {

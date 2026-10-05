@@ -5,6 +5,7 @@ export const turnBehaviour: DocArticleDef = {
 	updated: '2026-10-05',
 	title: 'Setting turn behaviour',
 	entry: 'src/kernel/registry/profiles.ts',
+	covers: ['src/kernel/stop.ts', 'src/kernel/registry/resolve.ts'],
 	summary:
 		'Let a user continue a reply that stopped early, and decide whether a running turn takes new messages from the user.',
 	cover: {

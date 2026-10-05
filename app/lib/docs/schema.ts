@@ -81,6 +81,11 @@ export type DocArticleHead = {
 	title: string;
 	/** Kernel-relative file this chapter opens on GitHub. */
 	entry: string;
+	/**
+	 * Package files and folders (relative to the package root) whose behaviour this chapter
+	 * describes. `npm run lint:docs` fails when one changes after the chapter's last review.
+	 */
+	covers: readonly string[];
 	summary: string;
 	/** A still from public/imagery at least 16:9 wide. */
 	cover: {

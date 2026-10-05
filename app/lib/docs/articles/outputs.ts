@@ -5,6 +5,11 @@ export const outputs: DocArticleDef = {
 	updated: '2026-10-05',
 	title: 'Declaring outputs',
 	entry: 'src/kernel/registry/profiles.ts',
+	covers: [
+		'src/kernel/registry/profile-outputs.ts',
+		'src/kernel/registry/schemas.ts',
+		'src/kernel/engine/repair.ts',
+	],
 	summary:
 		'Make a text agent reply in a fixed JSON shape, check the reply, and choose how it streams. Image and speech agents return media.',
 	cover: {

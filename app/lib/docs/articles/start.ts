@@ -5,6 +5,7 @@ export const start: DocArticleDef = {
 	updated: '2026-10-05',
 	title: 'Getting started',
 	entry: 'src/kernel/engine/runner/mod.ts',
+	covers: ['mod.ts', 'src/kernel/engine/runner', 'src/kernel/registry/profiles.ts'],
 	summary:
 		'Run your first agent turn in about 20 lines, see how the guide fits together, then read the full Harbor desk program.',
 	cover: {

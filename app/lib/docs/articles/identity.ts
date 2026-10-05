@@ -5,6 +5,12 @@ export const identity: DocArticleDef = {
 	updated: '2026-10-05',
 	title: 'Setting the identity',
 	entry: 'src/kernel/registry/profiles.ts',
+	covers: [
+		'src/kernel/registry/profiles.ts',
+		'src/kernel/registry/system-prompt.ts',
+		'src/kernel/registry/system-role.ts',
+		'src/kernel/system-parts.ts',
+	],
 	summary:
 		'Name your agent and tell the model who it is. Change the instruction by role, add one for a request, and keep secret lines out of replies.',
 	cover: {

@@ -5,6 +5,13 @@ export const runner: DocArticleDef = {
 	updated: '2026-10-05',
 	title: 'Running a turn',
 	entry: 'src/kernel/engine/runner/mod.ts',
+	covers: [
+		'src/kernel/engine/runner',
+		'src/kernel/engine/decision.ts',
+		'src/kernel/engine/session',
+		'src/kernel/tools/invoke.ts',
+		'src/kernel/stages.ts',
+	],
 	summary:
 		'Call the door that matches your profile type, read the event stream, and resume a tool that paused for approval.',
 	cover: {

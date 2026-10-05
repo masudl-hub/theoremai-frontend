@@ -5,6 +5,7 @@ export const tools: DocArticleDef = {
 	updated: '2026-10-05',
 	title: 'Registering tools',
 	entry: 'src/kernel/tools/mod.ts',
+	covers: ['src/kernel/tools', 'src/kernel/auth'],
 	summary:
 		'Register a tool with registerTool and allow it by name. See why a call fails, the order of every call, and how OAuth signs the user in.',
 	cover: {

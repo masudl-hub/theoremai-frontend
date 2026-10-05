@@ -76,6 +76,15 @@ function assertChapterFiles(options: ComposeOptions, def: DocArticleDef): void {
 	if (!existsSync(path.join(options.kernelRoot, def.entry))) {
 		throw new Error(`${def.slug} entry missing in the kernel: ${def.entry}`);
 	}
+	if (def.covers.length === 0) throw new Error(`${def.slug} covers no package files`);
+	for (const covered of def.covers) {
+		if (covered.startsWith('/') || covered.includes('..')) {
+			throw new Error(`${def.slug} covers ${covered}: use a path relative to the package root`);
+		}
+		if (!existsSync(path.join(options.kernelRoot, covered))) {
+			throw new Error(`${def.slug} covers ${covered}, which is not in the package`);
+		}
+	}
 	const cover = assertPublic(options, def.slug, def.cover.src);
 	if (!cover.endsWith('.png') || pngRatio(cover) < COVER_MIN_RATIO) {
 		throw new Error(`${def.slug} cover ${def.cover.src} must be a PNG at least 16:9 wide`);

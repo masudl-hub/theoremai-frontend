@@ -5,6 +5,13 @@ export const models: DocArticleDef = {
 	updated: '2026-10-05',
 	title: 'Binding models',
 	entry: 'src/providers/mod.ts',
+	covers: [
+		'src/providers',
+		'src/kernel/registry/vault.ts',
+		'src/kernel/registry/catalog.ts',
+		'src/kernel/registry/profiles.ts',
+		'src/kernel/schema.ts',
+	],
 	summary:
 		'Bind a model with a protocol, a provider and an apiId. Give it a key slot, pick a model per request, and fix a binding that fails.',
 	cover: {

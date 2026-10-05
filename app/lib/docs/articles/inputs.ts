@@ -5,6 +5,12 @@ export const inputs: DocArticleDef = {
 	updated: '2026-10-05',
 	title: 'Declaring inputs',
 	entry: 'src/kernel/registry/profiles.ts',
+	covers: [
+		'src/kernel/registry/ingress.ts',
+		'src/kernel/registry/attachments.ts',
+		'src/kernel/registry/catalog.ts',
+		'src/kernel/engine/live-ingress.ts',
+	],
 	summary:
 		'Declare what a turn may send: text, files, voice or choices. Theorem refuses any turn that sends more than the profile declares.',
 	cover: {
