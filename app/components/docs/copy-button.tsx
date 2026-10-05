@@ -1,6 +1,6 @@
+import { useClipboard } from '@astryxdesign/core/hooks';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { IconCheck, IconCopy } from '@tabler/icons-react';
-import { useState } from 'react';
 
 export function CopyIconButton({
 	label,
@@ -11,24 +11,16 @@ export function CopyIconButton({
 	copiedLabel: string;
 	text: string;
 }) {
-	const [copied, setCopied] = useState(false);
+	const { copy, isCopied } = useClipboard({ announce: copiedLabel });
 	return (
 		<IconButton
-			label={copied ? copiedLabel : label}
-			tooltip={copied ? copiedLabel : label}
+			label={isCopied ? copiedLabel : label}
+			tooltip={isCopied ? copiedLabel : label}
 			variant="ghost"
 			size="sm"
-			icon={copied ? <IconCheck /> : <IconCopy />}
+			icon={isCopied ? <IconCheck /> : <IconCopy />}
 			onClick={() => {
-				void navigator.clipboard
-					.writeText(text)
-					.then(() => {
-						setCopied(true);
-						window.setTimeout(() => {
-							setCopied(false);
-						}, 2000);
-					})
-					.catch(() => undefined);
+				void copy(text);
 			}}
 		/>
 	);

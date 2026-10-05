@@ -4,6 +4,7 @@ import { HStack } from '@astryxdesign/core/HStack';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Layout, LayoutContent, LayoutPanel } from '@astryxdesign/core/Layout';
 import { Link as AstryxLink } from '@astryxdesign/core/Link';
+import { MobileNav } from '@astryxdesign/core/MobileNav';
 import { Outline, type OutlineItem } from '@astryxdesign/core/Outline';
 import { type ResizableProps, ResizeHandle, useResizable } from '@astryxdesign/core/Resizable';
 import { ScrollableArea } from '@astryxdesign/core/ScrollableArea';
@@ -15,7 +16,7 @@ import { TextInput } from '@astryxdesign/core/TextInput';
 import { Token } from '@astryxdesign/core/Token';
 import { MediaTheme } from '@astryxdesign/core/theme';
 import { VStack } from '@astryxdesign/core/VStack';
-import { IconBrandGithub, IconMenu2, IconSearch, IconX } from '@tabler/icons-react';
+import { IconBrandGithub, IconMenu2, IconSearch } from '@tabler/icons-react';
 import {
 	type CSSProperties,
 	type ReactNode,
@@ -196,31 +197,17 @@ type ChapterPaneProps = {
 	opened: ReadonlySet<string>;
 	onOpenChange: (id: string, collapsed: boolean) => void;
 	onSection: (blockId: string) => void;
-	onClose?: () => void;
 };
 
-/** The docs title, the close button on the sheet, and when the docs last changed. */
-function ChapterPaneHeader({
-	updated,
-	onClose,
-}: {
-	updated: string | undefined;
-	onClose?: () => void;
-}) {
+/** The docs title, and when the docs last changed. */
+function ChapterPaneHeader({ updated }: { updated: string | undefined }) {
 	return (
 		<VStack gap={1}>
-			<HStack vAlign="center" gap={2}>
-				<StackItem size="fill">
-					<Heading level={3}>
-						<AstryxLink href="/docs" type="inherit" color="inherit" hasUnderline={false}>
-							Theorem Docs
-						</AstryxLink>
-					</Heading>
-				</StackItem>
-				{onClose ? (
-					<IconButton label="Close chapters" icon={<IconX />} variant="ghost" onClick={onClose} />
-				) : null}
-			</HStack>
+			<Heading level={3}>
+				<AstryxLink href="/docs" type="inherit" color="inherit" hasUnderline={false}>
+					Theorem Docs
+				</AstryxLink>
+			</Heading>
 			{updated ? (
 				<Text type="supporting" color="secondary">
 					{updated}
@@ -230,10 +217,24 @@ function ChapterPaneHeader({
 	);
 }
 
-function ChapterPane({
-	updated,
+function ChapterSearch({
 	query,
 	onQueryChange,
+}: Pick<ChapterPaneProps, 'query' | 'onQueryChange'>) {
+	return (
+		<TextInput
+			label="Search docs"
+			isLabelHidden
+			placeholder="Search"
+			value={query}
+			onChange={onQueryChange}
+			startIcon={IconSearch}
+			hasClear
+		/>
+	);
+}
+
+function ChapterTree({
 	tree,
 	article,
 	hashId,
@@ -241,37 +242,34 @@ function ChapterPane({
 	opened,
 	onOpenChange,
 	onSection,
-	onClose,
 }: ChapterPaneProps) {
+	return (
+		<SideNavSection title="Chapters" isHeaderHidden>
+			{tree.map((node) => (
+				<DocsNavItem
+					key={node.id}
+					node={node}
+					article={article}
+					hashId={hashId}
+					expandAll={searching}
+					opened={opened}
+					onOpenChange={onOpenChange}
+					onSection={onSection}
+				/>
+			))}
+		</SideNavSection>
+	);
+}
+
+function ChapterPane(pane: ChapterPaneProps) {
 	return (
 		<Section variant="raised" height="100%" padding={4}>
 			<VStack gap={4} height="100%">
-				<ChapterPaneHeader updated={updated} onClose={onClose} />
-				<TextInput
-					label="Search docs"
-					isLabelHidden
-					placeholder="Search"
-					value={query}
-					onChange={onQueryChange}
-					startIcon={IconSearch}
-					hasClear
-				/>
+				<ChapterPaneHeader updated={pane.updated} />
+				<ChapterSearch query={pane.query} onQueryChange={pane.onQueryChange} />
 				<StackItem size="fill">
 					<ScrollableArea label="Chapters" height="100%">
-						<SideNavSection title="Chapters" isHeaderHidden>
-							{tree.map((node) => (
-								<DocsNavItem
-									key={node.id}
-									node={node}
-									article={article}
-									hashId={hashId}
-									expandAll={searching}
-									opened={opened}
-									onOpenChange={onOpenChange}
-									onSection={onSection}
-								/>
-							))}
-						</SideNavSection>
+						<ChapterTree {...pane} />
 					</ScrollableArea>
 				</StackItem>
 			</VStack>
@@ -279,27 +277,12 @@ function ChapterPane({
 	);
 }
 
-const MONTHS = [
-	'Jan',
-	'Feb',
-	'Mar',
-	'Apr',
-	'May',
-	'June',
-	'July',
-	'Aug',
-	'Sept',
-	'Oct',
-	'Nov',
-	'Dec',
-] as const;
+/** A chapter's date reads the same in every time zone, so it is formatted in UTC. */
+const DAY = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeZone: 'UTC' });
 
 function formatDay(iso: string | undefined): string | undefined {
-	const day = iso === undefined ? undefined : /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
-	if (!day) return undefined;
-	const monthIndex = Number(day[2]) - 1;
-	if (!Number.isInteger(monthIndex) || monthIndex < 0 || monthIndex > 11) return undefined;
-	return `${MONTHS[monthIndex]} ${String(Number(day[3]))}, ${day[1]}`;
+	const at = iso === undefined ? Number.NaN : Date.parse(iso);
+	return Number.isNaN(at) ? undefined : DAY.format(at);
 }
 
 function docsUpdatedOn(iso: string | undefined): string | undefined {
@@ -321,23 +304,13 @@ function toggledOpen(prev: ReadonlySet<string>, id: string, collapsed: boolean):
 	return next;
 }
 
-/** The small-screen chapters sheet: closes on navigation and on Escape. */
-function useChaptersSheet(pathname: string, hash: string) {
+/** The small-screen chapters drawer: closes on navigation. */
+function useChaptersDrawer(pathname: string, hash: string) {
 	const [chaptersOpen, setChaptersOpen] = useState(false);
 	useEffect(() => {
 		const here = `${pathname}${hash}`;
 		if (here.length > 0) setChaptersOpen(false);
 	}, [pathname, hash]);
-	useEffect(() => {
-		if (!chaptersOpen) return;
-		const onKey = (event: KeyboardEvent) => {
-			if (event.key === 'Escape') setChaptersOpen(false);
-		};
-		document.addEventListener('keydown', onKey);
-		return () => {
-			document.removeEventListener('keydown', onKey);
-		};
-	}, [chaptersOpen]);
 	return [chaptersOpen, setChaptersOpen] as const;
 }
 
@@ -430,10 +403,7 @@ export function DocsFrame({
 		containerRef: layoutRef,
 		autoSaveId: 'docs.tree',
 	});
-	const [chaptersOpen, setChaptersOpen] = useChaptersSheet(pathname, hash);
-	const closeChapters = () => {
-		setChaptersOpen(false);
-	};
+	const [chaptersOpen, setChaptersOpen] = useChaptersDrawer(pathname, hash);
 	const chooseSection = (blockId: string) => {
 		setChaptersOpen(false);
 		onSection?.(blockId);
@@ -454,11 +424,18 @@ export function DocsFrame({
 						}}
 					/>
 					{children}
-					{chaptersOpen ? (
-						<div className="docs-chapters-sheet" role="dialog" aria-label="Chapters">
-							<ChapterPane {...pane} onClose={closeChapters} />
-						</div>
-					) : null}
+					<MobileNav
+						isOpen={chaptersOpen}
+						onOpenChange={setChaptersOpen}
+						side="start"
+						label="Chapters"
+						header={<ChapterPaneHeader updated={pane.updated} />}
+					>
+						<VStack gap={4}>
+							<ChapterSearch query={pane.query} onQueryChange={pane.onQueryChange} />
+							<ChapterTree {...pane} />
+						</VStack>
+					</MobileNav>
 				</>
 			}
 		/>

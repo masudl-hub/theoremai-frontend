@@ -87,8 +87,7 @@
 	background-size: cover;
 }
 
-.docs-chapters-launch,
-.docs-chapters-sheet {
+.docs-chapters-launch {
 	display: none;
 }
 
@@ -129,22 +128,6 @@
 
 	.docs-chapters-launch > * {
 		pointer-events: auto;
-	}
-
-	.docs-frame .docs-chapters-sheet {
-		display: flex;
-		flex-direction: column;
-		position: absolute;
-		inset: 0;
-		z-index: 3;
-		min-height: 0;
-		overflow: hidden;
-		border-radius: inherit;
-	}
-
-	.docs-chapters-sheet > * {
-		flex: 1;
-		min-height: 0;
 	}
 
 	.docs-landing > .docs-landing-hero {

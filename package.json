@@ -41,6 +41,7 @@
 		"@theoremjs/playground": "file:../theoremai/playground",
 		"@theoremjs/react": "file:../theoremai/react",
 		"ai": "^7.0.0",
+		"fflate": "^0.8.2",
 		"gpt-tokenizer": "^4.0.0",
 		"isbot": "^5.2.2",
 		"react": "^19.2.8",

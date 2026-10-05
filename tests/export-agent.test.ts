@@ -91,7 +91,7 @@ test('the zip holds every file', () => {
 	const workspace = compiled(conciergeAndHelper());
 	const files = exportFiles(workspace, agent(workspace, 'travel.concierge'));
 	const zip = zipFiles(files);
-	const view = new DataView(zip.buffer);
+	const view = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
 	// The end record: its signature, then the entry count at byte 10.
 	assert.equal(view.getUint32(zip.length - 22, true), 0x06054b50);
 	assert.equal(view.getUint16(zip.length - 12, true), files.length);

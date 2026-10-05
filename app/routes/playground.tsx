@@ -5,6 +5,7 @@ import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
+import { useClipboard } from '@astryxdesign/core/hooks';
 import { Icon, type IconType } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Layout, LayoutContent, LayoutPanel } from '@astryxdesign/core/Layout';
@@ -1381,6 +1382,7 @@ function usePageActions(
 	setConversation: Dispatch<SetStateAction<number>>,
 ) {
 	const toast = useToast();
+	const { copy: writeClipboard } = useClipboard();
 	const { setKeysOpen, setEditorView } = view;
 	/** Swaps in a whole new workspace; the toast can put the old one back. */
 	const replaceWorkspace = useCallback(
@@ -1411,12 +1413,15 @@ function usePageActions(
 	);
 	const copy = useCallback(
 		(text: string, what: string) => {
-			navigator.clipboard.writeText(text).then(
-				() => toast({ body: `Copied ${what}.` }),
-				() => toast({ body: "Couldn't reach the clipboard.", type: 'error' }),
+			void writeClipboard(text).then((copied) =>
+				toast(
+					copied
+						? { body: `Copied ${what}.` }
+						: { body: "Couldn't reach the clipboard.", type: 'error' },
+				),
 			);
 		},
-		[toast],
+		[toast, writeClipboard],
 	);
 	return { replaceWorkspace, copy };
 }
