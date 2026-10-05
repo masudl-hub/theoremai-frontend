@@ -1805,6 +1805,67 @@ function chatsInTranscript(payload: PlaygroundRunPayload | null): boolean {
 	return type === 'text' || type === 'image' || type === 'speech';
 }
 
+interface PreviewToggle {
+	on: boolean;
+	toggle: () => void;
+}
+
+/** The preview's two views of a run, each off until the builder asks: its trace, and what it used. */
+function usePreviewToggles(): { trace: PreviewToggle; usage: PreviewToggle } {
+	const [traceOpen, setTraceOpen] = useState(false);
+	const [usageShown, setUsageShown] = useState(false);
+	return {
+		trace: {
+			on: traceOpen,
+			toggle: () => {
+				setTraceOpen((open) => !open);
+			},
+		},
+		usage: {
+			on: usageShown,
+			toggle: () => {
+				setUsageShown((shown) => !shown);
+			},
+		},
+	};
+}
+
+/** The trace and usage buttons, each only for an agent that has one to show. */
+function PreviewToggles({
+	compile,
+	trace,
+	usage,
+	phone,
+}: {
+	compile: WorkspaceCompile;
+	trace: PreviewToggle;
+	usage: PreviewToggle;
+	phone: boolean;
+}) {
+	return (
+		<>
+			{compile.traced ? (
+				<Button
+					label={trace.on ? 'Hide trace' : 'View trace'}
+					isIconOnly={phone}
+					icon={<Icon icon={IconTimeline} size="sm" />}
+					aria-pressed={trace.on}
+					onClick={trace.toggle}
+				/>
+			) : null}
+			{chatsInTranscript(compile.payload) ? (
+				<Button
+					label={usage.on ? 'Hide usage' : 'Show usage'}
+					isIconOnly={phone}
+					icon={<Icon icon={IconCoins} size="sm" />}
+					aria-pressed={usage.on}
+					onClick={usage.toggle}
+				/>
+			) : null}
+		</>
+	);
+}
+
 /** The preview's header: back to the editor, the agent to chat with, history, trace, usage and Export. */
 function PreviewHeader({
 	store,
@@ -1824,8 +1885,8 @@ function PreviewHeader({
 	compile: WorkspaceCompile;
 	run: ConversationRun;
 	connection: PlaygroundConnectionState;
-	trace: { open: boolean; toggle: () => void };
-	usage: { shown: boolean; toggle: () => void };
+	trace: PreviewToggle;
+	usage: PreviewToggle;
 	copy: (text: string, what: string) => void;
 	setSheet: (sheet: Sheet) => void;
 }) {
@@ -1844,24 +1905,7 @@ function PreviewHeader({
 					<ChatPicker agents={chatAgents} chatWith={chatWith} onChange={store.chatWith} />
 				</StackItem>
 				{compile.payload && run.isUsed && <ClearHistoryButton chatWith={chatWith} run={run} />}
-				{compile.traced ? (
-					<Button
-						label={trace.open ? 'Hide trace' : 'View trace'}
-						isIconOnly={phone}
-						icon={<Icon icon={IconTimeline} size="sm" />}
-						aria-pressed={trace.open}
-						onClick={trace.toggle}
-					/>
-				) : null}
-				{chatsInTranscript(compile.payload) ? (
-					<Button
-						label={usage.shown ? 'Hide usage' : 'Show usage'}
-						isIconOnly={phone}
-						icon={<Icon icon={IconCoins} size="sm" />}
-						aria-pressed={usage.shown}
-						onClick={usage.toggle}
-					/>
-				) : null}
+				<PreviewToggles compile={compile} trace={trace} usage={usage} phone={phone} />
 				<ExportActions
 					compiled={compiled.ok ? compiled : undefined}
 					chatted={compile.chatted}
@@ -1944,8 +1988,7 @@ const PreviewPane = memo(function PreviewPane({
 	copy: (text: string, what: string) => void;
 	setSheet: (sheet: Sheet) => void;
 }) {
-	const [traceOpen, setTraceOpen] = useState(false);
-	const [usageShown, setUsageShown] = useState(false);
+	const { trace, usage } = usePreviewToggles();
 	return (
 		<LayoutContent className="playground-preview" isScrollable={false} padding={0}>
 			<VStack height="100%">
@@ -1956,18 +1999,8 @@ const PreviewPane = memo(function PreviewPane({
 					compile={compile}
 					run={run}
 					connection={connection}
-					trace={{
-						open: traceOpen,
-						toggle: () => {
-							setTraceOpen((open) => !open);
-						},
-					}}
-					usage={{
-						shown: usageShown,
-						toggle: () => {
-							setUsageShown((shown) => !shown);
-						},
-					}}
+					trace={trace}
+					usage={usage}
 					copy={copy}
 					setSheet={setSheet}
 				/>
@@ -1978,8 +2011,8 @@ const PreviewPane = memo(function PreviewPane({
 						connection={connection}
 						chatRef={chatRef}
 						chatWith={chatWith}
-						traceOpen={traceOpen}
-						usageShown={usageShown}
+						traceOpen={trace.on}
+						usageShown={usage.on}
 					/>
 				</StackItem>
 			</VStack>
