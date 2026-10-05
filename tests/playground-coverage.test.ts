@@ -13,6 +13,8 @@ const NOT_IN_PLAYGROUND: Record<string, string> = {
 	'outputs.validation.fields': 'Check functions, written in code.',
 	'guardrails.egress.enforce': 'An enforce function, written in code.',
 	'guardrails.egress.holdback': 'Read only by an enforce function; the bundled checks ignore it.',
+	'guardrails.detect':
+		'Resolved by the package, not read at any boundary yet; its editor replaces the sensitive and injection rows.',
 	'guardrails.disclosure': 'A check function on decision state, written in code.',
 	'observability.onWriteError': 'An error handler, written in code.',
 	'models.*.compaction.trigger': 'A function that decides when to compact, written in code.',
