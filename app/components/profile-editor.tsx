@@ -3098,7 +3098,7 @@ function BoundaryRow({
 	return (
 		<SegmentedRow
 			label={label}
-			path={`guardrails.detect.${detector}.${boundary}`}
+			path={`guardrails.detect.${detector}.at.${boundary}`}
 			value={actions[boundary]}
 			segments={DETECT_SEGMENTS}
 			onChange={(action) => {
@@ -3145,7 +3145,7 @@ function DetectorRows({
 		<VStack gap={2}>
 			<SegmentedRow
 				label={label}
-				path={`guardrails.detect.${detector}`}
+				path={`guardrails.detect.${detector}.action`}
 				value={uniform ? taken[0] : 'mixed'}
 				segments={uniform ? DETECT_SEGMENTS : MIXED_SEGMENTS}
 				onChange={(action) => {

@@ -301,10 +301,10 @@ export function ensureTh30ProfileRegistered(): void {
 			canary: true,
 			// A reply that carries sensitive data or injection phrasing is refused. Addresses are cited.
 			detect: {
-				ids: { reply: 'block' },
-				financial: { reply: 'block' },
-				credentials: { reply: 'block' },
-				injection: { reply: 'block' },
+				ids: { at: { reply: 'block' } },
+				financial: { at: { reply: 'block' } },
+				credentials: { at: { reply: 'block' } },
+				injection: { at: { reply: 'block' } },
 			},
 			egress: {
 				onBlock: 'refuse_to_user',

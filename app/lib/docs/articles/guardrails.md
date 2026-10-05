@@ -146,11 +146,11 @@ The way in, `tool_output_<kind>`, `tool_failure_<kind>` | `redact` | `redact`
 `tool_arguments_<kind>` | `flag` | `ignore`
 The way out | `ignore` | `ignore`
 
-`detect` takes one action for everything, or a rule for each detector you name. A rule is one action for every boundary, or an action for each boundary you name. What you leave out keeps its default.
+`detect` takes one action for everything, or a rule for each detector you name. A rule is one action for every boundary, or an object: `action` for every boundary, and `at` for each boundary you name. What you leave out keeps its default.
 
 ```ts frame=profile:text
 guardrails: {
-	detect: { network: 'ignore', credentials: { reply: 'block' } },
+	detect: { network: 'ignore', credentials: { at: { reply: 'block' } } },
 },
 ```
 
