@@ -1,6 +1,7 @@
 import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
 import { Card } from '@astryxdesign/core/Card';
+import { Code } from '@astryxdesign/core/Code';
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
@@ -29,10 +30,10 @@ function codeLanguage(lang: 'ts' | 'bash' | 'text'): string {
 	return lang === 'bash' ? 'bash' : 'text';
 }
 
-/** Inline `code` and [label](href) — enough for authored prose, not a Markdown engine. */
+/** Inline `code`, **bold** and [label](href) — enough for authored prose, not a Markdown engine. */
 function inlineMarks(text: string): ReactNode[] {
 	const nodes: ReactNode[] = [];
-	const pattern = /(\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`)/g;
+	const pattern = /(\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`|\*\*([^*]+)\*\*)/g;
 	let last = 0;
 	let match = pattern.exec(text);
 	let key = 0;
@@ -53,12 +54,14 @@ function inlineMarks(text: string): ReactNode[] {
 					</a>
 				),
 			);
-		} else {
+		} else if (full.startsWith('`')) {
 			nodes.push(
-				<Text key={key} className="docs-code-wrap" type="code" as="span">
+				<Code key={key} className="docs-code-wrap" size="inherit">
 					{match[4]}
-				</Text>,
+				</Code>,
 			);
+		} else {
+			nodes.push(<strong key={key}>{inlineMarks(match[5])}</strong>);
 		}
 		key += 1;
 		last = match.index + match[0].length;

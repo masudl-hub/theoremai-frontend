@@ -23,6 +23,7 @@ export const runner: DocArticleDef = {
 	questions: [
 		{ question: 'Which door do I call, and what must I pass?' },
 		{ question: 'How do I read the stream?' },
+		{ question: 'How do I continue a chat?' },
 		{ question: 'How do I run my code at a stage of the turn?' },
 		{ question: 'How do I resume a tool that paused for approval?' },
 		{ question: 'How do I run a live session, a decision or a tool alone?' },
@@ -69,6 +70,39 @@ export const runner: DocArticleDef = {
 			kind: 'prose',
 			title: 'Set more on the request',
 			text: 'The request also takes `model`, `effort`, `system`, `host`, `signal`, `credentials`, `resolveHost`, `continueFrom` and `continuation`. It takes the trace fields `traceparent` and `conversationId`. See [Setting turn behaviour](/docs/turn-behaviour) for `continueFrom`.',
+		},
+		{
+			id: 'history',
+			kind: 'prose',
+			title: 'Continue a chat',
+			text: [
+				'A turn does not remember the turn before it. Your host stores the chat. To continue, send the earlier messages in `input.history` and the new message in `input.text`.',
+				'Each message has a `role` (`user`, `assistant`, `system` or `tool`) and its `content`. A Gemini binding with `persistViaInteractionId: true` is the exception: send `previousInteractionId` and no history ([Binding models](/docs/models)).',
+			].join('\n\n'),
+		},
+		{
+			id: 'history-example',
+			kind: 'code',
+			source: {
+				from: 'literal',
+				lang: 'ts',
+				frame: 'statements',
+				code: [
+					'runTurn(',
+					'\t{',
+					"\t\tprofile: 'harbor.desk',",
+					'\t\tinput: {',
+					'\t\t\thistory: [',
+					"\t\t\t\t{ role: 'user', content: 'Where do I find hold H-2291?' },",
+					"\t\t\t\t{ role: 'assistant', content: 'It is at bay 4.' },",
+					'\t\t\t],',
+					"\t\t\ttext: 'When does bay 4 close?',",
+					'\t\t},',
+					'\t},',
+					'\tprovider,',
+					')',
+				].join('\n'),
+			},
 		},
 		{
 			id: 'stages',

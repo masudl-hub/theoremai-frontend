@@ -17,7 +17,6 @@ export const start: DocArticleDef = {
 	questions: [
 		{ question: 'Why define a profile instead of writing a prompt?' },
 		{ question: 'How do I run my first turn?' },
-		{ question: 'What do I read next?' },
 	],
 	blocks: [
 		{
@@ -120,27 +119,6 @@ export const start: DocArticleDef = {
 			},
 		},
 		{
-			id: 'journey-table',
-			kind: 'table',
-			title: 'Pages in reading order',
-			text: [
-				'You want to | Read',
-				'--- | ---',
-				'Pick the kind of agent | [Choosing a modality](/docs/modalities)',
-				'Give it a name and an instruction | [Setting the identity](/docs/identity)',
-				'Pick its model and key | [Binding models](/docs/models)',
-				'Let it call your code | [Registering tools](/docs/tools)',
-				'Say what it accepts | [Declaring inputs](/docs/inputs)',
-				'Say what it returns | [Declaring outputs](/docs/outputs)',
-				'Set how a turn runs and stops | [Setting turn behaviour](/docs/turn-behaviour)',
-				'Stop leaks and unsafe tool calls | [Setting guardrails](/docs/guardrails)',
-				'Run turns from your server | [Running a turn](/docs/runner)',
-				'Put the agent in front of people | [Building the interface](/docs/interface)',
-				'Change the words people read | [Describing statuses](/docs/statuses)',
-				'See what happened in a turn | [Recording traces](/docs/traces)',
-			].join('\n'),
-		},
-		{
 			id: 'harbor',
 			kind: 'prose',
 			title: 'See a full profile',
@@ -164,15 +142,6 @@ export const start: DocArticleDef = {
 			id: 'minimal',
 			kind: 'code',
 			source: { from: 'seed', seed: 'firstTurn' },
-		},
-		{
-			id: 'on-the-wire',
-			kind: 'prose',
-			title: 'Change the model or continue the chat',
-			text: [
-				'`apiId` is the provider\u2019s model id. To use another OpenRouter model, replace `openrouter/free` with its id.',
-				'A turn does not remember the last one. To continue a chat, call `runTurn` again and pass the earlier messages in `input.history`.',
-			].join('\n\n'),
 		},
 		{ id: 'try', kind: 'embed.playground', seed: 'firstTurn' },
 	],
