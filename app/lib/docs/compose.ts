@@ -233,7 +233,6 @@ export async function composeDocIndex(options: ComposeOptions): Promise<DocIndex
 		const article = {
 			...def,
 			cover: { ...def.cover, filter: filters.get(def.cover.src) },
-			questions: def.questions ?? [],
 			canonicalPath: `/docs/${def.slug}`,
 			dateModified: def.updated,
 			blocks,

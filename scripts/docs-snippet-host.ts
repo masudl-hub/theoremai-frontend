@@ -20,6 +20,7 @@ import type {
 } from '@theoremjs/agents/kernel';
 
 export declare const profile: Profile;
+export declare const desk: Profile;
 export declare const provider: ModelProvider;
 export declare const callId: string;
 export declare const input: unknown;

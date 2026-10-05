@@ -17,14 +17,6 @@ export const outputs: DocArticleDef = {
 		alt: 'An orange canyon',
 		position: '0% 34%',
 	},
-	questions: [
-		{ question: 'How do I make an agent reply in a fixed JSON shape?' },
-		{ question: 'How do I use a different shape for each case?' },
-		{ question: 'How do I check the reply and ask for a new one?' },
-		{ question: 'How do I choose how the reply streams?' },
-		{ question: 'What do image and speech agents return?' },
-		{ question: 'Why did an output setting fail, and what do I change?' },
-	],
 	blocks: [
 		{
 			id: 'lede',

@@ -13,14 +13,6 @@ export const guardrails: DocArticleDef = {
 		alt: 'Black rocks where the surf meets the shore',
 		position: '100% 0%',
 	},
-	questions: [
-		{ question: 'Which guardrails run when I set nothing?' },
-		{ question: 'How do I check a reply before the user sees it?' },
-		{ question: 'How do I protect the system prompt?' },
-		{ question: 'How do I limit what tools can read and reach?' },
-		{ question: 'How do I limit the turns per day?' },
-		{ question: 'Which guardrails does each agent type take?' },
-	],
 	blocks: [
 		{
 			id: 'lede',

@@ -137,27 +137,6 @@ function CopyPromptButton({ text }: { text: string }) {
 	return <CopyIconButton label="Copy prompt" copiedLabel="Copied" text={text} />;
 }
 
-export function QuestionsStrip({ questions }: { questions: readonly { question: string }[] }) {
-	if (!questions.length) return null;
-	return (
-		<VStack gap={2} className="docs-questions">
-			<List
-				listStyle="disc"
-				density="compact"
-				header={
-					<Text type="label" color="secondary">
-						This page covers
-					</Text>
-				}
-			>
-				{questions.map((item) => (
-					<ListItem key={item.question} label={item.question} />
-				))}
-			</List>
-		</VStack>
-	);
-}
-
 function MediaFigure({ block }: { block: BlockOf<'media'> }) {
 	return (
 		<figure className="docs-media">

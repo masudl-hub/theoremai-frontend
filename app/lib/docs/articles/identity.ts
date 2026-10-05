@@ -18,11 +18,6 @@ export const identity: DocArticleDef = {
 		alt: 'Amethyst seams in a grey cliff',
 		position: '0% 100%',
 	},
-	questions: [
-		{ question: 'How do I give my agent a name and an instruction?' },
-		{ question: 'How do I change the instruction for one kind of reader?' },
-		{ question: 'How do I keep part of the instruction out of replies?' },
-	],
 	blocks: [
 		{
 			id: 'lede',

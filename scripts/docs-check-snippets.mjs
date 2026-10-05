@@ -1,7 +1,8 @@
 /**
  * Type-check every `ts` sample /docs authors against the real package. A sample with an `import`
- * is a whole program. Any other must name a `frame` (see `SnippetFrame`), which says how to
- * complete it. A sample that names none fails here, so no sample goes unchecked.
+ * and no `frame` is a whole program. Any other must name a `frame` (see `SnippetFrame`), which
+ * says how to complete it; its own imports stay at the top. A sample that names none fails here,
+ * so no sample goes unchecked.
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -59,14 +60,16 @@ for (const article of index.articles) {
 	for (const block of article.blocks) {
 		if (block.kind !== 'code' || block.source.from !== 'literal' || block.lang !== 'ts') continue;
 		const id = `${article.slug}/${block.id}`;
-		const isProgram = /^\s*import\s/m.test(block.code);
 		const frame = block.source.frame;
+		const isProgram = !frame && /^\s*import\s/m.test(block.code);
 		if (!isProgram && !frame) {
 			problems.push(`${id}: a ts sample without an import needs a frame`);
 			continue;
 		}
 		const used = words(block.code);
-		let body = isProgram ? block.code : wrap(block.code, frame);
+		const imports = block.code.match(/^import\s.*$/gm) ?? [];
+		const rest = block.code.replace(/^import\s.*\n?/gm, '');
+		let body = isProgram ? block.code : `${imports.join('\n')}\n${wrap(rest, frame)}`;
 		// A name the sample imports or declares stays its own; the host supplies the rest.
 		const own = new Set(
 			[...block.code.matchAll(/(?:\b(?:const|let|var|function|class)\s+|import\s*\{[^}]*?)(\w+)/g)].map(

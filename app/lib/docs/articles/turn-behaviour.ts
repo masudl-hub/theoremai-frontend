@@ -13,12 +13,6 @@ export const turnBehaviour: DocArticleDef = {
 		alt: 'A night tide along a wooded shore',
 		position: '0% 0%',
 	},
-	questions: [
-		{ question: 'How do I let a user continue a reply that stopped early?' },
-		{ question: 'How do I choose which stops continue, and how often?' },
-		{ question: 'How do I allow or block messages while a turn runs?' },
-		{ question: 'Why did Theorem refuse a continue or an inject?' },
-	],
 	blocks: [
 		{
 			id: 'lede',

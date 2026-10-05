@@ -25,20 +25,12 @@ function blockSection(block: ResolvedBlock): string[] {
 }
 
 /** The article fields the projection reads. */
-export type ProjectedArticle = Pick<
-	DocArticle,
-	'title' | 'summary' | 'questions' | 'blocks' | 'symbols'
->;
+export type ProjectedArticle = Pick<DocArticle, 'title' | 'summary' | 'blocks' | 'symbols'>;
 
-/** Everything under the summary: questions, every block, then the dictionary. */
+/** Everything under the summary: every block, then the dictionary. */
 function fullBody(article: ProjectedArticle): string[] {
-	const questions = article.questions.map((item) => `- ${item.question}`);
 	const terms = article.symbols.map(symbolTerm).map(({ name, text }) => `${name} — ${text}`);
-	return [
-		...listSection('This page covers', questions),
-		...article.blocks.flatMap(blockSection),
-		...listSection('## dictionary', terms),
-	];
+	return [...article.blocks.flatMap(blockSection), ...listSection('## dictionary', terms)];
 }
 
 export function projectArticleText(

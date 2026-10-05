@@ -13,13 +13,6 @@ export const tools: DocArticleDef = {
 		alt: 'Malachite pools in rings',
 		position: '0% 16%',
 	},
-	questions: [
-		{ question: 'How do I give my agent a tool?' },
-		{ question: 'Why did a tool call fail, and what do I change?' },
-		{ question: 'What happens, in order, when the model calls a tool?' },
-		{ question: 'How do I pause a call until a person says yes?' },
-		{ question: 'How do I sign the user in to a tool with OAuth?' },
-	],
 	blocks: [
 		{
 			id: 'lede',

@@ -20,15 +20,6 @@ export const runner: DocArticleDef = {
 		position: '0% 8%',
 	},
 	suggest: { rank: 3 },
-	questions: [
-		{ question: 'Which door do I call, and what must I pass?' },
-		{ question: 'How do I read the stream?' },
-		{ question: 'How do I continue a chat?' },
-		{ question: 'How do I run my code at a stage of the turn?' },
-		{ question: 'How do I resume a tool that paused for approval?' },
-		{ question: 'How do I run a live session, a decision or a tool alone?' },
-		{ question: 'Why did a call fail, and what do I change?' },
-	],
 	blocks: [
 		{
 			id: 'lede',

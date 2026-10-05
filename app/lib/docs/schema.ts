@@ -96,8 +96,6 @@ export type DocArticleHead = {
 	};
 	/** Idle landing card position. */
 	suggest?: { rank: 1 | 2 | 3 | 4; blockId?: string };
-	/** Shown as “This page covers” before the body. */
-	questions?: readonly { question: string }[];
 };
 
 export type DocArticleDef = DocArticleHead & { blocks: readonly AuthoredBlock[] };
@@ -132,7 +130,6 @@ export type ResolvedBlock =
 
 export type DocArticle = Omit<DocArticleHead, 'cover'> & {
 	cover: DocArticleHead['cover'] & { filter?: string };
-	questions: readonly { question: string }[];
 	canonicalPath: string;
 	ttrMinutes: number;
 	/** The chapter's `updated` day. */

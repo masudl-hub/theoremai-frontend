@@ -18,13 +18,6 @@ export const inputs: DocArticleDef = {
 		alt: 'Cobalt waves on a black beach',
 		position: '0% 81%',
 	},
-	questions: [
-		{ question: 'How do I let a turn send text, files or voice?' },
-		{ question: 'How do I limit the size and the number of files?' },
-		{ question: 'How do I make a turn pick from a fixed list?' },
-		{ question: 'How do live, speech and decision agents take input?' },
-		{ question: 'Why did Theorem refuse a turn, and what do I change?' },
-	],
 	blocks: [
 		{
 			id: 'lede',

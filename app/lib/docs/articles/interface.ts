@@ -14,13 +14,6 @@ export const interfaceChapter: DocArticleDef = {
 		position: '100% 75%',
 	},
 	suggest: { rank: 4 },
-	questions: [
-		{ question: 'How do I show a chat that matches the agent my server runs?' },
-		{ question: 'How do I build my own chat screen?' },
-		{ question: 'How do I know who the user is, across several servers?' },
-		{ question: 'How does the user approve a tool, or sign in to it?' },
-		{ question: 'Why does the chat fail, and what do I change?' },
-	],
 	blocks: [
 		{
 			id: 'lede',

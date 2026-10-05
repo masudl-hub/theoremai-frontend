@@ -18,12 +18,6 @@ export const statuses: DocArticleDef = {
 		alt: 'Coral reefs in turquoise water',
 		position: '96% 6%',
 	},
-	questions: [
-		{ question: 'How do I change a line that a person reads?' },
-		{ question: 'How do I change a line for every profile?' },
-		{ question: 'Where does a replacement show up?' },
-		{ question: 'Why was my replacement refused, and what do I change?' },
-	],
 	blocks: [
 		{
 			id: 'lede',

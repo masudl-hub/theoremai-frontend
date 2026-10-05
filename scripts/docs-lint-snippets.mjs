@@ -1,6 +1,7 @@
 /**
- * Run Biome on every complete TypeScript sample /docs authors. Samples without
- * an `import` are excerpts; seed and README samples are the kernel's own output.
+ * Run Biome on every complete TypeScript sample /docs authors. A sample with a
+ * `frame` or without an `import` is an excerpt; seed and README samples are the
+ * kernel's own output.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -29,7 +30,7 @@ for (const article of index.articles) {
 	let count = 0;
 	for (const block of article.blocks) {
 		if (block.kind !== 'code' || block.source.from !== 'literal' || block.lang !== 'ts') continue;
-		if (!/^\s*import\s/m.test(block.code)) continue;
+		if (block.source.frame || !/^\s*import\s/m.test(block.code)) continue;
 		count += 1;
 		const dest = path.join(outDir, `${article.slug}-${String(count).padStart(2, '0')}.ts`);
 		writeFileSync(dest, block.code.endsWith('\n') ? block.code : `${block.code}\n`);

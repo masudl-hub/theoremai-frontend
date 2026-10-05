@@ -19,12 +19,6 @@ export const models: DocArticleDef = {
 		alt: 'Blueberry bushes at night',
 		position: '0% 95%',
 	},
-	questions: [
-		{ question: 'How do I bind a model to my agent?' },
-		{ question: 'Where does the key come from?' },
-		{ question: 'How do I let a request pick between models?' },
-		{ question: 'Why does my binding fail?' },
-	],
 	blocks: [
 		{
 			id: 'lede',

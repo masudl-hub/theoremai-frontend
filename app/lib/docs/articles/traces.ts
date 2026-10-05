@@ -13,13 +13,6 @@ export const traces: DocArticleDef = {
 		alt: 'Sienna dunes',
 		position: '0% 0%',
 	},
-	questions: [
-		{ question: 'How do I turn recording on so I can see what a turn did?' },
-		{ question: 'How do I record one call, for a test?' },
-		{ question: 'What does a record keep, and how do I change that?' },
-		{ question: 'How do I send records to a viewer such as Phoenix?' },
-		{ question: 'Why did no record appear, and what do I change?' },
-	],
 	blocks: [
 		{
 			id: 'lede',

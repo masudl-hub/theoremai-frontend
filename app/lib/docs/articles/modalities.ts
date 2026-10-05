@@ -14,10 +14,6 @@ export const modalities: DocArticleDef = {
 		position: '44% 82%',
 	},
 	suggest: { rank: 2 },
-	questions: [
-		{ question: 'Which profile type fits my agent?' },
-		{ question: 'What must each type set, and what can it not set?' },
-	],
 	blocks: [
 		{
 			id: 'lede',
