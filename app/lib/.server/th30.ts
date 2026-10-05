@@ -298,7 +298,6 @@ export function ensureTh30ProfileRegistered(): void {
 			allow: [...TH30_TOOL_IDS, ...SURFACE_TOOL_NAMES],
 		},
 		guardrails: {
-			canary: true,
 			// A reply that carries sensitive data or injection phrasing is refused. Addresses are cited.
 			detect: {
 				ids: { at: { reply: 'block' } },

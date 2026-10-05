@@ -205,6 +205,7 @@ import {
 	playgroundNetworkNote,
 	playgroundNodeRef,
 	playgroundRunsTransport,
+	plantsCanary,
 	removeModelBinding,
 	sampleToolInput,
 	sectionNote,
@@ -2858,43 +2859,20 @@ interface GuardrailsSectionProps {
 	set: (change: Partial<GuardrailsDraft>) => void;
 }
 
-function CanarySection({
-	draft,
-	guardrails,
-	set,
-}: GuardrailsSectionProps & { draft: PlaygroundDraft }) {
+/** The note that binds the canary, shown while the canary leak detector reads somewhere. */
+function CanarySection({ guardrails, set }: GuardrailsSectionProps) {
 	return (
 		<InspectorSection title="Canary">
-			<SwitchRow
-				label="Canary"
-				path="guardrails.canary"
-				value={guardrails.canary}
-				onChange={(canary) => {
-					set({ canary });
+			<TextAreaRow
+				label="Bind note"
+				path="lexicon.canary.bind_note"
+				field="canaryBindNote"
+				value={guardrails.canaryBindNote}
+				placeholder={lexiconDefault('canary.bind_note')}
+				onChange={(canaryBindNote) => {
+					set({ canaryBindNote });
 				}}
 			/>
-			{guardrails.canary && (
-				<TextAreaRow
-					label="Bind note"
-					path="lexicon.canary.bind_note"
-					field="canaryBindNote"
-					value={guardrails.canaryBindNote}
-					placeholder={lexiconDefault('canary.bind_note')}
-					onChange={(canaryBindNote) => {
-						set({ canaryBindNote });
-					}}
-				/>
-			)}
-			{guardrails.canary && draftAllows(draft, 'guardrails.promptEcho') && (
-				<SwitchRow
-					label="Prompt echo"
-					path="guardrails.promptEcho"
-					value={guardrails.promptEcho}
-					onChange={(promptEcho) => {
-						set({ promptEcho });
-					}}
-				/>
-			)}
 		</InspectorSection>
 	);
 }
@@ -3262,9 +3240,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 					set({ detect });
 				}}
 			/>
-			{draftAllows(draft, 'guardrails.canary') && (
-				<CanarySection draft={draft} guardrails={guardrails} set={set} />
-			)}
+			{plantsCanary(draft) && <CanarySection guardrails={guardrails} set={set} />}
 			<EgressSection guardrails={guardrails} set={set} />
 			<GivenUrlsSection
 				checks={guardrails.egressChecks}
@@ -4706,7 +4682,7 @@ const SHARED_WORDING: Partial<
 		write: (setDraft, canaryBindNote) => {
 			patch(setDraft, 'guardrails')({ canaryBindNote });
 		},
-		isOn: (draft) => draft.guardrails.canary,
+		isOn: plantsCanary,
 	},
 	'quota.exhausted': {
 		setting: 'Daily cap',
