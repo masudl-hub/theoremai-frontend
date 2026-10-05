@@ -21,7 +21,8 @@
 			"!build",
 			"!coverage",
 			"!.fallow",
-			"!app/built"
+			"!app/built",
+			"!!**/.claude"
 		]
 	},
 	"formatter": {

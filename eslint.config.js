@@ -39,6 +39,7 @@ export default ts.config(
 			'**/coverage/**',
 			'**/.fallow/**',
 			'**/.wrangler/**',
+			'**/.claude/**',
 			'app/built/**',
 			'scripts/**',
 			'vite.config.ts',
