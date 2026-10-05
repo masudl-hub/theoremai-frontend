@@ -23,6 +23,7 @@ import { Token } from '@astryxdesign/core/Token';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
 import {
+	IconAdjustmentsHorizontal,
 	IconAlertTriangle,
 	IconAlignLeft,
 	IconAntennaBars1,
@@ -3068,6 +3069,14 @@ const DETECT_SEGMENTS: Segment<DetectAction>[] = DETECT_ACTIONS.map((action) => 
 	label: DETECT_ACTION_META[action].label,
 	icon: DETECT_ACTION_ICON[action],
 }));
+/**
+ * The actions, then "Mixed": the pick a detector shows while its boundaries differ. It is offered
+ * only then, already picked, so it can't be chosen.
+ */
+const MIXED_SEGMENTS: Segment<DetectAction | 'mixed'>[] = [
+	...DETECT_SEGMENTS,
+	{ value: 'mixed', label: 'Mixed', icon: IconAdjustmentsHorizontal },
+];
 
 type ToolKind = (typeof TOOL_KINDS)[number];
 const TOOL_KIND_LABEL: Record<ToolKind, string> = {
@@ -3150,7 +3159,7 @@ function DetectorRows({
 				label={label}
 				path={`guardrails.detect.${detector}`}
 				value={uniform ? taken[0] : 'mixed'}
-				segments={DETECT_SEGMENTS}
+				segments={uniform ? DETECT_SEGMENTS : MIXED_SEGMENTS}
 				onChange={(action) => {
 					if (action === 'mixed') return;
 					const next = { ...actions };
