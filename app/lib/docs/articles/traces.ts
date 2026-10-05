@@ -36,6 +36,7 @@ export const traces: DocArticleDef = {
 				from: 'literal',
 				lang: 'ts',
 				code: [
+					"import { registerTraceDestination } from '@theoremjs/agents';",
 					"import { jsonlSink } from '@theoremjs/agents/observability/jsonl';",
 					'',
 					"registerTraceDestination('jsonl.local', jsonlSink('/var/log/theorem'));",
@@ -49,6 +50,7 @@ export const traces: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: [
 					"type: 'text',",
 					'observability: {',

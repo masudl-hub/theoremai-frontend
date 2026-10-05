@@ -36,6 +36,7 @@ export const statuses: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: [
 					'lexicon: {',
 					"\t'error.auth': 'Sorry, please sign in again to continue.',",
@@ -61,6 +62,7 @@ export const statuses: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'statements',
 				code: [
 					'overrideLexicon({',
 					"\t'egress.refusal': 'Sorry, I cannot share that.',",
@@ -93,6 +95,7 @@ export const statuses: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: ['lexicon: {', "\t'canary.bind_note': 'Session token: {canary}',", '},'].join('\n'),
 			},
 		},

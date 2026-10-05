@@ -33,6 +33,7 @@ export const outputs: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'statements',
 				code: [
 					"registerStructured('harbor.desk.reply', {",
 					'\tjsonSchema: {',
@@ -51,6 +52,7 @@ export const outputs: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: ['outputs: {', "\tstructured: 'harbor.desk.reply',", '},'].join('\n'),
 			},
 		},
@@ -79,6 +81,7 @@ export const outputs: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: [
 					'outputs: {',
 					'\tstructured: {',
@@ -108,6 +111,7 @@ export const outputs: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: [
 					'outputs: {',
 					"\tstructured: 'harbor.desk.reply',",
@@ -141,6 +145,7 @@ export const outputs: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: [
 					'outputs: {',
 					"\tstreaming: { mode: 'buffered', streamThoughts: false },",
@@ -165,6 +170,7 @@ export const outputs: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:image',
 				code: [
 					"type: 'image',",
 					'image: {',
@@ -180,6 +186,7 @@ export const outputs: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:speech',
 				code: ["type: 'speech',", 'speech: {', "\tvoice: 'Kore',", "\tformat: 'pcm',", '},'].join(
 					'\n',
 				),

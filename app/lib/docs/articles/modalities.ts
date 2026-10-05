@@ -62,6 +62,7 @@ export const modalities: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'statements',
 				code: [
 					'const desk = defineProfile({',
 					"\ttype: 'text',",
@@ -92,6 +93,7 @@ export const modalities: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'statements',
 				code: [
 					'const illustrator = defineProfile({',
 					"\ttype: 'image',",
@@ -129,6 +131,7 @@ export const modalities: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'statements',
 				code: [
 					'const announcer = defineProfile({',
 					"\ttype: 'speech',",
@@ -165,6 +168,7 @@ export const modalities: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'statements',
 				code: [
 					'const line = defineProfile({',
 					"\ttype: 'live',",
@@ -199,6 +203,7 @@ export const modalities: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'statements',
 				code: [
 					'const router = defineProfile({',
 					"\ttype: 'decision',",
@@ -229,6 +234,7 @@ export const modalities: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'statements',
 				code: [
 					'const toolbox = defineProfile({',
 					"\ttype: 'host',",

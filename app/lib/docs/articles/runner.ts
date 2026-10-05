@@ -79,6 +79,7 @@ export const runner: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'request',
 				code: [
 					'onStage: (ctx) => {',
 					"\tif (ctx.stage === 'pre_tool' && ctx.tool === 'payments.charge') {",
@@ -113,6 +114,7 @@ export const runner: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'statements',
 				code: [
 					'for await (const event of invokeTool({',
 					'\tprofile: profile.id,',
@@ -148,6 +150,7 @@ export const runner: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'statements',
 				code: [
 					'const session = await runSession(',
 					'\t{ profile: profile.id },',
@@ -172,6 +175,7 @@ export const runner: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'statements',
 				code: [
 					'const result = await runDecision(',
 					'\t{',

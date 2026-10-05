@@ -32,6 +32,7 @@ export const models: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: "type: 'text',\nmodels: {\n	main: {\n		protocol: 'openAi',\n		provider: 'openrouter',\n		apiId: 'openrouter/free',\n		key: 'openrouter',\n	},\n},",
 			},
 		},
@@ -60,6 +61,7 @@ export const models: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'statements',
 				code: 'const provider = createProvider(profile, {\n	vault: { openrouter: process.env.OPENROUTER_API_KEY },\n});',
 			},
 		},
@@ -103,6 +105,7 @@ export const models: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: "type: 'text',\nmodels: {\n	local: {\n		protocol: 'openAi',\n		provider: 'local',\n		apiId: 'llama3.2',\n		server: 'ollama',\n	},\n},",
 			},
 		},
@@ -112,6 +115,7 @@ export const models: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'statements',
 				code: "createProvider(profile, { local: { baseUrl: 'http://127.0.0.1:11434' } }, 'local');",
 			},
 		},
@@ -130,6 +134,7 @@ export const models: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: "type: 'text',\nmodels: {\n	flash: {\n		protocol: 'openAi',\n		provider: 'openrouter',\n		apiId: 'openrouter/free',\n		key: 'openrouter',\n	},\n	pro: {\n		protocol: 'openAi',\n		provider: 'openrouter',\n		apiId: 'example/other',\n		key: 'openrouter',\n	},\n},\ndefaultModel: 'flash',\nallowModelSelect: true,",
 			},
 		},

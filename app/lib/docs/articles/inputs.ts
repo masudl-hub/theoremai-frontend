@@ -31,6 +31,7 @@ export const inputs: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: [
 					'inputs: {',
 					'\ttext: true,',
@@ -73,6 +74,7 @@ export const inputs: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'request',
 				code: [
 					'input: {',
 					"\ttext: 'Is this container on hold?',",
@@ -103,6 +105,7 @@ export const inputs: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: [
 					'inputs: {',
 					"\tvoice: { accept: ['audio/*'] },",
@@ -128,6 +131,7 @@ export const inputs: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: ['inputs: {', "\tslots: { channel: ['email', 'chat'] },", '},'].join('\n'),
 			},
 		},
@@ -153,6 +157,7 @@ export const inputs: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:live',
 				code: ['live: {', '\tingress: { audio: true, video: true, text: false },', '},'].join('\n'),
 			},
 		},
@@ -168,6 +173,7 @@ export const inputs: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:decision',
 				code: ["inputs: { state: 'json', maxStateBytes: 65_536 },"].join('\n'),
 			},
 		},

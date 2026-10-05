@@ -21,6 +21,10 @@ export function docsIndexPlugin({ repoRoot, theoremai }) {
 		const server = await createServer({
 			configFile: false,
 			root: repoRoot,
+			// Its own cache: in the default one its empty dependency metadata replaces the dev
+			// server's, which then re-optimizes and answers open tabs with 504.
+			cacheDir: path.join(repoRoot, 'node_modules/.vite-docs-index'),
+			optimizeDeps: { noDiscovery: true, include: [] },
 			define: kernelMetaDefine(theoremai),
 			server: { middlewareMode: true, ws: false, fs: { allow: [repoRoot, theoremai.root] } },
 			appType: 'custom',

@@ -35,6 +35,7 @@ export const tools: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'statements',
 				code: [
 					'registerTool({',
 					"\ttype: 'function',",
@@ -76,6 +77,7 @@ export const tools: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: ["type: 'text',", "tools: { allow: ['lookup'] },"].join('\n'),
 			},
 		},

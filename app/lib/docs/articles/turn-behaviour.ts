@@ -33,6 +33,7 @@ export const turnBehaviour: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: [
 					'turnBehaviour: {',
 					'\tresumption: {',
@@ -59,6 +60,7 @@ export const turnBehaviour: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'statements',
 				code: [
 					'runTurn(',
 					'\t{',

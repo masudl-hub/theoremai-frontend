@@ -32,6 +32,7 @@ export const identity: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: [
 					'identity: {',
 					"	handle: 'support',",
@@ -64,6 +65,7 @@ export const identity: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: [
 					'identity: {',
 					"	handle: 'support',",
@@ -81,6 +83,7 @@ export const identity: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'request',
 				code: ["input: { text: 'The export is stuck.', role: 'engineer' }"].join('\n'),
 			},
 		},
@@ -100,11 +103,15 @@ export const identity: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: [
-					'system: [',
-					'	\'Greet with: "Thanks for calling Harbor, how can I help?" \',',
-					"	{ private: 'Refunds over $200 need a supervisor code.' },",
-					'],',
+					'identity: {',
+					"	handle: 'harbor',",
+					'	system: [',
+					'		\'Greet with: "Thanks for calling Harbor, how can I help?" \',',
+					"		{ private: 'Refunds over $200 need a supervisor code.' },",
+					'	],',
+					'},',
 				].join('\n'),
 			},
 		},
@@ -132,6 +139,7 @@ export const identity: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'request-object',
 				code: [
 					'{',
 					"	input: { text: 'The export is stuck.', role: 'engineer' },",

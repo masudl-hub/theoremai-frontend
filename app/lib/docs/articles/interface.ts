@@ -155,6 +155,7 @@ export const interfaceChapter: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'statements',
 				code: [
 					'await transport.invoke(',
 					"\t{ gateId, decision: 'approve' },",

@@ -32,9 +32,25 @@ export type ArrayUnionName = {
 	[K in keyof typeof SchemaModule]: (typeof SchemaModule)[K] extends readonly string[] ? K : never;
 }[keyof typeof SchemaModule];
 
+/**
+ * How `npm run lint:docs` completes a `ts` sample before it type-checks it. A sample with an
+ * `import` is a whole program and needs no frame. Any other `ts` sample must name one.
+ * - `statements`: statements that run in a function.
+ * - `request`: members of the `TurnRequest` that `runTurn` takes.
+ * - `request-object`: a whole `TurnRequest`.
+ * - `profile:<type>`: members of a `defineProfile` call of that type.
+ * - `guardrails`: members of a text profile's `guardrails`.
+ */
+export type SnippetFrame =
+	| 'statements'
+	| 'request'
+	| 'request-object'
+	| 'guardrails'
+	| `profile:${'text' | 'image' | 'speech' | 'live' | 'decision' | 'host'}`;
+
 export type CodeSource =
 	| { from: 'seed'; seed: PlaygroundSeedId }
-	| { from: 'literal'; lang: 'ts' | 'bash' | 'text'; code: string };
+	| { from: 'literal'; lang: 'ts' | 'bash' | 'text'; code: string; frame?: SnippetFrame };
 
 export type AuthoredBlock =
 	| { id: string; kind: 'lede'; text: string }

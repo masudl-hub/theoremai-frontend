@@ -44,6 +44,7 @@ export const guardrails: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: [
 					'guardrails: {',
 					"\tegress: { checks: true, onBlock: 'refuse_to_user' },",
@@ -73,6 +74,7 @@ export const guardrails: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'guardrails',
 				code: [
 					'egress: {',
 					"\tchecks: { links: true, images: { hosts: ['cdn.example.com'] } },",
@@ -178,6 +180,7 @@ export const guardrails: DocArticleDef = {
 			source: {
 				from: 'literal',
 				lang: 'ts',
+				frame: 'profile:text',
 				code: ['guardrails: {', '\tredactSensitive: { network: false },', '},'].join('\n'),
 			},
 		},
