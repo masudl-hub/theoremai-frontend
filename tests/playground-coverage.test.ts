@@ -19,6 +19,7 @@ const NOT_IN_PLAYGROUND: Record<string, string> = {
 	'guardrails.detect.network.compiled': COMPILED,
 	'guardrails.detect.credentials.compiled': COMPILED,
 	'guardrails.detect.injection.compiled': COMPILED,
+	'guardrails.detect.tool_instructions.compiled': COMPILED,
 	'guardrails.detect.tool_leak.compiled': COMPILED,
 	'guardrails.detect.*.compiled': COMPILED,
 	'guardrails.detect.*.find': 'A function that reads the text, written in code.',
