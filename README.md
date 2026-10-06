@@ -94,6 +94,7 @@ Egress is **opt-in per profile** — set `guardrails.egress.enforce`.
 | `npm run check` | Generate route types, then typecheck |
 | `npm run lint` | ESLint, Biome, and fallow |
 | `npm run deploy` | Build and `wrangler deploy` the `theorem-site` Worker — not yet the live domain |
+| `npm run deploy -- --committed` | The same, built from the last commit of this checkout and of the kernel checkout; work in progress in either is left out |
 | `npm run docs:compose` | Compose `DocIndex` from kernel catalogs + authored chapters (throws on drift) |
 | `npm run lint:docs` | Compose, Biome-check scratch snippets, and fail authored `/docs` copy that uses a banned AI-ism |
 | `npm run theoremai:ensure` | Symlink the sibling `../theoremai` checkout |

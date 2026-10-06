@@ -13,7 +13,7 @@
 		"lint:docs": "npm run docs:compose && node scripts/docs-lint-snippets.mjs && node scripts/docs-check-snippets.mjs && node scripts/docs-check-facts.mjs && node scripts/docs-covers.mjs check && node scripts/docs-lint-voice.mjs && node scripts/docs-lint-dates.mjs",
 		"build": "react-router build",
 		"preview": "npm run build && vite preview",
-		"deploy": "npm run build && wrangler deploy",
+		"deploy": "node scripts/deploy.mjs",
 		"postinstall": "patch-package && node --experimental-strip-types scripts/ensure-theoremai.mjs",
 		"precheck": "node --experimental-strip-types scripts/ensure-theoremai.mjs",
 		"check": "react-router typegen && tsc --noEmit",
