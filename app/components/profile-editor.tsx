@@ -94,7 +94,6 @@ import {
 	IconServer,
 	IconShieldLock,
 	IconSquareRoundedNumber0,
-	IconSquareRoundedNumber1,
 	IconSquareRoundedNumber2,
 	IconTool,
 	IconTrash,
@@ -108,10 +107,10 @@ import {
 import {
 	ATTACHMENT_ACCEPT_MIMES,
 	type AuthUnauthenticatedPolicy,
+	type BlockedReplyOnBlock,
 	CONTINUE_STOP_KINDS,
 	type ContinueStopKind,
 	type CustomToolType,
-	type EgressOnBlock,
 	fieldMeta,
 	GOOGLE_BUILTIN_TOOLS,
 	GOOGLE_IMAGE_ASPECT_RATIOS,
@@ -202,10 +201,10 @@ import {
 	type PlaygroundIssue,
 	type PlaygroundProfileType,
 	type PlaygroundTurnProfileType,
+	plantsCanary,
 	playgroundNetworkNote,
 	playgroundNodeRef,
 	playgroundRunsTransport,
-	plantsCanary,
 	removeModelBinding,
 	sampleToolInput,
 	sectionNote,
@@ -2771,10 +2770,10 @@ function TurnBehaviourEditor({ draft, setDraft }: { draft: PlaygroundDraft; setD
 	);
 }
 
-/** The kernel repairs when on-block is left out, so repair stands for the unset pin. */
-const ON_BLOCK_SEGMENTS: Segment<EgressOnBlock>[] = [
-	{ value: 'reject_to_agent', label: 'Repair', icon: IconRefresh },
-	{ value: 'refuse_to_user', label: 'Refuse', icon: IconHandStop },
+/** The kernel retries when on-block is left out, so retry stands for the unset pin. */
+const ON_BLOCK_SEGMENTS: Segment<BlockedReplyOnBlock>[] = [
+	{ value: 'retry', label: 'Retry', icon: IconRefresh },
+	{ value: 'refuse', label: 'Refuse', icon: IconHandStop },
 ];
 
 type TaintGate = Exclude<GuardrailsDraft['taintAfterRemoteRead'], ''>;
@@ -2786,66 +2785,45 @@ const TAINT_SEGMENTS: Segment<TaintGate>[] = [
 	{ value: 'write', label: 'Writes', icon: IconPencil },
 ];
 
-type EgressChecksDraft = GuardrailsDraft['egressChecks'];
-type ReplyCheck = 'boundary' | 'images' | 'links';
-const REPLY_CHECK_FLAGS: Flag<ReplyCheck>[] = [
-	{ key: 'boundary', label: 'Boundary' },
-	{ key: 'images', label: 'Images' },
-	{ key: 'links', label: 'Links' },
-];
+type UrlDetector = keyof GuardrailsDraft['allow'];
+type UrlAllowsDraft = GuardrailsDraft['allow'];
+const URL_DETECTORS = DETECTORS.filter(
+	(detector): detector is UrlDetector => DETECTOR_META[detector].allow === true,
+);
 
-function replyChecks(checks: EgressChecksDraft): Record<ReplyCheck, boolean> {
-	return {
-		boundary: checks.boundary,
-		images: checks.images.on,
-		links: checks.links.on,
-	};
-}
-
-function withReplyChecks(
-	checks: EgressChecksDraft,
-	on: Record<ReplyCheck, boolean>,
-): EgressChecksDraft {
-	return {
-		...checks,
-		boundary: on.boundary,
-		images: { ...checks.images, on: on.images },
-		links: { ...checks.links, on: on.links },
-	};
-}
-
-/** Which URLs the image and link checks let through, for the ones that are on. */
+/** Which URLs the image and link detectors let through, for the ones that read a boundary. */
 function GivenUrlsSection({
-	checks,
+	detectors,
+	allow,
 	onChange,
 }: {
-	checks: EgressChecksDraft;
-	onChange: (next: EgressChecksDraft) => void;
+	detectors: readonly UrlDetector[];
+	allow: UrlAllowsDraft;
+	onChange: (next: UrlAllowsDraft) => void;
 }) {
-	const urls = (['images', 'links'] as const).filter((name) => checks[name].on);
-	if (urls.length === 0) return null;
+	if (detectors.length === 0) return null;
 	return (
 		<InspectorSection title="Given URLs">
-			{urls.map((name) => (
+			{detectors.map((detector) => (
 				<NamesRow
-					key={name}
-					label={name === 'images' ? 'Image hosts' : 'Link hosts'}
-					path={`guardrails.egress.checks.${name}.hosts`}
-					field={`egressChecks.${name}.hosts`}
-					value={checks[name].hosts}
+					key={detector}
+					label={detector === 'ungiven_images' ? 'Image hosts' : 'Link hosts'}
+					path={`guardrails.detect.${detector}.allow.hosts`}
+					field={`allow.${detector}.hosts`}
+					value={allow[detector].hosts}
 					onChange={(hosts) => {
-						onChange({ ...checks, [name]: { ...checks[name], hosts } });
+						onChange({ ...allow, [detector]: { ...allow[detector], hosts } });
 					}}
 				/>
 			))}
-			{urls.map((name) => (
+			{detectors.map((detector) => (
 				<SwitchRow
-					key={name}
-					label={name === 'images' ? 'Image tool URLs' : 'Link tool URLs'}
-					path={`guardrails.egress.checks.${name}.fromTools`}
-					value={checks[name].fromTools}
+					key={detector}
+					label={detector === 'ungiven_images' ? 'Image tool URLs' : 'Link tool URLs'}
+					path={`guardrails.detect.${detector}.allow.fromTools`}
+					value={allow[detector].fromTools}
 					onChange={(fromTools) => {
-						onChange({ ...checks, [name]: { ...checks[name], fromTools } });
+						onChange({ ...allow, [detector]: { ...allow[detector], fromTools } });
 					}}
 				/>
 			))}
@@ -2878,19 +2856,19 @@ function CanarySection({ guardrails, set }: GuardrailsSectionProps) {
 }
 
 /** Retries and guidance, shown when a blocked reply goes back to the agent. */
-function EgressRepairRows({ guardrails, set }: GuardrailsSectionProps) {
+function BlockedReplyRetryRows({ guardrails, set }: GuardrailsSectionProps) {
 	return (
 		<>
 			<NumberRow
 				label="Retries"
-				path="guardrails.egress.maxRetries"
+				path="guardrails.blockedReply.maxRetries"
 				units="retries"
-				field="egressMaxRetries"
-				value={guardrails.egressMaxRetries}
+				field="blockedReplyMaxRetries"
+				value={guardrails.blockedReplyMaxRetries}
 				min={0}
 				isIntegerOnly
-				onChange={(egressMaxRetries) => {
-					set({ egressMaxRetries });
+				onChange={(blockedReplyMaxRetries) => {
+					set({ blockedReplyMaxRetries });
 				}}
 			/>
 			<TextAreaRow
@@ -2907,28 +2885,21 @@ function EgressRepairRows({ guardrails, set }: GuardrailsSectionProps) {
 	);
 }
 
-function EgressSection({ guardrails, set }: GuardrailsSectionProps) {
+function BlockedReplySection({ guardrails, set }: GuardrailsSectionProps) {
 	return (
-		<InspectorSection title="Egress" path="guardrails.egress">
+		<InspectorSection title="Blocked reply" path="guardrails.blockedReply">
 			<SegmentedRow
 				label="On block"
-				path="guardrails.egress.onBlock"
-				value={guardrails.egressOnBlock || 'reject_to_agent'}
+				path="guardrails.blockedReply.onBlock"
+				value={guardrails.blockedReplyOnBlock || 'retry'}
 				segments={ON_BLOCK_SEGMENTS}
 				onChange={(onBlock) => {
-					set({ egressOnBlock: onBlock === 'reject_to_agent' ? '' : onBlock });
+					set({ blockedReplyOnBlock: onBlock === 'retry' ? '' : onBlock });
 				}}
 			/>
-			{guardrails.egressOnBlock === '' && <EgressRepairRows guardrails={guardrails} set={set} />}
-			<FlagList
-				label="Checks"
-				path="guardrails.egress.checks"
-				flags={REPLY_CHECK_FLAGS}
-				value={replyChecks(guardrails.egressChecks)}
-				onChange={(on) => {
-					set({ egressChecks: withReplyChecks(guardrails.egressChecks, on) });
-				}}
-			/>
+			{guardrails.blockedReplyOnBlock !== 'refuse' && (
+				<BlockedReplyRetryRows guardrails={guardrails} set={set} />
+			)}
 		</InspectorSection>
 	);
 }
@@ -3231,21 +3202,28 @@ function DetectSection({
 function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
 	const { guardrails } = draft;
 	const set = patch(setDraft, 'guardrails');
+	const boundaries = draft.identity.profileType === 'host' ? TOOL_BOUNDARIES : BOUNDARIES;
+	const urlDetectors = URL_DETECTORS.filter((detector) =>
+		boundaries.some((boundary) => guardrails.detect[detector][boundary] !== 'ignore'),
+	);
 	return (
 		<>
 			<DetectSection
 				detect={guardrails.detect}
-				boundaries={draft.identity.profileType === 'host' ? TOOL_BOUNDARIES : BOUNDARIES}
+				boundaries={boundaries}
 				onChange={(detect) => {
 					set({ detect });
 				}}
 			/>
 			{plantsCanary(draft) && <CanarySection guardrails={guardrails} set={set} />}
-			<EgressSection guardrails={guardrails} set={set} />
+			{draftAllows(draft, 'guardrails.blockedReply') && (
+				<BlockedReplySection guardrails={guardrails} set={set} />
+			)}
 			<GivenUrlsSection
-				checks={guardrails.egressChecks}
-				onChange={(egressChecks) => {
-					set({ egressChecks });
+				detectors={urlDetectors}
+				allow={guardrails.allow}
+				onChange={(allow) => {
+					set({ allow });
 				}}
 			/>
 			<NetworkSection guardrails={guardrails} set={set} />
@@ -3507,7 +3485,6 @@ const METHOD_SEGMENTS: Segment<HttpMethod>[] = [
 
 const LOAD_TIER_SEGMENTS: Segment<ToolLoadTier>[] = [
 	{ value: 'T0', label: 'T0', icon: IconSquareRoundedNumber0 },
-	{ value: 'T1', label: 'T1', icon: IconSquareRoundedNumber1 },
 	{ value: 'T2', label: 'T2', icon: IconSquareRoundedNumber2 },
 ];
 
@@ -3531,13 +3508,10 @@ const AUTH_HEADER_PREFIX: Record<Exclude<PlaygroundAuthType, 'none'>, string> = 
 };
 
 /**
- * Why a tool on `tier` never loads on this draft: text and image turns wire T1 tools only through a
- * T1 policy, which the playground can't write, and T2 tools only through the T2 loader.
+ * Why a tool on `tier` never loads on this draft: the playground can't write a T1 policy, so a
+ * T2 tool loads only through the T2 loader.
  */
 function loadTierWarning(draft: PlaygroundDraft, tier: ToolLoadTier): string | undefined {
-	if (tier === 'T1' && draftAllows(draft, 'tools.t1Policy')) {
-		return 'The playground has no T1 policy, so this tool never loads.';
-	}
 	if (tier === 'T2' && draftAllows(draft, 'tools.t2Loader') && !draft.tools.t2Loader.trim()) {
 		return 'No T2 loader is set under Tools, so this tool never loads.';
 	}
@@ -4706,7 +4680,7 @@ const SHARED_WORDING: Partial<
 		write: (setDraft, egressRepairGuidance) => {
 			patch(setDraft, 'guardrails')({ egressRepairGuidance });
 		},
-		isOn: (draft) => draft.guardrails.egressOnBlock === '',
+		isOn: (draft) => draft.guardrails.blockedReplyOnBlock !== 'refuse',
 	},
 };
 
