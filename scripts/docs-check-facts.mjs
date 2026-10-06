@@ -129,7 +129,7 @@ const sameSet = (what, docSet, kernelSet) => {
 {
 	const unsetOf = {
 		detect: 'guardrails.detect',
-		canary: 'guardrails.canary',
+		blockedReply: 'guardrails.blockedReply',
 		egress: 'guardrails.egress',
 		quota: 'guardrails.quota',
 		disclosure: 'guardrails.disclosure',

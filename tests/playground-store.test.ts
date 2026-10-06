@@ -45,7 +45,7 @@ test('a workspace with an agent kept before the draft grew a section is set asid
 	const workspace = twoAgents();
 	const [first, second] = workspace.agents;
 	assert.ok(first && second);
-	const { egressChecks: _dropped, ...olderGuardrails } = second.guardrails;
+	const { allow: _dropped, ...olderGuardrails } = second.guardrails;
 	keep({ ...workspace, agents: [first, { ...second, guardrails: olderGuardrails }] });
 	saveConversation(first.key, { blocks: [], session: {} } as never);
 	assert.equal(restorePlayground().kind, 'discarded');
@@ -83,7 +83,7 @@ test('a draft kept by the one-agent playground opens as a workspace holding it',
 
 test('a one-agent draft in an older shape is set aside', () => {
 	const blank = createBlankDraft();
-	const { egressChecks: _dropped, ...olderGuardrails } = blank.guardrails;
+	const { allow: _dropped, ...olderGuardrails } = blank.guardrails;
 	keepV1({ ...blank, guardrails: olderGuardrails });
 	assert.equal(restorePlayground().kind, 'discarded');
 	assert.equal(sessionStorage.getItem(V1_KEY), null);

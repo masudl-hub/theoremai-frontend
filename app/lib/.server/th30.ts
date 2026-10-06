@@ -2,12 +2,7 @@
  * Th30 ("T H 3 O") — the site's live voice guide. A Gemini Live profile with
  * four docs tools over the composed index: navigate, highlight, read, search.
  */
-import {
-	defineProfile,
-	registerProfile,
-	registerTool,
-	standardEgressEnforce,
-} from '@theoremjs/agents';
+import { defineProfile, registerProfile, registerTool } from '@theoremjs/agents';
 import { googleBindingViolation } from '@theoremjs/agents/presets/google';
 import { SURFACE_PROMPT, SURFACE_TOOL_NAMES, surfaceTools } from '@theoremjs/agents/surface';
 import { z } from 'zod';
@@ -305,10 +300,7 @@ export function ensureTh30ProfileRegistered(): void {
 				credentials: { at: { reply: 'block' } },
 				injection: { at: { reply: 'block' } },
 			},
-			egress: {
-				onBlock: 'refuse_to_user',
-				enforce: standardEgressEnforce,
-			},
+			blockedReply: { onBlock: 'refuse' },
 		},
 	});
 

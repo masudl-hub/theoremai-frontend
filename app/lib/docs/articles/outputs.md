@@ -108,7 +108,7 @@ If a check fails, Theorem sends its `error` to the model and asks for a new repl
 Without `maxRetries`, no retry happens. A reply that fails a check goes out as it is.
 ```
 
-`guardrails.egress.maxRetries` also sets retries ([Setting guardrails](/docs/guardrails)). Theorem uses the larger of the two numbers.
+A reply that a guardrail blocks has its own count, `guardrails.blockedReply.maxRetries` ([Setting guardrails](/docs/guardrails)).
 
 Checks in `fields` need a `structured` schema. Each path must reach a property through object properties. If not, `registerProfile` throws.
 

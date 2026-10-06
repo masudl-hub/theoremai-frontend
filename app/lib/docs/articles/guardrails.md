@@ -1,7 +1,7 @@
 ---
 title: Setting guardrails
 updated: 2026-10-05
-summary: Choose which checks run on a turn: input cleaning, the system-prompt canary, reply checks, tool limits and a daily quota.
+summary: Choose what Theorem finds in a turn and what it does with each match, what happens to a blocked reply, tool limits and a daily quota.
 entry: src/guardrails/mod.ts
 covers: src/guardrails
 cover: /imagery/th30_obsidianshores.png
@@ -9,83 +9,81 @@ coverAlt: Black rocks where the surf meets the shore
 coverPosition: 100% 0%
 ---
 
-Guardrails keep injected instructions, secrets and leaks out of a turn. Each guardrail is a field under `guardrails` on the profile. One runs when you set nothing: `detect`. The reply check, `egress`, runs only when you set it.
+Guardrails keep injected instructions, secrets and leaks out of a turn. Each guardrail is a field under `guardrails` on the profile. One runs when you set nothing: `detect`. Your own reply check, `egress`, runs only when you set it.
 
 ## Know the defaults
 
 Guardrail | Without a setting | What it does
 --- | --- | ---
-`detect` | Redacts what goes to the model | Finds credentials, personal data, injection phrasing and leaks of the system prompt in text, and acts on each match
-`egress` | No check | Checks each reply before the user sees it
+`detect` | Redacts what goes to the model, and blocks a reply that leaks | Finds credentials, personal data, injection phrasing and leaks in text, and acts on each match
+`blockedReply` | One rewrite | Says what happens to a reply that is blocked
+`egress` | No check of your own | Runs your own check on each reply before the user sees it
 `network` | `https` only, no private addresses | Limits what HTTP and MCP tools reach
 `taint` | `off` | Limits tool calls after a remote read
 `quota` | No limit | Limits turns per day
 `disclosure` | No check | Checks decision state before it goes to the model
 
-## Check the reply
+## Choose what happens to a blocked reply
 
-Set `egress` to check each reply before the user sees it. `checks: true` runs the bundled checks at their defaults. `onBlock` says what happens when a check stops a reply.
+A detector, or your own `egress.enforce`, can block a reply. `blockedReply` says what happens next.
 
 ```ts frame=profile:text
 guardrails: {
-	egress: { checks: true, onBlock: 'refuse_to_user' },
+	blockedReply: { onBlock: 'refuse' },
 },
 ```
 
-## Choose what happens when a check stops a reply
+With `retry`, the model reads why and writes the reply again. `maxRetries` sets how many times the model may rewrite. Once the rewrites are used, Theorem withholds the reply, and the user reads the `error.safety` line. If you set nothing, `onBlock` is `retry` and `maxRetries` is 1.
 
-With `refuse_to_user`, the user reads the `egress.refusal` line in place of the reply, and the turn ends.
+With `refuse`, the user reads the `egress.refusal` line in place of the reply, and the turn ends.
 
-With `reject_to_agent`, the model reads why and writes the reply again. If you omit `onBlock`, Theorem uses `reject_to_agent`.
+A live session never rewrites, because the user has already heard the audio. With `retry`, it withholds the rest of the reply.
 
-For `reject_to_agent`, `maxRetries` sets how many times the model may rewrite. If you omit it, the value is 0. Theorem then withholds the reply, and the user reads the `error.safety` line.
+## Stop images and links that carry data out
 
-## Pick the bundled checks
+A reply image loads its URL as soon as it shows, so an image can carry data to a server with no click. A link does the same on a click. Three detectors under `detect` read each reply for this.
 
-Pass an object to `checks` to switch single checks. A check you leave out keeps its default. All checks run by default except `links`.
+Detector | Without a setting | Finds
+--- | --- | ---
+`marker_leak` | Blocks a reply, redacts a thought | The markers Theorem puts around user data
+`ungiven_images` | Blocks a reply, redacts a thought | An image that loads a URL the model was not given
+`ungiven_links` | `ignore` | A link to a URL the model was not given
+
+`ungiven_images` and `ungiven_links` also take `allow`. `hosts` lists hostnames that always pass. A URL that a tool returned counts as given unless you set `fromTools` to `false`.
 
 ```ts frame=guardrails
-egress: {
-	checks: { links: true, images: { hosts: ['cdn.example.com'] } },
+detect: {
+	ungiven_images: { allow: { hosts: ['cdn.example.com'] } },
+	ungiven_links: { action: 'block', allow: { fromTools: false } },
 },
 ```
 
-## What each check stops
-
-`boundary` stops a reply that repeats the markers Theorem puts around user data.
-
-To stop credentials, personal data or injection phrasing in a reply, set `detect` at the `reply` boundary ([Clean what goes in](#clean-what-goes-in)).
-
-`images` stops an image that loads a URL the model never saw, because the image can carry data to that server. `links` does the same for links. `hosts` lists hostnames that always pass. A URL that a tool returned counts as given unless you set `fromTools` to `false`.
-
-To write your own check, set `enforce` in place of `checks`. Your function returns `allow`, `flag`, `redact` or `block`. `defineProfile` refuses an `egress` that sets both or neither.
+To stop credentials, personal data or injection phrasing in a reply, set those detectors at the `reply` boundary ([Clean what goes in](#clean-what-goes-in)).
 
 ## Write your own egress check
 
-Most hosts turn on the bundled checks with `egress.checks`. If your host has rules of its own, start from `standardEgressEnforce` and add your rule after it. Your function sees every outbound payload (streamed text, structured JSON and live transcripts), the stage and the canary. It returns one of four verdicts.
+If your host has rules of its own, set `egress.enforce`. The detectors read the reply first, and your function reads it as they left it. Your function sees every outbound payload (streamed text, structured JSON and live transcripts), the stage and the canary. It returns one of four verdicts.
 
-`allow` releases the payload as it is. `flag` releases it with a `guardrail` event for review. `redact` releases your rewritten text in its place. `block` follows `onBlock`: `reject_to_agent` sends the rejection back to the model for up to `maxRetries` repair rounds, and `refuse_to_user` shows the lexicon’s `egress.refusal`. When the retries run out, the turn is withheld.
+`allow` releases the payload as it is. `flag` releases it with a `guardrail` event for review. `redact` releases your rewritten text in its place. `block` follows `blockedReply`. No verdict releases a reply that a detector blocked.
 
-The checks fail closed. A payload that cannot be scanned, or an enforcer that throws, counts as a block (`egress.enforcer-error`). It never counts as an allow.
+The check fails closed. A payload that cannot be scanned, or an enforcer that throws, counts as a block (`egress.enforcer-error`). It never counts as an allow.
 
 ```ts
-import { type EgressEnforcer, standardEgressEnforce } from '@theoremjs/agents';
+import type { EgressEnforcer } from '@theoremjs/agents';
 
-// Standard checks first, then hide internal incident ids from customers.
-export const egress: EgressEnforcer = (payload, ctx) => {
-	const standard = standardEgressEnforce(payload, ctx);
-	if (standard.action !== 'allow') return standard;
+// Hide internal incident ids from customers.
+export const egress: EgressEnforcer = (payload) => {
 	const text = payload.text.replace(/\bINC-\d{6}\b/g, '[internal incident]');
-	if (text === payload.text) return standard;
+	if (text === payload.text) return { action: 'allow' };
 	return { action: 'redact', text, hits: [{ rule: 'host.internal-incident-id', severity: 'low' }] };
 };
 
-// guardrails: { egress: { enforce: egress, onBlock: 'reject_to_agent', maxRetries: 2 } }
+// guardrails: { egress: { enforce: egress }, blockedReply: { maxRetries: 2 } }
 ```
 
 ## Compile rules at build time
 
-If your rules only block, use `egressPolicy` in place of a function. It holds them as exactly as the standard checks do. Run `agents egress-compile ./rules.ts --out ./rules.compiled.ts` to compile your regexes at build time. Then run `egressPolicy({ rules, compiled: compiledEgressRules })` beside the standard checks.
+If your rules only block, use `egressPolicy` in place of a function. It holds them as exactly as the detectors do. Run `agents egress-compile ./rules.ts --out ./rules.compiled.ts` to compile your regexes at build time. Then set `egress.enforce` to `egressPolicy({ rules, compiled: compiledEgressRules })`.
 
 ## What streaming holds back
 
@@ -93,9 +91,7 @@ Streaming does not turn the checks off. Theorem releases text only after it clea
 
 With the canary only, the window holds a tail of 4 or more characters that could still start a leak. This is usually nothing, so the text streams almost at once. A blocked leak shows at most 3 characters.
 
-With the bundled `egress.checks`, or an `egressPolicy`, the window holds only the text that could still become a match. A blocked match shows none of its characters.
-
-With `detect` at the `reply` boundary, the same window holds the text that could still become a match. No character of a match shows before its action is taken.
+With the other detectors at the `reply` boundary, or an `egressPolicy`, the window holds only the text that could still become a match. No character of a match shows before its action is taken.
 
 With your own `egress.enforce`, the window holds `egress.holdback` characters. The default is 256, or 96 on a live session, where held transcript also holds its audio.
 
@@ -103,7 +99,7 @@ The verdict at the end of the attempt is final. Text that was held back and then
 
 ## Thoughts and live audio
 
-A thought that trips a guardrail is edited, never stopped. Set `outputs.streaming.streamThoughts` to show thoughts to your user. Each thought then arrives with the canary, the system-prompt echo, the user-data markers, and any image or link that the bundled checks would block, swapped for a placeholder. A `guardrail` event at stage `thought` reports the swap. The rest of the thought streams on.
+A thought that trips a guardrail is edited, never stopped. Set `outputs.streaming.streamThoughts` to show thoughts to your user. Each thought then arrives with the canary, the system-prompt echo, the user-data markers, and any image that `ungiven_images` finds, swapped for a placeholder. A `guardrail` event at stage `thought` reports the swap. The rest of the thought streams on.
 
 `detect` reads thoughts at the `thought` boundary. `block` there hides the rest of the thought, and the turn goes on.
 
@@ -122,7 +118,7 @@ Two detectors under `detect` protect the system prompt.
 
 Without a setting, each blocks a reply that leaks and redacts a thought that leaks. `canary_leak` also blocks a tool call whose arguments carry the token. `prompt_leak` flags a tool call whose arguments carry the words.
 
-Without `egress`, a leak ends the turn, and the user reads the `error.safety` line. With `egress`, `onBlock` decides.
+A reply that leaks goes the way `blockedReply` sets.
 
 A speech profile has no system prompt, so Theorem adds no canary to it.
 
@@ -163,7 +159,7 @@ guardrails: {
 
 On the way in, `block` refuses the turn before the model is called, with an `input` error. At `tool_arguments_<kind>`, the tool is not called and the model is told so. At `tool_output_<kind>`, the model does not read the output and the call fails.
 
-At `reply`, the reply stops before the match. It then goes the way `egress.onBlock` sets. Each match is reported under the rule `detect.<detector>`, and the `guardrail` event names the boundary.
+At `reply`, the reply stops before the match. It then goes the way `blockedReply` sets. Each match is reported under the rule `detect.<detector>`, and the `guardrail` event names the boundary.
 
 ## Treat remote tool results as data
 
@@ -206,7 +202,7 @@ A decision profile sets `disclosure.enforce`. `runDecision` calls it before it s
 Guardrail | `text`, `image` | `live` | `speech` | `host` | `decision`
 --- | --- | --- | --- | --- | ---
 `detect` | Yes | Yes | Yes | Yes | No
-`egress`, `taint` | Yes | Yes | No | No | No
+`blockedReply`, `egress`, `taint` | Yes | Yes | No | No | No
 `network` | Yes | Yes | No | Yes | No
 `quota` | Yes | Yes | Yes | No | No
 `disclosure` | No | No | No | No | Yes
