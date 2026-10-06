@@ -14,7 +14,7 @@ Choose what kind of agent you build. The **type** of a profile is its modality: 
 
 ## The idea
 
-The type is the first field that you set. It decides two things:
+The type decides two things:
 
 - which fields the profile can set, and which fields it must set
 - which function runs the agent
@@ -31,16 +31,16 @@ The type is the first field that you set. It decides two things:
 	"caption": "The type decides which fields the profile takes and which function runs it.",
 	"steps": [
 		{
-			"label": "You set the type",
-			"text": "The type is the first field of the profile."
+			"label": "You choose one type",
+			"text": "A profile is text, image, speech, live, decision or host."
 		},
 		{
-			"label": "defineProfile checks the fields",
-			"text": "It throws when your application starts, not in the middle of a turn."
+			"label": "The type sets the fields",
+			"text": "defineProfile throws if a field does not belong to the type, or if a field that the type needs is missing."
 		},
 		{
-			"label": "One function runs the agent",
-			"text": "The type decides which one.",
+			"label": "The type sets the function",
+			"text": "Each type has one function that runs it.",
 			"parts": [
 				{
 					"label": "runTurn",
