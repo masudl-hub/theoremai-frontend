@@ -1,9 +1,8 @@
-import { Heading } from '@astryxdesign/core/Heading';
-import { Text } from '@astryxdesign/core/Text';
-import { VStack } from '@astryxdesign/core/VStack';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { HeroVideo } from '../components/hero-video';
+import { ExamplesBoard } from '../components/examples/board';
+import { HomeStage } from '../components/home-stage';
+import '../components/home-scroll.css';
 import { getKernelPackageVersion } from '../lib/.server/theoremai';
 import { SITE_REDIRECTS } from '../lib/docs/articles/chapters';
 import type { Th30PageHandle } from '../lib/th30-page';
@@ -23,7 +22,7 @@ export const handle = {
 	th30Page: () => ({
 		title: 'Home',
 		summary:
-			"The home page: the Theorem wordmark over a valley video, the package version, and the line 'Typed, composable agents for text, image, speech, and live voice — guarded on every turn.' From here the visitor goes to the docs or the playground; th30 can take them to any docs chapter.",
+			"The home page opens on the Theorem wordmark over a valley video, with the package version and the line 'Typed, composable agents for text, image, speech, and live voice — guarded on every turn.' Scrolling contracts that valley footage into the Built-in boundaries still, uncovering the screen underneath, and the wordmark fades as the frame settles. What it uncovers is a split. On the left: 'Agents are probabilistic.' in a lighter weight, then 'Your architecture shouldn’t be.' in bold, with shouldn’t underlined, and the description of Theorem as an open-source TypeScript agent builder types itself out, one character at a time, then stays. On the right, three stills stacked. Each shows an icon and a title — Predictable structure over drying saffron plots, Less plumbing over a single river in an orange canyon, Built-in boundaries over that same valley — and the longer note for that idea appears when the still is hovered or focused. The agents showcase is the next page. The rail still opens the playground and the docs as their own pages.",
 	}),
 } satisfies Th30PageHandle;
 
@@ -43,23 +42,25 @@ function RetiredHashRedirect() {
 	return null;
 }
 
-/** Landing hero: the wordmark over the valley footage. */
+/** Landing: the hero scrolls away, then the centred stage, then the agents showcase. */
 export default function Home({ loaderData }: Route.ComponentProps) {
+	const scrollRef = useRef<HTMLDivElement>(null);
+	const { hash } = useLocation();
+
+	useEffect(() => {
+		const id = decodeURIComponent(hash.replace(/^#/, ''));
+		const scroller = scrollRef.current;
+		if (!id || !scroller) return;
+		scroller.querySelector<HTMLElement>(`#${CSS.escape(id)}`)?.scrollIntoView({ block: 'start' });
+	}, [hash]);
+
 	return (
-		<>
+		<div className="home-scroll" ref={scrollRef}>
 			<RetiredHashRedirect />
-			<HeroVideo src="/hero/valley.mp4" poster="/hero/valley.webp">
-				<VStack height="100%" justify="end" gap={2} padding={10}>
-					<Text type="label">@theoremjs/agents {loaderData.version}</Text>
-					<Heading level={1} type="wordmark" hasCapsize>
-						THEOREM
-					</Heading>
-					<Text type="large">
-						Typed, composable agents for text, image, speech, and live voice — guarded on every
-						turn.
-					</Text>
-				</VStack>
-			</HeroVideo>
-		</>
+			<HomeStage version={loaderData.version} />
+			<section className="home-page" id="examples" aria-label="Examples">
+				<ExamplesBoard />
+			</section>
+		</div>
 	);
 }
