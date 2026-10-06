@@ -23,16 +23,37 @@ A turn does not always end cleanly. Two things happen in real use:
 - A **continue** is a new turn that your application sends, to get the rest of a reply.
 - An **inject** adds a message to a turn that is running.
 
-```text
-            inject: a message from the user
-                         │
-                         ▼
-turn 1  ─────────────────●──────────────►  stops early (length)
-                                                  │
-                                  your application sends a continue
-                                                  │
-                                                  ▼
-turn 2  ────────────────────────────────►  the rest of the reply
+```figure
+{
+	"kind": "sequence",
+	"still": {
+		"src": "/imagery/th30_nightide.png",
+		"position": "40% 50%"
+	},
+	"caption": "An inject changes a turn that is running. A continue starts a new turn for the rest of a reply.",
+	"steps": [
+		{
+			"label": "Turn 1 runs",
+			"text": "The desk starts its reply."
+		},
+		{
+			"label": "The user injects",
+			"text": "A message from the user joins the turn that is running."
+		},
+		{
+			"label": "The reply stops early",
+			"text": "The model reached its token limit, and the stop kind is length."
+		},
+		{
+			"label": "Your application sends a continue",
+			"text": "The continue is a new turn. It asks for the rest."
+		},
+		{
+			"label": "Turn 2 runs",
+			"text": "The desk gives the rest of the reply."
+		}
+	]
+}
 ```
 
 Both settings are optional. Live profiles do not use `resumption`. They use `live.sessionResumption` ([Choosing a modality](/docs/modalities)).
@@ -122,5 +143,5 @@ A turn, kind `request` | The profile is `live` | Use `live.sessionResumption`
 A turn, kind `request` | A text continue carries `input.text` | Remove `input.text`
 A turn, kind `request` | `maxContinues` is set, and `continuation` is missing, below 1 or above `maxContinues` | Send `continuation`, counting from 1
 `stage` event, `stageWarnings` | `inject_not_allowed`: `allowSteering` is `false` | Set `allowSteering` to `true`, or leave it out
-`stage` event, `stageWarnings` | `inject_rejected_max_steps`: one more model call would pass `maxSteps` | Raise `maxSteps` on the profile ([Binding models](/docs/models))
+`stage` event, `stageWarnings` | `inject_rejected_max_steps`: one more model call would pass `maxSteps` | Raise `maxSteps` on the profile. Without it, a turn stops at 20 model calls
 `stage` event, `stageWarnings` | `affordance_not_allowed`: the stage cannot inject | Inject at `pre_turn`, `post_tool` or `before_end`

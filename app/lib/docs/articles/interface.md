@@ -18,17 +18,37 @@ A chat screen has many small facts in it. Can the user attach a file? Which mode
 
 In Theorem, the server sends the browser an **interface**: the profile without its secrets. The screen reads the inputs, the models, the tool names and the wording from it. If you change the profile, the screen changes.
 
-```text
-┌───────────────────────────────┐          ┌───────────────────────────────┐
-│ BROWSER                       │          │ YOUR SERVER                   │
-│ <TheoremChat />               │          │ createTheoremHandler          │
-│                               │          │                               │
-│ reads the interface           │ ◄─ GET ─ │ sends the interface           │
-│ keeps the transcript          │ ─ turn ► │ runs the turn                 │
-│ asks the user to approve      │ ─invoke► │ runs the approved tool        │
-│ shows the events              │ ◄─events─│ streams NDJSON events         │
-└───────────────────────────────┘          └───────────────────────────────┘
-        no keys, no prompt                   profile, keys, tools, prompt
+```figure
+{
+	"kind": "sequence",
+	"still": {
+		"src": "/imagery/th30_lapis.png",
+		"position": "40% 50%"
+	},
+	"caption": "The profile, the keys, the tools and the instruction stay on your server. The browser receives only the interface and the events.",
+	"steps": [
+		{
+			"label": "Your server sends the interface",
+			"text": "createTheoremHandler answers a GET request with the profile without its secrets."
+		},
+		{
+			"label": "The browser draws the chat",
+			"text": "TheoremChat reads the inputs, the models, the tool names and the wording from the interface."
+		},
+		{
+			"label": "The browser sends a turn",
+			"text": "It keeps the transcript, and it sends the new message to your server."
+		},
+		{
+			"label": "Your server runs the turn",
+			"text": "It streams the events back as NDJSON, and the browser shows them."
+		},
+		{
+			"label": "The user approves a tool",
+			"text": "The browser asks the user. Your server runs the tool only after a yes."
+		}
+	]
+}
 ```
 
 Three packages share the work:

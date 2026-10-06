@@ -19,11 +19,30 @@ In Theorem, each line is in the **lexicon** under a key. `LEXICON_KEYS` lists al
 
 To change a line, you replace it by key. Theorem looks for the wording in three places, in this order:
 
-```text
-┌────────────────────┐      ┌────────────────────┐      ┌────────────────────┐
-│ profile.lexicon    │ then │ overrideLexicon    │ then │ the default line   │
-│ one profile        │ ───► │ every profile      │ ───► │ from Theorem       │
-└────────────────────┘      └────────────────────┘      └────────────────────┘
+```figure
+{
+	"kind": "sequence",
+	"layout": "row",
+	"still": {
+		"src": "/imagery/th30_corals.png",
+		"position": "40% 50%"
+	},
+	"caption": "Theorem uses the first place that has the key.",
+	"steps": [
+		{
+			"label": "profile.lexicon",
+			"text": "The wording of one profile."
+		},
+		{
+			"label": "overrideLexicon",
+			"text": "The wording of every profile."
+		},
+		{
+			"label": "The default line",
+			"text": "The wording from Theorem."
+		}
+	]
+}
 ```
 
 A replacement changes the words only. It does not change if a check runs ([Setting guardrails](/docs/guardrails)), or if a tool asks for consent ([Registering tools](/docs/tools)).

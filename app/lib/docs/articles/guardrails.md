@@ -113,6 +113,8 @@ Action | What happens to a match
 `block` | The text does not cross
 
 A boundary is where the text crosses:
+Theorem reads the text again after a `redact`. If the text still has a match, it does not cross.
+
 
 - On the way in: `user`, `attachment`, `voice`, `slots`, `history`, `injected`, `system`, `repair` and `live_user`.
 - On the way out: `reply`, `reply_structured`, `live_reply` and `thought`.

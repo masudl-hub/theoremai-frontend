@@ -17,21 +17,33 @@ Free text is for a person to read. Code cannot use it safely. If your page needs
 
 In Theorem, the profile names a **schema**, a JSON Schema that you register under an id. Theorem sends the schema to the model as the response format. It then parses the reply before your code sees it.
 
-```text
-                 the reply of the model
-                           │
-                           ▼
-                 ┌───────────────────┐
-                 │ valid JSON?       │── no ──► error event,
-                 └─────────┬─────────┘          kind bad_response
-                           │ yes
-                           ▼
-                 ┌───────────────────┐          Theorem sends the error
-                 │ your checks pass? │── no ──► to the model and asks again,
-                 └─────────┬─────────┘          up to maxRetries times
-                           │ yes
-                           ▼
-             structured event, with the parsed value
+```figure
+{
+	"kind": "sequence",
+	"still": {
+		"src": "/imagery/th30_orangecanyon.png",
+		"position": "40% 50%"
+	},
+	"caption": "Your code receives a value only after the reply passes each check.",
+	"steps": [
+		{
+			"label": "The model writes a reply",
+			"text": "Theorem sent the schema to the model as the response format."
+		},
+		{
+			"label": "Theorem parses the reply",
+			"text": "If the reply is not valid JSON, you receive an error event of kind bad_response."
+		},
+		{
+			"label": "Your checks run",
+			"text": "If a check fails, Theorem sends its error to the model and asks again, up to maxRetries times."
+		},
+		{
+			"label": "Your code receives a structured event",
+			"text": "The event carries the parsed value."
+		}
+	]
+}
 ```
 
 A profile without `outputs` replies in free text.

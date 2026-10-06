@@ -24,19 +24,30 @@ A key slot is a name, not a key. You fill the slot in a **vault**, an object tha
 
 `createProvider` joins the two. It reads the binding from the profile and the key from the vault, and it returns a provider that `runTurn` can call.
 
-```text
-┌──────── profile ─────────┐         ┌───────── vault ─────────┐
-│ models.main              │         │                         │
-│   protocol   openAi      │         │ openrouter: the key,    │
-│   provider   openrouter  │         │ from your environment   │
-│   apiId      …           │         │                         │
-│   key        openrouter ─┼─ names ─┼─► slot                  │
-└────────────┬─────────────┘         └────────────┬────────────┘
-             └───────────────┬────────────────────┘
-                             ▼
-               createProvider(profile, { vault })
-                             ▼
-                a provider for one model
+```figure
+{
+	"kind": "sequence",
+	"layout": "row",
+	"still": {
+		"src": "/imagery/th30_midnightblueberries.png",
+		"position": "40% 50%"
+	},
+	"caption": "The profile stays in your repository. The key stays in your secrets store.",
+	"steps": [
+		{
+			"label": "The profile names a model",
+			"text": "A binding states the protocol, the provider, the model and a key slot."
+		},
+		{
+			"label": "The vault holds the key",
+			"text": "It maps the name of the slot to a key from your environment."
+		},
+		{
+			"label": "createProvider joins them",
+			"text": "It returns a provider for one model, which runTurn can call."
+		}
+	]
+}
 ```
 
 ## Bind the models of the Harbor desk

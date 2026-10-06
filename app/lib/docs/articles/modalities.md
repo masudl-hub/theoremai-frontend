@@ -21,13 +21,47 @@ The type is the first field that you set. It decides two things:
 
 `defineProfile` checks both. It throws if a profile sets a field that its type does not allow. It also throws if the profile leaves out a field that its type needs. You see the error when your application starts, not in the middle of a turn.
 
-```text
-                          type
-   ┌────────┬────────┬─────┴────┬───────────┬───────────┐
-  text    image    speech      live      decision      host
-   └────────┼────────┘          │           │           │
-            ▼                   ▼           ▼           ▼
-         runTurn           runSession  runDecision  invokeTool
+```figure
+{
+	"kind": "sequence",
+	"still": {
+		"src": "/imagery/th30_dyevats.png",
+		"position": "40% 50%"
+	},
+	"caption": "The type decides which fields the profile takes and which function runs it.",
+	"steps": [
+		{
+			"label": "You set the type",
+			"text": "The type is the first field of the profile."
+		},
+		{
+			"label": "defineProfile checks the fields",
+			"text": "It throws when your application starts, not in the middle of a turn."
+		},
+		{
+			"label": "One function runs the agent",
+			"text": "The type decides which one.",
+			"parts": [
+				{
+					"label": "runTurn",
+					"text": "text, image and speech."
+				},
+				{
+					"label": "runSession",
+					"text": "live."
+				},
+				{
+					"label": "runDecision",
+					"text": "decision."
+				},
+				{
+					"label": "invokeTool",
+					"text": "host."
+				}
+			]
+		}
+	]
+}
 ```
 
 ## Pick a type

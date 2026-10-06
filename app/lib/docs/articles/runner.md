@@ -23,18 +23,37 @@ A profile describes an agent. A **runner** function runs it. Each type of profil
 
 A turn is not one call and one answer. The model writes, calls a tool, reads the result and writes again. Theorem gives you each step as an **event**. At five fixed points, the **stages**, your code can look at the turn and change it.
 
-```text
-runTurn(request, provider)
-   │
-   ├─ pre_turn ───── your code can inject or abort
-   │     the model writes ──► text · thought · structured · media
-   ├─ pre_tool ───── your code can abort, deny, confirm or mutate
-   │     the tool runs ─────► tool
-   ├─ post_tool ──── your code can inject, abort, deny or mutate
-   ├─ before_end ─── your code can inject or abort
-   ├─ post_turn ──── your code can observe
-   ▼
- done, with stop.kind
+```figure
+{
+	"kind": "sequence",
+	"still": {
+		"src": "/imagery/th30_poppies.png",
+		"position": "40% 50%"
+	},
+	"caption": "The five stages of one runTurn call, in order. The events arrive between them.",
+	"steps": [
+		{
+			"label": "pre_turn",
+			"text": "Your code can inject or abort. Then the model writes, and you receive text, thought, structured and media events."
+		},
+		{
+			"label": "pre_tool",
+			"text": "Your code can abort, deny, confirm or mutate. Then the tool runs, and you receive a tool event."
+		},
+		{
+			"label": "post_tool",
+			"text": "Your code can inject, abort, deny or mutate."
+		},
+		{
+			"label": "before_end",
+			"text": "Your code can inject or abort."
+		},
+		{
+			"label": "post_turn",
+			"text": "Your code can observe. The done event follows, with stop.kind."
+		}
+	]
+}
 ```
 
 ## Run the Harbor desk

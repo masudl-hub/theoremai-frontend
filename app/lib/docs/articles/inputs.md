@@ -17,13 +17,43 @@ Most applications check input in the route. One route checks the size of a file.
 
 In Theorem, `inputs` is part of the profile. Theorem checks each turn against it before the model sees anything. If the turn breaks the profile, `runTurn` throws, and no model call happens.
 
-```text
-┌──────── the turn ────────┐     ┌─────── inputs ───────┐
-│ text                     │     │ is this kind of      │
-│ files                    │ ──► │ input declared?      │ ── yes ─► the model
-│ voice clips              │     │ is the type allowed? │
-│ slot choices             │     │ is it under the caps?│ ── no ──► TheoremError
-└──────────────────────────┘     └──────────────────────┘
+```figure
+{
+	"kind": "sequence",
+	"still": {
+		"src": "/imagery/th30_cobaltwaves.png",
+		"position": "40% 50%"
+	},
+	"caption": "Theorem checks each turn against the profile before the model reads it.",
+	"steps": [
+		{
+			"label": "A turn arrives",
+			"text": "It can carry text, files, voice clips and slot choices."
+		},
+		{
+			"label": "Theorem checks it against inputs",
+			"text": "The first check that fails ends the turn.",
+			"parts": [
+				{
+					"label": "Declared",
+					"text": "The profile declares this kind of input."
+				},
+				{
+					"label": "Type",
+					"text": "The media type of each file is allowed."
+				},
+				{
+					"label": "Size",
+					"text": "Each file and the full turn are under the caps."
+				}
+			]
+		},
+		{
+			"label": "The model reads the turn",
+			"text": "If a check fails, runTurn throws a TheoremError, and no model call happens."
+		}
+	]
+}
 ```
 
 `inputs` belongs to `text` and `image` profiles. The other types state their input in a different field ([Other agent types](/docs/inputs#other-agent-types)).
@@ -85,7 +115,7 @@ input: {
 - `data` is the file as base64 text.
 - `name` tells the user which file Theorem refused. Theorem never sends it to the model.
 
-Theorem cleans a `text/plain`, `text/markdown` or `text/csv` file before the model reads it. It replaces injection text and sensitive data with an omitted marker. In a CSV file, it adds an apostrophe before a cell that starts like a formula.
+The detectors of the profile read a `text/plain`, `text/markdown` or `text/csv` file before the model does. Without a setting, a placeholder replaces injection text and sensitive data ([Setting guardrails](/docs/guardrails)). In a CSV file, Theorem also adds an apostrophe before a cell that starts like a formula.
 
 ### 4. Accept voice
 

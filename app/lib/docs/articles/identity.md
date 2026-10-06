@@ -15,21 +15,34 @@ Give the agent a name for people and an instruction for the model. Both are in t
 
 The **instruction** is the text that tells the model who it is and how to answer. Many applications build this text in the route, from strings in different files. The text that the model reads then depends on which code ran.
 
-In Theorem, `identity` holds the instruction. On each turn, Theorem builds the text for the model from three sources, always in this order:
+In Theorem, `identity` holds the instruction. On each turn, Theorem builds the text for the model from three sources, always in the same order.
 
-1. The **profile line**: `identity.system`, or the line for the role of the reader.
-2. The **request line**: an extra instruction that one request adds.
-3. Theorem's own notes, such as the **canary**. A canary is a secret token. If the token appears in a reply, the reply leaked the instruction.
-
-```text
-identity.systemByRole[role] ─┐
-             or              ├─► profile line ─┐
-identity.system ─────────────┘                 │
-                                               ├─► the instruction
-request system ────────────────► request line ─┤    that the model reads
-                                               │
-canary and other notes ────────► Theorem notes ┘
+```figure
+{
+	"kind": "sequence",
+	"still": {
+		"src": "/imagery/th30_amethyst.png",
+		"position": "40% 50%"
+	},
+	"caption": "Theorem joins the three lines in this order. The result is the instruction that the model reads.",
+	"steps": [
+		{
+			"label": "The profile line",
+			"text": "identity.system, or the line in identity.systemByRole for the role of the reader."
+		},
+		{
+			"label": "The request line",
+			"text": "An extra instruction that one request adds."
+		},
+		{
+			"label": "Theorem's notes",
+			"text": "Notes that Theorem writes, such as the canary."
+		}
+	]
+}
 ```
+
+A **canary** is a secret token. If the token appears in a reply, the reply leaked the instruction.
 
 A request can add a line. It cannot remove or replace the profile line.
 

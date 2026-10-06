@@ -17,12 +17,30 @@ When an agent gives a wrong answer, you must see what happened: which model ran,
 
 Theorem makes one `TraceRecord` for each recorded run. The `observability` block of the profile says where the record goes and what it keeps.
 
-```text
-┌──────────┐  one TraceRecord   ┌───────────────────┐   write    ┌───────────────┐
-│ a run    │ ─────────────────► │ observability     │ ─────────► │ destination   │
-└──────────┘  timed steps and   │ sampleRate        │            │ JSONL files,  │
-              their text        │ include · scrub   │            │ or your sink  │
-                                └───────────────────┘            └───────────────┘
+```figure
+{
+	"kind": "sequence",
+	"layout": "row",
+	"still": {
+		"src": "/imagery/th30_siennadunes.png",
+		"position": "40% 50%"
+	},
+	"caption": "One run makes one record. The profile says where the record goes and what it keeps.",
+	"steps": [
+		{
+			"label": "A run",
+			"text": "Theorem times each step and keeps its text in one TraceRecord."
+		},
+		{
+			"label": "observability",
+			"text": "sampleRate decides if the run is recorded. include and scrub decide what the record keeps."
+		},
+		{
+			"label": "The destination",
+			"text": "JSONL files, or your own sink."
+		}
+	]
+}
 ```
 
 ```note
