@@ -31,6 +31,8 @@ export interface PlaygroundRunnerProps {
 	onActivity?: () => void;
 	/** A chat conversation to resume, as `onChatChange` reported it (text and image agents). */
 	initialChat?: ChatProps['initialChat'];
+	/** The text a chat's composer starts with. */
+	initialText?: ChatProps['initialText'];
 	onChatChange?: ChatProps['onChatChange'];
 	chatRef?: ChatProps['chatRef'];
 }
@@ -49,6 +51,7 @@ export function PlaygroundRunner({
 	className,
 	onActivity,
 	initialChat,
+	initialText,
 	onChatChange,
 	chatRef,
 }: PlaygroundRunnerProps) {
@@ -93,6 +96,7 @@ export function PlaygroundRunner({
 			className={className}
 			note={note}
 			initialChat={initialChat}
+			initialText={initialText}
 			onChatChange={onChatChange}
 			chatRef={chatRef}
 		/>
@@ -132,6 +136,7 @@ function TurnRun({
 	className,
 	note,
 	initialChat,
+	initialText,
 	onChatChange,
 	chatRef,
 }: RunProps) {
@@ -165,6 +170,7 @@ function TurnRun({
 			trace={trace}
 			className={className}
 			initialChat={initialChat}
+			initialText={initialText}
 			onChatChange={onChatChange}
 			chatRef={chatRef}
 		/>

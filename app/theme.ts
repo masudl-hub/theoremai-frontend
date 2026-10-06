@@ -65,6 +65,27 @@ export const siteTheme = defineTheme({
 				overflow: 'clip',
 			},
 		},
+		// A docs figure's backdrop: the still its `figure` fence names, under the cards drawn on it.
+		card: {
+			'variant:still': {
+				backgroundImage: 'var(--figure-still)',
+				backgroundPosition: 'var(--figure-position)',
+				backgroundRepeat: 'no-repeat',
+				backgroundSize: 'cover',
+			},
+			// A card drawn on a still: the still shows through, blurred.
+			'variant:glass': {
+				backgroundColor: 'color-mix(in srgb, var(--color-background-surface) 88%, transparent)',
+				backdropFilter: 'blur(28px) saturate(1.6)',
+			},
+		},
+		// Inline code in prose reads as part of its sentence: the sentence's own typeface, at its size
+		// and weight. Astryx sets it in the code typeface.
+		code: {
+			base: {
+				fontFamily: 'inherit',
+			},
+		},
 		// The landing wordmark: Astryx's heading type, set at poster scale.
 		heading: {
 			'type:wordmark': {

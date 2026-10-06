@@ -80,7 +80,7 @@ A replacement reaches the user by three paths. Know which one your code uses.
 
 - **Events.** Each `error` event that `runTurn` delivers carries its line in the `error` field.
 - **Your server.** If your server shows an error, call `publicError(err, profile.lexicon)`. Without the second argument, the wording of the profile is skipped. For a refused file, call `attachmentIssueText(issue, profile.lexicon)`.
-- **The browser.** The interface receives only the keys in `CLIENT_LEXICON_KEYS`: errors, file and voice notices, session states and two tool lines. The repair, canary, taint and egress lines stay on the server ([Building the interface](/docs/interface)).
+- **The browser.** The interface receives only the keys in `CLIENT_LEXICON_KEYS`: errors, file and voice notices, session states, two tool lines and `detect.blocked`. The repair, canary, taint and egress lines stay on the server ([Building the interface](/docs/interface)).
 
 ## Fix a refused replacement
 

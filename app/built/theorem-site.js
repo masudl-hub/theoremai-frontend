@@ -491,6 +491,16 @@ export const theoremSiteTheme = {
     "card": {
       "base": {
         "padding": "var(--spacing-3)"
+      },
+      "variant:still": {
+        "backgroundImage": "var(--figure-still)",
+        "backgroundPosition": "var(--figure-position)",
+        "backgroundRepeat": "no-repeat",
+        "backgroundSize": "cover"
+      },
+      "variant:glass": {
+        "backgroundColor": "color-mix(in srgb, var(--color-background-surface) 88%, transparent)",
+        "backdropFilter": "blur(28px) saturate(1.6)"
       }
     },
     "section": {
@@ -580,6 +590,11 @@ export const theoremSiteTheme = {
         "overflow": "hidden",
         "textOverflow": "ellipsis",
         "whiteSpace": "nowrap"
+      }
+    },
+    "code": {
+      "base": {
+        "fontFamily": "inherit"
       }
     }
   },

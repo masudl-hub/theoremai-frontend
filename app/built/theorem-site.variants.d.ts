@@ -21,6 +21,13 @@ declare module '@astryxdesign/core/Badge' {
   }
 }
 
+declare module '@astryxdesign/core/Card' {
+  interface CardVariantMap {
+    'still': true;
+    'glass': true;
+  }
+}
+
 declare module '@astryxdesign/core/Section' {
   interface SectionVariantMap {
     'raised': true;

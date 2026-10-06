@@ -10,7 +10,6 @@ import {
 	defaultToolSpec,
 	demoToolSpecs,
 	excludeFacet,
-	includeFacet,
 	type PlaygroundDraft,
 	playgroundSource,
 	setProfileType,
@@ -18,24 +17,14 @@ import {
 import type { PlaygroundSeedId } from './schema';
 
 const HARBOR_SYSTEM = [
-	'You are Harbor front desk for shippers.',
-	'Calm voice. Short sentences. One clear next step.',
+	'You are the Harbor front desk for shippers.',
+	'Use a calm voice and short sentences. Give one clear next step.',
 	'When a file is attached, say what you can use from it before you advise.',
 	'Call harbor_holdStatus when the person names a shipment id.',
-	'For road legs between yards, call haversine_distance with the lat/lon pairs,',
-	'then convert_units if they want miles. Estimate driving hours at 80 km/h from the km result.',
-	'If you cannot help, say so and offer a human ops handoff.',
+	'Call get_weather with the coordinates of a port when weather can delay a release.',
+	'Call search_web for news about a port, such as a strike or a closure.',
+	'If you cannot help, say so and offer a handoff to a person in operations.',
 ].join('\n');
-
-const HARBOR_REPLY_SCHEMA = JSON.stringify({
-	type: 'object',
-	properties: {
-		reply: { type: 'string' },
-		nextStep: { type: 'string' },
-		etaHours: { type: 'number' },
-	},
-	required: ['reply', 'nextStep'],
-});
 
 const HARBOR_HOLD_INPUT = JSON.stringify({
 	type: 'object',
@@ -58,9 +47,8 @@ const HARBOR_HOLD_STUB = JSON.stringify({
 });
 
 const FIRST_TURN_PROMPT = [
-	'Shipment H-1042 is stuck in Rotterdam (51.92, 4.48).',
-	'How far is that from our Antwerp yard (51.22, 4.40),',
-	'about how many road hours, and what is the hold?',
+	'Shipment H-1042 is on hold at Rotterdam (51.92, 4.48).',
+	'What is the hold, and can the weather or news at the port delay the release?',
 ].join(' ');
 
 function demoSpecs(...names: string[]) {
@@ -70,7 +58,7 @@ function demoSpecs(...names: string[]) {
 		.map((seed) => defaultToolSpec(seed.data));
 }
 
-/** The Harbor hold lookup the desk calls first. */
+/** The Harbor hold lookup: a function tool, Harbor's own code. */
 function harborHoldToolSpec() {
 	return defaultToolSpec({
 		toolName: 'harbor_holdStatus',
@@ -109,8 +97,6 @@ function harborDeskInputs(): PlaygroundDraft['inputs'] {
 function firstTurnDraft(): PlaygroundDraft {
 	let draft = setProfileType(createBlankDraft(), 'text');
 	draft = excludeFacet(draft, 'observability');
-	draft = includeFacet(draft, 'outputs');
-	draft = includeFacet(draft, 'turnBehaviour');
 	return {
 		...draft,
 		identity: {
@@ -120,7 +106,7 @@ function firstTurnDraft(): PlaygroundDraft {
 			system: HARBOR_SYSTEM,
 			systemByRoleJson: '',
 		},
-		models: { ...draft.models, defaultModel: 'main' },
+		models: { ...draft.models, defaultModel: 'main', key: '' },
 		modelBindings: [
 			defaultModelBinding({
 				modelId: 'main',
@@ -130,18 +116,9 @@ function firstTurnDraft(): PlaygroundDraft {
 				keySlot: 'openrouter',
 			}),
 		],
-		toolSpecs: [harborHoldToolSpec(), ...demoSpecs('haversine_distance', 'convert_units')],
+		// One tool of each kind: a function, an HTTP endpoint and an MCP server.
+		toolSpecs: [harborHoldToolSpec(), ...demoSpecs('get_weather', 'search_web')],
 		inputs: harborDeskInputs(),
-		outputs: {
-			...draft.outputs,
-			mode: 'structured',
-			schemaId: 'harbor.desk.reply',
-			schemaJson: HARBOR_REPLY_SCHEMA,
-		},
-		turnBehaviour: {
-			...draft.turnBehaviour,
-			allowSteering: true,
-		},
 		wording: {
 			'error.auth': 'Sign in to Harbor to continue at the desk.',
 		},
@@ -178,21 +155,27 @@ export async function firstTurn(apiKey: string) {
     provider,
   )) {
     if (event.type === 'text') process.stdout.write(event.text);
-    if (event.type === 'structured') {
-      console.log(JSON.stringify(event.structured, null, 2));
-    }
   }
 }
 `;
 }
 
-/** Each seed's playground draft, and how its compiled profile is wrapped for the docs fence. */
+/** Each seed's playground draft, the question its program asks, and how its compiled profile is wrapped for the docs fence. */
 const SEEDS: Record<
 	PlaygroundSeedId,
-	{ draft: () => PlaygroundDraft; wrap: (source: string, profileId: string) => string }
+	{
+		draft: () => PlaygroundDraft;
+		question: string;
+		wrap: (source: string, profileId: string) => string;
+	}
 > = {
-	firstTurn: { draft: firstTurnDraft, wrap: withFirstTurnDoor },
+	firstTurn: { draft: firstTurnDraft, question: FIRST_TURN_PROMPT, wrap: withFirstTurnDoor },
 };
+
+/** The question the seed's program asks, for the playground composer to start with. */
+export function docsSeedQuestion(seed: PlaygroundSeedId): string {
+	return SEEDS[seed].question;
+}
 
 export function docsSeedDraft(seed: PlaygroundSeedId): PlaygroundDraft {
 	return SEEDS[seed].draft();

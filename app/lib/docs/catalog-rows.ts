@@ -31,10 +31,13 @@ export function lexiconCatalogRows() {
 /** A catalog row as a name and its one-line doc. Search, markdown and JSON-LD all read this. */
 export function symbolTerm(symbol: PageSymbol): { name: string; text: string } {
 	switch (symbol.kind) {
-		case 'field': {
+		case 'field':
+		case 'request-field': {
 			const unset = symbol.meta.unset ? ` Omit → ${symbol.meta.unset}.` : '';
 			return { name: symbol.path, text: `${symbol.meta.doc}${unset}` };
 		}
+		case 'export':
+			return { name: symbol.name, text: symbol.doc };
 		case 'union-member':
 			return { name: symbol.value, text: symbol.doc };
 		case 'trace':

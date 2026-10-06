@@ -645,6 +645,18 @@
     --astryx-card-padding: var(--spacing-3);
   }
 
+  .astryx-card[data-variant="still"] {
+    background-image: var(--figure-still);
+    background-position: var(--figure-position);
+    background-repeat: no-repeat;
+    background-size: cover;
+  }
+
+  .astryx-card[data-variant="glass"] {
+    background-color: color-mix(in srgb, var(--color-background-surface) 88%, transparent);
+    backdrop-filter: blur(28px) saturate(1.6);
+  }
+
   .astryx-section {
     --astryx-section-padding: var(--spacing-3);
   }
@@ -719,6 +731,10 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .astryx-code {
+    font-family: inherit;
   }
 
   .astryx-text[data-color="primary"] { color: var(--color-text-primary); }

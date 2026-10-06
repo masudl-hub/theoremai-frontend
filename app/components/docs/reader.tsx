@@ -608,7 +608,7 @@ export function DocsReader({ index, article }: { index: DocIndex; article: DocAr
 				<HStack className="docs-article" align="start">
 					<StackItem size="fill">
 						<VStack gap={6} padding={8} className="docs-prose">
-							<DocsBody body={article.body} />
+							<DocsBody article={article} />
 							<PageDictionary symbols={article.symbols} />
 							<ChapterNeighbors prev={prev} next={next} />
 						</VStack>

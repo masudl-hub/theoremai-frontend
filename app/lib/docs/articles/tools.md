@@ -1,7 +1,7 @@
 ---
 title: Registering tools
 updated: 2026-10-05
-summary: Register a tool with registerTool and allow it by name. See why a call fails, the order of every call, and how OAuth signs the user in.
+summary: Give an agent a tool that runs your code, calls a URL, an MCP server or another agent. Ask a person first, sign the user in, and fix a failed call.
 entry: src/kernel/tools/mod.ts
 covers: src/kernel/tools, src/kernel/auth
 cover: /imagery/th30_malachite.png
@@ -9,117 +9,301 @@ coverAlt: Malachite pools in rings
 coverPosition: 0% 16%
 ---
 
-Give your agent an ability in two steps. Register the tool once with `registerTool`. Then list its name in the profile’s `tools.allow`. The model can then call it.
+A **tool** is code that the model can ask Theorem to run. Register the tool once. Then name it in each profile that can use it.
 
-A builtin tool runs at the model provider. Declare it in `builtInTools` on the model binding, not in `tools.allow` ([Binding models](/docs/models)).
+## The idea
 
-## Register
+A model cannot run code. It can only ask. In most applications, the code that answers is a loop that you write, and each tool gets its own checks. One tool checks its arguments. A second tool forgets.
 
-```ts frame=statements
+In Theorem, every call takes the same road. The tool can be your own function, a URL, an MCP server or another agent. Theorem does the same checks before the tool runs and after it.
+
+```figure
+{
+	"kind": "sequence",
+	"still": { "src": "/imagery/th30_malachite.png", "position": "30% 40%" },
+	"caption": "Every tool call takes this road. Only step 3 changes with the type of tool.",
+	"steps": [
+		{
+			"label": "The model asks for a tool",
+			"text": "It names the tool and writes the arguments. It cannot run the tool."
+		},
+		{
+			"label": "Theorem checks the call",
+			"text": "The first check that fails ends the call.",
+			"parts": [
+				{ "label": "Allowed", "text": "The profile names the tool in tools.allow." },
+				{ "label": "Arguments", "text": "The arguments match the input schema of the tool." },
+				{ "label": "Sensitive data", "chapter": "guardrails", "text": "The detectors read the arguments, because a call can carry data out." },
+				{ "label": "A person", "text": "A tool can need a yes or a sign-in from the user. The turn waits for it." }
+			]
+		},
+		{
+			"label": "The tool runs",
+			"text": "The type of the tool decides what runs.",
+			"parts": [
+				{ "label": "function", "text": "Your own code." },
+				{ "label": "http", "text": "A URL." },
+				{ "label": "mcp", "text": "A tool on an MCP server." },
+				{ "label": "agent", "text": "Another agent." }
+			]
+		},
+		{
+			"label": "Theorem checks the result",
+			"text": "The model reads the result, so the result is input too.",
+			"parts": [
+				{ "label": "Shape", "text": "The result matches the output schema of the tool." },
+				{ "label": "Sensitive data and injection", "chapter": "guardrails", "text": "The detectors read the result before the model does." }
+			]
+		},
+		{
+			"label": "The model reads the result",
+			"text": "If a check failed, the model reads the reason, and the turn goes on."
+		}
+	]
+}
+```
+
+Your code can make the same call without a model. `invokeTool` runs one tool through a profile, with the same checks.
+
+## Give the Harbor desk its tools
+
+The Harbor desk answers shippers. The model does not know why a shipment is on hold, what the weather is at a port, or what the news says. Each step gives the desk one type of tool. Use only the types that your agent needs.
+
+### 1. Run your own code
+
+Harbor keeps each hold in its own database. A `function` tool runs your code to read it.
+
+```ts
+import { registerTool } from '@theoremjs/agents';
+import { z } from 'zod';
+
 registerTool({
 	type: 'function',
-	name: 'lookup',
-	description: 'Look up an account by id.',
-	category: 'account',
+	name: 'harbor_holdStatus',
+	description: 'Look up why a Harbor shipment is on hold.',
+	category: 'ops',
 	access: 'read-only',
 	paths: ['*'],
 	loadTier: 'T0',
 	permission: 'auto',
-	input: z.object({ id: z.string() }),
-	output: z.object({ name: z.string() }),
-	handler: ({ id }) => ({ name: id }),
-})
+	input: z.object({ shipmentId: z.string() }),
+	output: z.object({ status: z.string(), reason: z.string() }),
+	handler: () => ({ status: 'hold', reason: 'Customs needs the commercial invoice PDF.' }),
+});
 ```
 
-## Register a tool
+The model reads three of these fields:
 
-`name` is the tool’s id. The model calls the tool by it, and `tools.allow` lists it. `description` tells the model what the tool does.
+- `name` is how the model calls the tool. `registerTool` replaces a tool that has the same name.
+- `description` tells the model what the tool does and when to call it.
+- `input` is a Zod schema. Theorem sends it to the model as the arguments of the tool.
 
-Theorem sends the Zod `input` schema to the model as the tool’s arguments. It checks every call against `input` and every result against `output`.
+Theorem reads the others:
 
-`handler` runs when the model calls the tool and when your code calls `invokeTool`.
+- `output` is the shape of the result. Theorem refuses a result that does not match.
+- `access` says what the tool can change: `read-only`, `read-write` or `destructive`. Step 6 and [Setting guardrails](/docs/guardrails) use it.
+- `paths` limits the tool to some requests. `['*']` offers the tool on every request. Any other list offers it only when the `path` of the request is in the list.
+- `loadTier` says when the model first sees the tool (step 7).
+- `permission` says if a person must approve the call (step 6).
+- `category` is a label for your own grouping. Theorem does not read it.
 
-`paths: ['*']` offers the tool on every request path. Any other list offers the tool only when the request’s `path` is in the list.
+The handler receives the arguments and a context. `ctx.host` is the `host` value of the request, which is the place for your database client or your user.
 
-`registerTool` replaces a tool that has the same name. Set `type` to `http`, `mcp` or `agent` for a tool that calls a URL, an MCP server or another agent.
+### 2. Call a URL
 
-## Allow the tool
+The weather at a port comes from a public API. An `http` tool calls a URL, so you write no handler.
 
-Add the tool’s name to `tools.allow` on each profile that may use it.
+```ts
+import { registerTool } from '@theoremjs/agents';
+import { z } from 'zod';
+
+registerTool({
+	type: 'http',
+	name: 'get_weather',
+	description: 'Read the weather now at a pair of coordinates.',
+	category: 'ops',
+	access: 'read-only',
+	paths: ['*'],
+	loadTier: 'T0',
+	permission: 'auto',
+	endpoint: 'https://api.open-meteo.com/v1/forecast?current_weather=true',
+	method: 'GET',
+	mapping: { queryParams: ['latitude', 'longitude'] },
+	input: z.object({ latitude: z.number(), longitude: z.number() }),
+	output: z.object({
+		current_weather: z.object({ temperature: z.number(), windspeed: z.number() }),
+	}),
+});
+```
+
+`mapping` says where each argument goes:
+
+- `queryParams` names the arguments that go on the URL as a query.
+- `pathParams` names the arguments that fill a `{name}` placeholder in `endpoint`.
+- With any method except `GET`, the other arguments go in a JSON body. `bodyParam` names one argument to send as the whole body.
+
+Theorem checks the URL against `guardrails.network` before each request ([Setting guardrails](/docs/guardrails)). It reads no more than 4 MiB of a response.
+
+### 3. Call an MCP server
+
+News about a port comes from a search service. The service has an **MCP** server: a server that offers tools to agents through the Model Context Protocol. An `mcp` tool calls one tool on that server.
+
+```ts
+import { registerTool } from '@theoremjs/agents';
+import { z } from 'zod';
+
+registerTool({
+	type: 'mcp',
+	name: 'search_web',
+	description: 'Search the web for news about a port.',
+	category: 'ops',
+	access: 'read-only',
+	paths: ['*'],
+	loadTier: 'T0',
+	permission: 'auto',
+	serverUrl: 'https://mcp.exa.ai/mcp',
+	mcpToolName: 'web_search_exa',
+	input: z.object({ query: z.string() }),
+	output: z.string(),
+});
+```
+
+`name` is your name for the tool. `mcpToolName` is the name that the server uses. The model sees only your name, your description and your schema.
+
+### 4. Call another agent
+
+Customs rules are long, and they belong to a different agent with its own instruction. An `agent` tool runs one turn of that agent and returns its reply.
+
+```ts
+import { registerTool } from '@theoremjs/agents';
+
+registerTool({
+	type: 'agent',
+	name: 'harbor_customs',
+	description: 'Ask the Harbor customs agent which documents a shipment needs.',
+	category: 'ops',
+	access: 'read-only',
+	paths: ['*'],
+	loadTier: 'T0',
+	permission: 'auto',
+	profile: 'harbor.customs',
+});
+```
+
+The tool takes `{ text }` from the model and returns the reply of the other agent. Three rules apply to that agent:
+
+- It is a `text`, `image` or `speech` profile that takes text.
+- You register it before you register the tool.
+- None of its own tools can stop for a person. Each one has `permission: 'auto'`, and none stops for a sign-in.
+
+`maxCallsPerTurn` limits the calls to this tool in one turn of the desk. To send more than the text of the model to the other agent, set `onAgentCall` on the request.
+
+### 5. Allow the tools
+
+A registered tool belongs to no agent. The profile of the desk names each tool that the desk can use.
 
 ```ts frame=profile:text
-type: 'text',
-tools: { allow: ['lookup'] },
+tools: { allow: ['harbor_holdStatus', 'get_weather', 'search_web', 'harbor_customs'] },
 ```
 
 ```note
-Text, image, live and host profiles require `tools`. For no tools, write `{ allow: [] }` ([Choosing a modality](/docs/modalities)). The model never sees a name in `allow` that has no registered tool. `registerProfile` refuses a registered builtin in `allow`.
+A `text`, `image`, `live` or `host` profile must set `tools`. For no tools, write `{ allow: [] }`. The model never sees a name in `allow` that has no registered tool.
 ```
 
-## Read a failed call
+A **built-in tool** runs at the model provider, such as its web search. Declare it in `builtInTools` on the model, not in `tools.allow` ([Binding models](/docs/models)).
 
-A failed call reaches the host as a tool event with `phase: 'error'`. `failure.code` holds the code, and the model reads `failure.message`. The turn goes on. The model can try again or answer without the tool. Theorem checks in the order of the table below, and stops at the first failure.
+### 6. Ask a person first
 
-## Fix a failed call
+A shipper asks the desk to release a hold. That changes a real shipment, so a person must say yes first. Set `permission` on the tool.
 
-Code | Cause | Fix
---- | --- | ---
-`unknown_tool` | No registered tool has this name | Register the tool, or correct the name
-`not_allowed` | The tool is not in the profile’s `tools.allow` | Add the name to `tools.allow`
-`not_gated` | The request’s `path` is not in the tool’s `paths` | Add the path, or use `paths: ['*']`
-`not_loaded` | The tool’s `loadTier` has not loaded it yet | Call the loader tool first, or use tier `T0`
-`tainted_turn` | The turn read a remote result, and `guardrails.taint.afterRemoteRead` refuses this tool’s `access` | Change the profile’s taint setting, or the tool’s `access`
-`arguments_blocked` | `guardrails.detect` blocks a match in the arguments | Change the action at `tool_arguments_<kind>`, or keep that data from the model
-`output_blocked` | `guardrails.detect` blocks a match in the tool’s output | Change the action at `tool_output_<kind>`, or return less from the tool
-`invalid_input` | The arguments do not match `input` | Fix the schema, or the description that the model reads
-`invalid_output` | The result does not match `output` | Fix the handler, or the `output` schema
-`handler_error` | The handler threw an error | Fix the handler. The model reads the error text
-`provider_native` | The call names a tool that the model provider runs itself, so Theorem cannot run it | Do not call it with `invokeTool`
-`denied` | The user declined the approval or the sign-in | Nothing to fix. The call did not run
-`expired` | The sign-in lapsed before the call ran | Ask the user to sign in again
-`cancelled` | The user left the approval or sign-in without an answer | Ask again
+```ts
+import { registerTool } from '@theoremjs/agents';
+import { z } from 'zod';
 
-## Ask before a tool runs
+registerTool({
+	type: 'function',
+	name: 'harbor_releaseHold',
+	description: 'Release the hold on a Harbor shipment.',
+	category: 'ops',
+	access: 'read-write',
+	paths: ['*'],
+	loadTier: 'T0',
+	permission: 'always_confirm',
+	labels: { request: 'release the hold on {shipmentId}' },
+	input: z.object({ shipmentId: z.string() }),
+	output: z.object({ released: z.boolean() }),
+	handler: () => ({ released: true }),
+});
+```
 
-Set `permission` to `session_consent` or `always_confirm` to pause the call until the host approves it. `auto` runs without asking. The host answers the approval ([Building the interface](/docs/interface)).
+- `auto` runs the tool without a question.
+- `session_consent` asks one time. The approval lasts while your host sends the name of the tool in `sessionPermissions`.
+- `always_confirm` asks before every call.
 
-`invokeTool` runs a tool with the same checks and no model call. After a turn reads a remote tool’s result, `guardrails.taint.afterRemoteRead` refuses calls by each tool’s `access` ([Setting guardrails](/docs/guardrails)).
+A call that must ask is a **gate**. The turn ends with `stop.kind` set to `gate`, and the tool does not run. Your interface shows the request and collects the answer. `labels.request` is the line that the person reads. `{shipmentId}` takes its value from the arguments.
 
-## The order of every call
+After the answer, your server runs the call again with the answer ([Running a turn](/docs/runner), step 5). The chat component does all of this for you ([Building the interface](/docs/interface)).
 
-Every call passes the same steps in the same order. This holds for a call that the model makes and for a call that your code makes through `invokeTool`.
+Your own code can make the same decision for each call. A tool can set `preTool`, and a request can set `onStage`. Each one can refuse the call, change the arguments or ask for a yes.
 
-1. Allowed? Theorem checks the allow list, the paths and the load tier. A failure is a denial.
-2. Inspect the arguments: the credential report and the taint gate. A tainted turn is a denial.
-3. Parse the arguments with the Zod `input` schema.
-4. Permission: `session_consent` or `always_confirm`. A call that needs a yes becomes a gate.
-5. Credential ready? Theorem refreshes a token that is about to expire. A call that needs a sign-in becomes a gate.
-6. `preTool` runs. It can deny.
-7. Stage `pre_tool` runs. It can deny, ask for confirmation (a gate), or change the input. Theorem then parses the new input again.
-8. The tool runs: handler, HTTP, MCP or builtin.
-9. If this call was the loader, Theorem promotes its tools to tier T2.
-10. Theorem guards the result: fence, redaction, provenance and advisory.
-11. Stage `post_tool` runs. It can deny, change the result or inject text.
+### 7. Load a tool only when the turn needs it
 
-Each call ends with one terminal tool event. A **gate** ends the turn with `stop.kind` set to `gate`. A **denial** is a failed call: the model sees the failure and the turn continues.
+The desk gets ten more tools for claims and refunds. Most turns use none of them, and each tool that the model sees costs tokens. Set `loadTier` to `T2` on those tools.
 
-## When a call waits for a person
+- `T0` loads the tool at the start of every turn.
+- `T2` loads the tool on demand.
 
-A call waits for a person in three ways. Each way has its own path.
+A profile has two ways to load a `T2` tool:
 
-**Gate** (permission, confirmation or sign-in). The client sees a `tool` event with `phase: 'gate'` and a `gate` payload, then a `done` event with `stop.kind: 'gate'`. Your interface collects the answer. Then it calls `invokeTool({ resume: { granted }, snapshot: done.tools })`. The tool body runs once.
+```ts frame=profile:text
+tools: {
+	allow: ['harbor_holdStatus', 'harbor_loadTools', 'harbor_refund'],
+	t1Policy: ({ path }) => (path === 'claims' ? ['harbor_refund'] : []),
+	t2Loader: 'harbor_loadTools',
+},
+```
 
-**Denial** (`preTool`, `pre_tool`, `post_tool` or the taint gate). The client sees a failed `tool` event with a reason code. You do nothing. The model sees the failure and goes on.
+- `t1Policy` is your function. It runs at the start of each turn and returns the `T2` tools to load now.
+- `t2Loader` names a `function` tool that the model can call in the middle of a turn. The tool returns `{ loaded: [...] }` with the names to load.
 
-**Question** (`ask_user`). The client sees a finished `ask_user` result that carries the question. The user’s answer is the next user turn.
+A `live` or `host` profile loads every allowed tool at the start.
 
 ## Sign the user in to a tool
 
-Use OAuth when an HTTP or MCP tool must act as the signed-in user. Give the tool `auth` of `type: "oauth2"`. You need no OAuth library. When the tool needs a token that the user has not granted, the call becomes an auth gate. The helpers in `@theoremjs/agents/kernel` do the rest.
+Harbor keeps shipments in a tracker, and each shipper has an account there. The tool must act as the shipper who asks, not as Harbor. Give the tool `auth`.
 
-**PKCE** (Proof Key for Code Exchange) ties the authorization code to the client that asked for it.
+```ts
+import { registerTool } from '@theoremjs/agents';
+import { z } from 'zod';
 
-## The three parts of one sign-in
+registerTool({
+	type: 'http',
+	name: 'tracker_shipments',
+	description: 'List the shipments of the signed-in shipper.',
+	category: 'ops',
+	access: 'read-only',
+	paths: ['*'],
+	loadTier: 'T0',
+	permission: 'auto',
+	endpoint: 'https://api.tracker.example/shipments',
+	method: 'GET',
+	auth: { slot: 'tracker', type: 'oauth2', service: 'Tracker', scopes: ['shipments.read'] },
+	input: z.object({}),
+	output: z.object({ shipments: z.array(z.string()) }),
+});
+```
+
+- `slot` names where the credential of this user is kept. A request supplies the credentials in `credentials`, an object that reads and writes one slot at a time.
+- `type` is `bearer`, `api_key` or `oauth2`.
+- `service` is the name that the user knows the service by. The sign-in request shows it.
+
+When the slot is empty, the call is a gate, as in step 6. The user signs in, and the call runs. If the agent can manage without the tool, set `onUnauthenticated: 'report_to_model'`. The model then reads that the user is not signed in, and the turn goes on.
+
+Theorem never stores a credential, and a credential never belongs in the browser. `createTheoremHandler` keeps credentials in a store on your server ([Building the interface](/docs/interface)).
+
+### The three parts of an OAuth sign-in
+
+For `oauth2`, you need no OAuth library. The helpers come from `@theoremjs/agents/kernel`.
 
 ```ts
 import { invokeTool, runTurn } from '@theoremjs/agents';
@@ -154,7 +338,7 @@ await vaultCredentials(user.id).set('tracker', credential);
 
 // 3. Resume the gated call. `gated` holds the `name` and `arguments` of the call, and `done.tools` as `snapshot`.
 for await (const event of invokeTool({
-	profile: 'support.agent',
+	profile: 'harbor.desk',
 	name: gated.name,
 	input: gated.arguments,
 	snapshot: gated.snapshot,
@@ -165,38 +349,78 @@ for await (const event of invokeTool({
 }
 ```
 
-## Where credentials live
+Two values are yours to supply:
 
-Credentials travel in `TurnRequest.credentials`, a `ToolCredentialSource`. The kernel reads one slot at a time, and only when a tool that signs in runs. A turn therefore opens no credential that it does not use. `memoryCredentialSource(record)` wraps a plain record.
+- `signingSecret` is a secret of 32 bytes or more that stays on your server. Theorem encrypts the details of the sign-in with it, so you keep no session table.
+- `sessionBinding` is a value tied to the browser session of the user, such as your session id. Pass the same value to both calls.
 
-The kernel never stores credentials, and they never belong in the browser. `createTheoremHandler` keeps them in a server-side credential store ([Building the interface](/docs/interface)).
+Some providers need more:
 
-If a tool sets `onUnauthenticated: "report_to_model"`, the model hears that it is not signed in, and the call does not gate. Use this for tools that the agent can manage without.
+- A provider that needs a client secret takes `clientSecret` in `exchangeOAuthPkce`. Theorem sends it to the token endpoint and never puts it on the credential.
+- `authorizationParams` adds the provider's own parameters to the sign-in URL.
 
-A `function` tool can sign in too. Give it the same `auth`. Its handler then gets `ctx.signedInFetch(url, init)`, which sends the credential to the origin of that URL only. The handler never sees the token. If the service refuses the credential, the call throws `CredentialRefusedError` (from `@theoremjs/agents/kernel`), and the kernel starts a new sign-in. A handler that catches its own errors must rethrow this one.
+### What the sign-in protects
 
-## What the flow protects against
+Each rule below stops one known attack. You set nothing to get them.
 
-**Session binding.** Pass the same `sessionBinding` to both calls. It is a value tied to the user’s browser session that an attacker cannot know or set, such as your session id. Theorem refuses a callback from any other session. An attacker therefore cannot save the token of their own account into someone else’s session (login CSRF, RFC 6749 section 10.12).
+- **The wrong session.** Theorem refuses a callback from any session except the one that started the sign-in. An attacker cannot save their own account into the session of a shipper.
+- **The wrong server.** The callback must name the server that Theorem expected. Theorem sends the code only to the token endpoint that was fixed when the sign-in started.
+- **The wrong destination.** Each token belongs to one service. A tool never sends the token to a URL outside that service.
+- **More access than you asked for.** Theorem refuses a token that grants a scope that the sign-in did not ask for.
+- **A redirect.** The requests of a sign-in never follow a redirect.
+- **An echo.** Some services repeat the credential in a response. Theorem replaces it with `[omitted - credential]` before the model, the trace or the client sees it.
 
-**Mix-up protection.** The `iss` value on the callback must match the discovered issuer (RFC 9207). It is required when the server says that it sends one. The redirect URI must match. Theorem exchanges the code only at the token endpoint that is sealed into `state`.
+### When a token gets old
 
-**Resource indicators.** Every token is bound to the resource that the flow was for (RFC 8707). A tool never sends a token to a URL outside that resource. If a credential names no resource, Theorem does not use it. The call gates for sign-in instead.
+An OAuth token expires. Theorem refreshes a token that is within 30 seconds of its expiry, before the call. It saves the new credential to your `credentials` object first, then runs the call. Calls that find the same old token share one refresh.
 
-**Strict inputs.** `redirectUri` must be HTTPS, or HTTP on a loopback host, or a reverse-domain app scheme, and it must have no fragment (RFC 8252). Each scope must be one RFC 6749 scope token. `stateTtlMs` must be a positive number.
+If the service refuses the credential, the call is a gate again, and the user signs in again.
 
-**State.** The PKCE challenge uses S256 (RFC 7636), and the verifier never leaves your server. The verifier and the flow details (issuer, token endpoint, redirect URI, resource) are encrypted into `state` with AES-256-GCM and a time to live. You need no session table. Every `state` has its own key, from a fresh HKDF salt. `signingSecret` must be at least 32 bytes with 256 bits of entropy. Use 32 random bytes, base64-encoded.
+### Sign in from your own code
 
-**Discovery.** Theorem reads the protected-resource metadata (RFC 9728), then the authorization-server metadata (RFC 8414). The metadata must name exactly the resource and the issuer that Theorem asked for. Every endpoint must use HTTPS, and the server must advertise S256. Discovery and token requests go through the network guard and never follow redirects. `clientId` can be an HTTPS URL (a Client ID Metadata Document), so you do not register a client with every server.
+A `function` tool can take the same `auth`. Its handler then receives `ctx.signedInFetch(url, request)`. This function sends the credential to that URL only, so the handler never sees the token.
 
-## Providers and token refresh
+If the service refuses the credential, `signedInFetch` throws `CredentialRefusedError`, from `@theoremjs/agents/kernel`. A handler that catches its own errors must throw this one again. Theorem then starts a new sign-in.
 
-**Confidential clients.** Some providers need a client secret. Google needs one for web clients. Pass it as `clientSecret` to `exchangeOAuthPkce` and `refreshOAuthToken`. They send it in the token request body, never on the credential. When the kernel refreshes a token, it asks your source for the secret with `clientSecret(clientId)`. You can rotate the secret without rewriting stored credentials.
+## Read a failed call
 
-**Provider parameters.** `authorizationParams` adds a provider’s own parameters to the authorization URL. For example, Google issues a refresh token only with `access_type: "offline"`. Theorem refuses a parameter that the flow sets itself, such as `state` or `redirect_uri`.
+A failed call does not end the turn. The model reads the reason, and it can try again or answer without the tool.
 
-**Refresh.** Theorem refreshes a token that is within 30 seconds of expiry before the call. The new credential goes to your source with `set(slot, credential)`, and the call waits for it. A rotated refresh token is therefore saved before it is used. The turn emits `auth_token_refreshed` with the slot name. The token never rides the event stream. Calls that find the same expired token share one refresh, so a rotating refresh token is never presented twice.
+Your code sees the same failure as a `tool` event with `phase: 'error'`. `failure.code` holds the code, and `failure.message` holds the text that the model reads.
 
-**Refused refresh.** A refused refresh emits `auth_token_refresh_failed`. The text from the server rides only in `errorInternal`. `forClient` strips it, and it never reaches the model.
+## Fix a failed call
 
-**Echoed credentials.** Some responses repeat the token or key that they were sent with, such as an echo endpoint or a debug error page. Theorem replaces that value with `[omitted - credential]` before the model, the trace or the client sees it.
+Theorem sets these codes for every type of tool.
+
+Code | Cause | Fix
+--- | --- | ---
+`unknown_tool` | No registered tool has this name | Register the tool, or correct the name
+`not_allowed` | The tool is not in `tools.allow` of the profile | Add the name to `tools.allow`
+`not_gated` | The `path` of the request is not in the `paths` of the tool | Add the path, or use `paths: ['*']`
+`not_loaded` | The tool has `loadTier: 'T2'`, and nothing has loaded it in this turn | Load it with `t1Policy` or `t2Loader`, or use `T0`
+`provider_native` | The tool is a built-in tool, so the model provider runs it | Do not call it with `invokeTool`
+`denied` | The user said no to the approval or the sign-in | Nothing. The tool did not run
+`cancelled` | The user left the approval or the sign-in without an answer | Ask again
+`expired` | The sign-in link expired before the user finished | Ask the user to sign in again
+`arguments_blocked` | `guardrails.detect` blocks a match in the arguments | Change the action at `tool_arguments_<kind>`, or keep that data from the model
+`tainted_turn` | The turn read a remote result, and `guardrails.taint.afterRemoteRead` refuses the `access` of this tool | Change the taint setting, or the `access` of the tool
+`invalid_input` | The arguments do not match `input` | Fix the schema, or the description that the model reads
+`handler_error` | The handler threw an error | Fix the handler. The model reads the text of the error
+`invalid_output` | The result does not match `output` | Fix the handler, or the `output` schema
+`output_blocked` | `guardrails.detect` blocks a match in the result | Change the action at `tool_output_<kind>`, or return less from the tool
+
+## Fix a failed remote call
+
+A tool that calls a URL, an MCP server or another agent can also fail on the way there.
+
+Code | Cause | Fix
+--- | --- | ---
+`network_blocked` | `guardrails.network` refuses the address | Change `guardrails.network`, or the address
+`network_error` | The request did not get a response | Check that the service is up
+`http_<status>` | The URL answered with a status that is not a success | Read the status, and fix the request or the service
+`response_too_large` | The response is more than 4 MiB | Ask the service for less
+`mcp_http_<status>` | The MCP server answered with a status that is not a success | Read the status, and check `serverUrl`
+`mcp_rpc_error_<code>` | The MCP server refused the call | Check `mcpToolName` and the arguments
+`mcp_tool_execution_failed` | The tool on the MCP server reported an error | Read the message. The fault is in the server's tool
+`out_of_scope` | The service wants a scope that `auth.scopes` does not list | Add the scope to `auth.scopes`
+`agent_failed` | The other agent gave no reply | Read the trace of that agent's turn

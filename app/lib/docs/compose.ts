@@ -7,13 +7,27 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createMarkdownFrontmatter } from '@astryxdesign/core/Markdown/plugins';
-import { EXTRA_FIELDS, fieldMeta, PROFILE_GRAPH, PROFILE_TYPES } from '@theoremjs/agents/schema';
+import {
+	API_EXPORTS,
+	EXTRA_FIELDS,
+	fieldMeta,
+	PROFILE_GRAPH,
+	PROFILE_TYPES,
+	REQUEST_FIELDS,
+} from '@theoremjs/agents/schema';
 import { CHAPTER_SOURCES, LANDING_STILL, SITE_REDIRECTS } from './articles/chapters';
-import { lexiconCatalogRows, traceCatalogRows } from './catalog-rows';
-import { type Fence, fenceMarkdown, markdownFences, markdownSections } from './chapter-markdown';
+import { lexiconCatalogRows, symbolTerm, traceCatalogRows } from './catalog-rows';
+import {
+	type Fence,
+	fenceMarkdown,
+	markdownFences,
+	markdownInlineCode,
+	markdownSections,
+} from './chapter-markdown';
 import { stillFilters } from './exposure';
+import { parseFigure } from './figure';
 import { fieldsByFacet } from './ownership';
-import { FACET_SECTION, UNION_SECTION } from './placement';
+import { EXPORT_SECTION, FACET_SECTION, REQUEST_SECTION, UNION_SECTION } from './placement';
 import { projectArticleText } from './project-text';
 import {
 	type ComposeOptions,
@@ -23,6 +37,7 @@ import {
 	type DocIndex,
 	type DocSection,
 	type DocSectionEntry,
+	type DocTerm,
 	type DocTreeNode,
 	FENCE_LANGUAGES,
 	type PageSymbol,
@@ -144,6 +159,14 @@ function assertChapterFiles(options: ComposeOptions, chapter: Chapter): void {
 	if (!cover.endsWith('.png') || pngRatio(cover) < COVER_MIN_RATIO) {
 		throw new Error(`${chapter.slug} cover ${chapter.cover.src} must be a PNG at least 16:9 wide`);
 	}
+	for (const fence of markdownFences(chapter.markdown)) {
+		if (fence.lang === 'figure') assertFigure(options, chapter.slug, fence.code);
+	}
+}
+
+/** The figure parses, and its still exists. */
+function assertFigure(options: ComposeOptions, slug: string, code: string): void {
+	assertPublic(options, slug, parseFigure(code).still.src);
 }
 
 /** Adds `value` to `seen`; throws `message` if it was already there. */
@@ -168,7 +191,7 @@ function assertChapter(chapter: Chapter): void {
 	}
 }
 
-/** The seed a fence names in `seed=`, or in its body for a `playground` fence. */
+/** The seed a fence names in `seed=`. */
 function fenceSeed(slug: string, name: string | undefined): PlaygroundSeedId | undefined {
 	if (name === undefined) return undefined;
 	if (!isOneOf(PLAYGROUND_SEED_IDS, name))
@@ -188,7 +211,6 @@ function assertFence(slug: string, fence: Fence): void {
 	if (frame !== undefined && !isOneOf(SNIPPET_FRAMES, frame)) {
 		throw new Error(`${slug} has a fence with an unknown frame: ${frame}`);
 	}
-	if (fence.lang === 'playground') fenceSeed(slug, fence.code.trim());
 }
 
 /** The chapter's Markdown with each `ts seed=<id>` fence filled with that seed's program. */
@@ -229,9 +251,32 @@ function fieldSymbol(fieldPath: string): PageSymbol {
 	return { kind: 'field', id: fieldPath, path: fieldPath, meta };
 }
 
+/** The request fields and the exports that `section` lists. */
+function apiSymbols(section: DocSection): PageSymbol[] {
+	const requestFields =
+		section === REQUEST_SECTION
+			? Object.entries(REQUEST_FIELDS).map(([fieldPath, meta]) => ({
+					kind: 'request-field' as const,
+					id: `request:${fieldPath}`,
+					path: fieldPath,
+					meta,
+				}))
+			: [];
+	const exports = Object.entries(API_EXPORTS)
+		.filter(([name]) => EXPORT_SECTION[name as keyof typeof API_EXPORTS] === section)
+		.map(([name, meta]) => ({
+			kind: 'export' as const,
+			id: `export:${name}`,
+			name,
+			exported: meta.kind,
+			doc: meta.doc,
+		}));
+	return [...exports, ...requestFields];
+}
+
 /** The catalog rows a chapter's dictionary lists. */
 function catalogSymbols(section: DocSection, byFacet: Map<string, string[]>): PageSymbol[] {
-	const symbols: PageSymbol[] = [];
+	const symbols: PageSymbol[] = apiSymbols(section);
 	for (const facet of PROFILE_GRAPH) {
 		if (FACET_SECTION[facet.id] !== section) continue;
 		symbols.push(...(byFacet.get(facet.id) ?? []).map(fieldSymbol));
@@ -280,6 +325,43 @@ function pageSymbols(
 	});
 }
 
+type Listed = Pick<DocArticle, 'slug' | 'canonicalPath' | 'title' | 'symbols'>;
+
+/**
+ * Every field, trace record and status line by its name. A union member is left out, because its
+ * value is a common word: `text` is a profile type and also an event. A name that two rows share
+ * is left out too.
+ */
+function termIndex(articles: readonly Listed[]): Map<string, DocTerm> {
+	const terms = new Map<string, DocTerm>();
+	const shared = new Set<string>();
+	for (const article of articles) {
+		for (const symbol of article.symbols) {
+			if (symbol.kind === 'union-member') continue;
+			const { name } = symbolTerm(symbol);
+			if (terms.has(name)) shared.add(name);
+			terms.set(name, {
+				symbol,
+				slug: article.slug,
+				href: `${article.canonicalPath}#${symbol.id}`,
+				chapter: article.title,
+			});
+		}
+	}
+	for (const name of shared) terms.delete(name);
+	return terms;
+}
+
+/** The rows of `index` that the chapter's inline code names. */
+function chapterTerms(body: string, index: Map<string, DocTerm>): Record<string, DocTerm> {
+	const terms: Record<string, DocTerm> = {};
+	for (const span of markdownInlineCode(body)) {
+		const term = index.get(span);
+		if (term) terms[span] = term;
+	}
+	return terms;
+}
+
 /** A chapter's sections as nav nodes: each heading nests under the last shallower one. */
 function sectionNodes(slug: string, sections: readonly DocSectionEntry[]): DocTreeNode[] {
 	const roots: DocTreeNode[] = [];
@@ -318,7 +400,7 @@ export async function composeDocIndex(options: ComposeOptions): Promise<DocIndex
 		...chapters.map((chapter) => chapter.cover.src),
 	]);
 
-	const articles = chapters.map(({ markdown, ...head }): DocArticle => {
+	const listed = chapters.map(({ markdown, ...head }) => {
 		const body = resolveBody({ markdown, ...head });
 		const sections = chapterSections(head.slug, body);
 		const article = {
@@ -332,6 +414,10 @@ export async function composeDocIndex(options: ComposeOptions): Promise<DocIndex
 		};
 		return { ...article, ttrMinutes: ttrMinutesFromText(projectArticleText(article)) };
 	});
+	const index = termIndex(listed);
+	const articles = listed.map(
+		(article): DocArticle => ({ ...article, terms: chapterTerms(article.body, index) }),
+	);
 
 	const suggested = articles
 		.flatMap((article) => (article.suggest ? [{ slug: article.slug, ...article.suggest }] : []))

@@ -4,7 +4,7 @@
  */
 
 import type * as SchemaModule from '@theoremjs/agents/schema';
-import type { FieldMeta } from '@theoremjs/agents/schema';
+import type { ApiExportMeta, FieldMeta } from '@theoremjs/agents/schema';
 
 /** One chapter per section, in this order. The slug is the section id. */
 export const DOC_SECTIONS = [
@@ -55,7 +55,10 @@ export const SNIPPET_FRAMES = [
 	'profile:host',
 ] as const;
 
-/** The fence languages a chapter may use. `ts`, `bash` and `text` are code; the rest are cards. */
+/**
+ * The fence languages a chapter may use. `ts`, `bash` and `text` are code; the rest are cards.
+ * A `ts seed=<id>` fence shows that seed's program, and a button that opens it in the playground.
+ */
 export const FENCE_LANGUAGES = [
 	'ts',
 	'bash',
@@ -63,7 +66,7 @@ export const FENCE_LANGUAGES = [
 	'note',
 	'warning',
 	'prompt',
-	'playground',
+	'figure',
 ] as const;
 
 /** What an authored chapter and its composed article share. */
@@ -108,6 +111,8 @@ export type DocSectionEntry = {
 /** Catalog rows owned by a topic page — rendered as a filterable dictionary. */
 export type PageSymbol =
 	| { kind: 'field'; id: string; path: string; meta: FieldMeta }
+	| { kind: 'request-field'; id: string; path: string; meta: FieldMeta }
+	| { kind: 'export'; id: string; name: string; exported: ApiExportMeta['kind']; doc: string }
 	| {
 			kind: 'union-member';
 			id: string;
@@ -117,6 +122,9 @@ export type PageSymbol =
 	  }
 	| { kind: 'trace'; id: string; key: string; label: string; doc: string }
 	| { kind: 'lexicon'; id: string; key: string; text: string };
+
+/** A catalog row that a chapter's inline code names, and the chapter whose dictionary lists it. */
+export type DocTerm = { symbol: PageSymbol; slug: DocSection; href: string; chapter: string };
 
 export type DocArticle = Omit<DocArticleHead, 'cover'> & {
 	cover: DocArticleHead['cover'] & { filter?: string };
@@ -129,6 +137,8 @@ export type DocArticle = Omit<DocArticleHead, 'cover'> & {
 	sections: readonly DocSectionEntry[];
 	/** Facet fields, worthy-union members, and the trace or lexicon catalog this topic owns. */
 	symbols: readonly PageSymbol[];
+	/** The inline-code spans in `body` that name one catalog row, by the span's text. */
+	terms: Readonly<Partial<Record<string, DocTerm>>>;
 };
 
 export type DocTreeNode = {

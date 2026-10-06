@@ -55,9 +55,10 @@ import {
 	agentNodeId,
 	type CompiledPlayground,
 	type CompiledWorkspace,
+	clearStalePlaygroundRuns,
+	clearStalePlaygroundRuns,
 	compileWorkspace,
 	createBlankDraft,
-	clearStalePlaygroundRuns,
 	createBlankWorkspace,
 	createDecisionExampleDraft,
 	createExampleDraft,
@@ -134,7 +135,7 @@ import {
 	TOOL_TYPE_ICON,
 } from '../components/profile-editor';
 import { PLAYGROUND_SEED_IDS, type PlaygroundSeedId } from '../lib/docs/schema';
-import { docsSeedDraft } from '../lib/docs/seeds';
+import { docsSeedDraft, docsSeedQuestion } from '../lib/docs/seeds';
 import { exportFiles, exportText, llmBrief } from '../lib/export-agent';
 import { FACET_ICON } from '../lib/facet-icons';
 import { KERNEL_PACKAGE_VERSION } from '../lib/kernel-version';
@@ -186,14 +187,16 @@ export function clientLoader({ request }: Route.ClientLoaderArgs) {
 	if (isPlaygroundSeed(seed)) {
 		return {
 			start: fresh(docsSeedDraft(seed)),
+			question: docsSeedQuestion(seed),
 			displaced: kept.kind === 'restored' ? kept.value.workspace : undefined,
 			discarded: kept.kind === 'discarded',
 		};
 	}
 	if (kept.kind === 'restored')
-		return { start: kept.value, displaced: undefined, discarded: false };
+		return { start: kept.value, question: undefined, displaced: undefined, discarded: false };
 	return {
 		start: fresh(createExampleDraft()),
+		question: undefined,
 		displaced: undefined,
 		discarded: kept.kind === 'discarded',
 	};
@@ -1304,7 +1307,7 @@ function useWorkspaceCompile(
 type WorkspaceCompile = ReturnType<typeof useWorkspaceCompile>;
 
 /** The preview's conversation with the chatted agent: which runner holds it, and what it resumes. */
-function useConversationRun(mode: string, chatWith: string) {
+function useConversationRun(mode: string, chatWith: string, question: string | undefined) {
 	// Bumping this remounts the runner: a fresh transcript and trace feed, the same profile.
 	const [conversation, setConversation] = useState(0);
 	const runKey = `${mode}:${chatWith}:${String(conversation)}`;
@@ -1312,10 +1315,14 @@ function useConversationRun(mode: string, chatWith: string) {
 	// one starts empty.
 	const [firstRuns] = useState(() => new Map<string, string>());
 	if (!firstRuns.has(chatWith)) firstRuns.set(chatWith, runKey);
+	const isFirstRun = firstRuns.get(chatWith) === runKey;
+	const [seeded] = useState(chatWith);
 	const initialChat = useMemo(
-		() => (firstRuns.get(chatWith) === runKey ? restoreConversation(chatWith) : undefined),
-		[firstRuns, chatWith, runKey],
+		() => (isFirstRun ? restoreConversation(chatWith) : undefined),
+		[isFirstRun, chatWith],
 	);
+	/** A docs seed's question waits in its agent's first composer, when that resumes nothing. */
+	const initialText = isFirstRun && chatWith === seeded && !initialChat ? question : undefined;
 	/** The runner that last sent something; a new one (cleared, or another mode) has no history. */
 	const [usedRun, setUsedRun] = useState<string>();
 	const isUsed = usedRun === runKey;
@@ -1323,13 +1330,14 @@ function useConversationRun(mode: string, chatWith: string) {
 		() => ({
 			runKey,
 			initialChat,
+			initialText,
 			isUsed,
 			markUsed: () => {
 				setUsedRun(runKey);
 			},
 			setConversation,
 		}),
-		[runKey, initialChat, isUsed],
+		[runKey, initialChat, initialText, isUsed],
 	);
 }
 
@@ -1934,6 +1942,7 @@ function PreviewBody({
 				trace={traced && traceOpen}
 				onActivity={run.markUsed}
 				initialChat={run.initialChat}
+				initialText={run.initialText}
 				onChatChange={(snapshot) => {
 					saveConversation(chatWith, snapshot);
 				}}
@@ -2025,7 +2034,7 @@ function usePlaygroundPage(loaderData: Route.ComponentProps['loaderData']) {
 	const compile = useWorkspaceCompile(workspace, focus, connection);
 	/** On a phone, the tree or the preview, each over the editor; neither shows beside it there. */
 	const [sheet, setSheet] = useState<Sheet>(null);
-	const run = useConversationRun(connection.mode, workspace.chatWith);
+	const run = useConversationRun(connection.mode, workspace.chatWith, loaderData.question);
 	useArrivalToast(loaderData, store);
 	const { replaceWorkspace, copy } = usePageActions(store, view, run.setConversation);
 	const chatRef = usePlaygroundSurface(store, {
