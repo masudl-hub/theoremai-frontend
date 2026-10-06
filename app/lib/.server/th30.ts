@@ -295,10 +295,10 @@ export function ensureTh30ProfileRegistered(): void {
 		guardrails: {
 			// A reply that carries sensitive data or injection phrasing is refused. Addresses are cited.
 			detect: {
-				ids: { at: { reply: 'block' } },
-				financial: { at: { reply: 'block' } },
-				credentials: { at: { reply: 'block' } },
-				injection: { at: { reply: 'block' } },
+				ids: { at: { live_reply: 'block' } },
+				financial: { at: { live_reply: 'block' } },
+				credentials: { at: { live_reply: 'block' } },
+				injection: { at: { live_reply: 'block' } },
 			},
 			blockedReply: { onBlock: 'refuse' },
 		},
