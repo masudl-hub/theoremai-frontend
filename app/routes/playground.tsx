@@ -57,6 +57,7 @@ import {
 	type CompiledWorkspace,
 	compileWorkspace,
 	createBlankDraft,
+	clearStalePlaygroundRuns,
 	createBlankWorkspace,
 	createDecisionExampleDraft,
 	createExampleDraft,
@@ -175,6 +176,7 @@ function isPlaygroundSeed(value: string | null): value is PlaygroundSeedId {
  * This tab's kept draft comes back unless a docs seed asks for another; then it waits behind Undo.
  */
 export function clientLoader({ request }: Route.ClientLoaderArgs) {
+	clearStalePlaygroundRuns();
 	const seed = new URL(request.url).searchParams.get('seed');
 	const kept = restorePlayground();
 	const fresh = (draft: PlaygroundDraft): RestoredPlayground => ({

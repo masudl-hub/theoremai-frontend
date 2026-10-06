@@ -4,10 +4,9 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { Popover } from '@astryxdesign/core/Popover';
 import { IconKey } from '@tabler/icons-react';
 import {
-	clearPlaygroundRunPayload,
+	clearStalePlaygroundRuns,
 	loadPlaygroundRunPayload,
 	type PlaygroundRunPayload,
-	playgroundRunDefines,
 	readPlaygroundRunIdFromUrl,
 } from '@theoremjs/playground';
 import { playgroundKeySlots } from '@theoremjs/playground/browser';
@@ -27,13 +26,10 @@ const PLAYGROUND_HREF = '/playground';
 
 /** The compiled draft lives in this browser's storage, so it only loads client-side. */
 export function clientLoader({ request }: Route.ClientLoaderArgs) {
+	clearStalePlaygroundRuns();
 	const runId = readPlaygroundRunIdFromUrl(request.url);
 	const payload = runId ? loadPlaygroundRunPayload(runId) : null;
-	if (!runId || !payload) return redirect(PLAYGROUND_HREF);
-	if (!playgroundRunDefines(payload)) {
-		clearPlaygroundRunPayload(runId);
-		return redirect(PLAYGROUND_HREF);
-	}
+	if (!payload) return redirect(PLAYGROUND_HREF);
 	return { payload };
 }
 
