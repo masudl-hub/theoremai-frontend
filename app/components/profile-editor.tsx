@@ -94,7 +94,6 @@ import {
 	IconServer,
 	IconShieldLock,
 	IconSquareRoundedNumber0,
-	IconSquareRoundedNumber1,
 	IconSquareRoundedNumber2,
 	IconTool,
 	IconTrash,
@@ -3490,7 +3489,6 @@ const METHOD_SEGMENTS: Segment<HttpMethod>[] = [
 
 const LOAD_TIER_SEGMENTS: Segment<ToolLoadTier>[] = [
 	{ value: 'T0', label: 'T0', icon: IconSquareRoundedNumber0 },
-	{ value: 'T1', label: 'T1', icon: IconSquareRoundedNumber1 },
 	{ value: 'T2', label: 'T2', icon: IconSquareRoundedNumber2 },
 ];
 
@@ -3514,13 +3512,10 @@ const AUTH_HEADER_PREFIX: Record<Exclude<PlaygroundAuthType, 'none'>, string> = 
 };
 
 /**
- * Why a tool on `tier` never loads on this draft: text and image turns wire T1 tools only through a
- * T1 policy, which the playground can't write, and T2 tools only through the T2 loader.
+ * Why a tool on `tier` never loads on this draft: the playground can't write a T1 policy, so a
+ * T2 tool loads only through the T2 loader.
  */
 function loadTierWarning(draft: PlaygroundDraft, tier: ToolLoadTier): string | undefined {
-	if (tier === 'T1' && draftAllows(draft, 'tools.t1Policy')) {
-		return 'The playground has no T1 policy, so this tool never loads.';
-	}
 	if (tier === 'T2' && draftAllows(draft, 'tools.t2Loader') && !draft.tools.t2Loader.trim()) {
 		return 'No T2 loader is set under Tools, so this tool never loads.';
 	}
