@@ -56,7 +56,6 @@ import {
 	type CompiledPlayground,
 	type CompiledWorkspace,
 	clearStalePlaygroundRuns,
-	clearStalePlaygroundRuns,
 	compileWorkspace,
 	createBlankDraft,
 	createBlankWorkspace,
