@@ -3324,6 +3324,18 @@ function PatternSourceRows({
 					onChange({ ...source, patterns });
 				}}
 			/>
+			{/* A hint speaks for the builder's patterns, so it shows once there is one. */}
+			{source.patterns.length > 0 && (
+				<TextRow
+					label="Retry hint"
+					path={`guardrails.detect.${detector}.hint`}
+					field={`sources.${detector}.hint`}
+					value={source.hint}
+					onChange={(hint) => {
+						onChange({ ...source, hint });
+					}}
+				/>
+			)}
 		</>
 	);
 }
@@ -3395,6 +3407,15 @@ function OwnDetectorRows({
 					onChange({ ...detector, patterns });
 				}}
 			/>
+			<TextRow
+				label="Retry hint"
+				path="guardrails.detect.*.hint"
+				field={`own.${String(index)}.hint`}
+				value={detector.hint}
+				onChange={(hint) => {
+					onChange({ ...detector, hint });
+				}}
+			/>
 		</VStack>
 	);
 }
@@ -3444,24 +3465,28 @@ function OwnDetectorsSection({
  * applies at. Detectors sit under their group, and one that applies nowhere here is left out.
  */
 function isUrlDetector(detector: Detector): detector is UrlDetector {
-	return DETECTOR_META[detector].allow === true;
+	return DETECTOR_META[detector].allow === 'urls';
 }
 
 function DetectSection({
 	detect,
 	allow,
+	innocentNames,
 	sources,
 	boundaries,
 	onChange,
 	onAllow,
+	onInnocentNames,
 	onSources,
 }: {
 	detect: DetectDraft;
 	allow: GuardrailsDraft['allow'];
+	innocentNames: string[];
 	sources: GuardrailsDraft['sources'];
 	boundaries: readonly Boundary[];
 	onChange: (next: DetectDraft) => void;
 	onAllow: (next: GuardrailsDraft['allow']) => void;
+	onInnocentNames: (next: string[]) => void;
 	onSources: (next: GuardrailsDraft['sources']) => void;
 }) {
 	const has = new Set(boundaries);
@@ -3506,6 +3531,16 @@ function DetectSection({
 										}}
 									/>
 								)}
+							{DETECTOR_META[detector].allow === 'names' &&
+								applies.some((boundary) => detect[detector][boundary] !== 'ignore') && (
+									<NamesRow
+										label="Allowed names"
+										path={`guardrails.detect.${detector}.allow.names`}
+										field="innocentNames"
+										value={innocentNames}
+										onChange={onInnocentNames}
+									/>
+								)}
 							{/* Whose patterns it reads with means nothing while it reads nowhere. */}
 							{DETECTOR_META[detector].patterns &&
 								applies.some((boundary) => detect[detector][boundary] !== 'ignore') && (
@@ -3534,6 +3569,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 			<DetectSection
 				detect={guardrails.detect}
 				allow={guardrails.allow}
+				innocentNames={guardrails.innocentNames}
 				sources={guardrails.sources}
 				boundaries={boundaries}
 				onChange={(detect) => {
@@ -3541,6 +3577,9 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 				}}
 				onAllow={(allow) => {
 					set({ allow });
+				}}
+				onInnocentNames={(innocentNames) => {
+					set({ innocentNames });
 				}}
 				onSources={(sources) => {
 					set({ sources });
