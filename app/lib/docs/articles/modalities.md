@@ -21,49 +21,6 @@ The type decides two things:
 
 `defineProfile` checks both. It throws if a profile sets a field that its type does not allow. It also throws if the profile leaves out a field that its type needs. You see the error when your application starts, not in the middle of a turn.
 
-```figure
-{
-	"kind": "sequence",
-	"still": {
-		"src": "/imagery/th30_dyevats.png",
-		"position": "40% 50%"
-	},
-	"caption": "The type decides which fields the profile takes and which function runs it.",
-	"steps": [
-		{
-			"label": "You choose one type",
-			"text": "A profile is text, image, speech, live, decision or host."
-		},
-		{
-			"label": "The type sets the fields",
-			"text": "defineProfile throws if a field does not belong to the type, or if a field that the type needs is missing."
-		},
-		{
-			"label": "The type sets the function",
-			"text": "Each type has one function that runs it.",
-			"parts": [
-				{
-					"label": "runTurn",
-					"text": "text, image and speech."
-				},
-				{
-					"label": "runSession",
-					"text": "live."
-				},
-				{
-					"label": "runDecision",
-					"text": "decision."
-				},
-				{
-					"label": "invokeTool",
-					"text": "host."
-				}
-			]
-		}
-	]
-}
-```
-
 ## Pick a type
 
 Harbor, the freight company in this guide, uses all six types. Each row is one job and the agent that does it.

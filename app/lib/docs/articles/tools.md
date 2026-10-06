@@ -21,7 +21,7 @@ In Theorem, every call takes the same road. The tool can be your own function, a
 {
 	"kind": "sequence",
 	"still": { "src": "/imagery/th30_malachite.png", "position": "30% 40%" },
-	"caption": "Every tool call takes this road. Only step 3 changes with the type of tool.",
+	"caption": "Every tool call takes this road.",
 	"steps": [
 		{
 			"label": "The model asks for a tool",
@@ -39,7 +39,7 @@ In Theorem, every call takes the same road. The tool can be your own function, a
 		},
 		{
 			"label": "The tool runs",
-			"text": "The type of the tool decides what runs.",
+			"text": "Only this step changes with the type of tool.",
 			"parts": [
 				{ "label": "function", "text": "Your own code." },
 				{ "label": "http", "text": "A URL." },
