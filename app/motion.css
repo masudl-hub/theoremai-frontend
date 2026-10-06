@@ -153,3 +153,23 @@
 		width: 100%;
 	}
 }
+
+/*
+ * The guardrails editor swaps its list of detectors for one detector's page, and back. Each side
+ * fades in as it mounts, so the swap reads as a move rather than a jump.
+ */
+.detector-view {
+	animation: detector-view-enter var(--duration-fast) var(--ease-standard);
+}
+
+@keyframes detector-view-enter {
+	from {
+		opacity: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.detector-view {
+		animation: none;
+	}
+}

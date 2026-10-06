@@ -34,6 +34,7 @@ import {
 	IconAntennaBars5,
 	IconAntennaBarsOff,
 	IconArrowDown,
+	IconArrowLeft,
 	IconArrowUp,
 	IconBan,
 	IconBandage,
@@ -45,8 +46,7 @@ import {
 	IconBulbOff,
 	IconCertificate,
 	IconChartBar,
-	IconChevronDown,
-	IconChevronUp,
+	IconChevronRight,
 	IconCircleDashed,
 	IconDatabase,
 	IconDatabaseOff,
@@ -228,6 +228,8 @@ import {
 	type ReactNode,
 	type SetStateAction,
 	useContext,
+	useEffect,
+	useRef,
 	useState,
 	useSyncExternalStore,
 } from 'react';
@@ -2988,8 +2990,6 @@ function QuotaSection({ guardrails, set }: GuardrailsSectionProps) {
 	);
 }
 
-type DetectDraft = GuardrailsDraft['detect'];
-
 /** Every action, so one the kernel adds fails the type check until it has an icon. */
 const DETECT_ACTION_ICON: Record<DetectAction, IconType> = {
 	ignore: IconEyeOff,
@@ -3062,15 +3062,17 @@ function BoundaryRow({
 }
 
 /**
- * One detector: a control that sets every boundary at once, and a chevron after it that opens each
- * boundary on its own, in the kernel's order. The control shows "Mixed" when the boundaries differ.
+ * One control for a detector's every boundary: it shows the action they share, or "Mixed" when
+ * they differ, and a pick sets them all.
  */
-function DetectorRows({
+function ActionRow({
 	detector,
 	label,
 	defaults,
 	boundaries,
 	actions,
+	status,
+	trailing,
 	onChange,
 }: {
 	detector: DetectorPath;
@@ -3079,15 +3081,48 @@ function DetectorRows({
 	defaults?: Readonly<Partial<Record<Boundary, DetectAction>>>;
 	boundaries: readonly Boundary[];
 	actions: Record<Boundary, DetectAction>;
+	status?: ReturnType<ReturnType<typeof useFieldStatus>>;
+	trailing?: ReactNode;
 	onChange: (next: Record<Boundary, DetectAction>) => void;
 }) {
-	const [isOpen, setIsOpen] = useState(false);
-	const has = new Set(boundaries);
 	const taken = [...new Set(boundaries.map((boundary) => actions[boundary]))];
 	const uniform = taken.length === 1;
 	// One action is recommended for the whole detector only when every boundary recommends the same.
 	const recommended = [...new Set(boundaries.map((boundary) => defaults?.[boundary]))];
 	const segments = detectSegments(recommended.length === 1 ? recommended[0] : undefined);
+	return (
+		<SegmentedRow
+			label={label}
+			path={`guardrails.detect.${detector}.action`}
+			value={uniform ? taken[0] : 'mixed'}
+			segments={uniform ? segments : [...segments, MIXED_SEGMENT]}
+			status={status}
+			trailing={trailing}
+			onChange={(action) => {
+				if (action === 'mixed') return;
+				const next = { ...actions };
+				for (const boundary of boundaries) next[boundary] = action;
+				onChange(next);
+			}}
+		/>
+	);
+}
+
+/** Every boundary of one detector, in the kernel's order, a tool's under the crossing it is. */
+function BoundaryRows({
+	detector,
+	defaults,
+	boundaries,
+	actions,
+	onChange,
+}: {
+	detector: DetectorPath;
+	defaults?: Readonly<Partial<Record<Boundary, DetectAction>>>;
+	boundaries: readonly Boundary[];
+	actions: Record<Boundary, DetectAction>;
+	onChange: (next: Record<Boundary, DetectAction>) => void;
+}) {
+	const has = new Set(boundaries);
 	// The boundaries that are not a tool's, which sit either side of the tool ones in the kernel's order.
 	const plain = boundaries.filter((boundary) => !TOOL_BOUNDARY_SET.has(boundary));
 	const firstTool = BOUNDARIES.findIndex((boundary) => TOOL_BOUNDARY_SET.has(boundary));
@@ -3102,68 +3137,148 @@ function DetectorRows({
 			onChange={onChange}
 		/>
 	);
-	const byBoundary = `${isOpen ? 'Hide' : 'Set'} ${label} by boundary${uniform ? '' : ' (mixed)'}`;
 	return (
-		<VStack gap={2}>
-			<SegmentedRow
-				label={label}
-				path={`guardrails.detect.${detector}.action`}
-				value={uniform ? taken[0] : 'mixed'}
-				segments={uniform ? segments : [...segments, MIXED_SEGMENT]}
-				onChange={(action) => {
-					if (action === 'mixed') return;
-					const next = { ...actions };
-					for (const boundary of boundaries) next[boundary] = action;
-					onChange(next);
-				}}
-				trailing={
-					<Tooltip content={byBoundary}>
-						<IconButton
-							label={byBoundary}
-							variant="ghost"
-							size="sm"
-							aria-expanded={isOpen}
-							icon={<Icon icon={isOpen ? IconChevronUp : IconChevronDown} size="sm" />}
-							onClick={() => {
-								setIsOpen(!isOpen);
-							}}
-						/>
-					</Tooltip>
-				}
-			/>
-			{isOpen && (
-				<VStack gap={2}>
-					{plain
-						.filter((boundary) => BOUNDARIES.indexOf(boundary) < firstTool)
-						.map((boundary) => row(boundary, BOUNDARY_META[boundary].label))}
-					{TOOL_CROSSINGS.filter((crossing) =>
-						TOOL_KINDS.some((kind) => has.has(crossing.boundary(kind))),
-					).map((crossing) => (
-						<VStack key={crossing.title} gap={2}>
-							<Text type="supporting" weight="semibold">
-								{crossing.title}
-							</Text>
-							{TOOL_KINDS.filter((kind) => has.has(crossing.boundary(kind))).map((kind) =>
-								row(crossing.boundary(kind), TOOL_KIND_LABEL[kind]),
-							)}
-						</VStack>
-					))}
-					{plain
-						.filter((boundary) => BOUNDARIES.indexOf(boundary) > firstTool)
-						.map((boundary) => row(boundary, BOUNDARY_META[boundary].label))}
+		<>
+			{plain
+				.filter((boundary) => BOUNDARIES.indexOf(boundary) < firstTool)
+				.map((boundary) => row(boundary, BOUNDARY_META[boundary].label))}
+			{TOOL_CROSSINGS.filter((crossing) =>
+				TOOL_KINDS.some((kind) => has.has(crossing.boundary(kind))),
+			).map((crossing) => (
+				<VStack key={crossing.title} gap={2}>
+					<Text type="supporting" weight="semibold">
+						{crossing.title}
+					</Text>
+					{TOOL_KINDS.filter((kind) => has.has(crossing.boundary(kind))).map((kind) =>
+						row(crossing.boundary(kind), TOOL_KIND_LABEL[kind]),
+					)}
 				</VStack>
+			))}
+			{plain
+				.filter((boundary) => BOUNDARIES.indexOf(boundary) > firstTool)
+				.map((boundary) => row(boundary, BOUNDARY_META[boundary].label))}
+		</>
+	);
+}
+
+type BoundaryMode = 'same' | 'each';
+const BOUNDARY_MODE_SEGMENTS: Segment<BoundaryMode>[] = [
+	{
+		value: 'same',
+		label: 'Same everywhere',
+		icon: IconCircleDashed,
+		description: sectionNote('detect.same'),
+	},
+	{
+		value: 'each',
+		label: 'Set each',
+		icon: IconAdjustmentsHorizontal,
+		description: sectionNote('detect.each'),
+	},
+];
+
+/**
+ * Whether a detector does one thing everywhere or something at each boundary, and the boundaries
+ * when it is each. Going back to one thing takes the strictest action any boundary had.
+ */
+function BoundariesSection({
+	detector,
+	defaults,
+	boundaries,
+	actions,
+	onChange,
+}: {
+	detector: DetectorPath;
+	defaults?: Readonly<Partial<Record<Boundary, DetectAction>>>;
+	boundaries: readonly Boundary[];
+	actions: Record<Boundary, DetectAction>;
+	onChange: (next: Record<Boundary, DetectAction>) => void;
+}) {
+	const uniform = new Set(boundaries.map((boundary) => actions[boundary])).size === 1;
+	const [isEach, setIsEach] = useState(!uniform);
+	const mode: BoundaryMode = isEach || !uniform ? 'each' : 'same';
+	return (
+		<InspectorSection title="Boundaries">
+			<SegmentedRow
+				label="Actions"
+				path={`guardrails.detect.${detector}.at`}
+				hasLabels
+				value={mode}
+				segments={BOUNDARY_MODE_SEGMENTS}
+				onChange={(next) => {
+					setIsEach(next === 'each');
+					if (next === 'each' || uniform) return;
+					const strictest = Math.max(
+						...boundaries.map((boundary) => DETECT_ACTIONS.indexOf(actions[boundary])),
+					);
+					const same = { ...actions };
+					for (const boundary of boundaries) same[boundary] = DETECT_ACTIONS[strictest];
+					onChange(same);
+				}}
+			/>
+			{mode === 'each' && (
+				<BoundaryRows
+					detector={detector}
+					defaults={defaults}
+					boundaries={boundaries}
+					actions={actions}
+					onChange={onChange}
+				/>
 			)}
-		</VStack>
+		</InspectorSection>
 	);
 }
 
 const PATTERN_KIND_SEGMENTS: Segment<PatternDraft['kind']>[] = [
-	{ value: 'pattern', label: 'Regular expression', icon: IconRegex },
 	{ value: 'words', label: 'Words', icon: IconAbc },
+	{ value: 'pattern', label: 'Regular expression', icon: IconRegex },
 ];
 
-/** One of the builder's patterns: its name, and the regular expression or words it matches. */
-function PatternRow({
+/** The flags a regular expression takes, each by what it does. */
+const REGEX_FLAGS = [
+	{ flag: 'i', label: 'Ignore case' },
+	{ flag: 'm', label: '^ and $ match each line' },
+	{ flag: 's', label: '. matches line breaks' },
+	{ flag: 'u', label: 'Unicode' },
+];
+
+/** A regular expression's flags as a checklist: the ones set are checked. */
+function RegexFlagsRow({
+	detector,
+	flags,
+	onChange,
+}: {
+	detector: DetectorPath;
+	flags: string;
+	onChange: (next: string) => void;
+}) {
+	return (
+		<InspectorRow label="Options" path={`guardrails.detect.${detector}.patterns.*.flags`}>
+			<StackItem size="fill">
+				<CheckboxList
+					label="Options"
+					isLabelHidden
+					density="compact"
+					value={REGEX_FLAGS.filter(({ flag }) => flags.includes(flag)).map(({ flag }) => flag)}
+					onChange={(checked) => {
+						onChange(
+							REGEX_FLAGS.filter(({ flag }) => checked.includes(flag))
+								.map(({ flag }) => flag)
+								.join(''),
+						);
+					}}
+				>
+					{REGEX_FLAGS.map(({ flag, label }) => (
+						<CheckboxListItem key={flag} value={flag} label={label} />
+					))}
+				</CheckboxList>
+			</StackItem>
+		</InspectorRow>
+	);
+}
+
+/** One of the builder's patterns: its name, and the words or the regular expression it matches. */
+function PatternRows({
 	detector,
 	pattern,
 	index,
@@ -3178,11 +3293,11 @@ function PatternRow({
 	onChange: (next: PatternDraft) => void;
 	onRemove: () => void;
 }) {
-	const remove = `Remove pattern ${String(index + 1)}`;
+	const remove = `Remove ${pattern.name.trim() || `pattern ${String(index + 1)}`}`;
 	return (
 		<VStack gap={2}>
 			<InspectorRow
-				label={`Pattern ${String(index + 1)}`}
+				label="Name"
 				path={`guardrails.detect.${detector}.patterns.*.name`}
 				hasIssue={status !== undefined}
 			>
@@ -3193,7 +3308,7 @@ function PatternRow({
 						size="sm"
 						status={status}
 						value={pattern.name}
-						placeholder="Name"
+						placeholder="codenames"
 						onChange={(name) => {
 							onChange({ ...pattern, name });
 						}}
@@ -3212,6 +3327,7 @@ function PatternRow({
 			<SegmentedRow
 				label="Matches"
 				path={`guardrails.detect.${detector}.patterns`}
+				hasLabels
 				value={pattern.kind}
 				segments={PATTERN_KIND_SEGMENTS}
 				onChange={(kind) => {
@@ -3223,6 +3339,7 @@ function PatternRow({
 					label="Words"
 					path={`guardrails.detect.${detector}.patterns.*.words`}
 					value={pattern.words}
+					placeholder="Bluebird"
 					onChange={(words) => {
 						onChange({ ...pattern, words });
 					}}
@@ -3238,10 +3355,9 @@ function PatternRow({
 							onChange({ ...pattern, pattern: source });
 						}}
 					/>
-					<TextRow
-						label="Flags"
-						path={`guardrails.detect.${detector}.patterns.*.flags`}
-						value={pattern.flags}
+					<RegexFlagsRow
+						detector={detector}
+						flags={pattern.flags}
 						onChange={(flags) => {
 							onChange({ ...pattern, flags });
 						}}
@@ -3253,7 +3369,7 @@ function PatternRow({
 }
 
 /** The builder's own patterns for one detector; `field` is the draft field their issues are reported at. */
-function PatternRows({
+function PatternList({
 	detector,
 	field,
 	patterns,
@@ -3268,7 +3384,7 @@ function PatternRows({
 	return (
 		<>
 			{patterns.map((pattern, index) => (
-				<PatternRow
+				<PatternRows
 					// biome-ignore lint/suspicious/noArrayIndexKey: patterns have no id and are only appended or removed
 					key={index}
 					detector={detector}
@@ -3296,8 +3412,33 @@ function PatternRows({
 	);
 }
 
-/** Whose patterns a detector reads with: Theorem's, the builder's, both or neither. */
-function PatternSourceRows({
+type PatternUse = 'theorem' | 'mine' | 'both';
+const PATTERN_USE_SEGMENTS: Segment<PatternUse>[] = [
+	{
+		value: 'theorem',
+		label: "Theorem's",
+		icon: IconShieldLock,
+		description: sectionNote('detect.source.theorem'),
+	},
+	{
+		value: 'mine',
+		label: 'Mine',
+		icon: IconUser,
+		description: sectionNote('detect.source.mine'),
+	},
+	{
+		value: 'both',
+		label: 'Both',
+		icon: IconPlus,
+		description: sectionNote('detect.source.both'),
+	},
+];
+
+/**
+ * Whose patterns one of Theorem's detectors reads with, and the builder's when it reads with them.
+ * Patterns set aside by a move to Theorem's alone come back on a move away, while the page is open.
+ */
+function PatternSourceSection({
 	detector,
 	source,
 	onChange,
@@ -3306,26 +3447,43 @@ function PatternSourceRows({
 	source: PatternSourceDraft;
 	onChange: (next: PatternSourceDraft) => void;
 }) {
+	const setAside = useRef<PatternDraft[]>([]);
+	const mine = source.patterns.length > 0;
+	const use: PatternUse = source.theorem ? (mine ? 'both' : 'theorem') : 'mine';
 	return (
-		<>
-			<SwitchRow
-				label="Built-in"
+		<InspectorSection title="Patterns">
+			<SegmentedRow
+				label="Read with"
 				path={`guardrails.detect.${detector}.theorem`}
-				value={source.theorem}
-				onChange={(theorem) => {
-					onChange({ ...source, theorem });
+				hasLabels
+				value={use}
+				segments={PATTERN_USE_SEGMENTS}
+				onChange={(next) => {
+					if (next === 'theorem') {
+						setAside.current = source.patterns;
+						onChange({ ...source, theorem: true, patterns: [] });
+						return;
+					}
+					const kept = setAside.current.length ? setAside.current : [newPattern()];
+					onChange({
+						...source,
+						theorem: next === 'both',
+						patterns: mine ? source.patterns : kept,
+					});
 				}}
 			/>
-			<PatternRows
-				detector={detector}
-				field={`sources.${detector}.patterns`}
-				patterns={source.patterns}
-				onChange={(patterns) => {
-					onChange({ ...source, patterns });
-				}}
-			/>
+			{use !== 'theorem' && (
+				<PatternList
+					detector={detector}
+					field={`sources.${detector}.patterns`}
+					patterns={source.patterns}
+					onChange={(patterns) => {
+						onChange({ ...source, patterns });
+					}}
+				/>
+			)}
 			{/* A hint speaks for the builder's patterns, so it shows once there is one. */}
-			{source.patterns.length > 0 && (
+			{mine && (
 				<TextRow
 					label="Retry hint"
 					path={`guardrails.detect.${detector}.hint`}
@@ -3336,159 +3494,70 @@ function PatternSourceRows({
 					}}
 				/>
 			)}
-		</>
-	);
-}
-
-/** One detector of the builder's own: its key and label, where it reads, and its patterns. */
-function OwnDetectorRows({
-	detector,
-	index,
-	boundaries,
-	onChange,
-	onRemove,
-}: {
-	detector: OwnDetectorDraft;
-	index: number;
-	boundaries: readonly Boundary[];
-	onChange: (next: OwnDetectorDraft) => void;
-	onRemove: () => void;
-}) {
-	const status = useFieldStatus()('own', index);
-	const remove = `Remove ${detector.label || detector.key || `detector ${String(index + 1)}`}`;
-	return (
-		<VStack gap={2}>
-			<InspectorRow label="Key" path="guardrails.detect.*" hasIssue={status !== undefined}>
-				<StackItem size="fill">
-					<TextInput
-						label={`Detector ${String(index + 1)} key`}
-						isLabelHidden
-						size="sm"
-						status={status}
-						value={detector.key}
-						placeholder="acme.codenames"
-						onChange={(key) => {
-							onChange({ ...detector, key });
-						}}
-					/>
-				</StackItem>
-				<Tooltip content={remove}>
-					<IconButton
-						label={remove}
-						variant="ghost"
-						size="sm"
-						icon={<Icon icon={IconX} size="sm" />}
-						onClick={onRemove}
-					/>
-				</Tooltip>
-			</InspectorRow>
-			<TextRow
-				label="Label"
-				path="guardrails.detect.*.label"
-				value={detector.label}
-				onChange={(label) => {
-					onChange({ ...detector, label });
-				}}
-			/>
-			<DetectorRows
-				detector="*"
-				label="Action"
-				boundaries={boundaries}
-				actions={detector.at}
-				onChange={(at) => {
-					onChange({ ...detector, at });
-				}}
-			/>
-			<PatternRows
-				detector="*"
-				field={`own.${String(index)}.patterns`}
-				patterns={detector.patterns}
-				onChange={(patterns) => {
-					onChange({ ...detector, patterns });
-				}}
-			/>
-			<TextRow
-				label="Retry hint"
-				path="guardrails.detect.*.hint"
-				field={`own.${String(index)}.hint`}
-				value={detector.hint}
-				onChange={(hint) => {
-					onChange({ ...detector, hint });
-				}}
-			/>
-		</VStack>
-	);
-}
-
-/** The builder's own detectors, each under a key with a dot. */
-function OwnDetectorsSection({
-	own,
-	boundaries,
-	onChange,
-}: {
-	own: OwnDetectorDraft[];
-	boundaries: readonly Boundary[];
-	onChange: (next: OwnDetectorDraft[]) => void;
-}) {
-	return (
-		<InspectorSection title="Your detectors" path="guardrails.detect.*">
-			{own.map((detector, index) => (
-				<OwnDetectorRows
-					// biome-ignore lint/suspicious/noArrayIndexKey: detectors are keyed by text the builder is typing
-					key={index}
-					detector={detector}
-					index={index}
-					boundaries={boundaries}
-					onChange={(next) => {
-						onChange(own.map((each, at) => (at === index ? next : each)));
-					}}
-					onRemove={() => {
-						onChange(own.filter((_, at) => at !== index));
-					}}
-				/>
-			))}
-			<Button
-				label="Add detector"
-				variant="ghost"
-				size="sm"
-				icon={<Icon icon={IconPlus} size="sm" />}
-				onClick={() => {
-					onChange([...own, newOwnDetector()]);
-				}}
-			/>
 		</InspectorSection>
 	);
 }
 
-/**
- * What happens to each detector's matches, at every boundary the profile has and the detector
- * applies at. Detectors sit under their group, and one that applies nowhere here is left out.
- */
 function isUrlDetector(detector: Detector): detector is UrlDetector {
 	return DETECTOR_META[detector].allow === 'urls';
 }
 
+/** The detector the editor has open: one of Theorem's by name, or one of the builder's by position. */
+type OpenDetector = { detector: Detector } | { own: number };
+
+/** A problem with the detectors as a whole, such as a key of the builder's the kernel refuses. */
+function DetectIssue() {
+	const status = useFieldStatus()('detect');
+	return status?.message ? <Banner status="error" title={status.message} /> : null;
+}
+
+/** What a detector's row says when a field on its page has an issue, so the list shows where. */
+function usePageIssues(): (
+	onPage: (issue: PlaygroundIssue) => boolean,
+) => ReturnType<ReturnType<typeof useFieldStatus>> | undefined {
+	const issues = useContext(NodeIssues);
+	return (onPage) => {
+		const messages = issues.filter(onPage).map((issue) => issue.message);
+		return messages.length ? { type: 'error', message: messages.join(' ') } : undefined;
+	};
+}
+
+/** The button at the end of a detector's row that opens its page. */
+function OpenDetectorButton({ label, onOpen }: { label: string; onOpen: () => void }) {
+	const open = `Open ${label}: patterns and boundaries`;
+	return (
+		<Tooltip content={open}>
+			<IconButton
+				label={open}
+				variant="ghost"
+				size="sm"
+				icon={<Icon icon={IconChevronRight} size="sm" />}
+				onClick={onOpen}
+			/>
+		</Tooltip>
+	);
+}
+
+/** What an own detector is called before it has a label. */
+const ownName = (detector: OwnDetectorDraft) =>
+	detector.label.trim() || detector.key.trim() || 'New detector';
+
+/**
+ * Every detector on one line: its name and what it does with a match, then the button that opens
+ * its page. Theorem's sit under their group, the builder's own under "Yours", and one that applies
+ * at no boundary the profile has is left out.
+ */
 function DetectSection({
-	detect,
-	allow,
-	innocentNames,
-	sources,
+	guardrails,
 	boundaries,
-	onChange,
-	onAllow,
-	onInnocentNames,
-	onSources,
-}: {
-	detect: DetectDraft;
-	allow: GuardrailsDraft['allow'];
-	innocentNames: string[];
-	sources: GuardrailsDraft['sources'];
+	set,
+	onOpen,
+}: GuardrailsSectionProps & {
 	boundaries: readonly Boundary[];
-	onChange: (next: DetectDraft) => void;
-	onAllow: (next: GuardrailsDraft['allow']) => void;
-	onInnocentNames: (next: string[]) => void;
-	onSources: (next: GuardrailsDraft['sources']) => void;
+	onOpen: (open: OpenDetector) => void;
 }) {
+	const { detect, own } = guardrails;
+	const pageIssue = usePageIssues();
 	const has = new Set(boundaries);
 	const groups = DETECTOR_GROUPS.map((group) => ({
 		group,
@@ -3501,6 +3570,7 @@ function DetectSection({
 	})).filter(({ rows }) => rows.length > 0);
 	return (
 		<InspectorSection title="Detect" path="guardrails.detect">
+			<DetectIssue />
 			{groups.map(({ group, rows }) => (
 				<VStack key={group} gap={2}>
 					<Tooltip content={DETECTOR_GROUP_META[group].doc}>
@@ -3509,54 +3579,341 @@ function DetectSection({
 						</Text>
 					</Tooltip>
 					{rows.map(({ detector, applies }) => (
-						<VStack key={detector} gap={2}>
-							<DetectorRows
-								detector={detector}
-								label={DETECTOR_META[detector].label}
-								defaults={DETECTOR_META[detector].defaults}
-								boundaries={applies}
-								actions={detect[detector]}
-								onChange={(actions) => {
-									onChange({ ...detect, [detector]: actions });
-								}}
-							/>
-							{/* An allow list means nothing while the detector reads nowhere. */}
-							{isUrlDetector(detector) &&
-								applies.some((boundary) => detect[detector][boundary] !== 'ignore') && (
-									<UrlAllowRows
-										detector={detector}
-										allow={allow[detector]}
-										onChange={(next) => {
-											onAllow({ ...allow, [detector]: next });
-										}}
-									/>
-								)}
-							{DETECTOR_META[detector].allow === 'names' &&
-								applies.some((boundary) => detect[detector][boundary] !== 'ignore') && (
-									<NamesRow
-										label="Allowed names"
-										path={`guardrails.detect.${detector}.allow.names`}
-										field="innocentNames"
-										value={innocentNames}
-										onChange={onInnocentNames}
-									/>
-								)}
-							{/* Whose patterns it reads with means nothing while it reads nowhere. */}
-							{DETECTOR_META[detector].patterns &&
-								applies.some((boundary) => detect[detector][boundary] !== 'ignore') && (
-									<PatternSourceRows
-										detector={detector}
-										source={sources[detector]}
-										onChange={(next) => {
-											onSources({ ...sources, [detector]: next });
-										}}
-									/>
-								)}
-						</VStack>
+						<ActionRow
+							key={detector}
+							detector={detector}
+							label={DETECTOR_META[detector].label}
+							defaults={DETECTOR_META[detector].defaults}
+							boundaries={applies}
+							actions={detect[detector]}
+							status={pageIssue(
+								({ field }) =>
+									field?.startsWith(`sources.${detector}.`) === true ||
+									field?.startsWith(`allow.${detector}.`) === true ||
+									(field === 'innocentNames' && DETECTOR_META[detector].allow === 'names'),
+							)}
+							trailing={
+								<OpenDetectorButton
+									label={DETECTOR_META[detector].label}
+									onOpen={() => {
+										onOpen({ detector });
+									}}
+								/>
+							}
+							onChange={(actions) => {
+								set({ detect: { ...detect, [detector]: actions } });
+							}}
+						/>
 					))}
 				</VStack>
 			))}
+			<VStack gap={2}>
+				<Tooltip content={sectionNote('detect.own')}>
+					<Text type="supporting" weight="semibold">
+						Yours
+					</Text>
+				</Tooltip>
+				{own.map((detector, index) => (
+					<ActionRow
+						// biome-ignore lint/suspicious/noArrayIndexKey: detectors are keyed by text the builder is typing
+						key={index}
+						detector="*"
+						label={ownName(detector)}
+						boundaries={boundaries}
+						actions={detector.at}
+						status={pageIssue(
+							({ field, index: at }) =>
+								(field === 'own' && at === index) ||
+								field?.startsWith(`own.${String(index)}.`) === true,
+						)}
+						trailing={
+							<OpenDetectorButton
+								label={ownName(detector)}
+								onOpen={() => {
+									onOpen({ own: index });
+								}}
+							/>
+						}
+						onChange={(at) => {
+							set({ own: own.map((each, i) => (i === index ? { ...detector, at } : each)) });
+						}}
+					/>
+				))}
+				<Button
+					label="Add detector"
+					variant="ghost"
+					size="sm"
+					icon={<Icon icon={IconPlus} size="sm" />}
+					onClick={() => {
+						set({ own: [...own, newOwnDetector()] });
+						onOpen({ own: own.length });
+					}}
+				/>
+			</VStack>
 		</InspectorSection>
+	);
+}
+
+/**
+ * The top of a detector's page: the way back to the list, its name, and what it finds. The page
+ * scrolls to it as it opens.
+ */
+function DetectorHeader({
+	title,
+	doc,
+	trailing,
+	onBack,
+}: {
+	title: string;
+	doc?: string;
+	trailing?: ReactNode;
+	onBack: () => void;
+}) {
+	const top = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		top.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	}, []);
+	return (
+		<div ref={top}>
+			<Section variant="transparent" padding={3}>
+				<VStack gap={1}>
+					<HStack gap={1} vAlign="center">
+						<Tooltip content="Back to detectors">
+							<IconButton
+								label="Back to detectors"
+								variant="ghost"
+								size="sm"
+								icon={<Icon icon={IconArrowLeft} size="sm" />}
+								onClick={onBack}
+							/>
+						</Tooltip>
+						<StackItem size="fill">
+							<Text type="label" weight="semibold">
+								{title}
+							</Text>
+						</StackItem>
+						{trailing}
+					</HStack>
+					{doc && <Text type="supporting">{doc}</Text>}
+					<DetectIssue />
+				</VStack>
+			</Section>
+		</div>
+	);
+}
+
+/** One of Theorem's detectors: its action, whose patterns it reads with, what it lets through, its boundaries. */
+function DetectorPage({
+	detector,
+	boundaries,
+	guardrails,
+	set,
+	onBack,
+}: GuardrailsSectionProps & {
+	detector: Detector;
+	/** The boundaries of the profile the detector applies at. */
+	boundaries: readonly Boundary[];
+	onBack: () => void;
+}) {
+	const { detect, allow, sources, innocentNames } = guardrails;
+	const meta = DETECTOR_META[detector];
+	const setActions = (actions: Record<Boundary, DetectAction>) => {
+		set({ detect: { ...detect, [detector]: actions } });
+	};
+	return (
+		<>
+			<DetectorHeader title={meta.label} doc={meta.doc} onBack={onBack} />
+			<InspectorSection title="Action">
+				<ActionRow
+					detector={detector}
+					label="On a match"
+					defaults={meta.defaults}
+					boundaries={boundaries}
+					actions={detect[detector]}
+					onChange={setActions}
+				/>
+			</InspectorSection>
+			{meta.patterns && (
+				<PatternSourceSection
+					detector={detector}
+					source={sources[detector]}
+					onChange={(next) => {
+						set({ sources: { ...sources, [detector]: next } });
+					}}
+				/>
+			)}
+			{isUrlDetector(detector) && (
+				<InspectorSection title="Allow">
+					<UrlAllowRows
+						detector={detector}
+						allow={allow[detector]}
+						onChange={(next) => {
+							set({ allow: { ...allow, [detector]: next } });
+						}}
+					/>
+				</InspectorSection>
+			)}
+			{meta.allow === 'names' && (
+				<InspectorSection title="Allow">
+					<NamesRow
+						label="Names"
+						path={`guardrails.detect.${detector}.allow.names`}
+						field="innocentNames"
+						value={innocentNames}
+						onChange={(names) => {
+							set({ innocentNames: names });
+						}}
+					/>
+				</InspectorSection>
+			)}
+			<BoundariesSection
+				detector={detector}
+				defaults={meta.defaults}
+				boundaries={boundaries}
+				actions={detect[detector]}
+				onChange={setActions}
+			/>
+		</>
+	);
+}
+
+/** One detector of the builder's own: its name and key, its action, its patterns, its boundaries. */
+function OwnDetectorPage({
+	detector,
+	index,
+	boundaries,
+	onChange,
+	onRemove,
+	onBack,
+}: {
+	detector: OwnDetectorDraft;
+	index: number;
+	boundaries: readonly Boundary[];
+	onChange: (next: OwnDetectorDraft) => void;
+	onRemove: () => void;
+	onBack: () => void;
+}) {
+	const status = useFieldStatus()('own', index);
+	const remove = `Remove ${ownName(detector)}`;
+	const setActions = (at: Record<Boundary, DetectAction>) => {
+		onChange({ ...detector, at });
+	};
+	return (
+		<>
+			<DetectorHeader
+				title={ownName(detector)}
+				doc={fieldMeta('guardrails.detect.*')?.doc}
+				trailing={
+					<Tooltip content={remove}>
+						<IconButton
+							label={remove}
+							variant="ghost"
+							size="sm"
+							icon={<Icon icon={IconTrash} size="sm" />}
+							onClick={onRemove}
+						/>
+					</Tooltip>
+				}
+				onBack={onBack}
+			/>
+			<InspectorSection title="Detector">
+				<TextRow
+					label="Name"
+					path="guardrails.detect.*.label"
+					value={detector.label}
+					placeholder="Codenames"
+					onChange={(label) => {
+						onChange({ ...detector, label });
+					}}
+				/>
+				<TextRow
+					label="Key"
+					path="guardrails.detect.*"
+					status={status}
+					value={detector.key}
+					placeholder="acme.codenames"
+					onChange={(key) => {
+						onChange({ ...detector, key });
+					}}
+				/>
+			</InspectorSection>
+			<InspectorSection title="Action">
+				<ActionRow
+					detector="*"
+					label="On a match"
+					boundaries={boundaries}
+					actions={detector.at}
+					onChange={setActions}
+				/>
+			</InspectorSection>
+			<InspectorSection title="Patterns">
+				<PatternList
+					detector="*"
+					field={`own.${String(index)}.patterns`}
+					patterns={detector.patterns}
+					onChange={(patterns) => {
+						onChange({ ...detector, patterns });
+					}}
+				/>
+				<TextRow
+					label="Retry hint"
+					path="guardrails.detect.*.hint"
+					field={`own.${String(index)}.hint`}
+					value={detector.hint}
+					onChange={(hint) => {
+						onChange({ ...detector, hint });
+					}}
+				/>
+			</InspectorSection>
+			<BoundariesSection
+				detector="*"
+				boundaries={boundaries}
+				actions={detector.at}
+				onChange={setActions}
+			/>
+		</>
+	);
+}
+
+/** The page for `open`, or `undefined` when what it names is gone or applies nowhere in this profile. */
+function openDetectorPage(
+	open: OpenDetector | null,
+	{ guardrails, set }: GuardrailsSectionProps,
+	boundaries: readonly Boundary[],
+	onBack: () => void,
+): ReactNode {
+	if (open === null) return undefined;
+	if ('detector' in open) {
+		const has = new Set(boundaries);
+		const applies = DETECTOR_BOUNDARIES[open.detector].filter((boundary) => has.has(boundary));
+		if (applies.length === 0) return undefined;
+		return (
+			<DetectorPage
+				detector={open.detector}
+				boundaries={applies}
+				guardrails={guardrails}
+				set={set}
+				onBack={onBack}
+			/>
+		);
+	}
+	const { own } = guardrails;
+	const detector = own.at(open.own);
+	if (!detector) return undefined;
+	return (
+		<OwnDetectorPage
+			detector={detector}
+			index={open.own}
+			boundaries={boundaries}
+			onChange={(next) => {
+				set({ own: own.map((each, at) => (at === open.own ? next : each)) });
+			}}
+			onRemove={() => {
+				set({ own: own.filter((_, at) => at !== open.own) });
+				onBack();
+			}}
+			onBack={onBack}
+		/>
 	);
 }
 
@@ -3564,34 +3921,20 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 	const { guardrails } = draft;
 	const set = patch(setDraft, 'guardrails');
 	const boundaries = draft.identity.profileType === 'host' ? TOOL_BOUNDARIES : BOUNDARIES;
+	const [open, setOpen] = useState<OpenDetector | null>(null);
+	const page = openDetectorPage(open, { guardrails, set }, boundaries, () => {
+		setOpen(null);
+	});
+	if (page) {
+		return (
+			<div key={JSON.stringify(open)} className="detector-view">
+				{page}
+			</div>
+		);
+	}
 	return (
-		<>
-			<DetectSection
-				detect={guardrails.detect}
-				allow={guardrails.allow}
-				innocentNames={guardrails.innocentNames}
-				sources={guardrails.sources}
-				boundaries={boundaries}
-				onChange={(detect) => {
-					set({ detect });
-				}}
-				onAllow={(allow) => {
-					set({ allow });
-				}}
-				onInnocentNames={(innocentNames) => {
-					set({ innocentNames });
-				}}
-				onSources={(sources) => {
-					set({ sources });
-				}}
-			/>
-			<OwnDetectorsSection
-				own={guardrails.own}
-				boundaries={boundaries}
-				onChange={(own) => {
-					set({ own });
-				}}
-			/>
+		<div className="detector-view">
+			<DetectSection guardrails={guardrails} boundaries={boundaries} set={set} onOpen={setOpen} />
 			{plantsCanary(draft) && <CanarySection guardrails={guardrails} set={set} />}
 			{draftAllows(draft, 'guardrails.blockedReply') && (
 				<BlockedReplySection guardrails={guardrails} set={set} />
@@ -3611,7 +3954,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 				</InspectorSection>
 			)}
 			<QuotaSection guardrails={guardrails} set={set} />
-		</>
+		</div>
 	);
 }
 
