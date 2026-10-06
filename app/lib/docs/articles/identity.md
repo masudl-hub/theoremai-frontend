@@ -94,7 +94,7 @@ The mark changes what the agent can repeat:
 - With no mark, the whole instruction is private. The agent cannot repeat any of it.
 - With one mark or more, the marked parts are private. The agent can repeat the plain parts.
 
-`guardrails.promptEcho` enforces the mark. It stops a reply that repeats 12 words in a row of a private part. It works while `guardrails.canary` is on. Both are on by default ([Setting guardrails](/docs/guardrails)).
+The `prompt_leak` detector enforces the mark. It reads for 12 words in a row of a private part. Without a setting, it blocks a reply that repeats them ([Setting guardrails](/docs/guardrails)).
 
 In the [playground](/playground), write the instruction as one text. Wrap each private section as `{private: …}`. The exported profile holds the parts.
 

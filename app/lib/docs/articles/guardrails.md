@@ -9,15 +9,13 @@ coverAlt: Black rocks where the surf meets the shore
 coverPosition: 100% 0%
 ---
 
-Guardrails keep injected instructions, secrets and leaks out of a turn. Each guardrail is a field under `guardrails` on the profile. Three run when you set nothing: `detect`, `canary` and `promptEcho`. The reply check, `egress`, runs only when you set it.
+Guardrails keep injected instructions, secrets and leaks out of a turn. Each guardrail is a field under `guardrails` on the profile. One runs when you set nothing: `detect`. The reply check, `egress`, runs only when you set it.
 
 ## Know the defaults
 
 Guardrail | Without a setting | What it does
 --- | --- | ---
-`detect` | Redacts what goes to the model | Finds credentials, personal data and injection phrasing in text, and acts on each match
-`canary` | On | Catches a reply that repeats a secret token from the system prompt
-`promptEcho` | On | Catches a reply that repeats 12 words in a row from the system prompt
+`detect` | Redacts what goes to the model | Finds credentials, personal data, injection phrasing and leaks of the system prompt in text, and acts on each match
 `egress` | No check | Checks each reply before the user sees it
 `network` | `https` only, no private addresses | Limits what HTTP and MCP tools reach
 `taint` | `off` | Limits tool calls after a remote read
@@ -117,11 +115,16 @@ A guarded live profile always asks the provider for the output transcript: it fo
 
 ## Protect the system prompt
 
-`canary` adds a secret token to the end of the system instruction. A reply that repeats the token is a leak. `promptEcho` also counts 12 words in a row from the system instruction as a leak.
+Two detectors under `detect` protect the system prompt.
+
+- `canary_leak` reads for the canary, a secret token that Theorem adds to the end of the system instruction.
+- `prompt_leak` reads for 12 words in a row from the system instruction.
+
+Without a setting, each blocks a reply that leaks and redacts a thought that leaks. `canary_leak` also blocks a tool call whose arguments carry the token. `prompt_leak` flags a tool call whose arguments carry the words.
 
 Without `egress`, a leak ends the turn, and the user reads the `error.safety` line. With `egress`, `onBlock` decides.
 
-A speech profile has no system prompt, so its canary is always off.
+A speech profile has no system prompt, so Theorem adds no canary to it.
 
 ## Clean what goes in
 
@@ -203,7 +206,6 @@ A decision profile sets `disclosure.enforce`. `runDecision` calls it before it s
 Guardrail | `text`, `image` | `live` | `speech` | `host` | `decision`
 --- | --- | --- | --- | --- | ---
 `detect` | Yes | Yes | Yes | Yes | No
-`canary`, `promptEcho` | Yes | Yes | Off only | No | No
 `egress`, `taint` | Yes | Yes | No | No | No
 `network` | Yes | Yes | No | Yes | No
 `quota` | Yes | Yes | Yes | No | No
@@ -211,7 +213,7 @@ Guardrail | `text`, `image` | `live` | `speech` | `host` | `decision`
 
 ## Know what defineProfile refuses
 
-`defineProfile` refuses any other field with a `config` error. On a `host` profile, `detect` takes the tool boundaries only. A speech profile has no system prompt, so it takes `canary: false` only.
+`defineProfile` refuses any other field with a `config` error. On a `host` profile, `detect` takes the tool boundaries only.
 
 ## Try the input checks without a model
 

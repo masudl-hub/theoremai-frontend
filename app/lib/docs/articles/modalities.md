@@ -105,7 +105,7 @@ The dock announcer reads a notice to the dock. Use `speech` to read a transcript
 
 - Must set: `identity` with a `handle` only, `models` and `speech`.
 - Cannot set: `identity.system`, `tools` or `inputs`.
-- Canary: a speech profile always stores `guardrails.canary: false`, because the reply is audio and not text.
+- Canary: Theorem adds no canary to a speech profile, because it has no system prompt.
 
 `speech.format` is `pcm` or `mp3`. `pcm` is delivered as WAV. `mp3` needs protocol `openAi`.
 
