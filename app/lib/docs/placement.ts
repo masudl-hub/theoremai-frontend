@@ -52,7 +52,6 @@ export const EXPORT_SECTION = {
 	releaseSlot: 'guardrails',
 	overrideLexicon: 'statuses',
 	resetLexicon: 'statuses',
-	egressPolicy: 'guardrails',
 	TheoremError: 'runner',
 } as const satisfies Record<keyof typeof API_EXPORTS, DocSection>;
 
