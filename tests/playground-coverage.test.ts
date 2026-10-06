@@ -7,11 +7,20 @@ import { PROFILE_FIELDS } from '@theoremjs/agents';
  * Profile fields the playground editor has no row for, each with why. A field under one of
  * these is left out with it. Anything else in the kernel's catalog needs a row.
  */
+const COMPILED = 'Worked out from the patterns where the agent runs.';
+
 const NOT_IN_PLAYGROUND: Record<string, string> = {
 	'tools.t1Policy': 'A function that picks T1 tools each turn, written in code.',
 	'inputs.state': 'Set by the Decision profile type.',
 	'outputs.validation.fields': 'Check functions, written in code.',
 	'guardrails.disclosure': 'A check function on decision state, written in code.',
+	'guardrails.detect.ids.compiled': COMPILED,
+	'guardrails.detect.financial.compiled': COMPILED,
+	'guardrails.detect.network.compiled': COMPILED,
+	'guardrails.detect.credentials.compiled': COMPILED,
+	'guardrails.detect.injection.compiled': COMPILED,
+	'guardrails.detect.*.compiled': COMPILED,
+	'guardrails.detect.*.find': 'A function that reads the text, written in code.',
 	'observability.onWriteError': 'An error handler, written in code.',
 	'models.*.compaction.trigger': 'A function that decides when to compact, written in code.',
 };
