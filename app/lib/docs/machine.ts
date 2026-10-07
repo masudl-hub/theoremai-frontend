@@ -11,6 +11,7 @@ import {
 	PACKAGE_LINKS,
 	SITE_NAME,
 } from '../home-content';
+import { playgroundMarkdown } from '../playground-content';
 import { symbolTerm } from './catalog-rows';
 import { projectArticleText } from './project-text';
 import type { DocArticle, DocIndex } from './schema';
@@ -43,6 +44,8 @@ export function llmsTxt(index: DocIndex, origin: string): string {
 	return [
 		homeMarkdown(origin).trimEnd(),
 		'',
+		playgroundMarkdown(index, origin).trimEnd(),
+		'',
 		'## Docs',
 		'',
 		'Chapters in reading order. Each is Markdown at its address plus `.md`; its sections link to the page.',
@@ -61,7 +64,11 @@ export function llmsTxt(index: DocIndex, origin: string): string {
 /** The landing page and every chapter in full, so one fetch answers any question about the site. */
 export function llmsFullTxt(index: DocIndex, origin: string): string {
 	const chapters = index.articles.map((article) => articleMarkdown(index, article.slug, origin));
-	return [homeMarkdown(origin).trimEnd(), ...chapters].join('\n\n---\n\n') + '\n';
+	return (
+		[homeMarkdown(origin).trimEnd(), playgroundMarkdown(index, origin).trimEnd(), ...chapters].join(
+			'\n\n---\n\n',
+		) + '\n'
+	);
 }
 
 export function robotsTxt(origin: string): string {

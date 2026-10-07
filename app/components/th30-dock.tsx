@@ -185,7 +185,9 @@ function useTh30PageLine(): string | null {
 		const page = (describe as (data: unknown, hash: string) => Th30Page)(match.loaderData, hash);
 		return th30PageLine(pathname, page, pathname === '/playground' ? playground : null);
 	}
-	return rendered ? th30PageLine(pathname, rendered, null) : null;
+	return rendered
+		? th30PageLine(pathname, rendered, pathname === '/playground' ? playground : null)
+		: null;
 }
 
 /** th30 opens a surface's page when it asks for one that isn't mounted, and can always move the person. */

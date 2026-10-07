@@ -118,6 +118,7 @@ import {
 	useState,
 	useSyncExternalStore,
 } from 'react';
+import { useRouteLoaderData } from 'react-router';
 import { GuardrailTester, ProbedAgent } from '../components/guardrail-tester';
 import {
 	ConnectionMode,
@@ -126,6 +127,7 @@ import {
 	LocalConnection,
 	WorkspaceContext,
 } from '../components/inspector-context';
+import { PageJsonLd } from '../components/page-summary';
 import { type CodeApply, PlaygroundCode } from '../components/playground-code';
 import {
 	type PlaygroundConnectionState,
@@ -143,7 +145,13 @@ import { PLAYGROUND_SEED_IDS, type PlaygroundSeedId } from '../lib/docs/schema';
 import { docsSeedDraft, docsSeedQuestion } from '../lib/docs/seeds';
 import { exportFiles, exportText, llmBrief } from '../lib/export-agent';
 import { FACET_ICON } from '../lib/facet-icons';
+import { SITE_NAME } from '../lib/home-content';
 import { KERNEL_PACKAGE_VERSION } from '../lib/kernel-version';
+import {
+	PLAYGROUND_EXAMPLES,
+	PLAYGROUND_TITLE,
+	playgroundDescription,
+} from '../lib/playground-content';
 import {
 	clearConversation,
 	restoreConversation,
@@ -153,25 +161,36 @@ import { pageInputsOf, sentPageValues, usePageValues } from '../lib/playground-p
 import { restorePlayground } from '../lib/playground-restore';
 import type { RestoredPlayground } from '../lib/playground-session';
 import { createPlaygroundStore, type PlaygroundStore } from '../lib/playground-store';
-import { type Th30PageHandle, useReportTh30Playground } from '../lib/th30-page';
+import { useReportTh30Playground } from '../lib/th30-page';
 import { th30Surfaces } from '../lib/th30-surfaces';
 import { toolCredential } from '../lib/tool-credentials';
 import { runToolProbe } from '../lib/tool-probe';
 import { zipFiles } from '../lib/zip';
 import type { Route } from './+types/playground';
-import type { ShellHandle } from './shell';
+import type { ShellHandle, loader as shellLoader } from './shell';
 
-export const handle = {
-	isOnBase: true,
-	th30Page: () => ({
-		title: 'Playground',
-		summary:
-			"The playground, where the visitor builds an agent without code. On the left are the profile sections, a tree of the agent's settings (type, identity, models, tools, guardrails and more), and a Keys panel for their own API keys. The middle is the editor for the selected section, and the right is a live preview to chat with the agent. Load an example offers ready agents such as Travel concierge and Jev decision. Issues the agent must fix before it can run are flagged, with a button to go to the next one. Export downloads every agent as a .zip of source files (the shared tools, a module per agent, the file that registers them in order, and the route and chat for the agent being chatted with), or copies them, or copies them with a brief for an LLM. Launch opens the agent in a new tab. That page uses the site shell: the chat fills the panel, and Keys floats at the top right. The docs explain each field, so th30 should search the docs for them.",
-	}),
-} satisfies ShellHandle & Th30PageHandle;
+export const handle = { isOnBase: true } satisfies ShellHandle;
 
-export function meta() {
-	return [{ title: 'Playground · theorem' }];
+export function meta({ matches }: Route.MetaArgs) {
+	const shell = matches.find((match) => match?.id === 'routes/shell')?.loaderData as
+		| { origin?: string }
+		| undefined;
+	const origin = shell?.origin;
+	const title = `${PLAYGROUND_TITLE} · ${SITE_NAME}`;
+	const description = playgroundDescription();
+	return [
+		{ title },
+		{ name: 'description', content: description },
+		...(origin ? [{ tagName: 'link', rel: 'canonical', href: `${origin}/playground` }] : []),
+		{ property: 'og:type', content: 'website' },
+		{ property: 'og:site_name', content: SITE_NAME },
+		...(origin ? [{ property: 'og:url', content: `${origin}/playground` }] : []),
+		{ property: 'og:title', content: title },
+		{ property: 'og:description', content: description },
+		{ name: 'twitter:card', content: 'summary' },
+		{ name: 'twitter:title', content: title },
+		{ name: 'twitter:description', content: description },
+	];
 }
 
 function isPlaygroundSeed(value: string | null): value is PlaygroundSeedId {
@@ -209,7 +228,13 @@ export function clientLoader({ request }: Route.ClientLoaderArgs) {
 }
 
 export function HydrateFallback() {
-	return null;
+	return <ShellJsonLd />;
+}
+
+/** The playground's structured data, from the shell's loader. */
+function ShellJsonLd() {
+	const shell = useRouteLoaderData<typeof shellLoader>('routes/shell');
+	return <PageJsonLd data={shell?.playgroundJsonLd} />;
 }
 
 /** A node's icon; Identity shows the profile type's once one is picked. */
@@ -475,43 +500,37 @@ const addsDraft =
 const EXAMPLE_AGENTS: readonly (ExampleEntry & { add: AddAgent })[] = [
 	{
 		id: 'concierge',
-		label: 'Travel concierge',
-		description: 'Text agent with weather, places, currency and trip tools.',
+		...PLAYGROUND_EXAMPLES.concierge,
 		icon: PROFILE_TYPE_ICON.text,
 		add: addsDraft(createExampleDraft),
 	},
 	{
 		id: 'live-concierge',
-		label: 'Live concierge',
-		description: 'The concierge as a voice call, with the same tools.',
+		...PLAYGROUND_EXAMPLES['live-concierge'],
 		icon: PROFILE_TYPE_ICON.live,
 		add: addsDraft(createLiveExampleDraft),
 	},
 	{
 		id: 'architect',
-		label: 'Code architect',
-		description: 'Reads repos and docs. Brings a Narrator it calls for audio.',
+		...PLAYGROUND_EXAMPLES.architect,
 		icon: PROFILE_TYPE_ICON.text,
 		add: addArchitectExample,
 	},
 	{
 		id: 'narrator',
-		label: 'Narrator',
-		description: 'Reads a script aloud.',
+		...PLAYGROUND_EXAMPLES.narrator,
 		icon: PROFILE_TYPE_ICON.speech,
 		add: addsDraft(createNarratorExampleDraft),
 	},
 	{
 		id: 'console',
-		label: 'Tool console',
-		description: 'No model. Run its tools by hand.',
+		...PLAYGROUND_EXAMPLES.console,
 		icon: PROFILE_TYPE_ICON.host,
 		add: addsDraft(createConsoleExampleDraft),
 	},
 	{
 		id: 'decision',
-		label: 'Jev decision',
-		description: 'Checks tool calls with the Jev decision model.',
+		...PLAYGROUND_EXAMPLES.decision,
 		icon: PROFILE_TYPE_ICON.decision,
 		add: addsDraft(createDecisionExampleDraft),
 	},
@@ -2160,46 +2179,49 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	const addAgentFrom = useAddAgent(store, state.update, view.open);
 
 	return (
-		<Layout
-			ref={frame.layoutCallbackRef}
-			className={frameClass(sheet)}
-			padding={0}
-			start={
-				<SidePanel
-					frame={frame}
-					tree={tree}
-					draft={draft}
-					onAddAgent={addAgentFrom}
-					setSheet={setSheet}
-				>
-					<EditorColumn
-						heading={view.keysOpen ? 'Keys' : title}
-						state={state}
-						connection={connection}
-						view={view}
-						compile={compile}
-						selected={selected}
-						editing={editing}
+		<>
+			<ShellJsonLd />
+			<Layout
+				ref={frame.layoutCallbackRef}
+				className={frameClass(sheet)}
+				padding={0}
+				start={
+					<SidePanel
 						frame={frame}
-						issueReveal={issueReveal}
+						tree={tree}
+						draft={draft}
+						onAddAgent={addAgentFrom}
+						setSheet={setSheet}
+					>
+						<EditorColumn
+							heading={view.keysOpen ? 'Keys' : title}
+							state={state}
+							connection={connection}
+							view={view}
+							compile={compile}
+							selected={selected}
+							editing={editing}
+							frame={frame}
+							issueReveal={issueReveal}
+							setSheet={setSheet}
+						/>
+					</SidePanel>
+				}
+				content={
+					<PreviewPane
+						store={store}
+						chatAgents={chatAgents}
+						chatWith={state.workspace.chatWith}
+						compile={compile}
+						run={run}
+						connection={connection}
+						chatRef={chatRef}
+						copy={copy}
 						setSheet={setSheet}
 					/>
-				</SidePanel>
-			}
-			content={
-				<PreviewPane
-					store={store}
-					chatAgents={chatAgents}
-					chatWith={state.workspace.chatWith}
-					compile={compile}
-					run={run}
-					connection={connection}
-					chatRef={chatRef}
-					copy={copy}
-					setSheet={setSheet}
-				/>
-			}
-		/>
+				}
+			/>
+		</>
 	);
 }
 

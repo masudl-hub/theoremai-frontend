@@ -8,7 +8,15 @@ import {
 	useSideNavRenderMode,
 } from '@astryxdesign/core/SideNav';
 import { Theme } from '@astryxdesign/core/theme';
-import { Link, type LinkProps, Outlet, useLocation, useMatches, useNavigate } from 'react-router';
+import {
+	Link,
+	type LinkProps,
+	Outlet,
+	type ShouldRevalidateFunctionArgs,
+	useLocation,
+	useMatches,
+	useNavigate,
+} from 'react-router';
 import { theoremSiteTheme } from '../built/theorem-site';
 import '../components/docs/docs.css';
 import '../components/page-transition.css';
@@ -30,7 +38,10 @@ import {
 } from '../components/shell-motion';
 import { NavMark } from '../components/shell-navigation';
 import { Th30Provider, Th30Trigger } from '../components/th30-dock';
+import { getDocIndex } from '../lib/docs/.server/load-index';
+import { playgroundJsonLd } from '../lib/playground-content';
 import { SITE_PACKAGES, SITE_SECTIONS } from '../lib/site-nav';
+import type { Route } from './+types/shell';
 
 /** Route `handle` a page exports to change how the shell frames it. */
 export type ShellHandle = {
@@ -111,6 +122,30 @@ function Th30Button() {
 	const mode = useSideNavRenderMode();
 	if (mode === 'drawer' || mode === 'drawer-content') return null;
 	return <Th30Trigger placement="rail" />;
+}
+
+/**
+ * The playground draws in the browser, so React Router withholds its own loader data from the
+ * server render. The shell's is kept, so the playground's structured data and canonical URL
+ * ride here and still reach crawlers in the first HTML.
+ */
+export function loader({ request }: Route.LoaderArgs) {
+	const url = new URL(request.url);
+	return {
+		origin: url.origin,
+		playgroundJsonLd:
+			url.pathname === '/playground' ? playgroundJsonLd(getDocIndex(), url.origin) : undefined,
+	};
+}
+
+/** The structured data follows the path, so moving to or from the playground refetches it. */
+export function shouldRevalidate({
+	currentUrl,
+	nextUrl,
+	defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs) {
+	const playground = (url: URL) => url.pathname === '/playground';
+	return playground(currentUrl) !== playground(nextUrl) || defaultShouldRevalidate;
 }
 
 /**
