@@ -362,6 +362,9 @@ interface WorkspaceTreeState {
 	workspace: PlaygroundWorkspace;
 	focus: string;
 	selectedId: string;
+	/** The list the sidebar shows, agents or tools. */
+	list: WorkspaceList;
+	setList: (next: WorkspaceList) => void;
 	onSelect: (id: string) => void;
 	update: (change: (workspace: PlaygroundWorkspace) => PlaygroundWorkspace) => void;
 	setDraft: TreeState['setDraft'];
@@ -432,15 +435,7 @@ type WorkspaceList = 'agents' | 'tools';
  * again. Revealed after the list renders.
  */
 function useWorkspaceList(selectedId: string, listRef: RefObject<HTMLDivElement | null>) {
-	const listOf = (id: string): WorkspaceList =>
-		toolSpecKeyOf(id) === undefined ? 'agents' : 'tools';
-	const [list, setList] = useState(() => listOf(selectedId));
-	const [shownFor, setShownFor] = useState(selectedId);
 	const [query, setQuery] = useState('');
-	if (shownFor !== selectedId) {
-		setShownFor(selectedId);
-		setList(listOf(selectedId));
-	}
 	const revealSelected = useCallback(() => {
 		requestAnimationFrame(() => {
 			listRef.current
@@ -452,7 +447,23 @@ function useWorkspaceList(selectedId: string, listRef: RefObject<HTMLDivElement 
 		// Nothing is selected while Keys is open.
 		if (selectedId) revealSelected();
 	}, [selectedId, revealSelected]);
-	return { list, setList, query, setQuery, revealSelected };
+	return { query, setQuery, revealSelected };
+}
+
+/**
+ * Which list shows: the tools library once a tool is open, and whatever the toggle last chose.
+ * Following the selection, it switches when the open row changes between an agent and a tool.
+ */
+function useListShown(selectedId: string) {
+	const listOf = (id: string): WorkspaceList =>
+		toolSpecKeyOf(id) === undefined ? 'agents' : 'tools';
+	const [list, setList] = useState(() => listOf(selectedId));
+	const [shownFor, setShownFor] = useState(selectedId);
+	if (shownFor !== selectedId) {
+		setShownFor(selectedId);
+		setList(listOf(selectedId));
+	}
+	return { list, setList };
 }
 
 /** The toggle between the agents and the tool library, each with its count. */
@@ -655,10 +666,8 @@ function WorkspaceTreeLists({
 	/** The list's scroller. The toggle and search stay above it. */
 	listRef: RefObject<HTMLDivElement | null>;
 }) {
-	const { list, setList, query, setQuery, revealSelected } = useWorkspaceList(
-		tree.selectedId,
-		listRef,
-	);
+	const { list, setList } = tree;
+	const { query, setQuery, revealSelected } = useWorkspaceList(tree.selectedId, listRef);
 	const tools = list === 'tools' ? toolItems(tree, query) : [];
 	return (
 		<VStack gap={2} height="100%">
@@ -769,6 +778,13 @@ function editorTitle(draft: PlaygroundDraft, id: string): string | undefined {
 	if (!ref) return undefined;
 	if ('key' in ref) return nodeLabel(playgroundTree(draft), id);
 	return profileGraphFacet(ref.facet)?.label;
+}
+
+/** The editor's heading: Tools with the tools list and no tool open; else the open node's title. */
+function headingOf(list: WorkspaceList, editing: string, title: string | undefined) {
+	return list === 'tools' && toolSpecKeyOf(editing) === undefined
+		? profileGraphFacet('tools')?.label
+		: title;
 }
 
 /** Waits before compiling after an edit, so typing doesn't recompile on every key. */
@@ -1051,7 +1067,7 @@ function keyAndToolMembers(
 	};
 }
 
-/** th30's reach into the conversation and the chatted agent: send, start over, launch, export. */
+/** th30's reach into the conversation and the chatted agent: send, start over, open in a new tab, get code. */
 function runMembers(
 	store: PlaygroundStore,
 	page: RefObject<SurfacePage>,
@@ -1341,7 +1357,7 @@ function useWorkspaceCompile(
 			source,
 			probed,
 			editorIssues: editorIssuesOf(compiled, focus),
-			/** The agent being chatted with: Export adds its route and chat to the workspace's files. */
+			/** The agent being chatted with: Get code adds its route and chat to the workspace's files. */
 			chatted: compiled.ok ? compiledAgent(compiled, compile.workspace, chatWith) : undefined,
 			chattedId: agentIdOf(compile.workspace, chatWith),
 			issues,
@@ -2166,7 +2182,7 @@ function usePlaygroundPage(loaderData: Route.ComponentProps['loaderData']) {
 
 /**
  * The profile tree beside the editor (or code) for the draft in a panel on the left; the compiled
- * agent on the right, under Export and Run. The draft compiles as it changes; while it doesn't
+ * agent on the right, under Get code. The draft compiles as it changes; while it doesn't
  * compile, the agent stays the last one that did.
  */
 export default function Playground({ loaderData }: Route.ComponentProps) {
@@ -2194,7 +2210,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 						setSheet={setSheet}
 					>
 						<EditorColumn
-							heading={view.keysOpen ? 'Keys' : title}
+							heading={view.keysOpen ? 'Keys' : headingOf(tree.list, editing, title)}
 							state={state}
 							connection={connection}
 							view={view}
@@ -2250,11 +2266,14 @@ function useWorkspaceTree(
 	const { workspace, focus, update, setDraft } = state;
 	const { open } = view;
 	const selectedId = view.keysOpen ? '' : selected;
+	const { list, setList } = useListShown(selectedId);
 	return useMemo(
 		() => ({
 			workspace,
 			focus,
 			selectedId,
+			list,
+			setList,
 			onSelect: (id) => {
 				open(id);
 				setSheet(null);
@@ -2262,7 +2281,7 @@ function useWorkspaceTree(
 			update,
 			setDraft,
 		}),
-		[workspace, focus, selectedId, open, setSheet, update, setDraft],
+		[workspace, focus, selectedId, list, setList, open, setSheet, update, setDraft],
 	);
 }
 

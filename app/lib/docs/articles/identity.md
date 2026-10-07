@@ -109,7 +109,7 @@ The mark changes what the agent can repeat:
 
 The `prompt_leak` detector enforces the mark. It reads for 12 words in a row of a private part. Without a setting, it blocks a reply that repeats them ([Setting guardrails](/docs/guardrails)).
 
-In the [playground](/playground), write the instruction as one text. Wrap each private section as `{private: …}`. The exported profile holds the parts.
+In the [playground](/playground), write the instruction as one text. Wrap each private section as `{private: …}`. The profile in the code you get from the playground holds the parts.
 
 ### 4. Add an instruction for one request
 

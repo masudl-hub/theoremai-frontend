@@ -155,7 +155,7 @@ function sectionFields(section: Section, index: DocIndex): string[] {
 }
 
 export function playgroundDescription(): string {
-	return `Build an agent without code. Choose a profile type (${PROFILE_TYPES.map(typeLabel).join(', ')}), set its sections, and chat with the agent. Export the agent as ${KERNEL_NAME} source.`;
+	return `Build an agent without code. Choose a profile type (${PROFILE_TYPES.map(typeLabel).join(', ')}), set its sections, and chat with the agent. Get the agent as ${KERNEL_NAME} source code.`;
 }
 
 type PlaygroundPart = { id: string; name: string; text: string; detail?: string };
@@ -226,7 +226,7 @@ export function playgroundJsonLd(index: DocIndex, origin: string): Record<string
 					`Profile types: ${PROFILE_TYPES.map(typeLabel).join(', ')}`,
 					...sections().map((section) => section.label),
 					'Live preview chat',
-					'Export as source files',
+					'Get code as source files',
 				],
 				isPartOf: { '@id': siteId },
 				about: { '@type': 'SoftwareSourceCode', name: KERNEL_NAME, version: KERNEL.version },
