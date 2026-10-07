@@ -64,7 +64,7 @@
 	"identity": {
 		"reviewed": "2026-10-07",
 		"files": {
-			"src/kernel/registry/profiles.ts": "133a381891395bfa271cd95617260b174f6ba030",
+			"src/kernel/registry/profiles.ts": "a11c6be38302db16ebbcbde71a3b4fb725258ca6",
 			"src/kernel/registry/system-prompt.ts": "fad7eb6064107e7047d0193e432bca523578768c",
 			"src/kernel/registry/system-role.ts": "1761367ce570fa2bbf9666a0dfeed2cb456395a3",
 			"src/kernel/system-parts.ts": "cf24deec6fa33a10e21bf69e565a2da41c8963c7"
@@ -102,17 +102,17 @@
 	"modalities": {
 		"reviewed": "2026-10-07",
 		"files": {
-			"src/kernel/registry/profiles.ts": "133a381891395bfa271cd95617260b174f6ba030",
-			"src/kernel/schema.ts": "5310ba606b13bcf91180033dc101d12b3d6ebe33"
+			"src/kernel/registry/profiles.ts": "a11c6be38302db16ebbcbde71a3b4fb725258ca6",
+			"src/kernel/schema.ts": "66a366c3d408f61a25dadd7a23bb297a6111036f"
 		}
 	},
 	"models": {
 		"reviewed": "2026-10-07",
 		"files": {
 			"src/kernel/registry/catalog.ts": "084866baf0ca7dfd1eabb36f705b9096a412321b",
-			"src/kernel/registry/profiles.ts": "133a381891395bfa271cd95617260b174f6ba030",
+			"src/kernel/registry/profiles.ts": "a11c6be38302db16ebbcbde71a3b4fb725258ca6",
 			"src/kernel/registry/vault.ts": "5f47cdd612f00190b5ccb23ea6aa912ffee931d6",
-			"src/kernel/schema.ts": "5310ba606b13bcf91180033dc101d12b3d6ebe33",
+			"src/kernel/schema.ts": "66a366c3d408f61a25dadd7a23bb297a6111036f",
 			"src/providers/create-provider.ts": "67f277a3e1056d4fad9a3d31a91fb60caf43e6a6",
 			"src/providers/decision/usage.ts": "d56c1af0a0c60ae15d90aa74acccaa28f4dc487b",
 			"src/providers/google/api-error.ts": "eac6317509833934707415ad0d9526af8c500e88",
@@ -186,7 +186,7 @@
 	"start": {
 		"reviewed": "2026-10-07",
 		"files": {
-			"mod.ts": "e3093b59d98cbea91ed7074f1282d2931bc83249",
+			"mod.ts": "19d4ff9b49003f707606d86018926e53a3be830f",
 			"src/kernel/engine/runner/gates.ts": "b20bf4d4b7a06544fad40341483a6ed1ce06bcc5",
 			"src/kernel/engine/runner/mod.ts": "e1cb2ae056dabfb0b20fdee97ab563d36ae8080c",
 			"src/kernel/engine/runner/nested.ts": "999b158770b5d4b21f4145f03ded8cad2d11d9d8",
@@ -196,7 +196,7 @@
 			"src/kernel/engine/runner/steps.ts": "3256ed38e8936d286017e470d0c57def0ff4b5a0",
 			"src/kernel/engine/runner/stream.ts": "884b9b11bb480892ef005fc10b2ce75daad6650c",
 			"src/kernel/engine/runner/usage.ts": "9df40698fbd855a50a8a7c5d526afe4a8821085c",
-			"src/kernel/registry/profiles.ts": "133a381891395bfa271cd95617260b174f6ba030"
+			"src/kernel/registry/profiles.ts": "a11c6be38302db16ebbcbde71a3b4fb725258ca6"
 		}
 	},
 	"statuses": {
