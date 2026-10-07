@@ -3329,7 +3329,6 @@ function PatternRows({
 			<SegmentedRow
 				label="Matches"
 				path={`guardrails.detect.${detector}.patterns`}
-				hasLabels
 				value={pattern.kind}
 				segments={PATTERN_KIND_SEGMENTS}
 				onChange={(kind) => {
