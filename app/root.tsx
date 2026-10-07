@@ -24,6 +24,7 @@ import '@astryxdesign/core/astryx.css';
 import './built/theme.css';
 // After the theme: motion Astryx's theme API can't express.
 import './motion.css';
+import './components/layout.css';
 import { theoremSiteTheme } from './built/theorem-site';
 import { bootHasPlayed, SHELL_REVEAL } from './components/shell-motion';
 
@@ -105,7 +106,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 	return (
 		<Theme theme={theoremSiteTheme} mode="dark">
 			<main>
-				<Center style={{ minHeight: '100dvh', padding: 16 }}>
+				<Center className="app-error">
 					<EmptyState
 						headingLevel={1}
 						icon={<Icon icon={missing ? IconMapOff : IconAlertTriangle} size="lg" />}

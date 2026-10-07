@@ -250,7 +250,7 @@ function ExampleRow({
 	return (
 		<HStack gap={2} align="center">
 			<StackItem size="fill">
-				<ScrollableArea label="Examples" axis="inline" style={{ scrollbarWidth: 'none' }}>
+				<ScrollableArea label="Examples" axis="inline" className="scrollbar-none">
 					<HStack gap={1}>
 						{ROW_EXAMPLES.map((entry) => (
 							<Token

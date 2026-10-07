@@ -28,7 +28,7 @@
 }
 
 .home-stage-lead .home-stage-headline.astryx-heading {
-	font-size: clamp(2.35rem, 3.35vw, 3.65rem);
+	font-size: var(--text-display-1-size);
 	line-height: 0.98;
 	letter-spacing: -0.038em;
 	text-wrap: balance;
@@ -55,10 +55,6 @@
 }
 
 .home-stage-stills {
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	gap: clamp(1.25rem, 3vh, 2rem);
 	min-height: 0;
 	padding-inline-end: clamp(2rem, 6vw, 5rem);
 }
@@ -66,7 +62,7 @@
 .home-stage-still {
 	display: grid;
 	grid-template-columns: auto minmax(0, 1fr);
-	column-gap: clamp(1rem, 2vw, 1.5rem);
+	column-gap: var(--spacing-4);
 	align-items: center;
 	margin: 0;
 }
@@ -110,13 +106,6 @@
 	min-width: 0;
 	max-width: 22rem;
 	text-wrap: pretty;
-}
-
-.home-stage-still figcaption .astryx-heading {
-	font-size: 1.15rem;
-	font-weight: 600;
-	line-height: 1.2;
-	letter-spacing: -0.015em;
 }
 
 .home-stage-page {

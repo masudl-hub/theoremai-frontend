@@ -16,6 +16,16 @@ export const siteTheme = defineTheme({
 	tokens: {
 		// Behind the rail and the page panel, in both modes.
 		'--color-background-body': neutralPalettes.black,
+		// The type ladder, a step above Astryx's: body is 16px, not 14px. Text and heading types read these.
+		'--font-size-xs': '0.6875rem',
+		'--font-size-sm': '0.875rem',
+		'--font-size-base': '1rem',
+		'--font-size-lg': '1.1875rem',
+		'--font-size-xl': '1.375rem',
+		'--font-size-2xl': '1.625rem',
+		'--font-size-3xl': '2rem',
+		'--font-size-4xl': '2.375rem',
+		'--font-size-5xl': '2.75rem',
 	},
 	components: {
 		// AppShell's elevated variant only rounds the panel when a TopNav is

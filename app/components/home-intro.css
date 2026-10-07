@@ -147,7 +147,7 @@ html[data-shell-move] .home-intro-flight {
 .home-intro-tagline.astryx-heading {
 	justify-self: end;
 	max-width: 34rem;
-	font-size: clamp(2.35rem, 3.35vw, 3.65rem);
+	font-size: var(--text-display-1-size);
 	font-weight: 500;
 	line-height: 0.98;
 	letter-spacing: -0.038em;

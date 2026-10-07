@@ -1518,6 +1518,9 @@ const CONTEXT_SENDER_LABELS: Record<ContextSender, string> = {
 
 const CONTEXT_SENDERS = Object.keys(CONTEXT_SENDER_LABELS) as ContextSender[];
 
+/** The size a context starts with when its first sender is ticked. */
+const CONTEXT_MAX_CHARS_START = 4000;
+
 /** Who may tell the agent what the page shows, and how much. */
 function InputContextSection({ inputs, set }: InputsSectionProps) {
 	return (
@@ -1530,7 +1533,11 @@ function InputContextSection({ inputs, set }: InputsSectionProps) {
 						density="compact"
 						value={inputs.contextFrom}
 						onChange={(checked) => {
-							set({ contextFrom: CONTEXT_SENDERS.filter((sender) => checked.includes(sender)) });
+							set({
+								contextFrom: CONTEXT_SENDERS.filter((sender) => checked.includes(sender)),
+								// why: The kernel has no default size; the first sender starts with one to edit.
+								contextMaxChars: inputs.contextMaxChars ?? CONTEXT_MAX_CHARS_START,
+							});
 						}}
 					>
 						{CONTEXT_SENDERS.map((sender) => (
@@ -5991,7 +5998,7 @@ function CriterionLabel({ question, row, at, setCriteria }: CriterionProps) {
 			</Text>
 		</StackItem>
 	) : (
-		<div style={{ flex: '0 0 38%', minWidth: 0 }}>
+		<div className="criterion-label">
 			<TextInput
 				label={`${copy.row} ${String(at + 1)} label`}
 				isLabelHidden

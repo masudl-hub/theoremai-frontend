@@ -157,7 +157,7 @@ html.th30-messages .th30-messages-panel {
 	position: absolute;
 	inset-inline-start: var(--spacing-3);
 	color: var(--color-text-secondary);
-	font-size: 13px;
+	font-size: var(--font-size-sm);
 	pointer-events: none;
 }
 .th30-strip-status:empty {

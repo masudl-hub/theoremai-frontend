@@ -1,0 +1,6 @@
+/* The one treatment for a still's title. Pages place it; they do not restyle it. */
+.astryx-heading.still-title {
+	font-weight: 600;
+	line-height: 1.2;
+	letter-spacing: -0.015em;
+}

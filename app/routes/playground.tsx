@@ -1803,7 +1803,7 @@ function CodeBody({
 		);
 	}
 	return (
-		<div style={{ height: '100%' }}>
+		<div className="fill">
 			<PlaygroundCode
 				text={source ?? seen.current}
 				hold={source == null}

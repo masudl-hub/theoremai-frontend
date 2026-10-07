@@ -253,7 +253,7 @@ export function PlaygroundCode({
 		]);
 	}, [issues]);
 
-	return <div ref={node} style={{ height: '100%', width: '100%' }} />;
+	return <div ref={node} className="fill" />;
 }
 
 /** `self` in the browser, which Monaco reads for its workers. */

@@ -1,8 +1,10 @@
 import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
+import { VStack } from '@astryxdesign/core/VStack';
 import { IconBrush, IconCircleDot, IconShieldCheck } from '@tabler/icons-react';
 import type { RefObject } from 'react';
 import { HomeIntro } from './home-intro';
+import { StillText, StillTitle } from './still-caption';
 import './home-stage.css';
 
 const ARGUMENT =
@@ -56,8 +58,8 @@ function StillRow({ still }: { still: Still }) {
 				</span>
 			</div>
 			<figcaption>
-				<Heading level={3}>{still.title}</Heading>
-				<Text>{still.text}</Text>
+				<StillTitle>{still.title}</StillTitle>
+				<StillText>{still.text}</StillText>
 			</figcaption>
 		</figure>
 	);
@@ -77,11 +79,11 @@ function StageCopy() {
 						</Heading>
 						<Text className="home-stage-statement">{ARGUMENT}</Text>
 					</div>
-					<div className="home-stage-stills">
+					<VStack className="home-stage-stills" gap={4} justify="center">
 						{STILLS.map((still) => (
 							<StillRow key={still.title} still={still} />
 						))}
-					</div>
+					</VStack>
 				</div>
 			</div>
 		</div>
