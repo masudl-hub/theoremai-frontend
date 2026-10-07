@@ -51,7 +51,6 @@ import {
 	IconDatabase,
 	IconDatabaseOff,
 	IconDeviceDesktop,
-	IconEqual,
 	IconEraser,
 	IconEye,
 	IconEyeOff,
@@ -72,6 +71,7 @@ import {
 	IconInfoCircle,
 	IconInputAi,
 	IconKey,
+	IconLayersUnion,
 	IconLetterT,
 	IconLink,
 	IconListCheck,
@@ -102,10 +102,10 @@ import {
 	IconTrash,
 	IconUser,
 	IconUserCheck,
-	IconUserPlus,
 	IconVolume,
 	IconWaveSine,
 	IconWorld,
+	IconWriting,
 	IconX,
 } from '@tabler/icons-react';
 import {
@@ -3168,27 +3168,11 @@ function BoundaryRows({
 	);
 }
 
-type BoundaryMode = 'same' | 'each';
-const BOUNDARY_MODE_SEGMENTS: Segment<BoundaryMode>[] = [
-	{
-		value: 'same',
-		label: 'Same everywhere',
-		icon: IconEqual,
-		description: sectionNote('detect.same'),
-	},
-	{
-		value: 'each',
-		label: 'Set each',
-		icon: IconAdjustmentsHorizontal,
-		description: sectionNote('detect.each'),
-	},
-];
-
 /**
- * Whether a detector does one thing everywhere or something at each boundary, and the boundaries
- * when it is each. Going back to one thing takes the strictest action any boundary had.
+ * What a detector does with a match: one control for every boundary, and each boundary's own
+ * under it, shut until opened. It starts open while the boundaries differ.
  */
-function BoundariesSection({
+function ActionSection({
 	detector,
 	defaults,
 	boundaries,
@@ -3202,34 +3186,30 @@ function BoundariesSection({
 	onChange: (next: Record<Boundary, DetectAction>) => void;
 }) {
 	const uniform = new Set(boundaries.map((boundary) => actions[boundary])).size === 1;
-	const [isEach, setIsEach] = useState(!uniform);
-	const mode: BoundaryMode = isEach || !uniform ? 'each' : 'same';
 	return (
-		<InspectorSection title="Boundaries">
-			<SegmentedRow
-				label="Actions"
-				path={`guardrails.detect.${detector}.at`}
-				value={mode}
-				segments={BOUNDARY_MODE_SEGMENTS}
-				onChange={(next) => {
-					setIsEach(next === 'each');
-					if (next === 'each' || uniform) return;
-					const strictest = Math.max(
-						...boundaries.map((boundary) => DETECT_ACTIONS.indexOf(actions[boundary])),
-					);
-					const same = { ...actions };
-					for (const boundary of boundaries) same[boundary] = DETECT_ACTIONS[strictest];
-					onChange(same);
-				}}
+		<InspectorSection title="Action">
+			<ActionRow
+				detector={detector}
+				label="On a match"
+				defaults={defaults}
+				boundaries={boundaries}
+				actions={actions}
+				onChange={onChange}
 			/>
-			{mode === 'each' && (
-				<BoundaryRows
-					detector={detector}
-					defaults={defaults}
-					boundaries={boundaries}
-					actions={actions}
-					onChange={onChange}
-				/>
+			{boundaries.length > 1 && (
+				<CollapsibleGroup type="multiple" density="compact" defaultValue={uniform ? [] : ['each']}>
+					<Collapsible value="each" trigger={<Text type="supporting">Each boundary</Text>}>
+						<VStack gap={3}>
+							<BoundaryRows
+								detector={detector}
+								defaults={defaults}
+								boundaries={boundaries}
+								actions={actions}
+								onChange={onChange}
+							/>
+						</VStack>
+					</Collapsible>
+				</CollapsibleGroup>
 			)}
 		</InspectorSection>
 	);
@@ -3428,13 +3408,13 @@ const PATTERN_USE_SEGMENTS: Segment<PatternUse>[] = [
 	{
 		value: 'mine',
 		label: 'Mine',
-		icon: IconUser,
+		icon: IconWriting,
 		description: sectionNote('detect.source.mine'),
 	},
 	{
 		value: 'both',
 		label: 'Both',
-		icon: IconUserPlus,
+		icon: IconLayersUnion,
 		description: sectionNote('detect.source.both'),
 	},
 ];
@@ -3832,16 +3812,13 @@ function DetectorPage({
 	return (
 		<>
 			<DetectorHeader title={meta.label} doc={meta.doc} onBack={onBack} />
-			<InspectorSection title="Action">
-				<ActionRow
-					detector={detector}
-					label="On a match"
-					defaults={meta.defaults}
-					boundaries={boundaries}
-					actions={detect[detector]}
-					onChange={setActions}
-				/>
-			</InspectorSection>
+			<ActionSection
+				detector={detector}
+				defaults={meta.defaults}
+				boundaries={boundaries}
+				actions={detect[detector]}
+				onChange={setActions}
+			/>
 			{detector === 'canary_leak' && hasCanary && (
 				<CanarySection guardrails={guardrails} set={set} />
 			)}
@@ -3878,13 +3855,6 @@ function DetectorPage({
 					/>
 				</InspectorSection>
 			)}
-			<BoundariesSection
-				detector={detector}
-				defaults={meta.defaults}
-				boundaries={boundaries}
-				actions={detect[detector]}
-				onChange={setActions}
-			/>
 		</>
 	);
 }
@@ -3949,15 +3919,12 @@ function OwnDetectorPage({
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection title="Action">
-				<ActionRow
-					detector="*"
-					label="On a match"
-					boundaries={boundaries}
-					actions={detector.at}
-					onChange={setActions}
-				/>
-			</InspectorSection>
+			<ActionSection
+				detector="*"
+				boundaries={boundaries}
+				actions={detector.at}
+				onChange={setActions}
+			/>
 			<InspectorSection title="Patterns">
 				<PatternList
 					detector="*"
@@ -3978,12 +3945,6 @@ function OwnDetectorPage({
 				/>
 			</InspectorSection>
 			<PatternTester theorem={false} patterns={detector.patterns} />
-			<BoundariesSection
-				detector="*"
-				boundaries={boundaries}
-				actions={detector.at}
-				onChange={setActions}
-			/>
 		</>
 	);
 }
