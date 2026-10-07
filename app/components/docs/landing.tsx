@@ -26,7 +26,6 @@ import 'virtual:docs/landing.css';
 import { starterPrompt } from '../../lib/docs/starter-prompt';
 import { IconDeepWiki } from '../deepwiki-icon';
 import { NewTabLink } from '../links';
-import { PageSummary } from '../page-summary';
 import { StillText, StillTitle } from '../still-caption';
 import { Th30Trigger } from '../th30-dock';
 
@@ -341,15 +340,6 @@ function LandingResults({
 	);
 }
 
-function landingSummary(index: DocIndex): string {
-	const reads = FEATURED.map(({ slug, title }) => {
-		const summary = index.bySlug[slug]?.summary;
-		return summary ? `${title} (${summary})` : title;
-	}).join(' ');
-	const links = [...RESOURCES.map(({ label }) => label), 'Try the playground'].join(', ');
-	return `“What are you building today?” A search box over the docs, a button that copies a starter prompt for the visitor's coding agent, and links: ${links}. Featured reads: ${reads} th30 can search the docs and open any chapter.`;
-}
-
 export function DocsLanding({ index }: { index: DocIndex }) {
 	const [query, setQuery] = useState('');
 	const target = useMemo(() => tilesFromIndex(index, query), [index, query]);
@@ -361,7 +351,6 @@ export function DocsLanding({ index }: { index: DocIndex }) {
 
 	return (
 		<div className="docs-landing-page">
-			<PageSummary text={landingSummary(index)} />
 			<ScrollableArea className="docs-landing-scroll" axis="block" role="region" label="Docs">
 				<div className="docs-landing">
 					<VStack className="docs-landing-body" gap={8}>

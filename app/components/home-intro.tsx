@@ -4,11 +4,11 @@ import { useClipboard } from '@astryxdesign/core/hooks';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { type ReactNode, type RefObject, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { HOME_TAGLINE, KERNEL_INSTALL_CMD, SITE_PACKAGES, SITE_SECTIONS } from '../lib/site-nav';
+import { HOME_TAGLINE, KERNEL_INSTALL_CMD } from '../lib/home-content';
+import { SITE_PACKAGES, SITE_SECTIONS } from '../lib/site-nav';
 import { useHomeIntroWordmarkFit } from './home-intro-wordmark-fit';
 import { useHomeIntroScroll } from './home-shell-pull';
 import { NewTabLink } from './links';
-import { PageSummary } from './page-summary';
 import './home-intro.css';
 
 function IntroNavItem({
@@ -46,12 +46,6 @@ function IntroNavItem({
 			<Tooltip content={label} placement="end" anchorRef={slotRef} />
 		</div>
 	);
-}
-
-function landingSummary(): string {
-	const pages = SITE_SECTIONS.map(({ label }) => label).join(' and ');
-	const packages = SITE_PACKAGES.map(({ label }) => label).join(', ');
-	return `The theorem wordmark and the tagline “${HOME_TAGLINE}” Links to the ${pages}, and to the package on ${packages}. A copyable install line: ${KERNEL_INSTALL_CMD}. Scrolling contracts the panel to the rail.`;
 }
 
 function InstallCopy() {
@@ -151,7 +145,6 @@ export function HomeIntro({
 		<section ref={runRef} className="home-contract" data-reduced={reduced ? '' : undefined}>
 			<div className="home-contract-frame">
 				<section id="landing" className="home-intro-pin" aria-label="Landing">
-					<PageSummary name="Landing" text={landingSummary()} />
 					<div className="home-intro-card">
 						<div className="home-intro-top">
 							{flightReady ? (

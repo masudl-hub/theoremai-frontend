@@ -3,15 +3,42 @@ import { useLocation, useNavigate } from 'react-router';
 import { ContributeBoard } from '../components/contribute/board';
 import { ExamplesBoard } from '../components/examples/board';
 import { HomeStage } from '../components/home-stage';
+import { PageJsonLd } from '../components/page-summary';
 import '../components/home-scroll.css';
 import { SITE_REDIRECTS } from '../lib/docs/articles/chapters';
-export function meta() {
+import {
+	GOALS,
+	HOME_DESCRIPTION,
+	HOME_TAGLINE,
+	homeJsonLd,
+	KERNEL,
+	SITE_NAME,
+} from '../lib/home-content';
+import type { Route } from './+types/home';
+export function loader({ request }: Route.LoaderArgs) {
+	return { origin: new URL(request.url).origin };
+}
+
+export function meta({ loaderData }: Route.MetaArgs) {
+	const origin = loaderData.origin;
+	const image = `${origin}${GOALS[0].src}`;
 	return [
-		{ title: 'theorem' },
-		{
-			name: 'description',
-			content: 'A TypeScript kernel for typed agent profiles and deterministic turns.',
-		},
+		{ title: `${SITE_NAME} · ${HOME_TAGLINE}` },
+		{ name: 'description', content: HOME_DESCRIPTION },
+		{ name: 'keywords', content: KERNEL.keywords.join(', ') },
+		{ tagName: 'link', rel: 'canonical', href: origin },
+		{ tagName: 'link', rel: 'alternate', type: 'text/plain', href: `${origin}/llms.txt` },
+		{ property: 'og:type', content: 'website' },
+		{ property: 'og:site_name', content: SITE_NAME },
+		{ property: 'og:url', content: origin },
+		{ property: 'og:title', content: `${SITE_NAME} · ${HOME_TAGLINE}` },
+		{ property: 'og:description', content: HOME_DESCRIPTION },
+		{ property: 'og:image', content: image },
+		{ property: 'og:image:alt', content: GOALS[0].alt },
+		{ name: 'twitter:card', content: 'summary_large_image' },
+		{ name: 'twitter:title', content: `${SITE_NAME} · ${HOME_TAGLINE}` },
+		{ name: 'twitter:description', content: HOME_DESCRIPTION },
+		{ name: 'twitter:image', content: image },
 	];
 }
 
@@ -103,7 +130,7 @@ function scrollToLandingScreen(scroller: HTMLElement, screen: LandingScreen) {
 }
 
 /** Landing (/), then overview (/overview), showcase (/examples) and contribute (/contribute). */
-export default function Home() {
+export default function Home({ loaderData }: Route.ComponentProps) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const { hash, pathname } = useLocation();
 	const navigate = useNavigate();
@@ -155,6 +182,7 @@ export default function Home() {
 
 	return (
 		<div className="home-scroll" ref={scrollRef}>
+			<PageJsonLd data={homeJsonLd(loaderData.origin)} />
 			<RetiredHashRedirect />
 			<HomeStage scrollRoot={scrollRef} />
 			<div className="home-dotted">

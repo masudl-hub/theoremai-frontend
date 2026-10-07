@@ -23,18 +23,27 @@ function viewingFor(hash: string): string | undefined {
 	return text || undefined;
 }
 
-/** What the page in front of the visitor says, from the `PageSummary` scripts it rendered. */
+const PAGE_TYPES = new Set(['WebPage', 'CollectionPage', 'TechArticle']);
+
+type JsonLdNode = { '@type'?: string; name?: string; description?: string };
+
+/** What the page in front of the visitor says, from the structured data it rendered. */
 export function readPageFromDom(hash: string): Th30Page | null {
 	const parts: string[] = [];
-	for (const node of document.querySelectorAll('script[data-page-summary]')) {
+	for (const script of document.querySelectorAll('script[data-page-summary]')) {
+		let json: { '@graph'?: JsonLdNode[] } & JsonLdNode;
 		try {
-			const { name, description } = JSON.parse(node.textContent ?? '') as {
-				name?: string;
-				description?: string;
-			};
-			if (description) parts.push(name ? `${name}: ${description}` : description);
+			json = JSON.parse(script.textContent ?? '');
 		} catch {
-			// A script that isn't valid JSON says nothing.
+			continue;
+		}
+		const nodes = json['@graph'] ?? [json];
+		const page = nodes.find((node) => node['@type'] && PAGE_TYPES.has(node['@type']));
+		if (page?.description) parts.push(page.description);
+		for (const node of nodes) {
+			if (node['@type'] === 'WebPageElement' && node.name && node.description) {
+				parts.push(`${node.name}: ${node.description}`);
+			}
 		}
 	}
 	if (parts.length === 0) return null;

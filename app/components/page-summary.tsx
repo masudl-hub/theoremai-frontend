@@ -1,18 +1,12 @@
 /**
- * What a part of the page says, as data beside the copy it describes. It is built from the
- * same constants that render the page, so it changes when the page does. It ships in the
- * server-rendered HTML for crawlers and answer engines, and th30 reads it from the DOM.
+ * A page's structured data, rendered in the server HTML where crawlers and answer engines read
+ * it. th30 reads the same script from the DOM, so what it knows of a page is what the page
+ * tells search. Build `data` from the constants that render the page, never from a copy.
  */
-export function PageSummary({ name, text }: { name?: string; text: string }) {
-	const json = JSON.stringify({
-		'@context': 'https://schema.org',
-		'@type': 'WebPageElement',
-		...(name ? { name } : {}),
-		description: text,
-	}).replaceAll('<', '\\u003c');
+export function PageJsonLd({ data }: { data: Record<string, unknown> }) {
 	return (
 		<script type="application/ld+json" data-page-summary="">
-			{json}
+			{JSON.stringify(data).replaceAll('<', '\\u003c')}
 		</script>
 	);
 }
