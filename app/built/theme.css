@@ -450,6 +450,11 @@
     --color-overlay-pressed: var(--astryx-theme-neutral-color-destructive-overlay-pressed);
   }
 
+  .astryx-button:where(.home-intro-install) {
+    font-family: var(--font-family-mono);
+    font-size: clamp(1rem, 1.75vw, 1.3125rem);
+  }
+
   .astryx-badge[data-variant="info"] {
     background-color: var(--astryx-theme-neutral-color-status-fill-accent);
     color: var(--color-on-accent);

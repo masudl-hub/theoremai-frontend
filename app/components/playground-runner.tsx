@@ -27,6 +27,10 @@ export interface PlaygroundRunnerProps {
 	runtime: PlaygroundBrowserRuntime | null;
 	trace?: boolean;
 	className?: string;
+	/** The run page is already the shell. A decision or host sits in it, rather than on its own ground. */
+	flush?: boolean;
+	/** A decision or host puts the request on the left and the response on the right. */
+	columns?: boolean;
 	/** Called on each request the conversation sends: a turn, call, decision or live session. */
 	onActivity?: () => void;
 	/** A chat conversation to resume, as `onChatChange` reported it (text and image agents). */
@@ -49,6 +53,8 @@ export function PlaygroundRunner({
 	runtime,
 	trace,
 	className,
+	flush,
+	columns,
 	onActivity,
 	initialChat,
 	initialText,
@@ -72,8 +78,11 @@ export function PlaygroundRunner({
 				payload={payload}
 				runtime={runtime}
 				traces={traces}
+				trace={trace}
 				className={className}
 				onActivity={note}
+				flush={flush}
+				columns={columns}
 			/>
 		);
 	if (payload.profile.type === 'host')
@@ -84,6 +93,8 @@ export function PlaygroundRunner({
 				traces={traces}
 				trace={trace}
 				className={className}
+				flush={flush}
+				columns={columns}
 				note={note}
 			/>
 		);
@@ -108,7 +119,7 @@ type RunProps = Omit<Parameters<typeof PlaygroundRunner>[0], 'mode' | 'onActivit
 	traces: TraceFeed;
 	note: () => void;
 };
-function HostRun({ payload, runtime, traces, trace, className, note }: RunProps) {
+function HostRun({ payload, runtime, traces, trace, className, flush, columns, note }: RunProps) {
 	const transport = useMemo(
 		() =>
 			noting(
@@ -124,6 +135,8 @@ function HostRun({ payload, runtime, traces, trace, className, note }: RunProps)
 			labels={PLAYGROUND_LABELS}
 			transport={transport}
 			trace={trace}
+			flush={flush}
+			columns={columns}
 			className={className}
 		/>
 	);

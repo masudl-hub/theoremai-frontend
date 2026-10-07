@@ -91,7 +91,7 @@ export type DocArticleHead = {
 		position: string;
 	};
 	/** Idle landing card position. */
-	suggest?: { rank: 1 | 2 | 3 | 4 };
+	suggest?: { rank: 1 | 2 | 3 | 4 | 5 | 6 };
 };
 
 /**
@@ -152,11 +152,9 @@ export type DocTreeNode = {
 export type DocIndex = {
 	articles: readonly DocArticle[];
 	tree: readonly DocTreeNode[];
-	suggested: readonly { slug: string; rank: 1 | 2 | 3 | 4 }[];
+	suggested: readonly { slug: string; rank: 1 | 2 | 3 | 4 | 5 | 6 }[];
 	bySlug: Readonly<Record<string, DocArticle | undefined>>;
 	redirects: readonly { from: string; to: string; reason?: string }[];
-	/** The /docs landing backdrop. */
-	landing: { src: string; position: string; filter?: string };
 };
 
 export type ComposeOptions = {

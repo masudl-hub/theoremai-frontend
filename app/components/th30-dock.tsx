@@ -1,9 +1,12 @@
+import { Button } from '@astryxdesign/core/Button';
+import { HStack } from '@astryxdesign/core/HStack';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { Theme } from '@astryxdesign/core/theme';
+import { VStack } from '@astryxdesign/core/VStack';
 import { IconMicrophone, IconMicrophoneOff } from '@tabler/icons-react';
 import { defineAction } from '@theoremjs/agents/surface';
-import { LiveSessionClient } from '@theoremjs/react/client';
+import { clientFailure, LiveSessionClient } from '@theoremjs/react/client';
 import { InkWaveform, type InkWaveStatus } from '@theoremjs/react/ui';
 import {
 	createContext,
@@ -38,36 +41,67 @@ export type Th30Api = {
 	isLive: boolean;
 	/** Starts a call, or ends the one that's on. */
 	toggle: () => void;
+	/** True once the call can be muted. */
+	canMute: boolean;
+	isMuted: boolean;
+	mute: () => void;
 };
 
-const Th30Context = createContext<Th30Api>({ isLive: false, toggle: () => undefined });
+const Th30Context = createContext<Th30Api>({
+	isLive: false,
+	toggle: () => undefined,
+	canMute: false,
+	isMuted: false,
+	mute: () => undefined,
+});
 
 export function useTh30(): Th30Api {
 	return useContext(Th30Context);
 }
 
 /** th30's light as a button: click to call, click again to end. */
-export function Th30Trigger({
-	theme,
-	placement,
-}: {
-	theme: 'dark' | 'system';
-	placement: 'rail' | 'search';
-}) {
+export function Th30Trigger({ placement }: { placement: 'rail' | 'search' }) {
 	const th30 = useTh30();
 	const label = th30.isLive ? 'End the call with th30' : 'Talk to th30';
-	return (
-		<Tooltip content={label} placement={placement === 'rail' ? 'end' : 'below'}>
-			<button
-				type="button"
-				className={`th30-trigger th30-trigger-${placement}`}
-				aria-label={label}
+	if (placement === 'search') {
+		return (
+			<Button
+				label={th30.isLive ? 'End call' : 'Talk to th30'}
+				variant="ghost"
+				size="lg"
 				aria-pressed={th30.isLive}
 				onClick={th30.toggle}
 			>
-				<Th30Light theme={theme} />
-			</button>
-		</Tooltip>
+				<HStack align="center" gap={2}>
+					<Th30Light className="th30-search-cloud" />
+					<span>{th30.isLive ? 'End call' : 'Talk to th30'}</span>
+				</HStack>
+			</Button>
+		);
+	}
+	return (
+		<VStack align="center" gap={1}>
+			{th30.canMute ? (
+				<IconButton
+					label={th30.isMuted ? 'Unmute' : 'Mute'}
+					icon={th30.isMuted ? <IconMicrophoneOff /> : <IconMicrophone />}
+					variant="ghost"
+					size="sm"
+					onClick={th30.mute}
+				/>
+			) : null}
+			<Tooltip content={label} placement="end">
+				<button
+					type="button"
+					className={`th30-trigger th30-trigger-${placement}`}
+					aria-label={label}
+					aria-pressed={th30.isLive}
+					onClick={th30.toggle}
+				>
+					<Th30Light />
+				</button>
+			</Tooltip>
+		</VStack>
 	);
 }
 
@@ -153,11 +187,17 @@ function applyDocsTool(
 	}
 }
 
+/** The kernel's line for a failure. The diagnostic stays in the console. */
+function wordFailure(err: unknown): string {
+	console.warn('[th30]', err);
+	return clientFailure(err).error;
+}
+
 /** What the strip says while a call connects or after it failed. */
 function stripStatus(phase: Phase, failure: string | null): string {
 	if (phase === 'connecting') return 'Connecting to th30…';
 	if (phase !== 'failed') return '';
-	return `th30 couldn’t connect${failure ? `: ${failure}` : '.'} Click the light to close, then try again.`;
+	return failure ?? '';
 }
 
 /** The page line th30 hears, and the last one it was told. */
@@ -238,8 +278,7 @@ function callCallbacks(
 		},
 		onError: (err) => {
 			if (!isCurrent()) return;
-			console.warn('[th30]', err);
-			set.setFailure(err.message);
+			set.setFailure(wordFailure(err));
 			set.setPhase('failed');
 		},
 		onVolumeLevel: (level, isUser) => {
@@ -312,8 +351,7 @@ async function startCall({
 		await client.connect();
 	} catch (err) {
 		if (clientRef.current !== client) return;
-		console.warn('[th30]', err);
-		set.setFailure(err instanceof Error ? err.message : null);
+		set.setFailure(wordFailure(err));
 		set.setPhase('failed');
 	}
 }
@@ -431,7 +469,15 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 	useLiveCallKeys(isLive, call.stop);
 
 	return (
-		<Th30Context.Provider value={{ isLive, toggle: call.toggle }}>
+		<Th30Context.Provider
+			value={{
+				isLive,
+				toggle: call.toggle,
+				canMute: call.phase === 'live',
+				isMuted: call.isMuted,
+				mute: call.mute,
+			}}
+		>
 			{children}
 			<Theme theme={theoremSiteTheme} mode="dark">
 				<Th30Strip call={call} isLive={isLive} />
@@ -440,29 +486,21 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 	);
 }
 
-/** The strip along the page while a call is on: mute, th30's voice, and how the call is going. */
+/** The strip along the page while a call is on: th30's voice, and how the call is going. */
 function Th30Strip({ call, isLive }: { call: Th30Call; isLive: boolean }) {
-	const { phase, isMuted, status, levels } = call;
+	const { phase, status, levels } = call;
 	return (
 		<div className="th30-strip" inert={!isLive} aria-hidden={!isLive}>
-			<IconButton
-				label={isMuted ? 'Unmute' : 'Mute'}
-				icon={isMuted ? <IconMicrophoneOff /> : <IconMicrophone />}
-				variant="ghost"
-				size="sm"
-				isDisabled={phase !== 'live'}
-				onClick={call.mute}
-			/>
-			<div className="th30-wave" aria-hidden>
-				{phase === 'live' ? (
+			{phase === 'live' ? (
+				<div className="th30-wave" aria-hidden>
 					<InkWaveform
 						status={status}
 						inputLevel={levels.input}
 						outputLevel={levels.output}
 						variant="strip"
 					/>
-				) : null}
-			</div>
+				</div>
+			) : null}
 			<span className="th30-strip-status" role="status">
 				{stripStatus(phase, call.failure)}
 			</span>
@@ -471,30 +509,30 @@ function Th30Strip({ call, isLive }: { call: Th30Call; isLive: boolean }) {
 }
 
 /**
- * A soft two-note chime for "you're through". Its own context, made on the click that starts
- * the call, so the browser lets it sound.
+ * A calm two-note chime for "you're through". Its own context, made on the click that starts
+ * the call, so the browser lets it sound. A low major third, slow to arrive and slow to leave.
  */
 function makeChime(): { play: () => void; close: () => void } {
 	const ctx = new AudioContext();
 	return {
 		play: () => {
 			const at = ctx.currentTime + 0.02;
-			[659.25, 987.77].forEach((hz, i) => {
-				const start = at + i * 0.12;
+			[261.63, 329.63].forEach((hz, i) => {
+				const start = at + i * 0.28;
 				const tone = ctx.createOscillator();
 				const gain = ctx.createGain();
 				tone.type = 'sine';
 				tone.frequency.value = hz;
 				gain.gain.setValueAtTime(0, start);
-				gain.gain.linearRampToValueAtTime(0.08, start + 0.015);
-				gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.9);
+				gain.gain.linearRampToValueAtTime(0.04, start + 0.12);
+				gain.gain.exponentialRampToValueAtTime(0.0001, start + 1.9);
 				tone.connect(gain).connect(ctx.destination);
 				tone.start(start);
-				tone.stop(start + 0.95);
+				tone.stop(start + 2);
 			});
 		},
 		close: () => {
-			window.setTimeout(() => void ctx.close(), 1200);
+			window.setTimeout(() => void ctx.close(), 2500);
 		},
 	};
 }

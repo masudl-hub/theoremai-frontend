@@ -1,6 +1,5 @@
 import { Button } from '@astryxdesign/core/Button';
 import { ButtonGroup } from '@astryxdesign/core/ButtonGroup';
-import { CodeBlock } from '@astryxdesign/core/CodeBlock';
 import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { Heading } from '@astryxdesign/core/Heading';
@@ -52,6 +51,7 @@ import {
 } from '@theoremjs/agents';
 import {
 	addAgent,
+	agentDraft,
 	agentNodeId,
 	type CompiledPlayground,
 	type CompiledWorkspace,
@@ -78,6 +78,7 @@ import {
 	playgroundNodeRef,
 	playgroundSource,
 	playgroundTree,
+	readPlaygroundSource,
 	removeAgent,
 	removeLibraryTool,
 	sampleToolInput,
@@ -121,6 +122,7 @@ import {
 	LocalConnection,
 	WorkspaceContext,
 } from '../components/inspector-context';
+import { type CodeApply, PlaygroundCode } from '../components/playground-code';
 import {
 	type PlaygroundConnectionState,
 	PlaygroundKeys,
@@ -131,7 +133,7 @@ import {
 	addToolSpec,
 	PROFILE_TYPE_ICON,
 	ProfileEditor,
-	TOOL_TYPE_ICON,
+	toolTypeIcon,
 } from '../components/profile-editor';
 import { PLAYGROUND_SEED_IDS, type PlaygroundSeedId } from '../lib/docs/schema';
 import { docsSeedDraft, docsSeedQuestion } from '../lib/docs/seeds';
@@ -159,7 +161,7 @@ export const handle = {
 	th30Page: () => ({
 		title: 'Playground',
 		summary:
-			"The playground, where the visitor builds an agent without code. On the left are the profile sections, a tree of the agent's settings (type, identity, models, tools, guardrails and more), and a Keys panel for their own API keys. The middle is the editor for the selected section, and the right is a live preview to chat with the agent. Load an example offers ready agents such as Travel concierge and Jev decision. Issues the agent must fix before it can run are flagged, with a button to go to the next one. Export downloads every agent as a .zip of source files (the shared tools, a module per agent, the file that registers them in order, and the route and chat for the agent being chatted with), or copies them, or copies them with a brief for an LLM. Launch opens the agent on its own page in a new tab. The docs explain each field, so th30 should search the docs for them.",
+			"The playground, where the visitor builds an agent without code. On the left are the profile sections, a tree of the agent's settings (type, identity, models, tools, guardrails and more), and a Keys panel for their own API keys. The middle is the editor for the selected section, and the right is a live preview to chat with the agent. Load an example offers ready agents such as Travel concierge and Jev decision. Issues the agent must fix before it can run are flagged, with a button to go to the next one. Export downloads every agent as a .zip of source files (the shared tools, a module per agent, the file that registers them in order, and the route and chat for the agent being chatted with), or copies them, or copies them with a brief for an LLM. Launch opens the agent in a new tab. That page uses the site shell: the chat fills the panel, and Keys floats at the top right. The docs explain each field, so th30 should search the docs for them.",
 	}),
 } satisfies ShellHandle & Th30PageHandle;
 
@@ -211,7 +213,7 @@ function nodeIcon(draft: PlaygroundDraft, ref: PlaygroundNodeRef) {
 	if (ref.facet === 'identity' && type) return PROFILE_TYPE_ICON[type];
 	if (ref.facet !== 'toolSpec') return FACET_ICON[ref.facet];
 	const tool = draft.toolSpecs.find((spec) => spec.key === ref.key);
-	return tool ? TOOL_TYPE_ICON[tool.toolType] : IconTool;
+	return tool ? toolTypeIcon(tool.toolType) : IconTool;
 }
 
 /**
@@ -375,11 +377,7 @@ function toolItems({ workspace, selectedId, onSelect, update }: WorkspaceTreeSta
 				id: node.id,
 				label: node.label,
 				startContent: (
-					<Icon
-						icon={tool ? TOOL_TYPE_ICON[tool.toolType] : IconTool}
-						size="sm"
-						color="secondary"
-					/>
+					<Icon icon={tool ? toolTypeIcon(tool.toolType) : IconTool} size="sm" color="secondary" />
 				),
 				endContent: rowAction(`Remove ${node.label}`, IconX, () => {
 					if (tool) update((current) => removeLibraryTool(current, tool.key));
@@ -804,13 +802,6 @@ function nextIssueNode(issues: readonly PlaygroundIssue[], selectedId: string): 
 	return nodes[(nodes.indexOf(selectedId) + 1) % nodes.length] ?? selectedId;
 }
 
-/**
- * CodeBlock scrolls its code area through `maxHeight`, and a percentage there resolves against
- * the block's own auto height, so the space under the view switch is measured and passed in
- * pixels, less everything around the code: the wrapper's padding and the block's own chrome.
- * The code area is the block's `role="group"` scroll container.
- */
-const measureHeight = (node: HTMLElement) => node.getBoundingClientRect().height;
 /** The layout has no padding, so this is the content box Astryx resolves panel percentages on. */
 const measureWidth = (node: HTMLElement) => node.clientWidth;
 
@@ -818,9 +809,6 @@ const measureWidth = (node: HTMLElement) => node.clientWidth;
 const SIDE_DEFAULT_PERCENT = 38.2;
 /** The profile tree's width inside the side panel; the editor takes the rest. */
 const TREE_WIDTH = 224;
-const measureCodeChrome = (node: HTMLElement) =>
-	node.getBoundingClientRect().height -
-	(node.querySelector('[role="group"]')?.getBoundingClientRect().height ?? 0);
 
 /** Whether the agent records traces, so the header can offer them. */
 function isTraced(payload: PlaygroundRunPayload | null): boolean {
@@ -829,11 +817,6 @@ function isTraced(payload: PlaygroundRunPayload | null): boolean {
 		return resolveObservabilityPolicy(payload.profile.observability).record;
 	}
 	return playgroundInterface(payload).observability?.record === true;
-}
-
-/** What is left of `height` under the code view's chrome. */
-function heightBelow(height: number | undefined, chrome: number | undefined): number | undefined {
-	return height === undefined ? undefined : height - (chrome ?? 0);
 }
 
 /** The frame's class; on a phone it names the sheet open over the editor. */
@@ -1215,7 +1198,7 @@ function useWorkspaceConnection(workspace: PlaygroundWorkspace): PlaygroundConne
 	return usePlaygroundConnection(bindings, undefined, namedSlots);
 }
 
-/** The frame: the resizable panel on the left, and the editor body measured for the code view. */
+/** The frame: the resizable panel on the left. */
 function usePlaygroundFrame() {
 	const layoutRef = useRef<HTMLDivElement>(null);
 	const [measureLayout, layoutWidth] = useMeasure(measureWidth);
@@ -1235,16 +1218,11 @@ function usePlaygroundFrame() {
 	// The profile tree's branches mount and unmount; ease them both ways.
 	const sidebarRef = useRef<HTMLDivElement>(null);
 	useDisclosureMotion(sidebarRef);
-	const [bodyRef, bodyHeight] = useMeasure(measureHeight);
-	const [codeRef, codeChrome] = useMeasure(measureCodeChrome);
 	return {
 		layoutCallbackRef,
 		sidePanel,
 		listBadges: badgesPerRow(sidePanel.size, layoutWidth),
 		sidebarRef,
-		bodyRef,
-		codeRef,
-		codeHeight: heightBelow(bodyHeight, codeChrome),
 	};
 }
 
@@ -1767,19 +1745,41 @@ function EditorBody({
 	);
 }
 
-/** The open agent's TypeScript, or why there is none yet. */
+/** The open agent's TypeScript. A failed compile keeps the text and marks the issues. */
 function CodeBody({
 	source,
 	blocked,
-	codeRef,
-	codeHeight,
+	issues,
+	state,
 }: {
 	source: string | null;
 	blocked: string | undefined;
-	codeRef: (node: HTMLElement | null) => void;
-	codeHeight: number | undefined;
+	issues: PlaygroundIssue[];
+	state: PlaygroundWorkspaceState;
 }) {
-	if (!source) {
+	const seen = useRef(source);
+	if (source) seen.current = source;
+	const apply = useCallback(
+		(text: string): CodeApply => {
+			const current = agentDraft(state.workspace, state.focus);
+			if (!current) {
+				return { errors: [{ message: 'No agent is open.', line: 1, column: 1 }], spans: [] };
+			}
+			const read = readPlaygroundSource(
+				text,
+				{ ...current, toolSpecs: state.workspace.toolSpecs },
+				(agentId) =>
+					state.workspace.agents.find((agent) => agent.identity.agentId.trim() === agentId)?.key,
+			);
+			if (!read.ok) return { errors: read.errors, spans: [] };
+			state.update((workspace) =>
+				withAgentDraft(workspace, state.focus, read.draft, read.registered),
+			);
+			return { errors: [], spans: read.spans };
+		},
+		[state],
+	);
+	if (!seen.current) {
 		return (
 			<EmptyState
 				icon={<Icon icon={IconAlertTriangle} />}
@@ -1789,17 +1789,14 @@ function CodeBody({
 		);
 	}
 	return (
-		<Section variant="transparent" padding={3} ref={codeRef}>
-			<CodeBlock
-				code={source}
-				language="typescript"
-				hasLanguageLabel={false}
-				hasLineNumbers
-				isWrapped
-				width="100%"
-				maxHeight={codeHeight}
+		<div style={{ height: '100%' }}>
+			<PlaygroundCode
+				text={source ?? seen.current}
+				hold={source == null}
+				issues={issues}
+				onApply={apply}
 			/>
-		</Section>
+		</div>
 	);
 }
 
@@ -1938,7 +1935,7 @@ function PreviewBody({
 				payload={payload}
 				mode={connection.mode}
 				runtime={connection.runtime}
-				trace={traced && traceOpen}
+				trace={traced ? traceOpen : undefined}
 				onActivity={run.markUsed}
 				initialChat={run.initialChat}
 				initialText={run.initialText}
@@ -2259,7 +2256,7 @@ function EditorColumn({
 				replaceWorkspace={replaceWorkspace}
 				setSheet={setSheet}
 			/>
-			<StackItem size="fill" ref={frame.bodyRef}>
+			<StackItem size="fill">
 				<EditorColumnBody
 					state={state}
 					connection={connection}
@@ -2301,8 +2298,8 @@ function EditorColumnBody({
 			<CodeBody
 				source={compile.source}
 				blocked={compile.blocked}
-				codeRef={frame.codeRef}
-				codeHeight={frame.codeHeight}
+				issues={compile.editorIssues}
+				state={state}
 			/>
 		);
 	}

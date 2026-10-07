@@ -4166,6 +4166,12 @@ export const TOOL_TYPE_ICON = {
 	agent: IconMessageForward,
 } satisfies Record<CustomToolType, IconType>;
 
+/** The icon for a tool type, or the plain tool icon when the type is not one of those. */
+export function toolTypeIcon(type: string): IconType {
+	if (Object.hasOwn(TOOL_TYPE_ICON, type)) return TOOL_TYPE_ICON[type as CustomToolType];
+	return IconTool;
+}
+
 const TOOL_TYPE_SEGMENTS: Segment<CustomToolType>[] = [
 	{ value: 'function', label: 'Function', icon: TOOL_TYPE_ICON.function },
 	{ value: 'http', label: 'HTTP', icon: TOOL_TYPE_ICON.http },
@@ -4319,7 +4325,7 @@ function ToolList({ tools, onSelect }: { tools: ToolSpecDraft[]; onSelect: (id: 
 					key={tool.key}
 					label={tool.toolName.trim() || 'Unnamed tool'}
 					description={tool.description.trim() || undefined}
-					startContent={<Icon icon={TOOL_TYPE_ICON[tool.toolType]} size="sm" color="secondary" />}
+					startContent={<Icon icon={toolTypeIcon(tool.toolType)} size="sm" color="secondary" />}
 					endContent={<Token label={tool.loadTier} size="sm" />}
 					onClick={() => {
 						onSelect(toolSpecNodeId(tool.key));
@@ -4347,6 +4353,9 @@ function ToolsEditor({
 	const allowed = workspace
 		? draft.toolSpecs.filter((tool) => workspace.allowed.includes(tool.key))
 		: draft.toolSpecs;
+	const unused = workspace
+		? draft.toolSpecs.filter((tool) => !workspace.allowed.includes(tool.key))
+		: [];
 	// Any custom tool it allows can load T2 tools: one that answers with the ids to load.
 	const loaders = allowed.map((tool) => tool.toolName.trim()).filter(Boolean);
 	const note = isHost ? sectionNote('tools.host') : undefined;
@@ -4364,10 +4373,24 @@ function ToolsEditor({
 	return (
 		<>
 			{workspace ? (
-				// The library's tools, the ones this agent may use checked; each opens from the library.
+				// This agent's tools. Ones it does not use stay in the library, closed.
 				<InspectorSection title="Tools" path="tools.allow" note={note}>
-					{draft.toolSpecs.length > 0 && (
-						<AllowedToolsList tools={draft.toolSpecs} allowed={allowed} workspace={workspace} />
+					{allowed.length > 0 && (
+						<AllowedToolsList tools={allowed} allowed={allowed} workspace={workspace} />
+					)}
+					{unused.length > 0 && (
+						<CollapsibleGroup type="multiple" density="compact">
+							<Collapsible
+								value="library"
+								trigger={
+									<Text type="supporting">
+										Library, not used by this agent ({String(unused.length)})
+									</Text>
+								}
+							>
+								<AllowedToolsList tools={unused} allowed={[]} workspace={workspace} />
+							</Collapsible>
+						</CollapsibleGroup>
 					)}
 					{addTool}
 				</InspectorSection>

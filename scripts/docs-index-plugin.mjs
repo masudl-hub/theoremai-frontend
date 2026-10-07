@@ -8,6 +8,8 @@ import { createServer } from 'vite';
 import { kernelMetaDefine } from './kernel-meta.mjs';
 
 export const DOCS_VIRTUAL = 'virtual:docs/index';
+const LANDING_CSS = 'virtual:docs/landing.css';
+const LANDING_CSS_RESOLVED = `\0${LANDING_CSS}`;
 const DOCS_RESOLVED = `\0${DOCS_VIRTUAL}`;
 
 /**
@@ -80,15 +82,24 @@ export function docsIndexPlugin(args) {
 		},
 		resolveId(id) {
 			if (id === DOCS_VIRTUAL) return DOCS_RESOLVED;
+			if (id === LANDING_CSS) return LANDING_CSS_RESOLVED;
 		},
 		async load(id) {
+			if (id === LANDING_CSS_RESOLVED) {
+				const index = await runCompose();
+				const covers = index.articles.map((article) =>
+					`.docs-landing [data-docs-cover="${article.slug}"] { object-position: ${article.cover.position}; filter: ${article.cover.filter ?? 'none'}; }`,
+				);
+				return covers.join('\n');
+			}
 			if (id !== DOCS_RESOLVED) return;
 			return `export const docIndex = ${JSON.stringify(await runCompose())};`;
 		},
 		handleHotUpdate(ctx) {
 			if (!ctx.file.includes(`${path.sep}app${path.sep}lib${path.sep}docs${path.sep}`)) return;
 			const mod = parentServer?.moduleGraph.getModuleById(DOCS_RESOLVED);
-			if (mod) return [mod];
+			const css = parentServer?.moduleGraph.getModuleById(LANDING_CSS_RESOLVED);
+			return [mod, css].filter((entry) => entry !== undefined);
 		},
 	};
 }

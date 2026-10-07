@@ -1,6 +1,7 @@
 /**
  * Th30 ("T H 3 O") — the site's live voice guide. A Gemini Live profile with
- * four docs tools over the composed index: navigate, highlight, read, search.
+ * docs tools over the composed index (navigate, highlight, read, search),
+ * web search, and a question against a public repo's wiki.
  */
 import { defineProfile, registerProfile, registerTool } from '@theoremjs/agents';
 import { googleBindingViolation } from '@theoremjs/agents/presets/google';
@@ -190,7 +191,44 @@ const th30SearchWebTool = {
 	output: z.string().describe('Titles, links and highlights from the top results'),
 };
 
-const TH30_TOOL_IDS = ['navigate', 'highlight', 'read', 'searchDocs', 'searchWeb'] as const;
+/** The public package. Omitted `repoName` is filled in here before the call. */
+const TH30_REPO = 'masudl-hub/theoremai';
+
+/** DeepWiki's keyless MCP server: questions about a public repo the site docs do not answer. */
+const th30AskRepoTool = {
+	type: 'mcp' as const,
+	name: 'askRepo',
+	description: `Ask DeepWiki about a public GitHub repo. Omit repoName for ${TH30_REPO}. Use only when searchDocs has no answer, never for a field the docs already define.`,
+	category: 'docs',
+	access: 'read-only' as const,
+	paths: ['*'],
+	loadTier: 'T0' as const,
+	permission: 'auto' as const,
+	serverUrl: 'https://mcp.deepwiki.com/mcp',
+	mcpToolName: 'ask_wiki_question',
+	input: z.object({
+		repoName: z
+			.string()
+			.trim()
+			.min(1)
+			.max(200)
+			.default(TH30_REPO)
+			.describe(`GitHub repo as owner/repo. Omit for ${TH30_REPO}.`),
+		question: z.string().min(1).max(2000).describe('What to ask about the repo'),
+	}),
+	output: z.object({
+		result: z.string().describe('Answer from the repo wiki'),
+	}),
+};
+
+const TH30_TOOL_IDS = [
+	'navigate',
+	'highlight',
+	'read',
+	'searchDocs',
+	'searchWeb',
+	'askRepo',
+] as const;
 
 /** Register all Th30 tools into the process-local tool registry. */
 function registerTh30Tools(): void {
@@ -199,6 +237,7 @@ function registerTh30Tools(): void {
 	registerTool(th30ReadTool);
 	registerTool(th30SearchDocsTool);
 	registerTool(th30SearchWebTool);
+	registerTool(th30AskRepoTool);
 	for (const tool of surfaceTools({ category: 'page' })) registerTool(tool);
 }
 
@@ -239,9 +278,10 @@ Tools:
 - highlight: { blockId } — DOM id via getElementById (live.vad is an id, not a CSS selector).
 - read: slug, slug#block, or full_page. Line-numbered markdown from the same projector as the page.
 - searchDocs: { query } — stemmed, typo-tolerant search over titles, sections, fields and examples. Hits that match every word come first. Each hit has slug and blockId: search, then navigate or highlight the hit, then read it before you answer.
-- searchWeb: { query } — the web, through Exa. Only for what the docs don't cover (providers, models, other tools, news). Answer about Theorem from the docs, never from the web.
+- searchWeb: { query } — the web, through Exa. Only for providers, models, other libraries and news. Not for Theorem.
+- askRepo: { question, repoName? } — DeepWiki for a public GitHub repo. Omit repoName for ${TH30_REPO}; pass owner/repo to ask about another public repo. Call it only when searchDocs has no answer. A field the docs define is answered from the docs.
 
-When you point at a fact, call highlight with that blockId. Never claim you navigated, highlighted, read, or searched unless you issued that call. If a tool errors, say so and retry once.`;
+When you point at a fact, call highlight with that blockId. Never claim you navigated, highlighted, read, searched, or asked a repo unless you issued that call. If a tool errors, say so and retry once.`;
 }
 
 /** Th30 runs on free keys, so it holds to the Google preset's free-tier rules. */

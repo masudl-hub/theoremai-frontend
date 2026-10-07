@@ -7,6 +7,7 @@ covers: src/kernel/tools, src/kernel/auth
 cover: /imagery/th30_malachite.png
 coverAlt: Malachite pools in rings
 coverPosition: 0% 16%
+suggest: 5
 ---
 
 A **tool** is code that the model can ask Theorem to run. Register the tool once. Then name it in each profile that can use it.

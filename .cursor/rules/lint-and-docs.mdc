@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Lint and documentation discipline
 
-Every agent turn is followed by a **stop hook** that lints **only files this conversation edited**, then runs only the **edited test files** when those edits touch `tests/`. Full-suite runs and repo-wide lint are intentionally left for CI; the hook must not block on another agent's churning files. Fix every cited file:line on failure. Auto-fix loops cap at **12 attempts**, then ask the user.
+The post-turn lint hook is **paused** (`PAUSED` in `.cursor/hooks/lint-turn.mjs`). Do not start a fix loop from it. When it is resumed, it lints **only files that conversation edited**, then runs only the **edited test files** when those edits touch `tests/`. Full-suite runs and repo-wide lint stay with CI. The hook must not block on another agent's churning files. Fix every cited file:line on failure. Auto-fix loops cap at **12 attempts**, then ask the user.
 
 Do not treat pre-existing or other-agent failures as your job unless they appear in your edited-file set.
 

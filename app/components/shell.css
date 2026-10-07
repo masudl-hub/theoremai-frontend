@@ -6,3 +6,34 @@
 		width: calc(100% - 2 * var(--spacing-4));
 	}
 }
+
+/* Home landing: one pull, 0 → 1, over a fixed viewport of scroll.
+   At 1 the rail is the collapsed sidenav (--spacing-12) and the panel insets match layout-content.
+   These rules stay on after the intro so the shell does not jump to a second layout. */
+.theorem-home-shell {
+	--home-shell-pull: 0;
+}
+
+.theorem-home-shell [role="main"] {
+	overflow: clip;
+	margin-block: calc(var(--home-shell-pull) * var(--spacing-4));
+	margin-inline-end: calc(var(--home-shell-pull) * var(--spacing-4));
+	height: calc(100% - 2 * var(--home-shell-pull) * var(--spacing-4));
+	border-radius: calc(var(--home-shell-pull) * var(--radius-page));
+}
+
+.theorem-home-shell .astryx-app-shell-sidenav {
+	flex: 0 0 calc(var(--home-shell-pull) * var(--spacing-12));
+	min-width: 0;
+	overflow: clip;
+}
+
+html:not([data-home-intro-done]) .theorem-home-shell .astryx-app-shell-sidenav {
+	pointer-events: none;
+}
+
+@media (width < 768px) {
+	.theorem-home-shell .astryx-app-shell-sidenav {
+		flex-basis: auto;
+	}
+}

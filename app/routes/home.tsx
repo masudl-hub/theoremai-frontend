@@ -3,11 +3,8 @@ import { useLocation, useNavigate } from 'react-router';
 import { ExamplesBoard } from '../components/examples/board';
 import { HomeStage } from '../components/home-stage';
 import '../components/home-scroll.css';
-import { getKernelPackageVersion } from '../lib/.server/theoremai';
 import { SITE_REDIRECTS } from '../lib/docs/articles/chapters';
 import type { Th30PageHandle } from '../lib/th30-page';
-import type { Route } from './+types/home';
-
 export function meta() {
 	return [
 		{ title: 'THEOREM' },
@@ -19,16 +16,13 @@ export function meta() {
 }
 
 export const handle = {
+	homeImmersive: true,
 	th30Page: () => ({
 		title: 'Home',
 		summary:
-			"The home page opens on the Theorem wordmark over a valley video, with the package version and the line 'Typed, composable agents for text, image, speech, and live voice — guarded on every turn.' Scrolling contracts that valley footage into the Built-in boundaries still, uncovering the screen underneath, and the wordmark fades as the frame settles. What it uncovers is a split. On the left: 'Agents are probabilistic.' in a lighter weight, then 'Your architecture shouldn’t be.' in bold, with shouldn’t underlined, and the description of Theorem as an open-source TypeScript agent builder types itself out, one character at a time, then stays. On the right, three stills stacked. Each shows an icon and a title — Predictable structure over drying saffron plots, Less plumbing over a single river in an orange canyon, Built-in boundaries over that same valley — and the longer note for that idea appears when the still is hovered or focused. The agents showcase is the next page. The rail still opens the playground and the docs as their own pages.",
+			"The home page opens on a full-bleed shell panel: the favicon mark draws, then the title card with playground and docs links, package links, a copyable npm install line, the lowercase theorem wordmark, and the tagline 'Typed, composable agents for text, image, speech, and live voice — guarded on every turn.' Scrolling contracts the panel to reveal the rail; those links move into their sidenav slots. The wordmark scrolls away into the claim — 'Agents are probabilistic.' then 'Your architecture shouldn’t be.' — and the open-source TypeScript agent builder line types itself out. The agents showcase is the next page.",
 	}),
-} satisfies Th30PageHandle;
-
-export function loader() {
-	return { version: getKernelPackageVersion() };
-}
+} satisfies Th30PageHandle & { homeImmersive: true };
 
 function RetiredHashRedirect() {
 	const { hash, pathname } = useLocation();
@@ -43,7 +37,7 @@ function RetiredHashRedirect() {
 }
 
 /** Landing: the hero scrolls away, then the centred stage, then the agents showcase. */
-export default function Home({ loaderData }: Route.ComponentProps) {
+export default function Home() {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const { hash } = useLocation();
 
@@ -57,7 +51,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	return (
 		<div className="home-scroll" ref={scrollRef}>
 			<RetiredHashRedirect />
-			<HomeStage version={loaderData.version} />
+			<HomeStage scrollRoot={scrollRef} />
 			<section className="home-page" id="examples" aria-label="Examples">
 				<ExamplesBoard />
 			</section>

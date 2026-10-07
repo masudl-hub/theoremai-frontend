@@ -20,6 +20,9 @@ export function PlaygroundDecision({
 	runtime = null,
 	traces,
 	onActivity,
+	trace,
+	flush,
+	columns,
 }: {
 	payload: PlaygroundRunPayload;
 	className?: string;
@@ -28,6 +31,12 @@ export function PlaygroundDecision({
 	traces?: TraceFeed;
 	/** Called before each decision is asked; stable, or the transport is rebuilt each render. */
 	onActivity?: () => void;
+	/** The run page's own trace control. Omit in the preview, which drives the trace itself. */
+	trace?: boolean;
+	/** The page is already the shell. The console sits in it. */
+	flush?: boolean;
+	/** The request on the left and the answers on the right. */
+	columns?: boolean;
 }) {
 	const transport = useMemo(() => {
 		const made = runtime
@@ -43,6 +52,9 @@ export function PlaygroundDecision({
 			defaultState={
 				model?.apiId.startsWith('respan/') ? EXAMPLE_SPAN_DECISION_STATE : EXAMPLE_DECISION_STATE
 			}
+			trace={trace}
+			flush={flush}
+			columns={columns}
 			className={className}
 		/>
 	);

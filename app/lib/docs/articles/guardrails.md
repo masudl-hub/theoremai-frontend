@@ -1,12 +1,13 @@
 ---
 title: Setting guardrails
-updated: 2026-10-05
+updated: 2026-10-06
 summary: Choose what Theorem finds in text on its way into and out of the model, and what it does with each match. Limit tools, replies and turns per day.
 entry: src/guardrails/mod.ts
 covers: src/guardrails
 cover: /imagery/th30_obsidianshores.png
 coverAlt: Black rocks where the surf meets the shore
 coverPosition: 100% 0%
+suggest: 6
 ---
 
 A **guardrail** is a check on text that goes into the model or comes out of it. Each guardrail is a field under `guardrails` on the profile.
@@ -69,7 +70,6 @@ Guardrail | Without a setting | What it does
 --- | --- | ---
 `detect` | Redacts what goes to the model, and blocks a reply that leaks | Finds credentials, personal data, injection phrasing and leaks in text, and acts on each match
 `blockedReply` | One rewrite | Says what happens to a reply that is blocked
-`egress` | No check of your own | Runs your own check on each reply before the user sees it
 `network` | `https` only, no private addresses | Limits what HTTP and MCP tools reach
 `taint` | `off` | Limits tool calls after a remote read
 `quota` | No limit | Limits turns per day
@@ -112,9 +112,9 @@ Action | What happens to a match
 `redact` | A placeholder replaces the match, and the rest crosses
 `block` | The text does not cross
 
-A boundary is where the text crosses:
 Theorem reads the text again after a `redact`. If the text still has a match, it does not cross.
 
+A boundary is where the text crosses:
 
 - On the way in: `user`, `attachment`, `voice`, `slots`, `history`, `injected`, `system`, `repair` and `live_user`.
 - On the way out: `reply`, `reply_structured`, `live_reply` and `thought`.
@@ -207,33 +207,26 @@ If you set nothing, `onBlock` is `retry` and `maxRetries` is 1.
 A live session never rewrites, because the user has already heard the audio. With `retry`, it withholds the rest of the reply.
 ```
 
-### 6. Add your own check on the reply
+### 6. Add your own check
 
-Harbor gives each incident an internal id, and customers must not see it. No detector knows that id. Set `egress.enforce` to your own function.
+Harbor gives each incident an internal id. Customers must not see it. No built-in detector knows that id. Add your own under `detect`. Its key has a dot, such as `harbor.incident`.
 
-```ts
-import type { EgressEnforcer } from '@theoremjs/agents';
-
-// Hide internal incident ids from customers.
-export const egress: EgressEnforcer = (payload) => {
-	const text = payload.text.replace(/\bINC-\d{6}\b/g, '[internal incident]');
-	if (text === payload.text) return { action: 'allow' };
-	return { action: 'redact', text, hits: [{ rule: 'host.internal-incident-id', severity: 'low' }] };
-};
-
-// guardrails: { egress: { enforce: egress }, blockedReply: { maxRetries: 2 } }
+```ts frame=guardrails
+detect: {
+	'harbor.incident': {
+		label: 'Incident ids',
+		patterns: [{ name: 'incident-id', pattern: '\\bINC-\\d{6}\\b' }],
+		at: { reply: 'redact' },
+	},
+},
 ```
 
-The detectors read the reply first. Your function reads what they left, and returns one of four verdicts:
+A detector of your own has no default. It reads only where `action` or `at` is above `ignore`. `redact` replaces each match with a placeholder. The trace reports the rule `detect.harbor.incident`.
 
-- `allow` releases the text as it is.
-- `flag` releases the text, and a `guardrail` event reports it.
-- `redact` releases your text in its place.
-- `block` follows `blockedReply`.
+It reads with `patterns`, `find`, or both.
 
-No verdict releases a reply that a detector blocked. If your function throws, that counts as a block.
-
-If your rules only block, use `egressPolicy` in place of a function. Run `agents egress-compile ./rules.ts --out ./rules.compiled.ts` when you build. Then set `egress.enforce` to `egressPolicy({ rules, compiled: compiledEgressRules })`.
+- `patterns` are regular expressions, or lists of words. They need a compiled table before the profile registers. Run `agents detect-compile`, or call `compileDetect` from `@theoremjs/agents/guardrails/compile` when the server starts. Set `compiled` to that table.
+- `find` is a function for a match a pattern cannot say. It returns the spans it found, and it returns at once. If it throws, or a span falls outside the text, the text does not cross.
 
 ### 7. Limit what tools can reach
 
@@ -283,8 +276,8 @@ Streaming does not turn the checks off. Theorem holds back the end of the text u
 The check in use sets how much Theorem holds:
 
 - **The canary only.** Theorem holds a tail of 4 or more characters that can still start a leak. This is usually nothing, so the text streams almost at once.
-- **Other detectors at `reply`, or an `egressPolicy`.** Theorem holds only the text that can still become a match. No character of a match shows before its action.
-- **Your own `egress.enforce`.** Theorem holds `egress.holdback` characters. The default is 256, or 96 on a live session.
+- **A detector that reads with patterns.** Theorem holds only the text that can still become a match. No character of a match shows before its action. Your own patterns do this once they have their compiled table.
+- **A detector that uses `find`.** Theorem holds the last 256 characters, or the last 96 on a live reply. A match no longer than that hold is caught whole.
 
 Text that was held and then cleared is released, not dropped.
 
@@ -292,7 +285,7 @@ Text that was held and then cleared is released, not dropped.
 
 A thought that trips a guardrail is edited, never stopped. If `outputs.streaming.streamThoughts` shows thoughts to your user, a placeholder replaces each match. A `guardrail` event at stage `thought` reports it, and the rest of the thought streams on.
 
-In a live session, Theorem reads the transcript of the spoken reply. A profile is guarded when it has a canary, `egress.enforce` or a detector at `live_reply`. For a guarded profile:
+In a live session, Theorem reads the transcript of the spoken reply. A profile is guarded when a detector reads `live_reply`. For a guarded profile:
 
 - Theorem holds each piece of audio until its transcript has passed.
 - Theorem always asks the provider for the transcript: it turns `live.transcription.output` on.
@@ -304,7 +297,7 @@ In a live session, Theorem reads the transcript of the spoken reply. A profile i
 Guardrail | `text`, `image` | `live` | `speech` | `host` | `decision`
 --- | --- | --- | --- | --- | ---
 `detect` | Yes | Yes | Yes | Yes | No
-`blockedReply`, `egress`, `taint` | Yes | Yes | No | No | No
+`blockedReply`, `taint` | Yes | Yes | No | No | No
 `network` | Yes | Yes | No | Yes | No
 `quota` | Yes | Yes | Yes | No | No
 `disclosure` | No | No | No | No | Yes

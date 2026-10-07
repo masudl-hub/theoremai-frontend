@@ -1,8 +1,8 @@
-import { HStack } from '@astryxdesign/core/HStack';
+import { Button } from '@astryxdesign/core/Button';
 import { Icon } from '@astryxdesign/core/Icon';
-import { IconButton } from '@astryxdesign/core/IconButton';
 import { Popover } from '@astryxdesign/core/Popover';
-import { IconKey } from '@tabler/icons-react';
+import { IconKey, IconTimeline } from '@tabler/icons-react';
+import { resolveObservabilityPolicy } from '@theoremjs/agents';
 import {
 	clearStalePlaygroundRuns,
 	loadPlaygroundRunPayload,
@@ -10,19 +10,56 @@ import {
 	readPlaygroundRunIdFromUrl,
 } from '@theoremjs/playground';
 import { playgroundKeySlots } from '@theoremjs/playground/browser';
-import { TheoremThemeProvider } from '@theoremjs/react/ui';
-import { useState } from 'react';
+import { TheoremThemeProvider, TracePlacement } from '@theoremjs/react/ui';
+import { useState, useSyncExternalStore } from 'react';
 import { redirect } from 'react-router';
 import { PlaygroundKeys, usePlaygroundConnection } from '../components/playground-connection';
 import { PlaygroundRunner } from '../components/playground-runner';
+import type { Th30PageHandle } from '../lib/th30-page';
 import type { Route } from './+types/playground.run';
 import './run.css';
 
 /** A model binding as the connection reads it. */
 type ConnectionModel = Parameters<typeof usePlaygroundConnection>[0][number];
 
-/** Where the run tab returns to. */
+/** Where a missing draft returns to. */
 const PLAYGROUND_HREF = '/playground';
+
+/** Below the app shell's drawer breakpoint, where these controls keep only their icon. */
+const PHONE = '(width < 768px)';
+
+function usePhone() {
+	return useSyncExternalStore(
+		(change) => {
+			const query = window.matchMedia(PHONE);
+			query.addEventListener('change', change);
+			return () => {
+				query.removeEventListener('change', change);
+			};
+		},
+		() => window.matchMedia(PHONE).matches,
+		() => false,
+	);
+}
+
+/** Whether this run records traces, so the page can offer them. */
+function recordsTrace(payload: PlaygroundRunPayload): boolean {
+	return resolveObservabilityPolicy(payload.profile.observability).record;
+}
+
+/** The name the page and the document title use. A host has no handle: it's named by its id. */
+function runTitle(payload: PlaygroundRunPayload): string {
+	return 'identity' in payload.profile ? payload.profile.identity.handle : payload.agentId;
+}
+
+export const handle = {
+	th30Page: (data: Route.ComponentProps['loaderData'] | undefined) => ({
+		// The draft loads in the browser, so the server render has no payload yet.
+		title: data?.payload ? runTitle(data.payload) : 'Run',
+		summary:
+			'The agent launched from the playground. It fills the panel beside the rail. A decision or a host puts the request on the left and the response on the right. The trace docks at the right and eases open. View trace and Keys sit inside that panel, at the top right. The rail returns to the playground.',
+	}),
+} satisfies Th30PageHandle;
 
 /** The compiled draft lives in this browser's storage, so it only loads client-side. */
 export function clientLoader({ request }: Route.ClientLoaderArgs) {
@@ -85,18 +122,20 @@ function KeysPopover({
 	onOpenChange,
 	onAddSlot,
 	onRenameSlot,
+	phone,
 }: {
 	connection: ReturnType<typeof usePlaygroundConnection>;
 	isOpen: boolean;
 	onOpenChange: (open: boolean) => void;
 	onAddSlot: (slot: string) => void;
 	onRenameSlot: (from: string, to: string) => void;
+	phone: boolean;
 }) {
 	return (
 		<Popover
 			label="Keys"
 			placement="below"
-			alignment="start"
+			alignment="end"
 			width={360}
 			isOpen={isOpen}
 			onOpenChange={onOpenChange}
@@ -104,11 +143,11 @@ function KeysPopover({
 				<PlaygroundKeys connection={connection} onAddSlot={onAddSlot} onRenameSlot={onRenameSlot} />
 			}
 		>
-			<IconButton
+			<Button
 				label="Keys"
-				variant="ghost"
+				isIconOnly={phone}
 				icon={<Icon icon={IconKey} size="sm" />}
-				tooltip="Keys"
+				aria-pressed={isOpen}
 			/>
 		</Popover>
 	);
@@ -130,9 +169,11 @@ export default function PlaygroundRun({ loaderData }: Route.ComponentProps) {
 		profiles.flatMap((profile) => playgroundKeySlots(profile)),
 	);
 	const [keysOpen, setKeysOpen] = useState(payload.connectionMode === 'byok');
+	const traced = recordsTrace(payload);
+	const [traceOpen, setTraceOpen] = useState(false);
+	const phone = usePhone();
 	const { mode, runtime } = connection;
-	// A host has no handle: it's named by its id.
-	const handle = 'identity' in payload.profile ? payload.profile.identity.handle : payload.agentId;
+	const title = runTitle(payload);
 	const renameSlot = (from: string, to: string) => {
 		setPayload((current) => withRenamedSlot(current, from, to));
 	};
@@ -140,26 +181,44 @@ export default function PlaygroundRun({ loaderData }: Route.ComponentProps) {
 	return (
 		<TheoremThemeProvider mode="dark">
 			{/* The draft exists only in the browser, so the title is set after hydration. */}
-			<title>{`${handle} · Theorem Playground`}</title>
-			<HStack className="iface-run-link" gap={2} vAlign="center">
-				<a href={PLAYGROUND_HREF}>← Playground</a>
-				<KeysPopover
-					connection={connection}
-					isOpen={keysOpen}
-					onOpenChange={setKeysOpen}
-					onAddSlot={(slot) => {
-						setPayload((current) => withAddedSlot(current, slot));
-					}}
-					onRenameSlot={renameSlot}
-				/>
-			</HStack>
-			<PlaygroundRunner
-				key={mode}
-				payload={payload}
-				mode={mode}
-				runtime={runtime}
-				className="run-chat"
-			/>
+			<title>{`${title} · Theorem Playground`}</title>
+			<TracePlacement value="panel">
+				<div className="run-page">
+					<div className="run-controls">
+						{traced ? (
+							<Button
+								label={traceOpen ? 'Hide trace' : 'View trace'}
+								isIconOnly={phone}
+								icon={<Icon icon={IconTimeline} size="sm" />}
+								aria-pressed={traceOpen}
+								onClick={() => {
+									setTraceOpen((open) => !open);
+								}}
+							/>
+						) : null}
+						<KeysPopover
+							connection={connection}
+							isOpen={keysOpen}
+							onOpenChange={setKeysOpen}
+							onAddSlot={(slot) => {
+								setPayload((current) => withAddedSlot(current, slot));
+							}}
+							onRenameSlot={renameSlot}
+							phone={phone}
+						/>
+					</div>
+					<PlaygroundRunner
+						key={mode}
+						payload={payload}
+						mode={mode}
+						runtime={runtime}
+						trace={traced ? traceOpen : undefined}
+						flush
+						columns
+						className="run-chat"
+					/>
+				</div>
+			</TracePlacement>
 		</TheoremThemeProvider>
 	);
 }

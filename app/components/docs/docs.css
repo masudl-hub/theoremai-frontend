@@ -49,23 +49,45 @@
 	border-radius: var(--radius-2, 6px);
 }
 
-.docs-landing-still {
-	height: 100%;
-	padding-block-start: var(--spacing-4);
-	padding-inline: var(--spacing-4);
+.docs-landing .docs-landing-grid,
+.docs-landing .docs-landing-tile {
+	min-width: 0;
+	width: 100%;
 }
 
-.docs-landing-paint {
-	background-repeat: no-repeat;
-	background-size: 100% auto;
+.docs-landing .docs-landing-tile,
+.docs-landing .docs-landing-empty {
+	transition-property: opacity, transform;
+	transition-duration: var(--duration-medium);
+	transition-timing-function: var(--ease-standard);
+}
+
+.docs-landing [data-phase="out"] {
+	opacity: 0;
+	transform: translateX(calc(-1 * var(--spacing-2)));
+	pointer-events: none;
+}
+
+.docs-landing [data-phase="enter"] {
+	opacity: 0;
+	transform: translateX(var(--spacing-2));
+	pointer-events: none;
+}
+
+.docs-landing-search {
+	width: 100%;
+}
+
+.docs-landing-query {
+	width: 720px;
+	max-width: 100%;
+	min-width: 0;
+	flex: 0 1 720px;
 }
 
 .docs-landing .docs-landing-results {
-	min-height: 332px;
-}
-
-.docs-landing .docs-landing-column {
-	display: none;
+	min-width: 0;
+	width: 100%;
 }
 
 .docs-still {
@@ -74,10 +96,7 @@
 	padding-inline: var(--spacing-4);
 }
 
-/* The stills show at full colour: only a fade under the title, where the text needs it, rather
-   than the hero's flat dim. */
-.docs-still .hero-scrim,
-.docs-landing-still .hero-scrim {
+.docs-still .hero-scrim {
 	background-color: transparent;
 	background-image: linear-gradient(to top, rgb(0 0 0 / 0.1), rgb(0 0 0 / 0) 60%);
 }
@@ -130,31 +149,13 @@
 		pointer-events: auto;
 	}
 
-	.docs-landing > .docs-landing-hero {
-		flex: none;
-		height: auto;
-	}
-
-	.docs-landing-still {
-		aspect-ratio: 16 / 9;
-		height: auto;
-		padding: 0;
-	}
-
-	.docs-landing .docs-landing-paint {
-		background-size: cover;
-	}
-
-	.docs-landing .docs-landing-hero-copy {
+	.docs-landing-frame .docs-landing {
 		padding: var(--spacing-4);
+		padding-block-start: calc(var(--spacing-10) + var(--spacing-4));
 	}
 
-	.docs-landing > .docs-landing-body {
-		flex: 1;
-		min-height: 0;
-		overflow: hidden;
-		padding: var(--spacing-4);
-		gap: var(--spacing-4);
+	.docs-landing .docs-landing-packages {
+		grid-template-columns: minmax(0, 1fr);
 	}
 
 	.docs-landing-search {
@@ -171,27 +172,8 @@
 		width: 100%;
 	}
 
-	.docs-landing .docs-landing-results {
-		flex: 1;
-		min-height: 0;
-		overflow-x: hidden;
-		overflow-y: auto;
-	}
-
-	.docs-landing-row {
-		display: none;
-	}
-
-	.docs-landing .docs-landing-column {
-		display: flex;
-		min-width: 0;
-		width: 100%;
-	}
-
-	.docs-landing .docs-landing-tile {
-		max-width: 100%;
-		min-width: 0;
-		width: 100%;
+	.docs-landing .docs-landing-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 
 	.docs-dictionary dl {
@@ -199,7 +181,7 @@
 	}
 
 	.docs-landing .docs-landing-tile-still {
-		aspect-ratio: 2 / 1;
+		aspect-ratio: 5 / 2;
 	}
 
 	.docs-landing-tile img {
@@ -220,4 +202,10 @@
 	margin-block-start: 0.25rem;
 	font-size: 0.75rem;
 	color: var(--color-text-secondary);
+}
+
+@media (width < 480px) {
+	.docs-landing .docs-landing-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
 }

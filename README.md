@@ -26,7 +26,7 @@ theoremai-frontend/
     routes.ts                   # route table
     cloudflare.ts               # Worker env type + per-request context
     routes/
-      home.tsx                  # landing hero
+      home.tsx                  # landing: hero, profile stage, examples
       docs.tsx / docs.$slug.tsx # composed /docs landing + reader
       playground.run.tsx        # run host for a compiled playground draft (@theoremjs/react)
       api.*.ts                  # resource routes → app/lib/.server/api.ts
@@ -61,7 +61,7 @@ Update the sibling kernel in place; re-run `npm run theoremai:ensure` after pull
 ## Development notes
 
 - **`npm run dev`** runs the Worker in `workerd` through `@cloudflare/vite-plugin`, so local dev matches production — including the `/api/live/relay` WebSocket upgrade. Secrets load from `.env.local`.
-- **Run tab:** the playground opens `/playground/run?run=<id>`. The compiled draft lives in this browser's localStorage, so the route loads it in a `clientLoader`; without a draft it redirects home.
+- **Run tab:** the playground opens `/playground/run?run=<id>` in a new tab, inside the site shell. The compiled draft lives in this browser's localStorage, so the route loads it in a `clientLoader`; without a draft it redirects to the playground. Decision and host runs sit in that same panel, with the request on the left and the response on the right. The trace docks from the right, and its width eases with the rest of the site.
 - **Kernel runtime is server-only.** Client code talks to `/api/*` routes, not `@theoremjs/agents` directly; server modules live under `app/lib/.server/`.
 - **Schema vocab is client-safe.** `import { PROTOCOLS, fieldMeta } from '@theoremjs/agents/schema'` — closed unions and profile field tips, no Deno or provider graph.
 - Local development installs the sibling `../theoremai` checkout as the real `@theoremjs/*` file dependencies; no source aliases are used.

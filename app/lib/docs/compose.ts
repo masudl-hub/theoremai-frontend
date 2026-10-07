@@ -15,7 +15,7 @@ import {
 	PROFILE_TYPES,
 	REQUEST_FIELDS,
 } from '@theoremjs/agents/schema';
-import { CHAPTER_SOURCES, LANDING_STILL, SITE_REDIRECTS } from './articles/chapters';
+import { CHAPTER_SOURCES, SITE_REDIRECTS } from './articles/chapters';
 import { lexiconCatalogRows, symbolTerm, traceCatalogRows } from './catalog-rows';
 import {
 	type Fence,
@@ -55,7 +55,7 @@ const SUMMARY_MAX = 160;
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 /** Covers are headers: nothing narrower than 16:9. */
 const COVER_MIN_RATIO = 16 / 9 - 0.01;
-const SUGGEST_RANKS = [1, 2, 3, 4] as const;
+const SUGGEST_RANKS = [1, 2, 3, 4, 5, 6] as const;
 
 /** A chapter as authored: its front matter and its Markdown, seed fences still empty. */
 type Chapter = DocArticleHead & { markdown: string };
@@ -128,8 +128,7 @@ function assertPublic(options: ComposeOptions, slug: string, src: string): strin
 }
 
 function assertChapters(options: ComposeOptions, chapters: readonly Chapter[]): void {
-	assertPublic(options, 'landing', LANDING_STILL.src);
-	const covers = new Set<string>([LANDING_STILL.src]);
+	const covers = new Set<string>();
 	const ranks = new Set<number>();
 	for (const chapter of chapters) {
 		assertChapter(chapter);
@@ -395,10 +394,10 @@ export async function composeDocIndex(options: ComposeOptions): Promise<DocIndex
 	const chapters = readChapters();
 	assertChapters(options, chapters);
 	const byFacet = fieldsByFacet();
-	const filters = await stillFilters(options.publicRoot, [
-		LANDING_STILL.src,
-		...chapters.map((chapter) => chapter.cover.src),
-	]);
+	const filters = await stillFilters(
+		options.publicRoot,
+		chapters.map((chapter) => chapter.cover.src),
+	);
 
 	const listed = chapters.map(({ markdown, ...head }) => {
 		const body = resolveBody({ markdown, ...head });
@@ -429,6 +428,5 @@ export async function composeDocIndex(options: ComposeOptions): Promise<DocIndex
 		suggested,
 		bySlug: Object.fromEntries(articles.map((article) => [article.slug, article])),
 		redirects: [...SITE_REDIRECTS],
-		landing: { ...LANDING_STILL, filter: filters.get(LANDING_STILL.src) },
 	};
 }

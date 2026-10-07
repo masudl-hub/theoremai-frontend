@@ -1,6 +1,7 @@
-/* th30's call. The light toggles it; while it's on, the page panel lifts and a strip of the
-   call's voices runs along the black base beneath it, beside the rail. */
+/* th30's call. The cloud stays on the shell's resting bottom line. While a call is on, only
+   the page panel lifts, and the waveform keeps the padding it had above it. */
 :root {
+	--th30-cloud: 36px;
 	--th30-strip: 56px;
 	--th30-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -14,14 +15,16 @@
 
 .th30-strip {
 	position: fixed;
-	inset-inline: 48px 0;
+	/* The shell panel starts after the rail and ends one spacing-4 short of the viewport. */
+	inset-inline-start: var(--spacing-12);
+	inset-inline-end: var(--spacing-4);
 	bottom: 0;
 	height: var(--th30-strip);
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3);
-	padding-inline: var(--spacing-2) var(--spacing-4);
-	padding-block: var(--spacing-3);
+	/* Above the waveform, the padding the strip had. Below, the cloud's bottom line. */
+	padding-block-start: var(--spacing-3);
+	padding-block-end: var(--spacing-4);
 	opacity: 0;
 	transform: translateY(16px);
 	transition:
@@ -39,11 +42,30 @@
 	flex: 1;
 	min-width: 0;
 	height: 100%;
+	overflow: clip;
 	color: var(--color-icon-primary);
+}
+/* The strip drawing leaves one gap before the first bar and after the last.
+   Scale that gap off both edges so the bars meet the shell. */
+.th30-wave svg {
+	transform: scaleX(calc(1600 / (1600 - 2 * 1360 / 121)));
+	transform-origin: center bottom;
+}
+.th30-wave .ink-wave__bar {
+	animation: th30-bar-in 220ms var(--th30-ease) both;
+	animation-delay: calc((sibling-index() - 1) * 12ms);
+}
+@keyframes th30-bar-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
 }
 .th30-strip-status {
 	position: absolute;
-	inset-inline-start: calc(var(--spacing-2) + 40px);
+	inset-inline-start: var(--spacing-3);
 	color: var(--color-text-secondary);
 	font-size: 13px;
 	pointer-events: none;
@@ -54,48 +76,43 @@
 
 @media (width < 768px) {
 	.th30-strip {
-		inset-inline-start: 0;
-		padding-inline-start: var(--spacing-4);
+		inset-inline: var(--spacing-4);
 	}
 }
 
-/* The trigger: no chrome, just the light. */
 .th30-trigger {
 	all: unset;
 	position: relative;
 	display: block;
 	cursor: pointer;
-	border-radius: 50%;
 }
+.th30-trigger:focus,
 .th30-trigger:focus-visible {
-	outline: 2px solid var(--color-border-emphasized);
-	outline-offset: 2px;
+	outline: none;
 }
 .th30-trigger-rail {
 	width: 40px;
-	height: 40px;
+	/* The rail footer's own padding is spacing-2. This makes up the rest of the shell's
+	   spacing-4 bottom inset, and the cloud sits on the button's bottom edge. */
+	margin-bottom: calc(var(--spacing-4) - var(--spacing-2));
+	padding-top: var(--spacing-2);
 }
-.th30-trigger-search {
-	width: 48px;
-	height: 40px;
-}
-/* The canvas runs a little past the button so the cloud's soft rim is never clipped. */
 .th30-light {
 	position: absolute;
 	top: 50%;
 	left: 50%;
-	width: 48px;
-	height: 48px;
+	width: 36px;
+	height: auto;
 	transform: translate(-50%, -50%);
 	pointer-events: none;
+	user-select: none;
 }
-.th30-light[data-fallback] {
-	background: radial-gradient(
-		closest-side,
-		rgb(52 211 166 / 0.85),
-		rgb(30 70 140 / 0.35) 60%,
-		transparent
-	);
+.th30-trigger-rail .th30-light {
+	position: static;
+	display: block;
+	width: var(--th30-cloud);
+	margin-inline: auto;
+	transform: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -103,9 +120,12 @@
 	.th30-strip {
 		transition: none;
 	}
+	.th30-wave .ink-wave__bar {
+		animation: none;
+	}
 }
-/* Beside the docs search the cloud stands taller than in the rail. */
-.th30-trigger-search .th30-light {
-	width: 72px;
-	height: 72px;
+.th30-light.th30-search-cloud {
+	position: static;
+	width: 48px;
+	transform: none;
 }

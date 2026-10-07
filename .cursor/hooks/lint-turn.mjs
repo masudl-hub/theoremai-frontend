@@ -21,6 +21,12 @@ import {
 /** Must match loop_limit in hooks.json */
 const LOOP_LIMIT = 12;
 
+/**
+ * The post-turn lint loop is paused. It was following up on failures outside the
+ * files the turn edited. Set this to false to resume it.
+ */
+const PAUSED = true;
+
 const MAX_OUTPUT_CHARS = 16_000;
 const LOCK_DIR = path.join(os.tmpdir(), 'cursor-lint-turn-locks');
 
@@ -335,6 +341,17 @@ async function lintEditedFiles(root, relFiles, pkg) {
 
 async function main() {
 	sanitizePath();
+
+	if (PAUSED) {
+		try {
+			await readStdinJson();
+		} catch {
+			// Stdin is consumed so the hook pipe closes. A bad payload changes nothing while paused.
+		}
+		console.error('[lint-turn] paused — not linting and not emitting a follow-up');
+		process.stdout.write('{}\n');
+		return;
+	}
 
 	let payload;
 	try {

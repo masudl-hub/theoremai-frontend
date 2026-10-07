@@ -28,6 +28,11 @@ import {
 } from 'react';
 import { useLocation } from 'react-router';
 import { chapterIcon } from '../../lib/docs/chapter-icons';
+import {
+	chapterIsOpen,
+	chapterNavigationTree,
+	setChapterCollapsed,
+} from '../../lib/docs/chapter-navigation';
 import { projectArticleText } from '../../lib/docs/project-text';
 import { articleHref, chapterNeighbors, type DocSearchHit, searchDocs } from '../../lib/docs/query';
 import type { DocArticle, DocIndex, DocTreeNode } from '../../lib/docs/schema';
@@ -95,7 +100,7 @@ type DocsNavItemProps = {
 	article: DocArticle | undefined;
 	hashId: string | undefined;
 	expandAll: boolean;
-	opened: ReadonlySet<string>;
+	opened: ReadonlyMap<string, boolean>;
 	onOpenChange: (id: string, collapsed: boolean) => void;
 	onSection: (blockId: string) => void;
 };
@@ -141,11 +146,11 @@ function DocsNavItem({
 }: DocsNavItemProps) {
 	const onArticle = article !== undefined && node.slug === article.slug;
 	const selected = onArticle && (node.blockId ? node.blockId === hashId : hashId === undefined);
-	const open =
-		expandAll ||
-		onArticle ||
-		(article !== undefined && node.id === article.slug) ||
-		opened.has(node.id);
+	const open = chapterIsOpen(
+		node.id,
+		expandAll || onArticle || (article !== undefined && node.id === article.slug),
+		opened,
+	);
 	const href = nodeHref(node);
 	const sectionId = onArticle ? node.blockId : undefined;
 	return (
@@ -194,7 +199,7 @@ type ChapterPaneProps = {
 	article: DocArticle | undefined;
 	hashId: string | undefined;
 	searching: boolean;
-	opened: ReadonlySet<string>;
+	opened: ReadonlyMap<string, boolean>;
 	onOpenChange: (id: string, collapsed: boolean) => void;
 	onSection: (blockId: string) => void;
 };
@@ -297,13 +302,6 @@ function latestModified(index: DocIndex): string | undefined {
 		.at(-1);
 }
 
-function toggledOpen(prev: ReadonlySet<string>, id: string, collapsed: boolean): Set<string> {
-	const next = new Set(prev);
-	if (collapsed) next.delete(id);
-	else next.add(id);
-	return next;
-}
-
 /** The small-screen chapters drawer: closes on navigation. */
 function useChaptersDrawer(pathname: string, hash: string) {
 	const [chaptersOpen, setChaptersOpen] = useState(false);
@@ -332,15 +330,17 @@ function useChapterPane(
 	onSection: (blockId: string) => void,
 ): ChapterPaneProps {
 	const [query, setQuery] = useState('');
-	const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
+	const [opened, setOpened] = useState<ReadonlyMap<string, boolean>>(() => new Map());
 	const updated = docsUpdatedOn(latestModified(index));
 	const searching = query.trim().length > 0;
 	const tree = useMemo(() => {
-		if (!searching) return [...index.tree];
-		return treeFromHits(index.tree, searchDocs(index, query, SEARCH_LIMIT).results);
+		const matches = searching
+			? treeFromHits(index.tree, searchDocs(index, query, SEARCH_LIMIT).results)
+			: index.tree;
+		return chapterNavigationTree(matches);
 	}, [index, query, searching]);
 	const onOpenChange = (id: string, collapsed: boolean) => {
-		setOpened((prev) => toggledOpen(prev, id, collapsed));
+		setOpened((prev) => setChapterCollapsed(prev, id, collapsed));
 	};
 	return {
 		updated,
@@ -388,12 +388,14 @@ export function DocsFrame({
 	hashId,
 	onSection,
 	children,
+	className,
 }: {
 	index: DocIndex;
 	article?: DocArticle;
 	hashId?: string;
 	onSection?: (blockId: string) => void;
 	children: ReactNode;
+	className?: string;
 }) {
 	const { pathname, hash } = useLocation();
 	const layoutRef = useRef<HTMLDivElement>(null);
@@ -413,7 +415,7 @@ export function DocsFrame({
 	return (
 		<Layout
 			ref={layoutRef}
-			className="docs-frame"
+			className={className ? `docs-frame ${className}` : 'docs-frame'}
 			padding={0}
 			start={<DocsTreePanel resizable={treePanel.props} pane={pane} />}
 			content={

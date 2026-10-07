@@ -124,7 +124,7 @@ export function BootMark() {
 				setPhase('done');
 			}}
 		>
-			<TheoremMark ink="#fff" />
+			<TheoremMark />
 		</div>
 	);
 }

@@ -8,7 +8,6 @@ import {
 	useSideNavRenderMode,
 } from '@astryxdesign/core/SideNav';
 import { Theme } from '@astryxdesign/core/theme';
-import { IconBook2, IconBrandGithub, IconBrandNpm, IconPlayerPlay } from '@tabler/icons-react';
 import { Link, type LinkProps, Outlet, useLocation, useMatches } from 'react-router';
 import { theoremSiteTheme } from '../built/theorem-site';
 import '../components/docs/docs.css';
@@ -16,22 +15,11 @@ import '../components/page-transition.css';
 import '../components/shell.css';
 import { holdDocsArticleTransition } from '../components/docs/article-transition';
 import { pageOwnsDocsNav } from '../components/docs/shell-slot';
-import { IconJsr } from '../components/jsr-icon';
 import { NewTabLink } from '../components/links';
 import { LogoMark } from '../components/logo-mark';
 import { NavMark } from '../components/nav-mark';
 import { Th30Provider, Th30Trigger } from '../components/th30-dock';
-
-const SECTIONS = [
-	{ label: 'Playground', href: '/playground', icon: IconPlayerPlay },
-	{ label: 'Docs', href: '/docs', icon: IconBook2 },
-] as const;
-
-const PACKAGES = [
-	{ label: 'GitHub', href: 'https://github.com/masudl-hub/theoremai', icon: IconBrandGithub },
-	{ label: 'JSR', href: 'https://jsr.io/@theoremjs/agents', icon: IconJsr },
-	{ label: 'npm', href: 'https://www.npmjs.com/package/@theoremjs%2Fagents', icon: IconBrandNpm },
-] as const;
+import { SITE_PACKAGES, SITE_SECTIONS } from '../lib/site-nav';
 
 /** Route `handle` a page exports to change how the shell frames it. */
 export type ShellHandle = {
@@ -39,10 +27,16 @@ export type ShellHandle = {
 	isOnBase?: boolean;
 	/** On a narrow screen the page's own menu takes the shell bar's place. */
 	docsOwnsNav?: boolean;
+	/** Home landing: full-bleed panel until scroll reveals the rail. */
+	homeImmersive?: boolean;
 };
 
 function isOnBase(handle: unknown): boolean {
 	return typeof handle === 'object' && handle !== null && (handle as ShellHandle).isOnBase === true;
+}
+
+function isHomeImmersive(handle: unknown): boolean {
+	return typeof handle === 'object' && handle !== null && (handle as ShellHandle).homeImmersive === true;
 }
 
 /** In-app links crossfade the page panel. The rail is not part of that snapshot. */
@@ -79,7 +73,7 @@ function ShellLink({ onClick, to, ...props }: LinkProps) {
 function Th30Button() {
 	const mode = useSideNavRenderMode();
 	if (mode === 'drawer' || mode === 'drawer-content') return null;
-	return <Th30Trigger theme="dark" placement="rail" />;
+	return <Th30Trigger placement="rail" />;
 }
 
 /**
@@ -92,12 +86,16 @@ export default function Shell() {
 	const matches = useMatches();
 	const onBase = matches.some((match) => isOnBase(match.handle));
 	const pageOwnsNav = matches.some((match) => pageOwnsDocsNav(match.handle));
+	const homeImmersive = matches.some((match) => isHomeImmersive(match.handle));
+	const shellClass = [pageOwnsNav ? 'docs-owns-nav' : null, homeImmersive ? 'theorem-home-shell' : null]
+		.filter(Boolean)
+		.join(' ');
 
 	return (
 		<Th30Provider>
 			<LinkProvider component={ShellLink}>
 				<AppShell
-					className={pageOwnsNav ? 'docs-owns-nav' : undefined}
+					className={shellClass || undefined}
 					variant={onBase ? 'wash' : 'elevated'}
 					mobileNav={pageOwnsNav ? false : undefined}
 					sideNav={
@@ -108,19 +106,27 @@ export default function Shell() {
 								footerIcons={<Th30Button />}
 							>
 								<SideNavSection title="Site" isHeaderHidden>
-									{SECTIONS.map(({ label, href, icon }) => (
+									{SITE_SECTIONS.map(({ label, href, icon }) => (
 										<SideNavItem
 											key={href}
 											label={label}
 											href={href}
 											icon={icon}
 											isSelected={pathname === href || pathname.startsWith(`${href}/`)}
+											data-home-nav-anchor={href}
 										/>
 									))}
 								</SideNavSection>
 								<SideNavSection title="Packages" isHeaderHidden>
-									{PACKAGES.map(({ label, href, icon }) => (
-										<SideNavItem key={href} label={label} href={href} icon={icon} as={NewTabLink} />
+									{SITE_PACKAGES.map(({ label, href, icon }) => (
+										<SideNavItem
+											key={href}
+											label={label}
+											href={href}
+											icon={icon}
+											as={NewTabLink}
+											data-home-nav-anchor={href}
+										/>
 									))}
 								</SideNavSection>
 							</SideNav>

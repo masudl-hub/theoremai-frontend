@@ -319,6 +319,12 @@ export const theoremSiteTheme = {
         "color": "var(--color-error)",
         "--color-overlay-hover": "var(--astryx-theme-neutral-color-destructive-overlay-hover)",
         "--color-overlay-pressed": "var(--astryx-theme-neutral-color-destructive-overlay-pressed)"
+      },
+      "base": {
+        ":where(.home-intro-install)": {
+          "fontFamily": "var(--font-family-mono)",
+          "fontSize": "clamp(1rem, 1.75vw, 1.3125rem)"
+        }
       }
     },
     "badge": {

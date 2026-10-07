@@ -1,22 +1,22 @@
 import { AspectRatio } from '@astryxdesign/core/AspectRatio';
 import { Card } from '@astryxdesign/core/Card';
-import { Carousel } from '@astryxdesign/core/Carousel';
 import { ClickableCard } from '@astryxdesign/core/ClickableCard';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
+import { Grid } from '@astryxdesign/core/Grid';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
-import { StackItem } from '@astryxdesign/core/Stack';
+import { LayoutContent } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Token } from '@astryxdesign/core/Token';
-import { MediaTheme } from '@astryxdesign/core/theme';
 import { VStack } from '@astryxdesign/core/VStack';
 import { IconSearch } from '@tabler/icons-react';
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { articleHref, searchDocs } from '../../lib/docs/query';
 import type { DocArticle, DocIndex } from '../../lib/docs/schema';
-import '../hero-video.css';
+import 'virtual:docs/landing.css';
 import { Th30Trigger } from '../th30-dock';
+import { DocsFrame } from './reader';
 
 const SEARCH_LIMIT = 16;
 const SEARCH_HINTS = [
@@ -31,12 +31,6 @@ const TYPE_MS = 55;
 const ERASE_MS = 25;
 const HOLD_MS = 1800;
 const GAP_MS = 350;
-const TILE_MOTION: CSSProperties = {
-	transitionProperty: 'opacity, transform',
-	transitionDuration: 'var(--duration-medium)',
-	transitionTimingFunction: 'var(--ease-standard)',
-};
-
 type LandingTile = {
 	article: DocArticle;
 	href: string;
@@ -58,26 +52,6 @@ function motionDurationMs(): number {
 		.trim();
 	const ms = Number.parseFloat(raw);
 	return Number.isFinite(ms) && ms > 0 ? ms : 410;
-}
-
-function tileMotionStyle(phase: TilePhase): CSSProperties {
-	if (phase === 'in') {
-		return { ...TILE_MOTION, opacity: 1, transform: 'translateX(0)' };
-	}
-	if (phase === 'out') {
-		return {
-			...TILE_MOTION,
-			opacity: 0,
-			transform: 'translateX(calc(-1 * var(--spacing-2)))',
-			pointerEvents: 'none',
-		};
-	}
-	return {
-		...TILE_MOTION,
-		opacity: 0,
-		transform: 'translateX(var(--spacing-2))',
-		pointerEvents: 'none',
-	};
 }
 
 function useEasedTiles(target: LandingTile[]): { tiles: LandingTile[]; phase: TilePhase } {
@@ -209,7 +183,7 @@ function tilesFromIndex(index: DocIndex, query: string): LandingTile[] {
 }
 
 /** The result cards for one layout: a carousel row, or the narrow-screen column. */
-function landingTileCards(tiles: LandingTile[], layout: 'row' | 'column', motion: CSSProperties) {
+function landingTileCards(tiles: LandingTile[], phase: TilePhase) {
 	return tiles.map(({ article, href, title, excerpt, showMeta }) => (
 		<ClickableCard
 			key={href}
@@ -217,21 +191,17 @@ function landingTileCards(tiles: LandingTile[], layout: 'row' | 'column', motion
 			href={href}
 			variant="transparent"
 			padding={0}
-			width={layout === 'row' ? 300 : undefined}
-			className={layout === 'column' ? 'docs-landing-tile' : undefined}
-			style={motion}
+			width="100%"
+			className="docs-landing-tile"
+			data-phase={phase}
 		>
 			<VStack gap={3}>
 				<Card padding={0}>
-					<AspectRatio className="docs-landing-tile-still" ratio={16 / 10} fit="cover">
-						<img
-							src={article.cover.src}
-							alt={article.cover.alt}
-							style={{ filter: article.cover.filter, objectPosition: article.cover.position }}
-						/>
+					<AspectRatio className="docs-landing-tile-still" ratio={5 / 2} fit="cover">
+						<img src={article.cover.src} alt={article.cover.alt} data-docs-cover={article.slug} />
 					</AspectRatio>
 				</Card>
-				<VStack gap={1} minHeight={layout === 'row' ? 132 : undefined}>
+				<VStack gap={1}>
 					<Heading level={3}>{title}</Heading>
 					{showMeta ? (
 						<HStack gap={2} wrap="wrap">
@@ -248,71 +218,62 @@ function landingTileCards(tiles: LandingTile[], layout: 'row' | 'column', motion
 	));
 }
 
-/** The landing still with the package version and the page title over it. */
-function LandingHero({ landing, version }: { landing: DocIndex['landing']; version: string }) {
-	const stillPaint = {
-		position: 'absolute',
-		inset: 0,
-		backgroundImage: `url("${landing.src}")`,
-		backgroundPosition: landing.position,
-		pointerEvents: 'none',
-		filter: landing.filter,
-	} as CSSProperties;
+function LandingIntroduction({ version }: { version: string }) {
 	return (
-		<StackItem className="docs-landing-hero" size="fill">
-			<VStack className="docs-landing-still">
-				<Card padding={0} height="100%">
-					<div className="hero-video-frame">
-						<div aria-hidden className="docs-landing-paint" style={stillPaint} />
-						<div className="hero-scrim">
-							<MediaTheme mode="dark">
-								<VStack
-									className="docs-landing-hero-copy"
-									height="100%"
-									justify="end"
-									gap={2}
-									padding={10}
-									paddingInlineStart={4}
-								>
-									<Text type="label">@theoremjs/agents {version}</Text>
-									<Heading level={1} type="display-1" hasCapsize>
-										Documentation
-									</Heading>
-								</VStack>
-							</MediaTheme>
-						</div>
-					</div>
-				</Card>
+		<VStack gap={6}>
+			<VStack gap={2}>
+				<Text type="label" color="secondary">
+					@theoremjs/agents {version}
+				</Text>
+				<Heading level={1} type="display-1" hasCapsize>
+					Documentation
+				</Heading>
 			</VStack>
-		</StackItem>
+			<Grid className="docs-landing-packages" columns={2} gap={6}>
+				<VStack gap={2}>
+					<Heading level={2}>@theoremjs/agents</Heading>
+					<Text color="secondary">
+						Define an agent once as a typed profile. Run text, image, speech, or live voice with the
+						profile’s models, tools, and guardrails.
+					</Text>
+				</VStack>
+				<VStack gap={2}>
+					<Heading level={2}>@theoremjs/react</Heading>
+					<Text color="secondary">
+						Bring that profile into your application. React components and server handlers connect
+						the interface, conversation, and tool approvals to the same agent.
+					</Text>
+				</VStack>
+			</Grid>
+		</VStack>
 	);
 }
 
 /** The result cards, or an empty state when nothing matches. */
 function LandingResults({
 	tiles,
-	motion,
+	phase,
 	label,
 }: {
 	tiles: LandingTile[];
-	motion: CSSProperties;
+	phase: TilePhase;
 	label: string;
 }) {
 	return (
 		<VStack className="docs-landing-results">
 			{tiles.length ? (
-				<>
-					<div className="docs-landing-row">
-						<Carousel gap={4} aria-label={label}>
-							{landingTileCards(tiles, 'row', motion)}
-						</Carousel>
-					</div>
-					<VStack className="docs-landing-column" gap={4} role="region" aria-label={label}>
-						{landingTileCards(tiles, 'column', motion)}
-					</VStack>
-				</>
+				<Grid
+					className="docs-landing-grid"
+					columns={3}
+					gap={4}
+					rowGap={6}
+					role="region"
+					aria-label={label}
+				>
+					{landingTileCards(tiles, phase)}
+				</Grid>
 			) : (
-				<VStack style={motion}>
+				<VStack className="docs-landing-empty" data-phase={phase}>
 					<EmptyState
 						title="No matching articles"
 						description="Try a chapter name, or a word from a summary."
@@ -331,39 +292,43 @@ export function DocsLanding({ index, version }: { index: DocIndex; version: stri
 	const searching = query.trim().length > 0;
 	const [focused, setFocused] = useState(false);
 	const hint = useSearchHint(focused || query.length > 0);
-	const motion = tileMotionStyle(phase);
 	const resultsLabel = searching ? 'Search results' : 'Suggested chapters';
 
 	return (
-		<VStack className="docs-landing" height="100%">
-			<LandingHero landing={index.landing} version={version} />
-			<VStack className="docs-landing-body" gap={6} padding={8}>
-				<HStack className="docs-landing-search" justify="center" align="center" gap={4}>
-					<div
-						className="docs-landing-query"
-						onFocus={() => {
-							setFocused(true);
-						}}
-						onBlur={() => {
-							setFocused(false);
-						}}
-					>
-						<TextInput
-							label="Search docs"
-							isLabelHidden
-							placeholder={hint}
-							value={query}
-							onChange={setQuery}
-							startIcon={IconSearch}
-							width={720}
-							size="lg"
-							hasClear
-						/>
-					</div>
-					<Th30Trigger theme="dark" placement="search" />
-				</HStack>
-				<LandingResults tiles={tiles} motion={motion} label={resultsLabel} />
-			</VStack>
-		</VStack>
+		<DocsFrame index={index} className="docs-landing-frame">
+			<LayoutContent className="docs-landing" padding={8}>
+				<VStack className="docs-landing-body" gap={8}>
+					<LandingIntroduction version={version} />
+					<HStack className="docs-landing-search" justify="start" align="center" gap={4}>
+						<div
+							className="docs-landing-query"
+							onFocus={() => {
+								setFocused(true);
+							}}
+							onBlur={() => {
+								setFocused(false);
+							}}
+						>
+							<TextInput
+								label="Search docs"
+								isLabelHidden
+								placeholder={hint}
+								value={query}
+								onChange={setQuery}
+								startIcon={IconSearch}
+								width="100%"
+								size="lg"
+								hasClear
+							/>
+						</div>
+						<Th30Trigger placement="search" />
+					</HStack>
+					<VStack gap={4}>
+						<Heading level={2}>{searching ? 'Search results' : 'Featured reads'}</Heading>
+						<LandingResults tiles={tiles} phase={phase} label={resultsLabel} />
+					</VStack>
+				</VStack>
+			</LayoutContent>
+		</DocsFrame>
 	);
 }

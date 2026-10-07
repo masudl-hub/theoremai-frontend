@@ -81,7 +81,8 @@
 	z-index: 1000;
 	display: grid;
 	place-items: center;
-	background: #000;
+	color: var(--color-text-primary, #fff);
+	background: var(--color-background-surface, #262626);
 	transition: opacity 480ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 

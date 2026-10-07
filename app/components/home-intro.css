@@ -1,0 +1,146 @@
+/* Scroll track is two fixed viewports, not a percentage of the shrinking panel. */
+.home-intro-run {
+	--home-intro-pad-block: clamp(1.25rem, 3vh, 2.25rem);
+	--home-intro-pad-inline: clamp(1.25rem, 3vw, 2.75rem);
+	position: relative;
+	height: 200dvh;
+	scroll-snap-align: start;
+	scroll-snap-stop: always;
+}
+
+.home-intro-run[data-reduced] {
+	height: 100%;
+}
+
+.home-intro-pin {
+	position: sticky;
+	top: 0;
+	display: flex;
+	flex-direction: column;
+	height: 100dvh;
+	min-height: 0;
+}
+
+.home-intro-scroll-room {
+	height: 100dvh;
+}
+
+.home-intro-run[data-reduced] .home-intro-scroll-room {
+	display: none;
+}
+
+.home-intro-card {
+	box-sizing: border-box;
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	min-height: 0;
+	padding: var(--home-intro-pad-block) var(--home-intro-pad-inline) 0;
+}
+
+.home-intro-spacer {
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+.home-intro-top {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 34rem);
+	gap: clamp(1rem, 3vw, 2.5rem);
+	align-items: start;
+}
+
+.home-intro-groups {
+	display: flex;
+	flex-wrap: wrap;
+	gap: clamp(1.25rem, 3vw, 2.75rem);
+}
+
+.home-intro-group-items {
+	display: flex;
+	flex-wrap: wrap;
+	gap: clamp(0.65rem, 1.6vw, 1.1rem);
+}
+
+.home-intro-nav-slot {
+	display: flex;
+	will-change: transform;
+}
+
+.home-intro-tagline.astryx-heading {
+	justify-self: end;
+	max-width: 34rem;
+	font-size: clamp(2.35rem, 3.35vw, 3.65rem);
+	font-weight: 500;
+	line-height: 0.98;
+	letter-spacing: -0.038em;
+	text-align: end;
+	text-wrap: pretty;
+}
+
+.home-intro-bottom {
+	position: relative;
+	display: flex;
+	flex-shrink: 0;
+	flex-direction: column;
+	align-items: stretch;
+	gap: clamp(0.65rem, 1.5vh, 1rem);
+	width: 100%;
+	padding-block-end: var(--home-intro-pad-block);
+}
+
+.home-intro-install-row {
+	position: relative;
+	z-index: 2;
+	padding-inline: var(--home-intro-pad-inline);
+}
+
+.home-intro-wordmark-track {
+	position: relative;
+	z-index: 1;
+	box-sizing: border-box;
+	width: 100%;
+	padding-inline: var(--home-intro-pad-inline);
+	opacity: calc(1 - clamp(0, (var(--home-shell-pull, 0) - 0.35) / 0.5, 1));
+	transform: translateY(calc(var(--home-shell-pull, 0) * -18%));
+}
+
+.home-intro-wordmark.astryx-heading {
+	display: block;
+	width: max-content;
+	max-width: 100%;
+	margin: 0;
+	font-size: var(--home-intro-wordmark-size, 12vw);
+	font-weight: 800;
+	line-height: 0.88;
+	letter-spacing: -0.045em;
+	text-transform: lowercase;
+}
+
+.home-intro-chrome {
+	opacity: calc(1 - clamp(0, (var(--home-shell-pull, 0) - 0.4) / 0.5, 1));
+}
+
+html[data-home-intro-done] .home-intro-chrome {
+	visibility: hidden;
+	pointer-events: none;
+}
+
+@media (width < 768px) {
+	.home-intro-top {
+		grid-template-columns: 1fr;
+	}
+
+	.home-intro-tagline.astryx-heading {
+		justify-self: start;
+		text-align: start;
+		font-size: 2rem;
+	}
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.home-intro-wordmark-track {
+		transform: none;
+	}
+}
