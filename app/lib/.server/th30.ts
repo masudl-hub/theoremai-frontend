@@ -5,12 +5,7 @@
  */
 import { defineProfile, registerProfile, registerTool } from '@theoremjs/agents';
 import { googleBindingViolation } from '@theoremjs/agents/presets/google';
-import {
-	clientAnsweredHandler,
-	SURFACE_PROMPT,
-	SURFACE_TOOL_NAMES,
-	surfaceTools,
-} from '@theoremjs/agents/surface';
+import { SURFACE_PROMPT, SURFACE_TOOL_NAMES, surfaceTools } from '@theoremjs/agents/surface';
 import { z } from 'zod';
 import { getDocIndex } from '../docs/.server/load-index';
 import { formatNavigableForPrompt, readDoc, searchDocs } from '../docs/query';
@@ -126,7 +121,7 @@ const th30HighlightTool = {
 	permission: 'auto' as const,
 	input: HighlightInputSchema,
 	output: HighlightOutputSchema,
-	handler: clientAnsweredHandler('highlight'),
+	answeredBy: 'page' as const,
 };
 
 const th30ReadTool = {
@@ -268,9 +263,11 @@ function th30SystemPrompt(): string {
 Your only name is "T H three zero": the letter T, the letter H, the word three, the word zero. The only nickname is "thirty". Nothing else. Never "Theo", "theo", "T H 3 O", "three O", "three-oh", "th-thirty", or any name that sounds like Theo. When you say your name, say "thirty" or "T H three zero".
 On the docs, a few sentences is enough. While you are building an agent on the playground, go long on the design. English only.
 
-You always know the page the visitor is on. A line starting "(page)" names it: the path, the page's title and what is on it, and sometimes the visitor's state in brackets (the chapter block they are viewing; on the playground the agent they are building, its type, its issue count and the section they have open). Page lines are context, not the caller speaking; never read one out or announce it. They update silently as the visitor moves, so use the latest one when they say "this", "here" or "this page". Name a chapter in plain words, not the path.
+You always know the page the visitor is on. The page sends it as context: "page" is a line starting "(page)" that names it: the path, the page's title and what is on it, and sometimes the visitor's state in brackets (the chapter block they are viewing; on the playground the agent they are building, its type, its issue count and the section they have open). "state" is what last changed there. Context is not the caller speaking; never read it out or announce it. It updates silently as the visitor moves, so use the latest when they say "this", "here" or "this page". Name a chapter in plain words, not the path.
 
-When the call first connects you get a cue like "(call connected) (page) /docs/guardrails — …". It is not the caller speaking; never read it out. Open the call yourself, warmly and in one short breath, the way a friendly guide picks up: say your name once, then offer help that fits the page they're on. On the docs landing, offer to find what they're after. Vary the wording from call to call. No "How may I assist you", no list of what you can do.
+When the call first connects, open it yourself, warmly and in one short breath, the way a friendly guide picks up: say your name once, then offer help that fits the page they're on. On the docs landing, offer to find what they're after. Vary the wording from call to call. No "How may I assist you", no list of what you can do.
+
+The visitor can type as well as speak. A typed line is them talking. Answer it the way you answer speech. Do not wait for them to say it out loud.
 
 On the playground, explain a setting by searching the docs, never by guessing: searchDocs the field or section name, read the hit, then answer from it.
 
@@ -297,7 +294,6 @@ const TH30_MODEL = {
 	protocol: 'geminiLive',
 	provider: 'google',
 	apiId: 'gemini-3.8-live',
-	temperature: 0.7,
 	maxOutputTokens: 2048,
 } as const;
 
@@ -317,9 +313,17 @@ export function ensureTh30ProfileRegistered(): void {
 		key: 'main',
 		// A quota refusal on the first free key reopens the call on the second, when one is set.
 		fallbackKey: 'overflow',
+		// The dock tells th30 the page the visitor is on, and what changed there.
+		inputs: { context: { from: ['client'], maxChars: 2000 } },
 		live: {
-			// Text carries only the call-connected cue, so th30 greets first; page lines ride as context, which draws no reply.
+			// Text is on, so a typed line reaches th30. The page rides as context, which draws no reply.
 			ingress: { text: true, video: false },
+			greeting: 'The call just connected. Greet the visitor now, as your instructions say.',
+			resumed: {
+				prompt:
+					'The call dropped and is back. Say so in a few words, then carry on where you were.',
+				afterMs: 3000,
+			},
 			voice: 'Sulafat',
 			vad: {
 				// Barge-in on, coarsest Gemini sensitivity. Fine choppy-cut protection is

@@ -20,6 +20,11 @@ import {
 } from '@theoremjs/agents';
 import type { PlaygroundLiveDraftMessage, PlaygroundTraceLine } from '@theoremjs/playground';
 import { attachPlaygroundLiveSession } from '@theoremjs/playground/browser';
+import {
+	type LiveOpenMessage,
+	liveSessionOpen,
+	parseLiveOpenMessage,
+} from '@theoremjs/react/server';
 import { ensureKernelInitialized } from './kernel-init';
 import { playgroundScope } from './playground-register';
 import { playgroundProviders, playgroundTraces } from './playground-turn';
@@ -70,12 +75,16 @@ async function openLiveSession(
 	profileId: string,
 	env: LiveRelayEnv,
 	metadata: Record<string, string>,
+	open: LiveOpenMessage,
 	openWebSocket: (url: string) => Promise<WebSocket>,
 ): Promise<LiveSession> {
 	const { vault } = playgroundProviders(env, scope.profiles.get(profileId));
 	if (!vault || !Object.values(vault).some(Boolean))
 		throw new TheoremError('auth', 'No demo Gemini credentials configured.'); // lexicon-exempt: internal diagnostic
-	return scope.runSession({ profile: profileId, metadata }, { vault, openWebSocket });
+	return scope.runSession(
+		{ ...liveSessionOpen(open), profile: profileId, metadata },
+		{ vault, openWebSocket },
+	);
 }
 
 /** Setup failures reach the browser like session failures: over the socket, worded, with their kind. */
@@ -88,16 +97,15 @@ function failRelay(serverWs: WebSocket, err: unknown, lexicon?: LexiconOverrides
 	}
 }
 
-/** The browser's first message, or a failure if the socket closes before sending one. */
-function firstMessage(serverWs: WebSocket): Promise<unknown> {
+/** The call's open message, the browser's first; a failure if it is malformed or the socket closes first. */
+function openMessage(serverWs: WebSocket): Promise<LiveOpenMessage> {
 	return new Promise((resolve, reject) => {
 		const onMessage = (event: MessageEvent) => {
 			serverWs.removeEventListener('close', onClose);
 			try {
-				resolve(typeof event.data === 'string' ? (JSON.parse(event.data) as unknown) : undefined);
+				resolve(parseLiveOpenMessage(typeof event.data === 'string' ? event.data : ''));
 			} catch (err) {
-				// lexicon-exempt: internal diagnostic; the user reads error.request
-				reject(new TheoremError('request', 'Live first message is not JSON', { cause: err }));
+				reject(err instanceof Error ? err : new Error(String(err)));
 			}
 		};
 		const onClose = () => {
@@ -123,17 +131,17 @@ function isDraftMessage(raw: unknown): raw is PlaygroundLiveDraftMessage {
 
 /**
  * The scope and profile a call runs on. `?profile=` names a profile the site
- * registered; without it, the call's first message carries a playground draft,
+ * registered; without it, the call's open message carries a playground draft,
  * which runs on a scope of its own that no other call can reach.
  */
 async function resolveLiveProfile(
-	serverWs: WebSocket,
+	open: LiveOpenMessage,
 	profileParam: string | null,
 ): Promise<{ scope: KernelScope; profile: Profile }> {
 	if (profileParam) {
 		return { scope: defaultKernelScope, profile: defaultKernelScope.profiles.get(profileParam) };
 	}
-	const message = await firstMessage(serverWs);
+	const message = open.host;
 	if (!isDraftMessage(message)) {
 		throw new TheoremError(
 			'request',
@@ -161,7 +169,9 @@ async function relayLiveSession(
 	let profileId: string;
 	let session: LiveSession;
 	try {
-		const { scope, profile } = await resolveLiveProfile(serverWs, profileParam);
+		// Listen for the open message before anything waits: the browser sends it as the socket opens.
+		const open = await openMessage(serverWs);
+		const { scope, profile } = await resolveLiveProfile(open, profileParam);
 		profileId = profile.id;
 		lexicon = profile.lexicon;
 		if (profile.type !== 'live') {
@@ -181,6 +191,7 @@ async function relayLiveSession(
 			profileId,
 			env,
 			traces.metadata,
+			open,
 			openCloudflareUpstreamWebSocket,
 		);
 	} catch (err) {

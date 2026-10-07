@@ -1,8 +1,10 @@
 /* th30's call. The cloud stays on the shell's resting bottom line. While a call is on, only
-   the page panel lifts, and the waveform keeps the padding it had above it. */
+   the page panel lifts, and the waveform keeps the padding it had above it. Messages, when
+   open, take a panel on the right: the page panel slides left, and the waveform stays below both. */
 :root {
 	--th30-cloud: 36px;
 	--th30-strip: 56px;
+	--th30-messages: min(360px, calc(100vw - var(--spacing-12) - 3 * var(--spacing-4)));
 	--th30-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 	/* The strip draws 120 bars. The chime reads these so it rings for the same span. */
 	--th30-bars: 120;
@@ -11,10 +13,94 @@
 }
 
 [role="main"] {
-	transition: height 420ms var(--th30-ease);
+	transition:
+		height 420ms var(--th30-ease),
+		margin-inline-end 420ms var(--th30-ease),
+		width 420ms var(--th30-ease);
 }
 .th30-live [role="main"] {
 	height: calc(100% - var(--spacing-4) - var(--th30-strip));
+}
+/* The page panel's end margin grows by the messages panel and the gap between them. */
+html.th30-messages .astryx-app-shell:not(.theorem-home-shell) [role="main"] {
+	margin-inline-end: calc(var(--th30-messages) + 2 * var(--spacing-4));
+}
+html.th30-messages[data-home-reduced] .theorem-home-shell [role="main"] {
+	margin-inline-end: calc(var(--th30-messages) + 2 * var(--spacing-4));
+}
+
+/* Home's full-bleed panel is clipped, not margined. The clip's right edge moves left. */
+@media (width >= 768px) {
+	/* The shared lift shortens the box by the top inset plus the strip. Home has no top
+	   margin: that inset is the clip. On a contracted shell the two stack, and the panel
+	   sits a spacing-4 above the waveform. Give the clip's bottom inset back. */
+	html.th30-live:not([data-home-reduced]) .theorem-home-shell [role="main"] {
+		height: calc(100% - var(--th30-strip) + var(--home-shell-pull, 0) * var(--spacing-4));
+	}
+
+	html.th30-messages:not([data-home-reduced]) .theorem-home-shell [role="main"] {
+		clip-path: inset(
+			calc(var(--home-shell-pull, 0) * var(--spacing-4))
+				calc(var(--home-shell-pull, 0) * var(--spacing-4) + var(--th30-messages) + var(--spacing-4))
+				calc(var(--home-shell-pull, 0) * var(--spacing-4))
+				calc(var(--home-shell-pull, 0) * var(--spacing-12)) round
+				calc(var(--home-shell-pull, 0) * var(--radius-page))
+		);
+		transition:
+			height 420ms var(--th30-ease),
+			clip-path 420ms var(--th30-ease);
+	}
+}
+
+@media (width < 768px) {
+	html.th30-messages [role="main"] {
+		width: calc(100% - 3 * var(--spacing-4) - var(--th30-messages));
+		margin-inline-end: var(--spacing-4);
+	}
+}
+
+.th30-messages-panel {
+	position: fixed;
+	z-index: 2;
+	top: var(--spacing-4);
+	bottom: var(--th30-strip);
+	inset-inline-end: var(--spacing-4);
+	width: var(--th30-messages);
+	display: flex;
+	flex-direction: column;
+	border-radius: var(--radius-page);
+	background: var(--color-background-surface);
+	color: var(--color-text-primary);
+	overflow: hidden;
+	opacity: 0;
+	transform: translateX(16px);
+	transition:
+		opacity 260ms var(--th30-ease),
+		transform 420ms var(--th30-ease);
+	pointer-events: none;
+}
+html.th30-messages .th30-messages-panel {
+	opacity: 1;
+	transform: none;
+	pointer-events: auto;
+}
+.th30-messages-body {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+.th30-messages-body > * {
+	flex: 1;
+	min-height: 0;
+}
+/* Same inset as the live captions card: 12px in from the sides, 16px up from the bottom. */
+.th30-messages-body .astryx-chat-composer {
+	width: auto;
+	max-width: calc(100% - 2 * var(--spacing-3));
+	margin-inline: var(--spacing-3);
+	margin-block-start: var(--spacing-3);
+	margin-block-end: var(--spacing-4);
 }
 
 .th30-strip {
@@ -129,7 +215,9 @@
 
 @media (prefers-reduced-motion: reduce) {
 	[role="main"],
-	.th30-strip {
+	.th30-strip,
+	.th30-messages-panel,
+	html.th30-messages:not([data-home-reduced]) .theorem-home-shell [role="main"] {
 		transition: none;
 	}
 	.th30-wave .ink-wave__bar {
