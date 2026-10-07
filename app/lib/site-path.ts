@@ -38,7 +38,7 @@ export function resolveSitePath(to: string, knownDocsSlug?: (slug: string) => bo
 		if (!docs) return { ok: false, error: 'That is not a page on this site.' };
 		let slug: string;
 		try {
-			slug = decodeURIComponent(docs[1] ?? '');
+			slug = decodeURIComponent(docs[1]);
 		} catch {
 			return { ok: false, error: 'That docs path is not valid.' };
 		}

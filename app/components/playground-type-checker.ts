@@ -130,6 +130,7 @@ export function openTypeChecker(
 	onReady: () => void,
 ): { stop(): void } {
 	let stopped = false;
+	const isStopped = () => stopped;
 	const disposables: { dispose(): void }[] = [];
 	const track = <T extends { dispose(): void }>(value: T): T => {
 		if (stopped) value.dispose();
@@ -141,7 +142,7 @@ export function openTypeChecker(
 
 	return {
 		stop() {
-			if (stopped) return;
+			if (isStopped()) return;
 			stopped = true;
 			for (const item of disposables) item.dispose();
 			disposables.length = 0;
@@ -196,7 +197,7 @@ export function openTypeChecker(
 				keepIdleModels: true,
 			}),
 		);
-		if (stopped) return;
+		if (isStopped()) return;
 
 		const proxy = () => client.withSyncedResources([model.uri]);
 		const { languages } = monaco;
@@ -226,7 +227,7 @@ export function openTypeChecker(
 					definition(monaco, libs, track, proxy, textModel, position),
 			}),
 		);
-		if (stopped) return;
+		if (isStopped()) return;
 		if (codeEditor.hasTextFocus()) {
 			codeEditor.trigger('playground', 'editor.action.triggerSuggest', {});
 		}
@@ -403,9 +404,8 @@ function modelFor(
 	}
 	const existing = monaco.editor.getModel(uri);
 	if (existing) return existing;
-	const text = libs[fileName];
-	if (text === undefined) return;
-	return track(monaco.editor.createModel(text, 'typescript', uri));
+	if (!(fileName in libs)) return;
+	return track(monaco.editor.createModel(libs[fileName], 'typescript', uri));
 }
 
 function spanToRange(model: Monaco.editor.ITextModel, span: TextSpan): Monaco.IRange {

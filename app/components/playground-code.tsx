@@ -157,16 +157,17 @@ export function PlaygroundCode({
 				}
 				if (typeStarting) return;
 				const mine = typeToken;
+				const isStale = () => life.disposed || mine !== typeToken;
 				typeStarting = true;
 				void import('./playground-type-checker')
 					.then(({ openTypeChecker }) => {
-						if (life.disposed || mine !== typeToken) return;
+						if (isStale()) return;
 						const checker = openTypeChecker(monaco, editor, () => {
 							if (life.disposed || mine !== typeToken) return;
 							typeReady = true;
 							scheduleTypeStop();
 						});
-						if (life.disposed || mine !== typeToken) {
+						if (isStale()) {
 							checker.stop();
 							return;
 						}
@@ -190,7 +191,9 @@ export function PlaygroundCode({
 				stopTypes();
 			};
 			document.addEventListener('pointerdown', onLeave, true);
-			removeLeave = () => document.removeEventListener('pointerdown', onLeave, true);
+			removeLeave = () => {
+				document.removeEventListener('pointerdown', onLeave, true);
+			};
 			editor.onDidBlurEditorText(() => {
 				queueMicrotask(() => {
 					if (life.disposed || editor.hasTextFocus()) return;

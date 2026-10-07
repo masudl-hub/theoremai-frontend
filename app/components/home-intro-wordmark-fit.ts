@@ -25,11 +25,11 @@ export function useHomeIntroWordmarkFit(
 			let hi = 4000;
 			while (lo < hi) {
 				const mid = Math.ceil((lo + hi) / 2);
-				track.style.setProperty('--home-intro-wordmark-size', `${mid}px`);
+				track.style.setProperty('--home-intro-wordmark-size', `${String(mid)}px`);
 				if (word.scrollWidth > width) hi = mid - 1;
 				else lo = mid;
 			}
-			track.style.setProperty('--home-intro-wordmark-size', `${lo}px`);
+			track.style.setProperty('--home-intro-wordmark-size', `${String(lo)}px`);
 		};
 
 		fit();
