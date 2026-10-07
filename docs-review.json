@@ -103,7 +103,7 @@
 		"reviewed": "2026-10-07",
 		"files": {
 			"src/kernel/registry/profiles.ts": "a11c6be38302db16ebbcbde71a3b4fb725258ca6",
-			"src/kernel/schema.ts": "66a366c3d408f61a25dadd7a23bb297a6111036f"
+			"src/kernel/schema.ts": "ff65d17fb8e1c5f09ab993264eaaa6e1db2dafbc"
 		}
 	},
 	"models": {
@@ -112,7 +112,7 @@
 			"src/kernel/registry/catalog.ts": "084866baf0ca7dfd1eabb36f705b9096a412321b",
 			"src/kernel/registry/profiles.ts": "a11c6be38302db16ebbcbde71a3b4fb725258ca6",
 			"src/kernel/registry/vault.ts": "5f47cdd612f00190b5ccb23ea6aa912ffee931d6",
-			"src/kernel/schema.ts": "66a366c3d408f61a25dadd7a23bb297a6111036f",
+			"src/kernel/schema.ts": "ff65d17fb8e1c5f09ab993264eaaa6e1db2dafbc",
 			"src/providers/create-provider.ts": "67f277a3e1056d4fad9a3d31a91fb60caf43e6a6",
 			"src/providers/decision/usage.ts": "d56c1af0a0c60ae15d90aa74acccaa28f4dc487b",
 			"src/providers/google/api-error.ts": "eac6317509833934707415ad0d9526af8c500e88",
@@ -265,7 +265,7 @@
 	"turn-behaviour": {
 		"reviewed": "2026-10-07",
 		"files": {
-			"src/kernel/registry/resolve.ts": "e542424e552f8dec89d64a9c1707565754bb3687",
+			"src/kernel/registry/resolve.ts": "40c93c0544e748ac451a2302f7ac957f57268bed",
 			"src/kernel/stop.ts": "59643af5c8c84807391f1b6931b84ea5cd1b5ac4"
 		}
 	}
