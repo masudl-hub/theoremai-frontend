@@ -54,7 +54,7 @@ export const HEADLINE = [
 ] as const;
 
 export const ARGUMENT =
-	'Agent outputs vary every turn. Users still need an experience they can understand and trust. theorem helps you build that experience around a clear agent contract.';
+	'The output of an agent changes on every turn. Your users still need an experience they can understand and trust. Theorem helps you build that experience around a clear contract for the agent.';
 
 /**
  * Each still is the idea.
@@ -65,21 +65,21 @@ export const GOALS = [
 	{
 		id: 'source-of-truth',
 		title: 'One source of truth',
-		text: 'Keep execution and interface aligned, rather than maintaining separate versions of what your agent can do.',
+		text: 'Define the agent once, as a profile. Theorem runs every turn from it, and the interface uses the same profile. You keep one version of what the agent can do.',
 		src: '/imagery/th30_orangecanyon.png',
 		alt: 'A single river cutting through an orange canyon, with clouds and their shadows',
 	},
 	{
 		id: 'experiment',
 		title: 'Room to experiment',
-		text: 'Change models, providers, and modalities without rebuilding the surrounding application. Find what works for your agent.',
+		text: 'Change a model, a provider or a profile type in the profile. The rest of your application stays the same. Find what works for your agent.',
 		src: '/imagery/th30_dryingsaffron.png',
 		alt: 'Purple saffron laid out in plots divided by dirt paths, with clouds and their shadows',
 	},
 	{
 		id: 'boundaries',
 		title: 'Built-in boundaries',
-		text: 'Check what enters, what leaves, and what tools can access. Keep protections and permissions explicit.',
+		text: 'Guardrails check text in and out of the model, and limit tools, replies and turns per day. Each protection and permission is written in the profile.',
 		src: '/imagery/th30_obsidianshores.png',
 		alt: 'Black obsidian rock meeting deep teal water, with pale foam along the shore',
 	},
@@ -102,7 +102,7 @@ export const EXAMPLES: readonly {
 		id: 'concierge',
 		title: 'Travel concierge',
 		description:
-			'Plans a trip from what you tell it, and from tickets or notes you attach. It checks weather, places, and distances before it answers.',
+			'Plans a trip from what you tell it and from tickets or notes you attach. It uses tools for weather, places and currency before it answers.',
 		image: '/imagery/th30_wildflowerroad.png',
 		imageAlt: 'A stone path splitting through a meadow of yellow and pink wildflowers',
 		action: { kind: 'playground', href: '/playground' },
@@ -111,7 +111,7 @@ export const EXAMPLES: readonly {
 		id: 'harbor',
 		title: 'Harbor',
 		description:
-			'The front desk for a shipment on hold. It looks up the hold, then the weather and the news at the port, and gives one next step.',
+			'The front desk for a shipment on hold. It looks up why the shipment is on hold, and can check the weather and the news at the port. It gives one next step.',
 		image: '/imagery/th30_ceruleanshelf.png',
 		imageAlt: 'Shallow turquoise water meeting deep blue along a reef shelf',
 		action: { kind: 'playground', href: '/playground?seed=firstTurn' },
@@ -120,7 +120,7 @@ export const EXAMPLES: readonly {
 		id: 'bonsai',
 		title: 'Bonsai',
 		description:
-			'A plant care companion. It identifies a plant from a photo, diagnoses what is wrong, and says how to look after it.',
+			'A plant care companion. It identifies a plant from a photo, finds what is wrong, and explains how to look after it.',
 		image: '/imagery/th30_terracedgarden.png',
 		imageAlt: 'Curved stone terraces of yellow grass set in a green forest',
 		action: { kind: 'hosted', href: 'https://askbonsai.xyz', label: 'Open Bonsai' },
@@ -128,35 +128,35 @@ export const EXAMPLES: readonly {
 ];
 
 export const CONTRIBUTE_INTRO =
-	'Theorem is open source. Questions, bugs, ideas, and code are all welcome.';
+	'Theorem is open source. We welcome questions, bugs, ideas and code.';
 
 /** Four ways in, each a link. */
 export const WAYS = [
 	{
 		id: 'issue',
 		title: 'Raise an issue',
-		note: 'Found a bug, or have an idea? Tell us what you ran and what happened.',
+		note: 'Tell us about a bug or an idea. Say what you ran and what happened.',
 		href: `${REPO_URL}/issues/new`,
 		src: '/imagery/th30_crimsoncrater.png',
 	},
 	{
 		id: 'code',
 		title: 'Contribute code',
-		note: 'Set up the repo, run the checks, and send us a pull request.',
+		note: 'Set up the repo, run the checks and send a pull request.',
 		href: `${REPO_URL}/blob/main/CONTRIBUTING.md`,
 		src: '/imagery/th30_braidedriver.png',
 	},
 	{
 		id: 'discord',
 		title: 'Join the Discord',
-		note: 'Ask questions, share what you build, and meet other builders.',
+		note: 'Ask questions, share what you build and meet other builders.',
 		href: DISCORD_URL,
 		src: '/imagery/th30_cherryblossoms.png',
 	},
 	{
 		id: 'security',
 		title: 'Report a vulnerability',
-		note: 'Found a security problem? Tell us privately, not in a public issue.',
+		note: 'Report a security problem to us in private. Do not use a public issue.',
 		href: `${REPO_URL}/security/advisories/new`,
 		src: '/imagery/th30_blueabyss.png',
 	},
