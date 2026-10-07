@@ -1,7 +1,7 @@
 ---
 title: Setting the identity
-updated: 2026-10-05
-summary: Name your agent and tell the model who it is. Change the instruction by role, add one for a request, and keep secret lines out of replies.
+updated: 2026-10-07
+summary: Name your agent, tell the model who it is, and hide secret lines.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/profiles.ts, src/kernel/registry/system-prompt.ts, src/kernel/registry/system-role.ts, src/kernel/system-parts.ts
 cover: /imagery/th30_amethyst.png

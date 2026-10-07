@@ -1,7 +1,7 @@
 ---
 title: Setting guardrails
-updated: 2026-10-06
-summary: Choose what Theorem finds in text on its way into and out of the model, and what it does with each match. Limit tools, replies and turns per day.
+updated: 2026-10-07
+summary: Check text in and out of the model. Limit tools, replies and turns per day.
 entry: src/guardrails/mod.ts
 covers: src/guardrails
 cover: /imagery/th30_obsidianshores.png

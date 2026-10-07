@@ -1,7 +1,7 @@
 ---
 title: Building the interface
-updated: 2026-10-05
-summary: Serve one profile from your server and show a chat in the browser that reads its inputs, models and tools from that profile.
+updated: 2026-10-07
+summary: Serve one profile from your server and show a chat that reads it.
 entry: src/interface/mod.ts
 covers: src/interface
 cover: /imagery/th30_lapis.png

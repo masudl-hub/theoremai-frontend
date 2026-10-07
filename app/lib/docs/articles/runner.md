@@ -1,7 +1,7 @@
 ---
 title: Running a turn
-updated: 2026-10-05
-summary: Call the door that matches your profile type, read the event stream, and resume a tool that paused for approval.
+updated: 2026-10-07
+summary: Call the door for your profile type, read the events, resume a paused tool.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/engine/decision.ts, src/kernel/engine/session, src/kernel/tools/invoke.ts, src/kernel/stages.ts
 cover: /imagery/th30_poppies.png

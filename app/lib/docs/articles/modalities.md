@@ -1,7 +1,7 @@
 ---
 title: Choosing a modality
-updated: 2026-10-05
-summary: Pick the profile type that fits your agent: text, image, speech, live, decision or host. Each type has its own fields and its own door.
+updated: 2026-10-07
+summary: Pick the profile type: text, image, speech, live, decision or host.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/profiles.ts, src/kernel/schema.ts
 cover: /imagery/th30_dyevats.png

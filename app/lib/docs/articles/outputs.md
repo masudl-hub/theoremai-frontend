@@ -1,11 +1,11 @@
 ---
 title: Declaring outputs
-updated: 2026-10-05
-summary: Make a text agent reply in a fixed JSON shape, check the reply, and choose how it streams. Image and speech agents return media.
+updated: 2026-10-07
+summary: Make a text agent reply in a fixed JSON shape and choose how it streams.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/profile-outputs.ts, src/kernel/registry/schemas.ts, src/kernel/engine/repair.ts
-cover: /imagery/th30_orangecanyon.png
-coverAlt: An orange canyon
+cover: /imagery/th30_rustsand.png
+coverAlt: Bands of rust-red and pale sand, with clouds and their shadows
 coverPosition: 0% 34%
 ---
 
@@ -21,7 +21,7 @@ In Theorem, the profile names a **schema**, a JSON Schema that you register unde
 {
 	"kind": "sequence",
 	"still": {
-		"src": "/imagery/th30_orangecanyon.png",
+		"src": "/imagery/th30_rustsand.png",
 		"position": "40% 50%"
 	},
 	"caption": "Your code receives a value only after the reply passes each check.",

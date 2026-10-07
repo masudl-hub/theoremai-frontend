@@ -1,7 +1,7 @@
 ---
 title: Registering tools
-updated: 2026-10-05
-summary: Give an agent a tool that runs your code, calls a URL, an MCP server or another agent. Ask a person first, sign the user in, and fix a failed call.
+updated: 2026-10-07
+summary: Give an agent a tool that runs your code or calls a URL, MCP or agent.
 entry: src/kernel/tools/mod.ts
 covers: src/kernel/tools, src/kernel/auth
 cover: /imagery/th30_malachite.png
@@ -405,6 +405,7 @@ Code | Cause | Fix
 `expired` | The sign-in link expired before the user finished | Ask the user to sign in again
 `arguments_blocked` | `guardrails.detect` blocks a match in the arguments | Change the action at `tool_arguments_<kind>`, or keep that data from the model
 `tainted_turn` | The turn read a remote result, and `guardrails.taint.afterRemoteRead` refuses the `access` of this tool | Change the taint setting, or the `access` of the tool
+`remote_destination` | The arguments name an email address, link or account that only a remote result mentioned, and `guardrails.taint.remoteDestination` is `block` | Change that setting, or have the user give the address
 `invalid_input` | The arguments do not match `input` | Fix the schema, or the description that the model reads
 `handler_error` | The handler threw an error | Fix the handler. The model reads the text of the error
 `invalid_output` | The result does not match `output` | Fix the handler, or the `output` schema

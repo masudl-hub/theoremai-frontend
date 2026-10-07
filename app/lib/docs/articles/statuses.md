@@ -1,7 +1,7 @@
 ---
 title: Describing statuses
-updated: 2026-10-05
-summary: Replace the words Theorem shows people, such as error and file notices, and the notes it sends to the model, key by key.
+updated: 2026-10-07
+summary: Replace the words Theorem shows people and the notes it sends to the model.
 entry: src/guardrails/lexicon.ts
 covers: src/kernel/turn-events.ts, src/kernel/stop.ts, src/guardrails/lexicon.ts, src/guardrails/error.ts
 cover: /imagery/th30_corals.png

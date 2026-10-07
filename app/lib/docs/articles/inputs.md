@@ -1,7 +1,7 @@
 ---
 title: Declaring inputs
-updated: 2026-10-05
-summary: Declare what a turn may send: text, files, voice or choices. Theorem refuses any turn that sends more than the profile declares.
+updated: 2026-10-07
+summary: Declare what a turn may send. Theorem refuses a turn that sends more.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/ingress.ts, src/kernel/registry/attachments.ts, src/kernel/registry/catalog.ts, src/kernel/engine/live-ingress.ts
 cover: /imagery/th30_cobaltwaves.png

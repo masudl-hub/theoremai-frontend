@@ -1,7 +1,7 @@
 ---
 title: Binding models
-updated: 2026-10-05
-summary: Bind a model with a protocol, a provider and an apiId. Give it a key slot, pick a model per request, and fix a binding that fails.
+updated: 2026-10-07
+summary: Bind a model to a key slot, pick one per request, and fix failed bindings.
 entry: src/providers/mod.ts
 covers: src/providers, src/kernel/registry/vault.ts, src/kernel/registry/catalog.ts, src/kernel/registry/profiles.ts, src/kernel/schema.ts
 cover: /imagery/th30_midnightblueberries.png

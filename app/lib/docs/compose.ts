@@ -50,7 +50,7 @@ import { ttrMinutesFromText } from './text-format';
 import { unionMembers } from './union-docs';
 
 /** Search-result description length. */
-const SUMMARY_MIN = 110;
+const SUMMARY_MIN = 60;
 const SUMMARY_MAX = 160;
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 /** Covers are headers: nothing narrower than 16:9. */

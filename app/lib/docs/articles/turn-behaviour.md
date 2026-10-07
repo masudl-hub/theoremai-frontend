@@ -1,7 +1,7 @@
 ---
 title: Setting turn behaviour
-updated: 2026-10-05
-summary: Let a user continue a reply that stopped early, and decide whether a running turn takes new messages from the user.
+updated: 2026-10-07
+summary: Continue an early-stopped reply, and choose if a turn takes new messages.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/stop.ts, src/kernel/registry/resolve.ts
 cover: /imagery/th30_nightide.png

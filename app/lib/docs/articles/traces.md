@@ -1,7 +1,7 @@
 ---
 title: Recording traces
-updated: 2026-10-05
-summary: Record what each run did: register a destination, point writeTo at it, then choose what a trace record keeps and scrubs.
+updated: 2026-10-07
+summary: Record what each run did, and choose what a trace record keeps and scrubs.
 entry: src/observability/mod.ts
 covers: src/observability
 cover: /imagery/th30_siennadunes.png

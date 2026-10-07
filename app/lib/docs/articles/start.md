@@ -1,7 +1,7 @@
 ---
 title: Getting started
-updated: 2026-10-05
-summary: Write an agent once as a profile, run your first turn, and see Theorem refuse a request that asks for more than the profile states.
+updated: 2026-10-07
+summary: Write a profile, run a turn, and see Theorem refuse what it doesn't state.
 entry: src/kernel/engine/runner/mod.ts
 covers: mod.ts, src/kernel/engine/runner, src/kernel/registry/profiles.ts
 cover: /imagery/th30_emeraldriver.png
