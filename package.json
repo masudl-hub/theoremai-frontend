@@ -25,7 +25,8 @@
 		"lint:biome:fix": "biome check --write .",
 		"lint:fallow": "node --experimental-strip-types scripts/ensure-theoremai.mjs && fallow audit && fallow health && fallow dupes && fallow dead-code",
 		"lint:theme": "node scripts/theme.mjs --check",
-		"lint": "npm run lint:theme && npm run lint:eslint && npm run lint:biome && npm run lint:fallow",
+		"lint:stills": "node scripts/lint-stills.mjs",
+		"lint": "npm run lint:theme && npm run lint:stills && npm run lint:eslint && npm run lint:biome && npm run lint:fallow",
 		"theoremai:ensure": "node --experimental-strip-types scripts/ensure-theoremai.mjs",
 		"theoremai:pull": "git -C ../theoremai pull --ff-only origin main"
 	},
