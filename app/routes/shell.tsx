@@ -13,6 +13,7 @@ import { theoremSiteTheme } from '../built/theorem-site';
 import '../components/docs/docs.css';
 import '../components/page-transition.css';
 import '../components/shell.css';
+import { BootMark } from '../components/boot-mark';
 import { holdDocsArticleTransition } from '../components/docs/article-transition';
 import { pageOwnsDocsNav } from '../components/docs/shell-slot';
 import { NewTabLink } from '../components/links';
@@ -36,7 +37,9 @@ function isOnBase(handle: unknown): boolean {
 }
 
 function isHomeImmersive(handle: unknown): boolean {
-	return typeof handle === 'object' && handle !== null && (handle as ShellHandle).homeImmersive === true;
+	return (
+		typeof handle === 'object' && handle !== null && (handle as ShellHandle).homeImmersive === true
+	);
 }
 
 /** In-app links crossfade the page panel. The rail is not part of that snapshot. */
@@ -87,7 +90,10 @@ export default function Shell() {
 	const onBase = matches.some((match) => isOnBase(match.handle));
 	const pageOwnsNav = matches.some((match) => pageOwnsDocsNav(match.handle));
 	const homeImmersive = matches.some((match) => isHomeImmersive(match.handle));
-	const shellClass = [pageOwnsNav ? 'docs-owns-nav' : null, homeImmersive ? 'theorem-home-shell' : null]
+	const shellClass = [
+		pageOwnsNav ? 'docs-owns-nav' : null,
+		homeImmersive ? 'theorem-home-shell' : null,
+	]
 		.filter(Boolean)
 		.join(' ');
 
@@ -133,6 +139,7 @@ export default function Shell() {
 						</Theme>
 					}
 				>
+					<BootMark />
 					<Outlet />
 					<NavMark />
 				</AppShell>

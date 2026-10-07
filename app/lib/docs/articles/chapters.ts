@@ -7,7 +7,6 @@
 export const SITE_REDIRECTS = [
 	{ from: '/#use', to: '/docs/start', reason: 'home hash retired' },
 	{ from: '/#pillars', to: '/docs', reason: 'home hash retired' },
-	{ from: '/#overview', to: '/docs', reason: 'home hash retired' },
 	{ from: '/#architecture', to: '/docs/modalities#host', reason: 'home hash retired' },
 	{ from: '/#playground', to: '/playground', reason: 'home hash retired' },
 	{

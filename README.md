@@ -26,7 +26,7 @@ theoremai-frontend/
     routes.ts                   # route table
     cloudflare.ts               # Worker env type + per-request context
     routes/
-      home.tsx                  # landing: hero, profile stage, examples
+      home.tsx                  # landing (/), overview (/overview), showcase (/examples)
       docs.tsx / docs.$slug.tsx # composed /docs landing + reader
       playground.run.tsx        # run host for a compiled playground draft (@theoremjs/react)
       api.*.ts                  # resource routes → app/lib/.server/api.ts

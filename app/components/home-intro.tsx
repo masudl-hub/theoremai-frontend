@@ -141,14 +141,9 @@ export function HomeIntro({
 	const nav = <NavItems itemRefs={itemRefs} />;
 
 	return (
-		<section
-			ref={runRef}
-			className="home-contract"
-			aria-label="Theorem"
-			data-reduced={reduced ? '' : undefined}
-		>
+		<section ref={runRef} className="home-contract" data-reduced={reduced ? '' : undefined}>
 			<div className="home-contract-frame">
-				<div className="home-intro-pin">
+				<section id="landing" className="home-intro-pin" aria-label="Landing">
 					<div className="home-intro-card">
 						<div className="home-intro-top">
 							{flightReady ? (
@@ -181,8 +176,14 @@ export function HomeIntro({
 							</Heading>
 						</div>
 					</div>
-				</div>
-				<div className="home-contract-next home-page home-stage-page">{next}</div>
+				</section>
+				<section
+					id="overview"
+					className="home-contract-next home-page home-stage-page"
+					aria-label="Overview"
+				>
+					{next}
+				</section>
 			</div>
 			<div className="home-contract-settle" aria-hidden />
 		</section>

@@ -1,8 +1,8 @@
 import { redirect } from 'react-router';
 
-/** The showcase is a panel on the home page. */
+/** Showcase is a screen on the landing page. */
 export function loader() {
-	return redirect('/#examples');
+	return redirect('/#showcase');
 }
 
 export default function ExamplesRedirect() {

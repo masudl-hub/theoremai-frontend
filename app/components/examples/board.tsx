@@ -94,7 +94,7 @@ export function ExamplesBoard() {
 			<div className="examples-mark">
 				<VStack gap={2}>
 					<Heading level={1} justify="end">
-						agents showcase
+						showcase
 					</Heading>
 					<Text color="secondary" justify="end" display="block">
 						Built with Theorem.
@@ -105,7 +105,7 @@ export function ExamplesBoard() {
 				className="examples-scroll"
 				axis="both"
 				role="region"
-				label="Agents showcase"
+				label="Showcase"
 				height="100%"
 				overscroll="allow"
 			>

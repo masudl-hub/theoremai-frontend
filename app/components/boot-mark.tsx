@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router';
+import { bootHasPlayed, revealShell, shellRestsOpen } from './shell-intro';
 import { TheoremMark } from './theorem-mark';
 import './theorem-mark.css';
 
@@ -54,16 +56,19 @@ function fontsSettled(): Promise<void> {
 }
 
 /**
- * The cover's phase: it lifts once the mark has drawn and the fonts are in, after a short hold,
- * then fades out.
+ * The mark draws in the shell. When the dot lands, that same panel pulls in
+ * over the page. Landing stays full-bleed; scroll still owns that pull.
  */
 function useBootPhase() {
-	const [phase, setPhase] = useState<'draw' | 'leave' | 'done'>('draw');
+	const [phase, setPhase] = useState<'draw' | 'done'>(() => (bootHasPlayed() ? 'done' : 'draw'));
 	const rootRef = useRef<HTMLDivElement>(null);
+	const { pathname, hash } = useLocation();
+	const place = useRef({ pathname, hash });
+	place.current = { pathname, hash };
 
 	useEffect(() => {
 		const root = rootRef.current;
-		if (!root) return;
+		if (!root || bootHasPlayed()) return;
 
 		const reduced = prefersReducedMotion();
 		let cancelled = false;
@@ -72,8 +77,9 @@ function useBootPhase() {
 		const reveal = () => {
 			if (cancelled || revealed) return;
 			revealed = true;
-			delete document.documentElement.dataset.bootPending;
-			setPhase(reduced ? 'done' : 'leave');
+			const { pathname: path, hash: at } = place.current;
+			revealShell(shellRestsOpen(path, at));
+			setPhase('done');
 		};
 
 		const drawDone = markDrawn(root, reduced);
@@ -88,42 +94,20 @@ function useBootPhase() {
 		};
 	}, []);
 
-	useEffect(() => {
-		if (phase !== 'leave') return;
-		const id = window.setTimeout(() => {
-			setPhase('done');
-		}, 560);
-		return () => {
-			window.clearTimeout(id);
-		};
-	}, [phase]);
-
-	return { phase, setPhase, rootRef };
+	return { phase, rootRef };
 }
 
 /**
- * First paint is black, then the favicon mark draws, then the shell is revealed underneath.
- * The draw runs from CSS so it can start before hydration; this only decides when to lift the cover.
+ * Draws inside the shell panel. The shell starts full-bleed; this only decides when that panel
+ * pulls in over the page.
  */
 export function BootMark() {
-	const { phase, setPhase, rootRef } = useBootPhase();
+	const { phase, rootRef } = useBootPhase();
 
 	if (phase === 'done') return null;
 
 	return (
-		<div
-			ref={rootRef}
-			data-boot=""
-			data-leaving={phase === 'leave' ? '' : undefined}
-			role="status"
-			aria-live="polite"
-			aria-label="Loading"
-			aria-hidden={phase === 'leave' ? true : undefined}
-			onTransitionEnd={(event) => {
-				if (event.target !== event.currentTarget || event.propertyName !== 'opacity') return;
-				setPhase('done');
-			}}
-		>
+		<div ref={rootRef} data-boot="" role="status" aria-live="polite" aria-label="Loading">
 			<TheoremMark />
 		</div>
 	);

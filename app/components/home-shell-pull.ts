@@ -1,4 +1,5 @@
 import { type RefObject, useLayoutEffect, useSyncExternalStore } from 'react';
+import { SHELL_INTRO_DONE, shellIntroOwnsPull } from './shell-intro';
 
 function subscribeReducedMotion(onStoreChange: () => void): () => void {
 	const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -17,6 +18,8 @@ function setShellPull(value: number) {
 	const shell = document.querySelector<HTMLElement>('.theorem-home-shell');
 	shell?.style.setProperty('--home-shell-pull', String(value));
 	const root = document.documentElement;
+	if (value > 0 && value < 1) root.dataset.homeFlight = '';
+	else delete root.dataset.homeFlight;
 	if (value >= 1) {
 		if (!root.hasAttribute('data-home-intro-done')) root.dataset.homeIntroDone = '';
 	} else if (root.hasAttribute('data-home-intro-done')) {
@@ -30,6 +33,7 @@ function clearShellPull() {
 		.querySelector<HTMLElement>('.theorem-home-shell')
 		?.style.removeProperty('--home-shell-pull');
 	delete document.documentElement.dataset.homeIntroDone;
+	delete document.documentElement.dataset.homeFlight;
 	delete document.documentElement.dataset.homeReduced;
 }
 
@@ -57,14 +61,21 @@ export function useHomeIntroScroll(
 	const reduced = useSyncExternalStore(subscribeReducedMotion, getReducedMotion, () => false);
 
 	useLayoutEffect(() => {
-		if (reduced) {
-			document.documentElement.dataset.homeReduced = '';
-			setShellPull(1);
-		} else {
+		const settle = () => {
+			if (reduced) {
+				document.documentElement.dataset.homeReduced = '';
+				setShellPull(1);
+				return;
+			}
 			delete document.documentElement.dataset.homeReduced;
-			setShellPull(0);
-		}
-		return clearShellPull;
+		};
+		if (document.documentElement.hasAttribute('data-boot-pending')) setShellPull(0);
+		else settle();
+		window.addEventListener(SHELL_INTRO_DONE, settle);
+		return () => {
+			window.removeEventListener(SHELL_INTRO_DONE, settle);
+			clearShellPull();
+		};
 	}, [reduced]);
 
 	useLayoutEffect(() => {
@@ -87,7 +98,6 @@ export function useHomeIntroScroll(
 				flights = [];
 				return;
 			}
-			const scrollTop = scroller.scrollTop;
 			const next: Flight[] = [];
 			for (const [href, node] of Object.entries(itemRefs.current)) {
 				if (!node) continue;
@@ -104,10 +114,14 @@ export function useHomeIntroScroll(
 				const width = node.offsetWidth;
 				const height = node.offsetHeight;
 				if (to.width < 1 || width < 1 || from.width < 1) continue;
+				/* Fixed icons, sticky spacers: both rects are already viewport
+				   coordinates. Adding scrollTop parks the landing end one
+				   screen below the card whenever measure runs after a jump
+				   to overview or showcase. */
 				next.push({
 					node,
 					originX: from.left + from.width / 2,
-					originY: from.top + scrollTop + from.height / 2,
+					originY: from.top + from.height / 2,
 					width,
 					height,
 					targetX: to.left + to.width / 2,
@@ -119,6 +133,7 @@ export function useHomeIntroScroll(
 		};
 
 		const update = () => {
+			if (shellIntroOwnsPull()) return;
 			const progress = travel > 0 ? Math.min(1, Math.max(0, scroller.scrollTop / travel)) : 0;
 			setShellPull(progress);
 			const hideNext = progress <= 0;
@@ -154,10 +169,12 @@ export function useHomeIntroScroll(
 		update();
 		scroller.addEventListener('scroll', update, { passive: true });
 		window.addEventListener('resize', onResize, { passive: true });
+		window.addEventListener(SHELL_INTRO_DONE, onResize);
 		void document.fonts.ready.then(onResize);
 		return () => {
 			scroller.removeEventListener('scroll', update);
 			window.removeEventListener('resize', onResize);
+			window.removeEventListener(SHELL_INTRO_DONE, onResize);
 			for (const flight of flights) flight.node.style.transform = '';
 		};
 	}, [flightReady, itemRefs, reduced, runRef, scrollRoot]);

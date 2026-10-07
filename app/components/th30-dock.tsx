@@ -23,7 +23,8 @@ import {
 import { type NavigateFunction, useLocation, useMatches, useNavigate } from 'react-router';
 import { z } from 'zod';
 import { theoremSiteTheme } from '../built/theorem-site';
-import { docsPath, highlightBlock } from '../lib/docs/th30-client';
+import { highlightBlock, highlightWhenPresent } from '../lib/docs/th30-client';
+import { resolveSitePath } from '../lib/site-path';
 import { TH30_PROFILE_ID } from '../lib/th30-id';
 import {
 	type Th30Page,
@@ -167,24 +168,44 @@ function useSiteSurface(navigate: NavigateFunction): void {
 	}, [navigate]);
 }
 
-/** th30's docs tools, applied on the page: open an article (at a block), or point at a block. */
-function applyDocsTool(
+function textArg(value: unknown): string | undefined {
+	return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+/** thirty's page tools: open a path on this site, or focus and mark something already showing. */
+async function applyPageTool(
 	navigate: NavigateFunction,
+	client: LiveSessionClient,
+	callId: string,
 	name: string,
 	args: Record<string, unknown>,
-): void {
-	const blockId = typeof args.blockId === 'string' ? args.blockId : undefined;
-	if (name === 'highlight' && blockId) {
-		highlightBlock(blockId, typeof args.label === 'string' ? args.label : undefined);
+): Promise<void> {
+	if (name === 'highlight') {
+		const target = textArg(args.target) ?? textArg(args.blockId) ?? '';
+		const label = textArg(args.label);
+		const found = target ? highlightBlock(target, label) : false;
+		await client.executeToolOnRelay({
+			callId,
+			output: {
+				success: found,
+				highlighted: target,
+				...(found ? {} : { error: 'Nothing on this page matches that.' }),
+			},
+		});
 		return;
 	}
-	if (name !== 'navigate' || typeof args.slug !== 'string' || !args.slug) return;
-	void navigate(docsPath(args.slug, blockId));
-	if (blockId) {
-		window.setTimeout(() => {
-			highlightBlock(blockId);
-		}, 400);
+	if (name === 'navigate') {
+		const to = textArg(args.to);
+		const resolved = to ? resolveSitePath(to) : undefined;
+		if (resolved?.ok) {
+			void navigate(resolved.href);
+			if (resolved.hash) {
+				const pathname = resolved.href.split('#')[0] ?? resolved.href;
+				highlightWhenPresent(resolved.hash, pathname);
+			}
+		}
 	}
+	await client.executeToolOnRelay({ callId });
 }
 
 /** The kernel's line for a failure. The diagnostic stays in the console. */
@@ -339,8 +360,9 @@ async function startCall({
 					await answerSurface(clientRef, name, args, meta.callId);
 					return;
 				}
-				applyDocsTool(navigate, name, args);
-				await clientRef.current?.executeToolOnRelay({ callId: meta.callId });
+				const current = clientRef.current;
+				if (!current) return;
+				await applyPageTool(navigate, current, meta.callId, name, args);
 			},
 		),
 	});
@@ -508,31 +530,60 @@ function Th30Strip({ call, isLive }: { call: Th30Call; isLive: boolean }) {
 	);
 }
 
+/** Seconds for a custom property written as `12ms` or `0.22s`. */
+function cssSeconds(name: string, fallback: number): number {
+	const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+	const value = Number.parseFloat(raw);
+	if (!Number.isFinite(value)) return fallback;
+	return raw.endsWith('ms') ? value / 1000 : value;
+}
+
+/** How long the strip's bars take to arrive, and how long the last one takes to appear. */
+function waveEntrance(): { total: number; fade: number } {
+	if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return { total: 1, fade: 0.2 };
+	const fade = cssSeconds('--th30-bar-in', 0.14);
+	const stagger = cssSeconds('--th30-bar-stagger', 0.006);
+	const bars = Number.parseFloat(
+		getComputedStyle(document.documentElement).getPropertyValue('--th30-bars'),
+	);
+	const count = Number.isFinite(bars) ? bars : 120;
+	return { total: (count - 1) * stagger + fade, fade };
+}
+
 /**
  * A calm two-note chime for "you're through". Its own context, made on the click that starts
- * the call, so the browser lets it sound. A low major third, slow to arrive and slow to leave.
+ * the call, so the browser lets it sound. A low major third. It stays audible until the last
+ * bar, then leaves with that bar.
  */
 function makeChime(): { play: () => void; close: () => void } {
 	const ctx = new AudioContext();
+	const { total, fade } = waveEntrance();
 	return {
 		play: () => {
 			const at = ctx.currentTime + 0.02;
+			const end = at + total;
+			const releaseAt = end - fade;
 			[261.63, 329.63].forEach((hz, i) => {
 				const start = at + i * 0.28;
+				const attackEnd = start + 0.1;
 				const tone = ctx.createOscillator();
 				const gain = ctx.createGain();
 				tone.type = 'sine';
 				tone.frequency.value = hz;
 				gain.gain.setValueAtTime(0, start);
-				gain.gain.linearRampToValueAtTime(0.04, start + 0.12);
-				gain.gain.exponentialRampToValueAtTime(0.0001, start + 1.9);
+				gain.gain.linearRampToValueAtTime(0.04, attackEnd);
+				if (releaseAt > attackEnd + 0.02) {
+					gain.gain.exponentialRampToValueAtTime(0.018, releaseAt);
+				}
+				gain.gain.linearRampToValueAtTime(0.001, end - 0.02);
+				gain.gain.exponentialRampToValueAtTime(0.0001, end);
 				tone.connect(gain).connect(ctx.destination);
 				tone.start(start);
-				tone.stop(start + 2);
+				tone.stop(end);
 			});
 		},
 		close: () => {
-			window.setTimeout(() => void ctx.close(), 2500);
+			window.setTimeout(() => void ctx.close(), Math.ceil(total * 1000) + 400);
 		},
 	};
 }

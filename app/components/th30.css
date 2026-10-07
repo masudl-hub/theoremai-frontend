@@ -4,6 +4,10 @@
 	--th30-cloud: 36px;
 	--th30-strip: 56px;
 	--th30-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+	/* The strip draws 120 bars. The chime reads these so it rings for the same span. */
+	--th30-bars: 120;
+	--th30-bar-stagger: 6ms;
+	--th30-bar-in: 140ms;
 }
 
 [role="main"] {
@@ -52,8 +56,8 @@
 	transform-origin: center bottom;
 }
 .th30-wave .ink-wave__bar {
-	animation: th30-bar-in 220ms var(--th30-ease) both;
-	animation-delay: calc((sibling-index() - 1) * 12ms);
+	animation: th30-bar-in var(--th30-bar-in) var(--th30-ease) both;
+	animation-delay: calc((sibling-index() - 1) * var(--th30-bar-stagger));
 }
 @keyframes th30-bar-in {
 	from {
@@ -72,6 +76,14 @@
 }
 .th30-strip-status:empty {
 	display: none;
+}
+
+[data-th30-highlight],
+[data-docs-block][data-th30-highlight]:focus,
+[data-docs-block][data-th30-highlight]:target {
+	outline: 2px solid var(--color-border-emphasized);
+	outline-offset: 4px;
+	scroll-margin-block: var(--spacing-8);
 }
 
 @media (width < 768px) {

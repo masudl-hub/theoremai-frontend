@@ -20,7 +20,7 @@ export const handle = {
 	th30Page: () => ({
 		title: 'Home',
 		summary:
-			"The home page opens on a full-bleed shell panel: the favicon mark draws, then the title card with playground and docs links, package links, a copyable npm install line, the lowercase theorem wordmark, and the tagline 'Typed, composable agents for text, image, speech, and live voice — guarded on every turn.' A scroll snaps to the claim — the panel contracts to the rail on the way. On the left: 'Agents are probabilistic.' then 'Your architecture shouldn’t be.', and the line about an experience people can understand and trust, built around a clear agent contract, types itself out. On the right, three goals. Each is a square still with a large icon on it — One source of truth over a single river in an orange canyon, Room to experiment over drying saffron plots, Built-in boundaries over obsidian shores — and the title and note sit beside the square. Another scroll snaps to the agents showcase.",
+			"Landing (/) opens on a full-bleed shell panel: the favicon mark draws, then the title card with playground and docs links, package links, a copyable npm install line, the lowercase theorem wordmark, and the tagline 'Typed, composable agents for text, image, speech, and live voice — guarded on every turn.' A scroll snaps to overview (/overview) — the panel contracts to the rail on the way. On the left: 'Agents are probabilistic.' then 'Your architecture shouldn’t be.', and 'Agent outputs vary every turn. Users still need an experience they can understand and trust. Theorem helps you build that experience around a clear agent contract.' On the right, three goals. Each is a square still with a large icon on it — One source of truth over a single river in an orange canyon, Room to experiment over drying saffron plots, Built-in boundaries over obsidian shores — and the title and note sit beside the square. Another scroll snaps to showcase (/examples).",
 	}),
 } satisfies Th30PageHandle & { homeImmersive: true };
 
@@ -36,23 +36,132 @@ function RetiredHashRedirect() {
 	return null;
 }
 
-/** Landing: the hero scrolls away, then the centred stage, then the agents showcase. */
+type LandingScreen = 'landing' | 'overview' | 'showcase';
+
+/** `#examples` is the previous showcase id. An empty hash is landing. */
+function landingScreen(hash: string): LandingScreen | null {
+	const id = decodeURIComponent(hash.replace(/^#/, ''));
+	if (id === '' || id === 'landing') return 'landing';
+	if (id === 'overview') return 'overview';
+	if (id === 'showcase' || id === 'examples') return 'showcase';
+	return null;
+}
+
+function hashFor(screen: LandingScreen): string {
+	if (screen === 'landing') return '';
+	return `#${screen}`;
+}
+
+/** Snap offsets for the three screens. Overview uses the settle band. */
+function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number }[] {
+	const settle = scroller.querySelector<HTMLElement>('.home-contract-settle');
+	const overview = scroller.querySelector<HTMLElement>('#overview');
+	const showcase = scroller.querySelector<HTMLElement>('#showcase');
+	const overviewAt =
+		settle && getComputedStyle(settle).display !== 'none'
+			? settle.offsetTop
+			: (overview?.offsetTop ?? 0);
+	return [
+		{ screen: 'landing', at: 0 },
+		{ screen: 'overview', at: overviewAt },
+		{ screen: 'showcase', at: showcase?.offsetTop ?? overviewAt },
+	];
+}
+
+function nearestStop(scroller: HTMLElement): { screen: LandingScreen; distance: number } | null {
+	const top = scroller.scrollTop;
+	const stops = screenStops(scroller);
+	let best = stops[0];
+	if (!best) return null;
+	for (const stop of stops) {
+		if (Math.abs(top - stop.at) < Math.abs(top - best.at)) best = stop;
+	}
+	return { screen: best.screen, distance: Math.abs(top - best.at) };
+}
+
+/** The screen this scroll position has settled on, or null while it is still moving. */
+function screenAtRest(scroller: HTMLElement): LandingScreen | null {
+	const nearest = nearestStop(scroller);
+	if (!nearest || nearest.distance > 4) return null;
+	return nearest.screen;
+}
+
+/**
+ * Overview’s snap point is the settle band. The named section sits in the sticky
+ * frame, so scrolling to it would stay on landing. Reduced motion hides that band
+ * and stacks the section, which is then the right target.
+ */
+function scrollToLandingScreen(scroller: HTMLElement, screen: LandingScreen) {
+	if (screen === 'landing') {
+		scroller.scrollTo({ top: 0 });
+		return;
+	}
+	if (screen === 'overview') {
+		const settle = scroller.querySelector<HTMLElement>('.home-contract-settle');
+		if (settle && getComputedStyle(settle).display !== 'none') {
+			settle.scrollIntoView({ block: 'start' });
+			return;
+		}
+	}
+	scroller.querySelector<HTMLElement>(`#${screen}`)?.scrollIntoView({ block: 'start' });
+}
+
+/** Landing (/), then overview (/overview), then showcase (/examples). */
 export default function Home() {
 	const scrollRef = useRef<HTMLDivElement>(null);
-	const { hash } = useLocation();
+	const { hash, pathname } = useLocation();
+	const navigate = useNavigate();
+	const suppressUrl = useRef(false);
 
 	useEffect(() => {
-		const id = decodeURIComponent(hash.replace(/^#/, ''));
 		const scroller = scrollRef.current;
-		if (!id || !scroller) return;
+		if (!scroller) return;
+		const screen = landingScreen(hash);
+		if (screen) {
+			if (screenAtRest(scroller) === screen) return;
+			suppressUrl.current = true;
+			scrollToLandingScreen(scroller, screen);
+			suppressUrl.current = false;
+			return;
+		}
+		const id = decodeURIComponent(hash.replace(/^#/, ''));
+		if (!id) return;
 		scroller.querySelector<HTMLElement>(`#${CSS.escape(id)}`)?.scrollIntoView({ block: 'start' });
 	}, [hash]);
+
+	useEffect(() => {
+		const scroller = scrollRef.current;
+		if (!scroller || pathname !== '/') return;
+		const syncUrl = (settled: boolean) => {
+			if (suppressUrl.current) return;
+			const screen = settled ? nearestStop(scroller)?.screen : screenAtRest(scroller);
+			if (!screen) return;
+			const next = hashFor(screen);
+			if (window.location.hash === next) return;
+			void navigate(next === '' ? '/' : { pathname: '/', hash: next }, {
+				replace: true,
+				preventScrollReset: true,
+			});
+		};
+		const onScroll = () => {
+			syncUrl(false);
+		};
+		const onScrollEnd = () => {
+			syncUrl(true);
+		};
+		scroller.addEventListener('scroll', onScroll, { passive: true });
+		scroller.addEventListener('scrollend', onScrollEnd);
+		return () => {
+			scroller.removeEventListener('scroll', onScroll);
+			scroller.removeEventListener('scrollend', onScrollEnd);
+		};
+	}, [navigate, pathname]);
 
 	return (
 		<div className="home-scroll" ref={scrollRef}>
 			<RetiredHashRedirect />
 			<HomeStage scrollRoot={scrollRef} />
-			<section className="home-page" id="examples" aria-label="Examples">
+			<section className="home-page" id="showcase" aria-label="Showcase">
 				<ExamplesBoard />
 			</section>
 		</div>

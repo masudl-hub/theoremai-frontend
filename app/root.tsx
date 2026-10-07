@@ -5,7 +5,7 @@ import { Icon } from '@astryxdesign/core/Icon';
 import { LayerProvider } from '@astryxdesign/core/Layer';
 import { Theme } from '@astryxdesign/core/theme';
 import { IconAlertTriangle, IconMapOff } from '@tabler/icons-react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import {
 	isRouteErrorResponse,
 	Links,
@@ -25,7 +25,7 @@ import './built/theme.css';
 // After the theme: motion Astryx's theme API can't express.
 import './motion.css';
 import { theoremSiteTheme } from './built/theorem-site';
-import { BootMark } from './components/boot-mark';
+import { bootHasPlayed, SHELL_REVEAL } from './components/shell-intro';
 
 export const links: Route.LinksFunction = () => [
 	{ rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
@@ -45,21 +45,32 @@ export function headers() {
 }
 
 export function Layout({ children }: { children: ReactNode }) {
+	const [pending, setPending] = useState(() => !bootHasPlayed());
+	useEffect(() => {
+		const reveal = () => {
+			setPending(false);
+		};
+		window.addEventListener(SHELL_REVEAL, reveal);
+		return () => {
+			window.removeEventListener(SHELL_REVEAL, reveal);
+		};
+	}, []);
 	return (
-		<html lang="en" data-boot-pending="">
+		<html lang="en" data-boot-pending={pending ? '' : undefined}>
 			<head>
 				<meta charSet="utf-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
 				<meta name="theme-color" content={theoremSiteTheme.tokens['--color-background-body']} />
+				{/* The shell paint is inline so the first frame is already the panel the mark draws in. */}
 				<style>
 					{
-						'html{color-scheme:dark}html,body{background:#000}html[data-boot-pending] body>:not([data-boot]){visibility:hidden}'
+						'html{color-scheme:dark}html,body{margin:0;background:#000}html[data-boot-pending],html[data-boot-pending] body{background:#262626}html[data-boot-pending] .astryx-app-shell{height:100dvh}html[data-boot-pending] .astryx-app-shell-sidenav{position:absolute;inset-block:0;inset-inline-start:0;z-index:0;width:3rem}html[data-boot-pending] #astryx-app-shell-main{position:relative;z-index:1;width:100%;height:100%;max-width:none;margin:0;border-radius:0;clip-path:none;background:#262626;color:#fff}html[data-boot-pending] #astryx-app-shell-main>:not([data-boot]){visibility:hidden}html[data-boot-pending] [data-boot]{position:absolute;inset:0;z-index:2;display:grid;place-items:center;background:#262626;color:#fff}'
 					}
 				</style>
 				<noscript>
 					<style>
 						{
-							'html[data-boot-pending] body>:not([data-boot]){visibility:visible !important}[data-boot]{display:none !important}'
+							'html[data-boot-pending],html[data-boot-pending] body{background:#000}html[data-boot-pending] #astryx-app-shell-main>:not([data-boot]){visibility:visible !important}[data-boot]{display:none !important}'
 						}
 					</style>
 				</noscript>
@@ -67,7 +78,6 @@ export function Layout({ children }: { children: ReactNode }) {
 				<Links />
 			</head>
 			<body>
-				<BootMark />
 				{children}
 				<ScrollRestoration />
 				<Scripts />
@@ -89,6 +99,9 @@ export default function App() {
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 	const missing = isRouteErrorResponse(error) && error.status === 404;
+	useEffect(() => {
+		delete document.documentElement.dataset.bootPending;
+	}, []);
 	return (
 		<Theme theme={theoremSiteTheme} mode="dark">
 			<main>

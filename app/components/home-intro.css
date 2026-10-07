@@ -86,6 +86,13 @@ html[data-home-intro-done] .home-intro-flight {
 	pointer-events: none;
 }
 
+/* Parked at the flight origin until placement runs. That layer is on the body,
+   so the full-screen shell does not cover it. */
+html[data-boot-pending] .home-intro-flight,
+html[data-shell-pull] .home-intro-flight {
+	visibility: hidden;
+}
+
 .home-intro-card {
 	position: relative;
 	z-index: 1;
