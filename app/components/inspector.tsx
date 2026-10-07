@@ -442,15 +442,13 @@ export type SegmentedRowProps<T extends string> = {
 	warning?: string;
 	/** A status of the row's own, such as an issue on a page the row opens; the field's issues win. */
 	status?: InputStatus;
-	/** Shows each segment's label in place of its icon, for a set no icon says plainly. */
-	hasLabels?: boolean;
 	/** A control after the segments, on the same line. */
 	trailing?: ReactNode;
 	onChange: (next: T) => void;
 } & IsRequired;
 
 /**
- * A closed set, as icon-only segments, or as worded ones with `hasLabels`. Each segment's label is
+ * A closed set, as icon-only segments. Each segment's label is
  * its accessible name, and on hover it shows with the schema's description of that option. `warning` says, under it, when the pick
  * is valid but won't do what it looks like; a compile issue on the row shows instead.
  */
@@ -464,7 +462,6 @@ export function SegmentedRow<T extends string>({
 	isRequired,
 	warning,
 	status: given,
-	hasLabels = false,
 	trailing,
 	onChange,
 }: SegmentedRowProps<T>) {
@@ -497,9 +494,9 @@ export function SegmentedRow<T extends string>({
 								<SegmentedControlItem
 									value={segment.value}
 									label={name}
-									isLabelHidden={!hasLabels}
+									isLabelHidden
 									isDisabled={segment.isDisabled}
-									icon={hasLabels ? undefined : <Icon icon={segment.icon} size="sm" />}
+									icon={<Icon icon={segment.icon} size="sm" />}
 								/>
 							</Tooltip>
 						);

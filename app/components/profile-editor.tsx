@@ -51,6 +51,7 @@ import {
 	IconDatabase,
 	IconDatabaseOff,
 	IconDeviceDesktop,
+	IconEqual,
 	IconEraser,
 	IconEye,
 	IconEyeOff,
@@ -3168,7 +3169,7 @@ const BOUNDARY_MODE_SEGMENTS: Segment<BoundaryMode>[] = [
 	{
 		value: 'same',
 		label: 'Same everywhere',
-		icon: IconCircleDashed,
+		icon: IconEqual,
 		description: sectionNote('detect.same'),
 	},
 	{
@@ -3204,7 +3205,6 @@ function BoundariesSection({
 			<SegmentedRow
 				label="Actions"
 				path={`guardrails.detect.${detector}.at`}
-				hasLabels
 				value={mode}
 				segments={BOUNDARY_MODE_SEGMENTS}
 				onChange={(next) => {
