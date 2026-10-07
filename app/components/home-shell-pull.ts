@@ -37,6 +37,9 @@ function clearShellPull() {
 	delete document.documentElement.dataset.homeReduced;
 }
 
+/** How far from a stop, in px, still counts as resting on it. */
+const REST_PX = 2;
+
 type Flight = {
 	node: HTMLElement;
 	originX: number;
@@ -134,7 +137,14 @@ export function useHomeIntroScroll(
 
 		const update = () => {
 			if (shellIntroOwnsPull()) return;
-			const progress = travel > 0 ? Math.min(1, Math.max(0, scroller.scrollTop / travel)) : 0;
+			const top = scroller.scrollTop;
+			// A snap can rest a pixel short of its stop. That is still the stop, not a flight in progress.
+			const progress =
+				travel <= 0 || top <= REST_PX
+					? 0
+					: travel - top <= REST_PX
+						? 1
+						: Math.min(1, Math.max(0, top / travel));
 			setShellPull(progress);
 			const hideNext = progress <= 0;
 			if (next && hideNext !== nextInert) {
