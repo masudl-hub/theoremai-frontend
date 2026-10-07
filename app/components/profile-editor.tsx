@@ -2798,6 +2798,14 @@ const TAINT_SEGMENTS: Segment<TaintGate>[] = [
 	{ value: 'write', label: 'Writes', icon: IconPencil },
 ];
 
+type DestinationGate = Exclude<GuardrailsDraft['taintRemoteDestination'], ''>;
+
+const DESTINATION_SEGMENTS: Segment<DestinationGate>[] = [
+	{ value: 'off', label: 'Log', icon: IconEye },
+	{ value: 'confirm', label: 'Ask', icon: IconUserCheck },
+	{ value: 'block', label: 'Refuse', icon: IconBan },
+];
+
 type UrlDetector = keyof GuardrailsDraft['allow'];
 type UrlAllowDraft = GuardrailsDraft['allow'][UrlDetector];
 
@@ -3957,6 +3965,15 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 						segments={TAINT_SEGMENTS}
 						onChange={(gate) => {
 							set({ taintAfterRemoteRead: gate === 'off' ? '' : gate });
+						}}
+					/>
+					<SegmentedRow
+						label="Destination"
+						path="guardrails.taint.remoteDestination"
+						value={guardrails.taintRemoteDestination || 'off'}
+						segments={DESTINATION_SEGMENTS}
+						onChange={(gate) => {
+							set({ taintRemoteDestination: gate === 'off' ? '' : gate });
 						}}
 					/>
 				</InspectorSection>
