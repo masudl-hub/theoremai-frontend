@@ -57,3 +57,23 @@ export function TheoremMark({ ink = 'currentColor', className, ...props }: Theor
 		</svg>
 	);
 }
+
+/** The mark as an icon beside Tabler's glyphs: drawn whole and still, in the current colour. */
+export function IconTheorem(props: SVGProps<SVGSVGElement>) {
+	const { cx, cy, r } = THEOREM_MARK.dot;
+	return (
+		<svg
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth={2}
+			strokeLinecap="round"
+			aria-hidden
+			{...props}
+		>
+			<path d={THEOREM_MARK.rise} />
+			<path d={THEOREM_MARK.fall} />
+			<circle cx={cx} cy={cy} r={r} fill="currentColor" stroke="none" />
+		</svg>
+	);
+}

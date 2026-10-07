@@ -196,3 +196,18 @@
 		animation: none;
 	}
 }
+
+/*
+ * Text with no place to break (a field path in an issue, an address, a key) wraps inside its box
+ * rather than spilling over what sits beside it. A status message under a field breaks anywhere,
+ * since its box is only as wide as the field.
+ */
+body {
+	overflow-wrap: break-word;
+}
+
+.astryx-field-status,
+.astryx-banner {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}

@@ -101,6 +101,7 @@ import {
 	IconTrash,
 	IconUser,
 	IconUserCheck,
+	IconUserPlus,
 	IconVolume,
 	IconWaveSine,
 	IconWorld,
@@ -228,7 +229,7 @@ import {
 	type ReactNode,
 	type SetStateAction,
 	useContext,
-	useEffect,
+	useLayoutEffect,
 	useRef,
 	useState,
 	useSyncExternalStore,
@@ -267,6 +268,7 @@ import {
 } from './inspector-context';
 import { IconMcp } from './mcp-icon';
 import { slotDescription, useProviderModels } from './playground-connection';
+import { IconTheorem } from './theorem-mark';
 
 export type SetDraft = Dispatch<SetStateAction<PlaygroundDraft>>;
 
@@ -2836,7 +2838,7 @@ interface GuardrailsSectionProps {
 	set: (change: Partial<GuardrailsDraft>) => void;
 }
 
-/** The note that binds the canary, shown while the canary leak detector reads somewhere. */
+/** The note that binds the canary, on the canary leak detector's page while it reads somewhere. */
 function CanarySection({ guardrails, set }: GuardrailsSectionProps) {
 	return (
 		<InspectorSection title="Canary">
@@ -3417,7 +3419,7 @@ const PATTERN_USE_SEGMENTS: Segment<PatternUse>[] = [
 	{
 		value: 'theorem',
 		label: "Theorem's",
-		icon: IconShieldLock,
+		icon: IconTheorem,
 		description: sectionNote('detect.source.theorem'),
 	},
 	{
@@ -3429,7 +3431,7 @@ const PATTERN_USE_SEGMENTS: Segment<PatternUse>[] = [
 	{
 		value: 'both',
 		label: 'Both',
-		icon: IconPlus,
+		icon: IconUserPlus,
 		description: sectionNote('detect.source.both'),
 	},
 ];
@@ -3455,7 +3457,6 @@ function PatternSourceSection({
 			<SegmentedRow
 				label="Read with"
 				path={`guardrails.detect.${detector}.theorem`}
-				hasLabels
 				value={use}
 				segments={PATTERN_USE_SEGMENTS}
 				onChange={(next) => {
@@ -3655,8 +3656,7 @@ function DetectSection({
 }
 
 /**
- * The top of a detector's page: the way back to the list, its name, and what it finds. The page
- * scrolls to it as it opens.
+ * The top of a detector's page: the way back to the list, its name, and what it finds.
  */
 function DetectorHeader({
 	title,
@@ -3669,36 +3669,30 @@ function DetectorHeader({
 	trailing?: ReactNode;
 	onBack: () => void;
 }) {
-	const top = useRef<HTMLDivElement>(null);
-	useEffect(() => {
-		top.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-	}, []);
 	return (
-		<div ref={top}>
-			<Section variant="transparent" padding={3}>
-				<VStack gap={1}>
-					<HStack gap={1} vAlign="center">
-						<Tooltip content="Back to detectors">
-							<IconButton
-								label="Back to detectors"
-								variant="ghost"
-								size="sm"
-								icon={<Icon icon={IconArrowLeft} size="sm" />}
-								onClick={onBack}
-							/>
-						</Tooltip>
-						<StackItem size="fill">
-							<Text type="label" weight="semibold">
-								{title}
-							</Text>
-						</StackItem>
-						{trailing}
-					</HStack>
-					{doc && <Text type="supporting">{doc}</Text>}
-					<DetectIssue />
-				</VStack>
-			</Section>
-		</div>
+		<Section variant="transparent" padding={3}>
+			<VStack gap={1}>
+				<HStack gap={1} vAlign="center">
+					<Tooltip content="Back to detectors">
+						<IconButton
+							label="Back to detectors"
+							variant="ghost"
+							size="sm"
+							icon={<Icon icon={IconArrowLeft} size="sm" />}
+							onClick={onBack}
+						/>
+					</Tooltip>
+					<StackItem size="fill">
+						<Text type="label" weight="semibold">
+							{title}
+						</Text>
+					</StackItem>
+					{trailing}
+				</HStack>
+				{doc && <Text type="supporting">{doc}</Text>}
+				<DetectIssue />
+			</VStack>
+		</Section>
 	);
 }
 
@@ -3706,6 +3700,7 @@ function DetectorHeader({
 function DetectorPage({
 	detector,
 	boundaries,
+	hasCanary,
 	guardrails,
 	set,
 	onBack,
@@ -3713,6 +3708,8 @@ function DetectorPage({
 	detector: Detector;
 	/** The boundaries of the profile the detector applies at. */
 	boundaries: readonly Boundary[];
+	/** The profile plants a canary, so the note that binds it can be worded. */
+	hasCanary: boolean;
 	onBack: () => void;
 }) {
 	const { detect, allow, sources, innocentNames } = guardrails;
@@ -3733,6 +3730,9 @@ function DetectorPage({
 					onChange={setActions}
 				/>
 			</InspectorSection>
+			{detector === 'canary_leak' && hasCanary && (
+				<CanarySection guardrails={guardrails} set={set} />
+			)}
 			{meta.patterns && (
 				<PatternSourceSection
 					detector={detector}
@@ -3880,6 +3880,7 @@ function openDetectorPage(
 	open: OpenDetector | null,
 	{ guardrails, set }: GuardrailsSectionProps,
 	boundaries: readonly Boundary[],
+	hasCanary: boolean,
 	onBack: () => void,
 ): ReactNode {
 	if (open === null) return undefined;
@@ -3891,6 +3892,7 @@ function openDetectorPage(
 			<DetectorPage
 				detector={open.detector}
 				boundaries={applies}
+				hasCanary={hasCanary}
 				guardrails={guardrails}
 				set={set}
 				onBack={onBack}
@@ -3917,25 +3919,68 @@ function openDetectorPage(
 	);
 }
 
+/** The nearest element above `node` that scrolls it. */
+function scrollerOf(node: HTMLElement): HTMLElement | null {
+	for (let up = node.parentElement; up; up = up.parentElement) {
+		if (/auto|scroll/.test(getComputedStyle(up).overflowY)) return up;
+	}
+	return null;
+}
+
+/** Fades `node` out at the theme's fast duration and standard curve, at once when motion is off. */
+async function fadeOut(node: HTMLElement): Promise<void> {
+	if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+	const style = getComputedStyle(node);
+	const time = style.getPropertyValue('--duration-fast').trim();
+	const fade = node.animate([{ opacity: 1 }, { opacity: 0 }], {
+		duration: Number.parseFloat(time) * (time.endsWith('ms') ? 1 : 1000),
+		easing: style.getPropertyValue('--ease-standard').trim(),
+		fill: 'forwards',
+	});
+	await fade.finished.catch(() => undefined);
+}
+
 function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
 	const { guardrails } = draft;
 	const set = patch(setDraft, 'guardrails');
 	const boundaries = draft.identity.profileType === 'host' ? TOOL_BOUNDARIES : BOUNDARIES;
 	const [open, setOpen] = useState<OpenDetector | null>(null);
-	const page = openDetectorPage(open, { guardrails, set }, boundaries, () => {
-		setOpen(null);
+	const view = useRef<HTMLDivElement>(null);
+	// Where the list was scrolled to when a page opened, to put it back there.
+	const listScroll = useRef(0);
+	/** Fades the view out, then swaps it; the one that mounts fades in (`.detector-view`). */
+	const show = (next: OpenDetector | null) => {
+		const node = view.current;
+		if (node && open === null) listScroll.current = scrollerOf(node)?.scrollTop ?? 0;
+		const swap = () => {
+			setOpen(next);
+		};
+		if (node) void fadeOut(node).then(swap);
+		else swap();
+	};
+	const page = openDetectorPage(open, { guardrails, set }, boundaries, plantsCanary(draft), () => {
+		show(null);
 	});
+	const viewKey = page ? JSON.stringify(open) : 'list';
+	const shown = useRef(viewKey);
+	// A page opens at its top, and the list comes back where it was left, before either fades in.
+	useLayoutEffect(() => {
+		const node = view.current;
+		if (!node || shown.current === viewKey) return;
+		shown.current = viewKey;
+		if (viewKey === 'list') scrollerOf(node)?.scrollTo({ top: listScroll.current });
+		else node.scrollIntoView({ block: 'start' });
+	}, [viewKey]);
 	if (page) {
 		return (
-			<div key={JSON.stringify(open)} className="detector-view">
+			<div key={viewKey} ref={view} className="detector-view">
 				{page}
 			</div>
 		);
 	}
 	return (
-		<div className="detector-view">
-			<DetectSection guardrails={guardrails} boundaries={boundaries} set={set} onOpen={setOpen} />
-			{plantsCanary(draft) && <CanarySection guardrails={guardrails} set={set} />}
+		<div key={viewKey} ref={view} className="detector-view">
+			<DetectSection guardrails={guardrails} boundaries={boundaries} set={set} onOpen={show} />
 			{draftAllows(draft, 'guardrails.blockedReply') && (
 				<BlockedReplySection guardrails={guardrails} set={set} />
 			)}
