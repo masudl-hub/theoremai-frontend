@@ -19,6 +19,11 @@ export function loader({ request }: Route.LoaderArgs) {
 	return { origin: new URL(request.url).origin };
 }
 
+/** The origin never changes while the page is open. A refetch would count as a pending navigation, which hides the page. */
+export function shouldRevalidate() {
+	return false;
+}
+
 export function meta({ loaderData }: Route.MetaArgs) {
 	const origin = loaderData.origin;
 	const image = `${origin}${GOALS[0].src}`;

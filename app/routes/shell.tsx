@@ -138,14 +138,15 @@ export function loader({ request }: Route.LoaderArgs) {
 	};
 }
 
-/** The structured data follows the path, so moving to or from the playground refetches it. */
-export function shouldRevalidate({
-	currentUrl,
-	nextUrl,
-	defaultShouldRevalidate,
-}: ShouldRevalidateFunctionArgs) {
+/**
+ * The structured data follows the path, so moving to or from the playground refetches it. A move
+ * within one page (the landing page's scroll rewrites its hash) never does: a refetch is a pending
+ * navigation, and a pending navigation hides the page behind the mark.
+ */
+export function shouldRevalidate({ currentUrl, nextUrl }: ShouldRevalidateFunctionArgs) {
+	if (currentUrl.pathname === nextUrl.pathname) return false;
 	const playground = (url: URL) => url.pathname === '/playground';
-	return playground(currentUrl) !== playground(nextUrl) || defaultShouldRevalidate;
+	return playground(currentUrl) !== playground(nextUrl);
 }
 
 /**
