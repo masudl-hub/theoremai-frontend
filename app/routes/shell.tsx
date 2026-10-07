@@ -8,7 +8,7 @@ import {
 	useSideNavRenderMode,
 } from '@astryxdesign/core/SideNav';
 import { Theme } from '@astryxdesign/core/theme';
-import { Link, type LinkProps, Outlet, useLocation, useMatches } from 'react-router';
+import { Link, type LinkProps, Outlet, useLocation, useMatches, useNavigate } from 'react-router';
 import { theoremSiteTheme } from '../built/theorem-site';
 import '../components/docs/docs.css';
 import '../components/page-transition.css';
@@ -18,7 +18,17 @@ import { holdDocsArticleTransition } from '../components/docs/article-transition
 import { pageOwnsDocsNav } from '../components/docs/shell-slot';
 import { NewTabLink } from '../components/links';
 import { LogoMark } from '../components/logo-mark';
-import { NavMark } from '../components/nav-mark';
+import {
+	captureShape,
+	enterShell,
+	HOLD_MS,
+	holdShell,
+	peekShape,
+	shellCanMove,
+	shellKindFor,
+	shellKindOfHref,
+} from '../components/shell-motion';
+import { NavMark } from '../components/shell-navigation';
 import { Th30Provider, Th30Trigger } from '../components/th30-dock';
 import { SITE_PACKAGES, SITE_SECTIONS } from '../lib/site-nav';
 
@@ -42,14 +52,29 @@ function isHomeImmersive(handle: unknown): boolean {
 	);
 }
 
-/** In-app links crossfade the page panel. The rail is not part of that snapshot. */
+/**
+ * In-app links between pages of one shape crossfade the page panel; the rail is not part of that
+ * snapshot. A link to a page of another shape lets the page fade out first, then the shell moves.
+ */
 function ShellLink({ onClick, to, ...props }: LinkProps) {
 	const location = useLocation();
+	const navigate = useNavigate();
+	const href = typeof to === 'string' ? to : undefined;
+	const next = href ? shellKindOfHref(href) : null;
+	/* The landing shell is a full-bleed box clipped to its shape, so a view transition between it and
+	   a page in a plain panel would morph one box into the other and zoom the page. Those links move
+	   the shell themselves, even when both ends are the regular shape. */
+	const moves =
+		next !== null &&
+		next.pathname !== location.pathname &&
+		(next.kind !== shellKindFor(location.pathname, location.hash) ||
+			next.pathname === '/' ||
+			location.pathname === '/');
 	return (
 		<Link
 			{...props}
 			to={to}
-			viewTransition
+			viewTransition={!moves}
 			onClick={(event) => {
 				onClick?.(event);
 				if (event.defaultPrevented) return;
@@ -62,7 +87,16 @@ function ShellLink({ onClick, to, ...props }: LinkProps) {
 				) {
 					return;
 				}
-				const href = typeof to === 'string' ? to : undefined;
+				if (moves && shellCanMove()) {
+					event.preventDefault();
+					captureShape(location.pathname, location.hash);
+					holdShell();
+					window.setTimeout(() => {
+						enterShell(peekShape());
+						void navigate(to);
+					}, HOLD_MS);
+					return;
+				}
 				if (!href?.startsWith('/docs/') || !location.pathname.startsWith('/docs/')) return;
 				const nextPath = href.split(/[?#]/)[0] ?? href;
 				if (nextPath === location.pathname) return;
@@ -108,7 +142,7 @@ export default function Shell() {
 						<Theme theme={theoremSiteTheme} mode="dark">
 							<SideNav
 								collapsible={{ isCollapsed: true, hasButton: false }}
-								header={<SideNavHeading heading="Theorem" headingHref="/" icon={<LogoMark />} />}
+								header={<SideNavHeading heading="theorem" headingHref="/" icon={<LogoMark />} />}
 								footerIcons={<Th30Button />}
 							>
 								<SideNavSection title="Site" isHeaderHidden>

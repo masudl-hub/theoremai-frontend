@@ -1,5 +1,5 @@
 import { type RefObject, useLayoutEffect, useSyncExternalStore } from 'react';
-import { SHELL_INTRO_DONE, shellIntroOwnsPull } from './shell-intro';
+import { SHELL_INTRO_DONE, shellIntroOwnsPull } from './shell-motion';
 
 function subscribeReducedMotion(onStoreChange: () => void): () => void {
 	const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -156,7 +156,7 @@ export function useHomeIntroScroll(
 					flight.originY +
 					(flight.targetY - flight.originY) * progress -
 					(flight.height * scale) / 2;
-				flight.node.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+				flight.node.style.transform = `translate(${String(x)}px, ${String(y)}px) scale(${String(scale)})`;
 			}
 		};
 

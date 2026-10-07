@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
-import { bootHasPlayed, revealShell, shellRestsOpen } from './shell-intro';
+import { bootHasPlayed, prefersReducedMotion, revealShell, shapeAt, sleep } from './shell-motion';
 import { TheoremMark } from './theorem-mark';
 import './theorem-mark.css';
 
@@ -8,16 +8,6 @@ const DRAW_CAP_MS = 2800;
 const HOLD_MS = 90;
 const REDUCED_HOLD_MS = 200;
 const FONT_CAP_MS = 500;
-
-function prefersReducedMotion(): boolean {
-	return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
-function sleep(ms: number): Promise<void> {
-	return new Promise((resolve) => {
-		window.setTimeout(resolve, ms);
-	});
-}
 
 /** Resolves when the mark's dot has drawn in, at once with reduced motion, or after the cap. */
 function markDrawn(root: HTMLDivElement, reduced: boolean): Promise<void> {
@@ -50,14 +40,21 @@ function markDrawn(root: HTMLDivElement, reduced: boolean): Promise<void> {
 	});
 }
 
+/** Whether the pen has begun. Until it does, the panel is blank and there is nothing to wait out. */
+function penHasStarted(root: HTMLDivElement): boolean {
+	const pen = root.querySelector('.theorem-mark-stroke')?.getAnimations()[0];
+	const delay = pen?.effect?.getTiming().delay ?? 0;
+	return Number(pen?.currentTime ?? 0) > delay;
+}
+
 /** Resolves when the fonts are ready, or after the cap. */
 function fontsSettled(): Promise<void> {
 	return Promise.race([document.fonts.ready.then(() => undefined), sleep(FONT_CAP_MS)]);
 }
 
 /**
- * The mark draws in the shell. When the dot lands, that same panel pulls in
- * over the page. Landing stays full-bleed; scroll still owns that pull.
+ * The mark draws in the shell only when the page is still loading. When the dot lands, or at once
+ * when the page was ready first, that same panel pulls in over the page. Landing stays full-bleed; scroll still owns that pull.
  */
 function useBootPhase() {
 	const [phase, setPhase] = useState<'draw' | 'done'>(() => (bootHasPlayed() ? 'done' : 'draw'));
@@ -78,15 +75,18 @@ function useBootPhase() {
 			if (cancelled || revealed) return;
 			revealed = true;
 			const { pathname: path, hash: at } = place.current;
-			revealShell(shellRestsOpen(path, at));
+			revealShell(shapeAt(path, at));
 			setPhase('done');
 		};
 
-		const drawDone = markDrawn(root, reduced);
-		const fontsDone = fontsSettled();
-
-		void Promise.all([drawDone, fontsDone])
-			.then(() => sleep(reduced ? REDUCED_HOLD_MS : HOLD_MS))
+		/* The page is ready once the fonts are. If that comes before the pen starts (its delay in
+		   theorem-mark.css), no mark was ever on screen and the panel pulls in at once. Once the
+		   pen has started, it finishes. */
+		void fontsSettled()
+			.then(() => {
+				if (!reduced && !penHasStarted(root)) return undefined;
+				return markDrawn(root, reduced).then(() => sleep(reduced ? REDUCED_HOLD_MS : HOLD_MS));
+			})
 			.then(reveal);
 
 		return () => {

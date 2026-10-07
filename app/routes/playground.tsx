@@ -1984,7 +1984,7 @@ const PreviewPane = memo(function PreviewPane({
 	const [traceOpen, setTraceOpen] = useState(false);
 	const [testing, setTesting] = useState(false);
 	return (
-		<LayoutContent className="playground-preview" isScrollable={false} padding={0}>
+		<LayoutContent className="playground-preview shell-fade" isScrollable={false} padding={0}>
 			<VStack height="100%">
 				<PreviewHeader
 					store={store}
@@ -2196,8 +2196,8 @@ function SidePanel({
 				label="Playground"
 				isScrollable={false}
 			>
-				<Section variant="raised" height="100%" padding={0}>
-					<HStack height="100%">
+				<Section variant="raised" height="100%" padding={0} data-shell-frame="">
+					<HStack height="100%" className="shell-fade">
 						{/* Static, so the editor beside it never squeezes the tree. */}
 						<StackItem size="static" className="playground-tree">
 							<TreeColumn
@@ -2213,7 +2213,7 @@ function SidePanel({
 				</Section>
 			</LayoutPanel>
 			<ResizeHandle
-				className="playground-side-handle"
+				className="playground-side-handle shell-fade"
 				direction="horizontal"
 				isAlwaysVisible={false}
 				resizable={frame.sidePanel.props}

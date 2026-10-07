@@ -25,7 +25,7 @@ import './built/theme.css';
 // After the theme: motion Astryx's theme API can't express.
 import './motion.css';
 import { theoremSiteTheme } from './built/theorem-site';
-import { bootHasPlayed, SHELL_REVEAL } from './components/shell-intro';
+import { bootHasPlayed, SHELL_REVEAL } from './components/shell-motion';
 
 export const links: Route.LinksFunction = () => [
 	{ rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
