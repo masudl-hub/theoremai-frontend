@@ -14,6 +14,8 @@ export default [
 	route('docs/:slug.md', 'routes/docs.$slug[.]md.ts'),
 	route('docs/index.json', 'routes/docs.index[.]json.ts'),
 	route('llms.txt', 'routes/llms[.]txt.ts'),
+	route('llms-full.txt', 'routes/llms-full[.]txt.ts'),
+	route('robots.txt', 'routes/robots[.]txt.ts'),
 	route('sitemap.xml', 'routes/sitemap[.]xml.ts'),
 	route('api/kernel', 'routes/api.kernel.ts'),
 	route('api/playground/turn', 'routes/api.playground.turn.ts'),

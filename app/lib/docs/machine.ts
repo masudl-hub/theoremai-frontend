@@ -13,25 +13,65 @@ import {
 } from '../home-content';
 import { symbolTerm } from './catalog-rows';
 import { projectArticleText } from './project-text';
-import type { DocIndex } from './schema';
+import type { DocArticle, DocIndex } from './schema';
 
-export function articleMarkdown(index: DocIndex, slug: string): string | undefined {
-	const article = index.bySlug[slug];
-	if (article === undefined) return undefined;
-	return projectArticleText(article);
+/** The sections (level 2) of a chapter, each as a deep link. */
+function outline(article: DocArticle, origin: string): string[] {
+	return article.sections
+		.filter((section) => section.level === 2)
+		.map((section) => `  - [${section.title}](${origin}${article.canonicalPath}#${section.id})`);
 }
 
+/** One chapter as Markdown, with where it lives and when it last changed listed under its summary. */
+export function articleMarkdown(index: DocIndex, slug: string, origin: string): string | undefined {
+	const article = index.bySlug[slug];
+	if (article === undefined) return undefined;
+	return projectArticleText(article, 'full', [
+		`Page: ${origin}${article.canonicalPath}`,
+		`Documents: ${KERNEL_NAME} ${KERNEL.version}`,
+		`Updated: ${article.dateModified}`,
+		`Reading time: ${String(article.ttrMinutes)} min`,
+	]);
+}
+
+/** The llms.txt index: what the site is, then every chapter and its sections, each a link to Markdown. */
 export function llmsTxt(index: DocIndex, origin: string): string {
+	const chapters = index.articles.flatMap((article) => [
+		`- [${article.title}](${origin}${article.canonicalPath}.md): ${article.summary}`,
+		...outline(article, origin),
+	]);
 	return [
 		homeMarkdown(origin).trimEnd(),
 		'',
 		'## Docs',
 		'',
-		`Each chapter is also served as Markdown at its address plus \`.md\`; the full list is ${origin}/docs/index.json.`,
+		'Chapters in reading order. Each is Markdown at its address plus `.md`; its sections link to the page.',
 		'',
-		...index.articles.map(
-			(article) => `- [${article.title}](${origin}${article.canonicalPath}.md): ${article.summary}`,
-		),
+		...chapters,
+		'',
+		'## Optional',
+		'',
+		`- [Everything in one file](${origin}/llms-full.txt): the landing page and every chapter, in full.`,
+		`- [Docs index as JSON](${origin}/docs/index.json): every chapter with its body, sections and symbols.`,
+		`- [Sitemap](${origin}/sitemap.xml)`,
+		'',
+	].join('\n');
+}
+
+/** The landing page and every chapter in full, so one fetch answers any question about the site. */
+export function llmsFullTxt(index: DocIndex, origin: string): string {
+	const chapters = index.articles.map((article) => articleMarkdown(index, article.slug, origin));
+	return [homeMarkdown(origin).trimEnd(), ...chapters].join('\n\n---\n\n') + '\n';
+}
+
+export function robotsTxt(origin: string): string {
+	return [
+		'User-agent: *',
+		'Allow: /',
+		'Disallow: /api/',
+		'',
+		`Sitemap: ${origin}/sitemap.xml`,
+		`# For language models: ${origin}/llms.txt (index) and ${origin}/llms-full.txt (everything)`,
 		'',
 	].join('\n');
 }

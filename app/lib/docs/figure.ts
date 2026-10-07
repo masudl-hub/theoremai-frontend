@@ -65,3 +65,17 @@ export type LanesFigure = z.infer<typeof lanes>;
 export function parseFigure(code: string): DocFigure {
 	return figure.parse(JSON.parse(code));
 }
+
+/** A figure as Markdown a reader without vision can follow: the caption, then each step and its parts. */
+export function figureMarkdown(fig: DocFigure): string {
+	const steps = fig.steps.map((each, at) => {
+		const who = 'lane' in each ? `[${each.lane}] ` : '';
+		const parts = (each.parts ?? []).map((one) => {
+			const text = one.text ? `: ${one.text}` : '';
+			const see = one.chapter ? ` (see /docs/${one.chapter})` : '';
+			return `   - ${one.label}${text}${see}`;
+		});
+		return [`${String(at + 1)}. ${who}**${each.label}**: ${each.text}`, ...parts].join('\n');
+	});
+	return [`**Figure.** ${fig.caption}`, '', ...steps].join('\n');
+}

@@ -19,7 +19,7 @@ function viewingFor(hash: string): string | undefined {
 	if (!node) return undefined;
 	const text =
 		node.getAttribute('aria-label') ??
-		(node.matches('h1,h2,h3,h4') ? node : node.querySelector('h1,h2,h3,h4'))?.textContent?.trim();
+		(node.matches('h1,h2,h3,h4') ? node : node.querySelector('h1,h2,h3,h4'))?.textContent.trim();
 	return text || undefined;
 }
 
@@ -33,7 +33,7 @@ export function readPageFromDom(hash: string): Th30Page | null {
 	for (const script of document.querySelectorAll('script[data-page-summary]')) {
 		let json: { '@graph'?: JsonLdNode[] } & JsonLdNode;
 		try {
-			json = JSON.parse(script.textContent ?? '');
+			json = JSON.parse(script.textContent) as typeof json;
 		} catch {
 			continue;
 		}

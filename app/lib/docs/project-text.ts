@@ -5,6 +5,7 @@
 
 import { symbolTerm } from './catalog-rows';
 import { fenceMarkdown, markdownFences } from './chapter-markdown';
+import { figureMarkdown, parseFigure } from './figure';
 import type { DocArticle, PageSymbol } from './schema';
 
 /** The article fields the projection reads. */
@@ -24,14 +25,28 @@ function codeOnly(body: string): string {
 		.join('\n\n');
 }
 
+/** The body with each `figure` fence written out as the steps it holds, not as JSON. */
+function bodyWithFigures(body: string): string {
+	let out = body;
+	for (const fence of markdownFences(body).reverse()) {
+		if (fence.lang !== 'figure') continue;
+		out =
+			out.slice(0, fence.start) + figureMarkdown(parseFigure(fence.code)) + out.slice(fence.end);
+	}
+	return out;
+}
+
+/** `facts` are lines (a URL, a date) listed under the summary of a full projection. */
 export function projectArticleText(
 	article: ProjectedArticle,
 	detail: 'summary' | 'full' | 'code_only' = 'full',
+	facts: readonly string[] = [],
 ): string {
 	if (detail === 'summary') return `${article.title}\n\n${article.summary}`;
 	const body =
 		detail === 'full'
-			? [article.body, ...dictionaryText(article.symbols)]
+			? [bodyWithFigures(article.body), ...dictionaryText(article.symbols)]
 			: [codeOnly(article.body)];
-	return [`# ${article.title}`, '', article.summary, '', ...body].join('\n').trim();
+	const list = detail === 'full' && facts.length ? [...facts.map((fact) => `- ${fact}`), ''] : [];
+	return [`# ${article.title}`, '', article.summary, '', ...list, ...body].join('\n').trim();
 }
