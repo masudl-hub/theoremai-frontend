@@ -50,8 +50,9 @@ function presence(path: string, isRequired?: boolean) {
 
 /**
  * A captioned group of rows. The panel stays at zero padding and each section carries the gutter.
- * Transparent, so the panel's own surface shows through. Under the title, the catalog doc of the
- * field the section edits (`path`), then `note`: how the editor or the playground treats it.
+ * Transparent, so the panel's own surface shows through. The title shows the catalog entry of the
+ * field the section edits (`path`) on hover, as a row's label does. Under it, `note`: only what
+ * the catalog does not say, such as how the editor or the playground treats the field.
  */
 export function InspectorSection({
 	title,
@@ -64,17 +65,22 @@ export function InspectorSection({
 	note?: string;
 	children: ReactNode;
 }) {
-	const doc = path === undefined ? undefined : fieldMeta(path)?.doc;
+	const heading = title && (
+		<Text type="label" weight="semibold">
+			{title}
+		</Text>
+	);
 	return (
 		<Section variant="transparent" padding={3}>
 			<VStack gap={3}>
-				<VStack gap={1}>
-					{title && (
-						<Text type="label" weight="semibold">
-							{title}
-						</Text>
+				<VStack gap={1} hAlign="start">
+					{heading && title && path !== undefined ? (
+						<CatalogHover label={title} path={path}>
+							{heading}
+						</CatalogHover>
+					) : (
+						heading
 					)}
-					{doc && <Text type="supporting">{doc}</Text>}
 					{note && <Text type="supporting">{note}</Text>}
 				</VStack>
 				{children}
@@ -84,36 +90,24 @@ export function InspectorSection({
 }
 
 /**
- * A row's label, with "Required" under it when `isRequired`, and the schema's entry for `path` on hover:
- * what it does, then its options as tokens (or its type, when it has none), when it's required or
- * what leaving it out does. The profile types that take it are only named when one the playground
- * offers can't.
+ * `children`, with the schema's entry for `path` on hover: what it does, then its options as
+ * tokens (or its type, when it has none), when it's required or what leaving it out does. The
+ * profile types that take it are only named when one the playground offers can't.
  */
-function RowLabel({
+function CatalogHover({
 	label,
 	path,
-	isRequired,
+	children,
 }: {
 	label: string;
 	path: string;
-	isRequired: boolean;
+	children: ReactNode;
 }) {
-	const id = useId();
 	const meta = fieldMeta(path);
-	const scope = meta?.profileTypes;
+	if (!meta) return children;
+	const scope = meta.profileTypes;
 	const takes = PLAYGROUND_PROFILE_TYPES.filter((type) => !scope || scope.includes(type));
 	const scoped = takes.length < PLAYGROUND_PROFILE_TYPES.length ? takes : undefined;
-	// A group label: it names the row rather than one control, since each control carries its own
-	// hidden label, so it points at no input.
-	const text = (
-		<FieldLabel
-			label={label}
-			inputID={id}
-			isGroupLabel
-			description={isRequired ? 'Required' : undefined}
-		/>
-	);
-	if (!meta) return text;
 	return (
 		<HoverCard
 			label={label}
@@ -134,8 +128,33 @@ function RowLabel({
 				</VStack>
 			}
 		>
-			{text}
+			{children}
 		</HoverCard>
+	);
+}
+
+/** A row's label, with "Required" under it when `isRequired`, and its catalog entry on hover. */
+function RowLabel({
+	label,
+	path,
+	isRequired,
+}: {
+	label: string;
+	path: string;
+	isRequired: boolean;
+}) {
+	const id = useId();
+	// A group label: it names the row rather than one control, since each control carries its own
+	// hidden label, so it points at no input.
+	return (
+		<CatalogHover label={label} path={path}>
+			<FieldLabel
+				label={label}
+				inputID={id}
+				isGroupLabel
+				description={isRequired ? 'Required' : undefined}
+			/>
+		</CatalogHover>
 	);
 }
 
@@ -226,6 +245,8 @@ export function TextRow(
 		status?: InputStatus;
 		placeholder?: string;
 		hint?: string;
+		/** The most characters the field takes; typing stops there. */
+		maxLength?: number;
 		onChange: (next: string) => void;
 	},
 ) {
@@ -239,7 +260,10 @@ export function TextRow(
 				value={props.value}
 				placeholder={props.placeholder ?? props.hint ?? unset}
 				onKeyDown={tabFills(props.value, props.placeholder, props.onChange)}
-				onChange={props.onChange}
+				// why: TextInput takes no maxLength, so what is typed or pasted past it is dropped here.
+				onChange={(next) => {
+					props.onChange(Array.from(next).slice(0, props.maxLength).join(''));
+				}}
 			/>
 		</FillRow>
 	);

@@ -109,6 +109,7 @@ import {
 	type SetStateAction,
 	useCallback,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -621,6 +622,14 @@ function WorkspaceTreeLists({
 	);
 }
 
+/** The longest agent name the preview's header shows in full. */
+const CHAT_NAME_MAX = 24;
+
+/** `name`, cut to `CHAT_NAME_MAX` characters with an ellipsis when it is longer. */
+function shortName(name: string): string {
+	return name.length > CHAT_NAME_MAX ? `${name.slice(0, CHAT_NAME_MAX - 1)}…` : name;
+}
+
 /** Which agent the preview chats with, once there is more than one. */
 function ChatPicker({
 	agents,
@@ -642,6 +651,10 @@ function ChatPicker({
 			width="fit-content"
 			value={chatWith}
 			options={agents}
+			// why: The header shows a short name; the list under it shows each name in full.
+			renderValue={(option) => (
+				<span title={option.label}>{shortName(option.label ?? option.value)}</span>
+			)}
 			onChange={onChange}
 		/>
 	);
@@ -1649,8 +1662,18 @@ function EditorToolbar({
 		<Section variant="transparent" padding={3} dividers={['bottom']}>
 			<HStack gap={1} vAlign="center">
 				<SheetButton label="Sections" icon={IconMenu2} sheet={'tree'} setSheet={setSheet} />
-				<StackItem size="fill">{heading && <Heading level={4}>{heading}</Heading>}</StackItem>
-				<IssueToken compile={compile} selected={selected} onIssue={onIssue} />
+				<StackItem size="fill">
+					{heading && (
+						<span title={heading}>
+							<Heading level={4} maxLines={1}>
+								{heading}
+							</Heading>
+						</span>
+					)}
+				</StackItem>
+				<StackItem size="static">
+					<IssueToken compile={compile} selected={selected} onIssue={onIssue} />
+				</StackItem>
 				<IconButton
 					label="Keys"
 					variant="ghost"
@@ -1830,6 +1853,55 @@ function ClearHistoryButton({ chatWith, run }: { chatWith: string; run: Conversa
 	);
 }
 
+/** What one child of a row wants: its own width, or for the `data-fill` slot, what it holds. */
+function wantedOf(child: HTMLElement): number {
+	if (child.dataset.fill === undefined) return child.offsetWidth;
+	return (child.firstElementChild as HTMLElement | null)?.offsetWidth ?? 0;
+}
+
+/** The width a row's children want side by side, and the gaps between. */
+function wantedWidth(row: HTMLElement): number {
+	const gap = Number.parseFloat(getComputedStyle(row).columnGap) || 0;
+	const children = [...row.children] as HTMLElement[];
+	const content = children.reduce((sum, child) => sum + wantedOf(child), 0);
+	return content + gap * Math.max(children.length - 1, 0);
+}
+
+/**
+ * Whether a row is out of room for its content at full size. The row is measured as it is drawn
+ * at full size, and that width is kept while it is compact, so it grows back when the room
+ * returns. `content` names what the row holds; when it changes, the row is measured again.
+ */
+function useOutOfRoom(content: string) {
+	const rowRef = useRef<HTMLElement | null>(null);
+	const [width, setWidth] = useState<number>();
+	const [kept, setKept] = useState<{ content: string; wants: number }>();
+	const wants = kept?.content === content ? kept.wants : undefined;
+	const isOut = wants !== undefined && width !== undefined && width < wants;
+	const ref = useCallback((node: HTMLElement | null) => {
+		rowRef.current = node;
+		if (!node) return;
+		const observer = new ResizeObserver(() => {
+			setWidth(node.clientWidth);
+		});
+		observer.observe(node);
+		return () => {
+			observer.disconnect();
+		};
+	}, []);
+	// why: Before paint, so the row is never seen overflowing.
+	useLayoutEffect(() => {
+		const row = rowRef.current;
+		if (!row || isOut) return;
+		const needs = wantedWidth(row);
+		if (needs > row.clientWidth && needs !== wants) {
+			setWidth(row.clientWidth);
+			setKept({ content, wants: needs });
+		}
+	});
+	return [ref, isOut] as const;
+}
+
 /** The preview's header: back to the editor, the agent to chat with, history, trace and Export. */
 function PreviewHeader({
 	store,
@@ -1854,50 +1926,73 @@ function PreviewHeader({
 	copy: (text: string, what: string) => void;
 	setSheet: (sheet: Sheet) => void;
 }) {
-	const phone = usePhone();
+	// why: A side panel narrows the preview without narrowing the window, so the row measures itself.
+	const [rowRef, isOutOfRoom] = useOutOfRoom(
+		[
+			chatWith,
+			testing.open,
+			trace.open,
+			compile.traced,
+			run.isUsed,
+			Boolean(compile.payload),
+		].join(),
+	);
+	const phone = usePhone() || isOutOfRoom;
+	const testLabel = testing.open ? 'Hide guardrail test' : 'Test guardrails';
+	const traceLabel = trace.open ? 'Hide trace' : 'View trace';
 	const { compiled } = compile;
 	return (
 		<Section variant="transparent" padding={3}>
-			<HStack gap={2} vAlign="center">
+			<HStack ref={rowRef} gap={2} vAlign="center">
 				<SheetButton
 					label="Back to the editor"
 					icon={IconArrowLeft}
 					sheet={null}
 					setSheet={setSheet}
 				/>
-				<StackItem size="fill">
+				<StackItem size="fill" data-fill>
 					<ChatPicker agents={chatAgents} chatWith={chatWith} onChange={store.chatWith} />
 				</StackItem>
-				{compile.payload && run.isUsed && !testing.open && (
-					<ClearHistoryButton chatWith={chatWith} run={run} />
-				)}
-				{compile.payload && (
-					<Button
-						label={testing.open ? 'Hide guardrail test' : 'Test guardrails'}
-						isIconOnly={phone}
-						icon={<Icon icon={IconShieldSearch} size="sm" />}
-						aria-pressed={testing.open}
-						onClick={testing.toggle}
-					/>
-				)}
-				{compile.traced && !testing.open ? (
-					<Button
-						label={trace.open ? 'Hide trace' : 'View trace'}
-						isIconOnly={phone}
-						icon={<Icon icon={IconTimeline} size="sm" />}
-						aria-pressed={trace.open}
-						onClick={trace.toggle}
-					/>
-				) : null}
-				<ExportActions
-					compiled={compiled.ok ? compiled : undefined}
-					chatted={compile.chatted}
-					chattedId={compile.chattedId}
-					blocked={compile.blocked}
-					phone={phone}
-					copy={copy}
-					connection={{ connectionMode: connection.mode, localBaseUrl: connection.local.baseUrl }}
-				/>
+				{/* why: Static, so the buttons keep their labels and the selector's slot gives up its room first. */}
+				<StackItem size="static">
+					<HStack gap={2} vAlign="center">
+						{compile.payload && run.isUsed && !testing.open && (
+							<ClearHistoryButton chatWith={chatWith} run={run} />
+						)}
+						{compile.payload && (
+							<Button
+								label={testLabel}
+								isIconOnly={phone}
+								tooltip={phone ? testLabel : undefined}
+								icon={<Icon icon={IconShieldSearch} size="sm" />}
+								aria-pressed={testing.open}
+								onClick={testing.toggle}
+							/>
+						)}
+						{compile.traced && !testing.open ? (
+							<Button
+								label={traceLabel}
+								isIconOnly={phone}
+								tooltip={phone ? traceLabel : undefined}
+								icon={<Icon icon={IconTimeline} size="sm" />}
+								aria-pressed={trace.open}
+								onClick={trace.toggle}
+							/>
+						) : null}
+						<ExportActions
+							compiled={compiled.ok ? compiled : undefined}
+							chatted={compile.chatted}
+							chattedId={compile.chattedId}
+							blocked={compile.blocked}
+							phone={phone}
+							copy={copy}
+							connection={{
+								connectionMode: connection.mode,
+								localBaseUrl: connection.local.baseUrl,
+							}}
+						/>
+					</HStack>
+				</StackItem>
 			</HStack>
 		</Section>
 	);

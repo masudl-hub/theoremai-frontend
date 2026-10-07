@@ -128,6 +128,8 @@ import {
 	type LexiconKey,
 	lexiconDefault,
 	type PlaygroundAuthType,
+	PROFILE_HANDLE_MAX_CHARS,
+	PROFILE_ID_MAX_CHARS,
 	PROFILE_TYPE_PROTOCOLS,
 	PROTOCOL_PROVIDERS,
 	type ProfileGraphFacetId,
@@ -439,7 +441,7 @@ function SystemPromptSection({
 	set: SetSection<'identity'>;
 }) {
 	return (
-		<InspectorSection title="System prompt" note={sectionNote('system')}>
+		<InspectorSection title="System prompt">
 			<TextArea
 				label="System prompt"
 				isLabelHidden
@@ -479,6 +481,7 @@ function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 					field="agentId"
 					value={identity.agentId}
 					placeholder="my.agent"
+					maxLength={PROFILE_ID_MAX_CHARS}
 					onChange={(agentId) => {
 						set({ agentId });
 					}}
@@ -502,6 +505,7 @@ function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 						field="handle"
 						value={identity.handle}
 						placeholder="agent"
+						maxLength={PROFILE_HANDLE_MAX_CHARS}
 						onChange={(handle) => {
 							set({ handle });
 						}}
@@ -4845,7 +4849,7 @@ function ToolSection({
 	return (
 		<InspectorSection
 			title="Tool"
-			note={draft.identity.profileType === 'host' ? sectionNote('tool.host') : sectionNote('tool')}
+			note={draft.identity.profileType === 'host' ? sectionNote('tool.host') : undefined}
 		>
 			<TextRow
 				label="Name"
@@ -4887,7 +4891,7 @@ function ToolSection({
 /** The tool's input and output schemas. */
 function ContractSection({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
 	return (
-		<InspectorSection title="Contract" note={sectionNote('tool.contract')}>
+		<InspectorSection title="Contract">
 			<TextAreaRow
 				label="Input"
 				path="playground.inputSchema"
