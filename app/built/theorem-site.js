@@ -498,6 +498,12 @@ export const theoremSiteTheme = {
       "base": {
         "padding": "var(--spacing-3)"
       },
+      "variant:bubble": {
+        "backgroundColor": "var(--color-neutral)",
+        "borderRadius": "var(--radius-chat)",
+        "paddingBlock": "var(--spacing-3)",
+        "paddingInline": "var(--spacing-4)"
+      },
       "variant:still": {
         "backgroundImage": "var(--figure-still)",
         "backgroundPosition": "var(--figure-position)",
@@ -565,7 +571,7 @@ export const theoremSiteTheme = {
         ":where([role=\"complementary\"])": {
           "transition": "width var(--duration-medium) var(--ease-standard)"
         },
-        ":where([data-resizing] + [role=\"complementary\"])": {
+        ":where([data-resizing] + [role=\"complementary\"], [role=\"complementary\"]:has(+ [data-resizing]))": {
           "transition": "none"
         }
       }

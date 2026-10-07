@@ -23,6 +23,7 @@ declare module '@astryxdesign/core/Badge' {
 
 declare module '@astryxdesign/core/Card' {
   interface CardVariantMap {
+    'bubble': true;
     'still': true;
     'glass': true;
   }
