@@ -54,19 +54,19 @@ export const PLAYGROUND_EXAMPLES = {
 const PARTS = [
 	{
 		name: 'Profile sections',
-		text: 'On the left, a tree of the agent’s settings. Each open agent lists the sections its profile type allows; optional sections it leaves out are dimmed until added. A Keys panel holds the visitor’s own API keys, kept in the browser tab and sent directly to the provider.',
+		text: 'The left side shows a tree of the agent’s sections. The open agent shows the sections its profile type allows. An optional section that the agent does not use is dimmed. Click a dimmed section to add it. The Keys panel holds your API keys. The playground keeps the keys in memory and does not store them.',
 	},
 	{
 		name: 'Editor',
-		text: 'The middle edits the selected section. Hovering a field shows the same documentation as the docs dictionary. Issues the agent must fix before it can run are flagged, with a button to go to the next one.',
+		text: 'The middle shows the editor for the selected section. Hover over a field to see its description. An issue marks a problem that stops the agent from running. A button goes to the next issue.',
 	},
 	{
 		name: 'Preview',
-		text: 'The right is a live preview to chat with the agent as it is built, as text, image, speech or a live voice call, depending on the profile type.',
+		text: 'The right side shows a preview. Chat with the agent there while you build it.',
 	},
 	{
 		name: 'Export and launch',
-		text: 'Export downloads every agent as a .zip of source files (the shared tools, a module per agent, the file that registers them in order, and the route and chat for the agent being chatted with), copies them, or copies them with a brief for an LLM. Launch opens the agent in its own tab, where the chat fills the panel.',
+		text: 'Export downloads every agent as a .zip file of source files. The .zip contains the shared tools, one module for each agent, the file that registers the agents in order, and the route and chat for the agent you chat with. Export can also copy the files, or copy them with a brief for an LLM. Launch opens the agent in a new tab. In that tab, the chat fills the panel.',
 	},
 ] as const;
 
@@ -98,7 +98,7 @@ function sections(): Section[] {
 function servesText(section: Section): string {
 	return section.types.length === PROFILE_TYPES.length
 		? 'every profile type'
-		: section.types.map(typeLabel).join(', ');
+		: `these profile types: ${section.types.map(typeLabel).join(', ')}`;
 }
 
 function sectionText(section: Section, index: DocIndex): string {
@@ -106,12 +106,17 @@ function sectionText(section: Section, index: DocIndex): string {
 	// A chapter shared by several types (modalities) can't describe one type's section.
 	const summary =
 		section.types.length === 1
-			? `The ${section.label} settings an agent of that type has and no other does.`
+			? `The ${section.label} settings.`
 			: slug
 				? index.bySlug[slug]?.summary
 				: undefined;
-	const where = `${section.optional ? 'Optional' : 'Always present'}; for ${servesText(section)}.`;
-	return [summary, where, slug ? `Explained in /docs/${slug}.` : undefined]
+	const where = [
+		`This section is ${section.optional ? 'optional' : 'required'}.`,
+		section.types.length === 1
+			? `It applies to ${typeLabel(section.types[0])} agents only.`
+			: `It applies to ${servesText(section)}.`,
+	].join(' ');
+	return [summary, where, slug ? `/docs/${slug} describes it.` : undefined]
 		.filter(Boolean)
 		.join(' ');
 }
@@ -150,7 +155,7 @@ function sectionFields(section: Section, index: DocIndex): string[] {
 }
 
 export function playgroundDescription(): string {
-	return `Build an agent without code: pick a profile type (${PROFILE_TYPES.map(typeLabel).join(', ')}), set its sections, and chat with it live. Export it as ${KERNEL_NAME} source.`;
+	return `Build an agent without code. Choose a profile type (${PROFILE_TYPES.map(typeLabel).join(', ')}), set its sections, and chat with the agent. Export the agent as ${KERNEL_NAME} source.`;
 }
 
 type PlaygroundPart = { id: string; name: string; text: string; detail?: string };
@@ -169,7 +174,7 @@ export function playgroundParts(index: DocIndex): PlaygroundPart[] {
 		{
 			id: 'profile-types',
 			name: 'Profile types',
-			text: `An agent is one of six types: ${PROFILE_TYPES.map(typeLabel).join(', ')}. The type decides which sections it has. Each is explained in /docs/modalities.`,
+			text: `An agent has one profile type: ${PROFILE_TYPES.map(typeLabel).join(', ')}. The profile type sets which sections the agent has. /docs/modalities describes each type.`,
 		},
 		...sections().map((section) => ({
 			id: `section-${section.id}`,
@@ -177,7 +182,11 @@ export function playgroundParts(index: DocIndex): PlaygroundPart[] {
 			text: sectionText(section, index),
 			detail: sectionFields(section, index).join('\n'),
 		})),
-		{ id: 'examples', name: 'Examples', text: `Load an example offers ready agents. ${examples}` },
+		{
+			id: 'examples',
+			name: 'Examples',
+			text: `The Add agent menu adds a blank agent or one of these examples. ${examples}`,
+		},
 	];
 }
 
