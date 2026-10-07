@@ -48,45 +48,22 @@
 	display: none;
 }
 
-/* Two equal columns. Each card keeps its radius and scrolls inside it.
-   On a run, the request moves left and the response comes in from the right. */
-.run-page .theorem-console-columns {
-	grid-template-rows: minmax(0, 1fr);
-	min-height: 0;
-}
-
-.run-page .theorem-console-column {
-	min-width: 0;
-	min-height: 0;
-	height: 100%;
-}
-
-.run-page .theorem-console-column > .astryx-card {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-	min-height: 0;
-	overflow: auto;
-}
-
-.run-page .theorem-console-column > .astryx-card > * {
-	flex: 1 0 auto;
-	min-height: 100%;
-}
-
+/* The split is already at its final widths, so the panels slide into place
+   and the fields inside the request do not reflow while they move. */
 @media (prefers-reduced-motion: no-preference) {
-	.run-page .theorem-console-column:first-child {
+	.run-page .theorem-console-request {
 		animation: theorem-console-request var(--duration-medium) var(--ease-standard);
 	}
 
-	.run-page .theorem-console-column:last-child {
+	.run-page .theorem-console-response {
 		animation: theorem-console-response var(--duration-medium) var(--ease-standard);
 	}
 }
 
 @keyframes theorem-console-request {
 	from {
-		translate: 50% 0;
+		/* Two fifths of the pair, shifted by three quarters of itself, starts centred. */
+		translate: 75% 0;
 	}
 }
 
