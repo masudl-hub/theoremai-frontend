@@ -87,8 +87,8 @@ function InlineProse({ text }: { text: string }) {
 
 function AgentPasteCard({ prompt }: { prompt: string }) {
 	return (
-		<Card padding={3} style={{ maxWidth: '40rem', minWidth: 0, width: '100%' }}>
-			<VStack gap={2} style={{ minWidth: 0, maxWidth: '100%' }}>
+		<Card padding={3} className="docs-paste-card">
+			<VStack gap={2}>
 				<HStack justify="between" align="center">
 					<Text type="label" color="secondary">
 						Paste into your coding agent

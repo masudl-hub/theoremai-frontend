@@ -459,12 +459,9 @@ function ArticleStill({ article }: { article: DocArticle }) {
 	const updated = formatDay(article.dateModified);
 	const source = `${KERNEL_GITHUB}/${article.entry}`;
 	const stillPaint = {
-		position: 'absolute',
-		inset: 0,
-		backgroundImage: `url("${cover.src}")`,
-		backgroundPosition: cover.position,
-		pointerEvents: 'none',
-		filter: cover.filter,
+		'--still-image': `url("${cover.src}")`,
+		'--still-position': cover.position,
+		'--still-filter': cover.filter,
 	} as CSSProperties;
 
 	return (

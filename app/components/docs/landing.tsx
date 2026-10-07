@@ -1,22 +1,33 @@
 import { AspectRatio } from '@astryxdesign/core/AspectRatio';
+import { Button } from '@astryxdesign/core/Button';
 import { Card } from '@astryxdesign/core/Card';
 import { ClickableCard } from '@astryxdesign/core/ClickableCard';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { Grid } from '@astryxdesign/core/Grid';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
-import { LayoutContent } from '@astryxdesign/core/Layout';
+import { useClipboard } from '@astryxdesign/core/hooks';
+import { ScrollableArea } from '@astryxdesign/core/ScrollableArea';
 import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Token } from '@astryxdesign/core/Token';
 import { VStack } from '@astryxdesign/core/VStack';
-import { IconSearch } from '@tabler/icons-react';
+import {
+	IconBrandGithub,
+	IconCheck,
+	IconCopy,
+	IconPlayerPlay,
+	IconSearch,
+} from '@tabler/icons-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { articleHref, searchDocs } from '../../lib/docs/query';
 import type { DocArticle, DocIndex } from '../../lib/docs/schema';
 import 'virtual:docs/landing.css';
+import { starterPrompt } from '../../lib/docs/starter-prompt';
+import { IconDeepWiki } from '../deepwiki-icon';
+import { NewTabLink } from '../links';
+import { StillText, StillTitle } from '../still-caption';
 import { Th30Trigger } from '../th30-dock';
-import { DocsFrame } from './reader';
 
 const SEARCH_LIMIT = 16;
 const SEARCH_HINTS = [
@@ -31,6 +42,28 @@ const TYPE_MS = 55;
 const ERASE_MS = 25;
 const HOLD_MS = 1800;
 const GAP_MS = 350;
+/** The reads the landing opens with, each named for what the visitor came to do. */
+const FEATURED = [
+	{ slug: 'start', title: 'Get started' },
+	{ slug: 'modalities', title: 'Define your agent' },
+	{ slug: 'tools', title: 'Add tools' },
+	{ slug: 'guardrails', title: 'Set guardrails' },
+] as const;
+
+const REPO = 'https://github.com/masudl-hub/theoremai';
+
+const RESOURCES = [
+	{ label: 'Open an issue', href: `${REPO}/issues/new`, icon: IconBrandGithub },
+	{ label: 'Contribute', href: `${REPO}/blob/main/CONTRIBUTING.md`, icon: IconBrandGithub },
+	{
+		label: 'Query on DeepWiki',
+		href: 'https://deepwiki.com/masudl-hub/theoremai',
+		icon: IconDeepWiki,
+	},
+] as const;
+
+const LICENSE_HREF = `${REPO}/blob/main/LICENSE`;
+
 type LandingTile = {
 	article: DocArticle;
 	href: string;
@@ -151,15 +184,15 @@ function useSearchHint(paused: boolean): string {
 function tilesFromIndex(index: DocIndex, query: string): LandingTile[] {
 	const trimmed = query.trim();
 	if (!trimmed) {
-		return index.suggested.flatMap((pick) => {
-			const article = index.bySlug[pick.slug];
+		return FEATURED.flatMap(({ slug, title }) => {
+			const article = index.bySlug[slug];
 			return article === undefined
 				? []
 				: [
 						{
 							article,
 							href: articleHref(article),
-							title: article.title,
+							title,
 							excerpt: article.summary,
 							showMeta: false,
 						},
@@ -197,55 +230,77 @@ function landingTileCards(tiles: LandingTile[], phase: TilePhase) {
 		>
 			<VStack gap={3}>
 				<Card padding={0}>
-					<AspectRatio className="docs-landing-tile-still" ratio={5 / 2} fit="cover">
+					<AspectRatio className="docs-landing-tile-still" ratio={4 / 3} fit="cover">
 						<img src={article.cover.src} alt={article.cover.alt} data-docs-cover={article.slug} />
 					</AspectRatio>
 				</Card>
 				<VStack gap={1}>
-					<Heading level={3}>{title}</Heading>
+					<StillTitle maxLines={1}>{title}</StillTitle>
 					{showMeta ? (
 						<HStack gap={2} wrap="wrap">
 							<Token label={article.slug} />
 							<Token label={`${String(article.ttrMinutes)} min`} />
 						</HStack>
 					) : null}
-					<Text color="secondary" maxLines={3}>
-						{excerpt}
-					</Text>
+					<StillText maxLines={3}>{excerpt}</StillText>
 				</VStack>
 			</VStack>
 		</ClickableCard>
 	));
 }
 
-function LandingIntroduction({ version }: { version: string }) {
+function LandingGreeting() {
 	return (
-		<VStack gap={6}>
-			<VStack gap={2}>
-				<Text type="label" color="secondary">
-					@theoremjs/agents {version}
-				</Text>
-				<Heading level={1} type="display-1" hasCapsize>
-					Documentation
-				</Heading>
-			</VStack>
-			<Grid className="docs-landing-packages" columns={2} gap={6}>
-				<VStack gap={2}>
-					<Heading level={2}>@theoremjs/agents</Heading>
-					<Text color="secondary">
-						Define an agent once as a typed profile. Run text, image, speech, or live voice with the
-						profile’s models, tools, and guardrails.
-					</Text>
-				</VStack>
-				<VStack gap={2}>
-					<Heading level={2}>@theoremjs/react</Heading>
-					<Text color="secondary">
-						Bring that profile into your application. React components and server handlers connect
-						the interface, conversation, and tool approvals to the same agent.
-					</Text>
-				</VStack>
-			</Grid>
+		<VStack gap={1}>
+			<Text type="label" color="secondary">
+				theorem documentation
+			</Text>
+			<Heading level={1} type="display-3">
+				What are you building today?
+			</Heading>
 		</VStack>
+	);
+}
+
+/** Copies a prompt for the reader's coding agent: it reads these docs, asks, plans, then builds. */
+function StarterPromptButton() {
+	const { copy, isCopied } = useClipboard({ announce: 'Prompt copied' });
+	return (
+		<Button
+			variant="primary"
+			size="md"
+			label={isCopied ? 'Copied. Paste it into your agent' : 'Copy a starter prompt'}
+			icon={isCopied ? <IconCheck aria-hidden /> : <IconCopy aria-hidden />}
+			onClick={() => {
+				void copy(starterPrompt(window.location.origin));
+			}}
+		/>
+	);
+}
+
+function LandingResources() {
+	return (
+		<HStack className="docs-landing-resources" gap={2} wrap="wrap" aria-label="Resources">
+			<StarterPromptButton />
+			{RESOURCES.map(({ label, href, icon: Icon }) => (
+				<Button
+					key={label}
+					as={NewTabLink}
+					variant="secondary"
+					size="md"
+					href={href}
+					label={label}
+					icon={<Icon aria-hidden />}
+				/>
+			))}
+			<Button
+				variant="secondary"
+				size="md"
+				href="/playground"
+				label="Try the playground"
+				icon={<IconPlayerPlay aria-hidden />}
+			/>
+		</HStack>
 	);
 }
 
@@ -264,7 +319,7 @@ function LandingResults({
 			{tiles.length ? (
 				<Grid
 					className="docs-landing-grid"
-					columns={3}
+					columns={{ minWidth: 160, max: 4 }}
 					gap={4}
 					rowGap={6}
 					role="region"
@@ -285,50 +340,59 @@ function LandingResults({
 	);
 }
 
-export function DocsLanding({ index, version }: { index: DocIndex; version: string }) {
+export function DocsLanding({ index }: { index: DocIndex }) {
 	const [query, setQuery] = useState('');
 	const target = useMemo(() => tilesFromIndex(index, query), [index, query]);
 	const { tiles, phase } = useEasedTiles(target);
 	const searching = query.trim().length > 0;
 	const [focused, setFocused] = useState(false);
 	const hint = useSearchHint(focused || query.length > 0);
-	const resultsLabel = searching ? 'Search results' : 'Suggested chapters';
+	const resultsLabel = searching ? 'Search results' : 'Featured reads';
 
 	return (
-		<DocsFrame index={index} className="docs-landing-frame">
-			<LayoutContent className="docs-landing" padding={8}>
-				<VStack className="docs-landing-body" gap={8}>
-					<LandingIntroduction version={version} />
-					<HStack className="docs-landing-search" justify="start" align="center" gap={4}>
-						<div
-							className="docs-landing-query"
-							onFocus={() => {
-								setFocused(true);
-							}}
-							onBlur={() => {
-								setFocused(false);
-							}}
-						>
-							<TextInput
-								label="Search docs"
-								isLabelHidden
-								placeholder={hint}
-								value={query}
-								onChange={setQuery}
-								startIcon={IconSearch}
-								width="100%"
-								size="lg"
-								hasClear
-							/>
-						</div>
-						<Th30Trigger placement="search" />
-					</HStack>
-					<VStack gap={4}>
-						<Heading level={2}>{searching ? 'Search results' : 'Featured reads'}</Heading>
+		<div className="docs-landing-page">
+			<ScrollableArea className="docs-landing-scroll" axis="block" role="region" label="Docs">
+				<div className="docs-landing">
+					<VStack className="docs-landing-body" gap={8}>
+						<VStack gap={4}>
+							<LandingGreeting />
+							<HStack className="docs-landing-search" justify="start" align="center" gap={4}>
+								<div
+									className="docs-landing-query"
+									onFocus={() => {
+										setFocused(true);
+									}}
+									onBlur={() => {
+										setFocused(false);
+									}}
+								>
+									<TextInput
+										label="Search docs"
+										isLabelHidden
+										placeholder={hint}
+										value={query}
+										onChange={setQuery}
+										startIcon={IconSearch}
+										width="100%"
+										size="lg"
+										hasClear
+									/>
+								</div>
+								<Th30Trigger placement="search" question={query} />
+							</HStack>
+						</VStack>
+						<LandingResources />
 						<LandingResults tiles={tiles} phase={phase} label={resultsLabel} />
 					</VStack>
-				</VStack>
-			</LayoutContent>
-		</DocsFrame>
+				</div>
+			</ScrollableArea>
+			<footer className="docs-landing-footer">
+				<Text type="supporting" color="secondary">
+					<a href={LICENSE_HREF} target="_blank" rel="noopener noreferrer">
+						MIT license
+					</a>
+				</Text>
+			</footer>
+		</div>
 	);
 }

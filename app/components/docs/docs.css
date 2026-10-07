@@ -21,7 +21,6 @@
 }
 
 .docs-prose {
-	--text-body-size: 1rem;
 	--text-body-leading: 1.625;
 }
 
@@ -74,15 +73,54 @@
 	pointer-events: none;
 }
 
+/* The landing is one centred column in the shell: greeting, search with th30, the resource
+   row, then the reads. The licence sits at the foot of the panel. */
+.docs-landing-page {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
+.docs-landing-page .docs-landing-scroll {
+	flex: 1 1 0;
+	min-height: 0;
+}
+
+.docs-landing {
+	--docs-tile-size: 196px;
+	box-sizing: border-box;
+	padding: var(--spacing-8);
+	padding-block-start: 25dvh;
+}
+
+/* Every still is 4:3, and four of them set the width of the whole column. */
+.docs-landing .docs-landing-tile {
+	overflow: visible;
+}
+
+.docs-landing .docs-landing-body {
+	width: 100%;
+	max-width: calc(4 * var(--docs-tile-size) + 3 * var(--spacing-4));
+	margin-inline: auto;
+}
+
 .docs-landing-search {
 	width: 100%;
 }
 
 .docs-landing-query {
-	width: 720px;
-	max-width: 100%;
+	flex: 1 1 auto;
 	min-width: 0;
-	flex: 0 1 720px;
+}
+
+.docs-landing-footer {
+	display: flex;
+	justify-content: center;
+	padding-block: var(--spacing-3);
+}
+
+.docs-landing-footer a {
+	color: inherit;
 }
 
 .docs-landing .docs-landing-results {
@@ -102,8 +140,14 @@
 }
 
 .docs-still-paint {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	background-image: var(--still-image);
+	background-position: var(--still-position);
 	background-repeat: no-repeat;
 	background-size: cover;
+	filter: var(--still-filter, none);
 }
 
 .docs-chapters-launch {
@@ -149,22 +193,8 @@
 		pointer-events: auto;
 	}
 
-	.docs-landing-frame .docs-landing {
+	.docs-landing {
 		padding: var(--spacing-4);
-		padding-block-start: calc(var(--spacing-10) + var(--spacing-4));
-	}
-
-	.docs-landing .docs-landing-packages {
-		grid-template-columns: minmax(0, 1fr);
-	}
-
-	.docs-landing-search {
-		width: 100%;
-	}
-
-	.docs-landing-query {
-		flex: 1;
-		min-width: 0;
 	}
 
 	.docs-landing-query > * {
@@ -172,16 +202,12 @@
 		width: 100%;
 	}
 
-	.docs-landing .docs-landing-grid {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-	}
-
 	.docs-dictionary dl {
 		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 	}
 
 	.docs-landing .docs-landing-tile-still {
-		aspect-ratio: 5 / 2;
+		aspect-ratio: 4 / 3;
 	}
 
 	.docs-landing-tile img {
@@ -200,12 +226,18 @@
 	content: attr(data-th30-label);
 	display: block;
 	margin-block-start: 0.25rem;
-	font-size: 0.75rem;
+	font-size: var(--font-size-sm);
 	color: var(--color-text-secondary);
 }
 
-@media (width < 480px) {
-	.docs-landing .docs-landing-grid {
-		grid-template-columns: minmax(0, 1fr);
-	}
+/* The paste-into-your-agent card holds a long prompt, so it may shrink and stays one readable width. */
+.docs-paste-card {
+	max-width: 40rem;
+	min-width: 0;
+	width: 100%;
+}
+
+.docs-paste-card > * {
+	min-width: 0;
+	max-width: 100%;
 }

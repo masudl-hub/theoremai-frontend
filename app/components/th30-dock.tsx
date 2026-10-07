@@ -52,6 +52,8 @@ export type Th30Api = {
 	isLive: boolean;
 	/** Starts a call, or ends the one that's on. */
 	toggle: () => void;
+	/** Puts a question to th30: a call that opens with it, or a typed line into the one that's on. */
+	ask: (question: string) => void;
 	/** True once the call can be muted. */
 	canMute: boolean;
 	isMuted: boolean;
@@ -64,6 +66,7 @@ export type Th30Api = {
 const Th30Context = createContext<Th30Api>({
 	isLive: false,
 	toggle: () => undefined,
+	ask: () => undefined,
 	canMute: false,
 	isMuted: false,
 	mute: () => undefined,
@@ -76,23 +79,36 @@ export function useTh30(): Th30Api {
 }
 
 /** th30's light as a button: click to call, click again to end. */
-export function Th30Trigger({ placement }: { placement: 'rail' | 'search' }) {
+export function Th30Trigger({
+	placement,
+	question,
+}: {
+	placement: 'rail' | 'search';
+	/** What the visitor typed beside the button. A call that opens on the button opens with it. */
+	question?: string;
+}) {
 	const th30 = useTh30();
 	const label = th30.isLive ? 'End the call with th30' : 'Talk to th30';
+	const hover = th30.isLive ? label : "Starts a live call with th30, theorem's agent";
 	if (placement === 'search') {
 		return (
-			<Button
-				label={th30.isLive ? 'End call' : 'Talk to th30'}
-				variant="ghost"
-				size="lg"
-				aria-pressed={th30.isLive}
-				onClick={th30.toggle}
-			>
-				<HStack align="center" gap={2}>
-					<Th30Light className="th30-search-cloud" />
-					<span>{th30.isLive ? 'End call' : 'Talk to th30'}</span>
-				</HStack>
-			</Button>
+			<Tooltip content={hover} placement="below">
+				<Button
+					label={th30.isLive ? 'End call' : 'Ask th30'}
+					variant="ghost"
+					size="lg"
+					aria-pressed={th30.isLive}
+					onClick={() => {
+						if (question?.trim() && !th30.isLive) th30.ask(question);
+						else th30.toggle();
+					}}
+				>
+					<HStack align="center" gap={2}>
+						<Th30Light className="th30-search-cloud" />
+						<span>{th30.isLive ? 'End call' : 'Ask th30'}</span>
+					</HStack>
+				</Button>
+			</Tooltip>
 		);
 	}
 	return (
@@ -121,7 +137,7 @@ export function Th30Trigger({ placement }: { placement: 'rail' | 'search' }) {
 					/>
 				</Tooltip>
 			) : null}
-			<Tooltip content={label} placement="end">
+			<Tooltip content={hover} placement="end">
 				<button
 					type="button"
 					className={`th30-trigger th30-trigger-${placement}`}
@@ -255,12 +271,14 @@ function stripStatus(phase: Phase, failure: string | null, status: InkWaveStatus
 }
 
 /** What the page tells th30: the page the person is on, and what last changed there. */
-type PagePackage = { page?: string; state?: string };
+type PagePackage = { page?: string; state?: string; ask?: string };
 
 /** The page line th30 hears, and the last one it was told. */
 type PageRefs = {
 	/** The context th30 was last sent; a call opens with it. */
 	packageRef: RefObject<PagePackage>;
+	/** A question the next call opens with; the call takes it and clears it. */
+	askRef: RefObject<string | null>;
 	pageLine: string | null;
 	pageLineRef: RefObject<string | null>;
 	/** The last page line th30 was told, so an unchanged page says nothing; `undefined` until the call is greeted. */
@@ -273,7 +291,8 @@ function usePageRefs(): PageRefs {
 	pageLineRef.current = pageLine;
 	const toldRef = useRef<string | null | undefined>(undefined);
 	const packageRef = useRef<PagePackage>({});
-	return { pageLine, pageLineRef, toldRef, packageRef };
+	const askRef = useRef<string | null>(null);
+	return { pageLine, pageLineRef, toldRef, packageRef, askRef };
 }
 
 /** A call with th30: its phase, voice levels and mute, and how to start, end, mute and write to it. */
@@ -295,6 +314,7 @@ type Th30Call = {
 	send: () => void;
 	restart: () => void;
 	toggle: () => void;
+	ask: (question: string) => void;
 	stop: () => void;
 	mute: () => void;
 };
@@ -374,7 +394,7 @@ function callCallbacks(
 }
 
 /** What starting a call needs from the hook that owns it. */
-type CallContext = Pick<PageRefs, 'pageLineRef' | 'toldRef' | 'packageRef'> & {
+type CallContext = Pick<PageRefs, 'pageLineRef' | 'toldRef' | 'packageRef' | 'askRef'> & {
 	navigate: NavigateFunction;
 	clientRef: RefObject<LiveSessionClient | null>;
 	chimeRef: RefObject<ReturnType<typeof makeChime> | null>;
@@ -391,6 +411,7 @@ async function startCall({
 	pageLineRef,
 	toldRef,
 	packageRef,
+	askRef,
 	set,
 }: CallContext): Promise<void> {
 	if (clientRef.current) return;
@@ -401,7 +422,12 @@ async function startCall({
 	const line = pageLineRef.current;
 	const state = th30Surfaces.stateLine();
 	toldRef.current = line;
-	packageRef.current = { ...(line ? { page: line } : {}), ...(state ? { state } : {}) };
+	const ask = askRef.current;
+	askRef.current = null;
+	const held: PagePackage = { ...(line ? { page: line } : {}), ...(state ? { state } : {}) };
+	// The question opens this call only: later context updates leave it out.
+	const opening: PagePackage = ask ? { ...held, ask } : held;
+	packageRef.current = held;
 	// Through, the first time only: a call taken up again after a drop does not chime.
 	const greet = () => {
 		if (chimed) return;
@@ -411,7 +437,7 @@ async function startCall({
 	const client: LiveSessionClient = new LiveSessionClient({
 		profile: TH30_PROFILE_ID,
 		voiceIngress: true,
-		context: packageRef.current,
+		context: opening,
 		...callCallbacks(
 			() => clientRef.current === client,
 			greet,
@@ -442,7 +468,7 @@ async function startCall({
 
 function useTh30Call(
 	navigate: NavigateFunction,
-	{ pageLineRef, toldRef, packageRef }: PageRefs,
+	{ pageLineRef, toldRef, packageRef, askRef }: PageRefs,
 ): Th30Call {
 	const [phase, setPhase] = useState<Phase>('idle');
 	const [isMuted, setMuted] = useState(false);
@@ -482,9 +508,10 @@ function useTh30Call(
 				pageLineRef,
 				toldRef,
 				packageRef,
+				askRef,
 				set: { setStatus, setPhase, setFailure, levelsRef },
 			}),
-		[navigate, pageLineRef, toldRef, packageRef],
+		[navigate, pageLineRef, toldRef, packageRef, askRef],
 	);
 
 	const restart = useCallback(() => {
@@ -523,6 +550,22 @@ function useTh30Call(
 		else void start();
 	}, [start, stop]);
 
+	const ask = useCallback(
+		(question: string) => {
+			const text = question.trim();
+			if (!text) return;
+			const client = clientRef.current;
+			if (client) {
+				client.sendText(text);
+				captionsRef.current.noteSentText(text);
+				return;
+			}
+			askRef.current = text;
+			void start();
+		},
+		[start, askRef],
+	);
+
 	useEffect(() => stop, [stop]);
 
 	const mute = () => {
@@ -543,6 +586,7 @@ function useTh30Call(
 		send,
 		restart,
 		toggle,
+		ask,
 		stop,
 		mute,
 	};
@@ -632,6 +676,7 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 			value={{
 				isLive,
 				toggle: call.toggle,
+				ask: call.ask,
 				canMute: call.phase === 'live',
 				isMuted: call.isMuted,
 				mute: call.mute,
