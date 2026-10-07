@@ -4429,15 +4429,17 @@ export function addToolSpec(
 	onSelect(toolSpecNodeId(tool.key));
 }
 
-/** The library's tools as a checklist, the ones this agent may use checked. */
+/** The library's tools as a checklist, the ones this agent may use checked. A row's pencil opens the tool. */
 function AllowedToolsList({
 	tools,
 	allowed,
 	workspace,
+	onSelect,
 }: {
 	tools: ToolSpecDraft[];
 	allowed: ToolSpecDraft[];
 	workspace: Workspace;
+	onSelect: (id: string) => void;
 }) {
 	return (
 		<CheckboxList
@@ -4457,6 +4459,7 @@ function AllowedToolsList({
 					tool.toolType === 'agent' &&
 					tool.agentKey === workspace.self &&
 					!workspace.allowed.includes(tool.key);
+				const name = tool.toolName.trim() || 'Unnamed tool';
 				const description = runsSelf
 					? 'Runs this agent, so this agent can’t use it.'
 					: tool.description.trim();
@@ -4464,8 +4467,23 @@ function AllowedToolsList({
 					<CheckboxListItem
 						key={tool.key}
 						value={tool.key}
-						label={tool.toolName.trim() || 'Unnamed tool'}
+						label={name}
 						isDisabled={runsSelf}
+						endContent={
+							<span className="row-reveal">
+								<Tooltip content={`Edit ${name}`}>
+									<IconButton
+										label={`Edit ${name}`}
+										variant="ghost"
+										size="sm"
+										icon={<Icon icon={IconPencil} size="sm" />}
+										onClick={() => {
+											onSelect(toolSpecNodeId(tool.key));
+										}}
+									/>
+								</Tooltip>
+							</span>
+						}
 						description={description ? <Text type="supporting">{description}</Text> : undefined}
 					/>
 				);
@@ -4534,7 +4552,12 @@ function ToolsEditor({
 				// This agent's tools. Ones it does not use stay in the library, closed.
 				<InspectorSection title="Tools" path="tools.allow" note={note}>
 					{allowed.length > 0 && (
-						<AllowedToolsList tools={allowed} allowed={allowed} workspace={workspace} />
+						<AllowedToolsList
+							tools={allowed}
+							allowed={allowed}
+							workspace={workspace}
+							onSelect={onSelect}
+						/>
 					)}
 					{unused.length > 0 && (
 						<CollapsibleGroup type="multiple" density="compact">
@@ -4546,7 +4569,12 @@ function ToolsEditor({
 									</Text>
 								}
 							>
-								<AllowedToolsList tools={unused} allowed={[]} workspace={workspace} />
+								<AllowedToolsList
+									tools={unused}
+									allowed={[]}
+									workspace={workspace}
+									onSelect={onSelect}
+								/>
 							</Collapsible>
 						</CollapsibleGroup>
 					)}

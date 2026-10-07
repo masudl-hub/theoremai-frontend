@@ -231,3 +231,19 @@ body {
 	background: var(--color-background-yellow);
 	color: inherit;
 }
+
+/*
+ * A row's own action, shown while the row is hovered or holds focus. Where nothing hovers (touch),
+ * it always shows.
+ */
+@media (hover: hover) {
+	.row-reveal {
+		opacity: 0;
+		transition: opacity var(--duration-fast) var(--ease-standard);
+	}
+
+	.astryx-list-item:hover .row-reveal,
+	.astryx-list-item:focus-within .row-reveal {
+		opacity: 1;
+	}
+}
