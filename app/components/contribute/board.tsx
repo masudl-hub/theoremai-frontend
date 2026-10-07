@@ -11,8 +11,8 @@ import './contribute.css';
 
 const REPO = 'https://github.com/masudl-hub/theoremai';
 
-/** Where the Discord server's invite goes once the server exists. */
-const DISCORD_HREF = 'https://discord.com';
+/** The Discord server's invite. */
+const DISCORD_HREF = 'https://discord.gg/X6RQvSWQ58';
 
 type Way = {
 	id: string;
