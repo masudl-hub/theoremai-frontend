@@ -72,7 +72,7 @@ export function readDoc(
 	const trimmed = target.trim();
 	if (trimmed === 'full_page' || trimmed === 'all') {
 		const text = index.articles.map((article) => projectArticleText(article, detail)).join('\n\n');
-		return read('full_page', 'Theorem docs', text);
+		return read('full_page', 'theorem docs', text);
 	}
 
 	const [slugPart, fragment] = trimmed.replace(/^\/docs\//, '').split('#');

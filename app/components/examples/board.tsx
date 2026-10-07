@@ -97,7 +97,7 @@ export function ExamplesBoard() {
 						showcase
 					</Heading>
 					<Text color="secondary" justify="end" display="block">
-						Built with Theorem.
+						Built with theorem.
 					</Text>
 				</VStack>
 			</div>

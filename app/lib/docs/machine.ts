@@ -14,7 +14,7 @@ export function articleMarkdown(index: DocIndex, slug: string): string | undefin
 
 export function llmsTxt(index: DocIndex): string {
 	return [
-		'# Theorem docs',
+		'# theorem docs',
 		'',
 		...index.articles.map((article) => `- /docs/${article.slug}.md — ${article.summary}`),
 		'',
@@ -51,7 +51,7 @@ export function articleJsonLd(
 		description: article.summary,
 		url: `${origin}${article.canonicalPath}`,
 		dateModified: article.dateModified,
-		author: { '@type': 'Organization', name: 'Theorem' },
+		author: { '@type': 'Organization', name: 'theorem' },
 		mainEntity: {
 			'@type': 'DefinedTermSet',
 			name: article.title,

@@ -210,7 +210,7 @@ function ChapterPaneHeader({ updated }: { updated: string | undefined }) {
 		<VStack gap={1}>
 			<Heading level={3}>
 				<AstryxLink href="/docs" type="inherit" color="inherit" hasUnderline={false}>
-					Theorem Docs
+					theorem docs
 				</AstryxLink>
 			</Heading>
 			{updated ? (

@@ -181,7 +181,7 @@ export default function PlaygroundRun({ loaderData }: Route.ComponentProps) {
 	return (
 		<TheoremThemeProvider mode="dark">
 			{/* The draft exists only in the browser, so the title is set after hydration. */}
-			<title>{`${title} · Theorem Playground`}</title>
+			<title>{`${title} · theorem playground`}</title>
 			<TracePlacement value="panel">
 				<div className="run-page">
 					<div className="run-controls">

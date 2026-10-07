@@ -7,7 +7,7 @@ import { SITE_REDIRECTS } from '../lib/docs/articles/chapters';
 import type { Th30PageHandle } from '../lib/th30-page';
 export function meta() {
 	return [
-		{ title: 'THEOREM' },
+		{ title: 'theorem' },
 		{
 			name: 'description',
 			content: 'A TypeScript kernel for typed agent profiles and deterministic turns.',
@@ -20,7 +20,7 @@ export const handle = {
 	th30Page: () => ({
 		title: 'Home',
 		summary:
-			"Landing (/) opens on a full-bleed shell panel: the favicon mark draws, then the title card with playground and docs links, package links, a copyable npm install line, the lowercase theorem wordmark, and the tagline 'Typed, composable agents for text, image, speech, and live voice — guarded on every turn.' A scroll snaps to overview (/overview) — the panel contracts to the rail on the way. On the left: 'Agents are probabilistic.' then 'Your architecture shouldn’t be.', and 'Agent outputs vary every turn. Users still need an experience they can understand and trust. Theorem helps you build that experience around a clear agent contract.' On the right, three goals. Each is a square still with a large icon on it — One source of truth over a single river in an orange canyon, Room to experiment over drying saffron plots, Built-in boundaries over obsidian shores — and the title and note sit beside the square. Another scroll snaps to showcase (/examples).",
+			"Landing (/) opens on a full-bleed shell panel: the favicon mark draws, then the title card with playground and docs links, package links, a copyable npm install line, the lowercase theorem wordmark, and the tagline 'Typed, composable agents for text, image, speech, and live voice — guarded on every turn.' A scroll snaps to overview (/overview) — the panel contracts to the rail on the way. On the left: 'Agents are probabilistic.' then 'Your architecture shouldn’t be.', and 'Agent outputs vary every turn. Users still need an experience they can understand and trust. theorem helps you build that experience around a clear agent contract.' On the right, three goals. Each is a square still with a large icon on it — One source of truth over a single river in an orange canyon, Room to experiment over drying saffron plots, Built-in boundaries over obsidian shores — and the title and note sit beside the square. Another scroll snaps to showcase (/examples).",
 	}),
 } satisfies Th30PageHandle & { homeImmersive: true };
 
@@ -71,8 +71,8 @@ function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number
 function nearestStop(scroller: HTMLElement): { screen: LandingScreen; distance: number } | null {
 	const top = scroller.scrollTop;
 	const stops = screenStops(scroller);
+	if (stops.length === 0) return null;
 	let best = stops[0];
-	if (!best) return null;
 	for (const stop of stops) {
 		if (Math.abs(top - stop.at) < Math.abs(top - best.at)) best = stop;
 	}

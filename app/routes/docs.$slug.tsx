@@ -39,13 +39,13 @@ export function headers() {
 
 export function meta({ loaderData }: Route.MetaArgs) {
 	if (!loaderData.ok) {
-		return [{ title: 'Not found · Theorem docs' }, { name: 'robots', content: 'noindex' }];
+		return [{ title: 'Not found · theorem docs' }, { name: 'robots', content: 'noindex' }];
 	}
 	const { article } = loaderData;
 	return [
-		{ title: `${article.title} · Theorem docs` },
+		{ title: `${article.title} · theorem docs` },
 		{ name: 'description', content: article.summary },
-		{ property: 'og:title', content: `${article.title} · Theorem docs` },
+		{ property: 'og:title', content: `${article.title} · theorem docs` },
 		{ property: 'og:description', content: article.summary },
 		{ property: 'og:image', content: article.cover.src },
 		{ tagName: 'link', rel: 'canonical', href: article.canonicalPath },

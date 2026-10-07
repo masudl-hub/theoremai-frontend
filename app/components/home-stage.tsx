@@ -6,7 +6,7 @@ import { HomeIntro } from './home-intro';
 import './home-stage.css';
 
 const ARGUMENT =
-	'Agent outputs vary every turn. Users still need an experience they can understand and trust. Theorem helps you build that experience around a clear agent contract.';
+	'Agent outputs vary every turn. Users still need an experience they can understand and trust. theorem helps you build that experience around a clear agent contract.';
 
 /**
  * Each still is the idea.
