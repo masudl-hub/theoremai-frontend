@@ -54,7 +54,7 @@ export const PLAYGROUND_EXAMPLES = {
 const PARTS = [
 	{
 		name: 'Profile sections',
-		text: 'The left side shows a tree of the agent’s sections. The open agent shows the sections its profile type allows. An optional section that the agent does not use is dimmed. Click a dimmed section to add it. The Keys panel holds your API keys. The playground keeps the keys in memory and does not store them.',
+		text: 'The left side shows a tree of the agent’s sections. The open agent shows the sections its profile type allows. An optional section that the agent does not use is dimmed. Click a dimmed section to add it. The Keys panel holds your API keys. The playground keeps the keys in memory and does not store them. With your keys or a local server, your browser calls the model provider directly. With no keys, a turn runs on the site’s server, with the site’s demo key and only the models the demo allows.',
 	},
 	{
 		name: 'Editor',
@@ -65,8 +65,8 @@ const PARTS = [
 		text: 'The right side shows a preview. Chat with the agent there while you build it.',
 	},
 	{
-		name: 'Export and launch',
-		text: 'Export downloads every agent as a .zip file of source files. The .zip contains the shared tools, one module for each agent, the file that registers the agents in order, and the route and chat for the agent you chat with. Export can also copy the files, or copy them with a brief for an LLM. Launch opens the agent in a new tab. In that tab, the chat fills the panel.',
+		name: 'Get code and launch',
+		text: 'The Get code menu has three actions. Download saves every agent as a .zip file of source files. Copy copies every file, each under its path. Copy for LLM copies the files with a brief for an LLM. The files are the shared tools, one module for each agent, the file that registers the agents in order, the route and chat for the agent you chat with, and a README. The Open in a new tab button runs the agent you chat with in its own tab.',
 	},
 ] as const;
 
