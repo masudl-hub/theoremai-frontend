@@ -57,7 +57,7 @@ export const handle = {
 		// The draft loads in the browser, so the server render has no payload yet.
 		title: data?.payload ? runTitle(data.payload) : 'Run',
 		summary:
-			'The agent launched from the playground. It fills the panel beside the rail. A decision or a host puts the request on the left and the response on the right. The trace docks at the right and eases open. View trace and Keys sit inside that panel, at the top right. The rail returns to the playground.',
+			'The agent launched from the playground. It fills the panel beside the rail. A decision or a host starts as the centred request. When it runs, the request moves left and the response comes in on the right. The trace docks at the right and eases open. View trace and Keys sit inside that panel, at the top right. The rail returns to the playground.',
 	}),
 } satisfies Th30PageHandle;
 

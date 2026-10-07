@@ -15,39 +15,8 @@ interface OpenIssue {
 }
 
 const APPLY_MS = 300;
-
-/**
- * Globals the package's declarations mention. The checker loads `es2022`
- * only: `lib.dom.d.ts` is about 1.9MB of types, and parsing it is what pushed
- * the tab to about 960MB. This file does not call the browser APIs.
- */
-const HOST_LIB = `interface AbortSignal {
-	readonly aborted: boolean;
-}
-interface Headers {}
-interface Request {}
-interface RequestInit {
-	method?: string;
-	headers?: Headers;
-	body?: unknown;
-	signal?: AbortSignal;
-}
-interface Response {
-	ok: boolean;
-	status: number;
-}
-interface WebSocket {
-	close(code?: number, reason?: string): void;
-}
-interface URL {
-	href: string;
-}
-declare function fetch(input: string | URL | Request, init?: RequestInit): Promise<Response>;
-`;
-
-interface ServiceModes {
-	setModeConfiguration(configuration: Record<string, boolean>): void;
-}
+/** How long typing has to stay quiet before the typechecker worker is terminated. */
+const TYPE_IDLE_MS = 2000;
 
 interface MarkerHost {
 	editor: typeof Monaco.editor;
@@ -94,6 +63,32 @@ export function PlaygroundCode({
 		if (!host) return;
 		const life = { disposed: false };
 		let timer: ReturnType<typeof setTimeout> | undefined;
+		let idleTimer: ReturnType<typeof setTimeout> | undefined;
+		let typeToken = 0;
+		let typeSession: { stop(): void } | undefined;
+		let typeStarting = false;
+		let typeReady = false;
+		const stopTypes = () => {
+			typeToken += 1;
+			if (idleTimer) clearTimeout(idleTimer);
+			idleTimer = undefined;
+			typeSession?.stop();
+			typeSession = undefined;
+			typeStarting = false;
+			typeReady = false;
+		};
+		const inTypeUi = (node: Node) => {
+			if (host.contains(node)) return true;
+			return (
+				node instanceof Element &&
+				!!node.closest(
+					'.suggest-widget, .parameter-hints-widget, .monaco-hover, .monaco-menu-container, .context-view',
+				)
+			);
+		};
+		const typeUiOpen = () =>
+			!!document.querySelector('.suggest-widget.visible, .parameter-hints-widget.visible');
+		let removeLeave: (() => void) | undefined;
 		const paint = () => {
 			const { editor, monaco, spans, errors } = session.current;
 			const model = editor?.getModel();
@@ -103,64 +98,18 @@ export function PlaygroundCode({
 				...issueMarkers(monaco, spans, issuesRef.current),
 			]);
 		};
-		const libs: { dispose(): void }[] = [];
 		void (async () => {
 			const monaco = await import('./playground-monaco');
+			// Colour only, until the visitor types. The typechecker is a compiler in
+			// a worker, so it stays out of this import.
 			await import('monaco-editor/languages/definitions/typescript/register');
-			const typescript = await import('monaco-editor/languages/features/typescript/register');
 			const editorWorker = (await import('monaco-editor/editor/editor.worker?worker')).default;
-			const tsWorker = (await import('./playground-ts.worker?worker')).default;
 			(self as MonacoHost).MonacoEnvironment = {
-				getWorker(_id, label) {
-					if (label === 'typescript' || label === 'javascript') return new tsWorker();
+				getWorker() {
 					return new editorWorker();
 				},
 			};
-			const { typeSources } = await import('virtual:playground-type-sources');
-			const defaults = typescript.typescriptDefaults;
-			(defaults as ServiceModes).setModeConfiguration({
-				completionItems: true,
-				hovers: true,
-				definitions: true,
-				signatureHelp: true,
-				diagnostics: true,
-				documentSymbols: false,
-				references: false,
-				documentHighlights: false,
-				rename: false,
-				documentRangeFormattingEdits: false,
-				onTypeFormattingEdits: false,
-				codeActions: false,
-				inlayHints: false,
-			});
-			defaults.setCompilerOptions({
-				allowNonTsExtensions: true,
-				// ESNext selects `lib.esnext.full.d.ts`, which pulls in the DOM library.
-				target: typescript.ScriptTarget.ES2020,
-				lib: ['es2022', 'host'],
-				module: typescript.ModuleKind.ESNext,
-				moduleResolution: 100 as Monaco.typescript.ModuleResolutionKind,
-				strict: true,
-				noEmit: true,
-				skipLibCheck: true,
-				allowImportingTsExtensions: true,
-				paths: {
-					'@theoremjs/agents': ['file:///node_modules/@theoremjs/agents/mod.d.ts'],
-					'@theoremjs/agents/guardrails/compile': [
-						'file:///node_modules/@theoremjs/agents/src/guardrails/compile-egress.d.ts',
-					],
-					zod: ['file:///node_modules/zod/index.d.ts'],
-				},
-			});
-			libs.push(defaults.addExtraLib(HOST_LIB, 'lib.host.d.ts'));
-			for (const [file, content] of Object.entries(typeSources)) {
-				libs.push(defaults.addExtraLib(content, file));
-			}
-			if (life.disposed || !host.isConnected) {
-				for (const lib of libs) lib.dispose();
-				libs.length = 0;
-				return;
-			}
+			if (life.disposed || !host.isConnected) return;
 			const dark =
 				document.documentElement.dataset.theme === 'dark' ||
 				window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -184,14 +133,75 @@ export function PlaygroundCode({
 				suggestOnTriggerCharacters: true,
 				acceptSuggestionOnEnter: 'on',
 				tabCompletion: 'on',
-				wordBasedSuggestions: 'off',
+				wordBasedSuggestions: 'currentDocument',
 				parameterHints: { enabled: true },
 				suggest: { preview: true, showIcons: true },
 			});
 			session.current.editor = editor;
 			session.current.monaco = monaco;
+			const scheduleTypeStop = () => {
+				if (idleTimer) clearTimeout(idleTimer);
+				idleTimer = setTimeout(() => {
+					if (life.disposed) return;
+					if (typeUiOpen()) {
+						scheduleTypeStop();
+						return;
+					}
+					stopTypes();
+				}, TYPE_IDLE_MS);
+			};
+			const ensureTypes = () => {
+				if (typeSession) {
+					if (typeReady) scheduleTypeStop();
+					return;
+				}
+				if (typeStarting) return;
+				const mine = typeToken;
+				typeStarting = true;
+				void import('./playground-type-checker')
+					.then(({ openTypeChecker }) => {
+						if (life.disposed || mine !== typeToken) return;
+						const checker = openTypeChecker(monaco, editor, () => {
+							if (life.disposed || mine !== typeToken) return;
+							typeReady = true;
+							scheduleTypeStop();
+						});
+						if (life.disposed || mine !== typeToken) {
+							checker.stop();
+							return;
+						}
+						typeSession = checker;
+					})
+					.catch(() => {})
+					.finally(() => {
+						if (mine === typeToken) typeStarting = false;
+					});
+			};
+			editor.onKeyDown((event) => {
+				const native = event.browserEvent;
+				if (native.metaKey || native.ctrlKey || native.altKey) return;
+				if (typeReady) scheduleTypeStop();
+			});
+			// A pointer outside the editor kills the checker in that event. The
+			// suggestion list is part of typing, so a press on it does not count.
+			const onLeave = (event: Event) => {
+				const target = event.target;
+				if (!(target instanceof Node) || inTypeUi(target)) return;
+				stopTypes();
+			};
+			document.addEventListener('pointerdown', onLeave, true);
+			removeLeave = () => document.removeEventListener('pointerdown', onLeave, true);
+			editor.onDidBlurEditorText(() => {
+				queueMicrotask(() => {
+					if (life.disposed || editor.hasTextFocus()) return;
+					const next = document.activeElement;
+					if (next && inTypeUi(next)) return;
+					stopTypes();
+				});
+			});
 			editor.onDidChangeModelContent(() => {
 				if (session.current.setting) return;
+				ensureTypes();
 				const value = editor.getValue();
 				session.current.dirty = value !== printed.current;
 				if (timer) clearTimeout(timer);
@@ -206,8 +216,9 @@ export function PlaygroundCode({
 		})();
 		return () => {
 			life.disposed = true;
+			removeLeave?.();
+			stopTypes();
 			if (timer) clearTimeout(timer);
-			for (const lib of libs) lib.dispose();
 			const model = session.current.editor?.getModel();
 			session.current.editor?.dispose();
 			model?.dispose();

@@ -1,12 +1,13 @@
 import { Button } from '@astryxdesign/core/Button';
-import { useClipboard } from '@astryxdesign/core/hooks';
 import { Heading } from '@astryxdesign/core/Heading';
+import { useClipboard } from '@astryxdesign/core/hooks';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
-import { type RefObject, useRef } from 'react';
+import { type ReactNode, type RefObject, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { HOME_TAGLINE, KERNEL_INSTALL_CMD, SITE_PACKAGES, SITE_SECTIONS } from '../lib/site-nav';
 import { useHomeIntroWordmarkFit } from './home-intro-wordmark-fit';
+import { useHomeIntroScroll } from './home-shell-pull';
 import { NewTabLink } from './links';
-import { useHomeIntroScroll, useHomeNavFlight } from './home-shell-pull';
 import './home-intro.css';
 
 function IntroNavItem({
@@ -61,85 +62,129 @@ function InstallCopy() {
 	);
 }
 
+function NavItems({ itemRefs }: { itemRefs: RefObject<Record<string, HTMLElement | null>> }) {
+	const setItemRef = (href: string) => (node: HTMLElement | null) => {
+		itemRefs.current[href] = node;
+	};
+	return (
+		<>
+			<div className="home-intro-group">
+				<div className="home-intro-group-items">
+					{SITE_SECTIONS.map(({ href, label, icon }) => (
+						<IntroNavItem
+							key={href}
+							href={href}
+							label={label}
+							icon={icon}
+							innerRef={setItemRef(href)}
+						/>
+					))}
+				</div>
+			</div>
+			<div className="home-intro-group">
+				<div className="home-intro-group-items">
+					{SITE_PACKAGES.map(({ href, label, icon }) => (
+						<IntroNavItem
+							key={href}
+							href={href}
+							label={label}
+							icon={icon}
+							innerRef={setItemRef(href)}
+						/>
+					))}
+				</div>
+			</div>
+		</>
+	);
+}
+
+function NavSpacers() {
+	return (
+		<div className="home-intro-groups" aria-hidden>
+			<div className="home-intro-group">
+				<div className="home-intro-group-items">
+					{SITE_SECTIONS.map(({ href }) => (
+						<div key={href} className="home-intro-nav-spacer" data-home-nav-from={href} />
+					))}
+				</div>
+			</div>
+			<div className="home-intro-group">
+				<div className="home-intro-group-items">
+					{SITE_PACKAGES.map(({ href }) => (
+						<div key={href} className="home-intro-nav-spacer" data-home-nav-from={href} />
+					))}
+				</div>
+			</div>
+		</div>
+	);
+}
+
 export function HomeIntro({
 	scrollRoot,
+	next,
 }: {
 	scrollRoot: RefObject<HTMLDivElement | null>;
+	next: ReactNode;
 }) {
 	const runRef = useRef<HTMLElement>(null);
 	const wordmarkTrackRef = useRef<HTMLDivElement>(null);
 	const wordmarkRef = useRef<HTMLHeadingElement>(null);
 	const itemRefs = useRef<Record<string, HTMLElement | null>>({});
+	const [flightReady, setFlightReady] = useState(false);
 	useHomeIntroWordmarkFit(wordmarkTrackRef, wordmarkRef);
-	const { flight, reduced } = useHomeIntroScroll(scrollRoot, runRef);
-	useHomeNavFlight(flight, itemRefs);
+	const { reduced } = useHomeIntroScroll(scrollRoot, runRef, itemRefs, flightReady);
 
-	const setItemRef = (href: string) => (node: HTMLElement | null) => {
-		itemRefs.current[href] = node;
-	};
+	useLayoutEffect(() => {
+		setFlightReady(!reduced);
+	}, [reduced]);
+
+	const nav = <NavItems itemRefs={itemRefs} />;
 
 	return (
 		<section
 			ref={runRef}
-			className="home-intro-run"
+			className="home-contract"
 			aria-label="Theorem"
 			data-reduced={reduced ? '' : undefined}
 		>
-			<div className="home-intro-pin">
-				<div className="home-intro-card">
-					<div className="home-intro-top home-intro-chrome">
-						<div className="home-intro-groups">
-							<div className="home-intro-group">
-								<div className="home-intro-group-items">
-									{SITE_SECTIONS.map(({ href, label, icon }) => (
-										<IntroNavItem
-											key={href}
-											href={href}
-											label={label}
-											icon={icon}
-											innerRef={setItemRef(href)}
-										/>
-									))}
-								</div>
-							</div>
-							<div className="home-intro-group">
-								<div className="home-intro-group-items">
-									{SITE_PACKAGES.map(({ href, label, icon }) => (
-										<IntroNavItem
-											key={href}
-											href={href}
-											label={label}
-											icon={icon}
-											innerRef={setItemRef(href)}
-										/>
-									))}
-								</div>
-							</div>
+			<div className="home-contract-frame">
+				<div className="home-intro-pin">
+					<div className="home-intro-card">
+						<div className="home-intro-top">
+							{flightReady ? (
+								<>
+									<NavSpacers />
+									{createPortal(
+										<div className="home-intro-flight">
+											<div className="home-intro-groups">{nav}</div>
+										</div>,
+										document.body,
+									)}
+								</>
+							) : (
+								<div className="home-intro-groups">{nav}</div>
+							)}
+							<Heading level={2} className="home-intro-tagline">
+								{HOME_TAGLINE}
+							</Heading>
 						</div>
-						<Heading level={2} className="home-intro-tagline">
-							{HOME_TAGLINE}
-						</Heading>
-					</div>
 
-					<div className="home-intro-spacer" aria-hidden />
-				</div>
-				<div className="home-intro-bottom">
-					<div className="home-intro-install-row home-intro-chrome">
-						<InstallCopy />
+						<div className="home-intro-spacer" aria-hidden />
 					</div>
-					<div ref={wordmarkTrackRef} className="home-intro-wordmark-track">
-						<Heading
-							ref={wordmarkRef}
-							className="home-intro-wordmark"
-							level={1}
-							hasCapsize
-						>
-							theorem
-						</Heading>
+					<div className="home-intro-bottom">
+						<div className="home-intro-install-row home-intro-chrome">
+							<InstallCopy />
+						</div>
+						<div ref={wordmarkTrackRef} className="home-intro-wordmark-track">
+							<Heading ref={wordmarkRef} className="home-intro-wordmark" level={1} hasCapsize>
+								theorem
+							</Heading>
+						</div>
 					</div>
 				</div>
+				<div className="home-contract-next home-page home-stage-page">{next}</div>
 			</div>
-			<div className="home-intro-scroll-room" aria-hidden />
+			<div className="home-contract-settle" aria-hidden />
 		</section>
 	);
 }

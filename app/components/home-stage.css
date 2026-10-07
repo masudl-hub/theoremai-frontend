@@ -1,7 +1,5 @@
 .home-stage-frame {
 	box-sizing: border-box;
-	display: flex;
-	align-items: center;
 	height: 100%;
 	overflow: auto;
 	padding: clamp(1.5rem, 3.5vh, 2.75rem) clamp(1.5rem, 3.2vw, 3.25rem);
@@ -11,13 +9,22 @@
 	height: 100%;
 }
 
+.home-stage-split {
+	height: 100%;
+	min-height: 0;
+	display: grid;
+	grid-template-columns: minmax(15rem, 1fr) auto;
+	column-gap: clamp(1.75rem, 4vw, 4.5rem);
+	align-items: center;
+}
+
 .home-stage-lead {
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
 	gap: 1.35rem;
-	width: min(100%, 42rem);
 	min-width: 0;
+	padding-inline-start: clamp(2rem, 6vw, 5rem);
 }
 
 .home-stage-lead .home-stage-headline.astryx-heading {
@@ -74,12 +81,92 @@
 	inset: 0;
 }
 
+.home-stage-stills {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: clamp(1.25rem, 3vh, 2rem);
+	min-height: 0;
+	padding-inline-end: clamp(2rem, 6vw, 5rem);
+}
+
+.home-stage-still {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	column-gap: clamp(1rem, 2vw, 1.5rem);
+	align-items: center;
+	margin: 0;
+}
+
+.home-stage-still-media {
+	position: relative;
+	width: clamp(7.5rem, 16vh, 10.5rem);
+	aspect-ratio: 1;
+	border-radius: var(--radius-container);
+	overflow: hidden;
+}
+
+.home-stage-still-media img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.home-stage-still-media::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: rgb(0 0 0 / 0.28);
+}
+
+.home-stage-still-icon {
+	position: absolute;
+	z-index: 1;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	color: #fff;
+}
+
+.home-stage-still figcaption {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.35rem;
+	min-width: 0;
+	max-width: 22rem;
+	text-wrap: pretty;
+}
+
+.home-stage-still figcaption .astryx-heading {
+	font-size: 1.15rem;
+	font-weight: 600;
+	line-height: 1.2;
+	letter-spacing: -0.015em;
+}
+
 .home-stage-page {
 	position: relative;
 }
 
 @media (width < 768px) {
+	.home-stage-split {
+		height: auto;
+		grid-template-columns: 1fr;
+		row-gap: 1.25rem;
+	}
+
+	.home-stage-lead {
+		padding-inline-start: 0;
+	}
+
 	.home-stage-lead .home-stage-headline.astryx-heading {
 		font-size: 2rem;
+	}
+
+	.home-stage-stills {
+		height: auto;
+		padding-inline-end: 0;
 	}
 }

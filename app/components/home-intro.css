@@ -1,35 +1,94 @@
-/* Scroll track is two fixed viewports, not a percentage of the shrinking panel. */
-.home-intro-run {
+/* The frame stays put. Scroll contracts the shell and swaps what is inside it. */
+.home-contract {
 	--home-intro-pad-block: clamp(1.25rem, 3vh, 2.25rem);
 	--home-intro-pad-inline: clamp(1.25rem, 3vw, 2.75rem);
 	position: relative;
-	height: 200dvh;
-	scroll-snap-align: start;
-	scroll-snap-stop: always;
-}
-
-.home-intro-run[data-reduced] {
-	height: 100%;
+	height: 200%;
 }
 
 .home-intro-pin {
-	position: sticky;
-	top: 0;
 	display: flex;
 	flex-direction: column;
-	height: 100dvh;
+}
+
+.home-contract-frame {
+	position: sticky;
+	top: 0;
+	display: grid;
+	height: 50%;
+}
+
+.home-contract-frame > .home-intro-pin,
+.home-contract-frame > .home-contract-next {
+	grid-area: 1 / 1;
 	min-height: 0;
+	height: 100%;
 }
 
-.home-intro-scroll-room {
-	height: 100dvh;
+.home-contract-frame > .home-intro-pin {
+	opacity: calc(1 - var(--home-shell-pull, 0));
 }
 
-.home-intro-run[data-reduced] .home-intro-scroll-room {
+.home-contract-frame > .home-contract-next {
+	opacity: var(--home-shell-pull, 0);
+	pointer-events: none;
+}
+
+.home-contract-settle {
+	height: 50%;
+}
+
+html[data-home-intro-done] .home-intro-pin {
+	pointer-events: none;
+}
+
+html[data-home-intro-done] .home-contract-next {
+	pointer-events: auto;
+}
+
+.home-contract[data-reduced] {
+	height: auto;
+}
+
+.home-contract[data-reduced] .home-contract-frame {
+	position: static;
+	display: block;
+	height: auto;
+}
+
+.home-contract[data-reduced] .home-intro-pin,
+.home-contract[data-reduced] .home-contract-next {
+	height: auto;
+	min-height: 100%;
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.home-contract[data-reduced] .home-contract-settle {
 	display: none;
 }
 
+.home-intro-flight {
+	position: fixed;
+	inset: 0;
+	z-index: 40;
+	pointer-events: none;
+}
+
+.home-intro-nav-spacer {
+	width: 2.5rem;
+	height: 2.5rem;
+	flex: none;
+}
+
+html[data-home-intro-done] .home-intro-flight {
+	visibility: hidden;
+	pointer-events: none;
+}
+
 .home-intro-card {
+	position: relative;
+	z-index: 1;
 	box-sizing: border-box;
 	display: flex;
 	flex: 1 1 auto;
@@ -63,8 +122,19 @@
 }
 
 .home-intro-nav-slot {
+	position: relative;
+	z-index: 3;
 	display: flex;
+	pointer-events: auto;
 	will-change: transform;
+}
+
+.home-intro-flight .home-intro-nav-slot {
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 3;
+	transform-origin: top left;
 }
 
 .home-intro-tagline.astryx-heading {
@@ -80,6 +150,7 @@
 
 .home-intro-bottom {
 	position: relative;
+	z-index: 1;
 	display: flex;
 	flex-shrink: 0;
 	flex-direction: column;
@@ -93,6 +164,7 @@
 	position: relative;
 	z-index: 2;
 	padding-inline: var(--home-intro-pad-inline);
+	pointer-events: auto;
 }
 
 .home-intro-wordmark-track {
@@ -101,8 +173,6 @@
 	box-sizing: border-box;
 	width: 100%;
 	padding-inline: var(--home-intro-pad-inline);
-	opacity: calc(1 - clamp(0, (var(--home-shell-pull, 0) - 0.35) / 0.5, 1));
-	transform: translateY(calc(var(--home-shell-pull, 0) * -18%));
 }
 
 .home-intro-wordmark.astryx-heading {
@@ -117,13 +187,8 @@
 	text-transform: lowercase;
 }
 
-.home-intro-chrome {
-	opacity: calc(1 - clamp(0, (var(--home-shell-pull, 0) - 0.4) / 0.5, 1));
-}
-
-html[data-home-intro-done] .home-intro-chrome {
+html[data-home-intro-done] .home-intro-pin {
 	visibility: hidden;
-	pointer-events: none;
 }
 
 @media (width < 768px) {
@@ -135,12 +200,5 @@ html[data-home-intro-done] .home-intro-chrome {
 		justify-self: start;
 		text-align: start;
 		font-size: 2rem;
-	}
-
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.home-intro-wordmark-track {
-		transform: none;
 	}
 }

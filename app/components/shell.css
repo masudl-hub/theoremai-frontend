@@ -7,33 +7,69 @@
 	}
 }
 
-/* Home landing: one pull, 0 → 1, over a fixed viewport of scroll.
-   At 1 the rail is the collapsed sidenav (--spacing-12) and the panel insets match layout-content.
-   These rules stay on after the intro so the shell does not jump to a second layout. */
-.theorem-home-shell {
-	--home-shell-pull: 0;
-}
+/* One shell. It starts full-bleed and the scroll contracts that same panel
+   in place. The scrollport size never changes — only the clip does. */
+@media (width >= 768px) {
+	.theorem-home-shell {
+		--home-shell-pull: 0;
+		position: relative;
+	}
 
-.theorem-home-shell [role="main"] {
-	overflow: clip;
-	margin-block: calc(var(--home-shell-pull) * var(--spacing-4));
-	margin-inline-end: calc(var(--home-shell-pull) * var(--spacing-4));
-	height: calc(100% - 2 * var(--home-shell-pull) * var(--spacing-4));
-	border-radius: calc(var(--home-shell-pull) * var(--radius-page));
-}
+	.theorem-home-shell .astryx-app-shell-sidenav {
+		position: absolute;
+		inset-block: 0;
+		inset-inline-start: 0;
+		z-index: 0;
+		width: var(--spacing-12);
+		transition: none;
+	}
 
-.theorem-home-shell .astryx-app-shell-sidenav {
-	flex: 0 0 calc(var(--home-shell-pull) * var(--spacing-12));
-	min-width: 0;
-	overflow: clip;
+	.theorem-home-shell [role="main"] {
+		position: relative;
+		z-index: 1;
+		width: 100%;
+		height: 100%;
+		max-width: none;
+		margin: 0;
+		border-radius: 0;
+		background: var(--color-background-surface);
+		clip-path: inset(
+			calc(var(--home-shell-pull, 0) * var(--spacing-4))
+				calc(var(--home-shell-pull, 0) * var(--spacing-4))
+				calc(var(--home-shell-pull, 0) * var(--spacing-4))
+				calc(var(--home-shell-pull, 0) * var(--spacing-12)) round
+				calc(var(--home-shell-pull, 0) * var(--radius-page))
+		);
+	}
+
+	.theorem-home-shell .home-page {
+		box-sizing: border-box;
+		padding-block: var(--spacing-4);
+		padding-inline-end: var(--spacing-4);
+		padding-inline-start: var(--spacing-12);
+	}
+
+	html[data-home-reduced] .theorem-home-shell .astryx-app-shell-sidenav {
+		position: static;
+		inset: auto;
+		z-index: auto;
+		width: auto;
+	}
+
+	html[data-home-reduced] .theorem-home-shell [role="main"] {
+		width: auto;
+		height: calc(100% - 2 * var(--spacing-4));
+		margin-block: var(--spacing-4);
+		margin-inline-end: var(--spacing-4);
+		border-radius: var(--radius-page);
+		clip-path: none;
+	}
+
+	html[data-home-reduced] .theorem-home-shell .home-page {
+		padding: 0;
+	}
 }
 
 html:not([data-home-intro-done]) .theorem-home-shell .astryx-app-shell-sidenav {
 	pointer-events: none;
-}
-
-@media (width < 768px) {
-	.theorem-home-shell .astryx-app-shell-sidenav {
-		flex-basis: auto;
-	}
 }

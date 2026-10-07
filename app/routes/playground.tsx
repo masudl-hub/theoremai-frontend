@@ -1913,11 +1913,13 @@ function PreviewBody({
 	const { payload, traced } = compile;
 	if (!payload) {
 		return (
-			<EmptyState
-				icon={<Icon icon={IconAlertTriangle} />}
-				title="No agent yet"
-				description={`${compile.blocked ?? ''} to run the agent.`}
-			/>
+			<VStack height="100%" vAlign="center" padding={4}>
+				<EmptyState
+					icon={<Icon icon={IconAlertTriangle} />}
+					title="No agent yet"
+					description={`${compile.blocked ?? ''} to run the agent.`}
+				/>
+			</VStack>
 		);
 	}
 	return (

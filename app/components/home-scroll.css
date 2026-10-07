@@ -1,25 +1,23 @@
-/* Full-panel pages in one scroller: the hero, the centred stage, then the showcase. */
+/* One native gesture per page. The browser settles the fling; nothing else moves scrollTop. */
 .home-scroll {
 	height: 100%;
 	overflow-y: auto;
-	/* The contracting frame changes size while this scroller moves. Anchoring would chase it. */
 	overflow-anchor: none;
 	scroll-snap-type: y mandatory;
+}
+
+.home-contract,
+.home-contract-settle,
+.home-page {
+	scroll-snap-align: start;
+	scroll-snap-stop: always;
 }
 
 .home-page {
 	height: 100%;
 	overflow: hidden;
-	scroll-snap-align: start;
-	scroll-snap-stop: always;
 }
 
 .home-page > * {
 	height: 100%;
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.home-scroll {
-		scroll-snap-type: none;
-	}
 }
