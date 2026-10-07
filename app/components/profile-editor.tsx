@@ -199,7 +199,9 @@ import {
 	type OutputsDraft,
 	type OwnDetectorDraft,
 	type PatternDraft,
+	type PatternMatch,
 	type PatternSourceDraft,
+	type PatternTry,
 	PLAYGROUND_DECISION_MAX_CRITERIA,
 	PLAYGROUND_DECISION_MAX_QUESTIONS,
 	PLAYGROUND_DECISION_MAX_STATE_BYTES,
@@ -221,6 +223,7 @@ import {
 	type ToolSpecDraft,
 	takesContinueInstruction,
 	toolSpecNodeId,
+	tryPatterns,
 	updateModelBinding,
 } from '@theoremjs/playground';
 import type { ListedProfileType } from '@theoremjs/playground/browser';
@@ -230,6 +233,7 @@ import {
 	type ReactNode,
 	type SetStateAction,
 	useContext,
+	useEffect,
 	useLayoutEffect,
 	useRef,
 	useState,
@@ -3435,6 +3439,112 @@ const PATTERN_USE_SEGMENTS: Segment<PatternUse>[] = [
 	},
 ];
 
+const NO_TRY: PatternTry = { matches: [], skipped: [] };
+/** The detectors whose own patterns look for the agent's tools, which a sample has none of. */
+const NEEDS_TOOLS: ReadonlySet<Detector> = new Set(['tool_leak', 'tool_instructions']);
+
+/** What matched one stretch of a sample: Theorem's patterns, the builder's by name, or both. */
+function matchedBy(match: PatternMatch): string {
+	return [...(match.theorem ? ["Theorem's"] : []), ...match.names].join(', ');
+}
+
+/** A sample with each stretch that matched marked, and what matched it on hover. */
+function TriedSample({ sample, matches }: { sample: string; matches: readonly PatternMatch[] }) {
+	const pieces: ReactNode[] = [];
+	let at = 0;
+	for (const match of matches) {
+		pieces.push(sample.slice(at, match.start));
+		pieces.push(
+			<Tooltip key={match.start} content={matchedBy(match)}>
+				<mark>{sample.slice(match.start, match.end)}</mark>
+			</Tooltip>,
+		);
+		at = match.end;
+	}
+	pieces.push(sample.slice(at));
+	return (
+		<div className="pattern-try-text">
+			<Text type="supporting">{pieces}</Text>
+		</div>
+	);
+}
+
+/**
+ * A sample to read with a detector's patterns, as a turn would: the stretches they match are
+ * marked in it and counted by what matched. The sample is the page's, never the draft's.
+ */
+function PatternTester({
+	detector,
+	theorem,
+	patterns,
+}: {
+	/** One of Theorem's detectors; left out for a detector of the builder's own. */
+	detector?: Detector;
+	theorem: boolean;
+	patterns: readonly PatternDraft[];
+}) {
+	const [sample, setSample] = useState('');
+	const [found, setFound] = useState(NO_TRY);
+	useEffect(() => {
+		let isCurrent = true;
+		void tryPatterns(detector, { theorem, patterns }, sample)
+			.catch(() => NO_TRY)
+			.then((next) => {
+				if (isCurrent) setFound(next);
+			});
+		return () => {
+			isCurrent = false;
+		};
+	}, [detector, theorem, patterns, sample]);
+	const counts = new Map<string, number>();
+	for (const match of found.matches) {
+		for (const name of [...(match.theorem ? ["Theorem's"] : []), ...match.names]) {
+			counts.set(name, (counts.get(name) ?? 0) + 1);
+		}
+	}
+	const skip = found.skipped.at(0);
+	const needsTools = theorem && detector !== undefined && NEEDS_TOOLS.has(detector);
+	return (
+		<InspectorSection
+			title="Try it"
+			note={
+				needsTools
+					? `${sectionNote('detect.try')} ${sectionNote('detect.try.tools')}`
+					: sectionNote('detect.try')
+			}
+		>
+			<TextArea
+				label="Sample text"
+				isLabelHidden
+				size="sm"
+				rows={3}
+				value={sample}
+				placeholder="Text to read"
+				status={
+					skip && {
+						type: 'warning',
+						message: `Pattern ${String(skip.index + 1)} did not run: ${skip.problem}`,
+					}
+				}
+				onChange={setSample}
+			/>
+			{sample && (
+				<VStack gap={2}>
+					<HStack gap={1} vAlign="center" wrap="wrap">
+						<Text type="supporting" weight="semibold">
+							{found.matches.length === 0 ? 'No match' : 'Matched'}
+						</Text>
+						{[...counts].map(([name, count]) => (
+							<Token key={name} size="sm" label={`${name} ${String(count)}`} />
+						))}
+					</HStack>
+					{found.matches.length > 0 && <TriedSample sample={sample} matches={found.matches} />}
+				</VStack>
+			)}
+		</InspectorSection>
+	);
+}
+
 /**
  * Whose patterns one of Theorem's detectors reads with, and the builder's when it reads with them.
  * Patterns set aside by a move to Theorem's alone come back on a move away, while the page is open.
@@ -3452,49 +3562,52 @@ function PatternSourceSection({
 	const mine = source.patterns.length > 0;
 	const use: PatternUse = source.theorem ? (mine ? 'both' : 'theorem') : 'mine';
 	return (
-		<InspectorSection title="Patterns">
-			<SegmentedRow
-				label="Read with"
-				path={`guardrails.detect.${detector}.theorem`}
-				value={use}
-				segments={PATTERN_USE_SEGMENTS}
-				onChange={(next) => {
-					if (next === 'theorem') {
-						setAside.current = source.patterns;
-						onChange({ ...source, theorem: true, patterns: [] });
-						return;
-					}
-					const kept = setAside.current.length ? setAside.current : [newPattern()];
-					onChange({
-						...source,
-						theorem: next === 'both',
-						patterns: mine ? source.patterns : kept,
-					});
-				}}
-			/>
-			{use !== 'theorem' && (
-				<PatternList
-					detector={detector}
-					field={`sources.${detector}.patterns`}
-					patterns={source.patterns}
-					onChange={(patterns) => {
-						onChange({ ...source, patterns });
+		<>
+			<InspectorSection title="Patterns">
+				<SegmentedRow
+					label="Read with"
+					path={`guardrails.detect.${detector}.theorem`}
+					value={use}
+					segments={PATTERN_USE_SEGMENTS}
+					onChange={(next) => {
+						if (next === 'theorem') {
+							setAside.current = source.patterns;
+							onChange({ ...source, theorem: true, patterns: [] });
+							return;
+						}
+						const kept = setAside.current.length ? setAside.current : [newPattern()];
+						onChange({
+							...source,
+							theorem: next === 'both',
+							patterns: mine ? source.patterns : kept,
+						});
 					}}
 				/>
-			)}
-			{/* A hint speaks for the builder's patterns, so it shows once there is one. */}
-			{mine && (
-				<TextRow
-					label="Retry hint"
-					path={`guardrails.detect.${detector}.hint`}
-					field={`sources.${detector}.hint`}
-					value={source.hint}
-					onChange={(hint) => {
-						onChange({ ...source, hint });
-					}}
-				/>
-			)}
-		</InspectorSection>
+				{use !== 'theorem' && (
+					<PatternList
+						detector={detector}
+						field={`sources.${detector}.patterns`}
+						patterns={source.patterns}
+						onChange={(patterns) => {
+							onChange({ ...source, patterns });
+						}}
+					/>
+				)}
+				{/* A hint speaks for the builder's patterns, so it shows once there is one. */}
+				{mine && (
+					<TextRow
+						label="Retry hint"
+						path={`guardrails.detect.${detector}.hint`}
+						field={`sources.${detector}.hint`}
+						value={source.hint}
+						onChange={(hint) => {
+							onChange({ ...source, hint });
+						}}
+					/>
+				)}
+			</InspectorSection>
+			<PatternTester detector={detector} theorem={source.theorem} patterns={source.patterns} />
+		</>
 	);
 }
 
@@ -3864,6 +3977,7 @@ function OwnDetectorPage({
 					}}
 				/>
 			</InspectorSection>
+			<PatternTester theorem={false} patterns={detector.patterns} />
 			<BoundariesSection
 				detector="*"
 				boundaries={boundaries}
