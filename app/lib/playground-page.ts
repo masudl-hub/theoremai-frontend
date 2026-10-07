@@ -3,6 +3,7 @@
  * package. Kept in this tab beside the conversation, never in the profile.
  */
 import { type PlaygroundRunPayload, playgroundPageTools } from '@theoremjs/playground';
+import { useCallback, useSyncExternalStore } from 'react';
 import { isRecord, session } from './playground-session';
 
 const PAGE_PREFIX = 'theorem.playground.v2.page:';
@@ -21,7 +22,42 @@ export interface PageInputs {
 	pageTools: string[];
 }
 
-export const NO_PAGE_VALUES: PageValues = { slots: {}, contextJson: '' };
+const NO_PAGE_VALUES: PageValues = { slots: {}, contextJson: '' };
+
+/** The context a blank preview box suggests. */
+export const CONTEXT_PLACEHOLDER = `{
+  "page": "Checkout"
+}`;
+
+/** The slots a draft's JSON declares so far: each name with a list of text. Anything else is left out. */
+export function draftSlots(slotsJson: string): Record<string, readonly string[]> {
+	try {
+		const typed: unknown = JSON.parse(slotsJson.trim() || '{}');
+		if (!isRecord(typed)) return {};
+		return Object.fromEntries(
+			Object.entries(typed).filter(
+				(entry): entry is [string, string[]] =>
+					Array.isArray(entry[1]) &&
+					entry[1].length > 0 &&
+					entry[1].every((value) => typeof value === 'string'),
+			),
+		);
+	} catch {
+		return {};
+	}
+}
+
+/** Why typed context is not sent, when it is not JSON. */
+export function contextErrorOf(contextJson: string): string | undefined {
+	const typed = contextJson.trim();
+	if (!typed) return undefined;
+	try {
+		JSON.parse(typed);
+		return undefined;
+	} catch {
+		return 'Context must be JSON.';
+	}
+}
 
 /** What the compiled agent takes from a page, or null when it takes nothing. */
 export function pageInputsOf(payload: PlaygroundRunPayload): PageInputs | null {
@@ -36,7 +72,7 @@ export function pageInputsOf(payload: PlaygroundRunPayload): PageInputs | null {
 }
 
 /** The value a slot sends: the one picked while the profile still lists it, else its first. */
-export function slotValue(inputs: PageInputs, values: PageValues, name: string): string {
+function slotValue(inputs: PageInputs, values: PageValues, name: string): string {
 	const allowed = inputs.slots[name] ?? [];
 	const picked = allowed.find((value) => value === values.slots[name]);
 	return picked ?? allowed.at(0) ?? '';
@@ -54,14 +90,11 @@ export function sentPageValues(
 		: undefined;
 	const typed = inputs.takesContext ? values.contextJson.trim() : '';
 	if (!typed) return { slots };
-	try {
-		return { slots, context: JSON.parse(typed) as unknown };
-	} catch {
-		return { slots, contextError: 'Context must be JSON.' };
-	}
+	const contextError = contextErrorOf(typed);
+	return contextError ? { slots, contextError } : { slots, context: JSON.parse(typed) as unknown };
 }
 
-export function loadPageValues(agentKey: string): PageValues {
+function loadPageValues(agentKey: string): PageValues {
 	try {
 		const kept: unknown = JSON.parse(session()?.getItem(`${PAGE_PREFIX}${agentKey}`) ?? 'null');
 		if (!isRecord(kept) || !isRecord(kept.slots) || typeof kept.contextJson !== 'string') {
@@ -79,10 +112,46 @@ export function loadPageValues(agentKey: string): PageValues {
 }
 
 /** Never throws: a full or blocked store keeps nothing. */
-export function savePageValues(agentKey: string, values: PageValues): void {
+function savePageValues(agentKey: string, values: PageValues): void {
 	try {
 		session()?.setItem(`${PAGE_PREFIX}${agentKey}`, JSON.stringify(values));
 	} catch {
 		// Nothing is kept.
 	}
+}
+
+/** Each agent's values as last read or set, so the editor and the preview show the same ones. */
+const held = new Map<string, PageValues>();
+const listeners = new Set<() => void>();
+
+function heldValues(agentKey: string): PageValues {
+	let values = held.get(agentKey);
+	if (!values) {
+		values = loadPageValues(agentKey);
+		held.set(agentKey, values);
+	}
+	return values;
+}
+
+function listen(listener: () => void): () => void {
+	listeners.add(listener);
+	return () => listeners.delete(listener);
+}
+
+/** What the playground's page sends `agentKey`, kept in this tab; the editor sets it and the preview sends it. */
+export function usePageValues(agentKey: string): [PageValues, (next: PageValues) => void] {
+	const values = useSyncExternalStore(
+		listen,
+		() => heldValues(agentKey),
+		() => NO_PAGE_VALUES,
+	);
+	const set = useCallback(
+		(next: PageValues) => {
+			held.set(agentKey, next);
+			savePageValues(agentKey, next);
+			for (const listener of listeners) listener();
+		},
+		[agentKey],
+	);
+	return [values, set];
 }

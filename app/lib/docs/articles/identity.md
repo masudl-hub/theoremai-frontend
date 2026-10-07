@@ -54,7 +54,7 @@ These four steps write the identity of the Harbor front desk. Each step adds one
 
 `handle` is the name of the agent. `system` is the instruction.
 
-- `handle` is required. It is the display name for your application and its users. Theorem does not send it to the model.
+- `handle` is required. It is the display name for your application and its users. It can have at most 32 characters. Theorem does not send it to the model.
 - `system` is optional. If you leave it out, the profile sends no instruction.
 
 ```ts frame=profile:text

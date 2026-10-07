@@ -238,6 +238,12 @@ import {
 	useSyncExternalStore,
 } from 'react';
 import {
+	CONTEXT_PLACEHOLDER,
+	contextErrorOf,
+	draftSlots,
+	usePageValues,
+} from '../lib/playground-page';
+import {
 	setToolCredential,
 	subscribeToolCredentials,
 	toolCredential,
@@ -1565,8 +1571,49 @@ function InputContextSection({ inputs, set }: InputsSectionProps) {
 					}}
 				/>
 			)}
+			{inputs.contextFrom.includes('client') && <ContextPreviewRow />}
 		</InspectorSection>
 	);
+}
+
+/** The context the playground's page sends the open agent. Kept in this tab, not in the profile. */
+function ContextPreviewRow() {
+	const [values, setValues] = usePageValues(useContext(WorkspaceContext)?.self ?? '');
+	const error = contextErrorOf(values.contextJson);
+	return (
+		<TextAreaRow
+			label="Preview"
+			path="inputs.context"
+			isRequired={false}
+			value={values.contextJson}
+			rows={3}
+			hasSpellCheck={false}
+			placeholder={CONTEXT_PLACEHOLDER}
+			status={error ? { type: 'error', message: error } : undefined}
+			onChange={(contextJson) => {
+				setValues({ ...values, contextJson });
+			}}
+		/>
+	);
+}
+
+/** The value the playground's page sends for each slot declared so far. Kept in this tab. */
+function SlotPreviewRows({ slotsJson }: { slotsJson: string }) {
+	const [values, setValues] = usePageValues(useContext(WorkspaceContext)?.self ?? '');
+	const slots = draftSlots(slotsJson);
+	return Object.entries(slots).map(([name, allowed]) => (
+		<ChoiceRow
+			key={name}
+			label={name}
+			path="inputs.slots"
+			isRequired
+			value={allowed.find((value) => value === values.slots[name]) ?? allowed[0]}
+			options={allowed}
+			onChange={(next) => {
+				if (next) setValues({ ...values, slots: { ...values.slots, [name]: next } });
+			}}
+		/>
+	));
 }
 
 function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
@@ -1594,6 +1641,7 @@ function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 						set({ slotsJson });
 					}}
 				/>
+				<SlotPreviewRows slotsJson={inputs.slotsJson} />
 			</InspectorSection>
 		</>
 	);

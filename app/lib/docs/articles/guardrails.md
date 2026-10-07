@@ -199,7 +199,7 @@ guardrails: {
 ```
 
 - `retry` lets the model read why and write the reply again. `maxRetries` sets how many times. After the last rewrite, Theorem withholds the reply, and the user reads the `error.safety` line.
-- `refuse` shows the user the `egress.refusal` line in place of the reply. The turn ends.
+- `refuse` shows the user the `egress.refusal` line in place of the reply. If the user already has part of the reply, the `egress.refusal_cut` line ends that part instead. The turn ends.
 
 If you set nothing, `onBlock` is `retry` and `maxRetries` is 1.
 

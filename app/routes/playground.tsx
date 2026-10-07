@@ -1,5 +1,4 @@
 import { Button } from '@astryxdesign/core/Button';
-import { ButtonGroup } from '@astryxdesign/core/ButtonGroup';
 import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { Heading } from '@astryxdesign/core/Heading';
@@ -21,17 +20,17 @@ import { Token } from '@astryxdesign/core/Token';
 import { TreeList, type TreeListItemData } from '@astryxdesign/core/TreeList';
 import { VStack } from '@astryxdesign/core/VStack';
 import {
+	IconActivity,
 	IconAdjustmentsHorizontal,
 	IconAlertTriangle,
+	IconArrowBarDown,
 	IconArrowLeft,
-	IconBook,
-	IconChevronDown,
+	IconBrowserShare,
 	IconCode,
+	IconColorSwatch,
 	IconCopy,
 	IconCopyPlus,
-	IconDownload,
-	IconEraser,
-	IconExternalLink,
+	IconFileZip,
 	IconKey,
 	IconMenu2,
 	IconPlayerPlay,
@@ -40,7 +39,6 @@ import {
 	IconSearch,
 	IconShieldSearch,
 	IconSparkles,
-	IconTimeline,
 	IconTool,
 	IconX,
 } from '@tabler/icons-react';
@@ -109,7 +107,6 @@ import {
 	type SetStateAction,
 	useCallback,
 	useEffect,
-	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -129,7 +126,6 @@ import {
 	PlaygroundKeys,
 	usePlaygroundConnection,
 } from '../components/playground-connection';
-import { PlaygroundPage } from '../components/playground-page';
 import { PlaygroundRunner } from '../components/playground-runner';
 import {
 	addToolSpec,
@@ -147,13 +143,7 @@ import {
 	restoreConversation,
 	saveConversation,
 } from '../lib/playground-conversation';
-import {
-	loadPageValues,
-	type PageValues,
-	pageInputsOf,
-	savePageValues,
-	sentPageValues,
-} from '../lib/playground-page';
+import { pageInputsOf, sentPageValues, usePageValues } from '../lib/playground-page';
 import { restorePlayground } from '../lib/playground-restore';
 import type { RestoredPlayground } from '../lib/playground-session';
 import { createPlaygroundStore, type PlaygroundStore } from '../lib/playground-store';
@@ -679,22 +669,6 @@ function useChatAgents(agents: PlaygroundWorkspace['agents']): ChatAgent[] {
 }
 
 /** A tree group's heading and its add button. */
-/** Below the app shell's drawer breakpoint, where the playground shows one pane at a time. */
-const PHONE = '(width < 768px)';
-function usePhone() {
-	return useSyncExternalStore(
-		(change) => {
-			const query = window.matchMedia(PHONE);
-			query.addEventListener('change', change);
-			return () => {
-				query.removeEventListener('change', change);
-			};
-		},
-		() => window.matchMedia(PHONE).matches,
-		() => false,
-	);
-}
-
 /** The indent TreeList gives a leaf row beside a branch: the chevron's width and its gap. */
 const CHEVRON_COLUMN = {
 	'--_tree-indent': 'calc(var(--spacing-4) + var(--spacing-2))',
@@ -869,11 +843,11 @@ function useLastGood(compile: Compile) {
 
 /** The editor/code button, by the view it leaves. */
 const VIEW_TOGGLE = {
-	editor: { label: 'Code', icon: IconCode, tooltip: 'Show the code', next: 'code' },
+	editor: { label: 'Code', icon: IconCode, tooltip: 'Edit as TypeScript', next: 'code' },
 	code: {
 		label: 'Editor',
 		icon: IconAdjustmentsHorizontal,
-		tooltip: 'Show the editor',
+		tooltip: 'Edit as a form',
 		next: 'editor',
 	},
 } as const;
@@ -1071,13 +1045,12 @@ function useIssueReveal(selected: string) {
 	return { editorRef, reveal: setIssueReveal };
 }
 
-/** Export (a .zip, or copied) and Launch, for the agent being chatted with; off while the workspace has issues. */
+/** Get code (a .zip, or copied) and open in a new tab, for the agent being chatted with; off while the workspace has issues. */
 function ExportActions({
 	compiled,
 	chatted,
 	chattedId,
 	blocked,
-	phone,
 	copy,
 	connection,
 }: {
@@ -1085,92 +1058,87 @@ function ExportActions({
 	chatted: CompiledPlayground | undefined;
 	chattedId: string;
 	blocked: string | undefined;
-	phone: boolean;
 	copy: (text: string, what: string) => void;
 	connection: Pick<PlaygroundRunPayload, 'connectionMode' | 'localBaseUrl'>;
 }) {
 	return (
 		<>
-			<ExportMenu
-				compiled={compiled}
-				chatted={chatted}
-				blocked={blocked}
-				phone={phone}
-				copy={copy}
-			/>
-			<Button
-				label="Launch"
-				isIconOnly={phone}
-				variant="primary"
-				icon={<Icon icon={IconExternalLink} size="sm" />}
+			<IconButton
+				label="Open in a new tab"
+				variant="ghost"
+				icon={<Icon icon={IconBrowserShare} size="sm" />}
 				isDisabled={!compiled}
-				tooltip={blocked ?? 'Run the agent on its own page, in a new tab'}
+				tooltip={
+					blocked ??
+					'Open this agent on its own full page, in a new tab. Its runs happen there, not here'
+				}
 				onClick={() => {
 					const run = compiled && workspaceRunAgent(compiled, chattedId);
 					if (run) openInNewTab({ ...runPayload(run), ...connection });
 				}}
 			/>
+			<ExportMenu compiled={compiled} chatted={chatted} blocked={blocked} copy={copy} />
 		</>
 	);
 }
 
-/** Export as a .zip, with Copy and Copy for LLM under its menu. */
+/** Get code: a .zip, Copy, or Copy for LLM. */
 function ExportMenu({
 	compiled,
 	chatted,
 	blocked,
-	phone,
 	copy,
 }: Omit<Parameters<typeof ExportActions>[0], 'chattedId' | 'connection'>) {
 	return (
-		<ButtonGroup label="Export" isDisabled={!compiled}>
-			<Button
-				label="Export"
-				isIconOnly={phone}
-				icon={<Icon icon={IconDownload} size="sm" />}
-				tooltip={blocked ?? 'Download every agent as a .zip'}
-				onClick={() => {
-					if (compiled && chatted) {
-						downloadExport(exportFiles(compiled, chatted), chatted.agentId);
-					}
-				}}
-			/>
-			<DropdownMenu
-				button={{
-					label: 'More export options',
-					isIconOnly: true,
-					icon: <Icon icon={IconChevronDown} size="sm" />,
-					isDisabled: !compiled,
-				}}
-				hasChevron={false}
-				placement="below"
-				alignment="end"
-				items={[
-					{
-						id: 'copy',
-						label: 'Copy',
-						description: 'Every file, each under its path, to paste into your code.',
-						icon: <Icon icon={IconCopy} size="sm" />,
-						onClick: () => {
-							if (compiled && chatted) {
-								copy(exportText(exportFiles(compiled, chatted)), 'the files');
-							}
-						},
+		<DropdownMenu
+			button={{
+				label: 'Get code',
+				variant: 'ghost',
+				icon: <Icon icon={IconArrowBarDown} size="sm" />,
+				tooltip:
+					blocked ??
+					'Download every agent as a .zip, or copy its files, or copy them with a brief for an LLM',
+				isDisabled: !compiled,
+			}}
+			menuWidth="fit-content(13rem)"
+			hasChevron={false}
+			placement="below"
+			alignment="end"
+			items={[
+				{
+					id: 'download',
+					label: 'Download',
+					description: 'Every agent, as a .zip.',
+					icon: <Icon icon={IconFileZip} size="sm" />,
+					onClick: () => {
+						if (compiled && chatted) {
+							downloadExport(exportFiles(compiled, chatted), chatted.agentId);
+						}
 					},
-					{
-						id: 'copy-llm',
-						label: 'Copy for LLM',
-						description:
-							'Every file with a brief: what to install, where each goes, what to ask you.',
-						icon: <Icon icon={IconSparkles} size="sm" />,
-						onClick: () => {
-							if (compiled && chatted)
-								copy(llmBrief(compiled, chatted), 'the files and their brief');
-						},
+				},
+				{
+					id: 'copy',
+					label: 'Copy',
+					description: 'Every file, each under its path, to paste into your code.',
+					icon: <Icon icon={IconCopy} size="sm" />,
+					onClick: () => {
+						if (compiled && chatted) {
+							copy(exportText(exportFiles(compiled, chatted)), 'the files');
+						}
 					},
-				]}
-			/>
-		</ButtonGroup>
+				},
+				{
+					id: 'copy-llm',
+					label: 'Copy for LLM',
+					description:
+						'Every file with a brief: what to install, where each goes, what to ask you.',
+					icon: <Icon icon={IconSparkles} size="sm" />,
+					onClick: () => {
+						if (compiled && chatted) copy(llmBrief(compiled, chatted), 'the files and their brief');
+					},
+				},
+			]}
+		/>
 	);
 }
 
@@ -1327,9 +1295,12 @@ function useConversationRun(mode: string, chatWith: string, question: string | u
 	);
 	/** A docs seed's question waits in its agent's first composer, when that resumes nothing. */
 	const initialText = isFirstRun && chatWith === seeded && !initialChat ? question : undefined;
-	/** The runner that last sent something; a new one (cleared, or another mode) has no history. */
+	/**
+	 * The runner that last sent something; a new one (cleared, or another mode) has no history,
+	 * unless it resumed a kept conversation.
+	 */
 	const [usedRun, setUsedRun] = useState<string>();
-	const isUsed = usedRun === runKey;
+	const isUsed = usedRun === runKey || initialChat !== undefined;
 	return useMemo(
 		() => ({
 			runKey,
@@ -1580,7 +1551,7 @@ function IssueToken({
 	);
 }
 
-/** Replaces the workspace with one of the examples. */
+/** Replaces the workspace with one blank agent or one of the examples. */
 function ExampleMenu({
 	replaceWorkspace,
 }: {
@@ -1589,16 +1560,25 @@ function ExampleMenu({
 	return (
 		<DropdownMenu
 			button={{
-				label: 'Load an example',
+				label: 'Start from',
 				variant: 'ghost',
 				isIconOnly: true,
-				icon: <Icon icon={IconBook} size="sm" />,
-				tooltip: 'Load an example',
+				icon: <Icon icon={IconColorSwatch} size="sm" />,
+				tooltip:
+					'Start from a blank agent or one of the examples. This replaces the current workspace',
 			}}
 			hasChevron={false}
 			placement="below"
 			alignment="end"
 			items={[
+				{
+					id: 'blank',
+					label: 'Blank agent',
+					description: 'Clear the playground and start with one empty agent.',
+					onClick: () => {
+						replaceWorkspace(createBlankWorkspace(), 'Cleared the playground.');
+					},
+				},
 				{
 					id: 'concierge',
 					label: 'Travel concierge',
@@ -1640,7 +1620,7 @@ function ViewToggleButton({ view }: { view: EditorViewState }) {
 	);
 }
 
-/** The editor column's header: its title, the next issue, Keys, examples, Clear and the view toggle. */
+/** The editor column's header: its title, the next issue, Keys, what to start from and the view toggle. */
 function EditorToolbar({
 	heading,
 	compile,
@@ -1679,22 +1659,13 @@ function EditorToolbar({
 					variant="ghost"
 					icon={<Icon icon={IconKey} size="sm" />}
 					aria-pressed={view.keysOpen}
-					tooltip="Keys"
+					tooltip="Add your own model keys to run this agent with"
 					onClick={() => {
 						view.setKeysOpen((open) => !open);
 						view.setEditorView('editor');
 					}}
 				/>
 				<ExampleMenu replaceWorkspace={replaceWorkspace} />
-				<IconButton
-					label="Clear"
-					variant="ghost"
-					icon={<Icon icon={IconEraser} size="sm" />}
-					tooltip="Start again from one blank agent"
-					onClick={() => {
-						replaceWorkspace(createBlankWorkspace(), 'Cleared the playground.');
-					}}
-				/>
 				<ViewToggleButton view={view} />
 				<SheetButton label="Preview" icon={IconPlayerPlay} sheet={'preview'} setSheet={setSheet} />
 			</HStack>
@@ -1853,55 +1824,6 @@ function ClearHistoryButton({ chatWith, run }: { chatWith: string; run: Conversa
 	);
 }
 
-/** What one child of a row wants: its own width, or for the `data-fill` slot, what it holds. */
-function wantedOf(child: HTMLElement): number {
-	if (child.dataset.fill === undefined) return child.offsetWidth;
-	return (child.firstElementChild as HTMLElement | null)?.offsetWidth ?? 0;
-}
-
-/** The width a row's children want side by side, and the gaps between. */
-function wantedWidth(row: HTMLElement): number {
-	const gap = Number.parseFloat(getComputedStyle(row).columnGap) || 0;
-	const children = [...row.children] as HTMLElement[];
-	const content = children.reduce((sum, child) => sum + wantedOf(child), 0);
-	return content + gap * Math.max(children.length - 1, 0);
-}
-
-/**
- * Whether a row is out of room for its content at full size. The row is measured as it is drawn
- * at full size, and that width is kept while it is compact, so it grows back when the room
- * returns. `content` names what the row holds; when it changes, the row is measured again.
- */
-function useOutOfRoom(content: string) {
-	const rowRef = useRef<HTMLElement | null>(null);
-	const [width, setWidth] = useState<number>();
-	const [kept, setKept] = useState<{ content: string; wants: number }>();
-	const wants = kept?.content === content ? kept.wants : undefined;
-	const isOut = wants !== undefined && width !== undefined && width < wants;
-	const ref = useCallback((node: HTMLElement | null) => {
-		rowRef.current = node;
-		if (!node) return;
-		const observer = new ResizeObserver(() => {
-			setWidth(node.clientWidth);
-		});
-		observer.observe(node);
-		return () => {
-			observer.disconnect();
-		};
-	}, []);
-	// why: Before paint, so the row is never seen overflowing.
-	useLayoutEffect(() => {
-		const row = rowRef.current;
-		if (!row || isOut) return;
-		const needs = wantedWidth(row);
-		if (needs > row.clientWidth && needs !== wants) {
-			setWidth(row.clientWidth);
-			setKept({ content, wants: needs });
-		}
-	});
-	return [ref, isOut] as const;
-}
-
 /** The preview's header: back to the editor, the agent to chat with, history, trace and Export. */
 function PreviewHeader({
 	store,
@@ -1926,55 +1848,46 @@ function PreviewHeader({
 	copy: (text: string, what: string) => void;
 	setSheet: (sheet: Sheet) => void;
 }) {
-	// why: A side panel narrows the preview without narrowing the window, so the row measures itself.
-	const [rowRef, isOutOfRoom] = useOutOfRoom(
-		[
-			chatWith,
-			testing.open,
-			trace.open,
-			compile.traced,
-			run.isUsed,
-			Boolean(compile.payload),
-		].join(),
-	);
-	const phone = usePhone() || isOutOfRoom;
-	const testLabel = testing.open ? 'Hide guardrail test' : 'Test guardrails';
-	const traceLabel = trace.open ? 'Hide trace' : 'View trace';
+	const testLabel = testing.open ? 'Close guardrail test' : 'Test guardrails';
+	const traceLabel = trace.open ? 'Close trace' : 'Open trace';
 	const { compiled } = compile;
 	return (
-		<Section variant="transparent" padding={3}>
-			<HStack ref={rowRef} gap={2} vAlign="center">
+		<Section variant="transparent" paddingInline={3} paddingBlock={0}>
+			<HStack gap={2} vAlign="center">
 				<SheetButton
 					label="Back to the editor"
 					icon={IconArrowLeft}
 					sheet={null}
 					setSheet={setSheet}
 				/>
-				<StackItem size="fill" data-fill>
+				<StackItem size="fill">
 					<ChatPicker agents={chatAgents} chatWith={chatWith} onChange={store.chatWith} />
 				</StackItem>
-				{/* why: Static, so the buttons keep their labels and the selector's slot gives up its room first. */}
 				<StackItem size="static">
-					<HStack gap={2} vAlign="center">
+					<HStack gap={1} vAlign="center">
 						{compile.payload && run.isUsed && !testing.open && (
 							<ClearHistoryButton chatWith={chatWith} run={run} />
 						)}
 						{compile.payload && (
-							<Button
+							<IconButton
 								label={testLabel}
-								isIconOnly={phone}
-								tooltip={phone ? testLabel : undefined}
+								variant="ghost"
+								tooltip={testLabel}
 								icon={<Icon icon={IconShieldSearch} size="sm" />}
 								aria-pressed={testing.open}
 								onClick={testing.toggle}
 							/>
 						)}
 						{compile.traced && !testing.open ? (
-							<Button
+							<IconButton
 								label={traceLabel}
-								isIconOnly={phone}
-								tooltip={phone ? traceLabel : undefined}
-								icon={<Icon icon={IconTimeline} size="sm" />}
+								variant="ghost"
+								tooltip={
+									trace.open
+										? 'Close the trace of this agent’s turns'
+										: 'Show the trace of this agent’s turns'
+								}
+								icon={<Icon icon={IconActivity} size="sm" />}
 								aria-pressed={trace.open}
 								onClick={trace.toggle}
 							/>
@@ -1984,7 +1897,6 @@ function PreviewHeader({
 							chatted={compile.chatted}
 							chattedId={compile.chattedId}
 							blocked={compile.blocked}
-							phone={phone}
 							copy={copy}
 							connection={{
 								connectionMode: connection.mode,
@@ -1996,20 +1908,6 @@ function PreviewHeader({
 			</HStack>
 		</Section>
 	);
-}
-
-/** What the playground's page sends the agent being chatted with, kept in this tab. */
-function usePageValues(chatWith: string): [PageValues, (next: PageValues) => void] {
-	const [kept, setKept] = useState(() => ({ chatWith, values: loadPageValues(chatWith) }));
-	const values = kept.chatWith === chatWith ? kept.values : loadPageValues(chatWith);
-	const set = useCallback(
-		(next: PageValues) => {
-			savePageValues(chatWith, next);
-			setKept({ chatWith, values: next });
-		},
-		[chatWith],
-	);
-	return [values, set];
 }
 
 /**
@@ -2035,7 +1933,7 @@ function PreviewBody({
 }) {
 	const { payload, traced } = compile;
 	const pageInputs = useMemo(() => (payload ? pageInputsOf(payload) : null), [payload]);
-	const [pageValues, setPageValues] = usePageValues(chatWith);
+	const [pageValues] = usePageValues(chatWith);
 	const sent = useMemo(() => sentPageValues(pageInputs, pageValues), [pageInputs, pageValues]);
 	if (!payload) {
 		return (
@@ -2059,11 +1957,6 @@ function PreviewBody({
 			}
 		>
 			<VStack height="100%">
-				{pageInputs && (
-					<Section variant="transparent" paddingInline={3} paddingBlock={0}>
-						<PlaygroundPage inputs={pageInputs} values={pageValues} onChange={setPageValues} />
-					</Section>
-				)}
 				<StackItem size="fill">
 					<PlaygroundRunner
 						key={run.runKey}

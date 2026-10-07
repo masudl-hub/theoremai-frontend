@@ -280,16 +280,20 @@ export function TextAreaRow(
 		hint?: string;
 		rows?: number;
 		hasSpellCheck?: boolean;
+		/** A status of the row's own, such as text that is not JSON; the field's issues win. */
+		status?: InputStatus;
 		onChange: (next: string) => void;
 	},
 ) {
 	const { label, path, value, placeholder, hint, rows = 3, hasSpellCheck = true, onChange } = props;
-	const { status, required, unset, control } = useFieldRow(props);
+	const { status: fieldStatus, required, unset, control } = useFieldRow(props);
+	const status = fieldStatus ?? props.status;
 	return (
-		<VStack gap={1} {...{ [ISSUE_ROW_ATTRIBUTE]: status !== undefined || undefined }}>
+		<VStack gap={1} {...{ [ISSUE_ROW_ATTRIBUTE]: fieldStatus !== undefined || undefined }}>
 			<RowLabel label={label} path={path} isRequired={required} />
 			<TextArea
 				{...control}
+				status={status}
 				rows={rows}
 				hasSpellCheck={hasSpellCheck}
 				value={value}

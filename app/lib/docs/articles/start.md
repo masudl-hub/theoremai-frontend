@@ -107,7 +107,7 @@ The five fields from `category` to `permission` describe the tool to Theorem. [R
 
 This profile is a text agent with one model. `tools.allow` names the one tool that the model can call.
 
-`defineProfile` checks the profile. `registerProfile` stores it under its `id`, so that a request can name it.
+`defineProfile` checks the profile. `registerProfile` stores it under its `id`, so that a request can name it. An `id` can have at most 64 characters.
 
 ```ts
 import { defineProfile, registerProfile } from '@theoremjs/agents';

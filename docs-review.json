@@ -19,7 +19,7 @@
 			"src/guardrails/credential-scan.ts": "7c70f0efa37080c6341316e22547d1577988754c",
 			"src/guardrails/destinations.ts": "059d5c956ec6cece04199ffd8e454784aeea6be5",
 			"src/guardrails/detect-at.ts": "e68e7224e4929c410fdeae143c726dd7653ae24c",
-			"src/guardrails/detect-reply.ts": "de957615a9a7141d7624b560d2025119701a2d61",
+			"src/guardrails/detect-reply.ts": "66ebd12bd7734d9b45b4573b99bce51b3166f546",
 			"src/guardrails/detect-stream.ts": "568ccc1525e20311712cb1753f56ad94affc1c18",
 			"src/guardrails/detectors.ts": "02ab2672808faab1709880156ef44b7d63c55d91",
 			"src/guardrails/egress-automata.ts": "4d33bfef62682f160abaaa089fddec66e59a0f7f",
@@ -39,8 +39,8 @@
 			"src/guardrails/host-patterns.ts": "f0507971333c0a914d02df0df9aaa0af81645108",
 			"src/guardrails/injection-patterns.ts": "fcd27161a0fb72b00badd1ff072e8ba0d7dbd5b9",
 			"src/guardrails/injection.ts": "be0863b0c887679bb9d95c3f4d39e3d2dcdd8248",
-			"src/guardrails/lexicon.ts": "2693d522341757f37b468609cb11769e9a04b702",
-			"src/guardrails/live-outbound-gate.ts": "0a670b6d250ac28deda2b4ad27e7c6f5af36ab89",
+			"src/guardrails/lexicon.ts": "d33cb51f68fb31e98033678ea0b099a1f4393c1a",
+			"src/guardrails/live-outbound-gate.ts": "8d697a1a42f4f2d6b7b4c64c70a0f18c7c9ad03a",
 			"src/guardrails/mod.ts": "d3ecfa75a959055ac7d8db3dbf1fcaefd1fd59a1",
 			"src/guardrails/network.ts": "5b748b584bfa70751ffa7142219fc4838083139a",
 			"src/guardrails/normalize.ts": "926e1e95e99b5f35dd9cb37f23ca674a934026bb",
@@ -58,7 +58,7 @@
 			"src/guardrails/tool-directives.ts": "4016f886b5b76222cc48837f759a0775fdba5c59",
 			"src/guardrails/tool-leak.ts": "22d3db0c544da2248e96cc4f8826beba6e81fc3e",
 			"src/guardrails/tool-result.ts": "ba5fd24c299c5202c8b10023534e78747ae45494",
-			"src/guardrails/types.ts": "d5c7b381c7096886687cb9c45e319d2f9a7dbb52"
+			"src/guardrails/types.ts": "96bf2b7cac8a081f9af01f81215286aed3bf6b82"
 		}
 	},
 	"identity": {
@@ -168,7 +168,7 @@
 		"reviewed": "2026-10-07",
 		"files": {
 			"src/kernel/engine/decision.ts": "09642f895b416111a2791fbce8e5e267c5a3b953",
-			"src/kernel/engine/runner/gates.ts": "b20bf4d4b7a06544fad40341483a6ed1ce06bcc5",
+			"src/kernel/engine/runner/gates.ts": "e15af931320cf130aed25420673916b81a35e5ab",
 			"src/kernel/engine/runner/mod.ts": "e1cb2ae056dabfb0b20fdee97ab563d36ae8080c",
 			"src/kernel/engine/runner/nested.ts": "999b158770b5d4b21f4145f03ded8cad2d11d9d8",
 			"src/kernel/engine/runner/schema-validation.ts": "e3b36339d8acbfd1762258dba2ba95fe06422dd7",
@@ -187,7 +187,7 @@
 		"reviewed": "2026-10-07",
 		"files": {
 			"mod.ts": "19d4ff9b49003f707606d86018926e53a3be830f",
-			"src/kernel/engine/runner/gates.ts": "b20bf4d4b7a06544fad40341483a6ed1ce06bcc5",
+			"src/kernel/engine/runner/gates.ts": "e15af931320cf130aed25420673916b81a35e5ab",
 			"src/kernel/engine/runner/mod.ts": "e1cb2ae056dabfb0b20fdee97ab563d36ae8080c",
 			"src/kernel/engine/runner/nested.ts": "999b158770b5d4b21f4145f03ded8cad2d11d9d8",
 			"src/kernel/engine/runner/schema-validation.ts": "e3b36339d8acbfd1762258dba2ba95fe06422dd7",
@@ -203,7 +203,7 @@
 		"reviewed": "2026-10-07",
 		"files": {
 			"src/guardrails/error.ts": "87d9b1ab3a14a6558d27012b2bb70a4c975cde89",
-			"src/guardrails/lexicon.ts": "2693d522341757f37b468609cb11769e9a04b702",
+			"src/guardrails/lexicon.ts": "d33cb51f68fb31e98033678ea0b099a1f4393c1a",
 			"src/kernel/stop.ts": "59643af5c8c84807391f1b6931b84ea5cd1b5ac4",
 			"src/kernel/turn-events.ts": "4f40add92760fb511568f8b3d10261334a780494"
 		}
