@@ -1,25 +1,10 @@
 import { data, redirect } from 'react-router';
+import { PageSummary } from '../components/page-summary';
 import { DocsNotFound } from '../components/docs/not-found';
 import { DocsReader } from '../components/docs/reader';
 import { getDocIndex } from '../lib/docs/.server/load-index';
 import { articleJsonLd } from '../lib/docs/machine';
-import type { Th30PageHandle } from '../lib/th30-page';
 import type { Route } from './+types/docs.$slug';
-
-export const handle = {
-	th30Page: (data: Route.ComponentProps['loaderData'], hash: string) => {
-		if (!data.ok) {
-			return { title: 'Not found', summary: `There is no docs chapter called '${data.slug}'.` };
-		}
-		const id = decodeURIComponent(hash.replace(/^#/, ''));
-		const section = id ? data.article.sections.find((candidate) => candidate.id === id) : undefined;
-		return {
-			title: data.article.title,
-			summary: data.article.summary,
-			viewing: section?.title,
-		};
-	},
-} satisfies Th30PageHandle;
 
 export function loader({ params, request }: Route.LoaderArgs) {
 	const index = getDocIndex();
@@ -65,6 +50,7 @@ export default function DocsArticlePage({ loaderData }: Route.ComponentProps) {
 	return (
 		<>
 			<script type="application/ld+json">{JSON.stringify(loaderData.jsonLd)}</script>
+			<PageSummary text={loaderData.article.summary} />
 			<DocsReader index={loaderData.index} article={loaderData.article} />
 		</>
 	);

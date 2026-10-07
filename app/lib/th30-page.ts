@@ -7,10 +7,39 @@ export type Th30Page = {
 	viewing?: string;
 };
 
-/** Route `handle` a page exports so th30 knows where the visitor is. */
+/** Route `handle` for a page whose state the DOM can't say. Other pages are read from their `PageSummary` scripts. */
 export type Th30PageHandle = {
 	th30Page?: (data: never, hash: string) => Th30Page;
 };
+
+/** The named part of the page a hash points at: its label, or its heading. */
+function viewingFor(hash: string): string | undefined {
+	const id = decodeURIComponent(hash.replace(/^#/, ''));
+	const node = id ? document.getElementById(id) : null;
+	if (!node) return undefined;
+	const text =
+		node.getAttribute('aria-label') ??
+		(node.matches('h1,h2,h3,h4') ? node : node.querySelector('h1,h2,h3,h4'))?.textContent?.trim();
+	return text || undefined;
+}
+
+/** What the page in front of the visitor says, from the `PageSummary` scripts it rendered. */
+export function readPageFromDom(hash: string): Th30Page | null {
+	const parts: string[] = [];
+	for (const node of document.querySelectorAll('script[data-page-summary]')) {
+		try {
+			const { name, description } = JSON.parse(node.textContent ?? '') as {
+				name?: string;
+				description?: string;
+			};
+			if (description) parts.push(name ? `${name}: ${description}` : description);
+		} catch {
+			// A script that isn't valid JSON says nothing.
+		}
+	}
+	if (parts.length === 0) return null;
+	return { title: document.title, summary: parts.join(' '), viewing: viewingFor(hash) };
+}
 
 /** The playground's live state, as th30 is told it. */
 export type Th30PlaygroundState = {

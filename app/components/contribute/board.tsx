@@ -5,6 +5,7 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { IconBrandDiscord, IconBug, IconCode, IconLock } from '@tabler/icons-react';
 import type { ComponentType } from 'react';
 import { NewTabLink } from '../links';
+import { PageSummary } from '../page-summary';
 import { StillText, StillTitle } from '../still-caption';
 import '../home-stage.css';
 import './contribute.css';
@@ -79,6 +80,13 @@ function WayTile({ way }: { way: Way }) {
 	);
 }
 
+const INTRO = 'Theorem is open source. Questions, bugs, ideas, and code are all welcome.';
+
+function contributeSummary(): string {
+	const ways = WAYS.map(({ title, note }) => `${title} (${note})`).join(' ');
+	return `“Contribute to the theory.” ${INTRO} Four ways in, each a link that opens in a new tab: ${ways}`;
+}
+
 /**
  * The last screen of the landing page: a heading and a line, then four ways in, one row.
  * The showcase's dotted field (`.home-dotted`, one layer under both screens) runs on behind it and fades out.
@@ -86,15 +94,14 @@ function WayTile({ way }: { way: Way }) {
 export function ContributeBoard() {
 	return (
 		<div className="contribute-frame">
+			<PageSummary name="Contribute" text={contributeSummary()} />
 			<div className="contribute-body">
 				<div className="contribute-content">
 					<div className="contribute-intro">
 						<Heading level={1} type="display-3">
 							Contribute to the theory
 						</Heading>
-						<Text color="secondary">
-							Theorem is open source. Questions, bugs, ideas, and code are all welcome.
-						</Text>
+						<Text color="secondary">{INTRO}</Text>
 					</div>
 					<Grid columns={{ minWidth: 160, max: 4 }} gap={4} rowGap={6}>
 						{WAYS.map((way) => (

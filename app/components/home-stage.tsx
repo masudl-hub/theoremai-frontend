@@ -4,8 +4,16 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { IconBrush, IconCircleDot, IconShieldCheck } from '@tabler/icons-react';
 import type { RefObject } from 'react';
 import { HomeIntro } from './home-intro';
+import { PageSummary } from './page-summary';
 import { StillText, StillTitle } from './still-caption';
 import './home-stage.css';
+
+const HEADLINE = [
+	{ text: 'Agents are', claim: false },
+	{ text: 'probabilistic.', claim: false },
+	{ text: 'Your architecture', claim: true },
+	{ text: 'shouldn’t be.', claim: true },
+] as const;
 
 const ARGUMENT =
 	'Agent outputs vary every turn. Users still need an experience they can understand and trust. theorem helps you build that experience around a clear agent contract.';
@@ -65,17 +73,25 @@ function StillRow({ still }: { still: Still }) {
 	);
 }
 
+function overviewSummary(): string {
+	const headline = HEADLINE.map(({ text }) => text).join(' ');
+	const goals = STILLS.map((still) => `${still.title} (${still.text})`).join('; ');
+	return `${headline} ${ARGUMENT} Three goals, each with an aerial still: ${goals}.`;
+}
+
 function StageCopy() {
 	return (
 		<div className="home-hero-copy">
+			<PageSummary name="Overview" text={overviewSummary()} />
 			<div className="home-stage-frame">
 				<div className="home-stage-split">
 					<div className="home-stage-lead">
 						<Heading className="home-stage-headline" level={2}>
-							<span className="home-stage-line is-quiet">Agents are</span>
-							<span className="home-stage-line is-quiet">probabilistic.</span>
-							<span className="home-stage-line is-claim">Your architecture</span>
-							<span className="home-stage-line is-claim">shouldn’t be.</span>
+							{HEADLINE.map(({ text, claim }) => (
+								<span key={text} className={`home-stage-line ${claim ? 'is-claim' : 'is-quiet'}`}>
+									{text}
+								</span>
+							))}
 						</Heading>
 						<Text className="home-stage-statement">{ARGUMENT}</Text>
 					</div>

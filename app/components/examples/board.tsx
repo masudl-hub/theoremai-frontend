@@ -6,6 +6,7 @@ import { ScrollableArea } from '@astryxdesign/core/ScrollableArea';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 import { NewTabLink } from '../links';
+import { PageSummary } from '../page-summary';
 import './examples.css';
 
 type ExampleAction =
@@ -55,6 +56,14 @@ const EXAMPLES: readonly ExampleCard[] = [
 	},
 ];
 
+function showcaseSummary(): string {
+	const cards = EXAMPLES.map(({ title, description, action }) => {
+		const opens = action.kind === 'hosted' ? 'opens the hosted app' : 'opens in the playground';
+		return `${title} (${description} It ${opens}.)`;
+	}).join(' ');
+	return `“showcase: Built with theorem.” Agents on a board the visitor pans in both directions. ${cards}`;
+}
+
 function ExampleActionButton({ action }: { action: ExampleAction }) {
 	if (action.kind === 'hosted') {
 		return (
@@ -91,6 +100,7 @@ function ExampleCardView({ example }: { example: ExampleCard }) {
 export function ExamplesBoard() {
 	return (
 		<div className="examples-frame">
+			<PageSummary name="Showcase" text={showcaseSummary()} />
 			<div className="examples-mark">
 				<VStack gap={2}>
 					<Heading level={1} justify="end">

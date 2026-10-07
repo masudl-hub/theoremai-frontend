@@ -39,6 +39,7 @@ import { TH30_PROFILE_ID } from '../lib/th30-id';
 import {
 	type Th30Page,
 	type Th30PageHandle,
+	readPageFromDom,
 	th30PageLine,
 	useTh30PlaygroundState,
 } from '../lib/th30-page';
@@ -160,18 +161,31 @@ const PAGE_LINE_DEBOUNCE_MS = 800;
 const SURFACE_PAGES: Record<string, string> = { playground: '/playground' };
 const SITE_PAGES = { home: '/', docs: '/docs', playground: '/playground' } as const;
 
-/** The page the visitor is on, from the deepest matched route that describes itself. */
+/** The page the visitor is on: a route that reports live state, else what the page itself says. */
 function useTh30PageLine(): string | null {
 	const matches = useMatches();
 	const { pathname, hash } = useLocation();
 	const playground = useTh30PlaygroundState();
+	const [rendered, setRendered] = useState<Th30Page | null>(null);
+	// The page's own markup is what changes on navigation, so the path triggers the read.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: pathname is the trigger, not an input
+	useEffect(() => {
+		const next = readPageFromDom(hash);
+		setRendered((prev) =>
+			prev?.title === next?.title &&
+			prev?.summary === next?.summary &&
+			prev?.viewing === next?.viewing
+				? prev
+				: next,
+		);
+	}, [hash, pathname]);
 	for (const match of [...matches].reverse()) {
 		const describe = (match.handle as Th30PageHandle | undefined)?.th30Page;
 		if (!describe) continue;
 		const page = (describe as (data: unknown, hash: string) => Th30Page)(match.loaderData, hash);
 		return th30PageLine(pathname, page, pathname === '/playground' ? playground : null);
 	}
-	return null;
+	return rendered ? th30PageLine(pathname, rendered, null) : null;
 }
 
 /** th30 opens a surface's page when it asks for one that isn't mounted, and can always move the person. */
