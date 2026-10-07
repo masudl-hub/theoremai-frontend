@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
+import { ContributeBoard } from '../components/contribute/board';
 import { ExamplesBoard } from '../components/examples/board';
 import { HomeStage } from '../components/home-stage';
 import '../components/home-scroll.css';
@@ -20,7 +21,7 @@ export const handle = {
 	th30Page: () => ({
 		title: 'Home',
 		summary:
-			"Landing (/) opens on a full-bleed shell panel: the favicon mark draws, then the title card with playground and docs links, package links, a copyable npm install line, the lowercase theorem wordmark, and the tagline 'Typed, composable agents for text, image, speech, and live voice — guarded on every turn.' A scroll snaps to overview (/overview) — the panel contracts to the rail on the way. On the left: 'Agents are probabilistic.' then 'Your architecture shouldn’t be.', and 'Agent outputs vary every turn. Users still need an experience they can understand and trust. theorem helps you build that experience around a clear agent contract.' On the right, three goals. Each is a square still with a large icon on it — One source of truth over a single river in an orange canyon, Room to experiment over drying saffron plots, Built-in boundaries over obsidian shores — and the title and note sit beside the square. Another scroll snaps to showcase (/examples).",
+			"Landing (/) opens on a full-bleed shell panel: the favicon mark draws, then the title card with playground and docs links, package links, a copyable npm install line, the lowercase theorem wordmark, and the tagline 'Typed, composable agents for text, image, speech, and live voice — guarded on every turn.' A scroll snaps to overview (/overview) — the panel contracts to the rail on the way. On the left: 'Agents are probabilistic.' then 'Your architecture shouldn’t be.', and 'Agent outputs vary every turn. Users still need an experience they can understand and trust. theorem helps you build that experience around a clear agent contract.' On the right, three goals. Each is a square still with a large icon on it — One source of truth over a single river in an orange canyon, Room to experiment over drying saffron plots, Built-in boundaries over obsidian shores — and the title and note sit beside the square. Another scroll snaps to showcase (/examples), and a last one to contribute (/contribute): the showcase's dotted field carries on, fading out, behind 'Contribute to the theory', with ways to report a bug, request a feature, contribute code, join the Discord, follow the GitHub repo, and report a vulnerability privately.",
 	}),
 } satisfies Th30PageHandle & { homeImmersive: true };
 
@@ -36,7 +37,7 @@ function RetiredHashRedirect() {
 	return null;
 }
 
-type LandingScreen = 'landing' | 'overview' | 'showcase';
+type LandingScreen = 'landing' | 'overview' | 'showcase' | 'contribute';
 
 /** `#examples` is the previous showcase id. An empty hash is landing. */
 function landingScreen(hash: string): LandingScreen | null {
@@ -44,6 +45,7 @@ function landingScreen(hash: string): LandingScreen | null {
 	if (id === '' || id === 'landing') return 'landing';
 	if (id === 'overview') return 'overview';
 	if (id === 'showcase' || id === 'examples') return 'showcase';
+	if (id === 'contribute') return 'contribute';
 	return null;
 }
 
@@ -52,11 +54,12 @@ function hashFor(screen: LandingScreen): string {
 	return `#${screen}`;
 }
 
-/** Snap offsets for the three screens. Overview uses the settle band. */
+/** Snap offsets for the four screens. Overview uses the settle band. */
 function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number }[] {
 	const settle = scroller.querySelector<HTMLElement>('.home-contract-settle');
 	const overview = scroller.querySelector<HTMLElement>('#overview');
 	const showcase = scroller.querySelector<HTMLElement>('#showcase');
+	const contribute = scroller.querySelector<HTMLElement>('#contribute');
 	const overviewAt =
 		settle && getComputedStyle(settle).display !== 'none'
 			? settle.offsetTop
@@ -65,6 +68,7 @@ function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number
 		{ screen: 'landing', at: 0 },
 		{ screen: 'overview', at: overviewAt },
 		{ screen: 'showcase', at: showcase?.offsetTop ?? overviewAt },
+		{ screen: 'contribute', at: contribute?.offsetTop ?? showcase?.offsetTop ?? overviewAt },
 	];
 }
 
@@ -106,7 +110,7 @@ function scrollToLandingScreen(scroller: HTMLElement, screen: LandingScreen) {
 	scroller.querySelector<HTMLElement>(`#${screen}`)?.scrollIntoView({ block: 'start' });
 }
 
-/** Landing (/), then overview (/overview), then showcase (/examples). */
+/** Landing (/), then overview (/overview), showcase (/examples) and contribute (/contribute). */
 export default function Home() {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const { hash, pathname } = useLocation();
@@ -161,9 +165,14 @@ export default function Home() {
 		<div className="home-scroll" ref={scrollRef}>
 			<RetiredHashRedirect />
 			<HomeStage scrollRoot={scrollRef} />
-			<section className="home-page" id="showcase" aria-label="Showcase">
-				<ExamplesBoard />
-			</section>
+			<div className="home-dotted">
+				<section className="home-page" id="showcase" aria-label="Showcase">
+					<ExamplesBoard />
+				</section>
+				<section className="home-page" id="contribute" aria-label="Contribute">
+					<ContributeBoard />
+				</section>
+			</div>
 		</div>
 	);
 }

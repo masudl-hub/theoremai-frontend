@@ -21,3 +21,23 @@
 .home-page > * {
 	height: 100%;
 }
+
+/* One field of dots under the showcase and the contribute screen, so there is no seam between them.
+   It is full over the showcase (the top half), then clears over most of the contribute screen. */
+.home-dotted {
+	display: flex;
+	flex-direction: column;
+	height: 200%;
+	background-color: var(--color-background-surface);
+	background-image:
+		linear-gradient(to bottom, transparent 50%, var(--color-background-surface) 100%),
+		radial-gradient(circle, var(--color-border) 1px, transparent 1px);
+	background-size:
+		100% 100%,
+		var(--spacing-6) var(--spacing-6);
+}
+
+.home-dotted > .home-page {
+	flex: 1 1 0;
+	min-height: 0;
+}

@@ -29,8 +29,6 @@
 	position: relative;
 	width: calc(var(--spacing-12) * 21);
 	height: calc(var(--spacing-12) * 19);
-	background-image: radial-gradient(circle, var(--color-border) 1px, transparent 1px);
-	background-size: var(--spacing-6) var(--spacing-6);
 }
 
 @supports (width: 1cqw) {

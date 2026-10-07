@@ -5,6 +5,7 @@ export default [
 		index('routes/home.tsx'),
 		route('overview', 'routes/overview.tsx'),
 		route('examples', 'routes/examples.tsx'),
+		route('contribute', 'routes/contribute.tsx'),
 		route('playground', 'routes/playground.tsx'),
 		route('playground/run', 'routes/playground.run.tsx'),
 		route('docs', 'routes/docs.tsx'),
