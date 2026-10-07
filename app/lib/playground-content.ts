@@ -72,7 +72,14 @@ const PARTS = [
 
 const typeLabel = (type: string) => type.charAt(0).toUpperCase() + type.slice(1);
 
-type Section = { id: string; label: string; optional: boolean; types: readonly string[] };
+type Section = {
+	id: string;
+	label: string;
+	optional: boolean;
+	types: readonly string[];
+	path: string;
+	owns: readonly string[];
+};
 
 /** The sections of the editor, in the graph’s order. A section’s own branches (bindings, tools) are not listed. */
 function sections(): Section[] {
@@ -83,31 +90,73 @@ function sections(): Section[] {
 		label: facet.label,
 		optional: facet.optional,
 		types: facet.profileTypes,
+		path: facet.profilePath,
+		owns: facet.ownsFields ?? [],
 	}));
+}
+
+function servesText(section: Section): string {
+	return section.types.length === PROFILE_TYPES.length
+		? 'every profile type'
+		: section.types.map(typeLabel).join(', ');
 }
 
 function sectionText(section: Section, index: DocIndex): string {
 	const slug = FACET_CHAPTER[section.id];
-	const summary = slug ? index.bySlug[slug]?.summary : undefined;
-	const serves =
-		section.types.length === PROFILE_TYPES.length
-			? 'every profile type'
-			: section.types.map(typeLabel).join(', ');
-	const where = `${section.optional ? 'Optional' : 'Always present'}; for ${serves}.`;
+	// A chapter shared by several types (modalities) can't describe one type's section.
+	const summary =
+		section.types.length === 1
+			? `The ${section.label} settings an agent of that type has and no other does.`
+			: slug
+				? index.bySlug[slug]?.summary
+				: undefined;
+	const where = `${section.optional ? 'Optional' : 'Always present'}; for ${servesText(section)}.`;
 	return [summary, where, slug ? `Explained in /docs/${slug}.` : undefined]
 		.filter(Boolean)
 		.join(' ');
+}
+
+/** The fields a section edits, with the kernel’s own documentation for each. */
+function sectionFields(section: Section, index: DocIndex): string[] {
+	const seen = new Set<string>();
+	const lines: string[] = [];
+	for (const article of index.articles) {
+		for (const symbol of article.symbols) {
+			if (symbol.kind !== 'field' || seen.has(symbol.path)) continue;
+			const own =
+				symbol.path === section.path ||
+				symbol.path.startsWith(`${section.path}.`) ||
+				section.owns.includes(symbol.path);
+			if (!own) continue;
+			seen.add(symbol.path);
+			const { meta } = symbol;
+			const facts = [
+				meta.type,
+				meta.required === true
+					? 'required'
+					: typeof meta.required === 'string'
+						? `required ${meta.required}`
+						: undefined,
+				meta.options?.length && !meta.type.includes(`'${meta.options[0]}'`)
+					? `one of ${meta.options.join(', ')}`
+					: undefined,
+				meta.profileTypes ? `for ${meta.profileTypes.map(typeLabel).join(', ')}` : undefined,
+				meta.unset ? `left out: ${meta.unset}` : undefined,
+			].filter(Boolean);
+			lines.push(`- \`${symbol.path}\` (${facts.join('; ')}): ${meta.doc}`);
+		}
+	}
+	return lines;
 }
 
 export function playgroundDescription(): string {
 	return `Build an agent without code: pick a profile type (${PROFILE_TYPES.map(typeLabel).join(', ')}), set its sections, and chat with it live. Export it as ${KERNEL_NAME} source.`;
 }
 
-/** Each part of the screen, with what it says, for structured data, th30 and llms.txt. */
-export function playgroundParts(index: DocIndex): { id: string; name: string; text: string }[] {
-	const list = sections()
-		.map((section) => `${section.label}: ${sectionText(section, index)}`)
-		.join(' ');
+type PlaygroundPart = { id: string; name: string; text: string; detail?: string };
+
+/** Each part of the screen, with what it says, for structured data, th30 and llms.txt. `detail` is for Markdown only. */
+export function playgroundParts(index: DocIndex): PlaygroundPart[] {
 	const examples = Object.values(PLAYGROUND_EXAMPLES)
 		.map(({ label, description }) => `${label}: ${description}`)
 		.join(' ');
@@ -122,14 +171,19 @@ export function playgroundParts(index: DocIndex): { id: string; name: string; te
 			name: 'Profile types',
 			text: `An agent is one of six types: ${PROFILE_TYPES.map(typeLabel).join(', ')}. The type decides which sections it has. Each is explained in /docs/modalities.`,
 		},
-		{ id: 'section-list', name: 'Sections', text: list },
+		...sections().map((section) => ({
+			id: `section-${section.id}`,
+			name: `${section.label} section`,
+			text: sectionText(section, index),
+			detail: sectionFields(section, index).join('\n'),
+		})),
 		{ id: 'examples', name: 'Examples', text: `Load an example offers ready agents. ${examples}` },
 	];
 }
 
 export function playgroundMarkdown(index: DocIndex, origin: string): string {
 	const parts = playgroundParts(index)
-		.map(({ name, text }) => `### ${name}\n\n${text}`)
+		.map(({ name, text, detail }) => `### ${name}\n\n${text}${detail ? `\n\n${detail}` : ''}`)
 		.join('\n\n');
 	return [
 		'## The playground',
