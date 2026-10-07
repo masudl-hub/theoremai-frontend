@@ -85,6 +85,8 @@ function harborDeskInputs(): PlaygroundDraft['inputs'] {
 		maxTurnBytes: 12_000_000,
 		limitsByMimeJson: '',
 		slotsJson: '',
+		contextFrom: [],
+		contextMaxChars: null,
 	};
 }
 

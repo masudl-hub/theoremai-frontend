@@ -1509,6 +1509,55 @@ function InputLimitsSection({ inputs, set }: InputsSectionProps) {
 	);
 }
 
+type ContextSender = PlaygroundDraft['inputs']['contextFrom'][number];
+
+const CONTEXT_SENDER_LABELS: Record<ContextSender, string> = {
+	client: 'The page',
+	server: 'The server',
+};
+
+const CONTEXT_SENDERS = Object.keys(CONTEXT_SENDER_LABELS) as ContextSender[];
+
+/** Who may tell the agent what the page shows, and how much. */
+function InputContextSection({ inputs, set }: InputsSectionProps) {
+	return (
+		<InspectorSection title="Context" path="inputs.context" note={sectionNote('context')}>
+			<InspectorRow label="From" path="inputs.context.from">
+				<StackItem size="fill">
+					<CheckboxList
+						label="From"
+						isLabelHidden
+						density="compact"
+						value={inputs.contextFrom}
+						onChange={(checked) => {
+							set({ contextFrom: CONTEXT_SENDERS.filter((sender) => checked.includes(sender)) });
+						}}
+					>
+						{CONTEXT_SENDERS.map((sender) => (
+							<CheckboxListItem key={sender} value={sender} label={CONTEXT_SENDER_LABELS[sender]} />
+						))}
+					</CheckboxList>
+				</StackItem>
+			</InspectorRow>
+			{inputs.contextFrom.length > 0 && (
+				<NumberRow
+					label="Max size"
+					path="inputs.context.maxChars"
+					units="characters"
+					field="contextMaxChars"
+					isRequired
+					value={inputs.contextMaxChars}
+					min={1}
+					isIntegerOnly
+					onChange={(contextMaxChars) => {
+						set({ contextMaxChars });
+					}}
+				/>
+			)}
+		</InspectorSection>
+	);
+}
+
 function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
 	const { inputs } = draft;
 	const set = patch(setDraft, 'inputs');
@@ -1516,8 +1565,11 @@ function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 	const image = draft.identity.profileType === 'image';
 	return (
 		<>
-			<InputAcceptsSection inputs={inputs} set={set} image={image} />
-			<InputLimitsSection inputs={inputs} set={set} />
+			{draftAllows(draft, 'inputs.attachments.accept') && (
+				<InputAcceptsSection inputs={inputs} set={set} image={image} />
+			)}
+			{draftAllows(draft, 'inputs.maxFiles') && <InputLimitsSection inputs={inputs} set={set} />}
+			{draftAllows(draft, 'inputs.context') && <InputContextSection inputs={inputs} set={set} />}
 			<InspectorSection title="Slots" path="inputs.slots" note={sectionNote('slots')}>
 				<TextAreaRow
 					label="Slots"
@@ -2210,6 +2262,50 @@ function LiveSessionSection({ live, set }: LiveSectionProps) {
 					set({ sessionResumption });
 				}}
 			/>
+			{live.sessionResumption && (
+				<TextAreaRow
+					label="On resume"
+					path="live.resumed.prompt"
+					field="resumedPrompt"
+					value={live.resumedPrompt}
+					rows={2}
+					onChange={(resumedPrompt) => {
+						set({ resumedPrompt });
+					}}
+				/>
+			)}
+			{live.sessionResumption && live.resumedPrompt.trim() !== '' && (
+				<NumberRow
+					label="Away for"
+					path="live.resumed.afterMs"
+					units="ms"
+					field="resumedAfterMs"
+					value={live.resumedAfterMs}
+					min={0}
+					isIntegerOnly
+					onChange={(resumedAfterMs) => {
+						set({ resumedAfterMs });
+					}}
+				/>
+			)}
+		</InspectorSection>
+	);
+}
+
+/** What the agent is told to say when a call opens. */
+function LiveGreetingSection({ live, set }: LiveSectionProps) {
+	return (
+		<InspectorSection title="Greeting" path="live.greeting">
+			<TextAreaRow
+				label="Greeting"
+				path="live.greeting"
+				field="greeting"
+				value={live.greeting}
+				rows={2}
+				onChange={(greeting) => {
+					set({ greeting });
+				}}
+			/>
 		</InspectorSection>
 	);
 }
@@ -2388,6 +2484,7 @@ function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: Set
 		<>
 			<LiveIngressSection live={live} set={set} />
 			<LiveVoiceSection live={live} set={set} google={google} />
+			<LiveGreetingSection live={live} set={set} />
 			<LiveSessionSection live={live} set={set} />
 			<LiveCompressionSection live={live} set={set} />
 			<LiveTranscriptsSection live={live} set={set} />
@@ -3406,7 +3503,7 @@ type PatternUse = 'theorem' | 'mine' | 'both';
 const PATTERN_USE_SEGMENTS: Segment<PatternUse>[] = [
 	{
 		value: 'theorem',
-		label: "Theorem's",
+		label: "theorem's",
 		icon: IconTheorem,
 		description: sectionNote('detect.source.theorem'),
 	},
@@ -4848,10 +4945,18 @@ function ActivitySection({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
 	);
 }
 
-/** What a function tool returns in the playground. */
+/** What a function tool returns in the playground, and whether the page answers it on a host. */
 function StubSection({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
 	return (
 		<InspectorSection title="Stub" path="playground.stubOutput">
+			<SwitchRow
+				label="Page answers"
+				path="answeredBy"
+				value={tool.answeredBy === 'page'}
+				onChange={(page) => {
+					set({ answeredBy: page ? 'page' : undefined });
+				}}
+			/>
 			<TextAreaRow
 				label="Returns"
 				path="playground.stubOutput"

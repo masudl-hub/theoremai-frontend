@@ -6,6 +6,7 @@ import {
 	type PlaygroundRunPayload,
 	playgroundInterface,
 	playgroundLiveConnection,
+	playgroundPageTools,
 } from '@theoremjs/playground';
 import {
 	browserPlaygroundLiveConnection,
@@ -39,6 +40,10 @@ export interface PlaygroundRunnerProps {
 	initialText?: ChatProps['initialText'];
 	onChatChange?: ChatProps['onChatChange'];
 	chatRef?: ChatProps['chatRef'];
+	/** The value the page picked for each slot, for a chat's turns and a call's start. */
+	slots?: ChatProps['slots'];
+	/** What the page tells the agent. */
+	context?: ChatProps['context'];
 }
 
 /**
@@ -60,6 +65,8 @@ export function PlaygroundRunner({
 	initialText,
 	onChatChange,
 	chatRef,
+	slots,
+	context,
 }: PlaygroundRunnerProps) {
 	const [traces] = useState(createTraceFeed);
 	const activity = useRef(onActivity);
@@ -110,6 +117,8 @@ export function PlaygroundRunner({
 			initialText={initialText}
 			onChatChange={onChatChange}
 			chatRef={chatRef}
+			slots={slots}
+			context={context}
 		/>
 	);
 }
@@ -152,8 +161,12 @@ function TurnRun({
 	initialText,
 	onChatChange,
 	chatRef,
+	slots,
+	context,
 }: RunProps) {
 	const iface = useMemo(() => playgroundInterface(payload), [payload]);
+	/** The playground's page answers each page tool with the tool's stub. */
+	const pageTools = useMemo(() => playgroundPageTools(payload), [payload]);
 	const transport = useMemo(
 		() =>
 			noting(
@@ -175,6 +188,9 @@ function TurnRun({
 					: playgroundLiveConnection(payload);
 			}}
 			trace={trace}
+			slots={slots}
+			context={context}
+			pageTools={pageTools}
 		/>
 	) : (
 		<TheoremChat
@@ -186,6 +202,9 @@ function TurnRun({
 			initialText={initialText}
 			onChatChange={onChatChange}
 			chatRef={chatRef}
+			slots={slots}
+			context={context}
+			pageTools={pageTools}
 		/>
 	);
 }

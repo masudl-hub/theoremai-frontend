@@ -128,6 +128,7 @@ import {
 	PlaygroundKeys,
 	usePlaygroundConnection,
 } from '../components/playground-connection';
+import { PlaygroundPage } from '../components/playground-page';
 import { PlaygroundRunner } from '../components/playground-runner';
 import {
 	addToolSpec,
@@ -145,6 +146,13 @@ import {
 	restoreConversation,
 	saveConversation,
 } from '../lib/playground-conversation';
+import {
+	loadPageValues,
+	type PageValues,
+	pageInputsOf,
+	savePageValues,
+	sentPageValues,
+} from '../lib/playground-page';
 import { restorePlayground } from '../lib/playground-restore';
 import type { RestoredPlayground } from '../lib/playground-session';
 import { createPlaygroundStore, type PlaygroundStore } from '../lib/playground-store';
@@ -166,7 +174,7 @@ export const handle = {
 } satisfies ShellHandle & Th30PageHandle;
 
 export function meta() {
-	return [{ title: 'Playground · THEOREM' }];
+	return [{ title: 'Playground · theorem' }];
 }
 
 function isPlaygroundSeed(value: string | null): value is PlaygroundSeedId {
@@ -1519,7 +1527,7 @@ const TreeColumn = memo(function TreeColumn({
 				<HStack gap={2} vAlign="start">
 					<StackItem size="fill">
 						<VStack gap={1}>
-							<Heading level={3}>Theorem Playground</Heading>
+							<Heading level={3}>theorem playground</Heading>
 							<Text type="supporting" color="secondary">
 								{`@theoremjs/agents ${KERNEL_PACKAGE_VERSION}`}
 							</Text>
@@ -1895,6 +1903,20 @@ function PreviewHeader({
 	);
 }
 
+/** What the playground's page sends the agent being chatted with, kept in this tab. */
+function usePageValues(chatWith: string): [PageValues, (next: PageValues) => void] {
+	const [kept, setKept] = useState(() => ({ chatWith, values: loadPageValues(chatWith) }));
+	const values = kept.chatWith === chatWith ? kept.values : loadPageValues(chatWith);
+	const set = useCallback(
+		(next: PageValues) => {
+			savePageValues(chatWith, next);
+			setKept({ chatWith, values: next });
+		},
+		[chatWith],
+	);
+	return [values, set];
+}
+
 /**
  * The runner for the compiled agent, its conversation saved as it goes, or the guardrail tester
  * over it; while none compiles, why.
@@ -1917,6 +1939,9 @@ function PreviewBody({
 	testing: boolean;
 }) {
 	const { payload, traced } = compile;
+	const pageInputs = useMemo(() => (payload ? pageInputsOf(payload) : null), [payload]);
+	const [pageValues, setPageValues] = usePageValues(chatWith);
+	const sent = useMemo(() => sentPageValues(pageInputs, pageValues), [pageInputs, pageValues]);
 	if (!payload) {
 		return (
 			<VStack height="100%" vAlign="center" padding={4}>
@@ -1938,20 +1963,31 @@ function PreviewBody({
 				) : null
 			}
 		>
-			<PlaygroundRunner
-				key={run.runKey}
-				payload={payload}
-				mode={connection.mode}
-				runtime={connection.runtime}
-				trace={traced ? traceOpen : undefined}
-				onActivity={run.markUsed}
-				initialChat={run.initialChat}
-				initialText={run.initialText}
-				onChatChange={(snapshot) => {
-					saveConversation(chatWith, snapshot);
-				}}
-				chatRef={chatRef}
-			/>
+			<VStack height="100%">
+				{pageInputs && (
+					<Section variant="transparent" paddingInline={3} paddingBlock={0}>
+						<PlaygroundPage inputs={pageInputs} values={pageValues} onChange={setPageValues} />
+					</Section>
+				)}
+				<StackItem size="fill">
+					<PlaygroundRunner
+						key={run.runKey}
+						payload={payload}
+						mode={connection.mode}
+						runtime={connection.runtime}
+						trace={traced ? traceOpen : undefined}
+						onActivity={run.markUsed}
+						initialChat={run.initialChat}
+						initialText={run.initialText}
+						onChatChange={(snapshot) => {
+							saveConversation(chatWith, snapshot);
+						}}
+						chatRef={chatRef}
+						slots={sent.slots}
+						context={sent.context}
+					/>
+				</StackItem>
+			</VStack>
 		</InPlace>
 	);
 }

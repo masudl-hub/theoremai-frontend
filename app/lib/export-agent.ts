@@ -111,7 +111,19 @@ function browserFile(
 	component: string,
 	endpoint: string,
 	what: string,
+	props: readonly string[] = [],
 ): SourceFile & { what: string } {
+	const element =
+		props.length === 0
+			? [`  return <${component} endpoint="${endpoint}" />;`]
+			: [
+					'  return (',
+					`    <${component}`,
+					`      endpoint="${endpoint}"`,
+					...props.map((prop) => `      ${prop}`),
+					'    />',
+					'  );',
+				];
 	return {
 		path,
 		what,
@@ -119,10 +131,55 @@ function browserFile(
 			`import { ${component} } from '@theoremjs/react/ui';`,
 			'',
 			`export function ${name}() {`,
-			`  return <${component} endpoint="${endpoint}" />;`,
+			...element,
 			'}',
 		].join('\n')}\n`,
 	};
+}
+
+/** What the agent takes from its page and its server: `inputs.slots` and `inputs.context`. */
+function pageInputs({ profile }: CompiledPlayground) {
+	const inputs = 'inputs' in profile ? profile.inputs : undefined;
+	const slots: Record<string, string[]> = inputs && 'slots' in inputs ? (inputs.slots ?? {}) : {};
+	const context = inputs && 'context' in inputs ? inputs.context : undefined;
+	return { slots: Object.entries(slots), from: context?.from ?? [] };
+}
+
+/** The chat's prop for the tools this page answers: a function per tool, returning its output. */
+function pageToolsProp(agent: CompiledPlayground): string[] {
+	const names = agent.customTools.flatMap((tool) =>
+		tool.type === 'function' && tool.answeredBy === 'page' ? [tool.name] : [],
+	);
+	if (names.length === 0) return [];
+	return [
+		'// What this page does for each tool it answers, and the output it returns.',
+		'pageTools={{',
+		...names.map((name) => `  ${JSON.stringify(name)}: (args) => ({ output: {} }),`),
+		'}}',
+	];
+}
+
+/** The chat's props for what the page supplies: a value per slot, and its context. */
+function pageProps(agent: CompiledPlayground): string[] {
+	const { slots, from } = pageInputs(agent);
+	const picked = slots.map(
+		([name, allowed]) => `${JSON.stringify(name)}: ${JSON.stringify(allowed.at(0) ?? '')}`,
+	);
+	return [
+		...slots.map(([name, allowed]) => `// ${name}: ${allowed.join(' | ')}`),
+		...(slots.length > 0 ? [`slots={{ ${picked.join(', ')} }}`] : []),
+		...(from.includes('client')
+			? ['// What this page tells the agent: any JSON.', 'context={{}}']
+			: []),
+		...pageToolsProp(agent),
+	];
+}
+
+/** The route's option for what the server tells the agent, when the profile takes it. */
+function serverContext(agent: CompiledPlayground): string[] {
+	return pageInputs(agent).from.includes('server')
+		? ['// What your server tells the agent with each request: any JSON.\n  context: () => ({})']
+		: [];
 }
 
 /** A decision agent's route and its state-and-answers component. */
@@ -176,9 +233,16 @@ function turnEntry(workspace: CompiledWorkspace, agent: CompiledPlayground): Ent
 			'theorem',
 			'createTheoremHandler',
 			`Mount at ${ENDPOINT}/*: it answers /turn, /invoke and /steer.`,
-			['profile', `provider: ${providerSource(workspace)}`],
+			['profile', `provider: ${providerSource(workspace)}`, ...serverContext(agent)],
 		),
-		ui: browserFile('AgentChat.tsx', 'AgentChat', 'TheoremChat', ENDPOINT, 'the chat'),
+		ui: browserFile(
+			'AgentChat.tsx',
+			'AgentChat',
+			'TheoremChat',
+			ENDPOINT,
+			'the chat',
+			pageProps(agent),
+		),
 	};
 }
 

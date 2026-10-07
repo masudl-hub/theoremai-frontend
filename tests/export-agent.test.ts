@@ -96,3 +96,25 @@ test('the zip holds every file', () => {
 	assert.equal(view.getUint32(zip.length - 22, true), 0x06054b50);
 	assert.equal(view.getUint16(zip.length - 12, true), files.length);
 });
+
+test('an exported chat passes a value per slot and its context, and the route its server context', () => {
+	const blank = setProfileType(createBlankDraft(), 'text');
+	const draft = {
+		...blank,
+		identity: { ...blank.identity, agentId: 'travel.guide', handle: 'guide' },
+		inputs: {
+			...blank.inputs,
+			slotsJson: '{"language":["en","fr"]}',
+			contextFrom: ['client' as const, 'server' as const],
+			contextMaxChars: 2000,
+		},
+	};
+	const workspace = compiled(workspaceFromDraft(draft));
+	const [only] = workspace.agents;
+	assert(only);
+	const files = exportFiles(workspace, only);
+	const chat = files.find((file) => file.path === 'AgentChat.tsx')?.code ?? '';
+	assert.match(chat, /\/\/ language: en \| fr\n\s+slots=\{\{ "language": "en" \}\}/);
+	assert.match(chat, /context=\{\{\}\}/);
+	assert.match(files.find((file) => file.path === 'route.ts')?.code ?? '', /context: \(\) => \(\{\}\),/);
+});
