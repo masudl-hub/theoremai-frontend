@@ -6,7 +6,7 @@ import {
 	type PlaygroundRunPayload,
 	setProfileType,
 } from '@theoremjs/playground';
-import { NO_PAGE_VALUES, pageInputsOf, sentPageValues } from '../app/lib/playground-page';
+import { pageInputsOf, sentPageValues } from '../app/lib/playground-page';
 
 function payloadOf(draft: ReturnType<typeof createExampleDraft>): PlaygroundRunPayload {
 	const compiled = compilePlayground(draft);
@@ -35,7 +35,7 @@ test('an agent that takes nothing from a page has no page inputs', () => {
 
 test('a slot sends its first value until one is picked, and a dropped value falls back', () => {
 	const inputs = pageInputsOf(withPage('text').payload);
-	assert.deepEqual(sentPageValues(inputs, NO_PAGE_VALUES), { slots: { language: 'en' } });
+	assert.deepEqual(sentPageValues(inputs, { slots: {}, contextJson: '' }), { slots: { language: 'en' } });
 	const picked = { slots: { language: 'fr' }, contextJson: '{"page":"Checkout"}' };
 	assert.deepEqual(sentPageValues(inputs, picked), {
 		slots: { language: 'fr' },

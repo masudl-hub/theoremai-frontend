@@ -23,19 +23,20 @@ import {
 	IconActivity,
 	IconAdjustmentsHorizontal,
 	IconAlertTriangle,
-	IconArrowBarDown,
+	IconArrowBarToDown,
 	IconArrowLeft,
 	IconBrowserShare,
 	IconCode,
-	IconColorSwatch,
 	IconCopy,
 	IconCopyPlus,
+	IconFile,
 	IconFileZip,
 	IconKey,
 	IconMenu2,
 	IconPlayerPlay,
 	IconPlaylistX,
 	IconPlus,
+	IconRotateClockwise,
 	IconSearch,
 	IconShieldSearch,
 	IconSparkles,
@@ -49,6 +50,7 @@ import {
 } from '@theoremjs/agents';
 import {
 	addAgent,
+	addArchitectExample,
 	agentDraft,
 	agentNodeId,
 	type CompiledPlayground,
@@ -56,9 +58,11 @@ import {
 	clearStalePlaygroundRuns,
 	compileWorkspace,
 	createBlankDraft,
-	createBlankWorkspace,
+	createConsoleExampleDraft,
 	createDecisionExampleDraft,
 	createExampleDraft,
+	createLiveExampleDraft,
+	createNarratorExampleDraft,
 	createPlaygroundRunId,
 	draftFacets,
 	duplicateAgent,
@@ -79,6 +83,8 @@ import {
 	readPlaygroundSource,
 	removeAgent,
 	removeLibraryTool,
+	resetAgent,
+	resetLibraryTool,
 	sampleToolInput,
 	savePlaygroundRunPayload,
 	scopedNodeId,
@@ -450,18 +456,80 @@ function WorkspaceListToggle({
 	);
 }
 
+interface ExampleEntry {
+	id: string;
+	label: string;
+	description: string;
+	icon: IconType;
+}
+
+/** What an Add agent item does to the workspace. */
+type AddAgent = (workspace: PlaygroundWorkspace) => PlaygroundWorkspace;
+
+const addsDraft =
+	(draft: () => PlaygroundDraft): AddAgent =>
+	(workspace) =>
+		addAgent(workspace, draft());
+
+/** The examples, in the order the menu lists them. The architect brings its narrator. */
+const EXAMPLE_AGENTS: readonly (ExampleEntry & { add: AddAgent })[] = [
+	{
+		id: 'concierge',
+		label: 'Travel concierge',
+		description: 'Text agent with weather, places, currency and trip tools.',
+		icon: PROFILE_TYPE_ICON.text,
+		add: addsDraft(createExampleDraft),
+	},
+	{
+		id: 'live-concierge',
+		label: 'Live concierge',
+		description: 'The concierge as a voice call, with the same tools.',
+		icon: PROFILE_TYPE_ICON.live,
+		add: addsDraft(createLiveExampleDraft),
+	},
+	{
+		id: 'architect',
+		label: 'Code architect',
+		description: 'Reads repos and docs. Brings a Narrator it calls for audio.',
+		icon: PROFILE_TYPE_ICON.text,
+		add: addArchitectExample,
+	},
+	{
+		id: 'narrator',
+		label: 'Narrator',
+		description: 'Reads a script aloud.',
+		icon: PROFILE_TYPE_ICON.speech,
+		add: addsDraft(createNarratorExampleDraft),
+	},
+	{
+		id: 'console',
+		label: 'Tool console',
+		description: 'No model. Run its tools by hand.',
+		icon: PROFILE_TYPE_ICON.host,
+		add: addsDraft(createConsoleExampleDraft),
+	},
+	{
+		id: 'decision',
+		label: 'Jev decision',
+		description: 'Checks tool calls with the Jev decision model.',
+		icon: PROFILE_TYPE_ICON.decision,
+		add: addsDraft(createDecisionExampleDraft),
+	},
+];
+
 /** Adds a blank agent or one of the examples. */
-function AddAgentMenu({ onAddAgent }: { onAddAgent: (draft: PlaygroundDraft) => void }) {
+function AddAgentMenu({ onAddAgent }: { onAddAgent: (add: AddAgent) => void }) {
 	return (
 		<DropdownMenu
 			button={{
-				label: 'Add an agent',
+				label: 'Add agent',
 				variant: 'ghost',
 				size: 'sm',
-				isIconOnly: true,
-				tooltip: 'Add an agent',
+				width: '100%',
 				icon: <Icon icon={IconPlus} size="sm" />,
+				style: { height: 'calc(var(--size-element-sm) - 4px)' },
 			}}
+			menuWidth="fit-content(13rem)"
 			hasChevron={false}
 			placement="below"
 			alignment="end"
@@ -469,26 +537,21 @@ function AddAgentMenu({ onAddAgent }: { onAddAgent: (draft: PlaygroundDraft) => 
 				{
 					id: 'blank',
 					label: 'Blank agent',
+					description: <span>One empty agent to build from.</span>,
+					icon: <Icon icon={IconFile} size="sm" />,
 					onClick: () => {
-						onAddAgent(createBlankDraft());
+						onAddAgent(addsDraft(createBlankDraft));
 					},
 				},
-				{
-					id: 'concierge',
-					label: 'Travel concierge',
-					description: 'A text agent with weather, places and currency tools.',
+				...EXAMPLE_AGENTS.map((example) => ({
+					id: example.id,
+					label: example.label,
+					description: <span>{example.description}</span>,
+					icon: <Icon icon={example.icon} size="sm" />,
 					onClick: () => {
-						onAddAgent(createExampleDraft());
+						onAddAgent(example.add);
 					},
-				},
-				{
-					id: 'decision',
-					label: 'Jev decision',
-					description: 'Tool-call safety with the Jev decision model.',
-					onClick: () => {
-						onAddAgent(createDecisionExampleDraft());
-					},
-				},
+				})),
 			]}
 		/>
 	);
@@ -497,12 +560,13 @@ function AddAgentMenu({ onAddAgent }: { onAddAgent: (draft: PlaygroundDraft) => 
 /** Adds a tool to the library, joined to the open agent, and opens it. */
 function AddToolButton({ tree, draft }: { tree: WorkspaceTreeState; draft: PlaygroundDraft }) {
 	return (
-		<IconButton
-			label="Add a tool"
+		<Button
+			label="Add tool"
 			variant="ghost"
 			size="sm"
+			width="100%"
 			icon={<Icon icon={IconPlus} size="sm" />}
-			tooltip="Add a tool"
+			style={{ height: 'calc(var(--size-element-sm) - 4px)' }}
 			onClick={() => {
 				addToolSpec(draft, tree.setDraft, tree.onSelect);
 			}}
@@ -568,7 +632,7 @@ function WorkspaceTreeLists({
 	tree: WorkspaceTreeState;
 	/** The open agent's draft, which a new tool joins. */
 	draft: PlaygroundDraft;
-	onAddAgent: (draft: PlaygroundDraft) => void;
+	onAddAgent: (add: AddAgent) => void;
 	/** The list's scroller. The toggle and search stay above it. */
 	listRef: RefObject<HTMLDivElement | null>;
 }) {
@@ -579,23 +643,15 @@ function WorkspaceTreeLists({
 	const tools = list === 'tools' ? toolItems(tree, query) : [];
 	return (
 		<VStack gap={2} height="100%">
-			<HStack gap={1} vAlign="center">
-				<StackItem size="fill">
-					<WorkspaceListToggle
-						workspace={tree.workspace}
-						list={list}
-						onChange={(next) => {
-							setList(next);
-							revealSelected();
-						}}
-					/>
-				</StackItem>
-				{list === 'agents' ? (
-					<AddAgentMenu onAddAgent={onAddAgent} />
-				) : (
-					<AddToolButton tree={tree} draft={draft} />
-				)}
-			</HStack>
+			<WorkspaceListToggle
+				workspace={tree.workspace}
+				list={list}
+				onChange={(next) => {
+					setList(next);
+					revealSelected();
+				}}
+			/>
+			{list === 'agents' ? <AddAgentMenu onAddAgent={onAddAgent} /> : null}
 			{list === 'tools' && (
 				<ToolSearchInput
 					query={query}
@@ -605,6 +661,7 @@ function WorkspaceTreeLists({
 					}}
 				/>
 			)}
+			{list === 'tools' ? <AddToolButton tree={tree} draft={draft} /> : null}
 			<StackItem size="fill">
 				<WorkspaceListBody tree={tree} list={list} tools={tools} query={query} listRef={listRef} />
 			</StackItem>
@@ -1068,10 +1125,7 @@ function ExportActions({
 				variant="ghost"
 				icon={<Icon icon={IconBrowserShare} size="sm" />}
 				isDisabled={!compiled}
-				tooltip={
-					blocked ??
-					'Open this agent on its own full page, in a new tab. Its runs happen there, not here'
-				}
+				tooltip={blocked ?? 'Open this agent on its own full page, in a new tab'}
 				onClick={() => {
 					const run = compiled && workspaceRunAgent(compiled, chattedId);
 					if (run) openInNewTab({ ...runPayload(run), ...connection });
@@ -1094,7 +1148,7 @@ function ExportMenu({
 			button={{
 				label: 'Get code',
 				variant: 'ghost',
-				icon: <Icon icon={IconArrowBarDown} size="sm" />,
+				icon: <Icon icon={IconArrowBarToDown} size="sm" />,
 				tooltip:
 					blocked ??
 					'Download every agent as a .zip, or copy its files, or copy them with a brief for an LLM',
@@ -1108,7 +1162,7 @@ function ExportMenu({
 				{
 					id: 'download',
 					label: 'Download',
-					description: 'Every agent, as a .zip.',
+					description: <span>Every agent, as a .zip.</span>,
 					icon: <Icon icon={IconFileZip} size="sm" />,
 					onClick: () => {
 						if (compiled && chatted) {
@@ -1119,7 +1173,7 @@ function ExportMenu({
 				{
 					id: 'copy',
 					label: 'Copy',
-					description: 'Every file, each under its path, to paste into your code.',
+					description: <span>Every file, each under its path, to paste into your code.</span>,
 					icon: <Icon icon={IconCopy} size="sm" />,
 					onClick: () => {
 						if (compiled && chatted) {
@@ -1130,8 +1184,9 @@ function ExportMenu({
 				{
 					id: 'copy-llm',
 					label: 'Copy for LLM',
-					description:
-						'Every file with a brief: what to install, where each goes, what to ask you.',
+					description: (
+						<span>Every file with a brief: what to install, where each goes, what to ask you.</span>
+					),
 					icon: <Icon icon={IconSparkles} size="sm" />,
 					onClick: () => {
 						if (compiled && chatted) copy(llmBrief(compiled, chatted), 'the files and their brief');
@@ -1501,7 +1556,7 @@ const TreeColumn = memo(function TreeColumn({
 }: {
 	tree: WorkspaceTreeState;
 	draft: PlaygroundDraft;
-	onAddAgent: (next: PlaygroundDraft) => void;
+	onAddAgent: (add: AddAgent) => void;
 	listRef: RefObject<HTMLDivElement | null>;
 	setSheet: (sheet: Sheet) => void;
 }) {
@@ -1552,56 +1607,6 @@ function IssueToken({
 }
 
 /** Replaces the workspace with one blank agent or one of the examples. */
-function ExampleMenu({
-	replaceWorkspace,
-}: {
-	replaceWorkspace: (next: PlaygroundWorkspace, message: string) => void;
-}) {
-	return (
-		<DropdownMenu
-			button={{
-				label: 'Start from',
-				variant: 'ghost',
-				isIconOnly: true,
-				icon: <Icon icon={IconColorSwatch} size="sm" />,
-				tooltip:
-					'Start from a blank agent or one of the examples. This replaces the current workspace',
-			}}
-			hasChevron={false}
-			placement="below"
-			alignment="end"
-			items={[
-				{
-					id: 'blank',
-					label: 'Blank agent',
-					description: 'Clear the playground and start with one empty agent.',
-					onClick: () => {
-						replaceWorkspace(createBlankWorkspace(), 'Cleared the playground.');
-					},
-				},
-				{
-					id: 'concierge',
-					label: 'Travel concierge',
-					description: 'A text agent with weather, places and currency tools.',
-					onClick: () => {
-						replaceWorkspace(workspaceFromDraft(createExampleDraft()), 'Loaded the example.');
-					},
-				},
-				{
-					id: 'decision',
-					label: 'Jev decision',
-					description: 'Tool-call safety with the Jev decision model.',
-					onClick: () => {
-						replaceWorkspace(
-							workspaceFromDraft(createDecisionExampleDraft()),
-							'Loaded the decision example.',
-						);
-					},
-				},
-			]}
-		/>
-	);
-}
 
 /** Switches the editor between the form and the code, closing Keys. */
 function ViewToggleButton({ view }: { view: EditorViewState }) {
@@ -1620,6 +1625,42 @@ function ViewToggleButton({ view }: { view: EditorViewState }) {
 	);
 }
 
+/**
+ * Reset for what is open: a library tool, or else the agent. It goes back to how it joined the
+ * workspace, and nothing else changes. `run` is absent while it is still as it started.
+ */
+function useReset({ workspace, focus, update }: PlaygroundWorkspaceState) {
+	const toast = useToast();
+	const toolKey = toolSpecKeyOf(workspace.selected);
+	const what = toolKey === undefined ? 'agent' : 'tool';
+	const next = useMemo(
+		() =>
+			toolKey === undefined ? resetAgent(workspace, focus) : resetLibraryTool(workspace, toolKey),
+		[workspace, focus, toolKey],
+	);
+	const run =
+		next === workspace
+			? undefined
+			: () => {
+					update(() => next);
+					const dismiss = toast({
+						body: `Reset the ${what} to how it started.`,
+						endContent: (
+							<Button
+								label="Undo"
+								variant="ghost"
+								size="sm"
+								onClick={() => {
+									update(() => workspace);
+									dismiss();
+								}}
+							/>
+						),
+					});
+				};
+	return { what, run };
+}
+
 /** The editor column's header: its title, the next issue, Keys, what to start from and the view toggle. */
 function EditorToolbar({
 	heading,
@@ -1627,7 +1668,7 @@ function EditorToolbar({
 	selected,
 	view,
 	onIssue,
-	replaceWorkspace,
+	reset,
 	setSheet,
 }: {
 	heading: string | undefined;
@@ -1635,7 +1676,7 @@ function EditorToolbar({
 	selected: string;
 	view: EditorViewState;
 	onIssue: (node: string) => void;
-	replaceWorkspace: (next: PlaygroundWorkspace, message: string) => void;
+	reset: ReturnType<typeof useReset>;
 	setSheet: (sheet: Sheet) => void;
 }) {
 	return (
@@ -1665,7 +1706,18 @@ function EditorToolbar({
 						view.setEditorView('editor');
 					}}
 				/>
-				<ExampleMenu replaceWorkspace={replaceWorkspace} />
+				<IconButton
+					label="Reset"
+					variant="ghost"
+					icon={<Icon icon={IconRotateClockwise} size="sm" />}
+					isDisabled={!reset.run}
+					tooltip={
+						reset.run
+							? `Reset this ${reset.what} to how it started. Undo brings your changes back`
+							: `This ${reset.what} is as it started`
+					}
+					onClick={reset.run}
+				/>
 				<ViewToggleButton view={view} />
 				<SheetButton label="Preview" icon={IconPlayerPlay} sheet={'preview'} setSheet={setSheet} />
 			</HStack>
@@ -2087,7 +2139,6 @@ function usePlaygroundPage(loaderData: Route.ComponentProps['loaderData']) {
 		sheet,
 		setSheet,
 		run,
-		replaceWorkspace,
 		copy,
 		chatRef,
 		title,
@@ -2102,7 +2153,7 @@ function usePlaygroundPage(loaderData: Route.ComponentProps['loaderData']) {
 export default function Playground({ loaderData }: Route.ComponentProps) {
 	const page = usePlaygroundPage(loaderData);
 	const { state, connection, view, frame, selected, editing, issueReveal, compile } = page;
-	const { sheet, setSheet, run, replaceWorkspace, copy, chatRef, title } = page;
+	const { sheet, setSheet, run, copy, chatRef, title } = page;
 	const { store, draft } = state;
 	const tree = useWorkspaceTree(state, view, selected, setSheet);
 	const chatAgents = useChatAgents(state.workspace.agents);
@@ -2131,7 +2182,6 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 						editing={editing}
 						frame={frame}
 						issueReveal={issueReveal}
-						replaceWorkspace={replaceWorkspace}
 						setSheet={setSheet}
 					/>
 				</SidePanel>
@@ -2160,8 +2210,8 @@ function useAddAgent(
 	open: (id: string) => void,
 ) {
 	return useCallback(
-		(next: PlaygroundDraft) => {
-			update((current) => addAgent(current, next));
+		(add: AddAgent) => {
+			update(add);
 			open(store.getWorkspace().selected);
 		},
 		[store, update, open],
@@ -2206,7 +2256,7 @@ function SidePanel({
 	frame: ReturnType<typeof usePlaygroundFrame>;
 	tree: WorkspaceTreeState;
 	draft: PlaygroundDraft;
-	onAddAgent: (next: PlaygroundDraft) => void;
+	onAddAgent: (add: AddAgent) => void;
 	setSheet: (sheet: Sheet) => void;
 	children: ReactNode;
 }) {
@@ -2258,7 +2308,6 @@ function EditorColumn({
 	editing,
 	frame,
 	issueReveal,
-	replaceWorkspace,
 	setSheet,
 }: {
 	heading: string | undefined;
@@ -2270,10 +2319,10 @@ function EditorColumn({
 	editing: string;
 	frame: ReturnType<typeof usePlaygroundFrame>;
 	issueReveal: ReturnType<typeof useIssueReveal>;
-	replaceWorkspace: (next: PlaygroundWorkspace, message: string) => void;
 	setSheet: (sheet: Sheet) => void;
 }) {
 	const { editorRef, reveal } = issueReveal;
+	const reset = useReset(state);
 	return (
 		<VStack height="100%">
 			<EditorToolbar
@@ -2285,7 +2334,7 @@ function EditorColumn({
 					view.open(node);
 					reveal({ node });
 				}}
-				replaceWorkspace={replaceWorkspace}
+				reset={reset}
 				setSheet={setSheet}
 			/>
 			<StackItem size="fill">

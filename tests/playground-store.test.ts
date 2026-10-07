@@ -5,6 +5,7 @@ import {
 	agentNodeId,
 	createBlankDraft,
 	createExampleDraft,
+	PLAYGROUND_WORKSPACE_VERSION,
 	type PlaygroundWorkspace,
 	workspaceFromDraft,
 } from '@theoremjs/playground';
@@ -20,7 +21,7 @@ const KEY = 'theorem.playground.v2';
 const V1_KEY = 'theorem.playground.v1';
 
 function keep(workspace: unknown) {
-	sessionStorage.setItem(KEY, JSON.stringify({ v: 2, workspace, revision: 4 }));
+	sessionStorage.setItem(KEY, JSON.stringify({ v: PLAYGROUND_WORKSPACE_VERSION, workspace, revision: 4 }));
 }
 
 function keepV1(draft: unknown) {

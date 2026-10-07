@@ -12,6 +12,7 @@ import {
 	PLAYGROUND_WORKSPACE_VERSION,
 	type PlaygroundDraft,
 	type PlaygroundWorkspace,
+	type ToolSpecDraft,
 	withLibraryDraft,
 } from '@theoremjs/playground';
 import {
@@ -51,16 +52,29 @@ function keptHeaders(raw: string): string {
 	return typeof masked === 'string' && masked !== JSON.stringify(parsedHeaders) ? masked : raw;
 }
 
-/** The workspace as kept: each tool's URLs and headers with their credentials masked. */
+function keptTool(tool: ToolSpecDraft): ToolSpecDraft {
+	return {
+		...tool,
+		...(tool.endpoint ? { endpoint: maskUrl(tool.endpoint) } : {}),
+		...(tool.serverUrl ? { serverUrl: maskUrl(tool.serverUrl) } : {}),
+		...(tool.headersJson ? { headersJson: keptHeaders(tool.headersJson) } : {}),
+	};
+}
+
+/**
+ * The workspace as kept: each tool's URLs and headers with their credentials masked, in the library
+ * and in the starts a reset puts back.
+ */
 function keptWorkspace(workspace: PlaygroundWorkspace): PlaygroundWorkspace {
 	return {
 		...workspace,
-		toolSpecs: workspace.toolSpecs.map((tool) => ({
-			...tool,
-			...(tool.endpoint ? { endpoint: maskUrl(tool.endpoint) } : {}),
-			...(tool.serverUrl ? { serverUrl: maskUrl(tool.serverUrl) } : {}),
-			...(tool.headersJson ? { headersJson: keptHeaders(tool.headersJson) } : {}),
-		})),
+		toolSpecs: workspace.toolSpecs.map(keptTool),
+		starts: {
+			...workspace.starts,
+			tools: Object.fromEntries(
+				Object.entries(workspace.starts.tools).map(([key, tool]) => [key, keptTool(tool)]),
+			),
+		},
 	};
 }
 

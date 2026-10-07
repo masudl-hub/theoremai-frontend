@@ -41,7 +41,6 @@ import {
 	IconBiohazard,
 	IconBolt,
 	IconBraces,
-	IconBroadcast,
 	IconBulb,
 	IconBulbOff,
 	IconCertificate,
@@ -62,6 +61,7 @@ import {
 	IconGitBranch,
 	IconHandOff,
 	IconHandStop,
+	IconHeadset,
 	IconHourglass,
 	IconHttpDelete,
 	IconHttpGet,
@@ -300,7 +300,7 @@ export const PROFILE_TYPE_ICON = {
 	text: IconLetterT,
 	image: IconPhoto,
 	speech: IconVolume,
-	live: IconBroadcast,
+	live: IconHeadset,
 	decision: IconGitBranch,
 	host: IconServer,
 } satisfies Record<PlaygroundProfileType, unknown>;
@@ -2222,6 +2222,26 @@ function SpeechEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 				hasSearch
 				onChange={(voice) => {
 					set({ voice });
+				}}
+			/>
+			<TextAreaRow
+				label="Style"
+				path="speech.style"
+				field="style"
+				value={speech.style}
+				rows={2}
+				onChange={(style) => {
+					set({ style });
+				}}
+			/>
+			<NumberRow
+				label="Speed"
+				path="speech.speed"
+				field="speed"
+				value={speech.speed}
+				step={0.1}
+				onChange={(speed) => {
+					set({ speed });
 				}}
 			/>
 			<ChoiceRow
@@ -5468,7 +5488,7 @@ const WORDING_AREAS: readonly {
 		prefix: 'live',
 		title: 'Live',
 		note: 'When a live session ends.',
-		icon: IconBroadcast,
+		icon: IconHeadset,
 		audience: 'visitor',
 	},
 	{
