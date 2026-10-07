@@ -114,7 +114,7 @@ import {
 	useState,
 	useSyncExternalStore,
 } from 'react';
-import { GuardrailTester } from '../components/guardrail-tester';
+import { GuardrailTester, ProbedAgent } from '../components/guardrail-tester';
 import {
 	ConnectionMode,
 	ISSUE_ROW_ATTRIBUTE,
@@ -1263,6 +1263,11 @@ function useWorkspaceCompile(
 	/** The open agent's compile: what the code view shows and Export takes. */
 	const focused = compiled.ok ? compiledAgent(compiled, compile.workspace, focus) : undefined;
 	const source = useMemo(() => (focused ? playgroundSource(focused) : null), [focused]);
+	/** The open agent as it compiles now, for a detector's own test. */
+	const probed = useMemo(() => {
+		const run = compiled.ok && workspaceRunAgent(compiled, agentIdOf(compile.workspace, focus));
+		return run ? runPayload(run) : null;
+	}, [compiled, compile.workspace, focus]);
 	// One object per compile, so the panes that read it sit out the renders between.
 	return useMemo(() => {
 		const issues = issueCount(compiled);
@@ -1271,6 +1276,7 @@ function useWorkspaceCompile(
 			payload,
 			traced: isTraced(payload),
 			source,
+			probed,
 			editorIssues: editorIssuesOf(compiled, focus),
 			/** The agent being chatted with: Export adds its route and chat to the workspace's files. */
 			chatted: compiled.ok ? compiledAgent(compiled, compile.workspace, chatWith) : undefined,
@@ -1278,7 +1284,7 @@ function useWorkspaceCompile(
 			issues,
 			blocked: issues && `Fix ${issues} first`,
 		};
-	}, [compiled, compile.workspace, payload, source, focus, chatWith]);
+	}, [compiled, compile.workspace, payload, source, probed, focus, chatWith]);
 }
 
 type WorkspaceCompile = ReturnType<typeof useWorkspaceCompile>;
@@ -2306,15 +2312,17 @@ function EditorColumnBody({
 		);
 	}
 	return (
-		<EditorBody
-			state={state}
-			connection={connection}
-			selected={selected}
-			editing={editing}
-			issues={compile.editorIssues}
-			listBadges={frame.listBadges}
-			editorRef={editorRef}
-			open={view.open}
-		/>
+		<ProbedAgent.Provider value={compile.probed}>
+			<EditorBody
+				state={state}
+				connection={connection}
+				selected={selected}
+				editing={editing}
+				issues={compile.editorIssues}
+				listBadges={frame.listBadges}
+				editorRef={editorRef}
+				open={view.open}
+			/>
+		</ProbedAgent.Provider>
 	);
 }

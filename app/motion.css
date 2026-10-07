@@ -213,26 +213,6 @@ body {
 }
 
 /*
- * The sample a pattern tester read, with what matched marked. It keeps its line breaks and
- * scrolls once it is taller than the box.
- */
-.pattern-try-text {
-	max-height: 12rem;
-	overflow: auto;
-	padding: var(--spacing-2);
-	border-radius: var(--radius-container);
-	background: var(--color-background-muted);
-	white-space: pre-wrap;
-	overflow-wrap: anywhere;
-}
-
-.pattern-try-text mark {
-	border-radius: 2px;
-	background: var(--color-background-yellow);
-	color: inherit;
-}
-
-/*
  * A row's own action, shown while the row is hovered or holds focus. Where nothing hovers (touch),
  * it always shows.
  */

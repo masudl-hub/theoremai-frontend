@@ -1,5 +1,6 @@
 import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
+import { Collapsible, CollapsibleGroup } from '@astryxdesign/core/Collapsible';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { HoverCard } from '@astryxdesign/core/HoverCard';
 import { HStack } from '@astryxdesign/core/HStack';
@@ -11,6 +12,7 @@ import { StackItem } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { Token } from '@astryxdesign/core/Token';
+import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
 import {
 	IconArrowLeft,
@@ -44,9 +46,11 @@ import {
 	type ProbeStatus,
 	probeDraft,
 	probeRefusal,
+	sectionNote,
 } from '@theoremjs/playground';
 import { PaneLayout, PanePanel, Prose, TraceGuardrailsView } from '@theoremjs/react/ui';
-import { type ReactNode, useState } from 'react';
+import { createContext, type ReactNode, useContext, useState } from 'react';
+import { InspectorSection } from './inspector';
 
 const BOUNDARY_ICONS: Record<ProbeBoundary, typeof IconUser> = {
 	user: IconUser,
@@ -69,12 +73,17 @@ type Sent = {
 
 type Outcome = Pick<Sent, 'answers' | 'error'>;
 
-async function sendProbe(payload: PlaygroundRunPayload, text: string): Promise<Outcome> {
+/** Sends `text` across the draft's boundaries; given `only`, read with that detector alone. */
+async function sendProbe(
+	payload: PlaygroundRunPayload,
+	text: string,
+	only?: string,
+): Promise<Outcome> {
 	try {
 		const response = await fetch('/api/playground/probe', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ ...probeDraft(payload), text }),
+			body: JSON.stringify({ ...probeDraft(payload), text, only }),
 		});
 		const body = await response.json<{ answers: GuardrailProbeAnswer[] } | { error?: string }>();
 		if (response.ok && 'answers' in body) return { answers: body.answers };
@@ -164,6 +173,16 @@ function BoundaryCard({ boundary, children }: { boundary: ProbeBoundary; childre
 		>
 			{children}
 		</HoverCard>
+	);
+}
+
+/** The text past its boundary, when anything went on. */
+function Crossed({ answer }: { answer: GuardrailProbeAnswer }) {
+	if (answer.passed === undefined) return null;
+	return (
+		<PanePanel title={passedLabel(answer.boundary)}>
+			<Prose text={answer.passed} />
+		</PanePanel>
 	);
 }
 
@@ -438,11 +457,7 @@ function AnswerHead({
 				<Verdict answer={answer} />
 				{answer.refused?.message && <Text color="secondary">{answer.refused.message}</Text>}
 			</VStack>
-			{answer.passed !== undefined && (
-				<PanePanel title={passedLabel(answer.boundary)}>
-					<Prose text={answer.passed} />
-				</PanePanel>
-			)}
+			<Crossed answer={answer} />
 		</VStack>
 	);
 }
@@ -600,5 +615,104 @@ export function GuardrailTester({
 				)
 			}
 		/>
+	);
+}
+
+/**
+ * The agent the editor has open, as it compiles now: what a detector's page sends its sample to.
+ * Null while the draft has issues.
+ */
+export const ProbedAgent = createContext<PlaygroundRunPayload | null>(null);
+
+/** A sample sent, the draft it was sent to and what came back. */
+type Tried = Outcome & { payload: PlaygroundRunPayload; text: string };
+
+/** Why a sample can't be sent to `payload` yet, or undefined when it can. */
+function unsendable(payload: PlaygroundRunPayload | null): string | undefined {
+	return payload ? probeRefusal(payload.profile) : 'Fix the issues first';
+}
+
+/** One detector's answers: each boundary it reads, and behind it what the trace says and what crossed. */
+function ScopedAnswers({ answers }: { answers: readonly GuardrailProbeAnswer[] }) {
+	if (answers.length === 0) {
+		return (
+			<Text type="supporting" color="secondary">
+				{sectionNote('detect.try.off')}
+			</Text>
+		);
+	}
+	return (
+		<CollapsibleGroup type="multiple" density="compact">
+			{answers.map((answer) => (
+				<Collapsible
+					key={answer.boundary}
+					value={answer.boundary}
+					trigger={
+						<HStack gap={2} align="center" justify="between">
+							<HStack gap={2} align="center">
+								<Icon icon={BOUNDARY_ICONS[answer.boundary]} size="sm" color="secondary" />
+								<BoundaryCard boundary={answer.boundary}>
+									<Text type="supporting">{PROBE_BOUNDARY_NOTES[answer.boundary].label}</Text>
+								</BoundaryCard>
+							</HStack>
+							<Verdict answer={answer} />
+						</HStack>
+					}
+				>
+					<TraceGuardrailsView records={answer.traces} head={<Crossed answer={answer} />} />
+				</Collapsible>
+			))}
+		</CollapsibleGroup>
+	);
+}
+
+/**
+ * The tester from a detector's page: the same probe of the open agent, read with the detector
+ * `only` alone. An answer shows for the sample and the draft it was sent with, and goes when
+ * either changes.
+ */
+export function DetectorTester({ only }: { only: string }) {
+	const payload = useContext(ProbedAgent);
+	const [text, setText] = useState('');
+	const [busy, setBusy] = useState(false);
+	const [tried, setTried] = useState<Tried | null>(null);
+	const probe = text.trim();
+	const blocked = unsendable(payload);
+	const shown = tried && tried.payload === payload && tried.text === probe ? tried : null;
+	const send = async () => {
+		if (!payload || busy) return;
+		setBusy(true);
+		const outcome = await sendProbe(payload, probe, only);
+		setTried({ payload, text: probe, ...outcome });
+		setBusy(false);
+	};
+	const button = (
+		<Button
+			label="Send"
+			size="sm"
+			isLoading={busy}
+			isDisabled={!probe || blocked !== undefined}
+			onClick={() => {
+				void send();
+			}}
+		/>
+	);
+	return (
+		<InspectorSection title="Try it" note={sectionNote('detect.try')}>
+			<TextArea
+				label="Sample text"
+				isLabelHidden
+				size="sm"
+				rows={3}
+				placeholder="Sent across each boundary this detector reads"
+				value={text}
+				onChange={setText}
+			/>
+			<HStack hAlign="end">
+				{blocked ? <Tooltip content={blocked}>{button}</Tooltip> : button}
+			</HStack>
+			{shown?.error && <Banner status="error" title={shown.error} />}
+			{shown?.answers && <ScopedAnswers answers={shown.answers} />}
+		</InspectorSection>
 	);
 }

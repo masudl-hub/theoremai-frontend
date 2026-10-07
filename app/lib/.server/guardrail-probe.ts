@@ -2,7 +2,8 @@
  * POST /api/playground/probe — one text sent across every guardrail boundary of
  * the draft, each on a scripted model: no key is spent and no host is reached.
  * A text some boundary let through untouched is kept as sent, with every
- * boundary's answer, for review.
+ * boundary's answer, for review. With `only`, the draft reads with that
+ * detector alone and nothing is kept: what the others would catch passes there.
  */
 import { errorKind, type ProfileDefinition, publicError, z } from '@theoremjs/agents';
 import { caughtStatus } from '@theoremjs/agents/host';
@@ -70,6 +71,7 @@ const probeRequestSchema = z.object({
 	structured: part<StructuredRegistration>().optional(),
 	dependencies: z.array(part<PlaygroundDependency>()).optional(),
 	text: z.string().min(1).max(PROBE_TEXT_LIMIT),
+	only: z.string().min(1).max(200).optional(),
 });
 
 function json(status: number, body: unknown): Response {
@@ -101,9 +103,14 @@ export async function playgroundProbe(
 			structured: body.structured,
 			dependencies: body.dependencies,
 			text: body.text,
+			only: body.only,
 			signal: request.signal,
 		});
-		if (log && answers.some((answer) => answer.status === 'passed') && !isBatteryText(body.text)) {
+		const isNews =
+			body.only === undefined &&
+			answers.some((answer) => answer.status === 'passed') &&
+			!isBatteryText(body.text);
+		if (log && isNews) {
 			defer(
 				log({ text: body.text, guardrails: body.profile.guardrails, answers }, new Date()).catch(
 					(error: unknown) => {
