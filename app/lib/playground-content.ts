@@ -65,7 +65,7 @@ const PARTS = [
 		text: 'The right side shows a preview. Chat with the agent there while you build it.',
 	},
 	{
-		name: 'Get code and launch',
+		name: 'Get code and open in a new tab',
 		text: 'The Get code menu has three actions. Download saves every agent as a .zip file of source files. Copy copies every file, each under its path. Copy for LLM copies the files with a brief for an LLM. The files are the shared tools, one module for each agent, the file that registers the agents in order, the route and chat for the agent you chat with, and a README. The Open in a new tab button runs the agent you chat with in its own tab.',
 	},
 ] as const;
