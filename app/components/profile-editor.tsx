@@ -3045,8 +3045,19 @@ function CanarySection({ guardrails, set }: GuardrailsSectionProps) {
 	);
 }
 
-/** Retries and guidance, shown when a blocked reply goes back to the agent. */
-function BlockedReplyRetryRows({ guardrails, set }: GuardrailsSectionProps) {
+/**
+ * Retries and guidance, shown when a blocked reply goes back to the agent. At no retries nothing goes
+ * back, so the row says what the visitor reads in place of the reply, and guidance has no reader.
+ */
+function BlockedReplyRetryRows({
+	guardrails,
+	withheld,
+	set,
+}: GuardrailsSectionProps & {
+	/** The line a visitor reads when a reply is withheld. */
+	withheld: string;
+}) {
+	const isNever = guardrails.blockedReplyMaxRetries === 0;
 	return (
 		<>
 			<NumberRow
@@ -3057,26 +3068,40 @@ function BlockedReplyRetryRows({ guardrails, set }: GuardrailsSectionProps) {
 				value={guardrails.blockedReplyMaxRetries}
 				min={0}
 				isIntegerOnly
+				status={
+					isNever
+						? {
+								type: 'warning',
+								message: `At 0 a blocked reply is not rewritten. The visitor reads: \u201c${withheld}\u201d`,
+							}
+						: undefined
+				}
 				onChange={(blockedReplyMaxRetries) => {
 					set({ blockedReplyMaxRetries });
 				}}
 			/>
-			<TextAreaRow
-				label="Guidance"
-				path="lexicon.egress.default_repair_guidance"
-				field="egressRepairGuidance"
-				value={guardrails.egressRepairGuidance}
-				placeholder={lexiconDefault('egress.default_repair_guidance')}
-				onChange={(egressRepairGuidance) => {
-					set({ egressRepairGuidance });
-				}}
-			/>
+			{!isNever && (
+				<TextAreaRow
+					label="Guidance"
+					path="lexicon.egress.default_repair_guidance"
+					field="egressRepairGuidance"
+					value={guardrails.egressRepairGuidance}
+					placeholder={lexiconDefault('egress.default_repair_guidance')}
+					onChange={(egressRepairGuidance) => {
+						set({ egressRepairGuidance });
+					}}
+				/>
+			)}
 		</>
 	);
 }
 
 /** What happens to a reply a detector blocks. */
-function BlockedReplySection({ guardrails, set }: GuardrailsSectionProps) {
+function BlockedReplySection({
+	guardrails,
+	withheld,
+	set,
+}: GuardrailsSectionProps & { withheld: string }) {
 	return (
 		<InspectorSection title="Blocked reply" path="guardrails.blockedReply">
 			<SegmentedRow
@@ -3100,7 +3125,7 @@ function BlockedReplySection({ guardrails, set }: GuardrailsSectionProps) {
 					}}
 				/>
 			) : (
-				<BlockedReplyRetryRows guardrails={guardrails} set={set} />
+				<BlockedReplyRetryRows guardrails={guardrails} withheld={withheld} set={set} />
 			)}
 		</InspectorSection>
 	);
@@ -4153,7 +4178,11 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 		<div key={viewKey} ref={view} className="detector-view">
 			<DetectSection guardrails={guardrails} boundaries={boundaries} set={set} onOpen={show} />
 			{draftAllows(draft, 'guardrails.blockedReply') && (
-				<BlockedReplySection guardrails={guardrails} set={set} />
+				<BlockedReplySection
+					guardrails={guardrails}
+					withheld={wordingValue(draft, 'error.safety') || lexiconDefault('error.safety')}
+					set={set}
+				/>
 			)}
 			<NetworkSection guardrails={guardrails} set={set} />
 			{draftAllows(draft, 'guardrails.taint') && (

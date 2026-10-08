@@ -327,6 +327,8 @@ export function NumberRow(
 		units?: string;
 		/** Shown while blank, in place of what leaving it out does. */
 		hint?: string;
+		/** A note of the row's own, such as what the value set does; the field's issues win. */
+		status?: InputStatus;
 		onChange: (next: number | null) => void;
 	},
 ) {
@@ -335,6 +337,7 @@ export function NumberRow(
 		<FillRow label={props.label} path={props.path} required={required} status={status}>
 			<NumberInput
 				{...control}
+				status={status ?? props.status}
 				value={props.value}
 				placeholder={props.hint ?? unset}
 				min={props.min}
