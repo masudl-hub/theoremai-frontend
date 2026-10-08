@@ -968,10 +968,13 @@ function swapKeySlot<Agent extends Pick<PlaygroundDraft, 'models' | 'modelBindin
 	};
 }
 
+/** "1 issue" or "N issues", or nothing at none. */
+const issuesLabel = (count: number) =>
+	count === 0 ? undefined : count === 1 ? '1 issue' : `${String(count)} issues`;
+
 /** "1 issue" or "N issues" while the draft doesn't compile; nothing once it does. */
 function issueCount(compiled: WorkspaceCompileResult): string | undefined {
-	if (compiled.ok) return undefined;
-	return compiled.issues.length === 1 ? '1 issue' : `${String(compiled.issues.length)} issues`;
+	return compiled.ok ? undefined : issuesLabel(compiled.issues.length);
 }
 
 /** What th30 is told about the draft on screen. */
@@ -1649,18 +1652,25 @@ const TreeColumn = memo(function TreeColumn({
 	);
 });
 
-/** The issue count, which goes to the next issue after the selected node. Hidden with none. */
+/**
+ * The issue count, which goes to the next issue after the selected node. Hidden with none. `quiet`
+ * is how many the open page's rows are not showing yet, which the count leaves out as they do.
+ */
 function IssueToken({
 	compile,
+	quiet,
 	selected,
 	onIssue,
 }: {
 	compile: WorkspaceCompile;
+	quiet: number;
 	selected: string;
 	onIssue: (node: string) => void;
 }) {
-	const { compiled, issues } = compile;
-	if (!issues || compiled.ok) return null;
+	const { compiled } = compile;
+	if (compiled.ok) return null;
+	const issues = issuesLabel(compiled.issues.length - quiet);
+	if (!issues) return null;
 	return (
 		<Token
 			label={issues}
@@ -1732,6 +1742,7 @@ function useReset({ workspace, focus, update }: PlaygroundWorkspaceState) {
 function EditorToolbar({
 	heading,
 	compile,
+	quiet,
 	selected,
 	view,
 	onIssue,
@@ -1740,6 +1751,8 @@ function EditorToolbar({
 }: {
 	heading: string | undefined;
 	compile: WorkspaceCompile;
+	/** How many of the open page's issues its rows are not showing yet. */
+	quiet: number;
 	selected: string;
 	view: EditorViewState;
 	onIssue: (node: string) => void;
@@ -1760,7 +1773,7 @@ function EditorToolbar({
 					)}
 				</StackItem>
 				<StackItem size="static">
-					<IssueToken compile={compile} selected={selected} onIssue={onIssue} />
+					<IssueToken compile={compile} quiet={quiet} selected={selected} onIssue={onIssue} />
 				</StackItem>
 				<IconButton
 					label="Keys"
@@ -2402,6 +2415,7 @@ function EditorColumn({
 			<EditorToolbar
 				heading={heading}
 				compile={compile}
+				quiet={compile.editorIssues.length - shown.length}
 				selected={selected}
 				view={view}
 				onIssue={(node) => {
