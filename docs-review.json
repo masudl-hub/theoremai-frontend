@@ -62,9 +62,9 @@
 		}
 	},
 	"identity": {
-		"reviewed": "2026-10-07",
+		"reviewed": "2026-10-08",
 		"files": {
-			"src/kernel/registry/profiles.ts": "a11c6be38302db16ebbcbde71a3b4fb725258ca6",
+			"src/kernel/registry/profiles.ts": "5da3ef63623a88eb3a78252cbe92e4aa4b32db2d",
 			"src/kernel/registry/system-prompt.ts": "fad7eb6064107e7047d0193e432bca523578768c",
 			"src/kernel/registry/system-role.ts": "1761367ce570fa2bbf9666a0dfeed2cb456395a3",
 			"src/kernel/system-parts.ts": "cf24deec6fa33a10e21bf69e565a2da41c8963c7"
@@ -100,18 +100,18 @@
 		}
 	},
 	"modalities": {
-		"reviewed": "2026-10-07",
+		"reviewed": "2026-10-08",
 		"files": {
-			"src/kernel/registry/profiles.ts": "a11c6be38302db16ebbcbde71a3b4fb725258ca6",
+			"src/kernel/registry/profiles.ts": "5da3ef63623a88eb3a78252cbe92e4aa4b32db2d",
 			"src/kernel/schema.ts": "df3c42bb52b7714402621ad3871703a008dcb707"
 		}
 	},
 	"models": {
-		"reviewed": "2026-10-07",
+		"reviewed": "2026-10-08",
 		"files": {
 			"src/kernel/registry/catalog.ts": "084866baf0ca7dfd1eabb36f705b9096a412321b",
-			"src/kernel/registry/profiles.ts": "a11c6be38302db16ebbcbde71a3b4fb725258ca6",
-			"src/kernel/registry/vault.ts": "5f47cdd612f00190b5ccb23ea6aa912ffee931d6",
+			"src/kernel/registry/profiles.ts": "5da3ef63623a88eb3a78252cbe92e4aa4b32db2d",
+			"src/kernel/registry/vault.ts": "c73ad7da3983f6c9fd69eab6e2ed9c4a5ab75631",
 			"src/kernel/schema.ts": "df3c42bb52b7714402621ad3871703a008dcb707",
 			"src/providers/create-provider.ts": "67f277a3e1056d4fad9a3d31a91fb60caf43e6a6",
 			"src/providers/decision/usage.ts": "d56c1af0a0c60ae15d90aa74acccaa28f4dc487b",
@@ -165,9 +165,9 @@
 		}
 	},
 	"runner": {
-		"reviewed": "2026-10-07",
+		"reviewed": "2026-10-08",
 		"files": {
-			"src/kernel/engine/decision.ts": "09642f895b416111a2791fbce8e5e267c5a3b953",
+			"src/kernel/engine/decision.ts": "4d73c086da50cd9d7a32abc7c6ee9e905f4ae320",
 			"src/kernel/engine/runner/gates.ts": "e15af931320cf130aed25420673916b81a35e5ab",
 			"src/kernel/engine/runner/mod.ts": "e1cb2ae056dabfb0b20fdee97ab563d36ae8080c",
 			"src/kernel/engine/runner/nested.ts": "999b158770b5d4b21f4145f03ded8cad2d11d9d8",
@@ -184,7 +184,7 @@
 		}
 	},
 	"start": {
-		"reviewed": "2026-10-07",
+		"reviewed": "2026-10-08",
 		"files": {
 			"mod.ts": "19d4ff9b49003f707606d86018926e53a3be830f",
 			"src/kernel/engine/runner/gates.ts": "e15af931320cf130aed25420673916b81a35e5ab",
@@ -196,7 +196,7 @@
 			"src/kernel/engine/runner/steps.ts": "3256ed38e8936d286017e470d0c57def0ff4b5a0",
 			"src/kernel/engine/runner/stream.ts": "884b9b11bb480892ef005fc10b2ce75daad6650c",
 			"src/kernel/engine/runner/usage.ts": "9df40698fbd855a50a8a7c5d526afe4a8821085c",
-			"src/kernel/registry/profiles.ts": "a11c6be38302db16ebbcbde71a3b4fb725258ca6"
+			"src/kernel/registry/profiles.ts": "5da3ef63623a88eb3a78252cbe92e4aa4b32db2d"
 		}
 	},
 	"statuses": {
@@ -263,9 +263,9 @@
 		}
 	},
 	"turn-behaviour": {
-		"reviewed": "2026-10-07",
+		"reviewed": "2026-10-08",
 		"files": {
-			"src/kernel/registry/resolve.ts": "40c93c0544e748ac451a2302f7ac957f57268bed",
+			"src/kernel/registry/resolve.ts": "fbb729909a666668a7c05b4711e39658775d2b9f",
 			"src/kernel/stop.ts": "59643af5c8c84807391f1b6931b84ea5cd1b5ac4"
 		}
 	}
