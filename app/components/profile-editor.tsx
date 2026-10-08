@@ -96,6 +96,7 @@ import {
 	IconSend,
 	IconServer,
 	IconShieldLock,
+	IconShieldOff,
 	IconSquareRoundedNumber0,
 	IconSquareRoundedNumber2,
 	IconTool,
@@ -2967,9 +2968,9 @@ const ON_BLOCK_SEGMENTS: Segment<BlockedReplyOnBlock>[] = [
 
 type TaintGate = Exclude<GuardrailsDraft['taintAfterRemoteRead'], ''>;
 
-/** Each threshold wears the icon of the tool access it starts refusing. */
+/** Each threshold wears the icon of the tool access it starts refusing; none is the guard off. */
 const TAINT_SEGMENTS: Segment<TaintGate>[] = [
-	{ value: 'off', label: 'None', icon: IconEye },
+	{ value: 'off', label: 'None', icon: IconShieldOff },
 	{ value: 'destructive', label: 'Destructive', icon: IconFlame },
 	{ value: 'write', label: 'Writes', icon: IconPencil },
 ];
@@ -2977,7 +2978,7 @@ const TAINT_SEGMENTS: Segment<TaintGate>[] = [
 type DestinationGate = Exclude<GuardrailsDraft['taintRemoteDestination'], ''>;
 
 const DESTINATION_SEGMENTS: Segment<DestinationGate>[] = [
-	{ value: 'off', label: 'Log', icon: IconEye },
+	{ value: 'off', label: 'Log', icon: IconFlag },
 	{ value: 'confirm', label: 'Ask', icon: IconUserCheck },
 	{ value: 'block', label: 'Refuse', icon: IconBan },
 ];
@@ -3121,7 +3122,7 @@ function NetworkSection({ guardrails, set }: GuardrailsSectionProps) {
 				}}
 			/>
 			<NamesRow
-				label="Exempt hosts"
+				label="Allow hosts"
 				path="guardrails.network.allowedHosts"
 				field="allowedHosts"
 				value={guardrails.allowedHosts}
@@ -4159,7 +4160,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 						}}
 					/>
 					<SegmentedRow
-						label="New addresses"
+						label="New address"
 						path="guardrails.taint.remoteDestination"
 						value={guardrails.taintRemoteDestination || 'off'}
 						segments={DESTINATION_SEGMENTS}
