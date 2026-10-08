@@ -45,10 +45,10 @@ The body is plain Markdown. Headings start at `##`. Each heading is a section: i
 | Fence | Renders as |
 | --- | --- |
 | `ts`, `bash`, `text` | A code sample. A `ts` sample without an `import` names a frame: ` ```ts frame=statements `. |
-| `ts seed=firstTurn`, left empty | The program that compose compiles from that playground seed. |
+| `ts seed=firstTurn`, left empty | The program that compose compiles from that studio seed. |
 | `note`, `warning` | A banner. The text inside is Markdown. |
 | `prompt` | A card with a prompt to copy into a coding agent. |
-| `playground`, holding a seed id | A button that opens that seed in the playground. |
+| `studio`, holding a seed id | A button that opens that seed in the studio. |
 
 ## A page
 

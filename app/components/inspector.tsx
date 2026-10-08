@@ -21,7 +21,7 @@ import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
 import { IconArrowBackUp } from '@tabler/icons-react';
 import { fieldMeta } from '@theoremjs/agents';
-import { PLAYGROUND_PROFILE_TYPES } from '@theoremjs/playground';
+import { STUDIO_PROFILE_TYPES } from '@theoremjs/studio';
 import { type ReactNode, useContext } from 'react';
 import { tabFills } from '../lib/tab-fills';
 import { ISSUE_ROW_ATTRIBUTE, ListBadges, useFieldStatus } from './inspector-context';
@@ -52,7 +52,7 @@ function presence(path: string, isRequired?: boolean) {
  * A captioned group of rows. The panel stays at zero padding and each section carries the gutter.
  * Transparent, so the panel's own surface shows through. The title shows the catalog entry of the
  * field the section edits (`path`) on hover, as a row's label does. Under it, `note`: only what
- * the catalog does not say, such as how the editor or the playground treats the field.
+ * the catalog does not say, such as how the editor or the studio treats the field.
  */
 export function InspectorSection({
 	title,
@@ -106,7 +106,7 @@ export function InspectorGroupTitle({ title, hint }: { title: string; hint?: str
 /**
  * `children`, with the schema's entry for `path` on hover: what it does, then its options as
  * tokens (or its type, when it has none), when it's required or what leaving it out does. The
- * profile types that take it are only named when one the playground offers can't.
+ * profile types that take it are only named when one the studio offers can't.
  */
 function CatalogHover({
 	label,
@@ -122,7 +122,7 @@ function CatalogHover({
 	const scope = meta.profileTypes;
 	// why: Decisions are the odd one out: they take little of the schema, so "not on decisions" is
 	// assumed, and only a narrower scope is worth saying.
-	const agents = PLAYGROUND_PROFILE_TYPES.filter((type) => type !== 'decision');
+	const agents = STUDIO_PROFILE_TYPES.filter((type) => type !== 'decision');
 	const takes = agents.filter((type) => !scope || scope.includes(type));
 	const scoped = takes.length < agents.length ? takes : undefined;
 	return (

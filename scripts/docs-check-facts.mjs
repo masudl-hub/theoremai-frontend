@@ -34,7 +34,7 @@ const catalog = JSON.parse(
 
 const paths = [...catalog.fields, ...catalog.extra].map((p) => p.split('.'));
 // The tool-spec fields share the catalog; `input`, `output` and `profile` there are not profile paths.
-const heads = new Set([...catalog.fields.map((p) => p.split('.')[0]), 'mapping', 'auth', 'playground', 'labels']);
+const heads = new Set([...catalog.fields.map((p) => p.split('.')[0]), 'mapping', 'auth', 'studio', 'labels']);
 const lexicon = new Set(catalog.lexicon);
 
 /** A segment pattern matches when each segment is equal or either side is a wildcard. */

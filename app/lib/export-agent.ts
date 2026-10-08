@@ -1,11 +1,11 @@
 import {
 	agentModulePath,
-	type CompiledPlayground,
+	type CompiledStudio,
 	type CompiledWorkspace,
 	importSpecifier,
 	type SourceFile,
 	workspaceSource,
-} from '@theoremjs/playground';
+} from '@theoremjs/studio';
 
 const PACKAGES = [
 	'@theoremjs/agents',
@@ -29,7 +29,7 @@ const DECISION_ENDPOINT = '/api/decision';
 const HOST_ENDPOINT = '/api/host';
 
 /** Turn profiles run through `createTheoremHandler`; live profiles run through a relay. */
-function servesTurns({ profile }: CompiledPlayground): boolean {
+function servesTurns({ profile }: CompiledStudio): boolean {
 	return profile.type !== 'live' && profile.type !== 'decision' && profile.type !== 'host';
 }
 
@@ -43,7 +43,7 @@ function slotsOn(value: unknown): string[] {
 }
 
 /** Every vault slot an agent names, on the profile or on a model. */
-function keySlots({ profile }: CompiledPlayground): string[] {
+function keySlots({ profile }: CompiledStudio): string[] {
 	const models: unknown = 'models' in profile ? profile.models : {};
 	const bindings = models && typeof models === 'object' ? (Object.values(models) as unknown[]) : [];
 	return [profile, ...bindings].flatMap(slotsOn);
@@ -78,7 +78,7 @@ interface Entry {
 
 /** The route file: `factory` from the server entry, built from the agent's module with `options`. */
 function serverFile(
-	agent: CompiledPlayground,
+	agent: CompiledStudio,
 	exportName: string,
 	factory: string,
 	mount: string,
@@ -134,7 +134,7 @@ function browserFile(
 }
 
 /** What the agent takes from its page and its server: `inputs.slots` and `inputs.context`. */
-function pageInputs({ profile }: CompiledPlayground) {
+function pageInputs({ profile }: CompiledStudio) {
 	const inputs = 'inputs' in profile ? profile.inputs : undefined;
 	const slots: Record<string, string[]> = inputs && 'slots' in inputs ? (inputs.slots ?? {}) : {};
 	const context = inputs && 'context' in inputs ? inputs.context : undefined;
@@ -142,7 +142,7 @@ function pageInputs({ profile }: CompiledPlayground) {
 }
 
 /** The chat's prop for the tools this page answers: a function per tool, returning its output. */
-function pageToolsProp(agent: CompiledPlayground): string[] {
+function pageToolsProp(agent: CompiledStudio): string[] {
 	const names = agent.customTools.flatMap((tool) =>
 		tool.type === 'function' && tool.answeredBy === 'page' ? [tool.name] : [],
 	);
@@ -156,7 +156,7 @@ function pageToolsProp(agent: CompiledPlayground): string[] {
 }
 
 /** The chat's props for what the page supplies: a value per slot, and its context. */
-function pageProps(agent: CompiledPlayground): string[] {
+function pageProps(agent: CompiledStudio): string[] {
 	const { slots, from } = pageInputs(agent);
 	const picked = slots.map(
 		([name, allowed]) => `${JSON.stringify(name)}: ${JSON.stringify(allowed.at(0) ?? '')}`,
@@ -172,14 +172,14 @@ function pageProps(agent: CompiledPlayground): string[] {
 }
 
 /** The route's option for what the server tells the agent, when the profile takes it. */
-function serverContext(agent: CompiledPlayground): string[] {
+function serverContext(agent: CompiledStudio): string[] {
 	return pageInputs(agent).from.includes('server')
 		? ['// What your server tells the agent with each request: any JSON.\n  context: () => ({})']
 		: [];
 }
 
 /** A decision agent's route and its state-and-answers component. */
-function decisionEntry(workspace: CompiledWorkspace, agent: CompiledPlayground): Entry {
+function decisionEntry(workspace: CompiledWorkspace, agent: CompiledStudio): Entry {
 	return {
 		endpoint: DECISION_ENDPOINT,
 		route: serverFile(
@@ -200,7 +200,7 @@ function decisionEntry(workspace: CompiledWorkspace, agent: CompiledPlayground):
 }
 
 /** A host agent's route and its form-per-tool component. */
-function hostEntry(agent: CompiledPlayground): Entry {
+function hostEntry(agent: CompiledStudio): Entry {
 	return {
 		endpoint: HOST_ENDPOINT,
 		route: serverFile(
@@ -221,7 +221,7 @@ function hostEntry(agent: CompiledPlayground): Entry {
 }
 
 /** A turn agent's route and its chat. */
-function turnEntry(workspace: CompiledWorkspace, agent: CompiledPlayground): Entry {
+function turnEntry(workspace: CompiledWorkspace, agent: CompiledStudio): Entry {
 	return {
 		endpoint: ENDPOINT,
 		route: serverFile(
@@ -242,7 +242,7 @@ function turnEntry(workspace: CompiledWorkspace, agent: CompiledPlayground): Ent
 	};
 }
 
-function entryFiles(workspace: CompiledWorkspace, agent: CompiledPlayground): Entry {
+function entryFiles(workspace: CompiledWorkspace, agent: CompiledStudio): Entry {
 	if (agent.profile.type === 'decision') return decisionEntry(workspace, agent);
 	if (agent.profile.type === 'host') return hostEntry(agent);
 	if (!servesTurns(agent)) return {};
@@ -250,7 +250,7 @@ function entryFiles(workspace: CompiledWorkspace, agent: CompiledPlayground): En
 }
 
 /** The README: what each file is, which run only on the server, and what to install. */
-function readme(files: readonly SourceFile[], agent: CompiledPlayground, entry: Entry): string {
+function readme(files: readonly SourceFile[], agent: CompiledStudio, entry: Entry): string {
 	const agents = files.filter((file) => file.path.startsWith('agents/'));
 	const rows = [
 		...(files.some((file) => file.path === 'tools.ts')
@@ -272,7 +272,7 @@ function readme(files: readonly SourceFile[], agent: CompiledPlayground, entry: 
 	return `${[
 		`# ${agent.agentId}`,
 		'',
-		`Exported from the Theorem Playground: ${agents.length === 1 ? 'one agent' : `${String(agents.length)} agents`}${
+		`Exported from the Theorem Studio: ${agents.length === 1 ? 'one agent' : `${String(agents.length)} agents`}${
 			entry.route
 				? `, and the route and ${entry.ui ? 'component' : 'files'} for \`${agent.agentId}\``
 				: ''
@@ -294,7 +294,7 @@ function readme(files: readonly SourceFile[], agent: CompiledPlayground, entry: 
  * The workspace as files: the README, the tools, one module per agent and the
  * registration, then the route and component for `agent`, the one being chatted with.
  */
-export function exportFiles(workspace: CompiledWorkspace, agent: CompiledPlayground): SourceFile[] {
+export function exportFiles(workspace: CompiledWorkspace, agent: CompiledStudio): SourceFile[] {
 	const source = workspaceSource(workspace).map((file) =>
 		file.path !== 'theorem.ts'
 			? file
@@ -321,7 +321,7 @@ export function exportText(files: readonly SourceFile[]): string {
 }
 
 /** What the brief asks before code, by the chatted agent's type. */
-function briefQuestions(agent: CompiledPlayground, tools: string[]): string[] {
+function briefQuestions(agent: CompiledStudio, tools: string[]): string[] {
 	const type = agent.profile.type;
 	if (type === 'decision') {
 		return [
@@ -363,7 +363,7 @@ function briefQuestions(agent: CompiledPlayground, tools: string[]): string[] {
 }
 
 /** The files with a brief for a coding agent: what to ask, what to install, where each file goes. */
-export function llmBrief(workspace: CompiledWorkspace, agent: CompiledPlayground): string {
+export function llmBrief(workspace: CompiledWorkspace, agent: CompiledStudio): string {
 	const files = exportFiles(workspace, agent);
 	const stubs = [
 		...new Set(
@@ -377,7 +377,7 @@ export function llmBrief(workspace: CompiledWorkspace, agent: CompiledPlayground
 	const turns = servesTurns(agent);
 	return `# Add the Theorem agents to this app
 
-The files below were exported from the Theorem Playground: ${workspace.agents.map((each) => `\`${each.agentId}\``).join(', ')}, the tools they share, the registration that wires them together${
+The files below were exported from the Theorem Studio: ${workspace.agents.map((each) => `\`${each.agentId}\``).join(', ')}, the tools they share, the registration that wires them together${
 		files.some((file) => file.path === 'route.ts')
 			? `, and a server route and package-prepared user interface for \`${agent.agentId}\``
 			: ''
@@ -406,7 +406,7 @@ ${INSTALL}
 - Read model keys on the server only, from the environment or a secrets manager.
 - Keep \`registerProfile\`, \`registerTool\` and the handler in server-only modules; the browser imports only \`@theoremjs/react\`, \`/ui\` or \`/live\`.
 - Replace each function tool's stand-in handler with the real call; its input is already checked against the Zod schema given.
-- Change an agent's settings in its own module, or in the playground and export again.
+- Change an agent's settings in its own module, or in the studio and export again.
 
 ## Don't
 - Don't import \`tools.ts\`, \`agents/\`, \`theorem.ts\` or \`route.ts\` from browser code, or put a key in a \`VITE_\`, \`NEXT_PUBLIC_\` or other client variable.

@@ -3,7 +3,7 @@
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
-	"description": "THEOREM site: React Router v8 on Cloudflare Workers — docs, playground, and the run host.",
+	"description": "THEOREM site: React Router v8 on Cloudflare Workers — docs, studio, and the run host.",
 	"scripts": {
 		"predev": "node --experimental-strip-types scripts/ensure-theoremai.mjs",
 		"dev": "react-router dev --port 5174 --strictPort",
@@ -40,7 +40,7 @@
 		"@stylexjs/stylex": "0.19.0",
 		"@tabler/icons-react": "^3.48.0",
 		"@theoremjs/agents": "file:../theoremai",
-		"@theoremjs/playground": "file:../theoremai/playground",
+		"@theoremjs/studio": "file:../theoremai/studio",
 		"@theoremjs/react": "file:../theoremai/react",
 		"ai": "^7.0.0",
 		"fflate": "^0.8.2",

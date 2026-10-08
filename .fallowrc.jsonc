@@ -55,7 +55,7 @@
 		"scripts/docs-snippet-host.ts"
 	],
 	// Durable Objects are called by the runtime (`alarm`) and through a stub, a
-	// proxy fallow cannot follow (`playgroundSteerInbox` and `takeAllowance` call the RPC methods).
+	// proxy fallow cannot follow (`studioSteerInbox` and `takeAllowance` call the RPC methods).
 	"usedClassMembers": [
 		{
 			"extends": "DurableObject",

@@ -40,8 +40,8 @@ import {
 import { NavMark } from '../components/shell-navigation';
 import { Th30Provider, Th30Trigger } from '../components/th30-dock';
 import { getDocIndex } from '../lib/docs/.server/load-index';
-import { playgroundJsonLd } from '../lib/playground-content';
 import { SITE_PACKAGES, SITE_SECTIONS } from '../lib/site-nav';
+import { studioJsonLd } from '../lib/studio-content';
 import type { Route } from './+types/shell';
 
 /** Route `handle` a page exports to change how the shell frames it. */
@@ -126,28 +126,27 @@ function Th30Button() {
 }
 
 /**
- * The playground draws in the browser, so React Router withholds its own loader data from the
- * server render. The shell's is kept, so the playground's structured data and canonical URL
+ * The studio draws in the browser, so React Router withholds its own loader data from the
+ * server render. The shell's is kept, so the studio's structured data and canonical URL
  * ride here and still reach crawlers in the first HTML.
  */
 export function loader({ request }: Route.LoaderArgs) {
 	const url = new URL(request.url);
 	return {
 		origin: url.origin,
-		playgroundJsonLd:
-			url.pathname === '/playground' ? playgroundJsonLd(getDocIndex(), url.origin) : undefined,
+		studioJsonLd: url.pathname === '/studio' ? studioJsonLd(getDocIndex(), url.origin) : undefined,
 	};
 }
 
 /**
- * The structured data follows the path, so moving to or from the playground refetches it. A move
+ * The structured data follows the path, so moving to or from the studio refetches it. A move
  * within one page (the landing page's scroll rewrites its hash) never does: a refetch is a pending
  * navigation, and a pending navigation hides the page behind the mark.
  */
 export function shouldRevalidate({ currentUrl, nextUrl }: ShouldRevalidateFunctionArgs) {
 	if (currentUrl.pathname === nextUrl.pathname) return false;
-	const playground = (url: URL) => url.pathname === '/playground';
-	return playground(currentUrl) !== playground(nextUrl);
+	const studio = (url: URL) => url.pathname === '/studio';
+	return studio(currentUrl) !== studio(nextUrl);
 }
 
 /**

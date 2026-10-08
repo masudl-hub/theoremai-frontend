@@ -28,15 +28,15 @@
 }
 
 /*
- * A playground tree row's add or remove button shows on hover or keyboard focus, fading like the popovers,
+ * A studio tree row's add or remove button shows on hover or keyboard focus, fading like the popovers,
  * so the tree reads as names at rest. Without hover (touch), it always shows.
  */
-.playground-tree-row {
+.studio-tree-row {
 	position: relative;
 }
 
 /* Out of the row's flow, so it neither heightens the row nor narrows the label at rest. */
-.playground-tree-action {
+.studio-tree-action {
 	position: absolute;
 	inset-inline-end: var(--spacing-1);
 	top: 50%;
@@ -46,13 +46,13 @@
 	transition: opacity var(--duration-fast) var(--ease-standard);
 }
 
-.playground-tree-row:hover .playground-tree-action,
-.playground-tree-row:has(:focus-visible) .playground-tree-action {
+.studio-tree-row:hover .studio-tree-action,
+.studio-tree-row:has(:focus-visible) .studio-tree-action {
 	opacity: 1;
 }
 
 @media (hover: none) {
-	.playground-tree-action {
+	.studio-tree-action {
 		opacity: 1;
 	}
 }
@@ -62,17 +62,17 @@
  * label fades out beneath it instead of being pushed along.
  */
 @media (hover: none) {
-	.playground-tree-row > button:not([data-tree-toggle]) {
+	.studio-tree-row > button:not([data-tree-toggle]) {
 		mask-image: linear-gradient(to left, transparent var(--spacing-6), #000 var(--spacing-10));
 	}
 }
 
-.playground-tree-row:is(:hover, :has(:focus-visible)) > button:not([data-tree-toggle]) {
+.studio-tree-row:is(:hover, :has(:focus-visible)) > button:not([data-tree-toggle]) {
 	mask-image: linear-gradient(to left, transparent var(--spacing-6), #000 var(--spacing-10));
 }
 
 /* A row with two buttons fades a button's width further in. */
-.playground-tree-row:has(.playground-tree-action > :nth-child(2)):is(:hover, :has(:focus-visible))
+.studio-tree-row:has(.studio-tree-action > :nth-child(2)):is(:hover, :has(:focus-visible))
 > button:not([data-tree-toggle]) {
 	mask-image: linear-gradient(
 		to left,
@@ -89,50 +89,50 @@
 }
 
 /* An optional section the draft leaves out: in the tree, a step quieter than the rest. */
-.playground-tree-off {
+.studio-tree-off {
 	color: var(--color-text-secondary);
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.playground-tree-action {
+	.studio-tree-action {
 		transition: none;
 	}
 }
 
 /*
- * The playground on a phone, the way the docs reader works: the editor fills the screen, the tree
+ * The studio on a phone, the way the docs reader works: the editor fills the screen, the tree
  * opens over it from Sections, and the preview opens over it from Preview, with Back to return. The
  * draft lives only on this page, so the preview is a sheet here rather than another page.
  */
-.playground-phone {
+.studio-phone {
 	display: none;
 }
 
 /* The frame's class in each selector outranks Astryx's own one-class rules, including the panel's
    resized width, without !important. */
 @media (width < 768px) {
-	.playground-phone {
+	.studio-phone {
 		display: contents;
 	}
 
-	.playground-frame {
+	.studio-frame {
 		position: relative;
 	}
 
-	.playground-frame .playground-side {
+	.studio-frame .studio-side {
 		width: 100%;
 		max-width: none;
 		flex: 1 1 auto;
 	}
 
-	.playground-frame .playground-side-handle,
-	.playground-frame .playground-tree,
-	.playground-frame .playground-preview {
+	.studio-frame .studio-side-handle,
+	.studio-frame .studio-tree,
+	.studio-frame .studio-preview {
 		display: none;
 	}
 
-	.playground-frame.playground-tree-open .playground-tree,
-	.playground-frame.playground-preview-open .playground-preview {
+	.studio-frame.studio-tree-open .studio-tree,
+	.studio-frame.studio-preview-open .studio-preview {
 		display: flex;
 		position: absolute;
 		inset: 0;
@@ -141,15 +141,15 @@
 	}
 
 	/* The tree covers the editor inside the raised panel; the preview covers the page. */
-	.playground-frame.playground-tree-open .playground-tree {
+	.studio-frame.studio-tree-open .studio-tree {
 		background: var(--color-background-surface);
 	}
 
-	.playground-frame.playground-preview-open .playground-preview {
+	.studio-frame.studio-preview-open .studio-preview {
 		background: var(--color-background-body);
 	}
 
-	.playground-frame.playground-tree-open .playground-tree > * {
+	.studio-frame.studio-tree-open .studio-tree > * {
 		width: 100%;
 	}
 }

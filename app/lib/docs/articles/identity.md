@@ -1,6 +1,6 @@
 ---
 title: Setting the identity
-updated: 2026-10-07
+updated: 2026-10-08
 summary: Name your agent, tell the model who it is, and hide secret lines.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/profiles.ts, src/kernel/registry/system-prompt.ts, src/kernel/registry/system-role.ts, src/kernel/system-parts.ts
@@ -109,7 +109,7 @@ The mark changes what the agent can repeat:
 
 The `prompt_leak` detector enforces the mark. It reads for 12 words in a row of a private part. Without a setting, it blocks a reply that repeats them ([Setting guardrails](/docs/guardrails)).
 
-In the [playground](/playground), write the instruction as one text. Wrap each private section as `{private: …}`. The profile in the code you get from the playground holds the parts.
+In the [studio](/studio), write the instruction as one text. Wrap each private section as `{private: …}`. The profile in the code you get from the studio holds the parts.
 
 ### 4. Add an instruction for one request
 

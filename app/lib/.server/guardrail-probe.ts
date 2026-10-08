@@ -1,5 +1,5 @@
 /**
- * POST /api/playground/probe — one text sent across every guardrail boundary of
+ * POST /api/studio/probe — one text sent across every guardrail boundary of
  * the draft, each on a scripted model: no key is spent and no host is reached.
  * A text some boundary let through untouched is kept as sent, with every
  * boundary's answer, for review. With `only`, the draft reads with that
@@ -7,16 +7,16 @@
  */
 import { errorKind, type ProfileDefinition, publicError, z } from '@theoremjs/agents';
 import { caughtStatus } from '@theoremjs/agents/host';
+import { readBody } from '@theoremjs/react/server';
 import {
 	type GuardrailProbeAnswer,
-	type PlaygroundDependency,
 	PROBE_BATTERY,
 	PROBE_TEXT_LIMIT,
 	runGuardrailProbes,
 	type StructuredRegistration,
+	type StudioDependency,
 	type ToolRegistration,
-} from '@theoremjs/playground';
-import { readBody } from '@theoremjs/react/server';
+} from '@theoremjs/studio';
 
 /** A probed text and what each boundary's guardrails did with it. */
 export type ProbeEntry = {
@@ -64,12 +64,12 @@ function part<T>() {
 	return z.custom<T>((value) => typeof value === 'object' && value !== null);
 }
 
-/** The draft as every playground request carries it, and the text to probe with. The kernel checks the draft when it registers it. */
+/** The draft as every studio request carries it, and the text to probe with. The kernel checks the draft when it registers it. */
 const probeRequestSchema = z.object({
 	profile: part<ProfileDefinition>(),
 	customTools: z.array(part<ToolRegistration>()).optional(),
 	structured: part<StructuredRegistration>().optional(),
-	dependencies: z.array(part<PlaygroundDependency>()).optional(),
+	dependencies: z.array(part<StudioDependency>()).optional(),
 	text: z.string().min(1).max(PROBE_TEXT_LIMIT),
 	only: z.string().min(1).max(200).optional(),
 });
@@ -88,7 +88,7 @@ function isBatteryText(text: string): boolean {
  * at each. `log` gets a text some boundary passed through `defer`, after the
  * answer: a log that fails never fails a probe.
  */
-export async function playgroundProbe(
+export async function studioProbe(
 	request: Request,
 	log: ProbeLog | undefined,
 	defer: (work: Promise<unknown>) => void,

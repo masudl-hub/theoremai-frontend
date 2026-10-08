@@ -8,7 +8,7 @@ export const SITE_REDIRECTS = [
 	{ from: '/#use', to: '/docs/start', reason: 'home hash retired' },
 	{ from: '/#pillars', to: '/docs', reason: 'home hash retired' },
 	{ from: '/#architecture', to: '/docs/modalities#host', reason: 'home hash retired' },
-	{ from: '/#playground', to: '/playground', reason: 'home hash retired' },
+	{ from: '/#playground', to: '/studio', reason: 'home hash retired' },
 	{
 		from: '/docs/profiles',
 		to: '/docs/modalities',
@@ -27,7 +27,7 @@ export const SITE_REDIRECTS = [
 	{ from: '/docs/host', to: '/docs/modalities#host', reason: 'host is a modality' },
 	{ from: '/docs/cli', to: '/docs/start', reason: 'cli deferred' },
 	{ from: '/docs/ui', to: '/docs/interface', reason: 'ui folded into interface' },
-	{ from: '/docs/playground', to: '/playground', reason: 'playground chapter retired' },
+	{ from: '/docs/playground', to: '/studio', reason: 'playground chapter retired' },
 ] as const;
 
 /** Each chapter's Markdown source, keyed by its path from this folder (`./start.md`). */

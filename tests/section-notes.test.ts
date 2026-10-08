@@ -23,7 +23,7 @@ function braced(text: string, start: number): string {
 	return text.slice(start + 1);
 }
 
-test('a section note comes from the catalog or the playground package, never a string in the UI', () => {
+test('a section note comes from the catalog or the studio package, never a string in the UI', () => {
 	const written: string[] = [];
 	for (const file of sources(ROOT)) {
 		const text = readFileSync(file, 'utf8');

@@ -49,7 +49,7 @@ async function providerSaid(response: Response, key: string): Promise<string | u
 	}
 }
 
-/** POST /api/playground/test-key `{ key }`. */
+/** POST /api/studio/test-key `{ key }`. */
 export async function testKey(request: Request): Promise<Response> {
 	if (request.method !== 'POST') return new Response(null, { status: 405 });
 	let key = '';

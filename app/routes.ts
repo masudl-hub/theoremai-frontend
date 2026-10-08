@@ -6,10 +6,12 @@ export default [
 		route('overview', 'routes/overview.tsx'),
 		route('examples', 'routes/examples.tsx'),
 		route('contribute', 'routes/contribute.tsx'),
-		route('playground', 'routes/playground.tsx'),
-		route('playground/run', 'routes/playground.run.tsx'),
-		// The playground opened on a local project. A deployed site has no project to open.
-		...(process.env.NODE_ENV === 'production' ? [] : [route('studio', 'routes/studio.tsx')]),
+		route('studio', 'routes/studio.tsx'),
+		route('studio/run', 'routes/studio.run.tsx'),
+		// The studio opened on a local project. A deployed site has no project to open.
+		...(process.env.NODE_ENV === 'production'
+			? []
+			: [route('studio/project', 'routes/studio.project.tsx')]),
 		route('docs', 'routes/docs.tsx'),
 		route('docs/:slug', 'routes/docs.$slug.tsx'),
 	]),
@@ -20,12 +22,12 @@ export default [
 	route('robots.txt', 'routes/robots[.]txt.ts'),
 	route('sitemap.xml', 'routes/sitemap[.]xml.ts'),
 	route('api/kernel', 'routes/api.kernel.ts'),
-	route('api/playground/turn', 'routes/api.playground.turn.ts'),
-	route('api/playground/turn/steer', 'routes/api.playground.turn.steer.ts'),
-	route('api/playground/invoke', 'routes/api.playground.invoke.ts'),
-	route('api/playground/call', 'routes/api.playground.call.ts'),
-	route('api/playground/decide', 'routes/api.playground.decide.ts'),
-	route('api/playground/probe', 'routes/api.playground.probe.ts'),
-	route('api/playground/test-connection', 'routes/api.playground.test-connection.ts'),
-	route('api/playground/test-key', 'routes/api.playground.test-key.ts'),
+	route('api/studio/turn', 'routes/api.studio.turn.ts'),
+	route('api/studio/turn/steer', 'routes/api.studio.turn.steer.ts'),
+	route('api/studio/invoke', 'routes/api.studio.invoke.ts'),
+	route('api/studio/call', 'routes/api.studio.call.ts'),
+	route('api/studio/decide', 'routes/api.studio.decide.ts'),
+	route('api/studio/probe', 'routes/api.studio.probe.ts'),
+	route('api/studio/test-connection', 'routes/api.studio.test-connection.ts'),
+	route('api/studio/test-key', 'routes/api.studio.test-key.ts'),
 ] satisfies RouteConfig;

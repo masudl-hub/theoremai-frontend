@@ -8,13 +8,13 @@
 	"compatibility_flags": ["nodejs_compat"],
 	"observability": { "enabled": true },
 	"upload_source_maps": true,
-	// The playground's mid-turn steer inboxes, one object per inbox id; and the
-	// day's playground allowances (every API request, decisions on the site's
+	// The studio's mid-turn steer inboxes, one object per inbox id; and the
+	// day's studio allowances (every API request, decisions on the site's
 	// TypeSafe key, host tool calls), per visitor address and for the site.
 	"durable_objects": {
 		"bindings": [
-			{ "name": "STEER_INBOX", "class_name": "PlaygroundSteerInbox" },
-			{ "name": "DECIDE_ALLOWANCE", "class_name": "PlaygroundDecideAllowance" }
+			{ "name": "STEER_INBOX", "class_name": "StudioSteerInbox" },
+			{ "name": "DECIDE_ALLOWANCE", "class_name": "StudioDecideAllowance" }
 		]
 	},
 	// Guardrail probes some boundary let through, kept for review. With no
@@ -29,7 +29,14 @@
 	],
 	"migrations": [
 		{ "tag": "v1", "new_sqlite_classes": ["PlaygroundSteerInbox"] },
-		{ "tag": "v2", "new_sqlite_classes": ["PlaygroundDecideAllowance"] }
+		{ "tag": "v2", "new_sqlite_classes": ["PlaygroundDecideAllowance"] },
+		{
+			"tag": "v3",
+			"renamed_classes": [
+				{ "from": "PlaygroundSteerInbox", "to": "StudioSteerInbox" },
+				{ "from": "PlaygroundDecideAllowance", "to": "StudioDecideAllowance" }
+			]
+		}
 	]
 	// Secrets (wrangler secret put; .env.local in dev): free-tier keys only,
 	// never a paid one — GEMINI_API_KEY_FREE_A, GEMINI_API_KEY_FREE_B, GEMINI_API_KEY_FREE_C,

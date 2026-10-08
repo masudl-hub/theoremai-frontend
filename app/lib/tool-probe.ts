@@ -3,7 +3,7 @@
  * Test and th30's `test` action both go through here.
  */
 import { HTTP_METHODS } from '@theoremjs/agents';
-import { credentialHeaderProblem, type ToolSpecDraft } from '@theoremjs/playground';
+import { credentialHeaderProblem, type ToolSpecDraft } from '@theoremjs/studio';
 
 /** What the test-connection route answers: an HTTP response, or an MCP server's tool list. */
 export interface ProbeResult {
@@ -95,13 +95,13 @@ export async function runToolProbe(
 	const request = probeRequest(tool, sampleInput, credential);
 	if (!request.body) return { ok: false, error: request.error };
 	try {
-		const response = await fetch('/api/playground/test-connection', {
+		const response = await fetch('/api/studio/test-connection', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(request.body),
 		});
 		return await response.json<ProbeResult>();
 	} catch {
-		return { ok: false, error: "Couldn't reach the playground server." };
+		return { ok: false, error: "Couldn't reach the studio server." };
 	}
 }

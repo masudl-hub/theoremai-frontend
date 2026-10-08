@@ -45,7 +45,7 @@ export const th30Surfaces = createSurfaceRuntime({
 	ledger,
 });
 
-th30Surfaces.declare('playground', 'Playground, where the person builds an agent');
+th30Surfaces.declare('studio', 'Studio, where the person builds an agent');
 
 /** The dock opens a surface's page when th30 asks for one that isn't mounted. */
 export function setTh30SurfaceOpener(next: ((surfaceId: string) => void) | null): void {

@@ -1,20 +1,20 @@
 /**
- * Playground drafts compiled into docs snippets. Same omit-strip path as the
- * playground — never hand-type defineProfile with materialised defaults.
+ * Studio drafts compiled into docs snippets. Same omit-strip path as the
+ * studio — never hand-type defineProfile with materialised defaults.
  */
 
 import {
-	compilePlayground,
+	compileStudio,
 	createBlankDraft,
 	defaultModelBinding,
 	defaultToolSpec,
 	demoToolSpecs,
 	excludeFacet,
-	type PlaygroundDraft,
-	playgroundSource,
+	type StudioDraft,
 	setProfileType,
-} from '@theoremjs/playground';
-import type { PlaygroundSeedId } from './schema';
+	studioSource,
+} from '@theoremjs/studio';
+import type { StudioSeedId } from './schema';
 
 const HARBOR_SYSTEM = [
 	'You are the Harbor front desk for shippers.',
@@ -75,7 +75,7 @@ function harborHoldToolSpec() {
 }
 
 /** What the desk accepts in a turn: text, images and PDFs. */
-function harborDeskInputs(): PlaygroundDraft['inputs'] {
+function harborDeskInputs(): StudioDraft['inputs'] {
 	return {
 		text: true,
 		attachmentsAccept: ['image/*', 'application/pdf'],
@@ -93,10 +93,10 @@ function harborDeskInputs(): PlaygroundDraft['inputs'] {
 /**
  * Harbor front desk — Getting started fence.
  * Guardrails stay omitted: resolve-on defaults. Authored `canary: true` would
- * materialise the omit path. Tool id is `harbor_holdStatus` (playground names
+ * materialise the omit path. Tool id is `harbor_holdStatus` (studio names
  * disallow dots).
  */
-function firstTurnDraft(): PlaygroundDraft {
+function firstTurnDraft(): StudioDraft {
 	let draft = setProfileType(createBlankDraft(), 'text');
 	draft = excludeFacet(draft, 'observability');
 	return {
@@ -162,11 +162,11 @@ export async function firstTurn(apiKey: string) {
 `;
 }
 
-/** Each seed's playground draft, the question its program asks, and how its compiled profile is wrapped for the docs fence. */
+/** Each seed's studio draft, the question its program asks, and how its compiled profile is wrapped for the docs fence. */
 const SEEDS: Record<
-	PlaygroundSeedId,
+	StudioSeedId,
 	{
-		draft: () => PlaygroundDraft;
+		draft: () => StudioDraft;
 		question: string;
 		wrap: (source: string, profileId: string) => string;
 	}
@@ -174,21 +174,21 @@ const SEEDS: Record<
 	firstTurn: { draft: firstTurnDraft, question: FIRST_TURN_PROMPT, wrap: withFirstTurnDoor },
 };
 
-/** The question the seed's program asks, for the playground composer to start with. */
-export function docsSeedQuestion(seed: PlaygroundSeedId): string {
+/** The question the seed's program asks, for the studio composer to start with. */
+export function docsSeedQuestion(seed: StudioSeedId): string {
 	return SEEDS[seed].question;
 }
 
-export function docsSeedDraft(seed: PlaygroundSeedId): PlaygroundDraft {
+export function docsSeedDraft(seed: StudioSeedId): StudioDraft {
 	return SEEDS[seed].draft();
 }
 
-export function compileSeedSource(seed: PlaygroundSeedId): string {
-	const compiled = compilePlayground(docsSeedDraft(seed));
+export function compileSeedSource(seed: StudioSeedId): string {
+	const compiled = compileStudio(docsSeedDraft(seed));
 	if (!compiled.ok) {
 		const issues = compiled.issues.map((issue) => issue.message).join('; ');
 		throw new Error(`DOCS_SEEDS.${seed} failed to compile: ${issues}`);
 	}
 	const { wrap } = SEEDS[seed];
-	return wrap(playgroundSource(compiled), compiled.agentId);
+	return wrap(studioSource(compiled), compiled.agentId);
 }

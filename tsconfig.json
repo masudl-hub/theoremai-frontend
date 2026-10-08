@@ -2,7 +2,7 @@
 	"include": [".react-router/types/**/*", "app/**/*", "workers/**/*", "theoremai-deno-shim.d.ts"],
 	// A .d.ts beside a .ts of the same name is dropped from `include`. These are the
 	// editor contribution modules, so the file has to be named here to be part of the program.
-	"files": ["app/components/playground-monaco.d.ts"],
+	"files": ["app/components/studio-monaco.d.ts"],
 	"compilerOptions": {
 		"target": "ES2022",
 		"lib": ["ES2023", "DOM", "DOM.Iterable"],

@@ -50,28 +50,28 @@ export function readPageFromDom(hash: string): Th30Page | null {
 	return { title: document.title, summary: parts.join(' '), viewing: viewingFor(hash) };
 }
 
-/** The playground's live state, as th30 is told it. */
-export type Th30PlaygroundState = {
+/** The studio's live state, as th30 is told it. */
+export type Th30StudioState = {
 	agent: string;
 	type: string;
 	issues: number;
 	section?: string;
 };
 
-let playgroundState: Th30PlaygroundState | null = null;
+let studioState: Th30StudioState | null = null;
 const listeners = new Set<() => void>();
 
-function setPlaygroundState(next: Th30PlaygroundState | null) {
+function setStudioState(next: Th30StudioState | null) {
 	const same =
-		next === playgroundState ||
+		next === studioState ||
 		(next !== null &&
-			playgroundState !== null &&
-			next.agent === playgroundState.agent &&
-			next.type === playgroundState.type &&
-			next.issues === playgroundState.issues &&
-			next.section === playgroundState.section);
+			studioState !== null &&
+			next.agent === studioState.agent &&
+			next.type === studioState.type &&
+			next.issues === studioState.issues &&
+			next.section === studioState.section);
 	if (same) return;
-	playgroundState = next;
+	studioState = next;
 	for (const listener of listeners) listener();
 }
 
@@ -82,24 +82,24 @@ function subscribe(listener: () => void) {
 	};
 }
 
-/** The playground reports its state while it is mounted. */
-export function useReportTh30Playground(state: Th30PlaygroundState) {
+/** The studio reports its state while it is mounted. */
+export function useReportTh30Studio(state: Th30StudioState) {
 	const { agent, type, issues, section } = state;
 	useEffect(() => {
-		setPlaygroundState({ agent, type, issues, section });
+		setStudioState({ agent, type, issues, section });
 	}, [agent, type, issues, section]);
 	useEffect(
 		() => () => {
-			setPlaygroundState(null);
+			setStudioState(null);
 		},
 		[],
 	);
 }
 
-export function useTh30PlaygroundState(): Th30PlaygroundState | null {
+export function useTh30StudioState(): Th30StudioState | null {
 	return useSyncExternalStore(
 		subscribe,
-		() => playgroundState,
+		() => studioState,
 		() => null,
 	);
 }
@@ -108,19 +108,19 @@ export function useTh30PlaygroundState(): Th30PlaygroundState | null {
 export function th30PageLine(
 	pathname: string,
 	page: Th30Page,
-	playground: Th30PlaygroundState | null,
+	studio: Th30StudioState | null,
 ): string {
 	const state: string[] = [];
 	if (page.viewing) state.push(`viewing: ${page.viewing}`);
-	if (playground) {
+	if (studio) {
 		state.push(
-			`agent: ${playground.agent}`,
-			`type: ${playground.type}`,
-			playground.issues === 0
+			`agent: ${studio.agent}`,
+			`type: ${studio.type}`,
+			studio.issues === 0
 				? 'no issues'
-				: `${String(playground.issues)} ${playground.issues === 1 ? 'issue' : 'issues'}`,
+				: `${String(studio.issues)} ${studio.issues === 1 ? 'issue' : 'issues'}`,
 		);
-		if (playground.section) state.push(`section: ${playground.section}`);
+		if (studio.section) state.push(`section: ${studio.section}`);
 	}
 	const tail = state.length ? ` [${state.join(', ')}]` : '';
 	return `(page) ${pathname} — ${page.title}: ${page.summary}${tail}`;

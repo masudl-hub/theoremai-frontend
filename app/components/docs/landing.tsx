@@ -294,8 +294,8 @@ function LandingResources() {
 			<Button
 				variant="secondary"
 				size="md"
-				href="/playground"
-				label="Try the playground"
+				href="/studio"
+				label="Try the studio"
 				icon={<IconPlayerPlay aria-hidden />}
 			/>
 		</HStack>

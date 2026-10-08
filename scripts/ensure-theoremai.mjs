@@ -31,7 +31,7 @@ symlinkSync(root, nodeModulesAgents, 'dir');
 console.log(`@theoremjs/agents → ${root} (${source})`);
 
 // file: deps are pinned to the sibling path; follow the resolved root instead.
-for (const pkg of ['react', 'playground']) {
+for (const pkg of ['react', 'studio']) {
 	const link = path.join(frontendRoot, 'node_modules/@theoremjs', pkg);
 	if (existsSync(link) || lstatSync(link, { throwIfNoEntry: false })) rmSync(link, { recursive: true, force: true });
 	symlinkSync(path.join(root, pkg), link, 'dir');

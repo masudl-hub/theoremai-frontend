@@ -278,7 +278,7 @@ The quick start used a small part of a profile. The program below is the same de
 - It has two more tools. An HTTP tool reads the weather at a port from a public API. An MCP tool searches the web for news about a port ([Registering tools](/docs/tools)).
 - It reads a photo or a PDF ([Declaring inputs](/docs/inputs)).
 
-The play button on the program opens it in the playground.
+The play button on the program opens it in the studio.
 
 ```ts seed=firstTurn
 ```

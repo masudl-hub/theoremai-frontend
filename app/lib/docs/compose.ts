@@ -41,9 +41,9 @@ import {
 	type DocTreeNode,
 	FENCE_LANGUAGES,
 	type PageSymbol,
-	PLAYGROUND_SEED_IDS,
-	type PlaygroundSeedId,
 	SNIPPET_FRAMES,
+	STUDIO_SEED_IDS,
+	type StudioSeedId,
 } from './schema';
 import { compileSeedSource } from './seeds';
 import { ttrMinutesFromText } from './text-format';
@@ -191,10 +191,9 @@ function assertChapter(chapter: Chapter): void {
 }
 
 /** The seed a fence names in `seed=`. */
-function fenceSeed(slug: string, name: string | undefined): PlaygroundSeedId | undefined {
+function fenceSeed(slug: string, name: string | undefined): StudioSeedId | undefined {
 	if (name === undefined) return undefined;
-	if (!isOneOf(PLAYGROUND_SEED_IDS, name))
-		throw new Error(`${slug} names an unknown seed: ${name}`);
+	if (!isOneOf(STUDIO_SEED_IDS, name)) throw new Error(`${slug} names an unknown seed: ${name}`);
 	return name;
 }
 

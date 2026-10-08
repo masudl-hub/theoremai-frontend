@@ -5,8 +5,8 @@ import { reactRouter } from '@react-router/dev/vite';
 import { defineConfig, type Plugin } from 'vite';
 import { docsIndexPlugin } from './scripts/docs-index-plugin.mjs';
 import { kernelMetaDefine } from './scripts/kernel-meta.mjs';
-import { playgroundTypeSources } from './scripts/playground-type-sources.mjs';
 import { resolveTheoremaiRoot } from './scripts/resolve-theoremai-root.mjs';
+import { studioTypeSources } from './scripts/studio-type-sources.mjs';
 
 const repoRoot = path.dirname(fileURLToPath(import.meta.url));
 const theoremai = resolveTheoremaiRoot(repoRoot);
@@ -47,7 +47,7 @@ export default defineConfig({
 	plugins: [
 		tablerIconFiles(),
 		docsIndexPlugin({ repoRoot, theoremai }),
-		playgroundTypeSources({ theoremaiRoot: theoremai.root, repoRoot }),
+		studioTypeSources({ theoremaiRoot: theoremai.root, repoRoot }),
 		cloudflare({ viteEnvironment: { name: 'ssr' } }),
 		reactRouter(),
 	],
@@ -68,7 +68,7 @@ export default defineConfig({
 		entries: [
 			'app/**/*.tsx',
 			`${theoremai.root}/react/src/**/*.tsx`,
-			`${theoremai.root}/playground/**/*.ts`,
+			`${theoremai.root}/studio/**/*.ts`,
 			`!${theoremai.root}/**/*.test.*`,
 		],
 		// Served per icon by tablerIconFiles instead.

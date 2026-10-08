@@ -1,11 +1,11 @@
 import type { InputStatus } from '@astryxdesign/core/Field';
-import type { PlaygroundConnectionMode, PlaygroundIssue } from '@theoremjs/playground';
+import type { StudioConnectionMode, StudioIssue } from '@theoremjs/studio';
 import { createContext, useContext } from 'react';
 
 // Kept out of inspector.tsx: a hot reload re-runs that module and would orphan these contexts.
 
 /** The compile issues for the node being edited; rows show the ones on their field. */
-export const NodeIssues = createContext<readonly PlaygroundIssue[]>([]);
+export const NodeIssues = createContext<readonly StudioIssue[]>([]);
 
 /**
  * Looks up the error status for a draft field of the node being edited, and for a list field, the
@@ -37,12 +37,12 @@ export const ISSUE_ROW_ATTRIBUTE = 'data-issue';
  */
 export const ListBadges = createContext(1);
 
-/** Execution policy selected by the playground; credentials stay outside editor state. */
-export const ConnectionMode = createContext<PlaygroundConnectionMode>('demo');
+/** Execution policy selected by the studio; credentials stay outside editor state. */
+export const ConnectionMode = createContext<StudioConnectionMode>('demo');
 
-import type { PlaygroundConnectionState } from './playground-connection';
+import type { StudioConnectionState } from './studio-connection';
 export const LocalConnection = createContext<Pick<
-	PlaygroundConnectionState,
+	StudioConnectionState,
 	| 'localModels'
 	| 'local'
 	| 'setLocal'

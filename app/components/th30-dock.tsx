@@ -42,7 +42,7 @@ import {
 	type Th30Page,
 	type Th30PageHandle,
 	th30PageLine,
-	useTh30PlaygroundState,
+	useTh30StudioState,
 } from '../lib/th30-page';
 import { onTh30Note, setTh30SurfaceOpener, th30Surfaces } from '../lib/th30-surfaces';
 import { th30Voice } from '../lib/th30-voice';
@@ -159,14 +159,14 @@ type Phase = 'idle' | 'connecting' | 'live' | 'failed';
 const PAGE_LINE_DEBOUNCE_MS = 800;
 
 /** Where each surface th30 can open lives. */
-const SURFACE_PAGES: Record<string, string> = { playground: '/playground' };
-const SITE_PAGES = { home: '/', docs: '/docs', playground: '/playground' } as const;
+const SURFACE_PAGES: Record<string, string> = { studio: '/studio' };
+const SITE_PAGES = { home: '/', docs: '/docs', studio: '/studio' } as const;
 
 /** The page the visitor is on: a route that reports live state, else what the page itself says. */
 function useTh30PageLine(): string | null {
 	const matches = useMatches();
 	const { pathname, hash } = useLocation();
-	const playground = useTh30PlaygroundState();
+	const studio = useTh30StudioState();
 	const [rendered, setRendered] = useState<Th30Page | null>(null);
 	// The page's own markup is what changes on navigation, so the path triggers the read.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: pathname is the trigger, not an input
@@ -184,11 +184,9 @@ function useTh30PageLine(): string | null {
 		const describe = (match.handle as Th30PageHandle | undefined)?.th30Page;
 		if (!describe) continue;
 		const page = (describe as (data: unknown, hash: string) => Th30Page)(match.loaderData, hash);
-		return th30PageLine(pathname, page, pathname === '/playground' ? playground : null);
+		return th30PageLine(pathname, page, pathname === '/studio' ? studio : null);
 	}
-	return rendered
-		? th30PageLine(pathname, rendered, pathname === '/playground' ? playground : null)
-		: null;
+	return rendered ? th30PageLine(pathname, rendered, pathname === '/studio' ? studio : null) : null;
 }
 
 /** th30 opens a surface's page when it asks for one that isn't mounted, and can always move the person. */
@@ -212,9 +210,9 @@ function useSiteSurface(navigate: NavigateFunction): void {
 					title: 'The theorem site',
 					actions: {
 						go: defineAction({
-							description: 'Take the person to the home page, the docs, or the playground.',
+							description: 'Take the person to the home page, the docs, or the studio.',
 							effect: 'run',
-							input: z.object({ page: z.enum(['home', 'docs', 'playground']) }),
+							input: z.object({ page: z.enum(['home', 'docs', 'studio']) }),
 							run: ({ page }) => {
 								// flushSync: volume updates during a call would otherwise starve the route change.
 								void navigate(SITE_PAGES[page], { flushSync: true });

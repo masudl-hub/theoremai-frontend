@@ -8,11 +8,11 @@ import {
 	probeDraft,
 	workspaceFromDraft,
 	workspaceRunAgent,
-} from '@theoremjs/playground';
+} from '@theoremjs/studio';
 import {
 	d1ProbeLog,
 	type ProbeEntry,
-	playgroundProbe,
+	studioProbe,
 } from '../app/lib/.server/guardrail-probe.ts';
 
 function concierge() {
@@ -24,7 +24,7 @@ function concierge() {
 }
 
 function post(body: unknown, type = 'application/json') {
-	return new Request('https://theorem.test/api/playground/probe', {
+	return new Request('https://theorem.test/api/studio/probe', {
 		method: 'POST',
 		headers: { 'Content-Type': type },
 		body: JSON.stringify(body),
@@ -35,7 +35,7 @@ function post(body: unknown, type = 'application/json') {
 async function probe(text: string, fail = false) {
 	const logged: ProbeEntry[] = [];
 	const deferred: Promise<unknown>[] = [];
-	const response = await playgroundProbe(
+	const response = await studioProbe(
 		post({ ...concierge(), text }),
 		(entry) => {
 			if (fail) return Promise.reject(new Error('no table'));
@@ -103,7 +103,7 @@ test('a request that is not a probe is refused and nothing is logged', async () 
 		assert.equal(response.status, 400);
 		assert.equal(logged.length, 0);
 	}
-	const plain = await playgroundProbe(post({}, 'text/plain'), undefined, () => undefined);
+	const plain = await studioProbe(post({}, 'text/plain'), undefined, () => undefined);
 	assert.equal(plain.status, 400);
 });
 

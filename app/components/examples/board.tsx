@@ -17,7 +17,7 @@ function ExampleActionButton({ action }: { action: ExampleAction }) {
 			<Button label={action.label} variant="primary" size="sm" href={action.href} as={NewTabLink} />
 		);
 	}
-	return <Button label="Open in playground" variant="primary" size="sm" href={action.href} />;
+	return <Button label="Open in studio" variant="primary" size="sm" href={action.href} />;
 }
 
 /** A still, a title, and a short description, with one way to open the example. */

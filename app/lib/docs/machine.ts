@@ -11,7 +11,7 @@ import {
 	PACKAGE_LINKS,
 	SITE_NAME,
 } from '../home-content';
-import { playgroundMarkdown } from '../playground-content';
+import { studioMarkdown } from '../studio-content';
 import { symbolTerm } from './catalog-rows';
 import { projectArticleText } from './project-text';
 import type { DocArticle, DocIndex } from './schema';
@@ -44,7 +44,7 @@ export function llmsTxt(index: DocIndex, origin: string): string {
 	return [
 		homeMarkdown(origin).trimEnd(),
 		'',
-		playgroundMarkdown(index, origin).trimEnd(),
+		studioMarkdown(index, origin).trimEnd(),
 		'',
 		'## Docs',
 		'',
@@ -65,7 +65,7 @@ export function llmsTxt(index: DocIndex, origin: string): string {
 export function llmsFullTxt(index: DocIndex, origin: string): string {
 	const chapters = index.articles.map((article) => articleMarkdown(index, article.slug, origin));
 	return (
-		[homeMarkdown(origin).trimEnd(), playgroundMarkdown(index, origin).trimEnd(), ...chapters].join(
+		[homeMarkdown(origin).trimEnd(), studioMarkdown(index, origin).trimEnd(), ...chapters].join(
 			'\n\n---\n\n',
 		) + '\n'
 	);
@@ -84,7 +84,7 @@ export function robotsTxt(origin: string): string {
 }
 
 export function sitemapXml(index: DocIndex, origin: string): string {
-	const pages = ['/', '/playground', '/docs']
+	const pages = ['/', '/studio', '/docs']
 		.map((path) => `  <url>\n    <loc>${origin}${path}</loc>\n  </url>`)
 		.join('\n');
 	const articles = index.articles

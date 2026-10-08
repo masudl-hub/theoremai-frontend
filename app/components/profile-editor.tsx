@@ -128,7 +128,6 @@ import {
 	LEXICON_KEYS,
 	type LexiconKey,
 	lexiconDefault,
-	type PlaygroundAuthType,
 	PROFILE_HANDLE_MAX_CHARS,
 	PROFILE_ID_MAX_CHARS,
 	PROFILE_TYPE_PROTOCOLS,
@@ -137,6 +136,7 @@ import {
 	type Protocol,
 	type Provider,
 	profileGraphFacet,
+	type StudioAuthType,
 	THINKING_LEVELS,
 	type ThinkingLevel,
 	type ToolAccess,
@@ -174,9 +174,9 @@ import {
 	draftAllows,
 	draftKey,
 	expandAccept,
-	GEMINI_PLAYGROUND_DEFAULT_API_ID,
-	GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS,
-	GEMINI_PLAYGROUND_MODELS,
+	GEMINI_STUDIO_DEFAULT_API_ID,
+	GEMINI_STUDIO_LIVE_INPUT_TOKENS,
+	GEMINI_STUDIO_MODELS,
 	type GuardrailsDraft,
 	type ImageReferenceDraft,
 	INLINE_WORDING,
@@ -185,7 +185,7 @@ import {
 	inputLimitsRequired,
 	isGoogleTransport,
 	isOpenRouterTransport,
-	JEV_PLAYGROUND_API_ID,
+	JEV_STUDIO_API_ID,
 	keySlotRequired,
 	type ModelBindingDraft,
 	modelBindingNodeId,
@@ -198,35 +198,35 @@ import {
 	nextAccept,
 	type ObservabilityDraft,
 	OPENROUTER_DECISION_MODELS,
-	OPENROUTER_PLAYGROUND_API_ID,
+	OPENROUTER_STUDIO_API_ID,
 	type OutputsDraft,
 	type OwnDetectorDraft,
 	type PatternDraft,
 	type PatternSourceDraft,
-	PLAYGROUND_DECISION_MAX_CRITERIA,
-	PLAYGROUND_DECISION_MAX_QUESTIONS,
-	PLAYGROUND_DECISION_MAX_STATE_BYTES,
-	PLAYGROUND_DECISION_TIMEOUT_MS,
-	PLAYGROUND_TAINT_NOTE,
-	PLAYGROUND_TRACE_DESTINATION,
-	type PlaygroundDraft,
-	type PlaygroundIssue,
-	type PlaygroundProfileType,
-	type PlaygroundTurnProfileType,
 	plantsCanary,
-	playgroundNetworkNote,
-	playgroundNodeRef,
-	playgroundRunsTransport,
 	removeModelBinding,
+	STUDIO_DECISION_MAX_CRITERIA,
+	STUDIO_DECISION_MAX_QUESTIONS,
+	STUDIO_DECISION_MAX_STATE_BYTES,
+	STUDIO_DECISION_TIMEOUT_MS,
+	STUDIO_TAINT_NOTE,
+	STUDIO_TRACE_DESTINATION,
+	type StudioDraft,
+	type StudioIssue,
+	type StudioProfileType,
+	type StudioTurnProfileType,
 	sampleToolInput,
 	sectionNote,
 	setProfileType,
+	studioNetworkNote,
+	studioNodeRef,
+	studioRunsTransport,
 	type ToolSpecDraft,
 	takesContinueInstruction,
 	toolSpecNodeId,
 	updateModelBinding,
-} from '@theoremjs/playground';
-import type { ListedProfileType } from '@theoremjs/playground/browser';
+} from '@theoremjs/studio';
+import type { ListedProfileType } from '@theoremjs/studio/browser';
 import {
 	type ContextType,
 	type Dispatch,
@@ -238,12 +238,7 @@ import {
 	useState,
 	useSyncExternalStore,
 } from 'react';
-import {
-	CONTEXT_PLACEHOLDER,
-	contextErrorOf,
-	draftSlots,
-	usePageValues,
-} from '../lib/playground-page';
+import { CONTEXT_PLACEHOLDER, contextErrorOf, draftSlots, usePageValues } from '../lib/studio-page';
 import {
 	setToolCredential,
 	subscribeToolCredentials,
@@ -280,23 +275,23 @@ import {
 	WorkspaceContext,
 } from './inspector-context';
 import { IconMcp } from './mcp-icon';
-import { slotDescription, useProviderModels } from './playground-connection';
+import { slotDescription, useProviderModels } from './studio-connection';
 import { IconTheorem } from './theorem-mark';
 
-export type SetDraft = Dispatch<SetStateAction<PlaygroundDraft>>;
+export type SetDraft = Dispatch<SetStateAction<StudioDraft>>;
 
 /** The draft's sections that are one object of settings, rather than a list. */
-type SettingsSection = Exclude<keyof PlaygroundDraft, 'included' | 'modelBindings' | 'toolSpecs'>;
+type SettingsSection = Exclude<keyof StudioDraft, 'included' | 'modelBindings' | 'toolSpecs'>;
 
 /** Sets fields of one section of the draft, leaving the rest as it is. */
 function patch<K extends SettingsSection>(setDraft: SetDraft, key: K) {
-	return (change: Partial<PlaygroundDraft[K]>) => {
+	return (change: Partial<StudioDraft[K]>) => {
 		setDraft((draft) => ({ ...draft, [key]: { ...draft[key], ...change } }));
 	};
 }
 
 /** The setter `patch` returns for one section, as a section's component takes it. */
-type SetSection<K extends SettingsSection> = (change: Partial<PlaygroundDraft[K]>) => void;
+type SetSection<K extends SettingsSection> = (change: Partial<StudioDraft[K]>) => void;
 
 /** Each profile type's icon: the Type control's segments and the tree's Identity row. */
 export const PROFILE_TYPE_ICON = {
@@ -306,9 +301,9 @@ export const PROFILE_TYPE_ICON = {
 	live: IconHeadset,
 	decision: IconGitBranch,
 	host: IconServer,
-} satisfies Record<PlaygroundProfileType, unknown>;
+} satisfies Record<StudioProfileType, unknown>;
 
-const PROFILE_TYPE_SEGMENTS: Segment<PlaygroundProfileType>[] = [
+const PROFILE_TYPE_SEGMENTS: Segment<StudioProfileType>[] = [
 	{ value: 'text', label: 'Text', icon: PROFILE_TYPE_ICON.text },
 	{ value: 'image', label: 'Image', icon: PROFILE_TYPE_ICON.image },
 	{ value: 'speech', label: 'Speech', icon: PROFILE_TYPE_ICON.speech },
@@ -403,21 +398,17 @@ const IMAGE_ATTACHMENT_PICKER = acceptPicker(IMAGE_ATTACHMENT_ACCEPT_MIMES);
 const VOICE_PICKER = acceptPicker(VOICE_ACCEPT_MIMES);
 
 /** The wire model a binding starts on after its transport changes. */
-function defaultApiId(
-	type: PlaygroundTurnProfileType,
-	protocol: Protocol,
-	provider: Provider,
-): string {
-	if (isOpenRouterTransport(protocol, provider)) return OPENROUTER_PLAYGROUND_API_ID;
+function defaultApiId(type: StudioTurnProfileType, protocol: Protocol, provider: Provider): string {
+	if (isOpenRouterTransport(protocol, provider)) return OPENROUTER_STUDIO_API_ID;
 	if (!isGoogleTransport(protocol, provider)) return '';
 	const seed = defaultBindingForProfileType(type);
-	return seed.provider === 'google' ? seed.apiId : GEMINI_PLAYGROUND_DEFAULT_API_ID;
+	return seed.provider === 'google' ? seed.apiId : GEMINI_STUDIO_DEFAULT_API_ID;
 }
 
 /** Moves a binding to a new transport and its default model, dropping builtins that model lacks. */
 function retransport(
 	binding: ModelBindingDraft,
-	type: PlaygroundTurnProfileType,
+	type: StudioTurnProfileType,
 	protocol: Protocol,
 	provider: Provider,
 ): Partial<ModelBindingDraft> {
@@ -435,7 +426,7 @@ function retransport(
  * A type change turns on each optional section the new type brings that the old one didn't: the
  * first pick shows them all. One the author took out under the old type stays out.
  */
-function withNewSections(before: PlaygroundDraft, after: PlaygroundDraft): PlaygroundDraft {
+function withNewSections(before: StudioDraft, after: StudioDraft): StudioDraft {
 	const leftOut = new Set(includableFacets(before));
 	return includableFacets(after)
 		.filter((facet) => !leftOut.has(facet))
@@ -446,7 +437,7 @@ function SystemPromptSection({
 	identity,
 	set,
 }: {
-	identity: PlaygroundDraft['identity'];
+	identity: StudioDraft['identity'];
 	set: SetSection<'identity'>;
 }) {
 	return (
@@ -478,7 +469,7 @@ function SystemPromptSection({
 	);
 }
 
-function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+function IdentityEditor({ draft, setDraft }: { draft: StudioDraft; setDraft: SetDraft }) {
 	const { identity } = draft;
 	const set = patch(setDraft, 'identity');
 	return (
@@ -529,7 +520,7 @@ function IdentityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft:
 }
 
 /** The policy every model of the profile shares: default, switching, steps and key slots. */
-function ModelPolicySection({ draft, set }: { draft: PlaygroundDraft; set: SetSection<'models'> }) {
+function ModelPolicySection({ draft, set }: { draft: StudioDraft; set: SetSection<'models'> }) {
 	const { models } = draft;
 	return (
 		<InspectorSection title="Policy">
@@ -608,7 +599,7 @@ function ModelsEditor({
 	setDraft,
 	onSelect,
 }: {
-	draft: PlaygroundDraft;
+	draft: StudioDraft;
 	setDraft: SetDraft;
 	onSelect: (id: string) => void;
 }) {
@@ -664,7 +655,7 @@ function DecisionApiModelRow({ binding, set }: { binding: ModelBindingDraft; set
 			field="apiId"
 			value={binding.apiId}
 			options={(binding.provider === 'typesafe'
-				? [{ id: JEV_PLAYGROUND_API_ID, label: 'Jev' }]
+				? [{ id: JEV_STUDIO_API_ID, label: 'Jev' }]
 				: OPENROUTER_DECISION_MODELS
 			).map((model) => ({
 				value: model.id,
@@ -700,8 +691,7 @@ function DecisionTransportRows({ binding, set }: { binding: ModelBindingDraft; s
 				onChange={(provider) => {
 					set({
 						provider,
-						apiId:
-							provider === 'typesafe' ? JEV_PLAYGROUND_API_ID : OPENROUTER_DECISION_MODELS[0].id,
+						apiId: provider === 'typesafe' ? JEV_STUDIO_API_ID : OPENROUTER_DECISION_MODELS[0].id,
 					});
 				}}
 			/>
@@ -716,7 +706,7 @@ function DecisionModelEditor({
 	setDraft,
 	bindingKey,
 }: {
-	draft: PlaygroundDraft;
+	draft: StudioDraft;
 	setDraft: SetDraft;
 	bindingKey: string;
 }) {
@@ -753,8 +743,8 @@ function DecisionModelEditor({
 				field="timeoutMs"
 				value={binding.timeoutMs}
 				min={1}
-				max={PLAYGROUND_DECISION_TIMEOUT_MS}
-				hint={`${String(PLAYGROUND_DECISION_TIMEOUT_MS)} by default`}
+				max={STUDIO_DECISION_TIMEOUT_MS}
+				hint={`${String(STUDIO_DECISION_TIMEOUT_MS)} by default`}
 				isIntegerOnly
 				onChange={(timeoutMs) => {
 					set({ timeoutMs });
@@ -874,11 +864,11 @@ function ProviderModelRow({
 type LocalConnectionValue = NonNullable<ContextType<typeof LocalConnection>>;
 
 /** The profile type a model runs as: a decision has its own binding editor; a host has no model. */
-function bindingProfileType(chosen: PlaygroundDraft['identity']['profileType']): ListedProfileType {
+function bindingProfileType(chosen: StudioDraft['identity']['profileType']): ListedProfileType {
 	return chosen && chosen !== 'decision' && chosen !== 'host' ? chosen : 'text';
 }
 
-/** A provider's segment, disabled with the reason when the playground can't run it here. */
+/** A provider's segment, disabled with the reason when the studio can't run it here. */
 function providerSegment(
 	provider: keyof typeof PROVIDER_SEGMENT,
 	binding: ModelBindingDraft,
@@ -888,7 +878,7 @@ function providerSegment(
 	const local = provider === 'local';
 	return {
 		...PROVIDER_SEGMENT[provider],
-		isDisabled: !playgroundRunsTransport(type, binding.protocol, provider, local ? 'local' : mode),
+		isDisabled: !studioRunsTransport(type, binding.protocol, provider, local ? 'local' : mode),
 		disabledMessage:
 			mode === 'demo' && !local
 				? 'Add your own key under Keys to use it.'
@@ -896,7 +886,7 @@ function providerSegment(
 	};
 }
 
-/** The protocol's providers, each enabled only where the playground runs it. */
+/** The protocol's providers, each enabled only where the studio runs it. */
 function ProviderRow({
 	binding,
 	type,
@@ -1014,8 +1004,8 @@ function LocalApiModelRow({
 
 /** The demo's models for the transport: its Gemini models for the type, or OpenRouter's one. */
 function demoModelOptions(google: boolean, type: ListedProfileType) {
-	if (!google) return [OPENROUTER_PLAYGROUND_API_ID];
-	return GEMINI_PLAYGROUND_MODELS.filter((model) => model.profileType === type).map((model) => ({
+	if (!google) return [OPENROUTER_STUDIO_API_ID];
+	return GEMINI_STUDIO_MODELS.filter((model) => model.profileType === type).map((model) => ({
 		value: model.id,
 		label: model.label,
 		description: model.id,
@@ -1057,7 +1047,7 @@ function ApiModelRow({
 	google,
 	set,
 }: {
-	draft: PlaygroundDraft;
+	draft: StudioDraft;
 	binding: ModelBindingDraft;
 	type: ListedProfileType;
 	google: boolean;
@@ -1090,7 +1080,7 @@ function LocalServerRows({ binding, set }: { binding: ModelBindingDraft; set: Se
 			{localConnection && (
 				<SwitchRow
 					label="Remote tools"
-					path="playground.remoteTools"
+					path="studio.remoteTools"
 					value={localConnection.remoteTools}
 					onChange={localConnection.setRemoteTools}
 				/>
@@ -1137,7 +1127,7 @@ function ModelSection({
 	type,
 	set,
 }: {
-	draft: PlaygroundDraft;
+	draft: StudioDraft;
 	binding: ModelBindingDraft;
 	type: ListedProfileType;
 	set: SetBinding;
@@ -1383,7 +1373,7 @@ function ModelBindingEditor({
 	bindingKey,
 	onSelect,
 }: {
-	draft: PlaygroundDraft;
+	draft: StudioDraft;
 	setDraft: SetDraft;
 	bindingKey: string;
 	onSelect: (id: string) => void;
@@ -1429,7 +1419,7 @@ function ModelBindingEditor({
 
 /** The inputs slice of the draft and its setter, for each inputs section. */
 interface InputsSectionProps {
-	inputs: PlaygroundDraft['inputs'];
+	inputs: StudioDraft['inputs'];
 	set: SetSection<'inputs'>;
 }
 
@@ -1534,7 +1524,7 @@ function InputLimitsSection({ inputs, set }: InputsSectionProps) {
 	);
 }
 
-type ContextSender = PlaygroundDraft['inputs']['contextFrom'][number];
+type ContextSender = StudioDraft['inputs']['contextFrom'][number];
 
 const CONTEXT_SENDER_LABELS: Record<ContextSender, string> = {
 	client: 'The page',
@@ -1591,7 +1581,7 @@ function InputContextSection({ inputs, set }: InputsSectionProps) {
 	);
 }
 
-/** The context the playground's page sends the open agent. Kept in this tab, not in the profile. */
+/** The context the studio's page sends the open agent. Kept in this tab, not in the profile. */
 function ContextPreviewRow() {
 	const [values, setValues] = usePageValues(useContext(WorkspaceContext)?.self ?? '');
 	const error = contextErrorOf(values.contextJson);
@@ -1612,7 +1602,7 @@ function ContextPreviewRow() {
 	);
 }
 
-/** The value the playground's page sends for each slot declared so far. Kept in this tab. */
+/** The value the studio's page sends for each slot declared so far. Kept in this tab. */
 function SlotPreviewRows({ slotsJson }: { slotsJson: string }) {
 	const [values, setValues] = usePageValues(useContext(WorkspaceContext)?.self ?? '');
 	const slots = draftSlots(slotsJson);
@@ -1631,7 +1621,7 @@ function SlotPreviewRows({ slotsJson }: { slotsJson: string }) {
 	));
 }
 
-function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+function InputsEditor({ draft, setDraft }: { draft: StudioDraft; setDraft: SetDraft }) {
 	const { inputs } = draft;
 	const set = patch(setDraft, 'inputs');
 	/** An image profile takes images, video and PDF as references, and no voice. */
@@ -1887,7 +1877,7 @@ const END_SENSITIVITY_SEGMENTS: Segment<
 ];
 
 /** Whether every model is on Google, so the Google preset's vocabularies apply to the pins. */
-function allGoogle(draft: PlaygroundDraft): boolean {
+function allGoogle(draft: StudioDraft): boolean {
 	return (
 		draft.modelBindings.length > 0 &&
 		draft.modelBindings.every((binding) => isGoogleTransport(binding.protocol, binding.provider))
@@ -1929,7 +1919,7 @@ function PresetRow({
 	);
 }
 
-/** OpenRouter's image vocabularies; the kernel takes free strings, so these are the playground's. */
+/** OpenRouter's image vocabularies; the kernel takes free strings, so these are the studio's. */
 const OPENROUTER_IMAGE_QUALITIES = ['auto', 'low', 'medium', 'high'] as const;
 const OPENROUTER_IMAGE_BACKGROUNDS = ['auto', 'transparent', 'opaque'] as const;
 /** A pinned file rides in every turn's request, so it stays small. */
@@ -1957,7 +1947,7 @@ async function referenceFromFile(file: File): Promise<ImageReferenceDraft> {
 
 /** The image slice of the draft and its setter, for each group of image rows. */
 interface ImageRowsProps {
-	image: PlaygroundDraft['image'];
+	image: StudioDraft['image'];
 	set: SetSection<'image'>;
 }
 
@@ -2053,7 +2043,7 @@ function OpenRouterImageRows({ image, set }: ImageRowsProps) {
 }
 
 /** Image output pins. OpenRouter-only pins show when every model is on OpenRouter. */
-function ImageEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+function ImageEditor({ draft, setDraft }: { draft: StudioDraft; setDraft: SetDraft }) {
 	const google = allGoogle(draft);
 	const openRouter =
 		draft.modelBindings.length > 0 &&
@@ -2216,7 +2206,7 @@ function ImageReferencesEditor({
 }
 
 /** Speech pins. mp3 is only on offer when every model's protocol can make it. */
-function SpeechEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+function SpeechEditor({ draft, setDraft }: { draft: StudioDraft; setDraft: SetDraft }) {
 	const google = allGoogle(draft);
 	const { speech } = draft;
 	const set = patch(setDraft, 'speech');
@@ -2281,14 +2271,14 @@ const COMPRESSION_STEP = 1024;
 
 /**
  * Google's sliding window when left blank: it triggers at 80% of the context window and keeps half
- * of that. Shown against the free key's cap, since that is the window a playground session has.
+ * of that. Shown against the free key's cap, since that is the window a studio session has.
  */
-const COMPRESSION_TRIGGER_DEFAULT = Math.round(GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS * 0.8);
+const COMPRESSION_TRIGGER_DEFAULT = Math.round(GEMINI_STUDIO_LIVE_INPUT_TOKENS * 0.8);
 const COMPRESSION_TARGET_DEFAULT = Math.round(COMPRESSION_TRIGGER_DEFAULT / 2);
 
 /** The live slice of the draft and its setter, for each live section. */
 interface LiveSectionProps {
-	live: PlaygroundDraft['live'];
+	live: StudioDraft['live'];
 	set: SetSection<'live'>;
 }
 
@@ -2433,7 +2423,7 @@ function CompressionSliderRows({ live, set }: LiveSectionProps) {
 				value={live.compressionTriggerTokens}
 				fallback={COMPRESSION_TRIGGER_DEFAULT}
 				min={COMPRESSION_STEP}
-				max={GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS}
+				max={GEMINI_STUDIO_LIVE_INPUT_TOKENS}
 				step={COMPRESSION_STEP}
 				onChange={(compressionTriggerTokens) => {
 					set({ compressionTriggerTokens });
@@ -2446,7 +2436,7 @@ function CompressionSliderRows({ live, set }: LiveSectionProps) {
 				value={live.compressionTargetTokens}
 				fallback={COMPRESSION_TARGET_DEFAULT}
 				min={COMPRESSION_STEP}
-				max={GEMINI_PLAYGROUND_LIVE_INPUT_TOKENS - COMPRESSION_STEP}
+				max={GEMINI_STUDIO_LIVE_INPUT_TOKENS - COMPRESSION_STEP}
 				step={COMPRESSION_STEP}
 				onChange={(compressionTargetTokens) => {
 					set({ compressionTargetTokens });
@@ -2566,7 +2556,7 @@ function LiveVadSection({ live, set }: LiveSectionProps) {
 	);
 }
 
-function LiveEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+function LiveEditor({ draft, setDraft }: { draft: StudioDraft; setDraft: SetDraft }) {
 	const google = allGoogle(draft);
 	const { live } = draft;
 	const set = patch(setDraft, 'live');
@@ -2698,7 +2688,7 @@ function OutputRepairSection({ outputs, set }: OutputsSectionProps) {
 	);
 }
 
-function OutputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+function OutputsEditor({ draft, setDraft }: { draft: StudioDraft; setDraft: SetDraft }) {
 	const { outputs } = draft;
 	const set = patch(setDraft, 'outputs');
 	const shaped = draftAllows(draft, 'outputs.structured');
@@ -2898,7 +2888,7 @@ function ResumptionSection({
 	draft,
 	set,
 }: {
-	draft: PlaygroundDraft;
+	draft: StudioDraft;
 	set: SetSection<'turnBehaviour'>;
 }) {
 	const turn = draft.turnBehaviour;
@@ -2946,7 +2936,7 @@ function ResumptionSection({
 	);
 }
 
-function TurnBehaviourEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+function TurnBehaviourEditor({ draft, setDraft }: { draft: StudioDraft; setDraft: SetDraft }) {
 	const turn = draft.turnBehaviour;
 	const set = patch(setDraft, 'turnBehaviour');
 	return (
@@ -3143,11 +3133,7 @@ function NetworkSection({ guardrails, set }: GuardrailsSectionProps) {
 	const mode = useContext(ConnectionMode);
 	const runtime = useContext(LocalConnection)?.runtime ?? { mode };
 	return (
-		<InspectorSection
-			title="Network"
-			path="guardrails.network"
-			note={playgroundNetworkNote(runtime)}
-		>
+		<InspectorSection title="Network" path="guardrails.network" note={studioNetworkNote(runtime)}>
 			<SwitchRow
 				label="Private"
 				path="guardrails.network.allowPrivateNetworks"
@@ -3729,7 +3715,7 @@ function DetectIssue() {
  * issue when there is one, a count when there are more, since the page says each on its own row.
  */
 function usePageIssues(): (
-	onPage: (issue: PlaygroundIssue) => boolean,
+	onPage: (issue: StudioIssue) => boolean,
 ) => ReturnType<ReturnType<typeof useFieldStatus>> | undefined {
 	const issues = useContext(NodeIssues);
 	return (onPage) => {
@@ -4141,7 +4127,7 @@ async function fadeOut(node: HTMLElement): Promise<void> {
 	await fade.finished.catch(() => undefined);
 }
 
-function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+function GuardrailsEditor({ draft, setDraft }: { draft: StudioDraft; setDraft: SetDraft }) {
 	const { guardrails } = draft;
 	const set = patch(setDraft, 'guardrails');
 	const boundaries = draft.identity.profileType === 'host' ? TOOL_BOUNDARIES : BOUNDARIES;
@@ -4197,7 +4183,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 				<InspectorSection
 					title="After a remote read"
 					path="guardrails.taint"
-					note={PLAYGROUND_TAINT_NOTE}
+					note={STUDIO_TAINT_NOTE}
 				>
 					<SegmentedRow
 						label="Refuse calls"
@@ -4224,8 +4210,8 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 	);
 }
 
-const TRACE_SEGMENTS: Segment<'playground' | 'off'>[] = [
-	{ value: 'playground', label: 'Playground', icon: IconFlask },
+const TRACE_SEGMENTS: Segment<'studio' | 'off'>[] = [
+	{ value: 'studio', label: 'Studio', icon: IconFlask },
 	{ value: 'off', label: 'Off', icon: IconEyeOff },
 ];
 
@@ -4310,10 +4296,10 @@ function TracesSection({ observability, set }: ObservabilitySectionProps) {
 			<SegmentedRow
 				label="Write to"
 				path="observability.writeTo"
-				value={on ? 'playground' : 'off'}
+				value={on ? 'studio' : 'off'}
 				segments={TRACE_SEGMENTS}
 				onChange={(segment) => {
-					set({ writeTo: segment === 'off' ? false : PLAYGROUND_TRACE_DESTINATION });
+					set({ writeTo: segment === 'off' ? false : STUDIO_TRACE_DESTINATION });
 				}}
 			/>
 			{on && (
@@ -4407,7 +4393,7 @@ function TraceStorageSection({ observability, set }: ObservabilitySectionProps) 
 }
 
 /** Where traces go, what they keep, and how your host stores them. */
-function ObservabilityEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+function ObservabilityEditor({ draft, setDraft }: { draft: StudioDraft; setDraft: SetDraft }) {
 	const { observability } = draft;
 	const set = patch(setDraft, 'observability');
 	const on = observability.writeTo !== false;
@@ -4473,7 +4459,7 @@ const LOAD_TIER_SEGMENTS: Segment<ToolLoadTier>[] = [
 	{ value: 'T2', label: 'T2', icon: IconSquareRoundedNumber2 },
 ];
 
-const AUTH_TYPE_SEGMENTS: Segment<PlaygroundAuthType>[] = [
+const AUTH_TYPE_SEGMENTS: Segment<StudioAuthType>[] = [
 	{ value: 'none', label: 'None', icon: IconLockOpen },
 	{ value: 'bearer', label: 'Bearer', icon: IconCertificate },
 	{ value: 'api_key', label: 'API key', icon: IconKey },
@@ -4486,17 +4472,17 @@ const UNAUTHENTICATED_SEGMENTS: Segment<AuthUnauthenticatedPolicy>[] = [
 ];
 
 /** The prefix the kernel puts before the credential when none is set, by auth type. */
-const AUTH_HEADER_PREFIX: Record<Exclude<PlaygroundAuthType, 'none'>, string> = {
+const AUTH_HEADER_PREFIX: Record<Exclude<StudioAuthType, 'none'>, string> = {
 	bearer: 'Bearer ',
 	api_key: '',
 	oauth2: 'Bearer ',
 };
 
 /**
- * Why a tool on `tier` never loads on this draft: the playground can't write a T1 policy, so a
+ * Why a tool on `tier` never loads on this draft: the studio can't write a T1 policy, so a
  * T2 tool loads only through the T2 loader.
  */
-function loadTierWarning(draft: PlaygroundDraft, tier: ToolLoadTier): string | undefined {
+function loadTierWarning(draft: StudioDraft, tier: ToolLoadTier): string | undefined {
 	if (tier === 'T2' && draftAllows(draft, 'tools.t2Loader') && !draft.tools.t2Loader.trim()) {
 		return 'No T2 loader is set under Tools, so this tool never loads.';
 	}
@@ -4528,7 +4514,7 @@ const HEADERS_PLACEHOLDER = `{
 
 /** Adds a new tool to the draft and opens it. */
 export function addToolSpec(
-	draft: PlaygroundDraft,
+	draft: StudioDraft,
 	setDraft: SetDraft,
 	onSelect: (id: string) => void,
 ) {
@@ -4626,7 +4612,7 @@ function ToolsEditor({
 	setDraft,
 	onSelect,
 }: {
-	draft: PlaygroundDraft;
+	draft: StudioDraft;
 	setDraft: SetDraft;
 	onSelect: (id: string) => void;
 }) {
@@ -4802,7 +4788,7 @@ function TestCredentialRow({
 	onChange: (value: string) => void;
 }) {
 	return (
-		<InspectorRow label="Credential" path="playground.testCredential">
+		<InspectorRow label="Credential" path="studio.testCredential">
 			<StackItem size="fill">
 				<TextInput
 					label="Credential"
@@ -4824,7 +4810,7 @@ function SampleInputRow({ value, onChange }: { value: string; onChange: (value: 
 	return (
 		<TextAreaRow
 			label="Sample input"
-			path="playground.sampleInput"
+			path="studio.sampleInput"
 			value={value}
 			rows={4}
 			hasSpellCheck={false}
@@ -4924,11 +4910,11 @@ function toolTypeSegments(workspace: ContextType<typeof WorkspaceContext>) {
 
 /** Renames a tool; the T2 loader names this tool, so it follows the rename. */
 function renameToolSpec(
-	draft: PlaygroundDraft,
+	draft: StudioDraft,
 	toolKey: string,
 	from: string,
 	toolName: string,
-): PlaygroundDraft {
+): StudioDraft {
 	return {
 		...draft,
 		tools:
@@ -4942,7 +4928,7 @@ function renameToolSpec(
 }
 
 /** Removes a tool, and the T2 loader with it when it names the tool. */
-function removeToolSpec(draft: PlaygroundDraft, toolKey: string, name: string): PlaygroundDraft {
+function removeToolSpec(draft: StudioDraft, toolKey: string, name: string): StudioDraft {
 	return {
 		...draft,
 		tools: draft.tools.t2Loader === name.trim() ? { ...draft.tools, t2Loader: '' } : draft.tools,
@@ -4974,7 +4960,7 @@ function ToolSection({
 	tool,
 	set,
 }: {
-	draft: PlaygroundDraft;
+	draft: StudioDraft;
 	setDraft: SetDraft;
 	tool: ToolSpecDraft;
 	set: SetTool;
@@ -5011,7 +4997,7 @@ function ToolSection({
 				path="category"
 				field="category"
 				value={tool.category}
-				placeholder="playground"
+				placeholder="studio"
 				onChange={(category) => {
 					set({ category });
 				}}
@@ -5026,7 +5012,7 @@ function ContractSection({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
 		<InspectorSection title="Contract">
 			<TextAreaRow
 				label="Input"
-				path="playground.inputSchema"
+				path="studio.inputSchema"
 				field="inputJson"
 				value={tool.inputJson}
 				rows={8}
@@ -5037,7 +5023,7 @@ function ContractSection({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
 			/>
 			<TextAreaRow
 				label="Output"
-				path="playground.outputSchema"
+				path="studio.outputSchema"
 				field="outputJson"
 				value={tool.outputJson}
 				rows={8}
@@ -5088,10 +5074,10 @@ function ActivitySection({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
 	);
 }
 
-/** What a function tool returns in the playground, and whether the page answers it on a host. */
+/** What a function tool returns in the studio, and whether the page answers it on a host. */
 function StubSection({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
 	return (
-		<InspectorSection title="Stub" path="playground.stubOutput">
+		<InspectorSection title="Stub" path="studio.stubOutput">
 			<SwitchRow
 				label="Page answers"
 				path="answeredBy"
@@ -5102,7 +5088,7 @@ function StubSection({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
 			/>
 			<TextAreaRow
 				label="Returns"
-				path="playground.stubOutput"
+				path="studio.stubOutput"
 				field="stubOutputJson"
 				value={tool.stubOutputJson ?? ''}
 				rows={6}
@@ -5384,7 +5370,7 @@ function AuthSection({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
 		<InspectorSection path="auth" note={sectionNote('tool.auth')}>
 			<SegmentedRow
 				label="Type"
-				path="playground.authType"
+				path="studio.authType"
 				field="authType"
 				value={authType}
 				segments={AUTH_TYPE_SEGMENTS}
@@ -5404,7 +5390,7 @@ function PolicySection({
 	tool,
 	set,
 }: {
-	draft: PlaygroundDraft;
+	draft: StudioDraft;
 	tool: ToolSpecDraft;
 	set: SetTool;
 }) {
@@ -5461,7 +5447,7 @@ function ToolSpecEditor({
 	toolKey,
 	onSelect,
 }: {
-	draft: PlaygroundDraft;
+	draft: StudioDraft;
 	setDraft: SetDraft;
 	toolKey: string;
 	onSelect: (id: string) => void;
@@ -5649,7 +5635,7 @@ function wordingLabel(key: LexiconKey): string {
 }
 
 /** The kernel's line for `key`, worded with the draft's own limits where it takes them. */
-function wordingPlaceholder(draft: PlaygroundDraft, key: LexiconKey): string {
+function wordingPlaceholder(draft: StudioDraft, key: LexiconKey): string {
 	const { inputs, guardrails } = draft;
 	const text = lexiconDefault(key, {
 		maxFiles: inputs.maxFiles ?? '{maxFiles}',
@@ -5673,9 +5659,9 @@ const SHARED_WORDING: Partial<
 		LexiconKey,
 		{
 			setting: string;
-			read: (draft: PlaygroundDraft) => string;
+			read: (draft: StudioDraft) => string;
 			write: (setDraft: SetDraft, text: string) => void;
-			isOn: (draft: PlaygroundDraft) => boolean;
+			isOn: (draft: StudioDraft) => boolean;
 		}
 	>
 > = {
@@ -5730,7 +5716,7 @@ const SHARED_WORDING: Partial<
 };
 
 /** The text a line holds in the draft: its own setting's field, or Wording's. */
-function wordingValue(draft: PlaygroundDraft, key: LexiconKey): string {
+function wordingValue(draft: StudioDraft, key: LexiconKey): string {
 	return SHARED_WORDING[key]?.read(draft) ?? draft.wording[key] ?? '';
 }
 
@@ -5744,7 +5730,7 @@ function SharedWordingRow({
 }: {
 	lexiconKey: LexiconKey;
 	facet: ProfileGraphFacetId;
-	draft: PlaygroundDraft;
+	draft: StudioDraft;
 	setDraft: SetDraft;
 	onSelect: (id: string) => void;
 }) {
@@ -5787,7 +5773,7 @@ function WordingEditor({
 	setDraft,
 	onSelect,
 }: {
-	draft: PlaygroundDraft;
+	draft: StudioDraft;
 	setDraft: SetDraft;
 	onSelect: (id: string) => void;
 }) {
@@ -5845,7 +5831,7 @@ function WordingEditor({
  * The areas on show, each with its lines. A search spans both readers: a line matches on its area,
  * its name, its default or its text.
  */
-function wordingAreas(draft: PlaygroundDraft, needle: string, audience: WordingAudience) {
+function wordingAreas(draft: StudioDraft, needle: string, audience: WordingAudience) {
 	return WORDING_AREAS.filter((area) => needle || area.audience === audience)
 		.map((area) => {
 			const all = LEXICON_KEYS.filter((key) => key.startsWith(`${area.prefix}.`));
@@ -5926,7 +5912,7 @@ function WordingAreaLines({
 	onSelect,
 }: {
 	keys: LexiconKey[];
-	draft: PlaygroundDraft;
+	draft: StudioDraft;
 	setDraft: SetDraft;
 	onSelect: (id: string) => void;
 }) {
@@ -6228,7 +6214,7 @@ function CriteriaList({
 					variant="ghost"
 					size="sm"
 					icon={<Icon icon={IconPlus} size="sm" />}
-					isDisabled={question.criteria.length >= PLAYGROUND_DECISION_MAX_CRITERIA}
+					isDisabled={question.criteria.length >= STUDIO_DECISION_MAX_CRITERIA}
 					onClick={() => {
 						setCriteria([...question.criteria, ...newCriteria('score').slice(0, 1)]);
 					}}
@@ -6240,7 +6226,7 @@ function CriteriaList({
 
 /** The decision slice of the draft and its setter, for each decision section. */
 interface DecisionSectionProps {
-	decision: PlaygroundDraft['decision'];
+	decision: StudioDraft['decision'];
 	set: SetSection<'decision'>;
 }
 
@@ -6271,8 +6257,8 @@ function DecisionStateSection({ decision, set }: DecisionSectionProps) {
 				field="maxStateBytes"
 				value={decision.maxStateBytes}
 				min={1}
-				max={PLAYGROUND_DECISION_MAX_STATE_BYTES}
-				hint={`${String(PLAYGROUND_DECISION_MAX_STATE_BYTES)} by default`}
+				max={STUDIO_DECISION_MAX_STATE_BYTES}
+				hint={`${String(STUDIO_DECISION_MAX_STATE_BYTES)} by default`}
 				isIntegerOnly
 				onChange={(maxStateBytes) => {
 					set({ maxStateBytes });
@@ -6283,7 +6269,7 @@ function DecisionStateSection({ decision, set }: DecisionSectionProps) {
 }
 
 /** A decision: the contract it answers to, how much state it takes, and the questions it asks of it. */
-function DecisionEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: SetDraft }) {
+function DecisionEditor({ draft, setDraft }: { draft: StudioDraft; setDraft: SetDraft }) {
 	const { decision } = draft;
 	const set = patch(setDraft, 'decision');
 	const listStatus = useFieldStatus()('questions');
@@ -6340,7 +6326,7 @@ function AddQuestionSection({ count, setDraft }: { count: number; setDraft: SetD
 					variant="ghost"
 					size="sm"
 					icon={<Icon icon={IconPlus} size="sm" />}
-					isDisabled={count >= PLAYGROUND_DECISION_MAX_QUESTIONS}
+					isDisabled={count >= STUDIO_DECISION_MAX_QUESTIONS}
 					onClick={() => {
 						setDraft((current) => ({
 							...current,
@@ -6358,8 +6344,8 @@ function AddQuestionSection({ count, setDraft }: { count: number; setDraft: SetD
 
 /** The editor for a node's facet: one per section of the profile, model and tool. */
 function facetEditor(
-	ref: NonNullable<ReturnType<typeof playgroundNodeRef>>,
-	draft: PlaygroundDraft,
+	ref: NonNullable<ReturnType<typeof studioNodeRef>>,
+	draft: StudioDraft,
 	setDraft: SetDraft,
 	onSelect: (id: string) => void,
 ): ReactNode {
@@ -6414,14 +6400,14 @@ export function ProfileEditor({
 	onSelect,
 	issues,
 }: {
-	draft: PlaygroundDraft;
+	draft: StudioDraft;
 	setDraft: SetDraft;
 	selectedId: string;
 	/** Selects another tree node: a tool, once added or picked from the list, or Tools once removed. */
 	onSelect: (id: string) => void;
-	issues: readonly PlaygroundIssue[];
+	issues: readonly StudioIssue[];
 }) {
-	const ref = playgroundNodeRef(draft, selectedId);
+	const ref = studioNodeRef(draft, selectedId);
 	if (!ref) return null;
 	const nodeIssues = issues.filter((issue) => issue.nodeId === selectedId);
 	const banners = nodeIssues.filter((issue) => issue.field === undefined);

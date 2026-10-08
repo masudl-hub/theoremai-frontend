@@ -5,7 +5,7 @@ Interactive site for [THEOREM](https://github.com/masudl-hub/theoremai) — docs
 Built with **React Router v8** (framework mode) on **Cloudflare Workers**, with [Astryx](https://astryx.design) via `@theoremjs/react`.
 
 > **Migration in progress.** The SvelteKit site was removed on 2026-09-23; its last state is tagged `svelte-final`.
-> The playground, facet editors, and marketing sections are being rebuilt in React — read the old versions with
+> The studio, facet editors, and marketing sections are being rebuilt in React — read the old versions with
 > `git show svelte-final:<path>` (e.g. `src/lib/components/Pillars.svelte`). The live domain is still served by the
 > Pages project `theorem`, deployed from that tag.
 
@@ -18,7 +18,7 @@ Requires a sibling clone at `../theoremai` (side-by-side with this repo).
 ## Layout
 
 ```text
-../theoremai/                   # sibling kernel + @theoremjs/react (react/) + @theoremjs/playground (playground/)
+../theoremai/                   # sibling kernel + @theoremjs/react (react/) + @theoremjs/studio (studio/)
 theoremai-frontend/
   workers/app.ts                # Worker entry: /api/live/relay upgrade, then React Router
   app/
@@ -28,16 +28,16 @@ theoremai-frontend/
     routes/
       home.tsx                  # landing (/), overview (/overview), showcase (/examples)
       docs.tsx / docs.$slug.tsx # composed /docs landing + reader
-      playground.run.tsx        # run host for a compiled playground draft (@theoremjs/react)
+      studio.run.tsx        # run host for a compiled studio draft (@theoremjs/react)
       api.*.ts                  # resource routes → app/lib/.server/api.ts
     lib/
       docs/                     # DocIndex schema, compose, projector (UI + Th30 + .md twins)
       .server/                  # server-only (React Router refuses to ship .server modules to the client)
         api.ts                  # framework-free Request → Response handlers
         live-relay.ts           # Gemini Live WebSocket relay (WebSocketPair)
-        playground-turn.ts      # playground turns and tool calls; the playground trace destination, whose records go back on each run's stream
-        playground-register.ts  # registers a compiled draft's profile, custom tools and structured spec
-        playground-steer.ts     # mid-turn steer inbox
+        studio-turn.ts      # studio turns and tool calls; the studio trace destination, whose records go back on each run's stream
+        studio-register.ts  # registers a compiled draft's profile, custom tools and structured spec
+        studio-steer.ts     # mid-turn steer inbox
         th30.ts                 # Th30 site assistant profile
         test-connection.ts      # SSRF-guarded tool connection test
   scripts/                      # kernel checkout resolution + build-time kernel metadata + docs:compose
@@ -61,14 +61,14 @@ Update the sibling kernel in place; re-run `npm run theoremai:ensure` after pull
 ## Development notes
 
 - **`npm run dev`** runs the Worker in `workerd` through `@cloudflare/vite-plugin`, so local dev matches production — including the `/api/live/relay` WebSocket upgrade. Secrets load from `.env.local`.
-- **Run tab:** the playground opens `/playground/run?run=<id>` in a new tab, inside the site shell. The compiled draft lives in this browser's localStorage, so the route loads it in a `clientLoader`; without a draft it redirects to the playground. Decision and host runs start as the centred request in that panel. When one runs, the request moves to the left and the response comes in on the right. The trace docks from the right, and its width eases with the rest of the site.
+- **Run tab:** the studio opens `/studio/run?run=<id>` in a new tab, inside the site shell. The compiled draft lives in this browser's localStorage, so the route loads it in a `clientLoader`; without a draft it redirects to the studio. Decision and host runs start as the centred request in that panel. When one runs, the request moves to the left and the response comes in on the right. The trace docks from the right, and its width eases with the rest of the site.
 - **Kernel runtime is server-only.** Client code talks to `/api/*` routes, not `@theoremjs/agents` directly; server modules live under `app/lib/.server/`.
 - **Schema vocab is client-safe.** `import { PROTOCOLS, fieldMeta } from '@theoremjs/agents/schema'` — closed unions and profile field tips, no Deno or provider graph.
 - Local development installs the sibling `../theoremai` checkout as the real `@theoremjs/*` file dependencies; no source aliases are used.
 - **Provider wiring:** server routes call `createProvider(profile, { openAiGateway, gemini, local })`. OpenRouter credentials live under `openAiGateway` (not `openRouter`).
 - **Lazy adapters:** importing `@theoremjs/agents` does not load OpenRouter, Google, or local adapter graphs — those load on the first `complete` for that transport.
 - **Free models only.** Keys enforce this at the provider — OpenRouter free keys can't reach paid models, Gemini keys are free-tier.
-- **Google vault slots:** playground `model.key` must be `slotA` | `slotB` | `slotC` for Google transports — compile does not invent a key.
+- **Google vault slots:** studio `model.key` must be `slotA` | `slotB` | `slotC` for Google transports — compile does not invent a key.
 - **Tools model:** `tools.allow` is custom function tools only; provider builtins go on `model.config.*.builtInTools`. Live sessions (`runSession`) are T0-only — function declarations are fixed at setup.
 
 ## Guardrails on this site

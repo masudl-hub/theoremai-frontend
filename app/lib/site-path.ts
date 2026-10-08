@@ -2,7 +2,7 @@
  * A path thirty may open. Pages of this site only: a leading slash, no other origin.
  */
 
-const PAGES = new Set(['/', '/overview', '/examples', '/playground', '/playground/run', '/docs']);
+const PAGES = new Set(['/', '/overview', '/examples', '/studio', '/studio/run', '/docs']);
 
 export type SitePath =
 	| { ok: true; href: string; hash: string | undefined }
@@ -18,7 +18,7 @@ export function resolveSitePath(to: string, knownDocsSlug?: (slug: string) => bo
 		trimmed.includes('\\') ||
 		trimmed.split('/').includes('..')
 	) {
-		return { ok: false, error: 'Give a path on this site, like /playground or /docs/start.' };
+		return { ok: false, error: 'Give a path on this site, like /studio or /docs/start.' };
 	}
 	const hashAt = trimmed.indexOf('#');
 	const pathPart = hashAt === -1 ? trimmed : trimmed.slice(0, hashAt);

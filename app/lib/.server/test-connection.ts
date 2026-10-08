@@ -1,5 +1,5 @@
 /**
- * Test-connection probe for playground tool drafts — plain `Request` in, `Response` out.
+ * Test-connection probe for studio tool drafts — plain `Request` in, `Response` out.
  */
 import {
 	buildHttpToolTarget,
@@ -373,7 +373,7 @@ async function handleMcpProbe(
 	}
 }
 
-/** POST /api/playground/test-connection — probe a draft HTTP or MCP tool endpoint. */
+/** POST /api/studio/test-connection — probe a draft HTTP or MCP tool endpoint. */
 export async function testConnection(request: Request): Promise<Response> {
 	const start = Date.now();
 	try {

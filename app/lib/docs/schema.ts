@@ -24,8 +24,8 @@ export const DOC_SECTIONS = [
 ] as const;
 export type DocSection = (typeof DOC_SECTIONS)[number];
 
-export const PLAYGROUND_SEED_IDS = ['firstTurn'] as const;
-export type PlaygroundSeedId = (typeof PLAYGROUND_SEED_IDS)[number];
+export const STUDIO_SEED_IDS = ['firstTurn'] as const;
+export type StudioSeedId = (typeof STUDIO_SEED_IDS)[number];
 
 /** Schema exports that are closed string arrays — derived, not a hand name list. */
 export type ArrayUnionName = {
@@ -57,7 +57,7 @@ export const SNIPPET_FRAMES = [
 
 /**
  * The fence languages a chapter may use. `ts`, `bash` and `text` are code; the rest are cards.
- * A `ts seed=<id>` fence shows that seed's program, and a button that opens it in the playground.
+ * A `ts seed=<id>` fence shows that seed's program, and a button that opens it in the studio.
  */
 export const FENCE_LANGUAGES = [
 	'ts',

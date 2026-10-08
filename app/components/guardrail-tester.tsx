@@ -35,9 +35,9 @@ import {
 	IconWorld,
 	IconX,
 } from '@tabler/icons-react';
+import { PaneLayout, PanePanel, Prose, TraceGuardrailsView } from '@theoremjs/react/ui';
 import {
 	type GuardrailProbeAnswer,
-	type PlaygroundRunPayload,
 	PROBE_BATTERY,
 	PROBE_BOUNDARY_NOTES,
 	PROBE_STATUSES,
@@ -46,9 +46,9 @@ import {
 	type ProbeStatus,
 	probeDraft,
 	probeRefusal,
+	type StudioRunPayload,
 	sectionNote,
-} from '@theoremjs/playground';
-import { PaneLayout, PanePanel, Prose, TraceGuardrailsView } from '@theoremjs/react/ui';
+} from '@theoremjs/studio';
 import { createContext, type ReactNode, useContext, useState } from 'react';
 import { InspectorSection } from './inspector';
 
@@ -74,13 +74,9 @@ type Sent = {
 type Outcome = Pick<Sent, 'answers' | 'error'>;
 
 /** Sends `text` across the draft's boundaries; given `only`, read with that detector alone. */
-async function sendProbe(
-	payload: PlaygroundRunPayload,
-	text: string,
-	only?: string,
-): Promise<Outcome> {
+async function sendProbe(payload: StudioRunPayload, text: string, only?: string): Promise<Outcome> {
 	try {
-		const response = await fetch('/api/playground/probe', {
+		const response = await fetch('/api/studio/probe', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ ...probeDraft(payload), text, only }),
@@ -89,7 +85,7 @@ async function sendProbe(
 		if (response.ok && 'answers' in body) return { answers: body.answers };
 		return { error: ('error' in body && body.error) || "The probe didn't run." };
 	} catch {
-		return { error: "Couldn't reach the playground server." };
+		return { error: "Couldn't reach the studio server." };
 	}
 }
 
@@ -506,7 +502,7 @@ export function GuardrailTester({
 	payload,
 	isWide,
 }: {
-	payload: PlaygroundRunPayload;
+	payload: StudioRunPayload;
 	isWide: boolean;
 }) {
 	const [text, setText] = useState('');
@@ -657,13 +653,13 @@ export function GuardrailTester({
  * The agent the editor has open, as it compiles now: what a detector's page sends its sample to.
  * Null while the draft has issues.
  */
-export const ProbedAgent = createContext<PlaygroundRunPayload | null>(null);
+export const ProbedAgent = createContext<StudioRunPayload | null>(null);
 
 /** A sample sent, the draft it was sent to and what came back. */
-type Tried = Outcome & { payload: PlaygroundRunPayload; text: string };
+type Tried = Outcome & { payload: StudioRunPayload; text: string };
 
 /** Why a sample can't be sent to `payload` yet, or undefined when it can. */
-function unsendable(payload: PlaygroundRunPayload | null): string | undefined {
+function unsendable(payload: StudioRunPayload | null): string | undefined {
 	return payload ? probeRefusal(payload.profile) : 'Fix the issues first';
 }
 

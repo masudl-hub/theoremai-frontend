@@ -16,7 +16,7 @@ export const SHELL_INTRO_DONE = 'theorem-shell-intro-done';
  * shape of the page it leaves to the shape of the page it opens:
  * - open: the whole viewport. The landing screen.
  * - regular: the panel beside the rail. Every other page.
- * - frame: the panel's start edge, as wide as the page's own surface. The playground's editor.
+ * - frame: the panel's start edge, as wide as the page's own surface. The studio's editor.
  */
 export type ShellShape = { kind: 'open' } | { kind: 'regular' } | { kind: 'frame'; width: number };
 
@@ -26,7 +26,7 @@ export const OPEN_SHAPE: ShellShape = { kind: 'open' };
 export const REGULAR_SHAPE: ShellShape = { kind: 'regular' };
 
 /** Pages whose shell is a surface inside the page area. That surface carries `data-shell-frame`. */
-const FRAME_PATHS = new Set(['/playground']);
+const FRAME_PATHS = new Set(['/studio']);
 
 const FRAME_WIDTH = '--shell-frame-width';
 const MAIN_ID = 'astryx-app-shell-main';

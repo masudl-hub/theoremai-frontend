@@ -1,5 +1,5 @@
 /**
- * Playground tree icons for PROFILE_GRAPH facets. Docs chapters reuse this
+ * Studio tree icons for PROFILE_GRAPH facets. Docs chapters reuse this
  * map so a section does not grow a second glyph.
  */
 
@@ -19,7 +19,7 @@ import {
 	IconTool,
 	IconVolume,
 } from '@tabler/icons-react';
-import type { PlaygroundNodeRef } from '@theoremjs/playground';
+import type { StudioNodeRef } from '@theoremjs/studio';
 
 export const FACET_ICON = {
 	identity: IconId,
@@ -36,4 +36,4 @@ export const FACET_ICON = {
 	speech: IconVolume,
 	live: IconHeadset,
 	decision: IconGitBranch,
-} satisfies Record<Exclude<PlaygroundNodeRef['facet'], 'toolSpec'>, unknown>;
+} satisfies Record<Exclude<StudioNodeRef['facet'], 'toolSpec'>, unknown>;

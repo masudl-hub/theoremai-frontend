@@ -10,16 +10,16 @@ import {
 	createExampleDraft,
 	createSpanExampleDraft,
 	defaultToolSpec,
-	type PlaygroundWorkspace,
+	type StudioWorkspace,
 	setProfileType,
 	withAgentDraft,
 	workspaceFromDraft,
-} from '@theoremjs/playground';
+} from '@theoremjs/studio';
 import { exportFiles, exportText, llmBrief } from '../app/lib/export-agent.ts';
 import { zipFiles } from '../app/lib/zip.ts';
 
 /** The concierge, calling a helper through an agent tool. */
-function conciergeAndHelper(): PlaygroundWorkspace {
+function conciergeAndHelper(): StudioWorkspace {
 	const blank = setProfileType(createBlankDraft(), 'text');
 	const helper = { ...blank, identity: { ...blank.identity, agentId: 'travel.helper', handle: 'helper' } };
 	const workspace = addAgent(workspaceFromDraft(createExampleDraft()), helper);
@@ -36,7 +36,7 @@ function conciergeAndHelper(): PlaygroundWorkspace {
 	return withAgentDraft(workspace, concierge.key, { ...draft, toolSpecs: [...draft.toolSpecs, tool] });
 }
 
-function compiled(workspace: PlaygroundWorkspace): CompiledWorkspace {
+function compiled(workspace: StudioWorkspace): CompiledWorkspace {
 	const result = compileWorkspace(workspace);
 	assert(result.ok, JSON.stringify(!result.ok && result.issues));
 	return result;

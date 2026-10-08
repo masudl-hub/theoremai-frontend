@@ -34,7 +34,7 @@ export const REPO_URL = envString('KERNEL_REPOSITORY') || 'https://github.com/ma
 export const DISCORD_URL = 'https://discord.gg/X6RQvSWQ58';
 export const KERNEL_INSTALL_CMD = `npm install ${KERNEL_NAME} zod`;
 export const SITE_PAGES = [
-	{ label: 'Playground', href: '/playground' },
+	{ label: 'Studio', href: '/studio' },
 	{ label: 'Docs', href: '/docs' },
 ] as const;
 
@@ -52,7 +52,7 @@ export const HEADLINE = [
 ] as const;
 
 export type ExampleAction =
-	| { kind: 'playground'; href: string }
+	| { kind: 'studio'; href: string }
 	| { kind: 'hosted'; href: string; label: string };
 
 /** The first cards on the showcase board. Positions live in examples.css. */
@@ -71,7 +71,7 @@ export const EXAMPLES: readonly {
 			'Plans a trip from what you tell it and from tickets or notes you attach. It uses tools for weather, places and currency before it answers.',
 		image: '/imagery/th30_wildflowerroad.png',
 		imageAlt: 'A stone path splitting through a meadow of yellow and pink wildflowers',
-		action: { kind: 'playground', href: '/playground' },
+		action: { kind: 'studio', href: '/studio' },
 	},
 	{
 		id: 'harbor',
@@ -80,7 +80,7 @@ export const EXAMPLES: readonly {
 			'The front desk for a shipment on hold. It looks up why the shipment is on hold, and can check the weather and the news at the port. It gives one next step.',
 		image: '/imagery/th30_ceruleanshelf.png',
 		imageAlt: 'Shallow turquoise water meeting deep blue along a reef shelf',
-		action: { kind: 'playground', href: '/playground?seed=firstTurn' },
+		action: { kind: 'studio', href: '/studio?seed=firstTurn' },
 	},
 	{
 		id: 'bonsai',
@@ -140,7 +140,7 @@ const HEADLINE_TEXT = HEADLINE.map(({ text }) => text).join(' ');
 export function homeScreens(): readonly HomeScreen[] {
 	const goals = GOALS.map(({ title, text }) => `${title}: ${text}`).join(' ');
 	const examples = EXAMPLES.map(({ title, description, action }) => {
-		const where = action.kind === 'hosted' ? 'Opens the hosted app.' : 'Opens in the playground.';
+		const where = action.kind === 'hosted' ? 'Opens the hosted app.' : 'Opens in the studio.';
 		return `${title}: ${description} ${where}`;
 	}).join(' ');
 	const ways = WAYS.map(({ title, note }) => `${title}: ${note}`).join(' ');
@@ -180,7 +180,7 @@ export function homeMarkdown(origin: string): string {
 		`- Package: ${KERNEL_NAME} ${KERNEL.version} (${KERNEL.license || 'see repository'})`,
 		`- Install: \`${KERNEL_INSTALL_CMD}\``,
 		...PACKAGE_LINKS.map(({ label, href }) => `- ${label}: ${href}`),
-		`- Playground: ${origin}/playground`,
+		`- Studio: ${origin}/studio`,
 		`- Docs: ${origin}/docs`,
 		'',
 		'## The landing page',

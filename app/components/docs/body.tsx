@@ -35,7 +35,7 @@ function ProseLink({ href, children }: { href: string; children: ReactNode }) {
 type Chapter = {
 	/** The catalog rows the chapter's inline code names. */
 	terms: DocArticle['terms'];
-	/** The playground seed behind each seeded program, by the program's text. */
+	/** The studio seed behind each seeded program, by the program's text. */
 	seeds: ReadonlyMap<string, string>;
 };
 
@@ -133,7 +133,7 @@ function Commands({ code }: { code: string }) {
 	);
 }
 
-/** A `ts` or `text` fence. A seeded program also opens in the playground. Astryx CodeBlock wants `typescript`, not `ts`. */
+/** A `ts` or `text` fence. A seeded program also opens in the studio. Astryx CodeBlock wants `typescript`, not `ts`. */
 function CodeSample({ code, language }: { code: string; language: string | undefined }) {
 	const seed = useContext(ChapterContext).seeds.get(code);
 	const isTs = language === 'ts';
@@ -146,12 +146,12 @@ function CodeSample({ code, language }: { code: string; language: string | undef
 				<HStack gap={1} vAlign="center">
 					{seed === undefined ? null : (
 						<IconButton
-							label="Open in the playground"
-							tooltip="Open in the playground"
+							label="Open in the studio"
+							tooltip="Open in the studio"
 							variant="ghost"
 							size="sm"
 							icon={<IconPlayerPlay />}
-							href={`/playground?seed=${seed}`}
+							href={`/studio?seed=${seed}`}
 							target="_blank"
 						/>
 					)}

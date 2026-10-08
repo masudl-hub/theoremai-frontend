@@ -4,11 +4,6 @@
  */
 import { errorKind, type ProfileDefinition, publicError, TheoremError, z } from '@theoremjs/agents';
 import { caughtStatus } from '@theoremjs/agents/host';
-import type {
-	PlaygroundDependency,
-	StructuredRegistration,
-	ToolRegistration,
-} from '@theoremjs/playground';
 import type { TheoremReplay, TheoremTurnRequest } from '@theoremjs/react';
 import {
 	checkRequest,
@@ -18,28 +13,25 @@ import {
 	theoremSteerRequestSchema,
 	theoremTurnRequestSchema,
 } from '@theoremjs/react/server';
+import type { StructuredRegistration, StudioDependency, ToolRegistration } from '@theoremjs/studio';
 import type { SiteEnv } from '../../cloudflare';
 import { badRequestJson, errorMessage, ndjsonEventStream } from './ndjson-stream';
-import { takeAllowance, visitorAddress } from './playground-allowance';
-import { allowanceStore } from './playground-decide-allowance';
-import { playgroundSteerInbox } from './playground-steer';
-import {
-	streamPlaygroundCall,
-	streamPlaygroundInvoke,
-	streamPlaygroundTurn,
-} from './playground-turn';
+import { takeAllowance, visitorAddress } from './studio-allowance';
+import { allowanceStore } from './studio-decide-allowance';
+import { studioSteerInbox } from './studio-steer';
+import { streamStudioCall, streamStudioInvoke, streamStudioTurn } from './studio-turn';
 import { getKernelPackageVersion, getSubmoduleHead } from './theoremai';
 
 /**
- * The draft every playground request carries beside its Theorem request: the
+ * The draft every studio request carries beside its Theorem request: the
  * browser authors the profile, so the server compiles it per request.
  */
-type PlaygroundDraft = {
+type StudioDraft = {
 	profile: ProfileDefinition;
 	customTools?: ToolRegistration[];
 	structured?: StructuredRegistration;
 	/** The agents this one's agent tools and compaction name, registered before it. */
-	dependencies?: PlaygroundDependency[];
+	dependencies?: StudioDependency[];
 };
 
 /**
@@ -52,7 +44,7 @@ function agentCallAllowance(request: Request, env: SiteEnv) {
 		if (!env.DECIDE_ALLOWANCE) return { refuse: 'This agent is not available here.' };
 		const store = allowanceStore(env.DECIDE_ALLOWANCE);
 		const cap = await takeAllowance(store, 'request', visitorAddress(request));
-		return cap === null ? undefined : { refuse: "Today's playground requests are spent." };
+		return cap === null ? undefined : { refuse: "Today's studio requests are spent." };
 	};
 }
 
@@ -76,13 +68,13 @@ function walkedAwayCalls(turn: TheoremTurnRequest): { callId: string; replay: Th
 	});
 }
 
-/** POST /api/playground/turn — NDJSON turn events. */
-export async function playgroundTurn(request: Request, env: SiteEnv): Promise<Response> {
+/** POST /api/studio/turn — NDJSON turn events. */
+export async function studioTurn(request: Request, env: SiteEnv): Promise<Response> {
 	try {
-		const draft = await request.json<PlaygroundDraft>();
+		const draft = await request.json<StudioDraft>();
 		const turn = checkRequest(theoremTurnRequestSchema, draft, 'request body');
 		return ndjsonEventStream(
-			streamPlaygroundTurn({
+			streamStudioTurn({
 				profile: draft.profile,
 				customTools: draft.customTools ?? [],
 				structured: draft.structured,
@@ -96,7 +88,7 @@ export async function playgroundTurn(request: Request, env: SiteEnv): Promise<Re
 				signal: request.signal,
 				env,
 				onAgentCall: agentCallAllowance(request, env),
-				steer: playgroundSteerInbox(env.STEER_INBOX),
+				steer: studioSteerInbox(env.STEER_INBOX),
 			}),
 			draft.profile.lexicon,
 		);
@@ -105,13 +97,13 @@ export async function playgroundTurn(request: Request, env: SiteEnv): Promise<Re
 	}
 }
 
-/** POST /api/playground/invoke — NDJSON events for the user's answer to a paused call. */
-export async function playgroundInvoke(request: Request, env: SiteEnv): Promise<Response> {
+/** POST /api/studio/invoke — NDJSON events for the user's answer to a paused call. */
+export async function studioInvoke(request: Request, env: SiteEnv): Promise<Response> {
 	try {
-		const draft = await request.json<PlaygroundDraft>();
+		const draft = await request.json<StudioDraft>();
 		const answer = checkRequest(theoremInvokeRequestSchema, draft, 'request body');
 		return ndjsonEventStream(
-			streamPlaygroundInvoke({
+			streamStudioInvoke({
 				profile: draft.profile,
 				customTools: draft.customTools ?? [],
 				structured: draft.structured,
@@ -134,7 +126,7 @@ const pagePermissions = z.array(z.string().min(1).max(128)).max(256).optional();
 async function takeCall(request: Request, env: SiteEnv): Promise<void> {
 	if (!env.DECIDE_ALLOWANCE) {
 		// lexicon-exempt: developer contract error
-		throw new TheoremError('config', 'playground call: no DECIDE_ALLOWANCE binding');
+		throw new TheoremError('config', 'studio call: no DECIDE_ALLOWANCE binding');
 	}
 	const cap = await takeAllowance(
 		allowanceStore(env.DECIDE_ALLOWANCE),
@@ -143,21 +135,21 @@ async function takeCall(request: Request, env: SiteEnv): Promise<void> {
 	);
 	if (cap !== null) {
 		// lexicon-exempt: internal diagnostic; the user reads quota.exhausted
-		throw new TheoremError('rate_limit', "playground call: today's calls are spent", {
+		throw new TheoremError('rate_limit', "studio call: today's calls are spent", {
 			copy: { key: 'quota.exhausted', params: { perDay: cap } },
 		});
 	}
 }
 
 /**
- * POST /api/playground/call — NDJSON events for one call of a host draft's
+ * POST /api/studio/call — NDJSON events for one call of a host draft's
  * tool. Each visitor address, and the site, gets a day's calls: the tools run
  * on the site's own network.
  */
-export async function playgroundCall(request: Request, env: SiteEnv): Promise<Response> {
-	let draft: (PlaygroundDraft & { sessionPermissions?: unknown }) | undefined;
+export async function studioCall(request: Request, env: SiteEnv): Promise<Response> {
+	let draft: (StudioDraft & { sessionPermissions?: unknown }) | undefined;
 	try {
-		draft = await request.json<PlaygroundDraft & { sessionPermissions?: unknown }>();
+		draft = await request.json<StudioDraft & { sessionPermissions?: unknown }>();
 		const call = checkRequest(theoremHostCallRequestSchema, draft, 'request body');
 		const sessionPermissions = checkRequest(
 			pagePermissions,
@@ -167,7 +159,7 @@ export async function playgroundCall(request: Request, env: SiteEnv): Promise<Re
 		// Counted only once the request is one a host would run.
 		await takeCall(request, env);
 		return ndjsonEventStream(
-			streamPlaygroundCall({
+			streamStudioCall({
 				profile: draft.profile,
 				customTools: draft.customTools ?? [],
 				dependencies: draft.dependencies,
@@ -188,12 +180,12 @@ export async function playgroundCall(request: Request, env: SiteEnv): Promise<Re
 	}
 }
 
-/** POST /api/playground/turn/steer — queue a mid-turn inject for a running text turn. */
-export async function playgroundSteer(request: Request, env: SiteEnv): Promise<Response> {
+/** POST /api/studio/turn/steer — queue a mid-turn inject for a running text turn. */
+export async function studioSteer(request: Request, env: SiteEnv): Promise<Response> {
 	try {
 		// The inbox the server opened for the turn is the turn id the browser steers.
 		const steer = checkRequest(theoremSteerRequestSchema, await request.json(), 'request body');
-		if (!(await playgroundSteerInbox(env.STEER_INBOX).enqueue(steer.turnId, steerUnitOf(steer)))) {
+		if (!(await studioSteerInbox(env.STEER_INBOX).enqueue(steer.turnId, steerUnitOf(steer)))) {
 			// lexicon-exempt: internal diagnostic; the user reads session.turn_ended
 			throw new TheoremError('request', 'steer: no open run has this inbox', {
 				copy: { key: 'session.turn_ended' },
