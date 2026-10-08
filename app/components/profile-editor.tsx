@@ -271,6 +271,7 @@ import {
 import {
 	ConnectionMode,
 	ISSUE_ROW_ATTRIBUTE,
+	LeavePage,
 	ListBadges,
 	LocalConnection,
 	NodeIssues,
@@ -4101,11 +4102,14 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 	const view = useRef<HTMLDivElement>(null);
 	// Where the list was scrolled to when a page opened, to put it back there.
 	const listScroll = useRef(0);
+	const leavePage = useContext(LeavePage);
 	/** Fades the view out, then swaps it; the one that mounts fades in (`.detector-view`). */
 	const show = (next: OpenDetector | null) => {
 		const node = view.current;
 		if (node && open === null) listScroll.current = scrollerOf(node)?.scrollTop ?? 0;
+		const left = leavePage();
 		const swap = () => {
+			left();
 			setOpen(next);
 		};
 		if (node) void fadeOut(node).then(swap);

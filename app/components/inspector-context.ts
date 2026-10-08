@@ -22,6 +22,12 @@ export function useFieldStatus(): (field?: string, index?: number) => InputStatu
 	};
 }
 
+/**
+ * Called as the builder starts to leave a page inside a node (a detector's page, back to the list);
+ * the function it returns, called once the next page is up, lets the issues left behind show.
+ */
+export const LeavePage = createContext<() => () => void>(() => () => undefined);
+
 /** Marks a row that has an issue, so the issue pill can scroll to it. */
 export const ISSUE_ROW_ATTRIBUTE = 'data-issue';
 

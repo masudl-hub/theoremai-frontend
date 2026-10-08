@@ -113,6 +113,7 @@ import {
 	type SetStateAction,
 	useCallback,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -123,6 +124,7 @@ import { GuardrailTester, ProbedAgent } from '../components/guardrail-tester';
 import {
 	ConnectionMode,
 	ISSUE_ROW_ATTRIBUTE,
+	LeavePage,
 	ListBadges,
 	LocalConnection,
 	WorkspaceContext,
@@ -1134,7 +1136,37 @@ function useIssueReveal(selected: string) {
 			cancelAnimationFrame(frame);
 		};
 	}, [issueReveal, selected]);
-	return { editorRef, reveal: setIssueReveal };
+	return { editorRef, reveal: setIssueReveal, revealed: issueReveal };
+}
+
+const issueKey = (issue: PlaygroundIssue) =>
+	`${issue.nodeId}\n${issue.field ?? ''}\n${String(issue.index ?? '')}`;
+
+/**
+ * The issues the editor's rows show: the ones the builder has left behind. One that turns up on
+ * the page they are on (a detector just added, a field not filled in yet) stays quiet until they
+ * move to another page, or press the issue pill (`revealed`). `leavePage` is for a page inside a
+ * node, which `page` doesn't name.
+ */
+function useLeftIssues(issues: readonly PlaygroundIssue[], page: string, revealed: unknown) {
+	// The issues as of the last render: at a move, the ones that were there before it.
+	const before = useRef(issues);
+	const [left, setLeft] = useState(() => new Set(issues.map(issueKey)));
+	const leavePage = useCallback(() => {
+		const keys = new Set(before.current.map(issueKey));
+		return () => {
+			setLeft(keys);
+		};
+	}, []);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: a move or a press of the pill is what lets them show
+	useLayoutEffect(() => {
+		leavePage()();
+	}, [page, revealed, leavePage]);
+	useLayoutEffect(() => {
+		before.current = issues;
+	});
+	const shown = useMemo(() => issues.filter((issue) => left.has(issueKey(issue))), [issues, left]);
+	return { shown, leavePage };
 }
 
 /** Get code (a .zip, or copied) and open in a new tab, for the agent being chatted with; off while the workspace has issues. */
@@ -2362,7 +2394,8 @@ function EditorColumn({
 	issueReveal: ReturnType<typeof useIssueReveal>;
 	setSheet: (sheet: Sheet) => void;
 }) {
-	const { editorRef, reveal } = issueReveal;
+	const { editorRef, reveal, revealed } = issueReveal;
+	const { shown, leavePage } = useLeftIssues(compile.editorIssues, selected, revealed);
 	const reset = useReset(state);
 	return (
 		<VStack height="100%">
@@ -2379,16 +2412,19 @@ function EditorColumn({
 				setSheet={setSheet}
 			/>
 			<StackItem size="fill">
-				<EditorColumnBody
-					state={state}
-					connection={connection}
-					view={view}
-					compile={compile}
-					selected={selected}
-					editing={editing}
-					frame={frame}
-					editorRef={editorRef}
-				/>
+				<LeavePage value={leavePage}>
+					<EditorColumnBody
+						state={state}
+						connection={connection}
+						view={view}
+						compile={compile}
+						rowIssues={shown}
+						selected={selected}
+						editing={editing}
+						frame={frame}
+						editorRef={editorRef}
+					/>
+				</LeavePage>
 			</StackItem>
 		</VStack>
 	);
@@ -2400,6 +2436,7 @@ function EditorColumnBody({
 	connection,
 	view,
 	compile,
+	rowIssues,
 	selected,
 	editing,
 	frame,
@@ -2409,6 +2446,8 @@ function EditorColumnBody({
 	connection: PlaygroundConnectionState;
 	view: EditorViewState;
 	compile: WorkspaceCompile;
+	/** The issues the editor's rows show; the code view marks them all. */
+	rowIssues: PlaygroundIssue[];
 	selected: string;
 	editing: string;
 	frame: ReturnType<typeof usePlaygroundFrame>;
@@ -2432,7 +2471,7 @@ function EditorColumnBody({
 				connection={connection}
 				selected={selected}
 				editing={editing}
-				issues={compile.editorIssues}
+				issues={rowIssues}
 				listBadges={frame.listBadges}
 				editorRef={editorRef}
 				open={view.open}
