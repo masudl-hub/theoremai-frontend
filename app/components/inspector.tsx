@@ -90,6 +90,20 @@ export function InspectorSection({
 }
 
 /**
+ * The name of a group of rows inside a section. One step under the section's title: the same size,
+ * so it reads as a heading and not as a note, and quieter, so the title still leads. `hint` says
+ * what the group is, on hover.
+ */
+export function InspectorGroupTitle({ title, hint }: { title: string; hint?: string }) {
+	const heading = (
+		<Text type="label" weight="semibold" color="secondary">
+			{title}
+		</Text>
+	);
+	return hint ? <Tooltip content={hint}>{heading}</Tooltip> : heading;
+}
+
+/**
  * `children`, with the schema's entry for `path` on hover: what it does, then its options as
  * tokens (or its type, when it has none), when it's required or what leaving it out does. The
  * profile types that take it are only named when one the playground offers can't.

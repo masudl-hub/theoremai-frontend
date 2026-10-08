@@ -255,6 +255,7 @@ import { DetectorTester } from './guardrail-tester';
 import {
 	type Choice,
 	ChoiceRow,
+	InspectorGroupTitle,
 	InspectorRow,
 	InspectorSection,
 	ListRow,
@@ -3346,9 +3347,7 @@ function BoundaryRows({
 				TOOL_KINDS.some((kind) => has.has(crossing.boundary(kind))),
 			).map((crossing) => (
 				<VStack key={crossing.title} gap={2}>
-					<Text type="supporting" weight="semibold">
-						{crossing.title}
-					</Text>
+					<InspectorGroupTitle title={crossing.title} />
 					{TOOL_KINDS.filter((kind) => has.has(crossing.boundary(kind))).map((kind) =>
 						row(crossing.boundary(kind), TOOL_KIND_LABEL[kind]),
 					)}
@@ -3750,11 +3749,10 @@ function DetectSection({
 			<DetectIssue />
 			{groups.map(({ group, rows }) => (
 				<VStack key={group} gap={2}>
-					<Tooltip content={DETECTOR_GROUP_META[group].doc}>
-						<Text type="supporting" weight="semibold">
-							{DETECTOR_GROUP_META[group].label}
-						</Text>
-					</Tooltip>
+					<InspectorGroupTitle
+						title={DETECTOR_GROUP_META[group].label}
+						hint={DETECTOR_GROUP_META[group].doc}
+					/>
 					{rows.map(({ detector, applies }) => (
 						<ActionRow
 							key={detector}
@@ -3785,11 +3783,7 @@ function DetectSection({
 				</VStack>
 			))}
 			<VStack gap={2}>
-				<Tooltip content={sectionNote('detect.own')}>
-					<Text type="supporting" weight="semibold">
-						Yours
-					</Text>
-				</Tooltip>
+				<InspectorGroupTitle title="Yours" hint={sectionNote('detect.own')} />
 				{own.map((detector, index) => (
 					<ActionRow
 						// biome-ignore lint/suspicious/noArrayIndexKey: detectors are keyed by text the builder is typing
