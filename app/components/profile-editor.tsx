@@ -3085,7 +3085,18 @@ function BlockedReplySection({ guardrails, set }: GuardrailsSectionProps) {
 					set({ blockedReplyOnBlock: onBlock === 'retry' ? '' : onBlock });
 				}}
 			/>
-			{guardrails.blockedReplyOnBlock !== 'refuse' && (
+			{guardrails.blockedReplyOnBlock === 'refuse' ? (
+				<TextAreaRow
+					label="Message"
+					path="lexicon.egress.refusal"
+					field="egressRefusal"
+					value={guardrails.egressRefusal}
+					placeholder={lexiconDefault('egress.refusal')}
+					onChange={(egressRefusal) => {
+						set({ egressRefusal });
+					}}
+				/>
+			) : (
 				<BlockedReplyRetryRows guardrails={guardrails} set={set} />
 			)}
 		</InspectorSection>
@@ -5654,6 +5665,14 @@ const SHARED_WORDING: Partial<
 			patch(setDraft, 'guardrails')({ egressRepairGuidance });
 		},
 		isOn: (draft) => draft.guardrails.blockedReplyOnBlock !== 'refuse',
+	},
+	'egress.refusal': {
+		setting: 'Blocked reply',
+		read: (draft) => draft.guardrails.egressRefusal,
+		write: (setDraft, egressRefusal) => {
+			patch(setDraft, 'guardrails')({ egressRefusal });
+		},
+		isOn: (draft) => draft.guardrails.blockedReplyOnBlock === 'refuse',
 	},
 };
 
