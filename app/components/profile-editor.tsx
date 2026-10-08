@@ -3370,12 +3370,14 @@ function ActionSection({
 	defaults,
 	boundaries,
 	actions,
+	status,
 	onChange,
 }: {
 	detector: DetectorPath;
 	defaults?: Readonly<Partial<Record<Boundary, DetectAction>>>;
 	boundaries: readonly Boundary[];
 	actions: Record<Boundary, DetectAction>;
+	status?: ReturnType<ReturnType<typeof useFieldStatus>>;
 	onChange: (next: Record<Boundary, DetectAction>) => void;
 }) {
 	const uniform = new Set(boundaries.map((boundary) => actions[boundary])).size === 1;
@@ -3387,6 +3389,7 @@ function ActionSection({
 				defaults={defaults}
 				boundaries={boundaries}
 				actions={actions}
+				status={status}
 				onChange={onChange}
 			/>
 			{boundaries.length > 1 && (
@@ -3688,14 +3691,22 @@ function DetectIssue() {
 	return status?.message ? <Banner status="error" title={status.message} /> : null;
 }
 
-/** What a detector's row says when a field on its page has an issue, so the list shows where. */
+/**
+ * What a detector's row says when a field on its page has an issue, so the list shows where: the
+ * issue when there is one, a count when there are more, since the page says each on its own row.
+ */
 function usePageIssues(): (
 	onPage: (issue: PlaygroundIssue) => boolean,
 ) => ReturnType<ReturnType<typeof useFieldStatus>> | undefined {
 	const issues = useContext(NodeIssues);
 	return (onPage) => {
 		const messages = issues.filter(onPage).map((issue) => issue.message);
-		return messages.length ? { type: 'error', message: messages.join(' ') } : undefined;
+		if (messages.length === 0) return undefined;
+		const [only] = messages;
+		return {
+			type: 'error',
+			message: messages.length === 1 ? only : `${String(messages.length)} things to fix. Open it.`,
+		};
 	};
 }
 
@@ -3955,7 +3966,8 @@ function OwnDetectorPage({
 	onRemove: () => void;
 	onBack: () => void;
 }) {
-	const status = useFieldStatus()('own', index);
+	const statusAt = useFieldStatus();
+	const status = statusAt('own', index);
 	const remove = `Remove ${ownName(detector)}`;
 	const setActions = (at: Record<Boundary, DetectAction>) => {
 		onChange({ ...detector, at });
@@ -3982,6 +3994,7 @@ function OwnDetectorPage({
 				<TextRow
 					label="Name"
 					path="guardrails.detect.*.label"
+					field={`own.${String(index)}.label`}
 					value={detector.label}
 					placeholder="Codenames"
 					onChange={(label) => {
@@ -4003,6 +4016,7 @@ function OwnDetectorPage({
 				detector="*"
 				boundaries={boundaries}
 				actions={detector.at}
+				status={statusAt(`own.${String(index)}.at`)}
 				onChange={setActions}
 			/>
 			<InspectorSection title="Patterns">
