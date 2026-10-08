@@ -1,4 +1,4 @@
-import { FieldLabel, type InputStatus } from '@astryxdesign/core/Field';
+import type { InputStatus } from '@astryxdesign/core/Field';
 import { FieldStatus } from '@astryxdesign/core/FieldStatus';
 import { HoverCard } from '@astryxdesign/core/HoverCard';
 import { HStack } from '@astryxdesign/core/HStack';
@@ -22,7 +22,7 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { IconArrowBackUp } from '@tabler/icons-react';
 import { fieldMeta } from '@theoremjs/agents';
 import { PLAYGROUND_PROFILE_TYPES } from '@theoremjs/playground';
-import { type ReactNode, useContext, useId } from 'react';
+import { type ReactNode, useContext } from 'react';
 import { tabFills } from '../lib/tab-fills';
 import { ISSUE_ROW_ATTRIBUTE, ListBadges, useFieldStatus } from './inspector-context';
 
@@ -65,7 +65,11 @@ export function InspectorSection({
 	note?: string;
 	children: ReactNode;
 }) {
-	const heading = title && <Text type="large">{title}</Text>;
+	const heading = title && (
+		<Text type="label" weight="semibold">
+			{title}
+		</Text>
+	);
 	return (
 		<Section variant="transparent" padding={3}>
 			<VStack gap={3}>
@@ -86,13 +90,13 @@ export function InspectorSection({
 }
 
 /**
- * The name of a group of rows inside a section. One step under the section's title: as bright, so
- * it stands over the grey row labels it heads, and lighter in weight, so the title still leads.
- * `hint` says what the group is, on hover.
+ * The name of a group of rows inside a section. Astryx's ladder, top down: the page title is 14
+ * bold, a section title 14 semibold, this 12 semibold in primary, a row label 12 regular in
+ * secondary. `hint` says what the group is, on hover.
  */
 export function InspectorGroupTitle({ title, hint }: { title: string; hint?: string }) {
 	const heading = (
-		<Text type="label" weight="medium">
+		<Text type="supporting" weight="semibold" color="primary">
 			{title}
 		</Text>
 	);
@@ -116,8 +120,11 @@ function CatalogHover({
 	const meta = fieldMeta(path);
 	if (!meta) return children;
 	const scope = meta.profileTypes;
-	const takes = PLAYGROUND_PROFILE_TYPES.filter((type) => !scope || scope.includes(type));
-	const scoped = takes.length < PLAYGROUND_PROFILE_TYPES.length ? takes : undefined;
+	// why: Decisions are the odd one out: they take little of the schema, so "not on decisions" is
+	// assumed, and only a narrower scope is worth saying.
+	const agents = PLAYGROUND_PROFILE_TYPES.filter((type) => type !== 'decision');
+	const takes = agents.filter((type) => !scope || scope.includes(type));
+	const scoped = takes.length < agents.length ? takes : undefined;
 	return (
 		<HoverCard
 			label={label}
@@ -129,12 +136,23 @@ function CatalogHover({
 							<Token key={option} label={option} size="sm" />
 						))}
 					</HStack>
-					{meta.optionNote && <Text color="secondary">{meta.optionNote}</Text>}
-					{typeof meta.required === 'string' && (
-						<Text color="secondary">{`Required ${meta.required}.`}</Text>
+					{meta.optionNote && (
+						<Text type="supporting" color="secondary">
+							{meta.optionNote}
+						</Text>
 					)}
-					{meta.unset && <Text color="secondary">{`Left out: ${meta.unset}.`}</Text>}
-					{scoped && <Text color="secondary">{`Only on ${scoped.join(', ')} profiles.`}</Text>}
+					{typeof meta.required === 'string' && (
+						<Text type="supporting" color="secondary">{`Required ${meta.required}.`}</Text>
+					)}
+					{meta.unset && (
+						<Text type="supporting" color="secondary">{`Left out: ${meta.unset}.`}</Text>
+					)}
+					{scoped && (
+						<Text
+							type="supporting"
+							color="secondary"
+						>{`Only on ${scoped.join(', ')} profiles.`}</Text>
+					)}
 				</VStack>
 			}
 		>
@@ -143,7 +161,7 @@ function CatalogHover({
 	);
 }
 
-/** A row's label, with "Required" under it when `isRequired`, and its catalog entry on hover. */
+/** A row's label, 12 regular in secondary, with "Required" under it when `isRequired`, and its catalog entry on hover. */
 function RowLabel({
 	label,
 	path,
@@ -153,17 +171,18 @@ function RowLabel({
 	path: string;
 	isRequired: boolean;
 }) {
-	const id = useId();
-	// A group label: it names the row rather than one control, since each control carries its own
-	// hidden label, so it points at no input.
 	return (
 		<CatalogHover label={label} path={path}>
-			<FieldLabel
-				label={label}
-				inputID={id}
-				isGroupLabel
-				description={isRequired ? 'Required' : undefined}
-			/>
+			<VStack gap={0}>
+				<Text type="supporting" color="secondary">
+					{label}
+				</Text>
+				{isRequired && (
+					<Text type="supporting" color="placeholder">
+						Required
+					</Text>
+				)}
+			</VStack>
 		</CatalogHover>
 	);
 }
@@ -528,11 +547,8 @@ export type SegmentedRowProps<T extends string> = {
 	onChange: (next: T) => void;
 } & IsRequired;
 
-/** The most choices a row holds and still has room to name the picked one beside its icon. */
-const NAMED_SEGMENTS = 3;
-
 /**
- * A closed set, as icon segments; the picked one also says its name where the row has room. Each
+ * A closed set, as icon segments. Each
  * segment's label is its accessible name, and on hover it shows with the schema's description of
  * that option. `warning` says, under it, when the pick is valid but won't do what it looks like; a
  * compile issue on the row shows instead.
@@ -580,14 +596,12 @@ export function SegmentedRow<T extends string>({
 							options?.[segment.value] ||
 							segment.description;
 						const name = segment.isRecommended ? `${segment.label} (recommended)` : segment.label;
-						// The picked choice says its name where there is room for one: up to three choices.
-						const isNamed = segment.value === value && segments.length <= NAMED_SEGMENTS;
 						return (
 							<Tooltip key={segment.value} content={description ? `${name}: ${description}` : name}>
 								<SegmentedControlItem
 									value={segment.value}
-									label={isNamed ? segment.label : name}
-									isLabelHidden={!isNamed}
+									label={name}
+									isLabelHidden
 									isDisabled={segment.isDisabled}
 									icon={<Icon icon={segment.icon} size="sm" />}
 								/>

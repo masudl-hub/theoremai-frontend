@@ -4,8 +4,15 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { StackItem } from '@astryxdesign/core/Stack';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { VStack } from '@astryxdesign/core/VStack';
-import { IconEye, IconEyeOff, IconKey, IconPlus, IconTrash } from '@tabler/icons-react';
-import { isKeySlotName, type KeyVault } from '@theoremjs/agents';
+import {
+	IconEye,
+	IconEyeOff,
+	IconKey,
+	IconPlayerEject,
+	IconPlus,
+	IconTrash,
+} from '@tabler/icons-react';
+import { isKeySlotName } from '@theoremjs/agents';
 import {
 	type ModelBindingDraft,
 	modelBindingViolation,
@@ -29,7 +36,8 @@ import { type Dispatch, type SetStateAction, useEffect, useMemo, useState } from
 import { IconGemini, IconOpenRouter } from './brand-icons';
 import { InspectorSection } from './inspector';
 
-const withoutSlot = (vault: KeyVault, slot: string): KeyVault =>
+type BrowserKeyVault = Readonly<Record<string, string | undefined>>;
+const withoutSlot = (vault: BrowserKeyVault, slot: string): BrowserKeyVault =>
 	Object.fromEntries(Object.entries(vault).filter(([name]) => name !== slot));
 type KeyEntry = { id: string; slot: string };
 
@@ -125,7 +133,7 @@ function useKeyEntries(slots: readonly string[]) {
 function useConnectionRuntime(
 	mode: PlaygroundConnectionMode,
 	hasLocal: boolean,
-	vault: KeyVault,
+	vault: BrowserKeyVault,
 	local: PlaygroundBrowserConnection['local'],
 	remoteTools: boolean,
 	slots: readonly string[],
@@ -163,7 +171,7 @@ export function usePlaygroundConnection(
 	initialBaseUrl = 'http://127.0.0.1:11434',
 	namedSlots: readonly string[] = [],
 ) {
-	const [vault, setVault] = useState<KeyVault>({});
+	const [vault, setVault] = useState<BrowserKeyVault>({});
 	const [local, setLocal] = useState<PlaygroundBrowserConnection['local']>({
 		baseUrl: initialBaseUrl,
 	});
@@ -489,7 +497,7 @@ function KeyRowActions({
 				label={removable ? 'Remove key' : 'Clear key'}
 				variant="ghost"
 				size="sm"
-				icon={<Icon icon={IconTrash} size="sm" />}
+				icon={<Icon icon={removable ? IconTrash : IconPlayerEject} size="sm" />}
 				onClick={() => {
 					connection.setVault((current) => withoutSlot(current, entry.slot));
 					if (!removable) return;

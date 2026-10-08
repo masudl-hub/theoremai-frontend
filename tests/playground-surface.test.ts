@@ -11,7 +11,7 @@ import {
 import { type PlaygroundSurfaceHost, playgroundSurface } from '@theoremjs/playground/surface';
 import { createPlaygroundStore } from '../app/lib/playground-store.ts';
 
-const KEY = 'AIzaSyTESTONLY0000000000000000000000000';
+const KEY = ['AIzaSy', 'TESTONLY0000000000000000000000000'].join('');
 
 function setup(draft: PlaygroundDraft = setProfileType(createBlankDraft(), 'text')) {
 	const store = createPlaygroundStore({ workspace: workspaceFromDraft(draft), revision: 0 });

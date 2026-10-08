@@ -88,7 +88,7 @@ export async function playgroundTurn(request: Request, env: SiteEnv): Promise<Re
 				structured: draft.structured,
 				dependencies: draft.dependencies,
 				input: turn.input,
-				previousInteractionId: turn.previousInteractionId,
+				providerState: turn.providerState,
 				sessionPermissions: turn.replay?.sessionPermissions,
 				abandon: walkedAwayCalls(turn),
 				model: turn.model,

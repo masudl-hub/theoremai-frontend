@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import ts from 'typescript';
 import {
 	addAgent,
 	agentDraft,
@@ -117,4 +118,24 @@ test('an exported chat passes a value per slot and its context, and the route it
 	assert.match(chat, /\/\/ language: en \| fr\n\s+slots=\{\{ "language": "en" \}\}/);
 	assert.match(chat, /context=\{\{\}\}/);
 	assert.match(files.find((file) => file.path === 'route.ts')?.code ?? '', /context: \(\) => \(\{\}\),/);
+});
+
+test('a local export configures the registered adapter URL and keeps host options to the vault', () => {
+  const draft = setProfileType(createBlankDraft(), 'text');
+  draft.identity.agentId = 'local.test';
+  draft.identity.handle = 'Local';
+  draft.modelBindings[0].provider = 'local';
+  draft.modelBindings[0].protocol = 'openAi';
+  draft.modelBindings[0].apiId = 'local-model';
+  const workspace = compileWorkspace(workspaceFromDraft(draft), 'local');
+  assert(workspace.ok, JSON.stringify(!workspace.ok && workspace.issues));
+  const files = exportFiles(workspace, workspace.agents[0]);
+  const registration = files.find(file => file.path === 'theorem.ts')?.code ?? '';
+  assert.match(registration, /LOCAL_MODEL_URL/);
+  assert.match(registration, /openAIChat/);
+  assert.ok(registration.includes("replace(/\\/$/, '') + '/v1'"));
+  const route = files.find(file => file.path === 'route.ts')?.code ?? '';
+  assert.doesNotMatch(route, /local: \{ baseUrl/);
+  const emitted = ts.transpileModule(registration, { reportDiagnostics: true, compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext } });
+  assert.deepEqual(emitted.diagnostics, []);
 });

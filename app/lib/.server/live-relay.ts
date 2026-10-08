@@ -78,7 +78,7 @@ async function openLiveSession(
 	open: LiveOpenMessage,
 	openWebSocket: (url: string) => Promise<WebSocket>,
 ): Promise<LiveSession> {
-	const { vault } = playgroundProviders(env, scope.profiles.get(profileId));
+	const { vault } = playgroundProviders(env, scope.profiles.get(profileId), scope.providers);
 	if (!vault || !Object.values(vault).some(Boolean))
 		throw new TheoremError('auth', 'No demo Gemini credentials configured.'); // lexicon-exempt: internal diagnostic
 	return scope.runSession(

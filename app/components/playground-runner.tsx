@@ -141,6 +141,7 @@ function HostRun({ payload, runtime, traces, trace, className, flush, columns, n
 	);
 	return (
 		<TheoremHost
+			detectCodeLanguage
 			labels={PLAYGROUND_LABELS}
 			transport={transport}
 			trace={trace}
@@ -194,6 +195,7 @@ function TurnRun({
 		/>
 	) : (
 		<TheoremChat
+			detectCodeLanguage
 			labels={PLAYGROUND_LABELS}
 			transport={transport}
 			trace={trace}

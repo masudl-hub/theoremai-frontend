@@ -176,6 +176,40 @@ function BoundaryCard({ boundary, children }: { boundary: ProbeBoundary; childre
 	);
 }
 
+/** A rule id as a phrase: `detect.injection` reads "Injection". */
+function ruleName(rule: string): string {
+	const name = (rule.split('.').at(-1) ?? rule).replaceAll(/[_-]/g, ' ');
+	return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+/** What exactly the guardrails matched, each hit with the text it matched and what was done with it. */
+function Flagged({ answer }: { answer: GuardrailProbeAnswer }) {
+	const hits = answer.guardrails.flatMap((event) =>
+		event.hits.map((hit) => ({ hit, action: event.action })),
+	);
+	if (hits.length === 0) return null;
+	return (
+		<PanePanel title="Matched">
+			<VStack gap={3}>
+				{hits.map(({ hit, action }, at) => (
+					<VStack key={`${hit.rule}-${String(at)}`} gap={1}>
+						<HStack gap={2} align="center" wrap="wrap">
+							<Text weight="medium">{hit.label ?? ruleName(hit.rule)}</Text>
+							<Token label={hit.severity} size="sm" color="gray" />
+							<Token label={action} size="sm" color="gray" />
+						</HStack>
+						{hit.match !== undefined && (
+							<Text type="supporting" color="secondary">
+								{`“${hit.match}”`}
+							</Text>
+						)}
+					</VStack>
+				))}
+			</VStack>
+		</PanePanel>
+	);
+}
+
 /** The text past its boundary, when anything went on. */
 function Crossed({ answer }: { answer: GuardrailProbeAnswer }) {
 	if (answer.passed === undefined) return null;
@@ -457,6 +491,7 @@ function AnswerHead({
 				<Verdict answer={answer} />
 				{answer.refused?.message && <Text color="secondary">{answer.refused.message}</Text>}
 			</VStack>
+			<Flagged answer={answer} />
 			<Crossed answer={answer} />
 		</VStack>
 	);
@@ -659,7 +694,15 @@ function ScopedAnswers({ answers }: { answers: readonly GuardrailProbeAnswer[] }
 						</HStack>
 					}
 				>
-					<TraceGuardrailsView records={answer.traces} head={<Crossed answer={answer} />} />
+					<TraceGuardrailsView
+						records={answer.traces}
+						head={
+							<VStack gap={4}>
+								<Flagged answer={answer} />
+								<Crossed answer={answer} />
+							</VStack>
+						}
+					/>
 				</Collapsible>
 			))}
 		</CollapsibleGroup>

@@ -555,6 +555,19 @@ function ModelPolicySection({ draft, set }: { draft: PlaygroundDraft; set: SetSe
 					set({ allowModelSelect });
 				}}
 			/>
+			<ChoiceRow
+				label="Incompatible saved state"
+				path="providerContinuation.onMismatch"
+				field="providerStateMismatch"
+				value={models.providerStateMismatch ?? 'rebuild'}
+				options={[
+					{ value: 'rebuild', label: 'Continue from history' },
+					{ value: 'error', label: 'Stop with an error' },
+				]}
+				onChange={(value) => {
+					if (value === 'rebuild' || value === 'error') set({ providerStateMismatch: value });
+				}}
+			/>
 			<NumberRow
 				label="Max steps"
 				path="maxSteps"
@@ -569,7 +582,7 @@ function ModelPolicySection({ draft, set }: { draft: PlaygroundDraft; set: SetSe
 			/>
 			<SlotRow
 				label="Key slot"
-				path="key"
+				path="models.*.keySlot"
 				field="key"
 				value={models.key}
 				isRequired={keySlotRequired(draft)}
@@ -579,7 +592,7 @@ function ModelPolicySection({ draft, set }: { draft: PlaygroundDraft; set: SetSe
 			/>
 			<SlotRow
 				label="Fallback slot"
-				path="fallbackKey"
+				path="models.*.fallbackKeySlot"
 				field="fallbackKey"
 				value={models.fallbackKey ?? ''}
 				onChange={(fallbackKey) => {
@@ -608,7 +621,6 @@ function ModelsEditor({
 	return (
 		<>
 			<InspectorSection
-				title="Models"
 				note={
 					draft.identity.profileType === 'decision'
 						? sectionNote('models.decision')
@@ -671,7 +683,7 @@ function DecisionTransportRows({ binding, set }: { binding: ModelBindingDraft; s
 		<>
 			<SegmentedRow<Protocol>
 				label="Protocol"
-				path="models.*.protocol"
+				path="models.*.provider"
 				field="protocol"
 				value={binding.protocol}
 				segments={[PROTOCOL_SEGMENT.decision]}
@@ -728,7 +740,7 @@ function DecisionModelEditor({
 			<DecisionTransportRows binding={binding} set={set} />
 			<SlotRow
 				label="Key slot"
-				path="key"
+				path="models.*.keySlot"
 				value={draft.models.key}
 				onChange={(key) => {
 					setDraft((current) => ({ ...current, models: { ...current.models, key } }));
@@ -868,7 +880,7 @@ function bindingProfileType(chosen: PlaygroundDraft['identity']['profileType']):
 
 /** A provider's segment, disabled with the reason when the playground can't run it here. */
 function providerSegment(
-	provider: Provider,
+	provider: keyof typeof PROVIDER_SEGMENT,
 	binding: ModelBindingDraft,
 	type: ListedProfileType,
 	mode: ContextType<typeof ConnectionMode>,
@@ -942,7 +954,7 @@ function KeySlotRows({ binding, set }: { binding: ModelBindingDraft; set: SetBin
 		<>
 			<SlotRow
 				label="Key slot"
-				path="models.*.key"
+				path="models.*.keySlot"
 				field="keySlot"
 				value={binding.keySlot ?? ''}
 				onChange={(keySlot) => {
@@ -951,7 +963,7 @@ function KeySlotRows({ binding, set }: { binding: ModelBindingDraft; set: SetBin
 			/>
 			<SlotRow
 				label="Fallback slot"
-				path="models.*.fallbackKey"
+				path="models.*.fallbackKeySlot"
 				field="fallbackKeySlot"
 				value={binding.fallbackKeySlot ?? ''}
 				onChange={(fallbackKeySlot) => {
@@ -1085,7 +1097,7 @@ function LocalServerRows({ binding, set }: { binding: ModelBindingDraft; set: Se
 			)}
 			<TextRow
 				label="Server"
-				path="models.*.server"
+				path="models.*.providerOptions.server"
 				field="server"
 				value={binding.server ?? ''}
 				placeholder="ollama"
@@ -1133,7 +1145,7 @@ function ModelSection({
 	const google = isGoogleTransport(binding.protocol, binding.provider);
 	const local = binding.provider === 'local';
 	return (
-		<InspectorSection title="Model" path="models.*">
+		<InspectorSection path="models.*">
 			<TextRow
 				label="Id"
 				path="models.*"
@@ -1148,7 +1160,7 @@ function ModelSection({
 			/>
 			<SegmentedRow<Protocol>
 				label="Protocol"
-				path="models.*.protocol"
+				path="models.*.provider"
 				field="protocol"
 				value={binding.protocol}
 				segments={PROFILE_TYPE_PROTOCOLS[type].map((protocol) => PROTOCOL_SEGMENT[protocol])}
@@ -1220,7 +1232,7 @@ function ConversationStateSection({
 		<InspectorSection title="Conversation state">
 			<SegmentedRow
 				label="Context"
-				path="models.*.persistViaInteractionId"
+				path="models.*.providerOptions.persistViaInteractionId"
 				field="persistViaInteractionId"
 				value={binding.persistViaInteractionId ? 'chain' : 'history'}
 				segments={CONTEXT_SEGMENTS}
@@ -1230,7 +1242,7 @@ function ConversationStateSection({
 			/>
 			<SegmentedRow
 				label="Google storage"
-				path="models.*.store"
+				path="models.*.providerOptions.store"
 				field="store"
 				value={providerDefaultSegment(binding.store)}
 				segments={STORAGE_SEGMENTS}
@@ -1631,7 +1643,7 @@ function InputsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 			)}
 			{draftAllows(draft, 'inputs.maxFiles') && <InputLimitsSection inputs={inputs} set={set} />}
 			{draftAllows(draft, 'inputs.context') && <InputContextSection inputs={inputs} set={set} />}
-			<InspectorSection title="Slots" path="inputs.slots" note={sectionNote('slots')}>
+			<InspectorSection path="inputs.slots" note={sectionNote('slots')}>
 				<TextAreaRow
 					label="Slots"
 					path="inputs.slots"
@@ -1667,15 +1679,15 @@ type SetBinding = (change: Partial<ModelBindingDraft>) => void;
 /** Prompt caching, on OpenRouter's openAi route only. */
 function PromptCacheSection({ binding, set }: { binding: ModelBindingDraft; set: SetBinding }) {
 	return (
-		<InspectorSection title="Prompt cache" path="models.*.cache">
+		<InspectorSection title="Prompt cache" path="models.*.providerOptions.cache">
 			<ChoiceRow
 				label="Cache"
-				path="models.*.cache.mode"
+				path="models.*.providerOptions.cache.mode"
 				field="cacheMode"
 				isRequired={false}
-				placeholder={fieldMeta('models.*.cache')?.unset}
+				placeholder={fieldMeta('models.*.providerOptions.cache')?.unset}
 				value={binding.cacheMode ?? ''}
-				options={catalogChoices<CacheMode>('models.*.cache.mode')}
+				options={catalogChoices<CacheMode>('models.*.providerOptions.cache.mode')}
 				onChange={(cacheMode) => {
 					set({ cacheMode });
 				}}
@@ -1683,10 +1695,10 @@ function PromptCacheSection({ binding, set }: { binding: ModelBindingDraft; set:
 			{binding.cacheMode && (
 				<ChoiceRow
 					label="Lasts"
-					path="models.*.cache.ttl"
+					path="models.*.providerOptions.cache.ttl"
 					field="cacheTtl"
 					value={binding.cacheTtl ?? ''}
-					options={catalogChoices<CacheTtl>('models.*.cache.ttl')}
+					options={catalogChoices<CacheTtl>('models.*.providerOptions.cache.ttl')}
 					onChange={(cacheTtl) => {
 						set({ cacheTtl });
 					}}
@@ -1796,11 +1808,7 @@ function CompactionRows({ binding, set }: { binding: ModelBindingDraft; set: Set
 /** Compaction, where the agent summarises its older history, or another text agent does. */
 function CompactionSection({ binding, set }: { binding: ModelBindingDraft; set: SetBinding }) {
 	return (
-		<InspectorSection
-			title="Compaction"
-			path="models.*.compaction"
-			note={sectionNote('compaction')}
-		>
+		<InspectorSection path="models.*.compaction" note={sectionNote('compaction')}>
 			<ChoiceRow
 				label="Compact"
 				path="models.*.compaction.timing"
@@ -2215,7 +2223,7 @@ function SpeechEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraft: S
 	// Only the OpenAI protocol makes mp3; Gemini refuses it.
 	const mp3 = draft.modelBindings.every((binding) => binding.protocol === 'openAi');
 	return (
-		<InspectorSection title="Voice" path="speech">
+		<InspectorSection path="speech">
 			<PresetRow
 				google={google}
 				label="Voice"
@@ -2317,7 +2325,7 @@ function LiveIngressSection({ live, set }: LiveSectionProps) {
 
 function LiveVoiceSection({ live, set, google }: LiveSectionProps & { google: boolean }) {
 	return (
-		<InspectorSection title="Voice" path="live.voice">
+		<InspectorSection path="live.voice">
 			<PresetRow
 				google={google}
 				label="Voice"
@@ -2377,7 +2385,7 @@ function LiveSessionSection({ live, set }: LiveSectionProps) {
 /** What the agent is told to say when a call opens. */
 function LiveGreetingSection({ live, set }: LiveSectionProps) {
 	return (
-		<InspectorSection title="Greeting" path="live.greeting">
+		<InspectorSection path="live.greeting">
 			<TextAreaRow
 				label="Greeting"
 				path="live.greeting"
@@ -2396,7 +2404,7 @@ function LiveGreetingSection({ live, set }: LiveSectionProps) {
 function LiveCompressionSection({ live, set }: LiveSectionProps) {
 	const mode = useContext(ConnectionMode);
 	return (
-		<InspectorSection title="Context compression" path="live.contextCompression">
+		<InspectorSection path="live.contextCompression">
 			<SwitchRow
 				label="Sliding window"
 				path="live.contextCompression"
@@ -2947,7 +2955,7 @@ function TurnBehaviourEditor({ draft, setDraft }: { draft: PlaygroundDraft; setD
 				<ResumptionSection draft={draft} set={set} />
 			)}
 			{draftAllows(draft, 'turnBehaviour.allowSteering') && (
-				<InspectorSection title="Steering" path="turnBehaviour.allowSteering">
+				<InspectorSection path="turnBehaviour.allowSteering">
 					<SwitchRow
 						label="Steering"
 						path="turnBehaviour.allowSteering"
@@ -3030,7 +3038,7 @@ interface GuardrailsSectionProps {
 /** The note that binds the canary, on the canary leak detector's page while it reads somewhere. */
 function CanarySection({ guardrails, set }: GuardrailsSectionProps) {
 	return (
-		<InspectorSection title="Canary">
+		<InspectorSection>
 			<TextAreaRow
 				label="Bind note"
 				path="lexicon.canary.bind_note"
@@ -3103,7 +3111,7 @@ function BlockedReplySection({
 	set,
 }: GuardrailsSectionProps & { withheld: string }) {
 	return (
-		<InspectorSection title="Blocked reply" path="guardrails.blockedReply">
+		<InspectorSection path="guardrails.blockedReply">
 			<SegmentedRow
 				label="On block"
 				path="guardrails.blockedReply.onBlock"
@@ -3407,7 +3415,7 @@ function ActionSection({
 }) {
 	const uniform = new Set(boundaries.map((boundary) => actions[boundary])).size === 1;
 	return (
-		<InspectorSection title="Action">
+		<InspectorSection>
 			<ActionRow
 				detector={detector}
 				label="On a match"
@@ -4044,7 +4052,7 @@ function OwnDetectorPage({
 				status={statusAt(`own.${String(index)}.at`)}
 				onChange={setActions}
 			/>
-			<InspectorSection title="Patterns">
+			<InspectorSection>
 				<PatternList
 					detector="*"
 					field={`own.${String(index)}.patterns`}
@@ -4331,7 +4339,7 @@ function TracesSection({ observability, set }: ObservabilitySectionProps) {
 function TraceContentSections({ observability, set }: ObservabilitySectionProps) {
 	return (
 		<>
-			<InspectorSection title="Keep" path="observability.include">
+			<InspectorSection path="observability.include">
 				<FlagList
 					label="Keep"
 					path="observability.include"
@@ -4342,7 +4350,7 @@ function TraceContentSections({ observability, set }: ObservabilitySectionProps)
 					}}
 				/>
 			</InspectorSection>
-			<InspectorSection title="Scrub" path="observability.scrub">
+			<InspectorSection path="observability.scrub">
 				<FlagList
 					label="Scrub"
 					path="observability.scrub"
@@ -4650,7 +4658,7 @@ function ToolsEditor({
 		<>
 			{workspace ? (
 				// This agent's tools. Ones it does not use stay in the library, closed.
-				<InspectorSection title="Tools" path="tools.allow" note={note}>
+				<InspectorSection path="tools.allow" note={note}>
 					{allowed.length > 0 && (
 						<AllowedToolsList
 							tools={allowed}
@@ -4681,7 +4689,7 @@ function ToolsEditor({
 					{addTool}
 				</InspectorSection>
 			) : (
-				<InspectorSection title="Tools" path={isHost ? undefined : 'tools'} note={note}>
+				<InspectorSection path={isHost ? undefined : 'tools'} note={note}>
 					{draft.toolSpecs.length > 0 && <ToolList tools={draft.toolSpecs} onSelect={onSelect} />}
 					{addTool}
 				</InspectorSection>
@@ -4704,7 +4712,7 @@ function ToolLoadingSection({
 	set: SetSection<'tools'>;
 }) {
 	return (
-		<InspectorSection title="Loading" path="tools.t2Loader">
+		<InspectorSection path="tools.t2Loader">
 			<ChoiceRow
 				label="T2 loader"
 				path="tools.t2Loader"
@@ -4973,7 +4981,6 @@ function ToolSection({
 }) {
 	return (
 		<InspectorSection
-			title="Tool"
 			note={draft.identity.profileType === 'host' ? sectionNote('tool.host') : undefined}
 		>
 			<TextRow
@@ -5374,7 +5381,7 @@ function OAuthRows({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
 function AuthSection({ tool, set }: { tool: ToolSpecDraft; set: SetTool }) {
 	const authType = tool.authType ?? 'none';
 	return (
-		<InspectorSection title="Auth" path="auth" note={sectionNote('tool.auth')}>
+		<InspectorSection path="auth" note={sectionNote('tool.auth')}>
 			<SegmentedRow
 				label="Type"
 				path="playground.authType"
@@ -5878,12 +5885,14 @@ function WordingAudiencePicker({
 			}}
 		>
 			{WORDING_AUDIENCES.map((entry) => (
-				<SegmentedControlItem
-					key={entry.value}
-					value={entry.value}
-					label={entry.label}
-					icon={<Icon icon={entry.icon} size="sm" />}
-				/>
+				<Tooltip key={entry.value} content={entry.label}>
+					<SegmentedControlItem
+						value={entry.value}
+						label={entry.label}
+						isLabelHidden
+						icon={<Icon icon={entry.icon} size="sm" />}
+					/>
+				</Tooltip>
 			))}
 		</SegmentedControl>
 	);
@@ -5896,10 +5905,12 @@ function WordingAreaTrigger({ area }: { area: ReturnType<typeof wordingAreas>[nu
 			<Icon icon={area.icon} size="sm" color="secondary" />
 			<StackItem size="fill">
 				<VStack gap={0}>
-					<Text type="label" weight="semibold">
+					<Text type="supporting" weight="semibold" color="primary">
 						{area.title}
 					</Text>
-					<Text type="supporting">{area.note}</Text>
+					<Text type="supporting" color="secondary">
+						{area.note}
+					</Text>
 				</VStack>
 			</StackItem>
 			{area.edited > 0 && <Badge variant="info" label={`${String(area.edited)} edited`} />}
@@ -6195,8 +6206,12 @@ function CriteriaList({
 	return (
 		<VStack gap={2}>
 			<VStack gap={0}>
-				<Text type="label">{copy.title}</Text>
-				<Text type="supporting">{copy.note}</Text>
+				<Text type="supporting" weight="semibold" color="primary">
+					{copy.title}
+				</Text>
+				<Text type="supporting" color="secondary">
+					{copy.note}
+				</Text>
 			</VStack>
 			{question.criteria.map((row, at) => (
 				<CriterionRow
@@ -6231,7 +6246,7 @@ interface DecisionSectionProps {
 
 function DecisionContractSection({ decision, set }: DecisionSectionProps) {
 	return (
-		<InspectorSection title="Contract" path="decision.contract">
+		<InspectorSection path="decision.contract">
 			<TextRow
 				label="Contract"
 				path="decision.contract"
@@ -6248,7 +6263,7 @@ function DecisionContractSection({ decision, set }: DecisionSectionProps) {
 
 function DecisionStateSection({ decision, set }: DecisionSectionProps) {
 	return (
-		<InspectorSection title="State" note={sectionNote('decision.state')}>
+		<InspectorSection note={sectionNote('decision.state')}>
 			<NumberRow
 				label="Max state"
 				path="inputs.maxStateBytes"

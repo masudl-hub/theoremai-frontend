@@ -33,11 +33,11 @@ function servesTurns({ profile }: CompiledPlayground): boolean {
 	return profile.type !== 'live' && profile.type !== 'decision' && profile.type !== 'host';
 }
 
-/** The `key` and `fallbackKey` an object names, when they are strings. */
+/** The `keySlot` and `fallbackKeySlot` an object names, when they are strings. */
 function slotsOn(value: unknown): string[] {
 	if (!value || typeof value !== 'object') return [];
-	const { key, fallbackKey } = value as { key?: unknown; fallbackKey?: unknown };
-	return [key, fallbackKey].filter(
+	const { keySlot, fallbackKeySlot } = value as { keySlot?: unknown; fallbackKeySlot?: unknown };
+	return [keySlot, fallbackKeySlot].filter(
 		(slot): slot is string => typeof slot === 'string' && slot !== '',
 	);
 }
@@ -62,11 +62,7 @@ function vaultSource(workspace: CompiledWorkspace): string {
 /** The provider options the route needs, each key read from the server's environment. */
 function providerSource(workspace: CompiledWorkspace): string {
 	const parts = [`vault: ${vaultSource(workspace)}`];
-	if (
-		JSON.stringify(workspace.agents.map((agent) => agent.profile)).includes('"provider":"local"')
-	) {
-		parts.push("local: { baseUrl: process.env.LOCAL_MODEL_URL ?? 'http://127.0.0.1:11434' }");
-	}
+
 	return `{\n${parts.map((part) => `    ${part},`).join('\n')}\n  }`;
 }
 
@@ -299,7 +295,17 @@ function readme(files: readonly SourceFile[], agent: CompiledPlayground, entry: 
  * registration, then the route and component for `agent`, the one being chatted with.
  */
 export function exportFiles(workspace: CompiledWorkspace, agent: CompiledPlayground): SourceFile[] {
-	const source = workspaceSource(workspace);
+	const source = workspaceSource(workspace).map((file) =>
+		file.path !== 'theorem.ts'
+			? file
+			: {
+					...file,
+					code: file.code.replace(
+						"baseURL: 'http://localhost:11434/v1'",
+						"baseURL: (process.env.LOCAL_MODEL_URL ?? 'http://127.0.0.1:11434').replace(/\\/$/, '') + '/v1'",
+					),
+				},
+	);
 	const entry = entryFiles(workspace, agent);
 	return [
 		{ path: 'README.md', code: readme(source, agent, entry) },

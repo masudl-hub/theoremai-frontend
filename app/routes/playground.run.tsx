@@ -1,8 +1,8 @@
 import { Button } from '@astryxdesign/core/Button';
 import { Icon } from '@astryxdesign/core/Icon';
 import { Popover } from '@astryxdesign/core/Popover';
-import { IconKey, IconTimeline } from '@tabler/icons-react';
-import { resolveObservabilityPolicy } from '@theoremjs/agents';
+import { IconActivity, IconKey } from '@tabler/icons-react';
+import { type ModelBinding, resolveObservabilityPolicy } from '@theoremjs/agents';
 import {
 	clearStalePlaygroundRuns,
 	loadPlaygroundRunPayload,
@@ -57,7 +57,7 @@ export const handle = {
 		// The draft loads in the browser, so the server render has no payload yet.
 		title: data?.payload ? runTitle(data.payload) : 'Run',
 		summary:
-			'The agent launched from the playground. It fills the panel beside the rail. A decision or a host starts as the centred request. When it runs, the request moves left and the response comes in on the right. The trace docks at the right and eases open. View trace and Keys sit inside that panel, at the top right. The rail returns to the playground.',
+			'The agent opened from the playground with Open in a new tab. It fills the panel beside the rail. A decision or a host starts as the centred request. When it runs, the request moves left and the response comes in on the right. The trace docks at the right and eases open. View trace and Keys sit inside that panel, at the top right. The rail returns to the playground.',
 	}),
 } satisfies Th30PageHandle;
 
@@ -80,18 +80,18 @@ function withRenamedSlot(
 	from: string,
 	to: string,
 ): PlaygroundRunPayload {
-	const rename = <T extends { key?: string; fallbackKey?: string }>(value: T): T => ({
+	const rename = <T extends { keySlot?: string; fallbackKeySlot?: string }>(value: T): T => ({
 		...value,
-		...(value.key === from ? { key: to } : {}),
-		...(value.fallbackKey === from ? { fallbackKey: to } : {}),
+		...(value.keySlot === from ? { keySlot: to } : {}),
+		...(value.fallbackKeySlot === from ? { fallbackKeySlot: to } : {}),
 	});
 	const renamed = (profile: PlaygroundRunPayload['profile']): PlaygroundRunPayload['profile'] =>
 		profile.type === 'host'
 			? profile
 			: {
-					...rename(profile),
+					...profile,
 					models: Object.fromEntries(
-						Object.entries(profile.models).map(([id, model]) => [id, rename(model)]),
+						Object.entries<ModelBinding>(profile.models).map(([id, model]) => [id, rename(model)]),
 					),
 				};
 	return {
@@ -110,9 +110,19 @@ function withRenamedSlot(
 
 /** `payload` with `slot` as its agent's key, unless it is a host or has a key already. */
 function withAddedSlot(current: PlaygroundRunPayload, slot: string): PlaygroundRunPayload {
-	return current.profile.type === 'host' || current.profile.key
-		? current
-		: { ...current, profile: { ...current.profile, key: slot } };
+	if (current.profile.type === 'host') return current;
+	return {
+		...current,
+		profile: {
+			...current.profile,
+			models: Object.fromEntries(
+				Object.entries<ModelBinding>(current.profile.models).map(([id, binding]) => [
+					id,
+					binding.keySlot ? binding : { ...binding, keySlot: slot },
+				]),
+			),
+		},
+	};
 }
 
 /** The Keys button and the popover it opens. */
@@ -161,7 +171,21 @@ export default function PlaygroundRun({ loaderData }: Route.ComponentProps) {
 		...(payload.dependencies ?? []).map((dependency) => dependency.profile),
 	];
 	const models = profiles.flatMap((profile) =>
-		profile.type === 'host' ? [] : Object.values<ConnectionModel>(profile.models),
+		profile.type === 'host'
+			? []
+			: Object.values<ModelBinding>(profile.models).map(
+					(binding): ConnectionModel => ({
+						...binding,
+						protocol:
+							profile.type === 'decision'
+								? 'decision'
+								: binding.provider === 'google'
+									? profile.type === 'live'
+										? 'geminiLive'
+										: 'geminiInteractions'
+									: 'openAi',
+					}),
+				),
 	);
 	const connection = usePlaygroundConnection(
 		models,
@@ -189,7 +213,7 @@ export default function PlaygroundRun({ loaderData }: Route.ComponentProps) {
 							<Button
 								label={traceOpen ? 'Hide trace' : 'View trace'}
 								isIconOnly={phone}
-								icon={<Icon icon={IconTimeline} size="sm" />}
+								icon={<Icon icon={IconActivity} size="sm" />}
 								aria-pressed={traceOpen}
 								onClick={() => {
 									setTraceOpen((open) => !open);

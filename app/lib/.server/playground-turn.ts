@@ -1,9 +1,10 @@
-import {
-	type CreateProviderOptions,
-	createProvider,
-	type KeyVault,
-	type Profile,
-	type ProfileDefinition,
+import type {
+	KeyVault,
+	ModelBinding,
+	Profile,
+	ProfileDefinition,
+	ProviderHostOptions,
+	ProviderRegistry,
 } from '@theoremjs/agents';
 import {
 	type PlaygroundRuntime,
@@ -50,19 +51,16 @@ function siteKey(env: PlaygroundTurnEnv, provider: string, rank: 0 | 1): string 
 export function playgroundDemoVault(
 	env: PlaygroundTurnEnv,
 	profile: Profile | ProfileDefinition,
+	defaults?: Pick<ProviderRegistry, 'get'>,
 ): KeyVault {
 	if (!('models' in profile)) return {};
-	const top = profile as { key?: string; fallbackKey?: string };
 	const readers = new Map<string, Set<string>>();
 	const primary = new Set<string>();
-	for (const binding of Object.values(profile.models) as {
-		provider: string;
-		key?: string;
-		fallbackKey?: string;
-	}[]) {
-		const key = binding.key ?? top.key;
+	for (const binding of Object.values<ModelBinding>(profile.models)) {
+		const provider = defaults?.get(binding.provider);
+		const key = binding.keySlot ?? provider?.keySlot;
 		if (key) primary.add(key);
-		for (const slot of [key, binding.fallbackKey ?? top.fallbackKey]) {
+		for (const slot of [key, binding.fallbackKeySlot ?? provider?.fallbackKeySlot]) {
 			if (slot) readers.set(slot, (readers.get(slot) ?? new Set()).add(binding.provider));
 		}
 	}
@@ -78,8 +76,9 @@ export function playgroundDemoVault(
 export function playgroundProviders(
 	env: PlaygroundTurnEnv,
 	profile: Profile,
-): CreateProviderOptions {
-	return { vault: playgroundDemoVault(env, profile) };
+	defaults?: Pick<ProviderRegistry, 'get'>,
+): ProviderHostOptions {
+	return { vault: playgroundDemoVault(env, profile, defaults) };
 }
 
 /** What a run needs beside its request: the site's keys, and the check each agent call passes first. */
@@ -89,8 +88,7 @@ function runtime({ env = {}, onAgentCall }: RunHost): PlaygroundRuntime {
 	return {
 		mode: 'demo',
 		resolveHost,
-		provider: (profile: Profile, model?: string) =>
-			createProvider(profile, playgroundProviders(env, profile), model),
+		hostOptions: (profile) => playgroundProviders(env, profile),
 		onAgentCall,
 	};
 }

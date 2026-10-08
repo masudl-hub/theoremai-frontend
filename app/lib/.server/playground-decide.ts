@@ -65,13 +65,14 @@ export async function playgroundDecide(
 		lexicon = profile.lexicon;
 		// Counted only once the request is one configured decision model would answer.
 		const binding = Object.values(profile.models)[0];
-		const modelViolation = modelBindingViolation({ ...binding, builtInTools: [] });
+		const selected = { ...binding, protocol: 'decision' as const, builtInTools: [] };
+		const modelViolation = modelBindingViolation(selected);
 		if (modelViolation)
 			throw new TheoremError('request', `playground decide: ${modelViolation.message}`);
-		const stateViolation = decisionStateViolation(binding, body.state);
+		const stateViolation = decisionStateViolation(selected, body.state);
 		if (stateViolation) throw new TheoremError('request', `playground decide: ${stateViolation}`);
 		for (const question of Object.values(body.questions)) {
-			const violation = decisionQuestionViolation(binding, question);
+			const violation = decisionQuestionViolation(selected, question);
 			if (violation) throw new TheoremError('request', `playground decide: ${violation}`);
 		}
 		const decisionRequest = {

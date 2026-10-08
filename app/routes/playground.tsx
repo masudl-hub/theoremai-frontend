@@ -1218,6 +1218,7 @@ function ExportMenu({
 			button={{
 				label: 'Get code',
 				variant: 'ghost',
+				isIconOnly: true,
 				icon: <Icon icon={IconArrowBarToDown} size="sm" />,
 				tooltip:
 					blocked ??
@@ -2010,8 +2011,19 @@ function PreviewHeader({
 								onClick={testing.toggle}
 							/>
 						)}
+						<ExportActions
+							compiled={compiled.ok ? compiled : undefined}
+							chatted={compile.chatted}
+							chattedId={compile.chattedId}
+							blocked={compile.blocked}
+							copy={copy}
+							connection={{
+								connectionMode: connection.mode,
+								localBaseUrl: connection.local.baseUrl,
+							}}
+						/>
 						{compile.traced && !testing.open ? (
-							<IconButton
+							<Button
 								label={traceLabel}
 								variant="ghost"
 								tooltip={
@@ -2024,17 +2036,6 @@ function PreviewHeader({
 								onClick={trace.toggle}
 							/>
 						) : null}
-						<ExportActions
-							compiled={compiled.ok ? compiled : undefined}
-							chatted={compile.chatted}
-							chattedId={compile.chattedId}
-							blocked={compile.blocked}
-							copy={copy}
-							connection={{
-								connectionMode: connection.mode,
-								localBaseUrl: connection.local.baseUrl,
-							}}
-						/>
 					</HStack>
 				</StackItem>
 			</HStack>
@@ -2205,7 +2206,10 @@ function usePlaygroundPage(loaderData: Route.ComponentProps['loaderData']) {
 		setKeysOpen: view.setKeysOpen,
 		setConversation: run.setConversation,
 	});
-	const title = editorTitle(draft, editing);
+	const title =
+		toolSpecKeyOf(editing) === undefined
+			? editorTitle(draft, editing)
+			: workspaceTree(state.workspace).tools.find((node) => node.id === editing)?.label;
 	useReportTh30Playground(th30Report(draft, compile.compiled, title));
 	return {
 		state,
