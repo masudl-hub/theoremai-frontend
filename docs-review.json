@@ -21,7 +21,7 @@
 			"src/guardrails/detect-at.ts": "e68e7224e4929c410fdeae143c726dd7653ae24c",
 			"src/guardrails/detect-reply.ts": "66ebd12bd7734d9b45b4573b99bce51b3166f546",
 			"src/guardrails/detect-stream.ts": "568ccc1525e20311712cb1753f56ad94affc1c18",
-			"src/guardrails/detectors.ts": "02ab2672808faab1709880156ef44b7d63c55d91",
+			"src/guardrails/detectors.ts": "a86a5bf93b222a1a5627b7723089d5c8b7e09d4d",
 			"src/guardrails/egress-automata.ts": "4d33bfef62682f160abaaa089fddec66e59a0f7f",
 			"src/guardrails/egress-compiler.ts": "affd2781e19e8ee8f35b899367795cb9e2fef6bc",
 			"src/guardrails/egress-patterns.ts": "19f8c7dc34caf8bf8b67f2444f045348fb0159c9",

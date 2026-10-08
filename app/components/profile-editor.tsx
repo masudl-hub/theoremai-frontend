@@ -3769,7 +3769,7 @@ function DetectSection({
 						<ActionRow
 							key={detector}
 							detector={detector}
-							label={DETECTOR_META[detector].label}
+							label={DETECTOR_META[detector].short ?? DETECTOR_META[detector].label}
 							defaults={DETECTOR_META[detector].defaults}
 							boundaries={applies}
 							actions={detect[detector]}
