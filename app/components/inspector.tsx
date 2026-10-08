@@ -488,10 +488,14 @@ export type SegmentedRowProps<T extends string> = {
 	onChange: (next: T) => void;
 } & IsRequired;
 
+/** The most choices a row holds and still has room to name the picked one beside its icon. */
+const NAMED_SEGMENTS = 3;
+
 /**
- * A closed set, as icon-only segments. Each segment's label is
- * its accessible name, and on hover it shows with the schema's description of that option. `warning` says, under it, when the pick
- * is valid but won't do what it looks like; a compile issue on the row shows instead.
+ * A closed set, as icon segments; the picked one also says its name where the row has room. Each
+ * segment's label is its accessible name, and on hover it shows with the schema's description of
+ * that option. `warning` says, under it, when the pick is valid but won't do what it looks like; a
+ * compile issue on the row shows instead.
  */
 export function SegmentedRow<T extends string>({
 	label,
@@ -530,12 +534,14 @@ export function SegmentedRow<T extends string>({
 							options?.[segment.value] ||
 							segment.description;
 						const name = segment.isRecommended ? `${segment.label} (recommended)` : segment.label;
+						// The picked choice says its name where there is room for one: up to three choices.
+						const isNamed = segment.value === value && segments.length <= NAMED_SEGMENTS;
 						return (
 							<Tooltip key={segment.value} content={description ? `${name}: ${description}` : name}>
 								<SegmentedControlItem
 									value={segment.value}
-									label={name}
-									isLabelHidden
+									label={isNamed ? segment.label : name}
+									isLabelHidden={!isNamed}
 									isDisabled={segment.isDisabled}
 									icon={<Icon icon={segment.icon} size="sm" />}
 								/>
