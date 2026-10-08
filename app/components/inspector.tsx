@@ -65,9 +65,7 @@ export function InspectorSection({
 	note?: string;
 	children: ReactNode;
 }) {
-	const heading = title && (
-		<Text type="large">{title}</Text>
-	);
+	const heading = title && <Text type="large">{title}</Text>;
 	return (
 		<Section variant="transparent" padding={3}>
 			<VStack gap={3}>
