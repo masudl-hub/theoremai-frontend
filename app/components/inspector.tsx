@@ -208,7 +208,7 @@ export function InspectorRow({
 				</HStack>
 			</StackItem>
 			<StackItem size="fill">
-				<HStack gap={1} vAlign="center">
+				<HStack gap={1} vAlign={hasNote ? 'start' : 'center'}>
 					{children}
 				</HStack>
 			</StackItem>
