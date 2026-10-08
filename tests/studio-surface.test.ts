@@ -9,7 +9,7 @@ import {
 	workspaceFromDraft,
 } from '@theoremjs/studio';
 import { type StudioSurfaceHost, studioSurface } from '@theoremjs/studio/surface';
-import { createStudioStore } from '../app/lib/studio-store.ts';
+import { createStudioStore } from '@theoremjs/studio/ui/lib/studio-store.ts';
 
 const KEY = ['AIzaSy', 'TESTONLY0000000000000000000000000'].join('');
 

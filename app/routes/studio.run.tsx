@@ -11,11 +11,11 @@ import {
 	type StudioRunPayload,
 } from '@theoremjs/studio';
 import { studioKeySlots } from '@theoremjs/studio/browser';
+import { ProjectContext, projectSession } from '@theoremjs/studio/ui/lib/studio-project.ts';
+import { StudioKeys, useStudioConnection } from '@theoremjs/studio/ui/studio-connection.tsx';
+import { StudioRunner } from '@theoremjs/studio/ui/studio-runner.tsx';
 import { useState, useSyncExternalStore } from 'react';
 import { redirect } from 'react-router';
-import { StudioKeys, useStudioConnection } from '../components/studio-connection';
-import { StudioRunner } from '../components/studio-runner';
-import { ProjectContext, projectSession } from '../lib/studio-project';
 import type { Th30PageHandle } from '../lib/th30-page';
 import type { Route } from './+types/studio.run';
 import './run.css';

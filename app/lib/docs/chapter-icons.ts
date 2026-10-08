@@ -4,7 +4,7 @@
  */
 
 import { IconBook, IconCode, IconGitBranch, IconPlayerPlay } from '@tabler/icons-react';
-import { FACET_ICON } from '../facet-icons';
+import { FACET_ICON } from '@theoremjs/studio/ui/lib/facet-icons.ts';
 import { DOC_SECTIONS, type DocSection } from './schema';
 
 export const CHAPTER_ICON = {

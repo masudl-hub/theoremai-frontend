@@ -15,7 +15,7 @@ import {
 	withAgentDraft,
 	workspaceFromDraft,
 } from '@theoremjs/studio';
-import { exportFiles, exportText, llmBrief } from '../app/lib/export-agent.ts';
+import { exportFiles, exportText, llmBrief } from '@theoremjs/studio/ui/lib/export-agent.ts';
 import { zipFiles } from '../app/lib/zip.ts';
 
 /** The concierge, calling a helper through an agent tool. */

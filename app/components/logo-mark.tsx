@@ -1,5 +1,5 @@
+import { THEOREM_MARK } from '@theoremjs/studio/ui/theorem-mark.tsx';
 import type { SVGProps } from 'react';
-import { THEOREM_MARK } from './theorem-mark';
 
 /** Theorem mark for the rail: same paths as the favicon, in the mark's own 24×24 box. */
 export function LogoMark(props: SVGProps<SVGSVGElement>) {

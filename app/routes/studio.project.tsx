@@ -6,8 +6,8 @@ import { Center } from '@astryxdesign/core/Center';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { Icon } from '@astryxdesign/core/Icon';
 import { IconPlugConnectedX } from '@tabler/icons-react';
+import { openProject } from '@theoremjs/studio/ui/lib/studio-project.ts';
 import { SITE_NAME } from '../lib/home-content';
-import { openProject } from '../lib/studio-project';
 
 export { default, HydrateFallback, handle } from './studio';
 

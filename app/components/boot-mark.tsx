@@ -1,7 +1,7 @@
+import { TheoremMark } from '@theoremjs/studio/ui/theorem-mark.tsx';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
 import { bootHasPlayed, prefersReducedMotion, revealShell, shapeAt, sleep } from './shell-motion';
-import { TheoremMark } from './theorem-mark';
 import './theorem-mark.css';
 
 const DRAW_CAP_MS = 2800;

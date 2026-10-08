@@ -6,7 +6,7 @@ import {
 	type StudioRunPayload,
 	setProfileType,
 } from '@theoremjs/studio';
-import { pageInputsOf, sentPageValues } from '../app/lib/studio-page';
+import { pageInputsOf, sentPageValues } from '@theoremjs/studio/ui/lib/studio-page.ts';
 
 function payloadOf(draft: ReturnType<typeof createExampleDraft>): StudioRunPayload {
 	const compiled = compileStudio(draft);

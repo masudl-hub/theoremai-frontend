@@ -1,3 +1,4 @@
+import { TheoremMark } from '@theoremjs/studio/ui/theorem-mark.tsx';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigation } from 'react-router';
@@ -16,7 +17,6 @@ import {
 	sleep,
 	takeShape,
 } from './shell-motion';
-import { TheoremMark } from './theorem-mark';
 
 const SHOW_AFTER_MS = 180;
 const HOLD_AFTER_DRAW_MS = 80;

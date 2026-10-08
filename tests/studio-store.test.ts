@@ -13,9 +13,9 @@ import {
 	clearConversation,
 	restoreConversation,
 	saveConversation,
-} from '../app/lib/studio-conversation.ts';
-import { restoreStudio } from '../app/lib/studio-restore.ts';
-import { createStudioStore } from '../app/lib/studio-store.ts';
+} from '@theoremjs/studio/ui/lib/studio-conversation.ts';
+import { restoreStudio } from '@theoremjs/studio/ui/lib/studio-restore.ts';
+import { createStudioStore } from '@theoremjs/studio/ui/lib/studio-store.ts';
 
 const KEY = 'theorem.studio.v2';
 const V1_KEY = 'theorem.studio.v1';

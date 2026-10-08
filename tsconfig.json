@@ -21,7 +21,9 @@
 		"rootDirs": [".", "./.react-router/types"],
 		// @theoremjs/react is compiled from source and ships its own @types/react and Astryx;
 		// resolve both to this install so their types unify (and the site theme's variants hold).
+		// @theoremjs/studio's screen has no install of its own, so its icons resolve here too.
 		"paths": {
+			"@tabler/icons-react": ["./node_modules/@tabler/icons-react"],
 			"@astryxdesign/core": ["./node_modules/@astryxdesign/core/dist/index.d.ts"],
 			"@astryxdesign/core/*": ["./node_modules/@astryxdesign/core/dist/*/index.d.ts"],
 			"react": ["./node_modules/@types/react"],

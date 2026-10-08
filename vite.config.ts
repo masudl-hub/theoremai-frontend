@@ -68,7 +68,8 @@ export default defineConfig({
 		entries: [
 			'app/**/*.tsx',
 			`${theoremai.root}/react/src/**/*.tsx`,
-			`${theoremai.root}/studio/**/*.ts`,
+			`${theoremai.root}/studio/**/*.{ts,tsx}`,
+			`!${theoremai.root}/studio/app/**`,
 			`!${theoremai.root}/**/*.test.*`,
 		],
 		// Served per icon by tablerIconFiles instead.

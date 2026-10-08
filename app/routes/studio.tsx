@@ -105,6 +105,49 @@ import {
 	workspaceTree,
 } from '@theoremjs/studio';
 import { type StudioSurfaceHost, studioSurface } from '@theoremjs/studio/surface';
+import { GuardrailTester, ProbedAgent } from '@theoremjs/studio/ui/guardrail-tester.tsx';
+import {
+	ConnectionMode,
+	ISSUE_ROW_ATTRIBUTE,
+	LeavePage,
+	ListBadges,
+	LocalConnection,
+	WorkspaceContext,
+} from '@theoremjs/studio/ui/inspector-context.ts';
+import { exportFiles, exportText, llmBrief } from '@theoremjs/studio/ui/lib/export-agent.ts';
+import { FACET_ICON } from '@theoremjs/studio/ui/lib/facet-icons.ts';
+import {
+	clearConversation,
+	restoreConversation,
+	saveConversation,
+} from '@theoremjs/studio/ui/lib/studio-conversation.ts';
+import {
+	pageInputsOf,
+	sentPageValues,
+	usePageValues,
+} from '@theoremjs/studio/ui/lib/studio-page.ts';
+import {
+	ProjectContext,
+	type ProjectSession,
+	useProject,
+} from '@theoremjs/studio/ui/lib/studio-project.ts';
+import { restoreStudio } from '@theoremjs/studio/ui/lib/studio-restore.ts';
+import type { RestoredStudio } from '@theoremjs/studio/ui/lib/studio-session.ts';
+import { createStudioStore, type StudioStore } from '@theoremjs/studio/ui/lib/studio-store.ts';
+import { toolCredential } from '@theoremjs/studio/ui/lib/tool-credentials.ts';
+import { runToolProbe } from '@theoremjs/studio/ui/lib/tool-probe.ts';
+import {
+	addToolSpec,
+	PROFILE_TYPE_ICON,
+	ProfileEditor,
+	toolTypeIcon,
+} from '@theoremjs/studio/ui/profile-editor.tsx';
+import {
+	type StudioConnectionState,
+	StudioKeys,
+	useStudioConnection,
+} from '@theoremjs/studio/ui/studio-connection.tsx';
+import { StudioRunner } from '@theoremjs/studio/ui/studio-runner.tsx';
 import {
 	type CSSProperties,
 	type Dispatch,
@@ -121,50 +164,15 @@ import {
 	useSyncExternalStore,
 } from 'react';
 import { useRouteLoaderData } from 'react-router';
-import { GuardrailTester, ProbedAgent } from '../components/guardrail-tester';
-import {
-	ConnectionMode,
-	ISSUE_ROW_ATTRIBUTE,
-	LeavePage,
-	ListBadges,
-	LocalConnection,
-	WorkspaceContext,
-} from '../components/inspector-context';
 import { PageJsonLd } from '../components/page-summary';
-import {
-	addToolSpec,
-	PROFILE_TYPE_ICON,
-	ProfileEditor,
-	toolTypeIcon,
-} from '../components/profile-editor';
 import { type CodeApply, StudioCode } from '../components/studio-code';
-import {
-	type StudioConnectionState,
-	StudioKeys,
-	useStudioConnection,
-} from '../components/studio-connection';
-import { StudioRunner } from '../components/studio-runner';
 import { STUDIO_SEED_IDS, type StudioSeedId } from '../lib/docs/schema';
 import { docsSeedDraft, docsSeedQuestion } from '../lib/docs/seeds';
-import { exportFiles, exportText, llmBrief } from '../lib/export-agent';
-import { FACET_ICON } from '../lib/facet-icons';
 import { SITE_NAME } from '../lib/home-content';
 import { KERNEL_PACKAGE_VERSION } from '../lib/kernel-version';
 import { STUDIO_EXAMPLES, STUDIO_TITLE, studioDescription } from '../lib/studio-content';
-import {
-	clearConversation,
-	restoreConversation,
-	saveConversation,
-} from '../lib/studio-conversation';
-import { pageInputsOf, sentPageValues, usePageValues } from '../lib/studio-page';
-import { ProjectContext, type ProjectSession, useProject } from '../lib/studio-project';
-import { restoreStudio } from '../lib/studio-restore';
-import type { RestoredStudio } from '../lib/studio-session';
-import { createStudioStore, type StudioStore } from '../lib/studio-store';
 import { useReportTh30Studio } from '../lib/th30-page';
 import { th30Surfaces } from '../lib/th30-surfaces';
-import { toolCredential } from '../lib/tool-credentials';
-import { runToolProbe } from '../lib/tool-probe';
 import { zipFiles } from '../lib/zip';
 import type { Route } from './+types/studio';
 import type { ShellHandle, loader as shellLoader } from './shell';
