@@ -4144,9 +4144,13 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 			)}
 			<NetworkSection guardrails={guardrails} set={set} />
 			{draftAllows(draft, 'guardrails.taint') && (
-				<InspectorSection title="Taint" path="guardrails.taint" note={PLAYGROUND_TAINT_NOTE}>
+				<InspectorSection
+					title="After a remote read"
+					path="guardrails.taint"
+					note={PLAYGROUND_TAINT_NOTE}
+				>
 					<SegmentedRow
-						label="Refuse"
+						label="Refuse calls"
 						path="guardrails.taint.afterRemoteRead"
 						value={guardrails.taintAfterRemoteRead || 'off'}
 						segments={TAINT_SEGMENTS}
@@ -4155,7 +4159,7 @@ function GuardrailsEditor({ draft, setDraft }: { draft: PlaygroundDraft; setDraf
 						}}
 					/>
 					<SegmentedRow
-						label="Destination"
+						label="New addresses"
 						path="guardrails.taint.remoteDestination"
 						value={guardrails.taintRemoteDestination || 'off'}
 						segments={DESTINATION_SEGMENTS}
