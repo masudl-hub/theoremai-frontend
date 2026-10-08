@@ -833,10 +833,12 @@ function innerNodeId(id: string, focus: string): string | undefined {
 }
 
 /** Hands the compiled agent to a new tab through this browser's storage; the run route reads it back. */
-function openInNewTab(payload: PlaygroundRunPayload) {
+function openInNewTab(payload: PlaygroundRunPayload, studio: StudioSession | null) {
 	const runId = createPlaygroundRunId();
 	savePlaygroundRunPayload(payload, runId);
-	window.open(`/playground/run?run=${encodeURIComponent(runId)}`, '_blank', 'noopener');
+	// A project's agent runs the project's code on its own page too.
+	const project = studio ? `&studio=${encodeURIComponent(studio.project)}` : '';
+	window.open(`/playground/run?run=${encodeURIComponent(runId)}${project}`, '_blank', 'noopener');
 }
 
 /** The workspace's files as a .zip, named for the agent being chatted with. */
@@ -1001,6 +1003,7 @@ type SurfacePage = {
 	copy: (text: string, what: string) => void;
 	setKeysOpen: (open: boolean) => void;
 	setConversation: Dispatch<SetStateAction<number>>;
+	studio: StudioSession | null;
 };
 
 /**
@@ -1097,11 +1100,14 @@ function runMembers(
 		launch: () => {
 			const result = runNow();
 			if (!result) return;
-			openInNewTab({
-				...runPayload(result),
-				connectionMode: page.current.mode,
-				localBaseUrl: page.current.connection.local.baseUrl,
-			});
+			openInNewTab(
+				{
+					...runPayload(result),
+					connectionMode: page.current.mode,
+					localBaseUrl: page.current.connection.local.baseUrl,
+				},
+				page.current.studio,
+			);
 		},
 		exportAgent: (format) => {
 			const workspace = store.getWorkspace();
@@ -1190,6 +1196,7 @@ function ExportActions({
 	copy: (text: string, what: string) => void;
 	connection: Pick<PlaygroundRunPayload, 'connectionMode' | 'localBaseUrl'>;
 }) {
+	const studio = useStudio();
 	return (
 		<>
 			<IconButton
@@ -1200,7 +1207,7 @@ function ExportActions({
 				tooltip={blocked ?? 'Open this agent on its own full page, in a new tab'}
 				onClick={() => {
 					const run = compiled && workspaceRunAgent(compiled, chattedId);
-					if (run) openInNewTab({ ...runPayload(run), ...connection });
+					if (run) openInNewTab({ ...runPayload(run), ...connection }, studio);
 				}}
 			/>
 			<ExportMenu compiled={compiled} chatted={chatted} blocked={blocked} copy={copy} />
@@ -1640,9 +1647,9 @@ const TreeColumn = memo(function TreeColumn({
 				<HStack gap={2} vAlign="start">
 					<StackItem size="fill">
 						<VStack gap={1}>
-							<Heading level={3}>{studio ? studio.project : 'theorem playground'}</Heading>
+							<Heading level={3}>{studio ? 'theorem studio' : 'theorem playground'}</Heading>
 							<Text type="supporting" color="secondary">
-								{`${studio ? 'theorem studio · ' : ''}@theoremjs/agents ${KERNEL_PACKAGE_VERSION}`}
+								{`${studio ? `${studio.project} · ` : ''}@theoremjs/agents ${KERNEL_PACKAGE_VERSION}`}
 							</Text>
 						</VStack>
 					</StackItem>
@@ -2211,6 +2218,7 @@ function usePlaygroundPage(loaderData: PlaygroundLoaderData) {
 		copy,
 		setKeysOpen: view.setKeysOpen,
 		setConversation: run.setConversation,
+		studio: loaderData.studio ?? null,
 	});
 	const title =
 		toolSpecKeyOf(editing) === undefined
@@ -2437,10 +2445,12 @@ function EditorColumn({
 				setSheet={setSheet}
 			/>
 			{studio && (
-				<Banner
-					status="info"
-					title={`Edits here are not written to ${studio.project} yet. Runs use its own code.`}
-				/>
+				<Section variant="transparent" padding={3}>
+					<Banner
+						status="info"
+						title={`Edits here are not written to ${studio.project} yet. Runs use its own code.`}
+					/>
+				</Section>
 			)}
 			<StackItem size="fill">
 				<LeavePage value={leavePage}>

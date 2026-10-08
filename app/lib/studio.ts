@@ -24,6 +24,11 @@ export function useStudio(): StudioSession | null {
 	return useContext(StudioContext);
 }
 
+/** The studio's session for a project already open: the run page names it in its address. */
+export function studioSession(project: string): StudioSession {
+	return { endpoint: STUDIO_ENDPOINT, project, problems: [] };
+}
+
 /** Where the studio runs the profile with this id. */
 export function studioProfileEndpoint(studio: StudioSession, profileId: string): string {
 	return `${studio.endpoint}/profiles/${encodeURIComponent(profileId)}`;

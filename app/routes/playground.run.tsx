@@ -15,6 +15,7 @@ import { useState, useSyncExternalStore } from 'react';
 import { redirect } from 'react-router';
 import { PlaygroundKeys, usePlaygroundConnection } from '../components/playground-connection';
 import { PlaygroundRunner } from '../components/playground-runner';
+import { StudioContext, studioSession } from '../lib/studio';
 import type { Th30PageHandle } from '../lib/th30-page';
 import type { Route } from './+types/playground.run';
 import './run.css';
@@ -67,7 +68,9 @@ export function clientLoader({ request }: Route.ClientLoaderArgs) {
 	const runId = readPlaygroundRunIdFromUrl(request.url);
 	const payload = runId ? loadPlaygroundRunPayload(runId) : null;
 	if (!payload) return redirect(PLAYGROUND_HREF);
-	return { payload };
+	// A project's agent, opened from the studio: the dev server only, where a project can be open.
+	const project = import.meta.env.DEV ? new URL(request.url).searchParams.get('studio') : null;
+	return { payload, studio: project ? studioSession(project) : null };
 }
 
 export function HydrateFallback() {
@@ -205,7 +208,7 @@ export default function PlaygroundRun({ loaderData }: Route.ComponentProps) {
 	return (
 		<TheoremThemeProvider mode="dark">
 			{/* The draft exists only in the browser, so the title is set after hydration. */}
-			<title>{`${title} · theorem playground`}</title>
+			<title>{`${title} · theorem ${loaderData.studio ? 'studio' : 'playground'}`}</title>
 			<TracePlacement value="panel">
 				<div className="run-page">
 					<div className="run-controls">
@@ -231,16 +234,18 @@ export default function PlaygroundRun({ loaderData }: Route.ComponentProps) {
 							phone={phone}
 						/>
 					</div>
-					<PlaygroundRunner
-						key={mode}
-						payload={payload}
-						mode={mode}
-						runtime={runtime}
-						trace={traced ? traceOpen : undefined}
-						flush
-						columns
-						className="run-chat"
-					/>
+					<StudioContext.Provider value={loaderData.studio}>
+						<PlaygroundRunner
+							key={mode}
+							payload={payload}
+							mode={mode}
+							runtime={runtime}
+							trace={traced ? traceOpen : undefined}
+							flush
+							columns
+							className="run-chat"
+						/>
+					</StudioContext.Provider>
 				</div>
 			</TracePlacement>
 		</TheoremThemeProvider>
