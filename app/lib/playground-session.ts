@@ -12,6 +12,8 @@ export const CHAT_PREFIX = 'theorem.playground.v2.chat:';
 export interface RestoredPlayground {
 	workspace: PlaygroundWorkspace;
 	revision: number;
+	/** A workspace this tab does not keep: a project's, read fresh from the project each load. */
+	transient?: boolean;
 }
 
 /** What sessionStorage holds. */

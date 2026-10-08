@@ -116,6 +116,8 @@ interface StoreState {
 	changes: DraftChange[];
 	listeners: Set<() => void>;
 	timer: ReturnType<typeof setTimeout> | undefined;
+	/** Whether the workspace is written to sessionStorage. */
+	kept: boolean;
 	view: { agents: unknown; toolSpecs: unknown; focus: string; draft: PlaygroundDraft } | undefined;
 }
 
@@ -136,6 +138,7 @@ function writeWorkspace(state: StoreState): void {
 
 /** Queues a write, unless one is already queued. */
 function scheduleWrite(state: StoreState): void {
+	if (!state.kept) return;
 	state.timer ??= setTimeout(() => {
 		writeWorkspace(state);
 	}, WRITE_MS);
@@ -243,6 +246,7 @@ export function createPlaygroundStore(initial: RestoredPlayground) {
 		changes: [],
 		listeners: new Set(),
 		timer: undefined,
+		kept: !initial.transient,
 		view: undefined,
 	};
 	const getFocus = () => focusOf(state);

@@ -1,3 +1,4 @@
+import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
 import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
@@ -163,6 +164,7 @@ import { pageInputsOf, sentPageValues, usePageValues } from '../lib/playground-p
 import { restorePlayground } from '../lib/playground-restore';
 import type { RestoredPlayground } from '../lib/playground-session';
 import { createPlaygroundStore, type PlaygroundStore } from '../lib/playground-store';
+import { StudioContext, type StudioSession, useStudio } from '../lib/studio';
 import { useReportTh30Playground } from '../lib/th30-page';
 import { th30Surfaces } from '../lib/th30-surfaces';
 import { toolCredential } from '../lib/tool-credentials';
@@ -1631,15 +1633,16 @@ const TreeColumn = memo(function TreeColumn({
 	listRef: RefObject<HTMLDivElement | null>;
 	setSheet: (sheet: Sheet) => void;
 }) {
+	const studio = useStudio();
 	return (
 		<Section variant="transparent" width={TREE_WIDTH} height="100%" padding={4} dividers={['end']}>
 			<VStack gap={4} height="100%">
 				<HStack gap={2} vAlign="start">
 					<StackItem size="fill">
 						<VStack gap={1}>
-							<Heading level={3}>theorem playground</Heading>
+							<Heading level={3}>{studio ? studio.project : 'theorem playground'}</Heading>
 							<Text type="supporting" color="secondary">
-								{`@theoremjs/agents ${KERNEL_PACKAGE_VERSION}`}
+								{`${studio ? 'theorem studio · ' : ''}@theoremjs/agents ${KERNEL_PACKAGE_VERSION}`}
 							</Text>
 						</VStack>
 					</StackItem>
@@ -2182,7 +2185,10 @@ const PreviewPane = memo(function PreviewPane({
 });
 
 /** Everything the page holds: the workspace, its connection, the editor's view, the compile and the run. */
-function usePlaygroundPage(loaderData: Route.ComponentProps['loaderData']) {
+/** What the page opens on: the playground's own loader data, or a project's from the studio's. */
+type PlaygroundLoaderData = Route.ComponentProps['loaderData'] & { studio?: StudioSession };
+
+function usePlaygroundPage(loaderData: PlaygroundLoaderData) {
 	const state = usePlaygroundWorkspace(loaderData.start);
 	const { store, workspace, draft, focus } = state;
 	const connection = useWorkspaceConnection(workspace);
@@ -2234,7 +2240,7 @@ function usePlaygroundPage(loaderData: Route.ComponentProps['loaderData']) {
  * agent on the right, under Get code. The draft compiles as it changes; while it doesn't
  * compile, the agent stays the last one that did.
  */
-export default function Playground({ loaderData }: Route.ComponentProps) {
+export default function Playground({ loaderData }: { loaderData: PlaygroundLoaderData }) {
 	const page = usePlaygroundPage(loaderData);
 	const { state, connection, view, frame, selected, editing, issueReveal, compile } = page;
 	const { sheet, setSheet, run, copy, chatRef, title } = page;
@@ -2244,7 +2250,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 	const addAgentFrom = useAddAgent(store, state.update, view.open);
 
 	return (
-		<>
+		<StudioContext.Provider value={loaderData.studio ?? null}>
 			<ShellJsonLd />
 			<Layout
 				ref={frame.layoutCallbackRef}
@@ -2286,7 +2292,7 @@ export default function Playground({ loaderData }: Route.ComponentProps) {
 					/>
 				}
 			/>
-		</>
+		</StudioContext.Provider>
 	);
 }
 
@@ -2414,6 +2420,7 @@ function EditorColumn({
 	const { editorRef, reveal, revealed } = issueReveal;
 	const { shown, leavePage } = useLeftIssues(compile.editorIssues, selected, revealed);
 	const reset = useReset(state);
+	const studio = useStudio();
 	return (
 		<VStack height="100%">
 			<EditorToolbar
@@ -2429,6 +2436,12 @@ function EditorColumn({
 				reset={reset}
 				setSheet={setSheet}
 			/>
+			{studio && (
+				<Banner
+					status="info"
+					title={`Edits here are not written to ${studio.project} yet. Runs use its own code.`}
+				/>
+			)}
 			<StackItem size="fill">
 				<LeavePage value={leavePage}>
 					<EditorColumnBody

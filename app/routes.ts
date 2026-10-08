@@ -8,6 +8,8 @@ export default [
 		route('contribute', 'routes/contribute.tsx'),
 		route('playground', 'routes/playground.tsx'),
 		route('playground/run', 'routes/playground.run.tsx'),
+		// The playground opened on a local project. A deployed site has no project to open.
+		...(process.env.NODE_ENV === 'production' ? [] : [route('studio', 'routes/studio.tsx')]),
 		route('docs', 'routes/docs.tsx'),
 		route('docs/:slug', 'routes/docs.$slug.tsx'),
 	]),
