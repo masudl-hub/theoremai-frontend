@@ -3720,7 +3720,7 @@ const ownName = (detector: OwnDetectorDraft) =>
 
 /**
  * Every detector on one line: its name and what it does with a match, then the button that opens
- * its page. Theorem's sit under their group, the builder's own under "Yours", and one that applies
+ * its page. Theorem's sit under their group, the builder's own under "Custom detectors", and one that applies
  * at no boundary the profile has is left out.
  */
 function DetectSection({
@@ -3783,7 +3783,7 @@ function DetectSection({
 				</VStack>
 			))}
 			<VStack gap={2}>
-				<InspectorGroupTitle title="Yours" hint={sectionNote('detect.own')} />
+				<InspectorGroupTitle title="Custom detectors" hint={sectionNote('detect.own')} />
 				{own.map((detector, index) => (
 					<ActionRow
 						// biome-ignore lint/suspicious/noArrayIndexKey: detectors are keyed by text the builder is typing
