@@ -168,15 +168,20 @@ function RowLabel({
 	);
 }
 
+/** The height of a row's control, which its label centres on when a note makes the row taller. */
+const CONTROL_HEIGHT = 28;
+
 /**
  * One row: the label column, then the controls for it. `path` is the field's schema catalog path;
- * `hasIssue` marks the row for the issue pill.
+ * `hasIssue` marks the row for the issue pill. With `hasNote`, a note sits under the control, so the
+ * label stays beside the control and not halfway down the note.
  */
 export function InspectorRow({
 	label,
 	path,
 	isRequired = false,
 	hasIssue,
+	hasNote = false,
 	children,
 }: {
 	label: string;
@@ -184,12 +189,21 @@ export function InspectorRow({
 	/** Notes "Required" under the label. */
 	isRequired?: boolean;
 	hasIssue?: boolean;
+	hasNote?: boolean;
 	children: ReactNode;
 }) {
 	return (
-		<HStack gap={2} vAlign="center" {...{ [ISSUE_ROW_ATTRIBUTE]: hasIssue || undefined }}>
+		<HStack
+			gap={2}
+			vAlign={hasNote ? 'start' : 'center'}
+			{...{ [ISSUE_ROW_ATTRIBUTE]: hasIssue || undefined }}
+		>
 			<StackItem size="static">
-				<HStack width={LABEL_COLUMN}>
+				<HStack
+					width={LABEL_COLUMN}
+					minHeight={hasNote ? CONTROL_HEIGHT : undefined}
+					vAlign="center"
+				>
 					<RowLabel label={label} path={path} isRequired={isRequired} />
 				</HStack>
 			</StackItem>
@@ -230,16 +244,25 @@ function FillRow({
 	path,
 	required,
 	status,
+	note,
 	children,
 }: {
 	label: string;
 	path: string;
 	required: boolean;
 	status?: InputStatus;
+	/** A note of the row's own, shown under the control when the field has no issue. */
+	note?: InputStatus;
 	children: ReactNode;
 }) {
 	return (
-		<InspectorRow label={label} path={path} isRequired={required} hasIssue={status !== undefined}>
+		<InspectorRow
+			label={label}
+			path={path}
+			isRequired={required}
+			hasIssue={status !== undefined}
+			hasNote={Boolean((status ?? note)?.message)}
+		>
 			<StackItem size="fill">{children}</StackItem>
 		</InspectorRow>
 	);
@@ -334,7 +357,13 @@ export function NumberRow(
 ) {
 	const { status, required, unset, control } = useFieldRow(props);
 	return (
-		<FillRow label={props.label} path={props.path} required={required} status={status}>
+		<FillRow
+			label={props.label}
+			path={props.path}
+			required={required}
+			status={status}
+			note={props.status}
+		>
 			<NumberInput
 				{...control}
 				status={status ?? props.status}
@@ -391,7 +420,13 @@ export function SliderRow(
 	const status = useFieldStatus()(field);
 	const { required } = presence(path);
 	return (
-		<InspectorRow label={label} path={path} isRequired={required} hasIssue={status !== undefined}>
+		<InspectorRow
+			label={label}
+			path={path}
+			isRequired={required}
+			hasIssue={status !== undefined}
+			hasNote={Boolean(status?.message)}
+		>
 			<StackItem size="fill">
 				<Slider
 					label={label}
@@ -444,7 +479,12 @@ export function SwitchRow({
 }) {
 	const status = useFieldStatus()(field);
 	return (
-		<InspectorRow label={label} path={path} hasIssue={status !== undefined}>
+		<InspectorRow
+			label={label}
+			path={path}
+			hasIssue={status !== undefined}
+			hasNote={Boolean(status?.message)}
+		>
 			<Switch
 				label={label}
 				status={status}
@@ -515,7 +555,13 @@ export function SegmentedRow<T extends string>({
 	const status = issue ?? (warning ? { type: 'warning' as const, message: warning } : undefined);
 	const { required } = presence(path, isRequired);
 	return (
-		<InspectorRow label={label} path={path} isRequired={required} hasIssue={issue !== undefined}>
+		<InspectorRow
+			label={label}
+			path={path}
+			isRequired={required}
+			hasIssue={issue !== undefined}
+			hasNote={Boolean(status?.message)}
+		>
 			<StackItem size="fill">
 				<SegmentedControl
 					label={label}
@@ -624,7 +670,13 @@ export function ChoiceRow<T extends string>({
 		emptyText,
 	};
 	return (
-		<InspectorRow label={label} path={path} isRequired={required} hasIssue={status !== undefined}>
+		<InspectorRow
+			label={label}
+			path={path}
+			isRequired={required}
+			hasIssue={status !== undefined}
+			hasNote={Boolean(status?.message)}
+		>
 			<StackItem size="fill">
 				{required ? (
 					<Selector
@@ -673,7 +725,12 @@ export function ListRow({
 	const { unset } = presence(path);
 	const maxBadges = useContext(ListBadges);
 	return (
-		<InspectorRow label={label} path={path} hasIssue={status !== undefined}>
+		<InspectorRow
+			label={label}
+			path={path}
+			hasIssue={status !== undefined}
+			hasNote={Boolean(status?.message)}
+		>
 			<StackItem size="fill">
 				<MultiSelector
 					label={label}
@@ -724,7 +781,12 @@ export function NamesRow({
 	const status = useFieldStatus()(field);
 	const { unset } = presence(path);
 	return (
-		<InspectorRow label={label} path={path} hasIssue={status !== undefined}>
+		<InspectorRow
+			label={label}
+			path={path}
+			hasIssue={status !== undefined}
+			hasNote={Boolean(status?.message)}
+		>
 			<StackItem size="fill">
 				<Tokenizer
 					label={label}
