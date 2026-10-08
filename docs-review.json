@@ -1,6 +1,6 @@
 {
 	"guardrails": {
-		"reviewed": "2026-10-07",
+		"reviewed": "2026-10-08",
 		"files": {
 			"src/guardrails/boundaries.ts": "cc36d9f6cf0487c8d897b6ec733ea5508ecbdcba",
 			"src/guardrails/canary-gate.ts": "68e9fd922d448f9781cb90e16a1e6f42550eff9f",
@@ -38,12 +38,12 @@
 			"src/guardrails/hits.ts": "9544156cf585066b28d267e0e1be0dbd9e8f1534",
 			"src/guardrails/host-patterns.ts": "f0507971333c0a914d02df0df9aaa0af81645108",
 			"src/guardrails/injection-patterns.ts": "fcd27161a0fb72b00badd1ff072e8ba0d7dbd5b9",
-			"src/guardrails/injection.ts": "be0863b0c887679bb9d95c3f4d39e3d2dcdd8248",
+			"src/guardrails/injection.ts": "9c6bcb33ac991a8b0848148029392b0b551dc5b4",
 			"src/guardrails/lexicon.ts": "d33cb51f68fb31e98033678ea0b099a1f4393c1a",
 			"src/guardrails/live-outbound-gate.ts": "8d697a1a42f4f2d6b7b4c64c70a0f18c7c9ad03a",
 			"src/guardrails/mod.ts": "d3ecfa75a959055ac7d8db3dbf1fcaefd1fd59a1",
 			"src/guardrails/network.ts": "5b748b584bfa70751ffa7142219fc4838083139a",
-			"src/guardrails/normalize.ts": "926e1e95e99b5f35dd9cb37f23ca674a934026bb",
+			"src/guardrails/normalize.ts": "af8c01a6537c32d813bcc5663b97eb221394317a",
 			"src/guardrails/policy.ts": "b6d37b1028048e16365ac786f16294507db769f5",
 			"src/guardrails/progressive-yield.ts": "ab68da19c524d0a970a8a3ff6d225f66dae9bde0",
 			"src/guardrails/prompt-echo.ts": "f1f7693100069bd6cfe4e7cd58bd006c4186dfb1",
@@ -55,7 +55,7 @@
 			"src/guardrails/testing.ts": "decf33104c8d9b85b72e01d0caf73b47b4d2570c",
 			"src/guardrails/theorem-error.ts": "c1e35fa1abeb68a31eea02b07ea8e157ee4c68ba",
 			"src/guardrails/thought-guard.ts": "dc59026dac7d5d4e4438ff76ed3a2044e9a2c63b",
-			"src/guardrails/tool-directives.ts": "4016f886b5b76222cc48837f759a0775fdba5c59",
+			"src/guardrails/tool-directives.ts": "937b1d74f46217627fde3e0c466c508f9033727d",
 			"src/guardrails/tool-leak.ts": "22d3db0c544da2248e96cc4f8826beba6e81fc3e",
 			"src/guardrails/tool-result.ts": "ba5fd24c299c5202c8b10023534e78747ae45494",
 			"src/guardrails/types.ts": "96bf2b7cac8a081f9af01f81215286aed3bf6b82"
