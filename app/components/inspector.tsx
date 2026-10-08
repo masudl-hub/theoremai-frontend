@@ -66,9 +66,7 @@ export function InspectorSection({
 	children: ReactNode;
 }) {
 	const heading = title && (
-		<Text type="label" weight="semibold">
-			{title}
-		</Text>
+		<Text type="large">{title}</Text>
 	);
 	return (
 		<Section variant="transparent" padding={3}>
