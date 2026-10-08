@@ -90,13 +90,13 @@ export function InspectorSection({
 }
 
 /**
- * The name of a group of rows inside a section. One step under the section's title: the same size,
- * so it reads as a heading and not as a note, and quieter, so the title still leads. `hint` says
- * what the group is, on hover.
+ * The name of a group of rows inside a section. One step under the section's title: as bright, so
+ * it stands over the grey row labels it heads, and lighter in weight, so the title still leads.
+ * `hint` says what the group is, on hover.
  */
 export function InspectorGroupTitle({ title, hint }: { title: string; hint?: string }) {
 	const heading = (
-		<Text type="label" weight="semibold" color="secondary">
+		<Text type="label" weight="medium">
 			{title}
 		</Text>
 	);
