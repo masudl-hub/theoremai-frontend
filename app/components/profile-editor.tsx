@@ -3705,7 +3705,7 @@ function usePageIssues(): (
 		const [only] = messages;
 		return {
 			type: 'error',
-			message: messages.length === 1 ? only : `${String(messages.length)} things to fix. Open it.`,
+			message: messages.length === 1 ? only : `${String(messages.length)} things to fix`,
 		};
 	};
 }
