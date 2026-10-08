@@ -4,6 +4,7 @@
  * Kernel facts (description, license, version, keywords) come from the package at build time.
  */
 import { KERNEL_PACKAGE_VERSION } from './kernel-version';
+import { ARGUMENT, GOALS, HOME_TAGLINE } from './site-pitch';
 
 const env = import.meta.env as Record<string, unknown>;
 
@@ -32,9 +33,6 @@ export const KERNEL = {
 export const REPO_URL = envString('KERNEL_REPOSITORY') || 'https://github.com/masudl-hub/theoremai';
 export const DISCORD_URL = 'https://discord.gg/X6RQvSWQ58';
 export const KERNEL_INSTALL_CMD = `npm install ${KERNEL_NAME} zod`;
-export const HOME_TAGLINE =
-	'Typed, composable agents for text, image, speech, and live voice — guarded on every turn.';
-
 export const SITE_PAGES = [
 	{ label: 'Playground', href: '/playground' },
 	{ label: 'Docs', href: '/docs' },
@@ -51,38 +49,6 @@ export const HEADLINE = [
 	{ text: 'probabilistic.', claim: false },
 	{ text: 'Your architecture', claim: true },
 	{ text: 'shouldn’t be.', claim: true },
-] as const;
-
-export const ARGUMENT =
-	'Agent outputs vary every turn. Users still need an experience they can understand and trust. theorem helps you build that experience around a clear agent contract.';
-
-/**
- * Each still is the idea.
- * One river through orange rock. Saffron laid out to try.
- * Obsidian shores are the boundary.
- */
-export const GOALS = [
-	{
-		id: 'source-of-truth',
-		title: 'One source of truth',
-		text: 'Keep execution and interface aligned, rather than maintaining separate versions of what your agent can do.',
-		src: '/imagery/th30_orangecanyon.png',
-		alt: 'A single river cutting through an orange canyon, with clouds and their shadows',
-	},
-	{
-		id: 'experiment',
-		title: 'Room to experiment',
-		text: 'Change models, providers, and modalities without rebuilding the surrounding application. Find what works for your agent.',
-		src: '/imagery/th30_dryingsaffron.png',
-		alt: 'Purple saffron laid out in plots divided by dirt paths, with clouds and their shadows',
-	},
-	{
-		id: 'boundaries',
-		title: 'Built-in boundaries',
-		text: 'Check what enters, what leaves, and what tools can access. Keep protections and permissions explicit.',
-		src: '/imagery/th30_obsidianshores.png',
-		alt: 'Black obsidian rock meeting deep teal water, with pale foam along the shore',
-	},
 ] as const;
 
 export type ExampleAction =
@@ -137,14 +103,16 @@ export const WAYS = [
 		title: 'Raise an issue',
 		note: 'Tell us about a bug or an idea. Say what you ran and what happened.',
 		href: `${REPO_URL}/issues/new`,
-		src: '/imagery/th30_crimsoncrater.png',
+		src: '/imagery/th30_sanddunes.png',
+		position: '50% 50%',
 	},
 	{
 		id: 'code',
 		title: 'Contribute code',
 		note: 'Set up the repo, run the checks and send a pull request.',
 		href: `${REPO_URL}/blob/main/CONTRIBUTING.md`,
-		src: '/imagery/th30_braidedriver.png',
+		src: '/imagery/th30_farm.png',
+		position: '50% 50%',
 	},
 	{
 		id: 'discord',
@@ -152,13 +120,15 @@ export const WAYS = [
 		note: 'Ask questions, share what you build and meet other builders.',
 		href: DISCORD_URL,
 		src: '/imagery/th30_cherryblossoms.png',
+		position: '50% 50%',
 	},
 	{
 		id: 'security',
 		title: 'Report a vulnerability',
 		note: 'Report a security problem to us in private. Do not use a public issue.',
 		href: `${REPO_URL}/security/advisories/new`,
-		src: '/imagery/th30_blueabyss.png',
+		src: '/imagery/th30_glacialice.png',
+		position: '50% 80%',
 	},
 ] as const;
 

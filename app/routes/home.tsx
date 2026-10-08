@@ -6,14 +6,8 @@ import { HomeStage } from '../components/home-stage';
 import { PageJsonLd } from '../components/page-summary';
 import '../components/home-scroll.css';
 import { SITE_REDIRECTS } from '../lib/docs/articles/chapters';
-import {
-	GOALS,
-	HOME_DESCRIPTION,
-	HOME_TAGLINE,
-	homeJsonLd,
-	KERNEL,
-	SITE_NAME,
-} from '../lib/home-content';
+import { HOME_DESCRIPTION, homeJsonLd, KERNEL, SITE_NAME } from '../lib/home-content';
+import { GOALS, HOME_TAGLINE } from '../lib/site-pitch';
 import type { Route } from './+types/home';
 export function loader({ request }: Route.LoaderArgs) {
 	return { origin: new URL(request.url).origin };

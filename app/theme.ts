@@ -28,6 +28,15 @@ export const siteTheme = defineTheme({
 		'--font-size-5xl': '2.75rem',
 	},
 	components: {
+		// why: Astryx fixes every toast at 400px, so a short message sits in a wide empty box. Let it
+		// size to its text; the viewport lines toasts up on the end edge, so the toast stays there.
+		toast: {
+			base: {
+				width: 'fit-content',
+				minWidth: 'min(240px, 100%)',
+				justifySelf: 'end',
+			},
+		},
 		// AppShell's elevated variant only rounds the panel when a TopNav is
 		// present; with the rail alone, inset top, bottom, and the trailing edge.
 		// The leading edge stays flush to the rail. The matching start inset

@@ -26,6 +26,7 @@ import { holdDocsArticleTransition } from '../components/docs/article-transition
 import { pageOwnsDocsNav } from '../components/docs/shell-slot';
 import { NewTabLink } from '../components/links';
 import { LogoMark } from '../components/logo-mark';
+import { ShellBounds } from '../components/shell-bounds';
 import {
 	captureShape,
 	enterShell,
@@ -212,6 +213,7 @@ export default function Shell() {
 					<BootMark />
 					<Outlet />
 					<NavMark />
+					<ShellBounds />
 				</AppShell>
 			</LinkProvider>
 		</Th30Provider>

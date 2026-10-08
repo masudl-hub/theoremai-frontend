@@ -9,6 +9,7 @@
 		"dev": "react-router dev --port 5174 --strictPort",
 		"prebuild": "node --experimental-strip-types scripts/ensure-theoremai.mjs",
 		"docs:compose": "node scripts/docs-compose.mjs",
+		"evals:th30": "node scripts/evals-th30.mjs",
 		"docs:ack": "node scripts/docs-covers.mjs ack",
 		"lint:docs": "npm run docs:compose && node scripts/docs-lint-snippets.mjs && node scripts/docs-check-snippets.mjs && node scripts/docs-check-facts.mjs && node scripts/docs-covers.mjs check && node scripts/docs-lint-voice.mjs && node scripts/docs-lint-dates.mjs",
 		"build": "react-router build",

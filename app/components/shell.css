@@ -195,3 +195,12 @@ html[data-home-flight] .theorem-home-shell [data-home-nav-anchor] {
 html[data-shell-in] #astryx-app-shell-main:not(#\#):not(#\#):not(#\#):not(#\#) {
 	transition: none;
 }
+
+/* Popups sit in the top layer, above the rail and the screen's edge. Insetting them to the shell's
+   page (see ShellBounds) makes it the box they flip, shift and centre in. Anchored popups only: the
+   toast viewport spans the screen on purpose. */
+[popover][style*="position-anchor"]:popover-open,
+dialog:modal {
+	inset: var(--shell-top, 0px) var(--shell-right, 0px) var(--shell-bottom, 0px)
+		var(--shell-left, 0px);
+}

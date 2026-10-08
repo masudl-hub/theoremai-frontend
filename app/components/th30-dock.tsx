@@ -27,6 +27,7 @@ import {
 	useCallback,
 	useContext,
 	useEffect,
+	useLayoutEffect,
 	useRef,
 	useState,
 } from 'react';
@@ -37,9 +38,9 @@ import { highlightBlock, highlightWhenPresent } from '../lib/docs/th30-client';
 import { resolveSitePath } from '../lib/site-path';
 import { TH30_PROFILE_ID } from '../lib/th30-id';
 import {
+	readPageFromDom,
 	type Th30Page,
 	type Th30PageHandle,
-	readPageFromDom,
 	th30PageLine,
 	useTh30PlaygroundState,
 } from '../lib/th30-page';
@@ -314,8 +315,22 @@ function usePageRefs(): PageRefs {
 /** A call with th30: its phase, voice levels and mute, and how to start, end, mute and write to it. */
 type CaptionLog = ReturnType<typeof useLiveCaptionLog>;
 
+/** What th30 is doing for the visitor: a tool's words, then its past tense for a moment. */
+type Work = { text: string; done: boolean };
+
+/** How long a finished call's past tense stays on the strip. */
+const WORK_LINGER_MS = 3200;
+
+/** Words for a call whose tool has no activity label: the page's own look and act. */
+const SURFACE_WORK: Partial<Record<string, string>> = {
+	look: 'Looking at the page',
+	act: 'Making a change on the page',
+};
+
 type Th30Call = {
 	phase: Phase;
+	/** The tool th30 is running, or just finished, in the tool's words. */
+	work: Work | null;
 	isMuted: boolean;
 	/** Why the last call failed, in the profile's own wording. */
 	failure: string | null;
@@ -336,12 +351,18 @@ type Th30Call = {
 };
 
 type CallOptions = ConstructorParameters<typeof LiveSessionClient>[0];
+type ToolPhaseEvent = Extract<
+	Parameters<NonNullable<CallOptions['onTurnEvent']>>[0],
+	{ type: 'tool' }
+>['tool'];
 
 /** The state a call's events set. */
 type CallSetters = {
 	setStatus: (status: InkWaveStatus) => void;
 	setPhase: (phase: Phase) => void;
 	setFailure: (failure: string | null) => void;
+	/** One tool phase event: the strip follows the calls that are open. */
+	noteTool: (tool: ToolPhaseEvent) => void;
 	levelsRef: RefObject<InkWaveLevels>;
 };
 
@@ -403,8 +424,9 @@ function callCallbacks(
 		// Th30's tools never gate. The relay runs the server ones; the page answers look and act.
 		onToolCall,
 		onTurnEvent: (event) => {
-			if (event.type !== 'tool' || event.tool.phase !== 'cancel') return;
-			th30Surfaces.settled(event.tool.callId, 'cancelled');
+			if (event.type !== 'tool') return;
+			if (isCurrent()) set.noteTool(event.tool);
+			if (event.tool.phase === 'cancel') th30Surfaces.settled(event.tool.callId, 'cancelled');
 		},
 	};
 }
@@ -492,13 +514,53 @@ function useTh30Call(
 	const [status, setStatus] = useState<InkWaveStatus>('disconnected');
 	const levelsRef = useRef<InkWaveLevels>({ input: 0, output: 0 });
 	const [draft, setDraft] = useState('');
+	const [work, setWork] = useState<Work | null>(null);
+	const openRef = useRef(new Map<string, string>());
+	const lingerRef = useRef<number | undefined>(undefined);
 	const captions = useLiveCaptionLog();
 	const captionsRef = useRef(captions);
 	captionsRef.current = captions;
 	const clientRef = useRef<LiveSessionClient | null>(null);
 	const chimeRef = useRef<ReturnType<typeof makeChime> | null>(null);
 
+	const clearWork = useCallback(() => {
+		window.clearTimeout(lingerRef.current);
+		openRef.current.clear();
+		setWork(null);
+	}, []);
+
+	const noteTool = useCallback((tool: ToolPhaseEvent) => {
+		const open = openRef.current;
+		if (tool.phase === 'running') {
+			window.clearTimeout(lingerRef.current);
+			const text = tool.activity ?? SURFACE_WORK[tool.name] ?? 'Working on it';
+			open.set(tool.callId, text);
+			setWork({ text, done: false });
+			return;
+		}
+		if (tool.phase !== 'complete' && tool.phase !== 'error' && tool.phase !== 'cancel') return;
+		const text = open.get(tool.callId);
+		if (text === undefined) return;
+		open.delete(tool.callId);
+		const stillOpen = [...open.values()].at(-1);
+		if (stillOpen !== undefined) {
+			setWork({ text: stillOpen, done: false });
+			return;
+		}
+		if (tool.phase !== 'complete') {
+			setWork(null);
+			return;
+		}
+		// The past tense holds a moment, so a quick call is still read.
+		setWork({ text: tool.activityPast ?? text, done: true });
+		window.clearTimeout(lingerRef.current);
+		lingerRef.current = window.setTimeout(() => {
+			setWork(null);
+		}, WORK_LINGER_MS);
+	}, []);
+
 	const stop = useCallback(() => {
+		clearWork();
 		captionsRef.current.clear();
 		setDraft('');
 		clientRef.current?.disconnect();
@@ -512,7 +574,7 @@ function useTh30Call(
 		setMuted(false);
 		setStatus('disconnected');
 		setPhase('idle');
-	}, []);
+	}, [clearWork]);
 
 	const start = useCallback(
 		() =>
@@ -525,12 +587,13 @@ function useTh30Call(
 				toldRef,
 				packageRef,
 				askRef,
-				set: { setStatus, setPhase, setFailure, levelsRef },
+				set: { setStatus, setPhase, setFailure, noteTool, levelsRef },
 			}),
-		[navigate, pageLineRef, toldRef, packageRef, askRef],
+		[navigate, pageLineRef, toldRef, packageRef, askRef, noteTool],
 	);
 
 	const restart = useCallback(() => {
+		clearWork();
 		captionsRef.current.beginNextCall();
 		setDraft('');
 		const client = clientRef.current;
@@ -547,7 +610,7 @@ function useTh30Call(
 		setFailure(null);
 		setPhase('connecting');
 		void start();
-	}, [start]);
+	}, [start, clearWork]);
 
 	const send = useCallback(
 		(text?: string) => {
@@ -590,6 +653,7 @@ function useTh30Call(
 	};
 	return {
 		phase,
+		work,
 		isMuted,
 		failure,
 		status,
@@ -768,16 +832,51 @@ function Th30Messages({ call, open }: { call: Th30Call; open: boolean }) {
 	);
 }
 
+/**
+ * What th30 is doing, at the left of the strip where "Connecting" shows. The waveform eases
+ * right to make room: the gap is measured from the text and animates as a registered property.
+ */
+function Th30Work({ work }: { work: Work | null }) {
+	const textRef = useRef<HTMLSpanElement>(null);
+	// Held while the words fade, so they do not vanish before the wave comes back.
+	const heldRef = useRef(work);
+	if (work) heldRef.current = work;
+	const shown = heldRef.current;
+	useLayoutEffect(() => {
+		const strip = textRef.current?.closest<HTMLElement>('.th30-strip');
+		if (!strip) return;
+		const width = work ? (textRef.current?.offsetWidth ?? 0) : 0;
+		strip.style.setProperty('--th30-gap', `${String(work ? width + 24 : 0)}px`);
+	}, [work]);
+	return (
+		<span
+			ref={textRef}
+			className="th30-strip-work"
+			data-open={work ? '' : undefined}
+			data-done={work?.done ? '' : undefined}
+			role="status"
+		>
+			{shown?.text}
+		</span>
+	);
+}
+
 /** The strip along the page while a call is on: th30's voice, and how the call is going. */
 function Th30Strip({ call, isLive }: { call: Th30Call; isLive: boolean }) {
-	const { phase, status, levelsRef } = call;
+	const { phase, status, levelsRef, work } = call;
 	return (
 		<div className="th30-strip" inert={!isLive} aria-hidden={!isLive}>
 			{phase === 'live' ? (
 				<div className="th30-wave" aria-hidden>
-					<InkWaveform status={status} levelsRef={levelsRef} variant="strip" />
+					<InkWaveform
+						status={status}
+						levelsRef={levelsRef}
+						variant="strip"
+						toolActive={work !== null && !work.done}
+					/>
 				</div>
 			) : null}
+			{phase === 'live' ? <Th30Work work={work} /> : null}
 			<span className="th30-strip-status" role="status">
 				{stripStatus(phase, call.failure, status)}
 			</span>

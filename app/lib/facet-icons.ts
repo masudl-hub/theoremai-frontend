@@ -8,9 +8,9 @@ import {
 	IconFileExport,
 	IconFileImport,
 	IconGitBranch,
+	IconHeadset,
 	IconId,
 	IconInputAi,
-	IconMicrophone,
 	IconPhoto,
 	IconQuote,
 	IconRepeat,
@@ -34,6 +34,6 @@ export const FACET_ICON = {
 	wording: IconQuote,
 	image: IconPhoto,
 	speech: IconVolume,
-	live: IconMicrophone,
+	live: IconHeadset,
 	decision: IconGitBranch,
 } satisfies Record<Exclude<PlaygroundNodeRef['facet'], 'toolSpec'>, unknown>;

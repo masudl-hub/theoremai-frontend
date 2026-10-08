@@ -128,12 +128,54 @@ html.th30-messages .th30-messages-panel {
 	transform: none;
 	pointer-events: auto;
 }
+/* The room the wave makes at the left for what th30 is doing, where "Connecting" shows.
+   Registered, so it animates: the wave eases right, and back when the work is done. */
+@property --th30-gap {
+	syntax: "<length>";
+	inherits: true;
+	initial-value: 0px;
+}
+.th30-strip {
+	--th30-gap: 0px;
+	transition:
+		opacity 260ms var(--th30-ease),
+		transform 420ms var(--th30-ease),
+		--th30-gap 720ms var(--th30-ease);
+}
 .th30-wave {
 	flex: 1;
 	min-width: 0;
 	height: 100%;
 	overflow: clip;
 	color: var(--color-icon-primary);
+	margin-inline-start: var(--th30-gap);
+}
+.th30-strip-work {
+	position: absolute;
+	inset-inline-start: var(--spacing-3);
+	top: 50%;
+	max-width: min(60%, 420px);
+	translate: 0 -50%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--color-text-primary);
+	font-size: var(--font-size-sm);
+	opacity: 0;
+	filter: blur(6px);
+	transition:
+		opacity 900ms var(--th30-ease),
+		filter 900ms var(--th30-ease);
+	pointer-events: none;
+}
+.th30-strip-work[data-open] {
+	opacity: 1;
+	filter: none;
+	transition-duration: 320ms, 420ms;
+	transition-delay: 120ms;
+}
+.th30-strip-work[data-done] {
+	color: var(--color-text-secondary);
 }
 /* The strip drawing leaves one gap before the first bar and after the last.
    Scale that gap off both edges so the bars meet the shell. */
@@ -216,6 +258,7 @@ html.th30-messages .th30-messages-panel {
 @media (prefers-reduced-motion: reduce) {
 	[role="main"],
 	.th30-strip,
+	.th30-strip-work,
 	.th30-messages-panel,
 	html.th30-messages:not([data-home-reduced]) .theorem-home-shell [role="main"] {
 		transition: none;

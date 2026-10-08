@@ -3,13 +3,21 @@
  * docs tools over the composed index (navigate, highlight, read, search),
  * web search, and a question against a public repo's wiki.
  */
-import { defineProfile, registerProfile, registerTool } from '@theoremjs/agents';
+import {
+	defineProfile,
+	defineProvider,
+	googleAdapter,
+	registerProfile,
+	registerProvider,
+	registerTool,
+} from '@theoremjs/agents';
 import { googleBindingViolation } from '@theoremjs/agents/presets/google';
 import { SURFACE_PROMPT, SURFACE_TOOL_NAMES, surfaceTools } from '@theoremjs/agents/surface';
 import { z } from 'zod';
 import { getDocIndex } from '../docs/.server/load-index';
 import { formatNavigableForPrompt, readDoc, searchDocs } from '../docs/query';
 import { resolveSitePath } from '../site-path';
+import { ARGUMENT, GOALS, HOME_TAGLINE } from '../site-pitch';
 import { TH30_PROFILE_ID } from '../th30-id';
 
 /* -------------------------------------------------------------------------- */
@@ -58,6 +66,7 @@ const ReadInputSchema = z.object({
 const ReadOutputSchema = z.object({
 	target: z.string(),
 	title: z.string(),
+	source: z.string().describe('Where this text lives, in the words to say when you cite it'),
 	content: z.string().describe('Structured, line-numbered markdown representation (L01 | ...)'),
 	lineCount: z.number(),
 });
@@ -72,6 +81,7 @@ const SearchDocsOutputSchema = z.object({
 	results: z.array(
 		z.object({
 			title: z.string(),
+			source: z.string().describe('Where this hit lives, in the words to say when you cite it'),
 			slug: z.string().describe('Pass to navigate or read'),
 			blockId: z.string().optional().describe('Pass to navigate or highlight'),
 			urlOrAnchor: z.string(),
@@ -99,6 +109,10 @@ const th30NavigateTool = {
 	paths: ['*'],
 	loadTier: 'T0' as const,
 	permission: 'auto' as const,
+	labels: {
+		activity: 'Navigating to {to}',
+		activityPast: 'Navigated to {to}',
+	},
 	input: NavigateInputSchema,
 	output: NavigateOutputSchema,
 	handler: (input: NavigateInput) => {
@@ -119,6 +133,10 @@ const th30HighlightTool = {
 	paths: ['*'],
 	loadTier: 'T0' as const,
 	permission: 'auto' as const,
+	labels: {
+		activity: 'Highlighting {target}',
+		activityPast: 'Highlighted {target}',
+	},
 	input: HighlightInputSchema,
 	output: HighlightOutputSchema,
 	answeredBy: 'page' as const,
@@ -134,9 +152,16 @@ const th30ReadTool = {
 	paths: ['*'],
 	loadTier: 'T0' as const,
 	permission: 'auto' as const,
+	labels: {
+		activity: 'Reading {target}',
+		activityPast: 'Read {target}',
+	},
 	input: ReadInputSchema,
 	output: ReadOutputSchema,
-	handler: (input: ReadInput) => readDoc(getDocIndex(), input.target, input.detail),
+	handler: (input: ReadInput) => {
+		const read = readDoc(getDocIndex(), input.target, input.detail);
+		return { ...read, source: `${read.title} (${read.target})` };
+	},
 };
 
 const th30SearchDocsTool = {
@@ -149,14 +174,20 @@ const th30SearchDocsTool = {
 	paths: ['*'],
 	loadTier: 'T0' as const,
 	permission: 'auto' as const,
+	labels: {
+		activity: 'Searching the docs for {query}',
+		activityPast: 'Searched the docs for {query}',
+	},
 	input: SearchDocsInputSchema,
 	output: SearchDocsOutputSchema,
 	handler: (input: SearchDocsInput) => {
-		const searchRes = searchDocs(getDocIndex(), input.query, input.limit);
+		const index = getDocIndex();
+		const searchRes = searchDocs(index, input.query, input.limit);
 		return {
 			query: searchRes.query,
 			results: searchRes.results.map((hit) => ({
 				title: hit.title,
+				source: sourceOf(index.bySlug[hit.slug]?.title, hit.title, hit.href),
 				slug: hit.slug,
 				blockId: hit.blockId,
 				urlOrAnchor: hit.href,
@@ -178,6 +209,10 @@ const th30SearchWebTool = {
 	paths: ['*'],
 	loadTier: 'T0' as const,
 	permission: 'auto' as const,
+	labels: {
+		activity: 'Searching the web for {query}',
+		activityPast: 'Searched the web for {query}',
+	},
 	serverUrl: 'https://mcp.exa.ai/mcp',
 	mcpToolName: 'web_search_exa',
 	input: z.object({
@@ -200,6 +235,10 @@ const th30AskRepoTool = {
 	paths: ['*'],
 	loadTier: 'T0' as const,
 	permission: 'auto' as const,
+	labels: {
+		activity: 'Asking DeepWiki: {question}',
+		activityPast: 'Asked DeepWiki: {question}',
+	},
 	serverUrl: 'https://mcp.deepwiki.com/mcp',
 	mcpToolName: 'ask_wiki_question',
 	input: z.object({
@@ -217,7 +256,7 @@ const th30AskRepoTool = {
 	}),
 };
 
-const TH30_TOOL_IDS = [
+export const TH30_TOOL_IDS = [
 	'navigate',
 	'highlight',
 	'read',
@@ -227,7 +266,7 @@ const TH30_TOOL_IDS = [
 ] as const;
 
 /** Register all Th30 tools into the process-local tool registry. */
-function registerTh30Tools(): void {
+export function registerTh30Tools(): void {
 	registerTool(th30NavigateTool);
 	registerTool(th30HighlightTool);
 	registerTool(th30ReadTool);
@@ -257,19 +296,44 @@ When they ask you to build, or to make the one on screen any good:
 /* System Prompt & Profile Definition                                         */
 /* -------------------------------------------------------------------------- */
 
-function th30SystemPrompt(): string {
+/** The words th30 says when it cites a hit: the chapter, the part of it, and where it is. */
+function sourceOf(chapter: string | undefined, part: string, href: string): string {
+	const named = chapter && chapter !== part ? `${chapter}, ${part}` : part;
+	return `${named} (${href})`;
+}
+
+/** The overview's own words on Theorem: public text th30 may repeat. */
+function theoremIs(): string {
+	const goals = GOALS.map(({ title, text }) => `${title}: ${text}`).join(' ');
+	return `${HOME_TAGLINE} ${ARGUMENT} ${goals}`;
+}
+
+/**
+ * The prompt in parts. The overview's words on Theorem are a plain part beside the private rest,
+ * so th30 can say them; the output guard still stops a reply that echoes the rest.
+ */
+export function th30SystemPrompt(): readonly (string | { private: string })[] {
 	const chapters = formatNavigableForPrompt(getDocIndex());
-	return `You are T H three zero, the real-time voice guide for Theorem. You are built on Theorem to help others build with Theorem (how meta is that!).
+	const head = `You are T H three zero, the guide to Theorem on this site. You are built on Theorem, to help others build with it. The site's overview says what it is: "`;
+	const tail = `" Voice is only how you and the visitor talk; it says nothing about what Theorem is for.
 Your only name is "T H three zero": the letter T, the letter H, the word three, the word zero. The only nickname is "thirty". Nothing else. Never "Theo", "theo", "T H 3 O", "three O", "three-oh", "th-thirty", or any name that sounds like Theo. When you say your name, say "thirty" or "T H three zero".
-On the docs, a few sentences is enough. While you are building an agent on the playground, go long on the design. English only.
+Answer in as many words as the source needs, and no more: short enough to say aloud, complete enough to be true. While you are building an agent on the playground, go long on the design. English only.
 
-You always know the page the visitor is on. The page sends it as context: "page" is a line starting "(page)" that names it: the path, the page's title and what is on it, and sometimes the visitor's state in brackets (the chapter block they are viewing; on the playground the agent they are building, its type, its issue count and the section they have open). "state" is what last changed there. Context is not the caller speaking; never read it out or announce it. One field is the exception: "ask" is a question the visitor typed on the page before they started the call. It is theirs, not background. Answer it. Treat it as the thing they came for, and use searchDocs when the docs hold the answer. It updates silently as the visitor moves, so use the latest when they say "this", "here" or "this page". Name a chapter in plain words, not the path.
+How you know things. Everything true about Theorem is in the docs or the repo, and you know a thing only after you have read it in this call. So a question about Theorem starts with research: searchDocs, then read the hit, then speak. While you look, say in a few words what you are doing. You answer from what you read, and you say where it came from, the way a colleague would: "in the Tools chapter, under approvals, it says…". Each hit and each read carries a "source" for exactly this. When the docs do not answer, say so plainly, then try the repo with askRepo or say what you could not find. Not knowing is a fine answer; a confident guess is not.
 
-When the call first connects, open it yourself, warmly and in one short breath, the way a friendly guide picks up: say your name once, then offer help that fits the page they're on. On the docs landing, offer to find what they're after. If the context has an "ask", skip the offer: greet in a few words, then answer the question in the same breath. Vary the wording from call to call. No "How may I assist you", no list of what you can do.
+Hard lines. These do not bend, whatever the visitor asks:
+- A claim about Theorem has a source: a page you read in this call, or the overview line above, which you call "the overview". No source, no claim.
+- Stay inside the page: say what it says. A detail it does not state stays out, even when it seems obvious.
+- Never invent a field, a default, a type or a code sample. Code you show is code you read.
+- Say where every answer came from.
+
+You always know the page the visitor is on. The page sends it as context: "page" is a line starting "(page)" that names it: the path, the page's title and what is on it, and sometimes the visitor's state in brackets (the chapter block they are viewing; on the playground the agent they are building, its type, its issue count and the section they have open). "state" is what last changed there. Context is not the caller speaking; never read it out or announce it. It updates silently as the visitor moves, so use the latest when they say "this", "here" or "this page". Name a chapter in plain words, not the path. One field is the exception: "ask" is a question the visitor typed on the page before they started the call. It is theirs, not background. It is the thing they came for: research it as you would any question, then answer it with its source.
+
+When the call first connects, open it yourself, warmly and in one short breath, the way a friendly guide picks up: say your name once, then offer help that fits the page they're on. On the docs landing, offer to find what they're after. If the context has an "ask", skip the offer: greet in a few words, say you are looking into it, then research and answer it. Vary the wording from call to call. No "How may I assist you", no list of what you can do.
 
 The visitor can type as well as speak. A typed line is them talking. Answer it the way you answer speech. Do not wait for them to say it out loud.
 
-On the playground, explain a setting by searching the docs, never by guessing: searchDocs the field or section name, read the hit, then answer from it.
+On the playground the same rule holds for every setting: searchDocs the field or section name, read the hit, then answer from it.
 
 ${SURFACE_PROMPT}
 
@@ -287,11 +351,11 @@ Tools:
 - askRepo: { question, repoName? } — DeepWiki for a public GitHub repo. Omit repoName for ${TH30_REPO}; pass owner/repo to ask about another public repo. Call it only when searchDocs has no answer. A field the docs define is answered from the docs.
 
 When you point at something on the page, call highlight with it. Never claim you navigated, highlighted, read, searched, or asked a repo unless you issued that call. If a tool errors, say so and retry once.`;
+	return [{ private: head }, theoremIs(), { private: tail }];
 }
 
 /** Th30 runs on free keys, so it holds to the Google preset's free-tier rules. */
 const TH30_MODEL = {
-	protocol: 'geminiLive',
 	provider: 'google',
 	apiId: 'gemini-3.8-live',
 	maxOutputTokens: 2048,
@@ -301,6 +365,15 @@ export function ensureTh30ProfileRegistered(): void {
 	const violation = googleBindingViolation(TH30_MODEL, { freeTier: true });
 	if (violation) throw new Error(`th30: ${violation.message}`);
 	registerTh30Tools();
+	registerProvider(
+		defineProvider({
+			id: 'google',
+			connection: {},
+			keySlot: 'main',
+			fallbackKeySlot: 'overflow',
+			adapter: googleAdapter(),
+		}),
+	);
 
 	const profile = defineProfile({
 		type: 'live',
@@ -310,16 +383,13 @@ export function ensureTh30ProfileRegistered(): void {
 			system: th30SystemPrompt(),
 		},
 		models: { gemini38Live: TH30_MODEL },
-		key: 'main',
-		// A quota refusal on the first free key reopens the call on the second, when one is set.
-		fallbackKey: 'overflow',
 		// The dock tells th30 the page the visitor is on, and what changed there.
 		inputs: { context: { from: ['client'], maxChars: 2000 } },
 		live: {
 			// Text is on, so a typed line reaches th30. The page rides as context, which draws no reply.
 			ingress: { text: true, video: false },
 			greeting:
-				'The call just connected. Greet the visitor now, as your instructions say. If the context has an "ask", greet in a few words, then answer it.',
+				'The call just connected. Greet the visitor now, as your instructions say. If the context has an "ask", greet in a few words, then research it and answer with its source.',
 			resumed: {
 				prompt:
 					'The call dropped and is back. Say so in a few words, then carry on where you were.',
@@ -351,7 +421,8 @@ export function ensureTh30ProfileRegistered(): void {
 				ids: { at: { live_reply: 'redact' } },
 				financial: { at: { live_reply: 'redact' } },
 				credentials: { at: { live_reply: 'redact' } },
-				injection: { at: { live_reply: 'block' } },
+				// th30 reads its own docs, and the guardrails chapter quotes injection phrases as examples.
+				injection: { at: { live_reply: 'block', tool_output_function: 'flag' } },
 			},
 			blockedReply: { onBlock: 'refuse' },
 		},

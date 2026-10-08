@@ -25,7 +25,13 @@ function WayTile({ way }: { way: Way }) {
 		<NewTabLink className="contribute-tile" href={way.href}>
 			<VStack gap={3}>
 				<span className="home-stage-still-media contribute-tile-media">
-					<img src={way.src} alt="" decoding="async" loading="lazy" />
+					<img
+						src={way.src}
+						alt=""
+						decoding="async"
+						loading="lazy"
+						style={{ objectPosition: way.position }}
+					/>
 					<span className="home-stage-still-icon" aria-hidden>
 						<Icon size={40} stroke={1.5} />
 					</span>
