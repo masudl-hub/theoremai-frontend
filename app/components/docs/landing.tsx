@@ -62,8 +62,6 @@ const RESOURCES = [
 	},
 ] as const;
 
-const LICENSE_HREF = `${REPO}/blob/main/LICENSE`;
-
 type LandingTile = {
 	article: DocArticle;
 	href: string;
@@ -386,13 +384,6 @@ export function DocsLanding({ index }: { index: DocIndex }) {
 					</VStack>
 				</div>
 			</ScrollableArea>
-			<footer className="docs-landing-footer">
-				<Text type="supporting" color="secondary">
-					<a href={LICENSE_HREF} target="_blank" rel="noopener noreferrer">
-						MIT license
-					</a>
-				</Text>
-			</footer>
 		</div>
 	);
 }

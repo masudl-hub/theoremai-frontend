@@ -1,6 +1,6 @@
 ---
 title: Choosing a modality
-updated: 2026-10-07
+updated: 2026-10-08
 summary: Pick the profile type: text, image, speech, live, decision or host.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/profiles.ts, src/kernel/schema.ts
@@ -37,7 +37,7 @@ Run your tools with no model | `host` | `invokeTool` | The toolbox
 If you are not sure, start with `text`.
 
 ```note
-Every example on this page sets `key`. That field names the vault slot that holds the provider key ([Binding models](/docs/models)).
+Every example on this page sets `keySlot` on its model. That field names the vault slot that holds the provider key. The examples assume that the provider is registered ([Binding models](/docs/models)).
 ```
 
 ## Text
@@ -46,16 +46,15 @@ The Harbor front desk answers questions and looks up shipments. Use `text` for a
 
 - Must set: `identity`, `models`, `tools` and `inputs`.
 - Can set: `outputs` and `turnBehaviour`.
-- Protocol: `openAi` or `geminiInteractions`.
+- Provider: `openrouter`, `google` or a local server.
 
 ```ts frame=statements
 const desk = defineProfile({
 	type: 'text',
 	id: 'harbor.desk',
-	key: 'openrouter',
 	identity: { handle: 'desk', system: 'You are the Harbor front desk.' },
 	models: {
-		main: { protocol: 'openAi', provider: 'openrouter', apiId: 'openrouter/free' },
+		main: { provider: 'openrouter', apiId: 'openrouter/free', keySlot: 'openrouter' },
 	},
 	tools: { allow: [] },
 	inputs: {},
@@ -68,20 +67,18 @@ The label artist draws the art for a shipping label. Use `image` for an agent th
 
 - Must set: the same fields as `text`, plus `image`.
 - Cannot set: `inputs.voice`, `outputs.structured` or `turnBehaviour.allowSteering`.
-- Protocol: `openAi` or `geminiInteractions`.
+- Provider: `openrouter` or `google`.
 
 ```ts frame=statements
 const illustrator = defineProfile({
 	type: 'image',
 	id: 'harbor.label',
-	key: 'google',
 	identity: { handle: 'label', system: 'Draw clear shipping-label art.' },
 	models: {
 		main: {
-			protocol: 'geminiInteractions',
 			provider: 'google',
-			persistViaInteractionId: false,
 			apiId: 'gemini-2.5-flash-image',
+			keySlot: 'google',
 		},
 	},
 	tools: { allow: [] },
@@ -98,20 +95,18 @@ The dock announcer reads a notice to the dock. Use `speech` to read a transcript
 - Cannot set: `identity.system`, `tools` or `inputs`.
 - Canary: Theorem adds no canary to a speech profile, because it has no system prompt.
 
-`speech.format` is `pcm` or `mp3`. `pcm` is delivered as WAV. `mp3` needs protocol `openAi`.
+`speech.format` is `pcm` or `mp3`. `pcm` is delivered as WAV. `mp3` needs a model that can make it, such as an OpenRouter model.
 
 ```ts frame=statements
 const announcer = defineProfile({
 	type: 'speech',
 	id: 'harbor.announce',
-	key: 'google',
 	identity: { handle: 'announce' },
 	models: {
 		main: {
-			protocol: 'geminiInteractions',
 			provider: 'google',
-			persistViaInteractionId: false,
 			apiId: 'gemini-3.1-flash-tts-preview',
+			keySlot: 'google',
 		},
 	},
 	speech: { voice: 'Kore' },
@@ -124,7 +119,7 @@ The phone line talks with a shipper in real time. Use `live` for a realtime voic
 
 - Must set: `identity`, `models`, `tools` and `live`.
 - Cannot set: `inputs` or `outputs`. `live.ingress` replaces `inputs`.
-- Protocol: `geminiLive` only.
+- Provider: `google` only.
 
 If you leave out an ingress channel, audio and video default to on and text to off. At least one channel must be on.
 
@@ -134,10 +129,9 @@ Use `live.sessionResumption` in place of `turnBehaviour.resumption`. Use `live.c
 const line = defineProfile({
 	type: 'live',
 	id: 'harbor.line',
-	key: 'google',
 	identity: { handle: 'line', system: 'You are on a live call with a Harbor shipper.' },
 	models: {
-		main: { protocol: 'geminiLive', provider: 'google', apiId: 'gemini-3.1-flash-live-preview' },
+		main: { provider: 'google', apiId: 'gemini-3.1-flash-live-preview', keySlot: 'google' },
 	},
 	tools: { allow: [] },
 	live: {
@@ -151,7 +145,7 @@ const line = defineProfile({
 
 The router decides which dock takes a shipment. Use `decision` to get typed answers about JSON state. Run it with `runDecision`.
 
-- Must set: `identity` with a `handle` only, one model with protocol `decision`, `inputs.state: "json"` and `decision.contract`.
+- Must set: `identity` with a `handle` only, one model, `inputs.state: "json"` and `decision.contract`.
 - Cannot set: `identity.system`, `tools`, `outputs` or `turnBehaviour`.
 - Provider: `typesafe` or `openrouter`.
 
@@ -161,10 +155,9 @@ The contract is your own id for the decision. Theorem records it on the trace an
 const router = defineProfile({
 	type: 'decision',
 	id: 'harbor.route',
-	key: 'typesafe',
 	identity: { handle: 'route' },
 	models: {
-		jev: { protocol: 'decision', provider: 'typesafe', apiId: 'jev-latest' },
+		jev: { provider: 'typesafe', apiId: 'jev-latest', keySlot: 'typesafe' },
 	},
 	inputs: { state: 'json' },
 	decision: { contract: 'harbor.route.v1' },

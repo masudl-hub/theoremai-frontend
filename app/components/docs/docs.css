@@ -113,16 +113,6 @@
 	min-width: 0;
 }
 
-.docs-landing-footer {
-	display: flex;
-	justify-content: center;
-	padding-block: var(--spacing-3);
-}
-
-.docs-landing-footer a {
-	color: inherit;
-}
-
 .docs-landing .docs-landing-results {
 	min-width: 0;
 	width: 100%;

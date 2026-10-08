@@ -1,6 +1,6 @@
 ---
 title: Running a turn
-updated: 2026-10-07
+updated: 2026-10-08
 summary: Call the door for your profile type, read the events, resume a paused tool.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/engine/decision.ts, src/kernel/engine/session, src/kernel/tools/invoke.ts, src/kernel/stages.ts
@@ -62,19 +62,18 @@ These five steps run the Harbor front desk, keep a chat, and pause before a tool
 
 ### 1. Run a turn
 
-Pass a request and a provider. Create the provider with `createProvider` and a vault ([Binding models](/docs/models)).
+Pass a request and the host options. The host options hold the vault that fills the key slots of the profile's models ([Binding models](/docs/models)). They also take `fetch`, `wait` and `openWebSocket`, for tests and for hosts that need their own transport.
 
 The request needs `profile`, the id of a registered profile. Add `input` for a user turn ([Declaring inputs](/docs/inputs)). The optional third argument is a trace sink ([Recording traces](/docs/traces)).
 
 ```ts
-import { createProvider, runTurn } from '@theoremjs/agents';
+import { runTurn } from '@theoremjs/agents';
 
 const vault = { openrouter: process.env.OPENROUTER_API_KEY };
-const provider = createProvider(profile, { vault });
 
 for await (const event of runTurn(
 	{ profile: profile.id, input: { text: 'Where is hold H-2291?' } },
-	provider,
+	{ vault },
 )) {
 	if (event.type === 'text') console.log(event.text);
 }
@@ -96,13 +95,13 @@ runTurn(
 			text: 'When does bay 4 close?',
 		},
 	},
-	provider,
+	hostOptions,
 )
 ```
 
 Each message has a `role` (`user`, `assistant`, `system` or `tool`) and its `content`.
 
-A Gemini binding with `persistViaInteractionId: true` is the exception. Send `previousInteractionId` and no history ([Binding models](/docs/models)).
+A Gemini binding with `providerOptions: { persistViaInteractionId: true }` is the exception. Send `previousInteractionId` and no history ([Binding models](/docs/models)).
 
 ### 3. Read the stream
 
@@ -182,7 +181,7 @@ The Harbor toolbox measures a road leg for a page that has no chat. Call `invoke
 
 The Harbor phone line talks with a shipper in real time. Call `runSession` for a `live` profile. It returns a session. Read its events with `session.events()`. The events have the same types as the events of a turn.
 
-The second argument takes a `vault`. It also takes `gemini`, `openWebSocket`, `gateTtlMs` and `signInGate`.
+The second argument takes a `vault`. It also takes `fetch`, `wait`, `openWebSocket`, `gateTtlMs` and `signInGate`.
 
 A live session differs from a turn in three ways:
 
@@ -234,8 +233,8 @@ A call can fail as a thrown error, as an `error` event or as a warning on a `sta
 What you see | Cause | Fix
 --- | --- | ---
 `TheoremError`, kind `config`: unknown profile | The profile is not registered | Call `registerProfile` first
-`error` event, `errorKind: 'auth'` | The vault has no key in the slot that the profile names | Fill the slot ([Binding models](/docs/models))
+`error` event, `errorKind: 'auth'` | The vault has no key in the slot that the model names | Fill the slot ([Binding models](/docs/models))
 `DecisionError`, code `authentication` | The vault has no key in the slot, or the provider refused it | Fill the slot, or check the key
 `stage` event with `stageWarnings` | A stage returned a result that the stage does not allow | Return only the results in the stage table above
 `session.gate_expired` | A live gate waited longer than `gateTtlMs` | Settle the gate sooner, or raise `gateTtlMs`
-`createProvider`, kind `request` | The profile is `live`, `host` or `decision`, which have no `runTurn` provider | Use `runSession`, `invokeTool` or `runDecision` ([Choosing a modality](/docs/modalities))
+`runTurn`, kind `unsupported` | The profile is `live`, `host` or `decision`, which a turn cannot run | Use `runSession`, `invokeTool` or `runDecision` ([Choosing a modality](/docs/modalities))

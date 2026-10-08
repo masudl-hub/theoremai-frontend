@@ -1,6 +1,6 @@
 ---
 title: Building the interface
-updated: 2026-10-07
+updated: 2026-10-08
 summary: Serve one profile from your server and show a chat that reads it.
 entry: src/interface/mod.ts
 covers: src/interface
@@ -65,14 +65,14 @@ This chapter is about turns. A live profile uses `LiveRunner` ([Choosing a modal
 
 ### 1. Mount the handler
 
-Pass the profile and the provider keys. `provider.vault` holds each key under a slot name. The slot is the `key` of the profile.
+Pass the profile and the provider keys. `provider.vault` holds each key under a slot name. The slot is the `keySlot` of the profile's model.
 
 ```ts
 import { createTheoremHandler } from '@theoremjs/react/server';
 
 export const handler = createTheoremHandler({
 	profile,
-	provider: { vault: { main: process.env.OPENROUTER_API_KEY } },
+	provider: { vault: { openrouter: process.env.OPENROUTER_API_KEY } },
 });
 ```
 
@@ -142,6 +142,49 @@ export function useMyChat() {
 }
 ```
 
+### Read what a guardrail decided
+
+The transcript is a list of blocks. `chat.blocks` holds the finished turns, and `chat.streamBlocks` holds the turn that is running. Each block has a `kind`, such as `text` or `tool`.
+
+A guardrail decision is a block of kind `guardrail`. Its `guardrail.action` is `flag`, `redact` or `block`, and each item of `guardrail.hits` names the rule that matched. The block never holds the matched text ([Setting guardrails](/docs/guardrails)).
+
+- The block comes before the text that the guardrail read.
+- `<TheoremChat />` shows nothing for it.
+- Your screen decides what a flag does: show a notice, ask the user to review the reply, or ignore it.
+
+```ts
+import type { TranscriptBlock } from '@theoremjs/agents/interface';
+
+export function flaggedRules(blocks: TranscriptBlock[]): string[] {
+	return blocks.flatMap((block) =>
+		block.kind === 'guardrail' && block.guardrail.action === 'flag'
+			? block.guardrail.hits.map((hit) => hit.rule)
+			: [],
+	);
+}
+```
+
+### Receive every event
+
+Some events are not blocks, for example a `stage` event or a `session` event. Pass `onTurnEvent` to `useTheoremChat` to receive every event of every turn as it arrives. `<TheoremChat />` takes the same prop.
+
+```ts
+import type { ComposerProfileInterface } from '@theoremjs/agents/interface';
+import { createHttpTransport, useTheoremChat } from '@theoremjs/react';
+
+const transport = createHttpTransport({ endpoint: '/api/theorem' });
+
+export function useWatchedChat(iface: ComposerProfileInterface | null) {
+	return useTheoremChat({
+		transport,
+		iface,
+		onTurnEvent: (event) => {
+			if (event.type === 'guardrail') console.info(event.guardrail.action);
+		},
+	});
+}
+```
+
 ## Know the routes
 
 A client of your own calls the handler over HTTP. The handler answers four routes under its mount point.
@@ -178,6 +221,6 @@ What you see | Cause | Fix
 `createTheoremHandler` throws when you create it | The profile is `live`, `host` or `decision` | Use `createTheoremHostHandler` for a host profile and `createTheoremDecisionHandler` for a decision profile. A live profile uses `LiveRunner`
 Status 401 | `session` returned `undefined` | Return a session id for a signed-in user
 The user reads "Sorry, the assistant can’t connect at the moment." | The profile’s key slot is empty in `provider.vault` (an `error` event of kind `auth`) | Fill the slot ([Binding models](/docs/models))
-A turn ends with a `config` error | `provider` has no `vault` for an OpenRouter or Google model | Pass `provider.vault`
+A turn ends with a `config` error | The handler has no `provider` | Pass `provider`, with a `vault` that fills each slot
 `session.gate_expired` | The answer came after `gateTtlMs`, or reached an instance that does not hold the gate | Answer sooner, or pass a shared `sessionStore`
 `session.turn_ended` | A steer reached an instance that does not hold the turn | Pass a shared `steerInbox`

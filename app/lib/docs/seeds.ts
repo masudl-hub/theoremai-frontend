@@ -127,13 +127,13 @@ function firstTurnDraft(): PlaygroundDraft {
 	};
 }
 
-/** Getting started wraps the compiled profile with createProvider + runTurn. */
+/** Getting started wraps the compiled profile with runTurn. */
 function withFirstTurnDoor(source: string, profileId: string): string {
 	const imports = source.replace(
 		/import \{\n((?: {2}\w+,\n)+)\} from '@theoremjs\/agents';/,
 		(_match, names: string) => {
 			const have = new Set([...names.matchAll(/ {2}(\w+),/g)].map((row) => row[1]).filter(Boolean));
-			for (const name of ['createProvider', 'runTurn']) have.add(name);
+			for (const name of ['runTurn']) have.add(name);
 			const list = [...have].map((name) => `  ${name},`).join('\n');
 			return `import {\n${list}\n} from '@theoremjs/agents';`;
 		},
@@ -143,9 +143,9 @@ function withFirstTurnDoor(source: string, profileId: string): string {
 	}
 	return `${imports}
 export async function firstTurn(apiKey: string) {
-  const provider = createProvider(profile, {
+  const hostOptions = {
     vault: { openrouter: apiKey },
-  });
+  };
 
   for await (const event of runTurn(
     {
@@ -154,7 +154,7 @@ export async function firstTurn(apiKey: string) {
         text: ${JSON.stringify(FIRST_TURN_PROMPT)},
       },
     },
-    provider,
+    hostOptions,
   )) {
     if (event.type === 'text') process.stdout.write(event.text);
   }

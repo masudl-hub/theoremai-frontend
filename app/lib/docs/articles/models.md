@@ -1,7 +1,7 @@
 ---
 title: Binding models
-updated: 2026-10-07
-summary: Bind a model to a key slot, pick one per request, and fix failed bindings.
+updated: 2026-10-08
+summary: Register a provider, bind a model to it, pick one per request, and fix failed bindings.
 entry: src/providers/mod.ts
 covers: src/providers, src/kernel/registry/vault.ts, src/kernel/registry/catalog.ts, src/kernel/registry/profiles.ts, src/kernel/schema.ts
 cover: /imagery/th30_midnightblueberries.png
@@ -13,22 +13,38 @@ Tell the agent which models it can call, and where each model finds its key. The
 
 ## The idea
 
-A **binding** is one entry under `models`. It states how Theorem reaches one model:
+A **provider** is a model server that you register once: OpenRouter, Google, a server on your machine. A **binding** is one entry under `models`. It names a registered provider and one model on it:
 
-- `protocol`: the wire format that Theorem speaks to the model.
-- `provider`: the company or the server that runs the model.
+- `provider`: the `id` of a registered provider.
 - `apiId`: the name of the model at the provider.
-- `key`: the name of a **key slot**.
+- `keySlot`: the name of a **key slot**. It is optional when the provider names a default slot.
+- `providerOptions`: settings that only this provider understands. It is optional.
 
-A key slot is a name, not a key. You fill the slot in a **vault**, an object that maps each slot name to a key. The profile can then stay in your repository, and the keys stay in your secrets store.
+A provider holds an **adapter**, the code that speaks to one kind of model server. Theorem ships four: `openRouterAdapter`, `googleAdapter`, `openAIChat` and `typesafeAdapter`.
 
-`createProvider` joins the two. It reads the binding from the profile and the key from the vault, and it returns a provider that `runTurn` can call.
+A key slot is a name, not a key. You fill the slot in a **vault**, an object that maps each slot name to a key. You pass the vault to `runTurn`. The profile can then stay in your repository, and the keys stay in your secrets store.
 
 ## Bind the models of the Harbor desk
 
-These three steps give the Harbor desk one model, then a second model that a request can choose.
+These four steps give the Harbor desk one model, then a second model that a request can choose.
 
-### 1. Declare a binding
+### 1. Register the provider
+
+Register a provider before you register a profile that names it. The `id` is the name that bindings use.
+
+```ts
+import { openRouterAdapter, registerProvider } from '@theoremjs/agents';
+
+registerProvider({
+	id: 'openrouter',
+	connection: {},
+	adapter: openRouterAdapter(),
+});
+```
+
+`connection` holds the settings of the server, such as its address. OpenRouter needs none. `registerProfile` throws a `config` error, `Unknown provider`, for a binding whose provider is not registered.
+
+### 2. Declare a binding
 
 Put the binding under `models`, with an id that you choose. Here the id is `main`.
 
@@ -36,15 +52,14 @@ Put the binding under `models`, with an id that you choose. Here the id is `main
 type: 'text',
 models: {
 	main: {
-		protocol: 'openAi',
 		provider: 'openrouter',
 		apiId: 'openrouter/free',
-		key: 'openrouter',
+		keySlot: 'openrouter',
 	},
 },
 ```
 
-`protocol` and `provider` must be a legal pair ([Choose a legal pair](/docs/models#choose-a-legal-pair)). You can set `key` one time on the profile, and leave it out of each binding.
+To set the slot one time, put `keySlot` on the provider and leave it out of each binding. A binding's `keySlot` replaces the provider's.
 
 The number of bindings depends on the type of profile:
 
@@ -52,21 +67,19 @@ The number of bindings depends on the type of profile:
 - A `decision` profile declares exactly one binding.
 - A `host` profile declares none.
 
-### 2. Fill the key slot
+### 3. Fill the key slot
 
-Pass the vault when you create the provider. The vault has one entry for each slot that the profile names.
+Pass the vault to `runTurn`, in the host options after the request. The vault has one entry for each slot that the profile names.
 
 ```ts frame=statements
-const provider = createProvider(profile, {
+const hostOptions = {
 	vault: { openrouter: process.env.OPENROUTER_API_KEY },
-});
+};
 ```
 
-`createProvider(profile, options, modelId)` binds one model. If you leave out `modelId`, it uses `defaultModel`.
+A vault entry is a string, or a function that returns one when Theorem needs it. For a `live` profile, pass the `vault` to `runSession`. For a decision, pass it to `runDecision` ([Running a turn](/docs/runner)).
 
-`createProvider` does not open live sessions. For a `live` profile, call `runSession` and pass the `vault` there ([Running a turn](/docs/runner)).
-
-### 3. Let a request pick the model
+### 4. Let a request pick the model
 
 The desk answers most questions with a fast model. A dispute about a hold needs a stronger one. Declare both, and let the request choose.
 
@@ -74,16 +87,14 @@ The desk answers most questions with a fast model. A dispute about a hold needs 
 type: 'text',
 models: {
 	flash: {
-		protocol: 'openAi',
 		provider: 'openrouter',
 		apiId: 'openrouter/free',
-		key: 'openrouter',
+		keySlot: 'openrouter',
 	},
 	pro: {
-		protocol: 'openAi',
 		provider: 'openrouter',
 		apiId: 'example/other',
-		key: 'openrouter',
+		keySlot: 'openrouter',
 	},
 },
 defaultModel: 'flash',
@@ -92,7 +103,7 @@ allowModelSelect: true,
 
 - With two bindings or more, set `defaultModel`. With one binding, that binding is the default.
 - `allowModelSelect: true` lets a request pass `model`. It needs two bindings or more.
-- A turn runs `defaultModel` unless the request names another key of `models`. Create the provider for that model.
+- A turn runs `defaultModel` unless the request names another key of `models`.
 
 ```note
 A live session takes no `model`. It always runs `defaultModel`.
@@ -102,69 +113,81 @@ A live session takes no `model`. It always runs `defaultModel`.
 
 A slot keeps a key out of the profile. These rules keep the slot names safe and complete.
 
-- Every model except a `local` one needs a slot. Set `models.*.key` on the binding or `key` on the profile. Without one, `defineProfile` throws.
+- Every model except a `local` one needs a slot. Set `keySlot` on the binding or on the provider. A turn on a model with no slot ends with an `auth` error.
 - A slot name has at most 32 characters. It uses letters, digits, `-` and `_`.
-- `fallbackKey` names a second slot. If the provider refuses the first key for quota, Theorem retries once on the second. It must differ from `key`.
+- `fallbackKeySlot` names a second slot, on the binding or on the provider. If the provider refuses the first key for quota, Theorem retries once on the second. It must differ from `keySlot`.
 
-## Choose a legal pair
+## Choose a provider for the profile type
 
-A protocol works only with the providers that speak it. `defineProfile` refuses any other pair.
+An adapter runs only some profile types. `registerProfile` refuses any other pair.
 
-Protocol | Provider | Profile types
---- | --- | ---
-`openAi` | `openrouter` | `text`, `image`, `speech`
-`openAi` | `local` | `text`
-`geminiInteractions` | `google` | `text`, `image`, `speech`
-`geminiLive` | `google` | `live`
-`decision` | `typesafe` or `openrouter` | `decision`
+Adapter | Profile types
+--- | ---
+`openRouterAdapter` | `text`, `image`, `speech`, `decision`
+`googleAdapter` | `text`, `image`, `speech`, `live`
+`openAIChat` | `text`
+`typesafeAdapter` | `decision`
+
+A `speech` profile with `format: 'mp3'` needs a model that can make mp3. Use an OpenRouter model. Gemini speech returns `pcm`.
+
+## Set providerOptions
+
+`providerOptions` is checked by the adapter of the provider when you register the profile. An option that the adapter does not know makes `registerProfile` throw.
+
+- `openRouterAdapter`: `cache` sets prompt caching, `{ mode: 'automatic' }` or `{ mode: 'system' }`, with an optional `ttl` of `5m` or `1h`.
+- `googleAdapter`: `store`, `persistViaInteractionId` and `googleMapsLocation`.
+- `openAIChat`: `server`.
+- `typesafeAdapter`: none.
 
 ## Set persistViaInteractionId on Gemini
 
-Google can keep the history of a chat for you. A `geminiInteractions` binding must say if it uses that store. Set `persistViaInteractionId`.
+Google can keep the history of a chat for you. Set `persistViaInteractionId` in the `providerOptions` of a Google binding.
 
 - `true`: Google builds the context from its stored interaction. This needs `store` left on.
 - `false`: every call sends the history that you pass and the steps of the turn.
 
 ## Run a model on your machine
 
-Use a `local` model to call a server on your machine, such as Ollama. A `local` binding needs no key slot.
+Use `openAIChat` to call a server on your machine that speaks the chat-completions format, such as Ollama. A local provider needs no key slot.
 
-The binding sets `server`, a label that traces record. It is not a URL. Only a `local` binding takes `server`, and it must not be empty. A `local` model serves `text` profiles only.
+The connection sets `baseURL`, the address up to the path that Theorem adds. Theorem appends `/chat/completions`. The binding option `server` is a label that traces record. It is not a URL. If you set it, it must not be empty. A model on `openAIChat` serves `text` profiles only.
+
+```ts
+import { openAIChat, registerProvider } from '@theoremjs/agents';
+
+registerProvider({
+	id: 'local',
+	connection: { baseURL: 'http://127.0.0.1:11434/v1' },
+	adapter: openAIChat(),
+});
+```
 
 ```ts frame=profile:text
 type: 'text',
 models: {
 	local: {
-		protocol: 'openAi',
 		provider: 'local',
 		apiId: 'llama3.2',
-		server: 'ollama',
+		providerOptions: { server: 'ollama' },
 	},
 },
 ```
 
-You pass the URL when you create the provider.
-
-```ts frame=statements
-createProvider(profile, { local: { baseUrl: 'http://127.0.0.1:11434' } }, 'local');
-```
-
 ## Fix a binding that fails
 
-Most wrong bindings fail in `defineProfile`, when the application starts. Each row is one failure and its fix.
+A wrong binding fails when the application starts, in `defineProfile` or `registerProfile`. A missing key fails when a turn runs. Each row is one failure and its fix.
 
 Where | What you see | Fix
 --- | --- | ---
-`defineProfile`, kind `config` | The protocol is not valid for the provider | Use a pair from the table above
-`defineProfile`, kind `config` | The model needs `models.*.key` or the profile `key` | Set a key slot
-`defineProfile`, kind `config` | `persistViaInteractionId` is required on a `geminiInteractions` binding | Set it to `true` or `false`
+`defineProfile`, kind `config` | The profile sets `key`, `fallbackKey`, `protocol` or `provider` | Move it to the registered provider or to the binding
+`defineProfile`, kind `config` | The model needs `provider` and `apiId` | Set both on the binding
 `defineProfile`, kind `config` | The profile must set `defaultModel` when it declares more than one model | Set `defaultModel`
 `defineProfile`, kind `config` | `allowModelSelect` requires at least two models | Add a model, or remove the flag
-`defineProfile`, kind `config` | `fallbackKey` is the same slot as `key` | Name a different slot
-`defineProfile`, kind `config` | The key is not a key slot name | Use up to 32 letters, digits, `-` or `_`
-`defineProfile`, kind `config` | `server` is only valid when the provider is `local` | Remove `server`
-`defineProfile`, kind `config` | A local server serves text profiles only | Use a `text` profile
-`createProvider`, kind `config` | It requires a vault, or `local` options | Pass `vault`, or `local` for a `local` model
-`createProvider`, kind `request` | It does not support `live`, `host` or `decision` | Use `runSession`, `invokeTool` or `runDecision`
+`defineProfile`, kind `config` | `keySlot` is not a key slot name | Use up to 32 letters, digits, `-` or `_`
+`defineProfile`, kind `config` | A binding sets a key that its model does not know | Remove it, or move it into `providerOptions`
+`registerProvider` or `registerProfile`, kind `config` | The fallback slot is the same slot as the primary | Name a different slot
+`registerProfile`, kind `config` | Unknown provider | Register the provider first
+`registerProfile`, kind `unsupported` | The provider cannot run profiles of this type | Use a provider from the table above
+`registerProfile` throws | `providerOptions` has an option that the adapter does not know, or `persistViaInteractionId` is on with `store` off | Use an option from the list above
+A turn, `error` event with `errorKind: 'auth'` | The vault has no key in the slot that the model names, or the model names no slot | Fill the slot, or name one. The stream reports this as an event, not a throw
 A turn, kind `request` | The profile does not allow model selection, or the model is not a key of `models` | Set `allowModelSelect`, or name a key of `models`
-A turn, `error` event with `errorKind: 'auth'` | The vault has no key in the slot that the model names | Fill the slot. The stream reports this as an event, not a throw

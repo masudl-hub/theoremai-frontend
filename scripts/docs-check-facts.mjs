@@ -84,15 +84,13 @@ const sameSet = (what, docSet, kernelSet) => {
 	if (extra.length > 0) problems.push(`${what}: the chapter has ${extra.join(', ')}, the kernel does not`);
 };
 
-// models#choose-a-legal-pair: the triples `defineProfile` accepts, found by trying each one.
+// models#choose-a-provider-for-the-profile-type: the pairs `registerProfile` accepts, found by trying each one.
 {
-	const docTriples = new Set();
-	for (const [protocol, provider, types] of tableCells('models', 'choose-a-legal-pair')) {
-		for (const pr of provider.code) {
-			for (const type of types.code) docTriples.add(`${protocol.code[0]}/${pr}/${type}`);
-		}
+	const docPairs = new Set();
+	for (const [adapter, types] of tableCells('models', 'choose-a-provider-for-the-profile-type')) {
+		for (const type of types.code) docPairs.add(`${adapter.code[0]}/${type}`);
 	}
-	const kernelTriples = new Set(
+	const kernelPairs = new Set(
 		JSON.parse(
 			execFileSync('deno', ['run', '-A', path.join(repoRoot, 'scripts/docs-probe-pairs.ts'), theoremai.root], {
 				cwd: theoremai.root,
@@ -100,7 +98,7 @@ const sameSet = (what, docSet, kernelSet) => {
 			}),
 		),
 	);
-	sameSet('models#choose-a-legal-pair', docTriples, kernelTriples);
+	sameSet('models#choose-a-provider-for-the-profile-type', docPairs, kernelPairs);
 }
 
 // guardrails#which-profiles-take-which-guardrail: each cell against the `profileTypes` of the guardrail's field.

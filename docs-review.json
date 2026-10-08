@@ -124,11 +124,12 @@
 			"src/providers/google/keys.ts": "23881bb88cbe66b6d0474694738be07760d530d5",
 			"src/providers/google/live/framing.ts": "74c2f2ba4b0c122fd075e5f67c70aa0d952a95ec",
 			"src/providers/google/live/mod.ts": "490b3fbfe36a471cf39401c0e5afb15b781f5b9d",
-			"src/providers/google/live/session.ts": "3dda56bfff3a41e3103061a4bd7fedff15e06ffc",
-			"src/providers/google/live/stream.ts": "66db1374ec4452f0fa7e2201f22e3616231ba3fb",
+			"src/providers/google/live/session.ts": "ce4cea04288127b402446ad819c92176b74b57f5",
+			"src/providers/google/live/stream.ts": "2c6a338b99106031fed0851db6c73a6e8b3f246c",
 			"src/providers/google/thinking.ts": "243426e6e135d02dbd0673ffd10bd46086765b85",
 			"src/providers/google/urls.ts": "20947852ef0033ee7cc5ff441559dac31ac69e8b",
 			"src/providers/google/usage.ts": "26c7b0785818b94da3e7dab53bbca7b28d890564",
+			"src/providers/live.ts": "ca497116fc430bef18553a4a47d447fc5353668b",
 			"src/providers/local/local.ts": "63efdb7a9342482fe212beb72552509d39511526",
 			"src/providers/local/mod.ts": "589cfe59a0de3ac0625b84f0a203e266dff21340",
 			"src/providers/mod.ts": "59b73b71d54f9325cfe06a57dbbae651ecc0dcc9",
@@ -153,7 +154,7 @@
 			"src/providers/shared/upstream-tap.ts": "70bdd005012bd2d0dee8b060186f30f53a4a155b",
 			"src/providers/shared/upstream-tape.ts": "96f200691356591a80ff5361376802497167ef5d",
 			"src/providers/shared/vault.ts": "c835acb1e9e2026eae4b3269eb89ff1081187d4e",
-			"src/providers/types.ts": "426f810d8b20a8a1d8641adfc4674de381427a28"
+			"src/providers/types.ts": "63767f3f4eddcf78a5c994379020fe81ad7a1c13"
 		}
 	},
 	"outputs": {
@@ -177,8 +178,8 @@
 			"src/kernel/engine/runner/steps.ts": "3256ed38e8936d286017e470d0c57def0ff4b5a0",
 			"src/kernel/engine/runner/stream.ts": "884b9b11bb480892ef005fc10b2ce75daad6650c",
 			"src/kernel/engine/runner/usage.ts": "9df40698fbd855a50a8a7c5d526afe4a8821085c",
-			"src/kernel/engine/session/mod.ts": "65bd400a011d4bca6a3ee3174794c781fc60eb74",
-			"src/kernel/engine/session/session-trace.ts": "0f49282c545493114c8e741c5173f8c7c6b590bb",
+			"src/kernel/engine/session/mod.ts": "a06acdb9ecf612e2cb47dbb7f5d25636477ab44e",
+			"src/kernel/engine/session/session-trace.ts": "c3531d9e30b49ff6bbe75ce55752d4be918f5c20",
 			"src/kernel/stages.ts": "cc889a64cb5d3a5494105091b364433f9d5cca06",
 			"src/kernel/tools/invoke.ts": "4abf7da28eb81bbf421c29adb9f374413a0c1229"
 		}
@@ -200,12 +201,12 @@
 		}
 	},
 	"statuses": {
-		"reviewed": "2026-10-07",
+		"reviewed": "2026-10-08",
 		"files": {
 			"src/guardrails/error.ts": "87d9b1ab3a14a6558d27012b2bb70a4c975cde89",
 			"src/guardrails/lexicon.ts": "d33cb51f68fb31e98033678ea0b099a1f4393c1a",
 			"src/kernel/stop.ts": "59643af5c8c84807391f1b6931b84ea5cd1b5ac4",
-			"src/kernel/turn-events.ts": "4f40add92760fb511568f8b3d10261334a780494"
+			"src/kernel/turn-events.ts": "f54f073c4acb0a7c29e99e1c93bfd15487664005"
 		}
 	},
 	"tools": {

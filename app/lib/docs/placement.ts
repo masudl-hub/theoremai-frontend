@@ -6,8 +6,6 @@
 import {
 	type API_EXPORTS,
 	PROFILE_TYPES,
-	PROTOCOLS,
-	PROVIDERS,
 	type ProfileGraphFacetId,
 	STREAM_MODES,
 	TOOL_LOAD_TIERS,
@@ -42,7 +40,8 @@ export const EXPORT_SECTION = {
 	registerTool: 'tools',
 	registerStructured: 'outputs',
 	registerTraceDestination: 'traces',
-	createProvider: 'models',
+	defineProvider: 'models',
+	registerProvider: 'models',
 	runTurn: 'runner',
 	runSession: 'runner',
 	runDecision: 'runner',
@@ -58,8 +57,6 @@ export const EXPORT_SECTION = {
 /** Unions the docs list member by member. Compose throws if a member has no catalog doc. */
 export const UNION_SECTION = {
 	PROFILE_TYPES: { section: 'modalities', values: PROFILE_TYPES },
-	PROTOCOLS: { section: 'models', values: PROTOCOLS },
-	PROVIDERS: { section: 'models', values: PROVIDERS },
 	TOOL_LOAD_TIERS: { section: 'tools', values: TOOL_LOAD_TIERS },
 	STREAM_MODES: { section: 'outputs', values: STREAM_MODES },
 } as const satisfies Partial<

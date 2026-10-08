@@ -1,6 +1,6 @@
 ---
 title: Setting turn behaviour
-updated: 2026-10-07
+updated: 2026-10-08
 summary: Continue an early-stopped reply, and choose if a turn takes new messages.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/stop.ts, src/kernel/registry/resolve.ts
@@ -86,7 +86,7 @@ runTurn(
 		continuation: 1,
 		input: { history },
 	},
-	provider,
+	hostOptions,
 )
 ```
 

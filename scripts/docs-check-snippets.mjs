@@ -35,7 +35,7 @@ const words = (code) => new Set(code.match(/[A-Za-z_$][\w$]*/g) ?? []);
 /** @param {string} code @param {string} frame */
 function wrap(code, frame) {
 	if (frame === 'statements') return `async function snippet() {\n${code}\n}\nvoid snippet;`;
-	if (frame === 'request') return `void runTurn({ profile: 'snippet', ${code} }, provider);`;
+	if (frame === 'request') return `void runTurn({ profile: 'snippet', ${code} }, hostOptions);`;
 	if (frame === 'request-object') {
 		return `const turn: Parameters<typeof runTurn>[0] = { profile: 'snippet', ...${code} };\nvoid turn;`;
 	}
@@ -83,6 +83,8 @@ for (const article of index.articles) {
 		if (fromHost.length > 0) {
 			heads.push(`import { ${fromHost.join(', ')} } from '../../scripts/docs-snippet-host.ts';`);
 		}
+		// Each file is its own module, so two samples that declare the same name do not collide.
+		if (heads.length === 0 && !/^\s*(?:import|export)\s/m.test(body)) heads.push('export {};');
 		body = `${heads.join('\n')}\n${body}`;
 		count += 1;
 		writeFileSync(path.join(outDir, `${article.slug}--${block.id}.ts`), `${body}\n`);

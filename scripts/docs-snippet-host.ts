@@ -7,7 +7,7 @@ import type { invokeTool } from '@theoremjs/agents';
 import type {
 	ImageProfileDefinition,
 	LiveProfileDefinition,
-	ModelProvider,
+	ProviderHostOptions,
 	Profile,
 	SpeechProfileDefinition,
 	TextProfileDefinition,
@@ -21,7 +21,7 @@ import type {
 
 export declare const profile: Profile;
 export declare const desk: Profile;
-export declare const provider: ModelProvider;
+export declare const hostOptions: ProviderHostOptions;
 export declare const callId: string;
 export declare const input: unknown;
 export declare const history: TurnHistoryMessage[];
@@ -57,23 +57,20 @@ export const base: {
 	text: {
 		type: 'text',
 		id: 'snippet.text',
-		key: 'openrouter',
 		identity: { handle: 'snippet', system: 'You help.' },
-		models: { main: { protocol: 'openAi', provider: 'openrouter', apiId: 'openrouter/free' } },
+		models: { main: { provider: 'openrouter', apiId: 'openrouter/free', keySlot: 'openrouter' } },
 		tools: { allow: [] },
 		inputs: {},
 	},
 	image: {
 		type: 'image',
 		id: 'snippet.image',
-		key: 'google',
 		identity: { handle: 'snippet', system: 'Draw.' },
 		models: {
 			main: {
-				protocol: 'geminiInteractions',
 				provider: 'google',
-				persistViaInteractionId: false,
 				apiId: 'gemini-2.5-flash-image',
+				keySlot: 'google',
 			},
 		},
 		tools: { allow: [] },
@@ -83,14 +80,12 @@ export const base: {
 	speech: {
 		type: 'speech',
 		id: 'snippet.speech',
-		key: 'google',
 		identity: { handle: 'snippet' },
 		models: {
 			main: {
-				protocol: 'geminiInteractions',
 				provider: 'google',
-				persistViaInteractionId: false,
 				apiId: 'gemini-3.1-flash-tts-preview',
+				keySlot: 'google',
 			},
 		},
 		speech: {},
@@ -98,18 +93,16 @@ export const base: {
 	live: {
 		type: 'live',
 		id: 'snippet.live',
-		key: 'google',
 		identity: { handle: 'snippet', system: 'You talk.' },
-		models: { main: { protocol: 'geminiLive', provider: 'google', apiId: 'gemini-3.1-flash-live-preview' } },
+		models: { main: { provider: 'google', apiId: 'gemini-3.1-flash-live-preview', keySlot: 'google' } },
 		tools: { allow: [] },
 		live: {},
 	},
 	decision: {
 		type: 'decision',
 		id: 'snippet.decision',
-		key: 'typesafe',
 		identity: { handle: 'snippet' },
-		models: { jev: { protocol: 'decision', provider: 'typesafe', apiId: 'jev-latest' } },
+		models: { jev: { provider: 'typesafe', apiId: 'jev-latest', keySlot: 'typesafe' } },
 		inputs: { state: 'json' },
 		decision: { contract: 'snippet.v1' },
 	},

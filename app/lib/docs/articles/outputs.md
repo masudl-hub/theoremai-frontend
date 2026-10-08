@@ -1,6 +1,6 @@
 ---
 title: Declaring outputs
-updated: 2026-10-07
+updated: 2026-10-08
 summary: Make a text agent reply in a fixed JSON shape and choose how it streams.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/profile-outputs.ts, src/kernel/registry/schemas.ts, src/kernel/engine/repair.ts
@@ -85,7 +85,7 @@ import { runTurn } from '@theoremjs/agents';
 
 for await (const event of runTurn(
 	{ profile: 'harbor.desk', input: { text: 'Where do I find hold H-2291?' } },
-	provider,
+	hostOptions,
 )) {
 	if (event.type === 'structured') console.log(event.structured);
 }

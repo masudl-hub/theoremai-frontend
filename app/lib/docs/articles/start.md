@@ -1,6 +1,6 @@
 ---
 title: Getting started
-updated: 2026-10-07
+updated: 2026-10-08
 summary: Write a profile, run a turn, and see Theorem refuse what it doesn't state.
 entry: src/kernel/engine/runner/mod.ts
 covers: mod.ts, src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -107,19 +107,25 @@ The five fields from `category` to `permission` describe the tool to Theorem. [R
 
 This profile is a text agent with one model. `tools.allow` names the one tool that the model can call.
 
-`defineProfile` checks the profile. `registerProfile` stores it under its `id`, so that a request can name it. An `id` can have at most 64 characters.
+`registerProvider` tells Theorem how to reach OpenRouter, the server that runs the model. `defineProfile` checks the profile. `registerProfile` stores it under its `id`, so that a request can name it. An `id` can have at most 64 characters. Register the provider first, because the profile names it.
 
 ```ts
-import { defineProfile, registerProfile } from '@theoremjs/agents';
+import {
+	defineProfile,
+	openRouterAdapter,
+	registerProfile,
+	registerProvider,
+} from '@theoremjs/agents';
+
+registerProvider({ id: 'openrouter', connection: {}, adapter: openRouterAdapter() });
 
 const desk = defineProfile({
 	type: 'text',
 	id: 'harbor.desk',
 	identity: { handle: 'desk', system: 'You are the Harbor front desk. Answer in short sentences.' },
 	models: {
-		main: { protocol: 'openAi', provider: 'openrouter', apiId: 'openrouter/free' },
+		main: { provider: 'openrouter', apiId: 'openrouter/free', keySlot: 'openrouter' },
 	},
-	key: 'openrouter',
 	tools: { allow: ['harbor_holdStatus'] },
 	inputs: { text: true },
 });
@@ -129,16 +135,14 @@ registerProfile(desk);
 
 ### 3. Give the profile a key
 
-A profile never holds a key. It names a **key slot**, here `openrouter`. You fill the slot in a **vault**, an object that maps each slot name to a key.
+A profile never holds a key. Its model names a **key slot**, here `openrouter`. You fill the slot in a **vault**, an object that maps each slot name to a key.
 
-`createProvider` binds the profile to its model and to the vault. The profile can then stay in your repository, and the key stays in your environment.
+You pass the vault when you run a turn. The profile can then stay in your repository, and the key stays in your environment.
 
 ```ts frame=statements
-import { createProvider } from '@theoremjs/agents';
-
-const provider = createProvider(desk, {
+const hostOptions = {
 	vault: { openrouter: process.env.OPENROUTER_API_KEY },
-});
+};
 ```
 
 ### 4. Run a turn
@@ -150,7 +154,7 @@ import { runTurn } from '@theoremjs/agents';
 
 for await (const event of runTurn(
 	{ profile: 'harbor.desk', input: { text: 'Why is shipment H-1042 on hold?' } },
-	provider,
+	hostOptions,
 )) {
 	if (event.type === 'text') process.stdout.write(event.text);
 }
@@ -170,7 +174,7 @@ try {
 			model: 'bigger',
 			input: { text: 'Why is shipment H-1042 on hold?' },
 		},
-		provider,
+		hostOptions,
 	)) {
 		if (event.type === 'text') process.stdout.write(event.text);
 	}

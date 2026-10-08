@@ -1,6 +1,6 @@
 ---
 title: Registering tools
-updated: 2026-10-07
+updated: 2026-10-08
 summary: Give an agent a tool that runs your code or calls a URL, MCP or agent.
 entry: src/kernel/tools/mod.ts
 covers: src/kernel/tools, src/kernel/auth
@@ -311,7 +311,7 @@ import { invokeTool, runTurn } from '@theoremjs/agents';
 import { createOAuthPkceFlow, exchangeOAuthPkce } from '@theoremjs/agents/kernel';
 
 // 1. During the turn: a tool needs sign-in.
-for await (const event of runTurn(request, provider)) {
+for await (const event of runTurn(request, hostOptions)) {
 	if (event.type === 'tool' && event.tool.phase === 'gate' && event.tool.gate.kind === 'auth') {
 		const flow = await createOAuthPkceFlow({
 			resourceServerUrl: 'https://api.tracker.example',
