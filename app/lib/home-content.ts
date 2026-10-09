@@ -4,6 +4,7 @@
  * Kernel facts (description, license, version, keywords) come from the package at build time.
  */
 import { packageLinks, SITE_PAGES } from '@theoremjs/studio/ui/studio-nav.ts';
+import { goalText } from './home-goals';
 import { KERNEL_PACKAGE_VERSION } from './kernel-version';
 import { ARGUMENT, GOALS, HOME_TAGLINE } from './site-pitch';
 
@@ -147,6 +148,7 @@ export function homeScreens(): readonly HomeScreen[] {
 			name: 'Overview',
 			text: `${HEADLINE_TEXT} ${ARGUMENT} ${goals}`,
 		},
+		...GOALS.map(({ id, title }) => ({ id, name: title, text: goalText(id) })),
 		{ id: 'showcase', name: 'Showcase', text: `Built with theorem. ${examples}` },
 		{
 			id: 'contribute',
@@ -182,7 +184,7 @@ export function homeMarkdown(origin: string): string {
 	].join('\n');
 }
 
-/** Structured data for `/`: the site, who makes it, what it ships, and the page's four screens. */
+/** Structured data for `/`: the site, who makes it, what it ships, and the page's screens. */
 export function homeJsonLd(origin: string): Record<string, unknown> {
 	const orgId = `${origin}/#organization`;
 	const siteId = `${origin}/#website`;

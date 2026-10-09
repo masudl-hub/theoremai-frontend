@@ -2,11 +2,19 @@ import { Button } from '@astryxdesign/core/Button';
 import { Heading } from '@astryxdesign/core/Heading';
 import { useClipboard } from '@astryxdesign/core/hooks';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
-import { type ReactNode, type RefObject, useLayoutEffect, useRef, useState } from 'react';
+import {
+	type CSSProperties,
+	type ReactNode,
+	type RefObject,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { KERNEL_INSTALL_CMD } from '../lib/home-content';
 import { SITE_PACKAGES, SITE_SECTIONS } from '../lib/site-nav';
 import { HOME_TAGLINE } from '../lib/site-pitch';
+import { useHomeGoalsScroll } from './home-goals-pull';
 import { useHomeIntroWordmarkFit } from './home-intro-wordmark-fit';
 import { useHomeIntroScroll } from './home-shell-pull';
 import { NewTabLink } from './links';
@@ -113,9 +121,12 @@ function NavSpacers() {
 export function HomeIntro({
 	scrollRoot,
 	next,
+	stops,
 }: {
 	scrollRoot: RefObject<HTMLDivElement | null>;
 	next: ReactNode;
+	/** One scroll stop after overview for each entry. Each names the screen it belongs to. */
+	stops: readonly string[];
 }) {
 	const runRef = useRef<HTMLElement>(null);
 	const wordmarkTrackRef = useRef<HTMLDivElement>(null);
@@ -124,6 +135,7 @@ export function HomeIntro({
 	const [flightReady, setFlightReady] = useState(false);
 	useHomeIntroWordmarkFit(wordmarkTrackRef, wordmarkRef);
 	const { reduced } = useHomeIntroScroll(scrollRoot, runRef, itemRefs, flightReady);
+	useHomeGoalsScroll(scrollRoot, runRef, reduced);
 
 	useLayoutEffect(() => {
 		setFlightReady(!reduced);
@@ -132,7 +144,12 @@ export function HomeIntro({
 	const nav = <NavItems itemRefs={itemRefs} />;
 
 	return (
-		<section ref={runRef} className="home-contract" data-reduced={reduced ? '' : undefined}>
+		<section
+			ref={runRef}
+			className="home-contract"
+			data-reduced={reduced ? '' : undefined}
+			style={{ '--home-goal-stops': stops.length } as CSSProperties}
+		>
 			<div className="home-contract-frame">
 				<section id="landing" className="home-intro-pin" aria-label="Landing">
 					<div className="home-intro-card">
@@ -177,6 +194,15 @@ export function HomeIntro({
 				</section>
 			</div>
 			<div className="home-contract-settle" aria-hidden />
+			{stops.map((screen, index) => (
+				<div
+					// biome-ignore lint/suspicious/noArrayIndexKey: a screen may own several stops, in a fixed order
+					key={index}
+					className="home-goal-stop"
+					data-home-stop={screen}
+					aria-hidden
+				/>
+			))}
 		</section>
 	);
 }

@@ -38,7 +38,7 @@ function clearShellPull() {
 }
 
 /** How far from a stop, in px, still counts as resting on it. */
-const REST_PX = 2;
+export const REST_PX = 2;
 
 type Flight = {
 	node: HTMLElement;

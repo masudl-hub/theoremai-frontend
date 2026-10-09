@@ -7,6 +7,7 @@ import { PageJsonLd } from '../components/page-summary';
 import '../components/home-scroll.css';
 import { SITE_REDIRECTS } from '../lib/docs/articles/chapters';
 import { HOME_DESCRIPTION, homeJsonLd, KERNEL, SITE_NAME } from '../lib/home-content';
+import { type GoalId, isGoalId } from '../lib/home-goals';
 import { GOALS, HOME_TAGLINE } from '../lib/site-pitch';
 import type { Route } from './+types/home';
 export function loader({ request }: Route.LoaderArgs) {
@@ -55,13 +56,14 @@ function RetiredHashRedirect() {
 	return null;
 }
 
-type LandingScreen = 'landing' | 'overview' | 'showcase' | 'contribute';
+type LandingScreen = 'landing' | 'overview' | GoalId | 'showcase' | 'contribute';
 
 /** `#examples` is the previous showcase id. An empty hash is landing. */
 function landingScreen(hash: string): LandingScreen | null {
 	const id = decodeURIComponent(hash.replace(/^#/, ''));
 	if (id === '' || id === 'landing') return 'landing';
 	if (id === 'overview') return 'overview';
+	if (isGoalId(id)) return id;
 	if (id === 'showcase' || id === 'examples') return 'showcase';
 	if (id === 'contribute') return 'contribute';
 	return null;
@@ -72,7 +74,17 @@ function hashFor(screen: LandingScreen): string {
 	return `#${screen}`;
 }
 
-/** Snap offsets for the four screens. Overview uses the settle band. */
+/** The stops of one goal, where they are laid out. A phone and reduced motion have none. */
+function goalStops(scroller: HTMLElement): { screen: GoalId; stop: HTMLElement }[] {
+	const out: { screen: GoalId; stop: HTMLElement }[] = [];
+	for (const stop of scroller.querySelectorAll<HTMLElement>('[data-home-stop]')) {
+		const screen = stop.dataset.homeStop ?? '';
+		if (isGoalId(screen) && stop.offsetHeight > 0) out.push({ screen, stop });
+	}
+	return out;
+}
+
+/** Snap offsets for the screens. Overview uses the settle band, and a goal has a stop for each beat. */
 function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number }[] {
 	const settle = scroller.querySelector<HTMLElement>('.home-contract-settle');
 	const overview = scroller.querySelector<HTMLElement>('#overview');
@@ -85,6 +97,7 @@ function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number
 	return [
 		{ screen: 'landing', at: 0 },
 		{ screen: 'overview', at: overviewAt },
+		...goalStops(scroller).map(({ screen, stop }) => ({ screen, at: stop.offsetTop })),
 		{ screen: 'showcase', at: showcase?.offsetTop ?? overviewAt },
 		{ screen: 'contribute', at: contribute?.offsetTop ?? showcase?.offsetTop ?? overviewAt },
 	];
@@ -111,14 +124,28 @@ function screenAtRest(scroller: HTMLElement): LandingScreen | null {
 /**
  * Overview’s snap point is the settle band. The named section sits in the sticky
  * frame, so scrolling to it would stay on landing. Reduced motion hides that band
- * and stacks the section, which is then the right target.
+ * and stacks the section, which is then the right target. A goal's snap point is the
+ * stop of its first beat. Where the stops are not laid out, its block in the page is the
+ * target, and overview where the block is not shown either.
  */
 function scrollToLandingScreen(scroller: HTMLElement, screen: LandingScreen) {
 	if (screen === 'landing') {
 		scroller.scrollTo({ top: 0 });
 		return;
 	}
-	if (screen === 'overview') {
+	if (isGoalId(screen)) {
+		const first = goalStops(scroller).find((stop) => stop.screen === screen);
+		if (first) {
+			first.stop.scrollIntoView({ block: 'start' });
+			return;
+		}
+		const block = scroller.querySelector<HTMLElement>(`#${screen}`);
+		if (block && block.offsetHeight > 0) {
+			block.scrollIntoView({ block: 'start' });
+			return;
+		}
+	}
+	if (screen === 'overview' || isGoalId(screen)) {
 		const settle = scroller.querySelector<HTMLElement>('.home-contract-settle');
 		if (settle && getComputedStyle(settle).display !== 'none') {
 			settle.scrollIntoView({ block: 'start' });
@@ -128,7 +155,7 @@ function scrollToLandingScreen(scroller: HTMLElement, screen: LandingScreen) {
 	scroller.querySelector<HTMLElement>(`#${screen}`)?.scrollIntoView({ block: 'start' });
 }
 
-/** Landing (/), then overview (/overview), showcase (/examples) and contribute (/contribute). */
+/** Landing (/), then overview (/overview), the three goals, showcase (/examples) and contribute (/contribute). */
 export default function Home({ loaderData }: Route.ComponentProps) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const { hash, pathname } = useLocation();

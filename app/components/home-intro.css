@@ -2,8 +2,11 @@
 .home-contract {
 	--home-intro-pad-block: clamp(1.25rem, 3vh, 2.25rem);
 	--home-intro-pad-inline: clamp(1.25rem, 3vw, 2.75rem);
+	/* Landing and overview, then one screen of travel for each beat of the goals. */
+	--home-run-stops: var(--home-goal-stops, 0);
+	--home-run-screens: calc(2 + var(--home-run-stops));
 	position: relative;
-	height: 200%;
+	height: calc(var(--home-run-screens) * 100%);
 }
 
 .home-intro-pin {
@@ -15,7 +18,7 @@
 	position: sticky;
 	top: 0;
 	display: grid;
-	height: 50%;
+	height: calc(100% / var(--home-run-screens));
 }
 
 .home-contract-frame > .home-intro-pin,
@@ -34,8 +37,9 @@
 	pointer-events: none;
 }
 
-.home-contract-settle {
-	height: 50%;
+.home-contract-settle,
+.home-goal-stop {
+	height: calc(100% / var(--home-run-screens));
 }
 
 html[data-home-intro-done] .home-intro-pin {
@@ -64,7 +68,8 @@ html[data-home-intro-done] .home-contract-next {
 	pointer-events: auto;
 }
 
-.home-contract[data-reduced] .home-contract-settle {
+.home-contract[data-reduced] .home-contract-settle,
+.home-contract[data-reduced] .home-goal-stop {
 	display: none;
 }
 
@@ -144,7 +149,7 @@ html[data-shell-move] .home-intro-flight {
 	transform-origin: top left;
 }
 
-.home-intro-tagline.astryx-heading {
+.home-intro-tagline.home-intro-tagline {
 	justify-self: end;
 	max-width: 34rem;
 	font-size: var(--text-display-1-size);
@@ -182,7 +187,7 @@ html[data-shell-move] .home-intro-flight {
 	padding-inline: var(--home-intro-pad-inline);
 }
 
-.home-intro-wordmark.astryx-heading {
+.home-intro-wordmark.home-intro-wordmark {
 	display: block;
 	width: max-content;
 	max-width: 100%;
@@ -199,11 +204,20 @@ html[data-home-intro-done] .home-intro-pin {
 }
 
 @media (width < 768px) {
+	/* A phone has no goal beats yet: the run is landing and overview. */
+	.home-contract {
+		--home-run-stops: 0;
+	}
+
+	.home-goal-stop {
+		display: none;
+	}
+
 	.home-intro-top {
 		grid-template-columns: 1fr;
 	}
 
-	.home-intro-tagline.astryx-heading {
+	.home-intro-tagline.home-intro-tagline {
 		justify-self: start;
 		text-align: start;
 		font-size: 2rem;

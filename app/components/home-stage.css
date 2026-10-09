@@ -27,7 +27,7 @@
 	padding-inline-start: clamp(2rem, 6vw, 5rem);
 }
 
-.home-stage-lead .home-stage-headline.astryx-heading {
+.home-stage-lead .home-stage-headline.home-stage-headline {
 	font-size: var(--text-display-1-size);
 	line-height: 0.98;
 	letter-spacing: -0.038em;
@@ -46,7 +46,7 @@
 	font-weight: 700;
 }
 
-.home-stage-lead .home-stage-statement.astryx-text {
+.home-stage-lead .home-stage-statement.home-stage-statement {
 	max-width: 34rem;
 	font-size: 1.0625rem;
 	font-weight: 400;
@@ -69,7 +69,8 @@
 
 .home-stage-still-media {
 	position: relative;
-	width: clamp(7.5rem, 16vh, 10.5rem);
+	display: block;
+	width: var(--home-still-size);
 	aspect-ratio: 1;
 	border-radius: var(--radius-container);
 	overflow: hidden;
@@ -123,7 +124,7 @@
 		padding-inline-start: 0;
 	}
 
-	.home-stage-lead .home-stage-headline.astryx-heading {
+	.home-stage-lead .home-stage-headline.home-stage-headline {
 		font-size: 2rem;
 	}
 

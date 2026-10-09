@@ -8,6 +8,7 @@
 
 .home-contract,
 .home-contract-settle,
+.home-goal-stop,
 .home-page {
 	scroll-snap-align: start;
 	scroll-snap-stop: always;

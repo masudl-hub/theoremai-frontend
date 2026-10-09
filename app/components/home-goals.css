@@ -1,0 +1,157 @@
+/* The goals screen. Everything here moves from --home-goals-pull: 0 on overview, then one for
+   each beat. Only transform and opacity change with scroll, so nothing is laid out again. */
+
+.home-stage-leads {
+	display: grid;
+	align-self: stretch;
+	min-width: 0;
+	min-height: 0;
+	overflow: clip;
+}
+
+/* One column, travelling up: a block is a full column away from rest for each beat it is off. */
+.home-goal-block {
+	--home-goal-off: calc(var(--home-goals-pull, 0) - var(--home-goal-beat, 0));
+	grid-area: 1 / 1;
+	height: 100%;
+	transform: translateY(calc(var(--home-goal-off) * -100%));
+	opacity: clamp(0, 1 - 1.6 * max(var(--home-goal-off), -1 * var(--home-goal-off)), 1);
+}
+
+.home-goal-name.home-goal-name {
+	font-size: var(--text-label-size);
+	letter-spacing: 0.02em;
+}
+
+.home-stage-lead .home-goal-lede.home-goal-lede {
+	max-width: 36rem;
+	font-size: var(--text-display-3-size);
+	font-weight: 700;
+	line-height: 1.04;
+	letter-spacing: -0.03em;
+	text-wrap: balance;
+}
+
+.home-goal-controls {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-2);
+	max-width: 34rem;
+}
+
+.home-goal-tokens {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing-2);
+}
+
+/* The tile stack. One tile is large while its goal is open and the other two are small. The
+   stack grows from its middle on the way in from overview, then keeps its height, so tile one
+   grows from its top edge, tile two from its centre and tile three from its bottom edge. */
+.home-stage-stills {
+	--home-still-size: clamp(7.5rem, 16vh, 10.5rem);
+	--home-goal-small: 0.4;
+	--home-goal-at: var(--home-goals-pull, 0);
+	--home-goal-in: clamp(0, var(--home-goal-at), 1);
+	--home-goal-rise: calc((var(--home-goal-ratio, 1) + 2 * var(--home-goal-small) - 3) / 2);
+	position: relative;
+}
+
+.home-stage-still {
+	transform: translateY(
+		calc(
+			var(--home-still-size) *
+			(var(--home-goal-above, 0) - var(--home-goal-in) * var(--home-goal-rise))
+		)
+	);
+}
+
+.home-stage-still-media {
+	transform: scale(var(--home-goal-size, 1));
+	transform-origin: 0 0;
+	border-radius: calc(var(--radius-container) / var(--home-goal-size, 1));
+}
+
+.home-stage-still-media::after,
+.home-stage-still-icon {
+	opacity: calc(1 - var(--home-goal-grow, 0));
+}
+
+.home-stage-still figcaption {
+	opacity: clamp(0, 1 - 2 * var(--home-goal-in), 1);
+}
+
+/* The large still's own square, for what a beat puts on it. */
+.home-goal-stage {
+	--home-goal-off: calc(var(--home-goals-pull, 0) - var(--home-goal-beat));
+	--home-goal-large: calc(var(--home-still-size) * var(--home-goal-ratio, 1));
+	position: absolute;
+	z-index: 2;
+	top: calc(
+		var(--home-still-size) *
+		(var(--home-goal-slot) * var(--home-goal-small) - var(--home-goal-rise)) +
+		var(--home-goal-slot) *
+		var(--spacing-4)
+	);
+	left: 0;
+	width: var(--home-goal-large);
+	height: var(--home-goal-large);
+	display: grid;
+	padding: var(--spacing-4);
+	box-sizing: border-box;
+	opacity: clamp(0, 1 - 2 * max(var(--home-goal-off), -1 * var(--home-goal-off)), 1);
+	pointer-events: none;
+}
+
+.home-goal-stage-inset {
+	grid-area: 1 / 1;
+	min-width: 0;
+	min-height: 0;
+	border-radius: var(--radius-container);
+	overflow: hidden;
+	pointer-events: auto;
+}
+
+.home-goal-prompt {
+	grid-area: 1 / 1;
+	align-self: end;
+	justify-self: start;
+	z-index: 1;
+}
+
+.home-goal-prompt:not(:empty) {
+	padding: var(--spacing-2) var(--spacing-3);
+	border-radius: var(--radius-container);
+	background: var(--color-background-surface);
+	box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.18);
+}
+
+/* Reduced motion stacks the page: every beat is in the column, and the tiles stay at rest. */
+.home-contract[data-reduced] .home-stage-leads {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-8);
+	overflow: visible;
+}
+
+.home-contract[data-reduced] .home-goal-block {
+	height: auto;
+	transform: none;
+	opacity: 1;
+}
+
+.home-contract[data-reduced] .home-goal-stage {
+	display: none;
+}
+
+/* A phone has no goal beats yet. Overview is as it was. */
+@media (width < 768px) {
+	.home-goal-beat,
+	.home-goal-stage {
+		display: none;
+	}
+
+	.home-goal-block {
+		height: auto;
+	}
+}
