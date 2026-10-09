@@ -1,7 +1,7 @@
 import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
 import { Token } from '@astryxdesign/core/Token';
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties } from 'react';
 import { GOAL_BEATS, type GoalBeat, type GoalToken } from '../lib/home-goals';
 import { GOALS } from '../lib/site-pitch';
 import './home-goals.css';
@@ -52,13 +52,14 @@ export function goalTileVars(index: number): CSSProperties {
 export function GoalBlock({
 	beat,
 	number,
-	picked,
+	isOn,
 	onPick,
 }: {
 	beat: GoalBeat;
 	number: number;
-	picked: GoalToken | undefined;
-	onPick: (token: GoalToken | undefined) => void;
+	/** Whether the agent has a token's change now. */
+	isOn: (token: GoalToken) => boolean;
+	onPick: (token: GoalToken) => void;
 }) {
 	const goal = GOALS[goalIndex(beat)];
 	const opensGoal = GOAL_BEATS.findIndex(({ goal: id }) => id === beat.goal) === number - 1;
@@ -87,10 +88,10 @@ export function GoalBlock({
 							<Token
 								key={token.label}
 								label={token.label}
-								color={picked === token ? 'blue' : 'default'}
-								aria-pressed={picked === token}
+								color={isOn(token) ? 'blue' : 'default'}
+								aria-pressed={isOn(token)}
 								onClick={() => {
-									onPick(picked === token ? undefined : token);
+									onPick(token);
 								}}
 							/>
 						))}
@@ -98,34 +99,5 @@ export function GoalBlock({
 				</div>
 			))}
 		</section>
-	);
-}
-
-/**
- * What sits on a goal's large still for one beat. `children` is the live part, inset on the
- * still. The prompt says what to try after a change.
- */
-export function GoalStage({
-	beat,
-	number,
-	picked,
-	children,
-}: {
-	beat: GoalBeat;
-	number: number;
-	picked: GoalToken | undefined;
-	children?: ReactNode;
-}) {
-	return (
-		<div
-			className="home-goal-stage"
-			data-home-beat={number}
-			style={vars({ '--home-goal-beat': number, '--home-goal-slot': goalIndex(beat) })}
-		>
-			{children ? <div className="home-goal-stage-inset">{children}</div> : null}
-			<div className="home-goal-prompt" aria-live="polite">
-				{picked ? <Text weight="medium">{picked.prompt}</Text> : null}
-			</div>
-		</div>
 	);
 }

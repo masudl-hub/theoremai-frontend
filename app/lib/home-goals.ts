@@ -7,8 +7,23 @@ import { GOALS } from './site-pitch';
 
 export type GoalId = (typeof GOALS)[number]['id'];
 
+export type GoalTokenId =
+	| 'images-only'
+	| 'limit-by-type'
+	| 'typed-choice'
+	| 'declared-shape'
+	| 'openrouter'
+	| 'pick-model'
+	| 'picture'
+	| 'live-call'
+	| 'block-secret'
+	| 'block-injection'
+	| 'refuse-after-read'
+	| 'harmless';
+
 /** A change to the agent, and what the stage asks the visitor to try after it. */
-export type GoalToken = { label: string; prompt: string };
+/** `ask` is the message the prompt offers to send, when one message is the whole test. */
+export type GoalToken = { id: GoalTokenId; label: string; prompt: string; ask?: string };
 
 export type GoalControls = { label: string; tokens: readonly GoalToken[] };
 
@@ -30,20 +45,26 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 				label: 'Change the contract',
 				tokens: [
 					{
+						id: 'images-only',
 						label: 'Images, not spreadsheets',
 						prompt: 'Now attach the photo, then the CSV file.',
 					},
 					{
+						id: 'limit-by-type',
 						label: 'A size limit for each file type',
 						prompt: 'Now attach the large photo, then the PDF of the same size.',
 					},
 					{
+						id: 'typed-choice',
 						label: 'A typed choice beside the message',
 						prompt: 'Now pick a trip style and ask for a hotel.',
+						ask: 'Find me a hotel in Lisbon.',
 					},
 					{
+						id: 'declared-shape',
 						label: 'A reply with a declared shape',
 						prompt: 'Now ask for two days in Lisbon.',
+						ask: 'Plan two days in Lisbon.',
 					},
 				],
 			},
@@ -58,13 +79,25 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 			{
 				label: 'Change what runs',
 				tokens: [
-					{ label: 'A faster model', prompt: 'Now send the same question again.' },
-					{ label: 'Another provider', prompt: 'Now send the same question again.' },
 					{
-						label: 'A picture in place of text',
-						prompt: 'Now ask for a postcard of Lisbon at dusk.',
+						id: 'openrouter',
+						label: 'Use OpenRouter instead',
+						prompt: 'Now ask what to pack for March.',
+						ask: 'What should I pack for Lisbon in March?',
 					},
 					{
+						id: 'pick-model',
+						label: 'Let the visitor pick the model and effort',
+						prompt: 'Now pick a model and an effort, and ask what to pack.',
+					},
+					{
+						id: 'picture',
+						label: 'A picture in place of text',
+						prompt: 'Now ask for a postcard of Lisbon at dusk.',
+						ask: 'A postcard of Lisbon at dusk.',
+					},
+					{
+						id: 'live-call',
 						label: 'A live voice call',
 						prompt: 'Now start the call and ask about the weather.',
 					},
@@ -81,16 +114,23 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 			{
 				label: 'Set a boundary',
 				tokens: [
-					{ label: 'Block a secret in a reply', prompt: 'Now send “API key inside a URL”.' },
 					{
-						label: 'Redact an injection in a tool result',
+						id: 'block-secret',
+						label: 'Block a secret in a reply',
+						prompt: 'Now send “API key inside a URL”.',
+					},
+					{
+						id: 'block-injection',
+						label: 'Block an injection in a tool result',
 						prompt: 'Now send “Injection in lookalike letters”.',
 					},
 					{
+						id: 'refuse-after-read',
 						label: 'Refuse tool calls after a remote read',
 						prompt: 'Now send “A page that claims the user already agreed”.',
 					},
 					{
+						id: 'harmless',
 						label: 'Let a harmless text through',
 						prompt: 'Now send “Harmless: a placeholder key from the docs”.',
 					},

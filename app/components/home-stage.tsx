@@ -2,12 +2,22 @@ import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 import { IconBrush, IconCircleDot, IconShieldCheck } from '@tabler/icons-react';
-import { type RefObject, useState } from 'react';
+import {
+	type RefObject,
+	startTransition,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from 'react';
 import { Link } from 'react-router';
+import type { HomeAgentStore } from '../lib/home-agent-store';
 import { HEADLINE } from '../lib/home-content';
-import { GOAL_BEATS } from '../lib/home-goals';
+import { GOAL_BEATS, type GoalToken } from '../lib/home-goals';
 import { ARGUMENT, GOALS } from '../lib/site-pitch';
-import { GoalBlock, GoalStage, goalStackVars, goalTileVars, type PickedTokens } from './home-goals';
+import { GoalBlock, goalStackVars, goalTileVars, type PickedTokens } from './home-goals';
+import { useGoalBeat } from './home-goals-beat';
 import { HomeIntro } from './home-intro';
 import { StillText, StillTitle } from './still-caption';
 import './home-stage.css';
@@ -46,8 +56,86 @@ function StillRow({ still, index }: { still: Still; index: number }) {
 
 const STACK_VARS = goalStackVars();
 
+type Loaded = {
+	GoalEditor: typeof import('./home-goals-live').GoalEditor;
+	GoalLive: typeof import('./home-goals-live').GoalLive;
+	tokenEdits: typeof import('../lib/home-agent').tokenEdits;
+	tokenIsOn: typeof import('../lib/home-agent').tokenIsOn;
+	store: HomeAgentStore;
+};
+
+/** How long the page is left alone before the agent's code is fetched. */
+const LIVE_IDLE_MS = 1500;
+
+const noStore = () => () => {};
+
+/**
+ * The agent, its editor and its runner are the studio's, and they are fetched after the page is
+ * up. The editor itself waits until the goals screen is first reached.
+ */
+function useLiveAgent() {
+	const [loaded, setLoaded] = useState<Loaded>();
+	const loading = useRef<Promise<Loaded>>(undefined);
+	const load = useCallback(() => {
+		loading.current ??= Promise.all([
+			import('./home-goals-live'),
+			import('../lib/home-agent-store'),
+			import('../lib/home-agent'),
+		]).then(([{ GoalEditor, GoalLive }, { createHomeAgentStore }, { tokenEdits, tokenIsOn }]) => {
+			const next = { GoalEditor, GoalLive, tokenEdits, tokenIsOn, store: createHomeAgentStore() };
+			// The editor and the chat are a large first render. A scroll or a click comes first.
+			startTransition(() => {
+				setLoaded(next);
+			});
+			return next;
+		});
+		return loading.current;
+	}, []);
+	useEffect(() => {
+		const timer = setTimeout(() => void load(), LIVE_IDLE_MS);
+		return () => {
+			clearTimeout(timer);
+		};
+	}, [load]);
+	const state = useSyncExternalStore(
+		loaded?.store.subscribe ?? noStore,
+		() => loaded?.store.get(),
+		() => undefined,
+	);
+	return { loaded, state, load };
+}
+
 function StageCopy() {
 	const [picked, setPicked] = useState<PickedTokens>({});
+	const { loaded, state, load } = useLiveAgent();
+	const beat = useGoalBeat();
+	const [hasArrived, setHasArrived] = useState(false);
+	useEffect(() => {
+		if (beat > 0)
+			startTransition(() => {
+				setHasArrived(true);
+			});
+	}, [beat]);
+	// Starting over takes the prompts with it.
+	const runs = state?.runs;
+	const ran = useRef(runs);
+	useEffect(() => {
+		if (ran.current !== undefined && ran.current !== runs) setPicked({});
+		ran.current = runs;
+	}, [runs]);
+	const isOn = (number: number) => (token: GoalToken) =>
+		loaded && state && loaded.tokenEdits(token.id)
+			? loaded.tokenIsOn(state.agent, token.id)
+			: picked[number] === token;
+	const pick = (number: number) => (token: GoalToken) => {
+		void load().then(({ tokenEdits, tokenIsOn, store }) => {
+			const edits = tokenEdits(token.id);
+			const wasOn = edits ? tokenIsOn(store.get().agent, token.id) : picked[number] === token;
+			if (edits) store.toggle(token.id);
+			setPicked((now) => ({ ...now, [number]: wasOn ? undefined : token }));
+		});
+	};
+	const isLive = loaded && hasArrived;
 	return (
 		<div className="home-hero-copy">
 			<div className="home-stage-frame">
@@ -63,30 +151,32 @@ function StageCopy() {
 							</Heading>
 							<Text className="home-stage-statement">{ARGUMENT}</Text>
 						</div>
-						{GOAL_BEATS.map((beat, index) => (
+						{GOAL_BEATS.map((goalBeat, index) => (
 							<GoalBlock
-								key={beat.lede}
-								beat={beat}
+								key={goalBeat.lede}
+								beat={goalBeat}
 								number={index + 1}
-								picked={picked[index + 1]}
-								onPick={(token) => {
-									setPicked((now) => ({ ...now, [index + 1]: token }));
-								}}
+								isOn={isOn(index + 1)}
+								onPick={pick(index + 1)}
 							/>
 						))}
+						<div className="home-goal-editor" inert={beat < 1}>
+							{isLive ? <loaded.GoalEditor store={loaded.store} isShown={beat > 0} /> : null}
+						</div>
 					</div>
 					<VStack className="home-stage-stills" gap={4} justify="center" style={STACK_VARS}>
 						{GOALS.map((still, index) => (
 							<StillRow key={still.title} still={still} index={index} />
 						))}
-						{GOAL_BEATS.map((beat, index) => (
-							<GoalStage
-								key={beat.lede}
-								beat={beat}
-								number={index + 1}
-								picked={picked[index + 1]}
-							/>
-						))}
+						<div className="home-goal-live" inert={beat < 1}>
+							{isLive ? (
+								<loaded.GoalLive
+									store={loaded.store}
+									beat={GOAL_BEATS[beat - 1]}
+									picked={picked[beat]}
+								/>
+							) : null}
+						</div>
 					</VStack>
 				</div>
 			</div>

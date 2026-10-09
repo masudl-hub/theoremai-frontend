@@ -1,4 +1,5 @@
 import { type RefObject, useEffect } from 'react';
+import { setGoalBeat } from './home-goals-beat';
 import { REST_PX } from './home-shell-pull';
 
 function lengthOf(value: string): number {
@@ -37,6 +38,7 @@ export function useHomeGoalsScroll(
 			run.style.removeProperty('--home-goal-ratio');
 			for (const beat of beats) beat.removeAttribute('inert');
 			current = -1;
+			setGoalBeat(0);
 		};
 
 		const measure = () => {
@@ -74,6 +76,7 @@ export function useHomeGoalsScroll(
 			run.style.setProperty('--home-goals-pull', String(pull));
 			if (nearest === current) return;
 			current = nearest;
+			setGoalBeat(nearest);
 			for (const beat of beats) {
 				beat.toggleAttribute('inert', Number(beat.dataset.homeBeat) !== nearest);
 			}

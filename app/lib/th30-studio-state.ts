@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { createSharedValue } from './shared-value';
 
 /** The studio's live state, as th30 is told it. */
 export type Th30StudioState = {
@@ -8,35 +8,19 @@ export type Th30StudioState = {
 	section?: string;
 };
 
-let studioState: Th30StudioState | null = null;
-const listeners = new Set<() => void>();
+const studio = createSharedValue<Th30StudioState | null>(null);
 
 /** The studio reports what is on screen as it changes, and null when it closes. */
 export function reportTh30Studio(next: Th30StudioState | null) {
+	const now = studio.get();
 	const same =
-		next === studioState ||
-		(next !== null &&
-			studioState !== null &&
-			next.agent === studioState.agent &&
-			next.type === studioState.type &&
-			next.issues === studioState.issues &&
-			next.section === studioState.section);
-	if (same) return;
-	studioState = next;
-	for (const listener of listeners) listener();
+		next !== null &&
+		now !== null &&
+		next.agent === now.agent &&
+		next.type === now.type &&
+		next.issues === now.issues &&
+		next.section === now.section;
+	if (!same) studio.set(next);
 }
 
-function subscribe(listener: () => void) {
-	listeners.add(listener);
-	return () => {
-		listeners.delete(listener);
-	};
-}
-
-export function useTh30StudioState(): Th30StudioState | null {
-	return useSyncExternalStore(
-		subscribe,
-		() => studioState,
-		() => null,
-	);
-}
+export const useTh30StudioState = studio.use;

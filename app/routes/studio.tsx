@@ -1,3 +1,4 @@
+import type { StudioDraft } from '@theoremjs/studio';
 import { openStudio } from '@theoremjs/studio/ui/lib/studio-open.ts';
 import type { ProjectSession } from '@theoremjs/studio/ui/lib/studio-project.ts';
 import type { StudioHost, StudioOpened } from '@theoremjs/studio/ui/studio-host.ts';
@@ -6,6 +7,7 @@ import { useOutletContext } from 'react-router';
 import { PageJsonLd } from '../components/page-summary';
 import { STUDIO_SEED_IDS, type StudioSeedId } from '../lib/docs/schema';
 import { docsSeedDraft, docsSeedQuestion } from '../lib/docs/seeds';
+import { takeHomeAgent } from '../lib/home-agent-handoff';
 import { SITE_NAME } from '../lib/home-content';
 import { KERNEL_PACKAGE_VERSION } from '../lib/kernel-version';
 import { STUDIO_TITLE, studioDescription } from '../lib/studio-content';
@@ -42,9 +44,13 @@ function isStudioSeed(value: string | null): value is StudioSeedId {
 	return Boolean(value && (STUDIO_SEED_IDS as readonly string[]).includes(value));
 }
 
-/** The studio opens on this tab's kept draft, unless a docs seed asks for another. */
+/** The studio opens on this tab's kept draft, unless a docs seed or the home page asks for another. */
 export function clientLoader({ request }: Route.ClientLoaderArgs): StudioOpened {
-	const seed = new URL(request.url).searchParams.get('seed');
+	const params = new URL(request.url).searchParams;
+	// The goals screen hands its agent over. The tab's kept draft waits behind Undo, as for a seed.
+	const handed = params.get('from') === 'home' ? takeHomeAgent() : undefined;
+	if (handed) return openStudio({ draft: handed as StudioDraft, question: undefined });
+	const seed = params.get('seed');
 	return openStudio(
 		isStudioSeed(seed)
 			? { draft: docsSeedDraft(seed), question: docsSeedQuestion(seed) }
