@@ -1,19 +1,5 @@
 /* The few layout rules pages share. Anything with a look belongs to Astryx or the site theme. */
-.fill {
-	height: 100%;
-	width: 100%;
-}
-
-.scrollbar-none {
-	scrollbar-width: none;
-}
-
 .app-error {
 	min-height: 100dvh;
 	padding: var(--spacing-4);
-}
-
-.criterion-label {
-	flex: 0 0 38%;
-	min-width: 0;
 }
