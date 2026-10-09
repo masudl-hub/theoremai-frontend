@@ -24,18 +24,27 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 		goal: 'source-of-truth',
 		lede: 'One profile. The server enforces it, and the interface reads it.',
 		explainer:
-			'A profile is the agent’s contract: what it accepts, what it returns and which tools it may call. The kernel checks every turn against it. The kernel also gives the interface a view of the same profile, with every value resolved, as plain data. The chat builds its composer from that view. So the screen never offers what the server will refuse, and no rule is written twice.',
+			'The profile states what the agent accepts, what it returns and which tools it can call. The server checks each turn against it. The interface gets the same values as data and builds the message box from them.',
 		controls: [
 			{
 				label: 'Change the contract',
 				tokens: [
-					{ label: 'PDF', prompt: 'Now attach the boarding pass.' },
-					{ label: 'PNG', prompt: 'Now attach the photo of the ticket.' },
-					{ label: '2 MB a file', prompt: 'Now attach the 8 MB scan.' },
-					{ label: '1 file a turn', prompt: 'Now attach two files.' },
-					{ label: '500 KB for images', prompt: 'Now attach the large photo.' },
-					{ label: 'Trip style', prompt: 'Now pick a style and ask again.' },
-					{ label: 'Itinerary', prompt: 'Now ask for two days in Lisbon.' },
+					{
+						label: 'Images, not spreadsheets',
+						prompt: 'Now attach the photo, then the CSV file.',
+					},
+					{
+						label: 'A size limit for each file type',
+						prompt: 'Now attach the large photo, then the PDF of the same size.',
+					},
+					{
+						label: 'A typed choice beside the message',
+						prompt: 'Now pick a trip style and ask for a hotel.',
+					},
+					{
+						label: 'A reply with a declared shape',
+						prompt: 'Now ask for two days in Lisbon.',
+					},
 				],
 			},
 		],
@@ -44,23 +53,21 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 		goal: 'experiment',
 		lede: 'The profile names the model. Your application never does.',
 		explainer:
-			'Your application runs a profile by its id. Which model answers, which provider serves it and what kind of output comes back are lines in that profile. A provider is registered once, and a model binds to it by name. Each type of profile has its own interface, so when the type changes, the screen changes with it. The call your application makes stays the same.',
+			'Your application starts an agent by the name of its profile. The profile holds the model, the provider and the type of reply. Change one line, and the screen for that type of reply comes with it.',
 		controls: [
 			{
-				label: 'What it makes',
+				label: 'Change what runs',
 				tokens: [
-					{ label: 'Text', prompt: 'Now ask what to pack for March.' },
-					{ label: 'Image', prompt: 'Now ask for a postcard of Lisbon at dusk.' },
-					{ label: 'Speech', prompt: 'Now ask it to read tomorrow’s plan.' },
-					{ label: 'Live call', prompt: 'Now start the call and ask about the weather.' },
-				],
-			},
-			{
-				label: 'What runs it',
-				tokens: [
-					{ label: 'Google, fast', prompt: 'Now send the same question again.' },
-					{ label: 'Google, smart', prompt: 'Now send the same question again.' },
-					{ label: 'OpenRouter', prompt: 'Now send the same question again.' },
+					{ label: 'A faster model', prompt: 'Now send the same question again.' },
+					{ label: 'Another provider', prompt: 'Now send the same question again.' },
+					{
+						label: 'A picture in place of text',
+						prompt: 'Now ask for a postcard of Lisbon at dusk.',
+					},
+					{
+						label: 'A live voice call',
+						prompt: 'Now start the call and ask about the weather.',
+					},
 				],
 			},
 		],
@@ -69,24 +76,23 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 		goal: 'boundaries',
 		lede: 'Text is read at every boundary it crosses.',
 		explainer:
-			'A turn has boundaries: where a message comes in, where a tool result returns, where arguments go to a tool and where the reply goes out. The kernel reads the text at each one, inside the turn, before the next step sees it. Each detector has an action for each boundary: ignore, flag, redact or block. Those settings are lines in the same profile. The tester sends a text across one boundary on a scripted model, so nothing is called.',
+			'Text crosses a boundary when a message comes in, a tool result returns, a tool is called or the reply goes out. Each check has its own setting at each boundary: ignore, flag, redact or block. The tester sends one text across one boundary. It calls no model.',
 		controls: [
 			{
 				label: 'Set a boundary',
 				tokens: [
-					{ label: 'Redact injections', prompt: 'Now send “Injection in lookalike letters”.' },
-					{ label: 'Block secrets in a reply', prompt: 'Now send “API key inside a URL”.' },
+					{ label: 'Block a secret in a reply', prompt: 'Now send “API key inside a URL”.' },
 					{
-						label: 'Refuse calls after a remote read',
+						label: 'Redact an injection in a tool result',
+						prompt: 'Now send “Injection in lookalike letters”.',
+					},
+					{
+						label: 'Refuse tool calls after a remote read',
 						prompt: 'Now send “A page that claims the user already agreed”.',
 					},
 					{
-						label: 'Only links it was given',
-						prompt: 'Now send a reply with a link it was never given.',
-					},
-					{
-						label: 'Leave harmless text alone',
-						prompt: 'Now send “Harmless: quoting an attack to ask about it”.',
+						label: 'Let a harmless text through',
+						prompt: 'Now send “Harmless: a placeholder key from the docs”.',
 					},
 				],
 			},
@@ -96,7 +102,7 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 		goal: 'boundaries',
 		lede: 'What it costs, and what it catches.',
 		explainer:
-			'Guardrails run inside the turn, so their cost is time added to every reply. A reply still streams while it is read: text is held only while it could be the start of a match. Catches are counted on attack sets. Harmless texts are counted too, because a false alarm is also a failure.',
+			'Each check adds time to a reply. The reply still streams while it is read. A harmless text that is stopped is a failure, the same as an attack that passes.',
 		controls: [],
 	},
 ];

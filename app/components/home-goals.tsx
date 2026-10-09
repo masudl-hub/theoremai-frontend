@@ -1,6 +1,6 @@
 import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
-import { ToggleButton } from '@astryxdesign/core/ToggleButton';
+import { Token } from '@astryxdesign/core/Token';
 import type { CSSProperties, ReactNode } from 'react';
 import { GOAL_BEATS, type GoalBeat, type GoalToken } from '../lib/home-goals';
 import { GOALS } from '../lib/site-pitch';
@@ -84,13 +84,13 @@ export function GoalBlock({
 					</Text>
 					<div className="home-goal-tokens">
 						{tokens.map((token) => (
-							<ToggleButton
+							<Token
 								key={token.label}
-								size="sm"
 								label={token.label}
-								isPressed={picked === token}
-								onPressedChange={(isPressed) => {
-									onPick(isPressed ? token : undefined);
+								color={picked === token ? 'blue' : 'default'}
+								aria-pressed={picked === token}
+								onClick={() => {
+									onPick(picked === token ? undefined : token);
 								}}
 							/>
 						))}
