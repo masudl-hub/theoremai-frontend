@@ -1,18 +1,9 @@
 import type { StudioSourceError, StudioSourceSpan } from '@theoremjs/studio';
+import type { CodeIssue, StudioCodeProps } from '@theoremjs/studio/ui/studio-host.ts';
 import type * as Monaco from 'monaco-editor';
 import { useEffect, useRef } from 'react';
 
 /** What reading the file produced: errors at a spot, or the fields it read. */
-export interface CodeApply {
-	errors: StudioSourceError[];
-	spans: StudioSourceSpan[];
-}
-
-interface OpenIssue {
-	nodeId: string;
-	field?: string;
-	message: string;
-}
 
 const APPLY_MS = 300;
 /** How long typing has to stay quiet before the typechecker worker is terminated. */
@@ -38,17 +29,7 @@ interface Session {
  * typing, the model keeps their text. `hold` means there is no new print,
  * so the text they have stays.
  */
-export function StudioCode({
-	text,
-	hold,
-	issues,
-	onApply,
-}: {
-	text: string;
-	hold: boolean;
-	issues: readonly OpenIssue[];
-	onApply: (text: string) => CodeApply;
-}) {
+export function StudioCode({ text, hold, issues, onApply }: StudioCodeProps) {
 	const node = useRef<HTMLDivElement>(null);
 	const apply = useRef(onApply);
 	const printed = useRef(text);
@@ -282,7 +263,7 @@ function marker(
 function issueMarkers(
 	monaco: MarkerHost,
 	spans: readonly StudioSourceSpan[],
-	issues: readonly OpenIssue[],
+	issues: readonly CodeIssue[],
 ): Monaco.editor.IMarkerData[] {
 	return issues.flatMap((issue) => {
 		const exact = issue.field ? `${issue.nodeId}.${issue.field}` : issue.nodeId;

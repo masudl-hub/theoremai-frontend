@@ -5,6 +5,7 @@
  * llms.txt and th30 all read this, so none of them can drift from the editor.
  */
 import { PROFILE_GRAPH, PROFILE_TYPES } from '@theoremjs/agents/schema';
+import { STUDIO_EXAMPLES } from '@theoremjs/studio/ui/lib/studio-examples.ts';
 import type { DocIndex, DocSection } from './docs/schema';
 import { KERNEL, KERNEL_NAME, SITE_NAME } from './home-content';
 
@@ -27,28 +28,6 @@ const FACET_CHAPTER: Partial<Record<string, DocSection>> = {
 	live: 'modalities',
 	decision: 'modalities',
 };
-
-/** The ready agents "Load an example" offers. */
-export const STUDIO_EXAMPLES = {
-	concierge: {
-		label: 'Travel concierge',
-		description: 'Text agent with weather, places, currency and trip tools.',
-	},
-	'live-concierge': {
-		label: 'Live concierge',
-		description: 'The concierge as a voice call, with the same tools.',
-	},
-	architect: {
-		label: 'Code architect',
-		description: 'Reads repos and docs. Brings a Narrator it calls for audio.',
-	},
-	narrator: { label: 'Narrator', description: 'Reads a script aloud.' },
-	console: { label: 'Tool console', description: 'No model. Run its tools by hand.' },
-	decision: {
-		label: 'Jev decision',
-		description: 'Checks tool calls with the Jev decision model.',
-	},
-} as const;
 
 /** How the studio's screen works, in the order a visitor meets it. */
 const PARTS = [

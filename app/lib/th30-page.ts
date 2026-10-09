@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 
 export type Th30Page = {
 	title: string;
@@ -61,7 +61,8 @@ export type Th30StudioState = {
 let studioState: Th30StudioState | null = null;
 const listeners = new Set<() => void>();
 
-function setStudioState(next: Th30StudioState | null) {
+/** The studio reports what is on screen as it changes, and null when it closes. */
+export function reportTh30Studio(next: Th30StudioState | null) {
 	const same =
 		next === studioState ||
 		(next !== null &&
@@ -80,20 +81,6 @@ function subscribe(listener: () => void) {
 	return () => {
 		listeners.delete(listener);
 	};
-}
-
-/** The studio reports its state while it is mounted. */
-export function useReportTh30Studio(state: Th30StudioState) {
-	const { agent, type, issues, section } = state;
-	useEffect(() => {
-		setStudioState({ agent, type, issues, section });
-	}, [agent, type, issues, section]);
-	useEffect(
-		() => () => {
-			setStudioState(null);
-		},
-		[],
-	);
 }
 
 export function useTh30StudioState(): Th30StudioState | null {
