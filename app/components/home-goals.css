@@ -238,6 +238,8 @@
 	opacity: 1;
 }
 
+/* The stacked page has no agent, so it has no changes to make to one. */
+.home-contract[data-reduced] .home-goal-controls,
 .home-contract[data-reduced] .home-goal-editor,
 .home-contract[data-reduced] .home-goal-live {
 	display: none;

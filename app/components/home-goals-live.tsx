@@ -11,7 +11,7 @@ import { GuardrailTester } from '@theoremjs/studio/ui/guardrail-tester.tsx';
 import { pageInputsOf } from '@theoremjs/studio/ui/lib/studio-page.ts';
 import type { CodeIssue } from '@theoremjs/studio/ui/studio-host.ts';
 import { StudioRunner } from '@theoremjs/studio/ui/studio-runner.tsx';
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { type RefObject, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router';
 import { homeAgentDraft } from '../lib/home-agent';
 import { HOME_CHAT } from '../lib/home-agent-chat';
@@ -47,7 +47,7 @@ const CHANGE_GAP = 3;
  * than one place, an import and the profile for one, and the last place is the profile's. A
  * removal is one line.
  */
-function changedLines(before: string, after: string): { from: number; to: number } | undefined {
+function changedLines(before: string, after: string): Lines | undefined {
 	if (before === after) return undefined;
 	const was = before.split('\n');
 	const now = after.split('\n');
@@ -76,7 +76,42 @@ function changedLines(before: string, after: string): { from: number; to: number
 
 const CHANGED_MS = 1800;
 
-/** Brings a token's change into view in the studio's editor, and marks its lines for a moment. */
+type Lines = { from: number; to: number };
+
+/** Brings lines of the file into view in the studio's editor, and marks them for a moment. */
+function markLines(lines: Lines): () => void {
+	let clear: (() => void) | undefined;
+	let isOver = false;
+	void import('@theoremjs/studio/ui/code/studio-monaco.ts').then(({ editor }) => {
+		const open = editor.getEditors().at(0);
+		if (isOver || !open) return;
+		open.revealLinesInCenter(lines.from, lines.to);
+		const marks = open.createDecorationsCollection([
+			{
+				range: {
+					startLineNumber: lines.from,
+					startColumn: 1,
+					endLineNumber: lines.to,
+					endColumn: 1,
+				},
+				options: { isWholeLine: true, className: 'home-goal-changed' },
+			},
+		]);
+		const timer = setTimeout(() => {
+			marks.clear();
+		}, CHANGED_MS);
+		clear = () => {
+			clearTimeout(timer);
+			marks.clear();
+		};
+	});
+	return () => {
+		isOver = true;
+		clear?.();
+	};
+}
+
+/** A token's change is shown where it was written. */
 function useShowChange({ good, fromToken }: HomeAgentState, isShown: boolean) {
 	const source = good?.source;
 	const seen = useRef(source);
@@ -85,36 +120,7 @@ function useShowChange({ good, fromToken }: HomeAgentState, isShown: boolean) {
 		seen.current = source;
 		if (!isShown || !fromToken || before === undefined || source === undefined) return;
 		const lines = changedLines(before, source);
-		if (!lines) return;
-		let clear: (() => void) | undefined;
-		let isOver = false;
-		void import('@theoremjs/studio/ui/code/studio-monaco.ts').then(({ editor }) => {
-			const open = editor.getEditors().at(0);
-			if (isOver || !open) return;
-			open.revealLinesInCenter(lines.from, lines.to);
-			const marks = open.createDecorationsCollection([
-				{
-					range: {
-						startLineNumber: lines.from,
-						startColumn: 1,
-						endLineNumber: lines.to,
-						endColumn: 1,
-					},
-					options: { isWholeLine: true, className: 'home-goal-changed' },
-				},
-			]);
-			const timer = setTimeout(() => {
-				marks.clear();
-			}, CHANGED_MS);
-			clear = () => {
-				clearTimeout(timer);
-				marks.clear();
-			};
-		});
-		return () => {
-			isOver = true;
-			clear?.();
-		};
+		return lines ? markLines(lines) : undefined;
 	}, [source, fromToken, isShown]);
 }
 
@@ -284,14 +290,53 @@ function GoalSlots({
 	));
 }
 
-/** What to try next, and the message itself when one message is the whole test. */
-function GoalPrompt({ prompt, onSend }: { prompt: string; onSend: (() => void) | undefined }) {
+/** What to try next, with the message itself when one message is the whole test. */
+function GoalPrompt({
+	prompt,
+	result,
+	onSend,
+}: {
+	prompt: string;
+	/** What the answered test showed. It takes the prompt's place. */
+	result: string | undefined;
+	onSend: (() => void) | undefined;
+}) {
+	if (result) return <Text weight="medium">{result}</Text>;
 	return (
 		<>
 			<Text weight="medium">{prompt}</Text>
 			{onSend ? <Button variant="secondary" size="sm" label="Send it" onClick={onSend} /> : null}
 		</>
 	);
+}
+
+/** The line of the file a token's test turned on, as a 1-based number. */
+function lineOf(source: string, text: string | undefined): number | undefined {
+	const at = text ? source.split('\n').findIndex((line) => line.includes(text)) : -1;
+	return at < 0 ? undefined : at + 1;
+}
+
+/**
+ * The prompt's own message, sent as the visitor. Once the reply is in, the prompt gives way to
+ * what the reply shows, and the line of the file that decided it is marked.
+ */
+function useTest(
+	chat: RefObject<TheoremChatHandle | null>,
+	picked: GoalToken | undefined,
+	source: string | undefined,
+) {
+	const [done, setDone] = useState<GoalToken>();
+	const shown = done === picked ? done : undefined;
+	const line = shown && source ? lineOf(source, shown.line) : undefined;
+	const result = shown?.result && line ? `${shown.result} Line ${String(line)}.` : shown?.result;
+	useEffect(() => (line ? markLines({ from: line, to: line }) : undefined), [line]);
+	const send = (token: GoalToken, ask: string) => () => {
+		setDone(undefined);
+		void chat.current?.send(ask).then((turn) => {
+			if (turn && !turn.blocks.some(({ kind }) => kind === 'error')) setDone(token);
+		});
+	};
+	return { result, send };
 }
 
 /** What the open beat puts on its still: the chat, the tester, or nothing. */
@@ -326,6 +371,7 @@ export function GoalLive({
 	const { good, runs } = state;
 	const { declared, values, setPicked } = useSlots(good);
 	const { isTester, isEmpty, isTesting, hasTested } = useStill(beat);
+	const { result, send } = useTest(chat, picked, good?.source);
 	if (!good) return null;
 	const ask = isTester ? undefined : picked?.ask;
 	return (
@@ -335,13 +381,8 @@ export function GoalLive({
 					<Card variant="glass" padding={0} elevation="med" className="home-goal-prompt-card">
 						<GoalPrompt
 							prompt={picked.prompt}
-							onSend={
-								ask
-									? () => {
-											void chat.current?.send(ask);
-										}
-									: undefined
-							}
+							result={result}
+							onSend={ask ? send(picked, ask) : undefined}
 						/>
 					</Card>
 				) : null}

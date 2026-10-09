@@ -22,8 +22,18 @@ export type GoalTokenId =
 	| 'harmless';
 
 /** A change to the agent, and what the stage asks the visitor to try after it. */
-/** `ask` is the message the prompt offers to send, when one message is the whole test. */
-export type GoalToken = { id: GoalTokenId; label: string; prompt: string; ask?: string };
+/**
+ * `ask` is the message the prompt offers to send, when one message is the whole test. `result` is
+ * what the reply to it shows, and `line` is text on the line of the file that decided it.
+ */
+export type GoalToken = {
+	id: GoalTokenId;
+	label: string;
+	prompt: string;
+	ask?: string;
+	result?: string;
+	line?: string;
+};
 
 export type GoalControls = { label: string; tokens: readonly GoalToken[] };
 
@@ -59,12 +69,16 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 						label: 'A typed choice beside the message',
 						prompt: 'Now pick a trip style and ask for a hotel.',
 						ask: 'Find me a hotel in Lisbon.',
+						result: 'The style you picked went with the message.',
+						line: 'slots:',
 					},
 					{
 						id: 'declared-shape',
 						label: 'A reply with a declared shape',
 						prompt: 'Now ask for two days in Lisbon.',
 						ask: 'Plan two days in Lisbon.',
+						result: 'The reply has the shape the profile declares.',
+						line: 'outputs:',
 					},
 				],
 			},
@@ -77,24 +91,33 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 			'Your application starts an agent by the name of its profile. The profile holds the model, the provider and the type of reply. Change one line, and the screen for that type of reply comes with it.',
 		controls: [
 			{
-				label: 'Change what runs',
+				label: 'What runs it',
 				tokens: [
 					{
 						id: 'openrouter',
 						label: 'Use OpenRouter instead',
 						prompt: 'Now ask what to pack for March.',
 						ask: 'What should I pack for Lisbon in March?',
+						result: 'The default model is on OpenRouter.',
+						line: "provider: 'openrouter'",
 					},
 					{
 						id: 'pick-model',
 						label: 'Let the visitor pick the model and effort',
 						prompt: 'Now pick a model and an effort, and ask what to pack.',
 					},
+				],
+			},
+			{
+				label: 'What it makes',
+				tokens: [
 					{
 						id: 'picture',
 						label: 'A picture in place of text',
 						prompt: 'Now ask for a postcard of Lisbon at dusk.',
 						ask: 'A postcard of Lisbon at dusk.',
+						result: 'The reply is a picture.',
+						line: "type: 'image'",
 					},
 					{
 						id: 'live-call',
