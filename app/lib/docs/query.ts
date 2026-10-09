@@ -28,11 +28,6 @@ export function chapterNeighbors(
 	};
 }
 
-export function articleHasBlock(article: DocArticle, blockId: string): boolean {
-	if (article.symbols.some((symbol) => symbol.id === blockId)) return true;
-	return article.sections.some((section) => section.id === blockId);
-}
-
 /** One section or one dictionary entry of the article, as text. */
 function fragmentText(article: DocArticle, fragment: string): string | undefined {
 	const section = article.sections.find((entry) => entry.id === fragment);
@@ -41,21 +36,6 @@ function fragmentText(article: DocArticle, fragment: string): string | undefined
 	if (!symbol) return undefined;
 	const { name, text } = symbolTerm(symbol);
 	return `${name} — ${text}`;
-}
-
-export function resolveNavigate(
-	index: DocIndex,
-	slug: string,
-	blockId?: string,
-): { ok: true; href: string } | { ok: false; error: string } {
-	const article = index.bySlug[slug];
-	if (article === undefined) {
-		return { ok: false, error: `Unknown docs slug "${slug}"` };
-	}
-	if (blockId && !articleHasBlock(article, blockId)) {
-		return { ok: false, error: `No block "${blockId}" on /docs/${slug}` };
-	}
-	return { ok: true, href: articleHref(article, blockId) };
 }
 
 export function readDoc(

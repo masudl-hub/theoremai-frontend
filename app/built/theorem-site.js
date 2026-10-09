@@ -566,6 +566,11 @@ export const theoremSiteTheme = {
         }
       }
     },
+    "code-block": {
+      "container:card": {
+        "borderRadius": "var(--radius-container)"
+      }
+    },
     "layout-panel": {
       "base": {
         ":where([role=\"complementary\"])": {
@@ -574,6 +579,13 @@ export const theoremSiteTheme = {
         ":where([data-resizing] + [role=\"complementary\"], [role=\"complementary\"]:has(+ [data-resizing]))": {
           "transition": "none"
         }
+      }
+    },
+    "toast": {
+      "base": {
+        "width": "fit-content",
+        "minWidth": "min(240px, 100%)",
+        "justifySelf": "end"
       }
     },
     "layout-content": {

@@ -80,6 +80,67 @@ export function useTh30(): Th30Api {
 	return useContext(Th30Context);
 }
 
+function Th30SearchTrigger({
+	call,
+	hover,
+	question,
+}: {
+	call: Th30Api;
+	hover: string;
+	question?: string;
+}) {
+	return (
+		<Tooltip content={hover} placement="below">
+			<Button
+				label={call.isLive ? 'End call' : 'Ask th30'}
+				variant="ghost"
+				size="lg"
+				aria-pressed={call.isLive}
+				onClick={() => {
+					if (question?.trim() && !call.isLive) call.ask(question);
+					else call.toggle();
+				}}
+			>
+				<HStack align="center" gap={2}>
+					<Th30Light className="th30-search-cloud" />
+					<span>{call.isLive ? 'End call' : 'Ask th30'}</span>
+				</HStack>
+			</Button>
+		</Tooltip>
+	);
+}
+
+function Th30MuteButton({ call }: { call: Th30Api }) {
+	if (!call.canMute) return null;
+	return (
+		<Tooltip content={call.isMuted ? 'Unmute' : 'Mute'} placement="end">
+			<IconButton
+				label={call.isMuted ? 'Unmute' : 'Mute'}
+				icon={call.isMuted ? <IconMicrophoneOff /> : <IconMicrophone />}
+				variant="ghost"
+				size="sm"
+				onClick={call.mute}
+			/>
+		</Tooltip>
+	);
+}
+function Th30MessageButton({ call }: { call: Th30Api }) {
+	if (!call.canMute && !call.messagesOpen) return null;
+	return (
+		<Tooltip content={call.messagesOpen ? 'Hide messages' : 'Show messages'} placement="end">
+			<IconButton
+				label={call.messagesOpen ? 'Hide messages' : 'Show messages'}
+				icon={<IconMessage />}
+				variant="ghost"
+				size="sm"
+				aria-expanded={call.messagesOpen}
+				aria-controls="th30-messages"
+				onClick={call.toggleMessages}
+			/>
+		</Tooltip>
+	);
+}
+
 /** th30's light as a button: click to call, click again to end. */
 export function Th30Trigger({
 	placement,
@@ -92,53 +153,12 @@ export function Th30Trigger({
 	const th30 = useTh30();
 	const label = th30.isLive ? 'End the call with th30' : 'Talk to th30';
 	const hover = th30.isLive ? label : "Starts a live call with th30, theorem's agent";
-	if (placement === 'search') {
-		return (
-			<Tooltip content={hover} placement="below">
-				<Button
-					label={th30.isLive ? 'End call' : 'Ask th30'}
-					variant="ghost"
-					size="lg"
-					aria-pressed={th30.isLive}
-					onClick={() => {
-						if (question?.trim() && !th30.isLive) th30.ask(question);
-						else th30.toggle();
-					}}
-				>
-					<HStack align="center" gap={2}>
-						<Th30Light className="th30-search-cloud" />
-						<span>{th30.isLive ? 'End call' : 'Ask th30'}</span>
-					</HStack>
-				</Button>
-			</Tooltip>
-		);
-	}
+	if (placement === 'search')
+		return <Th30SearchTrigger call={th30} hover={hover} question={question} />;
 	return (
 		<VStack align="center" gap={1}>
-			{th30.canMute ? (
-				<Tooltip content={th30.isMuted ? 'Unmute' : 'Mute'} placement="end">
-					<IconButton
-						label={th30.isMuted ? 'Unmute' : 'Mute'}
-						icon={th30.isMuted ? <IconMicrophoneOff /> : <IconMicrophone />}
-						variant="ghost"
-						size="sm"
-						onClick={th30.mute}
-					/>
-				</Tooltip>
-			) : null}
-			{th30.canMute || th30.messagesOpen ? (
-				<Tooltip content={th30.messagesOpen ? 'Hide messages' : 'Show messages'} placement="end">
-					<IconButton
-						label={th30.messagesOpen ? 'Hide messages' : 'Show messages'}
-						icon={<IconMessage />}
-						variant="ghost"
-						size="sm"
-						aria-expanded={th30.messagesOpen}
-						aria-controls="th30-messages"
-						onClick={th30.toggleMessages}
-					/>
-				</Tooltip>
-			) : null}
+			<Th30MuteButton call={th30} />
+			<Th30MessageButton call={th30} />
 			<Tooltip content={hover} placement="end">
 				<button
 					type="button"
@@ -502,25 +522,10 @@ async function startCall({
 	}
 }
 
-function useTh30Call(
-	navigate: NavigateFunction,
-	{ pageLineRef, toldRef, packageRef, askRef }: PageRefs,
-): Th30Call {
-	const [phase, setPhase] = useState<Phase>('idle');
-	const [isMuted, setMuted] = useState(false);
-	const [failure, setFailure] = useState<string | null>(null);
-	const [status, setStatus] = useState<InkWaveStatus>('disconnected');
-	const levelsRef = useRef<InkWaveLevels>({ input: 0, output: 0 });
-	const [draft, setDraft] = useState('');
+function useTh30Work() {
 	const [work, setWork] = useState<Work | null>(null);
 	const openRef = useRef(new Map<string, string>());
 	const lingerRef = useRef<number | undefined>(undefined);
-	const captions = useLiveCaptionLog();
-	const captionsRef = useRef(captions);
-	captionsRef.current = captions;
-	const clientRef = useRef<LiveSessionClient | null>(null);
-	const chimeRef = useRef<ReturnType<typeof makeChime> | null>(null);
-
 	const clearWork = useCallback(() => {
 		window.clearTimeout(lingerRef.current);
 		openRef.current.clear();
@@ -557,22 +562,113 @@ function useTh30Call(
 		}, WORK_LINGER_MS);
 	}, []);
 
+	return { work, clearWork, noteTool };
+}
+
+function askTh30(
+	question: string,
+	{
+		client,
+		captions,
+		askRef,
+		start,
+	}: {
+		client: LiveSessionClient | null;
+		captions: ReturnType<typeof useLiveCaptionLog>;
+		askRef: PageRefs['askRef'];
+		start: () => Promise<void>;
+	},
+): void {
+	const text = question.trim();
+	if (!text) return;
+	if (client) {
+		client.sendText(text);
+		captions.noteSentText(text);
+		return;
+	}
+	askRef.current = text;
+	void start();
+}
+
+function disconnectTh30(
+	{
+		clientRef,
+		chimeRef,
+		levelsRef,
+	}: {
+		clientRef: RefObject<LiveSessionClient | null>;
+		chimeRef: RefObject<ReturnType<typeof makeChime> | null>;
+		levelsRef: RefObject<InkWaveLevels>;
+	},
+	detachFirst = false,
+): void {
+	const client = clientRef.current;
+	if (detachFirst) clientRef.current = null;
+	client?.disconnect();
+	clientRef.current = null;
+	chimeRef.current?.close();
+	chimeRef.current = null;
+	th30Voice.user = 0;
+	th30Voice.agent = 0;
+	levelsRef.current.input = 0;
+	levelsRef.current.output = 0;
+}
+
+function useTh30ConnectionState() {
+	const [phase, setPhase] = useState<Phase>('idle');
+	const [isMuted, setMuted] = useState(false);
+	const [failure, setFailure] = useState<string | null>(null);
+	const [status, setStatus] = useState<InkWaveStatus>('disconnected');
+	const levelsRef = useRef<InkWaveLevels>({ input: 0, output: 0 });
+	const clientRef = useRef<LiveSessionClient | null>(null);
+	const chimeRef = useRef<ReturnType<typeof makeChime> | null>(null);
+	return {
+		phase,
+		setPhase,
+		isMuted,
+		setMuted,
+		failure,
+		setFailure,
+		status,
+		setStatus,
+		levelsRef,
+		clientRef,
+		chimeRef,
+	};
+}
+
+function useTh30Call(
+	navigate: NavigateFunction,
+	{ pageLineRef, toldRef, packageRef, askRef }: PageRefs,
+): Th30Call {
+	const {
+		phase,
+		setPhase,
+		isMuted,
+		setMuted,
+		failure,
+		setFailure,
+		status,
+		setStatus,
+		levelsRef,
+		clientRef,
+		chimeRef,
+	} = useTh30ConnectionState();
+	const [draft, setDraft] = useState('');
+	const { work, clearWork, noteTool } = useTh30Work();
+	const captions = useLiveCaptionLog();
+	const captionsRef = useRef(captions);
+	captionsRef.current = captions;
+
 	const stop = useCallback(() => {
 		clearWork();
 		captionsRef.current.clear();
 		setDraft('');
-		clientRef.current?.disconnect();
-		clientRef.current = null;
-		chimeRef.current?.close();
-		chimeRef.current = null;
-		th30Voice.user = 0;
-		th30Voice.agent = 0;
-		levelsRef.current.input = 0;
-		levelsRef.current.output = 0;
+		disconnectTh30({ clientRef, chimeRef, levelsRef });
 		setMuted(false);
 		setStatus('disconnected');
 		setPhase('idle');
-	}, [clearWork]);
+	}, [clearWork, setPhase, levelsRef, setStatus, clientRef, setMuted, chimeRef]);
 
 	const start = useCallback(
 		() =>
@@ -587,28 +683,33 @@ function useTh30Call(
 				askRef,
 				set: { setStatus, setPhase, setFailure, noteTool, levelsRef },
 			}),
-		[navigate, pageLineRef, toldRef, packageRef, askRef, noteTool],
+		[
+			navigate,
+			pageLineRef,
+			toldRef,
+			packageRef,
+			askRef,
+			noteTool,
+			setStatus,
+			clientRef,
+			setPhase,
+			levelsRef,
+			setFailure,
+			chimeRef,
+		],
 	);
 
 	const restart = useCallback(() => {
 		clearWork();
 		captionsRef.current.beginNextCall();
 		setDraft('');
-		const client = clientRef.current;
-		clientRef.current = null;
-		client?.disconnect();
-		chimeRef.current?.close();
-		chimeRef.current = null;
-		th30Voice.user = 0;
-		th30Voice.agent = 0;
+		disconnectTh30({ clientRef, chimeRef, levelsRef }, true);
 		setMuted(false);
 		setStatus('disconnected');
-		levelsRef.current.input = 0;
-		levelsRef.current.output = 0;
 		setFailure(null);
 		setPhase('connecting');
 		void start();
-	}, [start, clearWork]);
+	}, [start, clearWork, setFailure, setMuted, setStatus, clientRef, setPhase, levelsRef, chimeRef]);
 
 	const send = useCallback(
 		(text?: string) => {
@@ -619,28 +720,24 @@ function useTh30Call(
 			captionsRef.current.noteSentText(message);
 			setDraft('');
 		},
-		[draft],
+		[draft, clientRef.current],
 	);
 
 	const toggle = useCallback(() => {
 		if (clientRef.current) stop();
 		else void start();
-	}, [start, stop]);
+	}, [start, stop, clientRef.current]);
 
 	const ask = useCallback(
 		(question: string) => {
-			const text = question.trim();
-			if (!text) return;
-			const client = clientRef.current;
-			if (client) {
-				client.sendText(text);
-				captionsRef.current.noteSentText(text);
-				return;
-			}
-			askRef.current = text;
-			void start();
+			askTh30(question, {
+				client: clientRef.current,
+				captions: captionsRef.current,
+				askRef,
+				start,
+			});
 		},
-		[start, askRef],
+		[start, askRef, clientRef.current],
 	);
 
 	useEffect(() => stop, [stop]);

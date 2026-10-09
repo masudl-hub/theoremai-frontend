@@ -6,7 +6,7 @@
  */
 import { PROFILE_GRAPH, PROFILE_TYPES } from '@theoremjs/agents/schema';
 import { STUDIO_EXAMPLES } from '@theoremjs/studio/ui/lib/studio-examples.ts';
-import type { DocIndex, DocSection } from './docs/schema';
+import type { DocIndex, DocSection, PageSymbol } from './docs/schema';
 import { KERNEL, KERNEL_NAME, SITE_NAME } from './home-content';
 
 export const STUDIO_TITLE = 'Studio';
@@ -100,6 +100,24 @@ function sectionText(section: Section, index: DocIndex): string {
 		.join(' ');
 }
 
+function fieldLine(symbol: Extract<PageSymbol, { kind: 'field' }>): string {
+	const { meta } = symbol;
+	const facts = [
+		meta.type,
+		meta.required === true
+			? 'required'
+			: typeof meta.required === 'string'
+				? `required ${meta.required}`
+				: undefined,
+		meta.options?.length && !meta.type.includes(`'${meta.options[0]}'`)
+			? `one of ${meta.options.join(', ')}`
+			: undefined,
+		meta.profileTypes ? `for ${meta.profileTypes.map(typeLabel).join(', ')}` : undefined,
+		meta.unset ? `left out: ${meta.unset}` : undefined,
+	].filter(Boolean);
+	return `- \`${symbol.path}\` (${facts.join('; ')}): ${meta.doc}`;
+}
+
 /** The fields a section edits, with the kernel’s own documentation for each. */
 function sectionFields(section: Section, index: DocIndex): string[] {
 	const seen = new Set<string>();
@@ -113,21 +131,7 @@ function sectionFields(section: Section, index: DocIndex): string[] {
 				section.owns.includes(symbol.path);
 			if (!own) continue;
 			seen.add(symbol.path);
-			const { meta } = symbol;
-			const facts = [
-				meta.type,
-				meta.required === true
-					? 'required'
-					: typeof meta.required === 'string'
-						? `required ${meta.required}`
-						: undefined,
-				meta.options?.length && !meta.type.includes(`'${meta.options[0]}'`)
-					? `one of ${meta.options.join(', ')}`
-					: undefined,
-				meta.profileTypes ? `for ${meta.profileTypes.map(typeLabel).join(', ')}` : undefined,
-				meta.unset ? `left out: ${meta.unset}` : undefined,
-			].filter(Boolean);
-			lines.push(`- \`${symbol.path}\` (${facts.join('; ')}): ${meta.doc}`);
+			lines.push(fieldLine(symbol));
 		}
 	}
 	return lines;
@@ -137,7 +141,7 @@ export function studioDescription(): string {
 	return `Build an agent without code. Choose a profile type (${PROFILE_TYPES.map(typeLabel).join(', ')}), set its sections, and chat with the agent. Get the agent as ${KERNEL_NAME} source code.`;
 }
 
-type StudioPart = { id: string; name: string; text: string; detail?: string };
+export type StudioPart = { id: string; name: string; text: string; detail?: string };
 
 /** Each part of the screen, with what it says, for structured data, th30 and llms.txt. `detail` is for Markdown only. */
 export function studioParts(index: DocIndex): StudioPart[] {

@@ -2,7 +2,7 @@ import { openStudio } from '@theoremjs/studio/ui/lib/studio-open.ts';
 import type { ProjectSession } from '@theoremjs/studio/ui/lib/studio-project.ts';
 import type { StudioHost, StudioOpened } from '@theoremjs/studio/ui/studio-host.ts';
 import { StudioScreen } from '@theoremjs/studio/ui/studio-screen.tsx';
-import { useRouteLoaderData } from 'react-router';
+import { useOutletContext } from 'react-router';
 import { PageJsonLd } from '../components/page-summary';
 import { STUDIO_SEED_IDS, type StudioSeedId } from '../lib/docs/schema';
 import { docsSeedDraft, docsSeedQuestion } from '../lib/docs/seeds';
@@ -58,8 +58,8 @@ export function HydrateFallback() {
 
 /** The studio's structured data, from the shell's loader. */
 function ShellJsonLd() {
-	const shell = useRouteLoaderData<typeof shellLoader>('routes/shell');
-	return <PageJsonLd data={shell?.studioJsonLd} />;
+	const shell = useOutletContext<ReturnType<typeof shellLoader>>();
+	return <PageJsonLd data={shell.studioJsonLd} />;
 }
 
 /** What the site gives the studio screen: its build's pieces, and th30 following along. */

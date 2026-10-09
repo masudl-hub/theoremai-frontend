@@ -3,8 +3,6 @@
  * Run it with `npm run evals:th30`. Graded from the trace alone: the tools it called, the
  * reply it gave, and a judge reading both.
  */
-import { getProfile } from '@theoremjs/agents';
-import { createProvider } from '@theoremjs/agents/providers';
 import {
 	budget,
 	type EvalSuite,
@@ -22,9 +20,9 @@ import { TH30_EVAL, TH30_JUDGE } from './profile.ts';
 const key = Deno.env.get('GEMINI_API_KEY_FREE_A')?.trim();
 const vault = key ? { main: key } : {};
 
-/** The agent under test and the judge each get a provider holding the same free key. */
-export const provider = createProvider(getProfile(TH30_EVAL), { vault });
-export const judgeProvider = createProvider(getProfile(TH30_JUDGE), { vault });
+/** The agent under test and the judge resolve their registered binding with the same free key. */
+export const provider = { vault };
+export const judgeProvider = { vault };
 
 /** Whether a reply names where it came from: a chapter, its path, the overview, or a "docs say" phrasing. */
 const CITES = /\/docs\/[a-z0-9-]+|\b(chapter|docs?|documentation|overview|page|section)\b/i;

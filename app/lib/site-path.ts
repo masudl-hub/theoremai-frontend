@@ -8,6 +8,25 @@ export type SitePath =
 	| { ok: true; href: string; hash: string | undefined }
 	| { ok: false; error: string };
 
+function resolvePage(
+	path: string,
+	knownDocsSlug?: (slug: string) => boolean,
+): { ok: true; path: string } | { ok: false; error: string } {
+	if (PAGES.has(path)) return { ok: true, path };
+	const docs = /^\/docs\/([^/]+)$/.exec(path);
+	if (!docs) return { ok: false, error: 'That is not a page on this site.' };
+	let slug: string;
+	try {
+		slug = decodeURIComponent(docs[1]);
+	} catch {
+		return { ok: false, error: 'That docs path is not valid.' };
+	}
+	if (knownDocsSlug && !knownDocsSlug(slug)) {
+		return { ok: false, error: `No docs chapter "${slug}".` };
+	}
+	return { ok: true, path: `/docs/${slug}` };
+}
+
 /** `knownDocsSlug` checks `/docs/<slug>` against the index. Without it, any one-segment chapter is allowed. */
 export function resolveSitePath(to: string, knownDocsSlug?: (slug: string) => boolean): SitePath {
 	const trimmed = to.trim();
@@ -33,19 +52,8 @@ export function resolveSitePath(to: string, knownDocsSlug?: (slug: string) => bo
 	}
 	let path = pathPart.startsWith('/') ? pathPart : `/${pathPart}`;
 	if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
-	if (!PAGES.has(path)) {
-		const docs = /^\/docs\/([^/]+)$/.exec(path);
-		if (!docs) return { ok: false, error: 'That is not a page on this site.' };
-		let slug: string;
-		try {
-			slug = decodeURIComponent(docs[1]);
-		} catch {
-			return { ok: false, error: 'That docs path is not valid.' };
-		}
-		if (knownDocsSlug && !knownDocsSlug(slug)) {
-			return { ok: false, error: `No docs chapter "${slug}".` };
-		}
-		path = `/docs/${slug}`;
-	}
+	const page = resolvePage(path, knownDocsSlug);
+	if (!page.ok) return page;
+	path = page.path;
 	return { ok: true, href: hash ? `${path}#${hash}` : path, hash };
 }

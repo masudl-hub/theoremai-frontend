@@ -145,7 +145,7 @@ export function shouldRevalidate({ currentUrl, nextUrl }: ShouldRevalidateFuncti
  * The rail is always dark so its icons read on black in either mode. A page whose handle sets
  * `isOnBase` sits on the black base itself and draws its own panels.
  */
-export default function Shell() {
+export default function Shell({ loaderData }: Route.ComponentProps) {
 	const { pathname } = useLocation();
 	const matches = useMatches();
 	const onBase = matches.some((match) => isOnBase(match.handle));
@@ -175,7 +175,7 @@ export default function Shell() {
 					}
 				>
 					<BootMark />
-					<Outlet />
+					<Outlet context={{ origin: loaderData.origin, studioJsonLd: loaderData.studioJsonLd }} />
 					<NavMark />
 					<ShellBounds />
 				</AppShell>

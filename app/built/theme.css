@@ -717,12 +717,22 @@
     align-self: baseline;
   }
 
+  .astryx-code-block[data-container="card"] {
+    border-radius: var(--radius-container);
+  }
+
   .astryx-layout-panel:where([role="complementary"]) {
     transition: width var(--duration-medium) var(--ease-standard);
   }
 
   .astryx-layout-panel:where([data-resizing] + [role="complementary"], [role="complementary"]:has(+ [data-resizing])) {
     transition: none;
+  }
+
+  .astryx-toast {
+    width: fit-content;
+    min-width: min(240px, 100%);
+    justify-self: end;
   }
 
   .astryx-layout-content:where([role="main"]) {
