@@ -4,7 +4,6 @@ import type { StudioHost, StudioOpened } from '@theoremjs/studio/ui/studio-host.
 import { StudioScreen } from '@theoremjs/studio/ui/studio-screen.tsx';
 import { useRouteLoaderData } from 'react-router';
 import { PageJsonLd } from '../components/page-summary';
-import { StudioCode } from '../components/studio-code';
 import { STUDIO_SEED_IDS, type StudioSeedId } from '../lib/docs/schema';
 import { docsSeedDraft, docsSeedQuestion } from '../lib/docs/seeds';
 import { SITE_NAME } from '../lib/home-content';
@@ -12,7 +11,6 @@ import { KERNEL_PACKAGE_VERSION } from '../lib/kernel-version';
 import { STUDIO_TITLE, studioDescription } from '../lib/studio-content';
 import { reportTh30Studio } from '../lib/th30-page';
 import { th30Surfaces } from '../lib/th30-surfaces';
-import { zipFiles } from '../lib/zip';
 import type { Route } from './+types/studio';
 import type { ShellHandle, loader as shellLoader } from './shell';
 
@@ -67,8 +65,6 @@ function ShellJsonLd() {
 /** What the site gives the studio screen: its build's pieces, and th30 following along. */
 const HOST: StudioHost = {
 	kernelVersion: KERNEL_PACKAGE_VERSION,
-	zip: zipFiles,
-	Code: StudioCode,
 	mountSurface: (surface) => th30Surfaces.mount(surface),
 	onReport: reportTh30Studio,
 };

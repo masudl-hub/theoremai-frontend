@@ -1,5 +1,6 @@
 {
 	"imports": {
-		"react": "npm:react"
+		"react": "npm:react",
+		"fflate": "../node_modules/fflate/esm/index.mjs"
 	}
 }

@@ -2,11 +2,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cloudflare } from '@cloudflare/vite-plugin';
 import { reactRouter } from '@react-router/dev/vite';
+import { studioVite } from '@theoremjs/studio/vite';
 import { defineConfig, type Plugin } from 'vite';
 import { docsIndexPlugin } from './scripts/docs-index-plugin.mjs';
 import { kernelMetaDefine } from './scripts/kernel-meta.mjs';
 import { resolveTheoremaiRoot } from './scripts/resolve-theoremai-root.mjs';
-import { studioTypeSources } from './scripts/studio-type-sources.mjs';
 
 const repoRoot = path.dirname(fileURLToPath(import.meta.url));
 const theoremai = resolveTheoremaiRoot(repoRoot);
@@ -47,7 +47,7 @@ export default defineConfig({
 	plugins: [
 		tablerIconFiles(),
 		docsIndexPlugin({ repoRoot, theoremai }),
-		studioTypeSources({ theoremaiRoot: theoremai.root, repoRoot }),
+		studioVite({ hostRoot: repoRoot }),
 		cloudflare({ viteEnvironment: { name: 'ssr' } }),
 		reactRouter(),
 	],
