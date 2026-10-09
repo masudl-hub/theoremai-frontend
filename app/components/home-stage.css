@@ -70,7 +70,7 @@
 .home-stage-still-media {
 	position: relative;
 	display: block;
-	width: var(--home-still-size);
+	width: var(--home-still-size, clamp(7.5rem, 16vh, 10.5rem));
 	aspect-ratio: 1;
 	border-radius: var(--radius-container);
 	overflow: hidden;

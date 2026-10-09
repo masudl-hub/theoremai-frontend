@@ -1,4 +1,4 @@
-import { type RefObject, useLayoutEffect } from 'react';
+import { type RefObject, useEffect } from 'react';
 import { REST_PX } from './home-shell-pull';
 
 function lengthOf(value: string): number {
@@ -16,7 +16,9 @@ export function useHomeGoalsScroll(
 	runRef: RefObject<HTMLElement | null>,
 	reduced: boolean,
 ) {
-	useLayoutEffect(() => {
+	// An effect, not a layout effect: the scroller is the parent's node, and its ref is not set
+	// until this component's layout effects have run.
+	useEffect(() => {
 		if (reduced) return;
 		const scroller = scrollRoot.current;
 		const run = runRef.current;
@@ -44,18 +46,20 @@ export function useHomeGoalsScroll(
 			const figure = stack?.querySelector<HTMLElement>('.home-stage-still');
 			const tile = stack?.querySelector<HTMLElement>('.home-stage-still-media');
 			if (step <= 0 || !frame || !stack || !figure || !tile || tile.offsetWidth < 1) return;
-			// The large square is as wide as its column, or as tall as the frame allows once the
-			// two small tiles and the gaps between them are taken out.
+			// The large square is as wide as its column. Tile one keeps its top edge and tile three its
+			// bottom edge, so it is also no taller than what is left of the frame from there, once
+			// the two small tiles and the gaps are taken out.
 			const frameStyle = getComputedStyle(frame);
 			const stackStyle = getComputedStyle(stack);
 			const room =
 				frame.clientHeight - lengthOf(frameStyle.paddingTop) - lengthOf(frameStyle.paddingBottom);
-			const small = lengthOf(stackStyle.getPropertyValue('--home-goal-small')) * tile.offsetWidth;
+			const size = tile.offsetWidth;
+			const small = lengthOf(stackStyle.getPropertyValue('--home-goal-small'));
 			const large = Math.min(
 				figure.offsetWidth,
-				room - 2 * small - 2 * lengthOf(stackStyle.rowGap),
+				room / 2 + (1.5 - 2 * small) * size - lengthOf(stackStyle.rowGap),
 			);
-			run.style.setProperty('--home-goal-ratio', String(Math.max(1, large / tile.offsetWidth)));
+			run.style.setProperty('--home-goal-ratio', String(Math.max(1, large / size)));
 		};
 
 		const update = () => {

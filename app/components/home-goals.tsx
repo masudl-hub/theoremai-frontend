@@ -31,6 +31,8 @@ export function goalStackVars(): CSSProperties {
 		out[`--home-goal-size-${String(index)}`] =
 			`calc(1 + (var(--home-goal-ratio, 1) - 1) * var(${grow}) - (1 - var(--home-goal-small)) * (var(--home-goal-in) - var(${grow})))`;
 	});
+	out['--home-goal-walk'] =
+		`calc(${GOALS.map((_, index) => `${String(index)} * var(--home-goal-grow-${String(index)})`).join(' + ')})`;
 	return vars(out);
 }
 

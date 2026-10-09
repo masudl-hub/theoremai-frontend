@@ -46,14 +46,14 @@
 }
 
 /* The tile stack. One tile is large while its goal is open and the other two are small. The
-   stack grows from its middle on the way in from overview, then keeps its height, so tile one
-   grows from its top edge, tile two from its centre and tile three from its bottom edge. */
+   stack is packed, then shifted so the open tile keeps its own anchor: tile one its top edge,
+   tile two its centre, tile three its bottom edge. --home-goal-walk is the open goal's index. */
 .home-stage-stills {
 	--home-still-size: clamp(7.5rem, 16vh, 10.5rem);
 	--home-goal-small: 0.4;
 	--home-goal-at: var(--home-goals-pull, 0);
 	--home-goal-in: clamp(0, var(--home-goal-at), 1);
-	--home-goal-rise: calc((var(--home-goal-ratio, 1) + 2 * var(--home-goal-small) - 3) / 2);
+	--home-goal-lift: calc(1.5 - var(--home-goal-small) - var(--home-goal-ratio, 1) / 2);
 	position: relative;
 }
 
@@ -61,7 +61,7 @@
 	transform: translateY(
 		calc(
 			var(--home-still-size) *
-			(var(--home-goal-above, 0) - var(--home-goal-in) * var(--home-goal-rise))
+			(var(--home-goal-above, 0) + var(--home-goal-lift) * var(--home-goal-walk, 0))
 		)
 	);
 }
@@ -88,10 +88,8 @@
 	position: absolute;
 	z-index: 2;
 	top: calc(
-		var(--home-still-size) *
-		(var(--home-goal-slot) * var(--home-goal-small) - var(--home-goal-rise)) +
 		var(--home-goal-slot) *
-		var(--spacing-4)
+		(var(--home-still-size) * (1.5 - var(--home-goal-ratio, 1) / 2) + var(--spacing-4))
 	);
 	left: 0;
 	width: var(--home-goal-large);
