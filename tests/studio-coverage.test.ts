@@ -27,7 +27,8 @@ const NOT_IN_STUDIO: Record<string, string> = {
 	'models.*.compaction.trigger': 'A function that decides when to compact, written in code.',
 };
 
-const components = new URL('../app/components/', import.meta.url);
+// The editor's rows live in the package's screen files.
+const components = new URL('./', import.meta.resolve('@theoremjs/studio/ui/profile-editor.tsx'));
 const source = readdirSync(components)
 	.filter((name) => name.endsWith('.tsx'))
 	.map((name) => readFileSync(new URL(name, components), 'utf8'))
