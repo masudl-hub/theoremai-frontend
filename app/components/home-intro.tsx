@@ -70,32 +70,21 @@ function NavItems({ itemRefs }: { itemRefs: RefObject<Record<string, HTMLElement
 	};
 	return (
 		<>
-			<div className="home-intro-group">
-				<div className="home-intro-group-items">
-					{SITE_SECTIONS.map(({ href, label, icon }) => (
-						<IntroNavItem
-							key={href}
-							href={href}
-							label={label}
-							icon={icon}
-							innerRef={setItemRef(href)}
-						/>
-					))}
+			{[SITE_SECTIONS, SITE_PACKAGES].map((group) => (
+				<div key={group[0]?.href} className="home-intro-group">
+					<div className="home-intro-group-items">
+						{group.map(({ href, label, icon }) => (
+							<IntroNavItem
+								key={href}
+								href={href}
+								label={label}
+								icon={icon}
+								innerRef={setItemRef(href)}
+							/>
+						))}
+					</div>
 				</div>
-			</div>
-			<div className="home-intro-group">
-				<div className="home-intro-group-items">
-					{SITE_PACKAGES.map(({ href, label, icon }) => (
-						<IntroNavItem
-							key={href}
-							href={href}
-							label={label}
-							icon={icon}
-							innerRef={setItemRef(href)}
-						/>
-					))}
-				</div>
-			</div>
+			))}
 		</>
 	);
 }

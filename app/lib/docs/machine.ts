@@ -64,11 +64,12 @@ export function llmsTxt(index: DocIndex, origin: string): string {
 /** The landing page and every chapter in full, so one fetch answers any question about the site. */
 export function llmsFullTxt(index: DocIndex, origin: string): string {
 	const chapters = index.articles.map((article) => articleMarkdown(index, article.slug, origin));
-	return (
-		[homeMarkdown(origin).trimEnd(), studioMarkdown(index, origin).trimEnd(), ...chapters].join(
-			'\n\n---\n\n',
-		) + '\n'
-	);
+	const pages = [
+		homeMarkdown(origin).trimEnd(),
+		studioMarkdown(index, origin).trimEnd(),
+		...chapters,
+	];
+	return `${pages.join('\n\n---\n\n')}\n`;
 }
 
 export function robotsTxt(origin: string): string {

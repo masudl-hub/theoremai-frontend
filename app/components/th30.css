@@ -39,13 +39,7 @@ html.th30-messages[data-home-reduced] .theorem-home-shell [role="main"] {
 	}
 
 	html.th30-messages:not([data-home-reduced]) .theorem-home-shell [role="main"] {
-		clip-path: inset(
-			calc(var(--home-shell-pull, 0) * var(--spacing-4))
-				calc(var(--home-shell-pull, 0) * var(--spacing-4) + var(--th30-messages) + var(--spacing-4))
-				calc(var(--home-shell-pull, 0) * var(--spacing-4))
-				calc(var(--home-shell-pull, 0) * var(--spacing-12)) round
-				calc(var(--home-shell-pull, 0) * var(--radius-page))
-		);
+		--shell-end-reserve: calc(var(--th30-messages) + var(--spacing-4));
 		transition:
 			height 420ms var(--th30-ease),
 			clip-path 420ms var(--th30-ease);

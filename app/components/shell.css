@@ -32,7 +32,11 @@
 		border-radius: 0;
 		clip-path: inset(
 			calc(var(--home-shell-pull, 0) * var(--spacing-4))
-				calc(var(--home-shell-pull, 0) * var(--shell-end-inset, var(--spacing-4)))
+				calc(
+					var(--home-shell-pull, 0) *
+					var(--shell-end-inset, var(--spacing-4)) +
+					var(--shell-end-reserve, 0px)
+				)
 				calc(var(--home-shell-pull, 0) * var(--spacing-4))
 				calc(var(--home-shell-pull, 0) * var(--spacing-12)) round
 				calc(var(--home-shell-pull, 0) * var(--radius-page))
