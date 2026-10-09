@@ -9,7 +9,7 @@ import { docsSeedDraft, docsSeedQuestion } from '../lib/docs/seeds';
 import { SITE_NAME } from '../lib/home-content';
 import { KERNEL_PACKAGE_VERSION } from '../lib/kernel-version';
 import { STUDIO_TITLE, studioDescription } from '../lib/studio-content';
-import { reportTh30Studio } from '../lib/th30-page';
+import { reportTh30Studio } from '../lib/th30-studio-state';
 import { th30Surfaces } from '../lib/th30-surfaces';
 import type { Route } from './+types/studio';
 import type { ShellHandle, loader as shellLoader } from './shell';

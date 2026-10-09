@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import type { Th30StudioState } from './th30-studio-state';
 
 export type Th30Page = {
 	title: string;
@@ -48,47 +48,6 @@ export function readPageFromDom(hash: string): Th30Page | null {
 	}
 	if (parts.length === 0) return null;
 	return { title: document.title, summary: parts.join(' '), viewing: viewingFor(hash) };
-}
-
-/** The studio's live state, as th30 is told it. */
-export type Th30StudioState = {
-	agent: string;
-	type: string;
-	issues: number;
-	section?: string;
-};
-
-let studioState: Th30StudioState | null = null;
-const listeners = new Set<() => void>();
-
-/** The studio reports what is on screen as it changes, and null when it closes. */
-export function reportTh30Studio(next: Th30StudioState | null) {
-	const same =
-		next === studioState ||
-		(next !== null &&
-			studioState !== null &&
-			next.agent === studioState.agent &&
-			next.type === studioState.type &&
-			next.issues === studioState.issues &&
-			next.section === studioState.section);
-	if (same) return;
-	studioState = next;
-	for (const listener of listeners) listener();
-}
-
-function subscribe(listener: () => void) {
-	listeners.add(listener);
-	return () => {
-		listeners.delete(listener);
-	};
-}
-
-export function useTh30StudioState(): Th30StudioState | null {
-	return useSyncExternalStore(
-		subscribe,
-		() => studioState,
-		() => null,
-	);
 }
 
 /** The one line th30 reads to know the page: `(page) /path — Title: summary [state]`. */

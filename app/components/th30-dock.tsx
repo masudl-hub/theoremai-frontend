@@ -42,8 +42,8 @@ import {
 	type Th30Page,
 	type Th30PageHandle,
 	th30PageLine,
-	useTh30StudioState,
 } from '../lib/th30-page';
+import { useTh30StudioState } from '../lib/th30-studio-state';
 import { onTh30Note, setTh30SurfaceOpener, th30Surfaces } from '../lib/th30-surfaces';
 import { th30Voice } from '../lib/th30-voice';
 import { Th30Light } from './th30-light';
