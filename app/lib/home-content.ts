@@ -3,6 +3,7 @@
  * structured data, meta tags and llms.txt are built from it, so none of them can drift.
  * Kernel facts (description, license, version, keywords) come from the package at build time.
  */
+import { packageLinks, SITE_PAGES } from '@theoremjs/studio/ui/studio-nav.ts';
 import { KERNEL_PACKAGE_VERSION } from './kernel-version';
 import { ARGUMENT, GOALS, HOME_TAGLINE } from './site-pitch';
 
@@ -33,16 +34,7 @@ export const KERNEL = {
 export const REPO_URL = envString('KERNEL_REPOSITORY') || 'https://github.com/masudl-hub/theoremai';
 export const DISCORD_URL = 'https://discord.gg/X6RQvSWQ58';
 export const KERNEL_INSTALL_CMD = `npm install ${KERNEL_NAME} zod`;
-export const SITE_PAGES = [
-	{ label: 'Studio', href: '/studio' },
-	{ label: 'Docs', href: '/docs' },
-] as const;
-
-export const PACKAGE_LINKS = [
-	{ label: 'GitHub', href: REPO_URL },
-	{ label: 'JSR', href: `https://jsr.io/${KERNEL_NAME}` },
-	{ label: 'npm', href: `https://www.npmjs.com/package/${encodeURIComponent(KERNEL_NAME)}` },
-] as const;
+export const PACKAGE_LINKS = packageLinks(KERNEL_NAME, REPO_URL);
 
 export const HEADLINE = [
 	{ text: 'Agents are', claim: false },

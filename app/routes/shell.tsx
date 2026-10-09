@@ -1,13 +1,7 @@
 import { AppShell } from '@astryxdesign/core/AppShell';
 import { LinkProvider } from '@astryxdesign/core/Link';
-import {
-	SideNav,
-	SideNavHeading,
-	SideNavItem,
-	SideNavSection,
-	useSideNavRenderMode,
-} from '@astryxdesign/core/SideNav';
-import { Theme } from '@astryxdesign/core/theme';
+import { useSideNavRenderMode } from '@astryxdesign/core/SideNav';
+import { ShellBounds, StudioRail } from '@theoremjs/studio/ui/studio-shell.tsx';
 import {
 	Link,
 	type LinkProps,
@@ -24,9 +18,6 @@ import '../components/shell.css';
 import { BootMark } from '../components/boot-mark';
 import { holdDocsArticleTransition } from '../components/docs/article-transition';
 import { pageOwnsDocsNav } from '../components/docs/shell-slot';
-import { NewTabLink } from '../components/links';
-import { LogoMark } from '../components/logo-mark';
-import { ShellBounds } from '../components/shell-bounds';
 import {
 	captureShape,
 	enterShell,
@@ -40,7 +31,7 @@ import {
 import { NavMark } from '../components/shell-navigation';
 import { Th30Provider, Th30Trigger } from '../components/th30-dock';
 import { getDocIndex } from '../lib/docs/.server/load-index';
-import { SITE_PACKAGES, SITE_SECTIONS } from '../lib/site-nav';
+import { PACKAGE_LINKS } from '../lib/home-content';
 import { studioJsonLd } from '../lib/studio-content';
 import type { Route } from './+types/shell';
 
@@ -175,38 +166,12 @@ export default function Shell() {
 					variant={onBase ? 'wash' : 'elevated'}
 					mobileNav={pageOwnsNav ? false : undefined}
 					sideNav={
-						<Theme theme={theoremSiteTheme} mode="dark">
-							<SideNav
-								collapsible={{ isCollapsed: true, hasButton: false }}
-								header={<SideNavHeading heading="theorem" headingHref="/" icon={<LogoMark />} />}
-								footerIcons={<Th30Button />}
-							>
-								<SideNavSection title="Site" isHeaderHidden>
-									{SITE_SECTIONS.map(({ label, href, icon }) => (
-										<SideNavItem
-											key={href}
-											label={label}
-											href={href}
-											icon={icon}
-											isSelected={pathname === href || pathname.startsWith(`${href}/`)}
-											data-home-nav-anchor={href}
-										/>
-									))}
-								</SideNavSection>
-								<SideNavSection title="Packages" isHeaderHidden>
-									{SITE_PACKAGES.map(({ label, href, icon }) => (
-										<SideNavItem
-											key={href}
-											label={label}
-											href={href}
-											icon={icon}
-											as={NewTabLink}
-											data-home-nav-anchor={href}
-										/>
-									))}
-								</SideNavSection>
-							</SideNav>
-						</Theme>
+						<StudioRail
+							theme={theoremSiteTheme}
+							pathname={pathname}
+							packages={PACKAGE_LINKS}
+							footerIcons={<Th30Button />}
+						/>
 					}
 				>
 					<BootMark />

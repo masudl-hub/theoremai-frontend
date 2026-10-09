@@ -213,7 +213,7 @@ export const theoremSiteTheme = {
     "--astryx-theme-neutral-color-destructive-overlay-hover": "neutral",
     "--astryx-theme-neutral-color-destructive-overlay-pressed": "neutral"
   },
-  __localTokenLineage: ["neutral","theorem","theorem-site"],
+  __localTokenLineage: ["neutral","theorem","theorem-studio","theorem-site"],
   components: {
     "heading": {
       "level:1": {

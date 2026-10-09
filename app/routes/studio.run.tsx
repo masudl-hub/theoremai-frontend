@@ -3,7 +3,6 @@ import { StudioRunScreen, studioRunTitle } from '@theoremjs/studio/ui/studio-run
 import { redirect } from 'react-router';
 import type { Th30PageHandle } from '../lib/th30-page';
 import type { Route } from './+types/studio.run';
-import './run.css';
 
 export const handle = {
 	th30Page: (data: Route.ComponentProps['loaderData'] | undefined) => ({

@@ -1,4 +1,0 @@
-/* The run page is the studio package's. Here it is clipped to the shell panel's corners. */
-[role="main"]:has(.run-page) {
-	overflow: hidden;
-}

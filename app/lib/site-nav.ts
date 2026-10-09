@@ -1,13 +1,11 @@
-import { IconBook2, IconBrandGithub, IconBrandNpm, IconPlayerPlay } from '@tabler/icons-react';
-import { IconJsr } from '../components/jsr-icon';
-import { PACKAGE_LINKS, SITE_PAGES } from './home-content';
+import { SITE_PAGES } from '@theoremjs/studio/ui/studio-nav.ts';
+import { PACKAGE_ICONS, PAGE_ICONS } from '@theoremjs/studio/ui/studio-shell.tsx';
+import { PACKAGE_LINKS } from './home-content';
 
-const SECTION_ICONS = { Studio: IconPlayerPlay, Docs: IconBook2 } as const;
-const PACKAGE_ICONS = { GitHub: IconBrandGithub, JSR: IconJsr, npm: IconBrandNpm } as const;
-
+/** The rail's rows with their icons, for the landing page's own copy of them. */
 export const SITE_SECTIONS = SITE_PAGES.map((page) => ({
 	...page,
-	icon: SECTION_ICONS[page.label],
+	icon: PAGE_ICONS[page.label],
 }));
 
 export const SITE_PACKAGES = PACKAGE_LINKS.map((link) => ({

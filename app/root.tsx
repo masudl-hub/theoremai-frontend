@@ -16,14 +16,14 @@ import {
 } from 'react-router';
 import type { Route } from './+types/root';
 // Figtree is the neutral theme's font; Astryx names it but ships no files. Self-hosted, with its metrics rebalanced.
-import './figtree.css';
+import '@theoremjs/studio/ui/figtree.css';
 import figtreeRegular from '@fontsource/figtree/files/figtree-latin-400-normal.woff2?url';
 // Astryx's documented order: reset → components → theme.
 import '@astryxdesign/core/reset.css';
 import '@astryxdesign/core/astryx.css';
 import './built/theme.css';
 // After the theme: motion Astryx's theme API can't express.
-import './motion.css';
+import '@theoremjs/studio/ui/motion.css';
 import './components/layout.css';
 import { theoremSiteTheme } from './built/theorem-site';
 import { bootHasPlayed, SHELL_REVEAL } from './components/shell-motion';
