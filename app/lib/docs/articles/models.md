@@ -1,6 +1,6 @@
 ---
 title: Binding models
-updated: 2026-10-08
+updated: 2026-10-09
 summary: Register a provider, bind a model to it, pick one per request, and fix failed bindings.
 entry: src/providers/mod.ts
 covers: src/providers, src/kernel/registry/vault.ts, src/kernel/registry/catalog.ts, src/kernel/registry/profiles.ts, src/kernel/schema.ts
@@ -9,20 +9,29 @@ coverAlt: Blueberry bushes at night
 coverPosition: 0% 95%
 ---
 
-Tell the agent which models it can call, and where each model finds its key. The key is never in the profile.
+Select a model through a registered provider. Keep credentials in the host's vault, outside the profile.
 
 ## The idea
 
-A **provider** is a model server that you register once: OpenRouter, Google, a server on your machine. A **binding** is one entry under `models`. It names a registered provider and one model on it:
+A **provider definition** contains connection settings, credential-slot names, and an adapter.
+An **adapter** converts Theorem requests and model responses to and from a model server's protocol.
+Register the definition once under an ID that your application chooses.
 
-- `provider`: the `id` of a registered provider.
-- `apiId`: the name of the model at the provider.
-- `keySlot`: the name of a **key slot**. It is optional when the provider names a default slot.
-- `providerOptions`: settings that only this provider understands. It is optional.
+A **binding** is an entry under `models`. It selects that registered provider and an upstream model.
 
-A provider holds an **adapter**, the code that speaks to one kind of model server. Theorem ships four: `openRouterAdapter`, `googleAdapter`, `openAIChat` and `typesafeAdapter`.
+| Field | Value |
+| --- | --- |
+| `provider` | The registered provider ID |
+| `apiId` | The upstream model or deployment ID |
+| `keySlot` | Optional credential-slot override |
+| `providerOptions` | Optional adapter-specific JSON settings |
 
-A key slot is a name, not a key. You fill the slot in a **vault**, an object that maps each slot name to a key. You pass the vault to `runTurn`. The profile can then stay in your repository, and the keys stay in your secrets store.
+A **key slot** names a credential. It does not contain the credential.
+A **vault** maps slot names to credential values or resolver functions.
+Pass the vault in host options when you run the agent.
+
+The provider definition contains host code. The binding contains ordinary data.
+The same registered provider can supply models to several profiles.
 
 ## Bind the models of the Harbor desk
 
@@ -33,20 +42,27 @@ These four steps give the Harbor desk one model, then a second model that a requ
 Register a provider before you register a profile that names it. The `id` is the name that bindings use.
 
 ```ts
-import { openRouterAdapter, registerProvider } from '@theoremjs/agents';
+import { defineProvider, openRouterAdapter, registerProvider } from '@theoremjs/agents';
 
-registerProvider({
+const router = defineProvider({
 	id: 'openrouter',
 	connection: {},
+	keySlot: 'openrouter',
 	adapter: openRouterAdapter(),
 });
+registerProvider(router);
+
+export const binding = router.model('openrouter/free');
 ```
 
-`connection` holds the settings of the server, such as its address. OpenRouter needs none. `registerProfile` throws a `config` error, `Unknown provider`, for a binding whose provider is not registered.
+`connection` holds server settings, such as its address. OpenRouter uses its default address when this object is empty.
+The definition names the default credential slot. Its `.model()` helper checks settings and returns binding data.
+`registerProfile` rejects an unknown provider with a `config` error.
 
 ### 2. Declare a binding
 
-Put the binding under `models`, with an id that you choose. Here the id is `main`.
+Put binding data under `models`, with a name that you choose. Here the name is `main`.
+You can use the helper result or write the equivalent data directly. Registration validates either form.
 
 ```ts frame=profile:text
 type: 'text',
@@ -77,11 +93,15 @@ const hostOptions = {
 };
 ```
 
-A vault entry is a string, or a function that returns one when Theorem needs it. For a `live` profile, pass the `vault` to `runSession`. For a decision, pass it to `runDecision` ([Running a turn](/docs/runner)).
+A vault entry is a string, a JSON credential object, or a resolver function.
+A resolver can return a promise. Theorem calls it when the adapter needs the credential.
+The adapter checks the resolved value. The host owns caching and refresh.
+Pass the same host options to `runSession` or `runDecision` for those profile types ([Running a turn](/docs/runner)).
 
 ### 4. Let a request pick the model
 
-The desk answers most questions with a fast model. A dispute about a hold needs a stronger one. Declare both, and let the request choose.
+Declare several bindings when requests need different models.
+The desk uses one model for routine questions and another for shipment disputes.
 
 ```ts frame=profile:text
 type: 'text',
@@ -113,13 +133,16 @@ A live session takes no `model`. It always runs `defaultModel`.
 
 A slot keeps a key out of the profile. These rules keep the slot names safe and complete.
 
-- Every model except a `local` one needs a slot. Set `keySlot` on the binding or on the provider. A turn on a model with no slot ends with an `auth` error.
+- OpenRouter, Google, and TypeSafe need a credential slot. Set `keySlot` on the definition or binding.
+- A compatible endpoint needs a slot if its server requires a credential. External adapters declare their own credential requirements.
 - A slot name has at most 32 characters. It uses letters, digits, `-` and `_`.
-- `fallbackKeySlot` names a second slot, on the binding or on the provider. If the provider refuses the first key for quota, Theorem retries once on the second. It must differ from `keySlot`.
+- `fallbackKeySlot` names an explicit second slot on the definition or binding. It must differ from the primary slot.
+- The adapter decides when to use fallback. OpenRouter chat and Google Interactions retry quota failures once with the fallback credential.
 
 ## Choose a provider for the profile type
 
-An adapter runs only some profile types. `registerProfile` refuses any other pair.
+Choose an adapter that provides the operation your profile requires.
+`registerProfile` rejects a profile type that the adapter does not declare.
 
 Adapter | Profile types
 --- | ---
@@ -128,29 +151,57 @@ Adapter | Profile types
 `openAIChat` | `text`
 `typesafeAdapter` | `decision`
 
+The model can restrict these choices further. Required features need declared support before transport opens.
+Unknown or unsupported requirements fail instead of silently losing settings.
+
+### Configure a compatible protocol
+
+Use `openAIChat` for an endpoint that accepts the compatible chat format.
+Its default declaration verifies text input, text output, and streaming.
+Tools, structured output, and reasoning remain unknown until you supply verified `ProviderCapabilities` in its `capabilities` option.
+
+For an unknown Gemini model, pass a model-ID-to-capabilities map to `googleAdapter`.
+A declaration records verified features. It does not add protocol behavior to the adapter.
+
+### Implement a different protocol
+
+Implement the public `ProviderAdapter` contract when the endpoint requires different request or response formats.
+Declare schemas, capabilities, request validation, and supported operations. Register the adapter under your own provider ID.
+Its executable code remains on the host. Profiles contain only its ID and JSON settings.
+The kernel retains authority over guardrails, approvals, and client-tool execution.
+
 A `speech` profile with `format: 'mp3'` needs a model that can make mp3. Use an OpenRouter model. Gemini speech returns `pcm`.
 
 ## Set providerOptions
 
-`providerOptions` is checked by the adapter of the provider when you register the profile. An option that the adapter does not know makes `registerProfile` throw.
+Put vendor-specific settings in `providerOptions`. Keep shared settings, such as `maxOutputTokens`, on the binding.
+The `.model()` helper and profile registration validate options with the selected adapter schema.
+Unknown options fail validation.
 
 - `openRouterAdapter`: `cache` sets prompt caching, `{ mode: 'automatic' }` or `{ mode: 'system' }`, with an optional `ttl` of `5m` or `1h`.
 - `googleAdapter`: `store`, `persistViaInteractionId` and `googleMapsLocation`.
 - `openAIChat`: `server`.
 - `typesafeAdapter`: none.
 
-## Set persistViaInteractionId on Gemini
+## Keep Google interaction state
 
-Google can keep the history of a chat for you. Set `persistViaInteractionId` in the `providerOptions` of a Google binding.
+Use `providerOptions.persistViaInteractionId` when Google must retain native interaction context.
+Storage must remain enabled: leave `store` unset or set it to `true`.
+Without persistence, the adapter sends the history and current turn steps that you supply.
 
-- `true`: Google builds the context from its stored interaction. This needs `store` left on.
-- `false`: every call sends the history that you pass and the steps of the turn.
+Save the returned `providerState` beside portable history. Send both on the next request.
+The kernel validates the checkpoint before the adapter uses its interaction ID.
+If the checkpoint becomes incompatible, the default policy rebuilds from portable history.
+[Running a turn](/docs/runner) gives the save and recovery procedure.
 
 ## Run a model on your machine
 
-Use `openAIChat` to call a server on your machine that speaks the chat-completions format, such as Ollama. A local provider needs no key slot.
+Use `openAIChat` for a local server that accepts the compatible chat format, such as Ollama.
+Omit the key slot only if that server does not require credentials.
 
-The connection sets `baseURL`, the address up to the path that Theorem adds. Theorem appends `/chat/completions`. The binding option `server` is a label that traces record. It is not a URL. If you set it, it must not be empty. A model on `openAIChat` serves `text` profiles only.
+Set `connection.baseURL` to the API base address. The adapter appends `/chat/completions`.
+The optional `providerOptions.server` is a nonempty trace label, not an address.
+`openAIChat` runs `text` profiles only.
 
 ```ts
 import { openAIChat, registerProvider } from '@theoremjs/agents';
@@ -175,11 +226,12 @@ models: {
 
 ## Fix a binding that fails
 
-A wrong binding fails when the application starts, in `defineProfile` or `registerProfile`. A missing key fails when a turn runs. Each row is one failure and its fix.
+Configuration checks run during definition and registration. Credential resolution and actual request checks run when the operation starts.
+Use this table to identify the failed boundary and its correction.
 
 Where | What you see | Fix
 --- | --- | ---
-`defineProfile`, kind `config` | The profile sets `key`, `fallbackKey`, `protocol` or `provider` | Move it to the registered provider or to the binding
+`defineProfile`, kind `config` | The profile sets `key`, `fallbackKey`, `protocol` or `provider` | Use registered provider IDs in bindings; put credential defaults in provider definitions
 `defineProfile`, kind `config` | The model needs `provider` and `apiId` | Set both on the binding
 `defineProfile`, kind `config` | The profile must set `defaultModel` when it declares more than one model | Set `defaultModel`
 `defineProfile`, kind `config` | `allowModelSelect` requires at least two models | Add a model, or remove the flag

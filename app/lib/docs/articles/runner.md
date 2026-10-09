@@ -1,7 +1,7 @@
 ---
 title: Running a turn
-updated: 2026-10-08
-summary: Call the door for your profile type, read the events, resume a paused tool.
+updated: 2026-10-09
+summary: Resolve a registered model, run the profile, save history, and resume a paused tool.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/engine/decision.ts, src/kernel/engine/session, src/kernel/tools/invoke.ts, src/kernel/stages.ts
 cover: /imagery/th30_poppies.png
@@ -21,7 +21,11 @@ A profile describes an agent. A **runner** function runs it. Each type of profil
 - `runDecision` asks a `decision` profile its questions.
 - `invokeTool` runs one tool of a `host` profile. It also resumes a tool that a gate paused.
 
-A turn is not one call and one answer. The model writes, calls a tool, reads the result and writes again. Theorem gives you each step as an **event**. At five fixed points, the **stages**, your code can look at the turn and change it.
+Each model runner resolves the registered provider from the selected binding ([Binding models](/docs/models)).
+The host options supply credentials and optional transport functions. The profile contains no executable adapter.
+
+A turn can include several model steps. The model requests a tool, reads its result, and produces another response.
+Theorem reports these operations as **events**. Your code can act at five fixed **stages**.
 
 ```figure
 {
@@ -50,7 +54,7 @@ A turn is not one call and one answer. The model writes, calls a tool, reads the
 		},
 		{
 			"label": "post_turn",
-			"text": "Your code can observe. The done event follows, with stop.kind."
+			"text": "Your code observes the completed turn. The done event already reported stop.kind."
 		}
 	]
 }
@@ -62,7 +66,9 @@ These five steps run the Harbor front desk, keep a chat, and pause before a tool
 
 ### 1. Run a turn
 
-Pass a request and the host options. The host options hold the vault that fills the key slots of the profile's models ([Binding models](/docs/models)). They also take `fetch`, `wait` and `openWebSocket`, for tests and for hosts that need their own transport.
+Pass the request first and host options second.
+The vault fills credential slots selected by the binding or provider definition.
+Optional `fetch`, `wait`, and `openWebSocket` functions let the host supply transport utilities.
 
 The request needs `profile`, the id of a registered profile. Add `input` for a user turn ([Declaring inputs](/docs/inputs)). The optional third argument is a trace sink ([Recording traces](/docs/traces)).
 
@@ -81,7 +87,9 @@ for await (const event of runTurn(
 
 ### 2. Continue a chat
 
-A turn does not remember the turn before it. Your application stores the chat. To continue the chat, send the earlier messages in `input.history` and the new message in `input.text`.
+Store portable conversation history in your application.
+To continue, send previous messages in `input.history` and the new message in `input.text`.
+If completion returns `providerState`, save that checkpoint beside the history. Send it on the next request too.
 
 ```ts frame=statements
 runTurn(
@@ -101,15 +109,20 @@ runTurn(
 
 Each message has a `role` (`user`, `assistant`, `system` or `tool`) and its `content`.
 
-A Gemini binding with `providerOptions: { persistViaInteractionId: true }` is the exception. Send `previousInteractionId` and no history ([Binding models](/docs/models)).
+The checkpoint contains native state for the adapter. Portable history remains necessary for recovery.
+The kernel checks provider identity, model identity, deployment, state version, and the covered history prefix.
+On a mismatch, it rebuilds from portable history and emits `provider_warning` by default.
+Set `providerContinuation: { onMismatch: 'error' }` to reject the mismatch instead.
+Google persistence uses this same checkpoint boundary ([Binding models](/docs/models)).
 
 ### 3. Read the stream
 
-The stream yields `TurnEvent` values until `done` or `error`.
+Read the event stream to completion. An `error` event can precede terminal `done` status.
 
 - Model output arrives as `text`, `thought`, structured data or media.
 - The `tool`, `stage` and `guardrail` events arrive as they fire.
-- The last event is `done`. Its `stop.kind` is `completed` for a normal finish.
+- `done` reports completion status. Its `stop.kind` is `completed` for a normal finish.
+- The `post_turn` stage follows completion. Continue reading the stream for that stage.
 
 A `done` with `length`, `stream_incomplete` or `provider_error` can continue ([Setting turn behaviour](/docs/turn-behaviour)).
 
@@ -181,7 +194,8 @@ The Harbor toolbox measures a road leg for a page that has no chat. Call `invoke
 
 The Harbor phone line talks with a shipper in real time. Call `runSession` for a `live` profile. It returns a session. Read its events with `session.events()`. The events have the same types as the events of a turn.
 
-The second argument takes a `vault`. It also takes `fetch`, `wait`, `openWebSocket`, `gateTtlMs` and `signInGate`.
+Pass host options as the second argument. They include the vault and optional transport functions.
+Session options also include `gateTtlMs` and `signInGate`.
 
 A live session differs from a turn in three ways:
 
@@ -199,6 +213,10 @@ for await (const event of session.events()) {
 	if (event.type === 'text') console.log(event.text);
 }
 ```
+
+To resume, pass the latest checkpoint as `providerState` and its covered portable messages as `history`.
+Live `provider_checkpoint` events contain both values. The same mismatch policy applies to turns and sessions.
+A rebuilt session with history does not repeat its initial greeting.
 
 ## Run a decision
 

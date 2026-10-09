@@ -1,6 +1,6 @@
 ---
 title: Describing statuses
-updated: 2026-10-07
+updated: 2026-10-09
 summary: Replace the words Theorem shows people and the notes it sends to the model.
 entry: src/guardrails/lexicon.ts
 covers: src/kernel/turn-events.ts, src/kernel/stop.ts, src/guardrails/lexicon.ts, src/guardrails/error.ts
@@ -53,10 +53,13 @@ Harbor wants its sign-in error to sound like Harbor. These steps replace that li
 
 ### 1. Find the key
 
-There are two groups of keys:
+The main groups of keys are:
 
 - Lines that a person reads, such as `error.safety` and `attachments.file_too_large`.
 - Notes that the model reads, such as `canary.bind_note` and `taint.blocked`.
+- Internal provider diagnostics under `provider.*`. Replace these server diagnostics with `overrideLexicon`. Public failures use `error.*` wording.
+
+Internal provider diagnostics do not travel to the browser. The client receives the public failure wording instead.
 
 `defineProfile` refuses a key that is not in `LEXICON_KEYS`.
 

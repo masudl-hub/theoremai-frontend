@@ -1,6 +1,6 @@
 ---
 title: Choosing a modality
-updated: 2026-10-08
+updated: 2026-10-09
 summary: Pick the profile type: text, image, speech, live, decision or host.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/profiles.ts, src/kernel/schema.ts
@@ -13,6 +13,9 @@ suggest: 2
 Choose what kind of agent you build. The **type** of a profile is its modality: text, image, speech, live, decision or host.
 
 ## The idea
+
+The type selects the runner and permitted profile fields. The registered adapter must provide the required model operation.
+Its capability declaration restricts profile types and request features ([Binding models](/docs/models)).
 
 The type decides two things:
 
@@ -34,7 +37,8 @@ Hold a realtime voice or video call | `live` | `runSession` | The phone line
 Answer typed questions about JSON state | `decision` | `runDecision` | The router
 Run your tools with no model | `host` | `invokeTool` | The toolbox
 
-If you are not sure, start with `text`.
+Start with `text` for turn-based conversation. First-party or external adapters can provide the required model operation.
+Registration checks the adapter's declared profile types.
 
 ```note
 Every example on this page sets `keySlot` on its model. That field names the vault slot that holds the provider key. The examples assume that the provider is registered ([Binding models](/docs/models)).
@@ -46,7 +50,7 @@ The Harbor front desk answers questions and looks up shipments. Use `text` for a
 
 - Must set: `identity`, `models`, `tools` and `inputs`.
 - Can set: `outputs` and `turnBehaviour`.
-- Provider: `openrouter`, `google` or a local server.
+- Shipped adapters: `openRouterAdapter`, `googleAdapter` or `openAIChat`.
 
 ```ts frame=statements
 const desk = defineProfile({
@@ -67,7 +71,7 @@ The label artist draws the art for a shipping label. Use `image` for an agent th
 
 - Must set: the same fields as `text`, plus `image`.
 - Cannot set: `inputs.voice`, `outputs.structured` or `turnBehaviour.allowSteering`.
-- Provider: `openrouter` or `google`.
+- Shipped adapters: `openRouterAdapter` or `googleAdapter`.
 
 ```ts frame=statements
 const illustrator = defineProfile({
@@ -119,9 +123,10 @@ The phone line talks with a shipper in real time. Use `live` for a realtime voic
 
 - Must set: `identity`, `models`, `tools` and `live`.
 - Cannot set: `inputs` or `outputs`. `live.ingress` replaces `inputs`.
-- Provider: `google` only.
+- Shipped adapter: `googleAdapter`.
 
-If you leave out an ingress channel, audio and video default to on and text to off. At least one channel must be on.
+If you omit an ingress channel, audio and video default to on. Text defaults to off.
+At least one channel must be on. The adapter must declare the selected input kinds and audio output.
 
 Use `live.sessionResumption` in place of `turnBehaviour.resumption`. Use `live.contextCompression` in place of model `compaction`.
 
@@ -147,7 +152,7 @@ The router decides which dock takes a shipment. Use `decision` to get typed answ
 
 - Must set: `identity` with a `handle` only, one model, `inputs.state: "json"` and `decision.contract`.
 - Cannot set: `identity.system`, `tools`, `outputs` or `turnBehaviour`.
-- Provider: `typesafe` or `openrouter`.
+- Shipped adapters: `typesafeAdapter` or `openRouterAdapter`.
 
 The contract is your own id for the decision. Theorem records it on the trace and does not send it to the model. The questions and the state travel on the `runDecision` request ([Running a turn](/docs/runner)).
 

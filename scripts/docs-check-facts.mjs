@@ -8,6 +8,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import ts from 'typescript';
 import { fileURLToPath } from 'node:url';
 import { loadDocs } from './docs-index-plugin.mjs';
 import { failOn } from './docs-report.mjs';
@@ -151,8 +152,21 @@ const sameSet = (what, docSet, kernelSet) => {
 
 // tools#fix-a-failed-call: a failure code is a free string, so read each site that sets one.
 {
-	const source = readFileSync(path.join(theoremai.root, 'src/kernel/tools/execute.ts'), 'utf8');
-	const kernelCodes = new Set([...source.matchAll(/code: '(\w+)'/g)].map((m) => m[1]));
+	const source = ['src/kernel/tools/execute.ts', 'src/kernel/tools/events.ts']
+		.map((file) => readFileSync(path.join(theoremai.root, file), 'utf8'))
+		.join('\n');
+	const kernelCodes = new Set();
+	const tree = ts.createSourceFile('tools.ts', source, ts.ScriptTarget.Latest, true);
+	const visit = (node) => {
+		if (ts.isObjectLiteralExpression(node)) {
+			const properties = node.properties.filter(ts.isPropertyAssignment);
+			const failure = properties.some((property) => property.name.getText(tree) === 'kind');
+			const code = properties.find((property) => property.name.getText(tree) === 'code');
+			if (failure && code && ts.isStringLiteral(code.initializer)) kernelCodes.add(code.initializer.text);
+		}
+		ts.forEachChild(node, visit);
+	};
+	visit(tree);
 	const docCodes = new Set(tableCells('tools', 'fix-a-failed-call').map((row) => row[0].code[0]));
 	sameSet('tools#fix-a-failed-call', docCodes, kernelCodes);
 }

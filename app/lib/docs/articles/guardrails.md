@@ -1,11 +1,11 @@
 ---
 title: Setting guardrails
-updated: 2026-10-07
+updated: 2026-10-09
 summary: Check text in and out of the model. Limit tools, replies and turns per day.
 entry: src/guardrails/mod.ts
 covers: src/guardrails
-cover: /imagery/th30_obsidianshores.png
-coverAlt: Black rocks where the surf meets the shore
+cover: /imagery/th30_copperandobsidian.png
+coverAlt: Turquoise channels between dark gravel banks
 coverPosition: 100% 0%
 suggest: 6
 ---
@@ -23,7 +23,7 @@ Theorem names each of these places a **boundary**. A **detector** is one thing t
 ```figure
 {
 	"kind": "sequence",
-	"still": { "src": "/imagery/th30_obsidianshores.png", "position": "40% 60%" },
+	"still": { "src": "/imagery/th30_copperandobsidian.png", "position": "40% 60%" },
 	"caption": "The four crossings of one turn, in order. Theorem reads the text at each one. These are the actions when the profile sets no guardrails.",
 	"steps": [
 		{

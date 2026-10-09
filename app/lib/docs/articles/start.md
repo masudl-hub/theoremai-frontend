@@ -1,6 +1,6 @@
 ---
 title: Getting started
-updated: 2026-10-08
+updated: 2026-10-09
 summary: Write a profile, run a turn, and see Theorem refuse what it doesn't state.
 entry: src/kernel/engine/runner/mod.ts
 covers: mod.ts, src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -133,9 +133,10 @@ const desk = defineProfile({
 registerProfile(desk);
 ```
 
-### 3. Give the profile a key
+### 3. Supply the vault
 
-A profile never holds a key. Its model names a **key slot**, here `openrouter`. You fill the slot in a **vault**, an object that maps each slot name to a key.
+Keep credentials outside the profile. Its model names a **key slot**, here `openrouter`.
+Fill this slot in a **vault**, an object that maps slot names to credential values or resolver functions.
 
 You pass the vault when you run a turn. The profile can then stay in your repository, and the key stays in your environment.
 
@@ -210,7 +211,7 @@ Theorem did more than call the model. The figure shows each step of the request 
 		{
 			"lane": "Theorem",
 			"label": "Theorem checked the input",
-			"text": "The profile gave the model, the key and the one tool. Then Theorem read the question.",
+			"text": "The profile selected the model and tool. The host vault supplied the credential. Then Theorem checked the question.",
 			"parts": [
 				{ "label": "Sensitive data", "chapter": "guardrails", "text": "The question had no ID numbers, card numbers, IP addresses or credentials. Theorem redacts each one that it finds." },
 				{ "label": "Injection", "chapter": "guardrails", "text": "The question had no text written to steer the model. Theorem redacts that text too." },

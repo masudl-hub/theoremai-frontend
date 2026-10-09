@@ -1,6 +1,6 @@
 ---
 title: Registering tools
-updated: 2026-10-08
+updated: 2026-10-09
 summary: Give an agent a tool that runs your code or calls a URL, MCP or agent.
 entry: src/kernel/tools/mod.ts
 covers: src/kernel/tools, src/kernel/auth
@@ -16,13 +16,15 @@ A **tool** is code that the model can ask Theorem to run. Register the tool once
 
 A model cannot run code. It can only ask. In most applications, the code that answers is a loop that you write, and each tool gets its own checks. One tool checks its arguments. A second tool forgets.
 
-In Theorem, every call takes the same road. The tool can be your own function, a URL, an MCP server or another agent. Theorem does the same checks before the tool runs and after it.
+Theorem executes client tools through one checked pipeline. A client tool can call a function, URL, MCP server, or agent.
+The provider adapter reports the request. The kernel validates successful model-step termination before it releases pending client calls.
+An incomplete or failed stream cannot authorize those calls. The kernel then applies permissions, argument checks, and result checks.
 
 ```figure
 {
 	"kind": "sequence",
 	"still": { "src": "/imagery/th30_malachite.png", "position": "30% 40%" },
-	"caption": "Every tool call takes this road.",
+	"caption": "Every client-tool call uses this pipeline.",
 	"steps": [
 		{
 			"label": "The model asks for a tool",
@@ -408,6 +410,7 @@ Code | Cause | Fix
 `remote_destination` | The arguments name an email address, link or account that only a remote result mentioned, and `guardrails.taint.remoteDestination` is `block` | Change that setting, or have the user give the address
 `invalid_input` | The arguments do not match `input` | Fix the schema, or the description that the model reads
 `handler_error` | The handler threw an error | Fix the handler. The model reads the text of the error
+`network_blocked` | The target violates the network policy | Use an allowed target or change the host policy
 `invalid_output` | The result does not match `output` | Fix the handler, or the `output` schema
 `output_blocked` | `guardrails.detect` blocks a match in the result | Change the action at `tool_output_<kind>`, or return less from the tool
 
