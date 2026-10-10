@@ -1,7 +1,8 @@
 .home-stage-frame {
 	box-sizing: border-box;
 	height: 100%;
-	overflow: auto;
+	/* Clipped, not scrollable: the chat's scroll-into-view would otherwise move the whole frame. */
+	overflow: clip;
 	padding: clamp(1.5rem, 3.5vh, 2.75rem) clamp(1.5rem, 3.2vw, 3.25rem);
 }
 
