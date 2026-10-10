@@ -126,8 +126,10 @@
 	white-space: nowrap;
 }
 
-.stat-note.stat-note {
-	grid-template-columns: auto minmax(0, 1fr);
+/* The note shares the other tiles' two columns, so its words start where their drawings do. */
+.stat-note .stat-tile-value {
+	font-size: clamp(1.25rem, 2.3cqw, 1.9rem);
+	white-space: nowrap;
 }
 
 .stat-note-words {
