@@ -71,9 +71,6 @@ export function GoalBlock({
 			data-home-beat={number}
 			style={vars({ '--home-goal-beat': number })}
 		>
-			<Text className="home-goal-name" color="secondary" weight="semibold">
-				{goal.title}
-			</Text>
 			<Heading className="home-goal-lede" level={2}>
 				{beat.lede}
 			</Heading>

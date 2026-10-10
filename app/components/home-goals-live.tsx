@@ -11,13 +11,23 @@ import { GuardrailTester } from '@theoremjs/studio/ui/guardrail-tester.tsx';
 import { pageInputsOf } from '@theoremjs/studio/ui/lib/studio-page.ts';
 import type { CodeIssue } from '@theoremjs/studio/ui/studio-host.ts';
 import { StudioRunner } from '@theoremjs/studio/ui/studio-runner.tsx';
-import { type RefObject, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import {
+	lazy,
+	type RefObject,
+	Suspense,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from 'react';
 import { useNavigate } from 'react-router';
 import { homeAgentDraft } from '../lib/home-agent';
 import { HOME_CHAT } from '../lib/home-agent-chat';
 import { HOME_AGENT_STUDIO, keepHomeAgent } from '../lib/home-agent-handoff';
 import type { HomeAgentState, HomeAgentStore, HomeGood } from '../lib/home-agent-store';
-import type { GoalBeat, GoalToken } from '../lib/home-goals';
+import type { GoalBeat, GoalId, GoalToken } from '../lib/home-goals';
+import { setGoalReady } from './home-goals-beat';
 
 function useHomeAgent(store: HomeAgentStore): HomeAgentState {
 	return useSyncExternalStore(store.subscribe, store.get, store.get);
@@ -146,6 +156,7 @@ function useOpenOnProfile(isShown: boolean) {
 			if (open && line) {
 				isDone.current = true;
 				open.revealLineNearTop(line);
+				setGoalReady(true);
 				return;
 			}
 			tries += 1;
@@ -163,15 +174,9 @@ function useOpenOnProfile(isShown: boolean) {
  * The agent's file, in the studio's own editor. The page keeps the wheel until a click inside:
  * a cover sits on the editor, and the click that removes it is the one that gives the wheel away.
  */
-export function GoalEditor({ store, isShown }: { store: HomeAgentStore; isShown: boolean }) {
-	const state = useHomeAgent(store);
-	const navigate = useNavigate();
-	const pane = useRef<HTMLDivElement>(null);
+/** Whether a click has given the wheel to the editor; it goes back to the page on a click outside. */
+function useArmed(isShown: boolean, pane: RefObject<HTMLDivElement | null>) {
 	const [isArmed, setIsArmed] = useState(false);
-	const issues = useMemo(() => codeIssues(state), [state]);
-	useOpenOnProfile(isShown);
-	useShowChange(state, isShown);
-
 	useEffect(() => {
 		if (!isShown) setIsArmed(false);
 	}, [isShown]);
@@ -190,19 +195,105 @@ export function GoalEditor({ store, isShown }: { store: HomeAgentStore; isShown:
 			document.removeEventListener('pointerdown', onPress, true);
 		};
 	}, [isArmed]);
+	return { isArmed, setIsArmed };
+}
+
+type EditorView = 'code' | 'form';
+
+/** Goals one and two begin on the file, and goal three on the form. */
+const startView = (goal: GoalId): EditorView => (goal === 'boundaries' ? 'form' : 'code');
+
+/** Under the editor: the form or the file, the way to the studio, and the way back to the start. */
+function EditorFoot({
+	store,
+	isFresh,
+	view,
+	onView,
+}: {
+	store: HomeAgentStore;
+	isFresh: boolean;
+	view: EditorView;
+	onView: (view: EditorView) => void;
+}) {
+	const navigate = useNavigate();
+	return (
+		<div className="home-goal-editor-foot">
+			<SegmentedControl
+				label="View"
+				size="sm"
+				value={view}
+				onChange={(next) => {
+					onView(next === 'form' ? 'form' : 'code');
+				}}
+			>
+				<SegmentedControlItem value="form" label="Form" />
+				<SegmentedControlItem value="code" label="Code" />
+			</SegmentedControl>
+			<Button
+				variant="secondary"
+				size="md"
+				label="Open Studio"
+				icon={<IconPlayerPlay aria-hidden />}
+				onClick={() => {
+					keepHomeAgent(homeAgentDraft(store.get().agent));
+					void navigate(HOME_AGENT_STUDIO);
+				}}
+			/>
+			<IconButton
+				label="Reset"
+				variant="ghost"
+				icon={<Icon icon={IconRotateClockwise} size="sm" />}
+				isDisabled={isFresh}
+				tooltip={
+					isFresh
+						? 'This agent is as it started'
+						: 'Reset this agent and its conversation to how they started'
+				}
+				onClick={store.startOver}
+			/>
+		</div>
+	);
+}
+
+const GoalForm = lazy(() => import('./home-goals-form'));
+
+export function GoalEditor({
+	store,
+	goal,
+	isShown,
+}: {
+	store: HomeAgentStore;
+	goal: GoalId;
+	isShown: boolean;
+}) {
+	const state = useHomeAgent(store);
+	const pane = useRef<HTMLDivElement>(null);
+	const { isArmed, setIsArmed } = useArmed(isShown, pane);
+	const [views, setViews] = useState<Partial<Record<GoalId, EditorView>>>({});
+	const view = views[goal] ?? startView(goal);
+	const issues = useMemo(() => codeIssues(state), [state]);
+	useOpenOnProfile(isShown);
+	useShowChange(state, isShown && view === 'code');
 
 	const { good } = state;
 	if (!good) return null;
 	return (
 		<>
 			<div ref={pane} className="home-goal-editor-pane">
-				<StudioCode
-					text={good.source}
-					hold={!state.compiled.ok}
-					issues={issues}
-					onApply={store.read}
-				/>
-				{isArmed ? null : (
+				<div hidden={view !== 'code'}>
+					<StudioCode
+						text={good.source}
+						hold={!state.compiled.ok}
+						issues={issues}
+						onApply={store.read}
+					/>
+				</div>
+				{view === 'form' ? (
+					<Suspense fallback={null}>
+						<GoalForm store={store} state={state} goal={goal} />
+					</Suspense>
+				) : null}
+				{isArmed || view !== 'code' ? null : (
 					<button
 						type="button"
 						className="home-goal-editor-cover"
@@ -214,30 +305,14 @@ export function GoalEditor({ store, isShown }: { store: HomeAgentStore; isShown:
 					</button>
 				)}
 			</div>
-			<div className="home-goal-editor-foot">
-				<Button
-					variant="secondary"
-					size="md"
-					label="Open Studio"
-					icon={<IconPlayerPlay aria-hidden />}
-					onClick={() => {
-						keepHomeAgent(homeAgentDraft(store.get().agent));
-						void navigate(HOME_AGENT_STUDIO);
-					}}
-				/>
-				<IconButton
-					label="Reset"
-					variant="ghost"
-					icon={<Icon icon={IconRotateClockwise} size="sm" />}
-					isDisabled={state.isFresh}
-					tooltip={
-						state.isFresh
-							? 'This agent is as it started'
-							: 'Reset this agent and its conversation to how they started'
-					}
-					onClick={store.startOver}
-				/>
-			</div>
+			<EditorFoot
+				store={store}
+				isFresh={state.isFresh}
+				view={view}
+				onView={(next) => {
+					setViews((now) => ({ ...now, [goal]: next }));
+				}}
+			/>
 		</>
 	);
 }

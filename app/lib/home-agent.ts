@@ -81,7 +81,7 @@ function draftOf(workspace: StudioWorkspace): StudioDraft {
 const edited = (workspace: StudioWorkspace, edit: (draft: StudioDraft) => StudioDraft) =>
 	withAgentDraft(workspace, keyOf(workspace), edit(draftOf(workspace)));
 
-type DraftEdit = (draft: StudioDraft) => StudioDraft;
+export type DraftEdit = (draft: StudioDraft) => StudioDraft;
 
 /** A change that holds whatever the agent makes. It is written to the text agent set aside too. */
 type FieldEdit = { isOn: (draft: StudioDraft) => boolean; on: DraftEdit; off: DraftEdit };
@@ -309,6 +309,11 @@ export function readHomeSource(
 
 export function createHomeAgent(): HomeAgent {
 	return { workspace: workspaceFromDraft(createHomeDraft()) };
+}
+
+/** The draft changed by a form of the studio's. Like a file typed by hand, it has no text agent to return to. */
+export function editHomeDraft(agent: HomeAgent, edit: DraftEdit): HomeAgent {
+	return { workspace: edited(agent.workspace, edit) };
 }
 
 /** The agent as one draft, for the studio to open. */

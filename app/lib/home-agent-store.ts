@@ -2,6 +2,8 @@ import type { CodeApply } from '@theoremjs/studio/ui/studio-host.ts';
 import {
 	compileHomeAgent,
 	createHomeAgent,
+	type DraftEdit,
+	editHomeDraft,
 	type HomeAgent,
 	type HomeCompile,
 	readHomeSource,
@@ -61,6 +63,10 @@ export function createHomeAgentStore() {
 		},
 		toggle: (id: GoalTokenId) => {
 			set(settle(toggleToken(state.agent, id), state, true));
+		},
+		/** A change from the studio's form. */
+		edit: (change: DraftEdit) => {
+			set(settle(editHomeDraft(state.agent, change), state, false));
 		},
 		read: (text: string): CodeApply => {
 			const { agent, errors, spans } = readHomeSource(state.agent, text);

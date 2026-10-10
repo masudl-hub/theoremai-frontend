@@ -17,7 +17,7 @@ import { HEADLINE } from '../lib/home-content';
 import { GOAL_BEATS, type GoalToken } from '../lib/home-goals';
 import { ARGUMENT, GOALS } from '../lib/site-pitch';
 import { GoalBlock, goalStackVars, goalTileVars, type PickedTokens } from './home-goals';
-import { useGoalBeat } from './home-goals-beat';
+import { useGoalBeat, useGoalReady } from './home-goals-beat';
 import { HomeIntro } from './home-intro';
 import { StillText, StillTitle } from './still-caption';
 import './home-stage.css';
@@ -109,6 +109,7 @@ function StageCopy() {
 	const [picked, setPicked] = useState<PickedTokens>({});
 	const { loaded, state, load } = useLiveAgent();
 	const beat = useGoalBeat();
+	const isReady = useGoalReady();
 	const [hasArrived, setHasArrived] = useState(false);
 	useEffect(() => {
 		if (beat > 0)
@@ -160,15 +161,21 @@ function StageCopy() {
 								onPick={pick(index + 1)}
 							/>
 						))}
-						<div className="home-goal-editor" inert={beat < 1}>
-							{isLive ? <loaded.GoalEditor store={loaded.store} isShown={beat > 0} /> : null}
+						<div className="home-goal-editor" inert={beat < 1} data-pending={!isReady || undefined}>
+							{isLive ? (
+								<loaded.GoalEditor
+									store={loaded.store}
+									goal={GOAL_BEATS[Math.max(beat, 1) - 1].goal}
+									isShown={beat > 0}
+								/>
+							) : null}
 						</div>
 					</div>
 					<VStack className="home-stage-stills" gap={4} justify="center" style={STACK_VARS}>
 						{GOALS.map((still, index) => (
 							<StillRow key={still.title} still={still} index={index} />
 						))}
-						<div className="home-goal-live" inert={beat < 1}>
+						<div className="home-goal-live" inert={beat < 1} data-pending={!isReady || undefined}>
 							{isLive ? (
 								<loaded.GoalLive
 									store={loaded.store}

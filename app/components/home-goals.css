@@ -54,6 +54,27 @@
 	height: 100%;
 }
 
+.home-goal-editor-pane > [hidden] {
+	display: none;
+}
+
+/* The form is the studio's own editor for one section of the profile, in a pane that scrolls. */
+.home-goal-form {
+	overflow: auto;
+	overscroll-behavior: contain;
+}
+
+/* The editor and the agent come up together: nothing is drawn until both are there. */
+.home-goal-editor > *,
+.home-goal-live > * {
+	transition: opacity 0.4s ease;
+}
+
+.home-goal-editor[data-pending] > *,
+.home-goal-live[data-pending] > * {
+	opacity: 0;
+}
+
 /* Until a click, the wheel is the page's: the cover takes the pointer and the editor does not. */
 .home-goal-editor-cover {
 	position: absolute;
@@ -86,11 +107,6 @@
 /* fallow-ignore-next-line css-dead-surface */
 .home-goal-changed {
 	background: color-mix(in srgb, var(--color-accent) 22%, transparent);
-}
-
-.home-goal-name.home-goal-name {
-	font-size: var(--text-label-size);
-	letter-spacing: 0.02em;
 }
 
 .home-stage-lead .home-goal-lede.home-goal-lede {
