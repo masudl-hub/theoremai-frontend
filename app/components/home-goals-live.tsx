@@ -174,7 +174,7 @@ function useArmed(isShown: boolean, pane: RefObject<HTMLDivElement | null>) {
 		return () => {
 			document.removeEventListener('pointerdown', onPress, true);
 		};
-	}, [isArmed]);
+	}, [isArmed, pane]);
 	return { isArmed, setIsArmed };
 }
 
