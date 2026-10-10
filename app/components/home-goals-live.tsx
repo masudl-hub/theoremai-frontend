@@ -31,8 +31,10 @@ import { homeAgentDraft } from '../lib/home-agent';
 import { HOME_CHAT } from '../lib/home-agent-chat';
 import { HOME_AGENT_STUDIO, keepHomeAgent } from '../lib/home-agent-handoff';
 import type { HomeAgentState, HomeAgentStore, HomeGood } from '../lib/home-agent-store';
+import { changedLines, type Excerpt, excerptOf, type Lines } from '../lib/home-excerpt';
 import type { GoalBeat, GoalId, GoalToken } from '../lib/home-goals';
-import { setGoalReady } from './home-goals-beat';
+import { setGoalMarked, setGoalReady } from './home-goals-beat';
+import { GoalExcerpt } from './home-goals-excerpt';
 
 function useHomeAgent(store: HomeAgentStore): HomeAgentState {
 	return useSyncExternalStore(store.subscribe, store.get, store.get);
@@ -54,49 +56,23 @@ function codeIssues({ agent, compiled }: HomeAgentState): CodeIssue[] {
 	}));
 }
 
-/** How many unchanged lines may sit inside one change: the brackets that close a new block. */
-const CHANGE_GAP = 3;
-
-/**
- * The lines of `after` that are not in `before`, as a 1-based range. A change can write in more
- * than one place, an import and the profile for one, and the last place is the profile's. A
- * removal is one line.
- */
-function changedLines(before: string, after: string): Lines | undefined {
-	if (before === after) return undefined;
-	const was = before.split('\n');
-	const now = after.split('\n');
-	let top = 0;
-	while (top < was.length && top < now.length && was[top] === now[top]) top += 1;
-	let tail = 0;
-	while (
-		tail < was.length - top &&
-		tail < now.length - top &&
-		was[was.length - 1 - tail] === now[now.length - 1 - tail]
-	)
-		tail += 1;
-	const end = now.length - tail;
-	const old = new Set(was);
-	const fresh: number[] = [];
-	for (let line = top; line < end; line += 1) if (!old.has(now[line])) fresh.push(line);
-	const last = fresh.at(-1);
-	if (last === undefined) return { from: top + 1, to: Math.max(top + 1, end) };
-	let first = last;
-	for (const line of fresh.toReversed()) {
-		if (first - line > CHANGE_GAP) break;
-		first = line;
-	}
-	return { from: first + 1, to: (end - 1 - last <= CHANGE_GAP ? end - 1 : last) + 1 };
-}
-
 const CHANGED_MS = 1800;
-
-type Lines = { from: number; to: number };
 
 /** Brings lines of the file into view in the studio's editor, and marks them for a moment. */
 function markLines(lines: Lines): () => void {
 	let clear: (() => void) | undefined;
 	let isOver = false;
+	setGoalMarked(lines);
+	const unmark = setTimeout(() => {
+		setGoalMarked(undefined);
+	}, CHANGED_MS);
+	// A goal that shows an excerpt has no editor, and the editor is not worth loading to find out.
+	if (!document.querySelector('.home-goal-code .monaco-editor')) {
+		return () => {
+			clearTimeout(unmark);
+			setGoalMarked(undefined);
+		};
+	}
 	void import('@theoremjs/studio/ui/code/studio-monaco.ts').then(({ editor }) => {
 		const open = editor.getEditors().at(0);
 		if (isOver || !open) return;
@@ -122,6 +98,8 @@ function markLines(lines: Lines): () => void {
 	});
 	return () => {
 		isOver = true;
+		clearTimeout(unmark);
+		setGoalMarked(undefined);
 		clear?.();
 	};
 }
@@ -269,6 +247,37 @@ function ViewToggle({ view, onView }: { view: EditorView; onView: (view: EditorV
 
 const GoalForm = lazy(() => import('./home-goals-form'));
 
+/** The agent's file: the part a goal is about, or the whole of it in the studio's editor. */
+function GoalCode({
+	excerpt,
+	good,
+	state,
+	store,
+	isShown,
+}: {
+	excerpt: Excerpt | undefined;
+	good: HomeGood;
+	state: HomeAgentState;
+	store: HomeAgentStore;
+	isShown: boolean;
+}) {
+	const issues = useMemo(() => codeIssues(state), [state]);
+	return (
+		<div className="home-goal-code" hidden={!isShown}>
+			{excerpt ? (
+				<GoalExcerpt excerpt={excerpt} />
+			) : (
+				<StudioCode
+					text={good.source}
+					hold={!state.compiled.ok}
+					issues={issues}
+					onApply={store.read}
+				/>
+			)}
+		</div>
+	);
+}
+
 export function GoalEditor({
 	store,
 	goal,
@@ -283,23 +292,25 @@ export function GoalEditor({
 	const { isArmed, setIsArmed } = useArmed(isShown, pane);
 	const [views, setViews] = useState<Partial<Record<GoalId, EditorView>>>({});
 	const view = views[goal] ?? startView(goal);
-	const issues = useMemo(() => codeIssues(state), [state]);
-	useOpenOnProfile(isShown);
+	const { good } = state;
+	const excerpt = useMemo(() => (good ? excerptOf(good.source, goal) : undefined), [good, goal]);
+	useOpenOnProfile(isShown && !excerpt);
+	useEffect(() => {
+		if (isShown && excerpt) setGoalReady(true);
+	}, [isShown, excerpt]);
 	useShowChange(state, isShown && view === 'code');
 
-	const { good } = state;
 	if (!good) return null;
 	return (
 		<>
 			<div ref={pane} className="home-goal-editor-pane">
-				<div className="home-goal-code" hidden={view !== 'code'}>
-					<StudioCode
-						text={good.source}
-						hold={!state.compiled.ok}
-						issues={issues}
-						onApply={store.read}
-					/>
-				</div>
+				<GoalCode
+					excerpt={excerpt}
+					good={good}
+					state={state}
+					store={store}
+					isShown={view === 'code'}
+				/>
 				{view === 'form' ? (
 					<Suspense fallback={null}>
 						<GoalForm store={store} state={state} goal={goal} />
@@ -311,7 +322,7 @@ export function GoalEditor({
 						setViews((now) => ({ ...now, [goal]: next }));
 					}}
 				/>
-				{isArmed || view !== 'code' ? null : (
+				{isArmed || view !== 'code' || excerpt ? null : (
 					<button
 						type="button"
 						className="home-goal-editor-cover"
@@ -410,11 +421,16 @@ function useTest(
 	chat: RefObject<TheoremChatHandle | null>,
 	picked: GoalToken | undefined,
 	source: string | undefined,
+	goal: GoalId | undefined,
 ) {
 	const [done, setDone] = useState<GoalToken>();
 	const shown = done === picked ? done : undefined;
 	const line = shown && source ? lineOf(source, shown.line) : undefined;
-	const result = shown?.result && line ? `${shown.result} Line ${String(line)}.` : shown?.result;
+	// The line is named by the numbers the visitor sees, which are the excerpt's when there is one.
+	const excerpt = source && goal ? excerptOf(source, goal) : undefined;
+	const number = excerpt && line ? excerpt.from.indexOf(line) + 1 : line;
+	const result =
+		shown?.result && number ? `${shown.result} Line ${String(number)}.` : shown?.result;
 	useEffect(() => (line ? markLines({ from: line, to: line }) : undefined), [line]);
 	const send = (token: GoalToken, ask: string) => () => {
 		setDone(undefined);
@@ -457,7 +473,7 @@ export function GoalLive({
 	const { good, runs } = state;
 	const { declared, values, setPicked } = useSlots(good);
 	const { isTester, isEmpty, isTesting, hasTested } = useStill(beat);
-	const { result, send } = useTest(chat, picked, good?.source);
+	const { result, send } = useTest(chat, picked, good?.source, beat?.goal);
 	if (!good) return null;
 	const ask = isTester ? undefined : picked?.ask;
 	return (
