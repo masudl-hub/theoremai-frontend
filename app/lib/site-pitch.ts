@@ -17,22 +17,22 @@ export const ARGUMENT =
 export const GOALS = [
 	{
 		id: 'source-of-truth',
-		title: 'One source of truth',
-		text: 'Keep execution and interface aligned, rather than maintaining separate versions of what your agent can do.',
+		title: 'Manage the frontend and backend from one source',
+		text: 'Declare what your agent accepts, returns and can call once. The server enforces it and the interface builds from it.',
 		src: '/imagery/th30_orangecanyon.png',
 		alt: 'A single river cutting through an orange canyon, with clouds and their shadows',
 	},
 	{
 		id: 'experiment',
-		title: 'Room to experiment',
-		text: 'Change models, providers, and modalities without rebuilding the surrounding application. Find what works for your agent.',
+		title: 'Switch models, providers, modalities and behaviour without rebuilding',
+		text: 'Change one line of the profile and your application keeps working, whatever runs the agent and whatever it makes.',
 		src: '/imagery/th30_dryingsaffron.png',
 		alt: 'Purple saffron laid out in plots divided by dirt paths, with clouds and their shadows',
 	},
 	{
 		id: 'boundaries',
-		title: 'Built-in boundaries',
-		text: 'Check what enters, what leaves, and what tools can access. Keep protections and permissions explicit.',
+		title: 'Protect data with guardrails at every boundary',
+		text: 'Built-in and custom checks read what comes in, what goes out and what tools can reach, with a setting for each boundary.',
 		src: '/imagery/th30_obsidianshores.png',
 		alt: 'Black obsidian rock meeting deep teal water, with pale foam along the shore',
 	},
