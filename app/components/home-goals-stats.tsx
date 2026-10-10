@@ -9,7 +9,7 @@ export function GoalStats() {
 	return (
 		<>
 			<StatTile label="Accuracy" value={percent(b.accuracy)} unit="%">
-				<StatTicks count={10} fill={Math.floor(b.accuracy * 10)} />
+				<StatTicks count={b.boundariesTotal} fill={Math.round(b.accuracy * b.boundariesTotal)} />
 			</StatTile>
 			<StatTile label="Average latency" value={String(b.latencyMessageMs)} unit="ms">
 				<StatRange
@@ -23,7 +23,10 @@ export function GoalStats() {
 				<StatTicks count={b.boundariesTotal} fill={b.boundariesChecked} />
 			</StatTile>
 			<StatTile label="False positives" value={percent(b.falsePositive)} unit="%">
-				<StatTicks count={100} fill={Math.max(1, Math.round(b.falsePositive * 100))} />
+				<StatTicks
+					count={b.boundariesTotal}
+					fill={Math.max(1, Math.round(b.falsePositive * b.boundariesTotal))}
+				/>
 			</StatTile>
 		</>
 	);

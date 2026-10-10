@@ -52,13 +52,13 @@
 
 .stat-range-fade {
 	flex: none;
-	background: linear-gradient(90deg, var(--color-text-primary), var(--color-background-muted));
+	background: var(--color-text-primary);
 	max-width: 80%;
 }
 
 .stat-range-rest {
 	flex: 1;
-	background: var(--color-accent);
+	background: var(--color-border-emphasized);
 }
 
 .stat-range-ends {
