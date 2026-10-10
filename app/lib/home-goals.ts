@@ -94,7 +94,7 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 			'Your application starts an agent by its profile name. Change what runs in `models` and `defaultModel`, or what it makes in `type`, and your code stays the same.',
 		controls: [
 			{
-				label: 'What runs it',
+				label: 'Change the agent',
 				tokens: [
 					{
 						id: 'openrouter',
@@ -109,11 +109,6 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 						label: 'Let the visitor pick the model and effort',
 						prompt: 'Now pick a model and an effort, and ask what to pack.',
 					},
-				],
-			},
-			{
-				label: 'What it makes',
-				tokens: [
 					{
 						id: 'picture',
 						label: 'A picture in place of text',
