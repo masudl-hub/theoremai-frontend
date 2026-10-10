@@ -290,11 +290,6 @@
 	}
 }
 
-.home-goal-term {
-	font-family: var(--font-mono, ui-monospace, monospace);
-	font-size: 0.92em;
-}
-
 /* The tint of the lines a change wrote, in the editor and in the excerpt. */
 .home-goal-editor {
 	--home-goal-changed: color-mix(in srgb, var(--color-accent) 22%, transparent);

@@ -1,17 +1,19 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ContributeBoard } from '../components/contribute/board';
+import { ChapterContext } from '../components/docs/body';
 import { ExamplesBoard } from '../components/examples/board';
 import { HomeStage } from '../components/home-stage';
 import { PageJsonLd } from '../components/page-summary';
 import '../components/home-scroll.css';
+import { homeTerms } from '../lib/.server/home-terms';
 import { SITE_REDIRECTS } from '../lib/docs/articles/chapters';
 import { HOME_DESCRIPTION, homeJsonLd, KERNEL, SITE_NAME } from '../lib/home-content';
 import { type GoalId, isGoalId } from '../lib/home-goals';
 import { GOALS, HOME_TAGLINE } from '../lib/site-pitch';
 import type { Route } from './+types/home';
 export function loader({ request }: Route.LoaderArgs) {
-	return { origin: new URL(request.url).origin };
+	return { origin: new URL(request.url).origin, terms: homeTerms() };
 }
 
 /** The origin never changes while the page is open. A refetch would count as a pending navigation, which hides the page. */
@@ -158,6 +160,10 @@ function scrollToLandingScreen(scroller: HTMLElement, screen: LandingScreen) {
 /** Landing (/), then overview (/overview), the three goals, showcase (/examples) and contribute (/contribute). */
 export default function Home({ loaderData }: Route.ComponentProps) {
 	const scrollRef = useRef<HTMLDivElement>(null);
+	const chapter = useMemo(
+		() => ({ terms: loaderData.terms, seeds: new Map<string, string>() }),
+		[loaderData.terms],
+	);
 	const { hash, pathname } = useLocation();
 	const navigate = useNavigate();
 	const suppressUrl = useRef(false);
@@ -210,7 +216,9 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 		<div className="home-scroll" ref={scrollRef}>
 			<PageJsonLd data={homeJsonLd(loaderData.origin)} />
 			<RetiredHashRedirect />
-			<HomeStage scrollRoot={scrollRef} />
+			<ChapterContext.Provider value={chapter}>
+				<HomeStage scrollRoot={scrollRef} />
+			</ChapterContext.Provider>
 			<div className="home-dotted">
 				<section className="home-page" id="showcase" aria-label="Showcase">
 					<ExamplesBoard />

@@ -5,6 +5,7 @@ import type { CSSProperties } from 'react';
 import { GOAL_BEATS, type GoalBeat, type GoalToken } from '../lib/home-goals';
 import { GOALS } from '../lib/site-pitch';
 import './home-goals.css';
+import { InlineCode } from './docs/body';
 
 /** The picked token of each beat, by beat number. Overview is beat 0, so the first beat is 1. */
 export type PickedTokens = Readonly<Record<number, GoalToken | undefined>>;
@@ -48,20 +49,14 @@ export function goalTileVars(index: number): CSSProperties {
 	});
 }
 
-/** A beat's place in the left column: the goal, the lede, how it works, and the changes. */
-/** Names between backticks are set as code, the way a docs page sets a prop. */
+/** Names between backticks are set as docs sets them: a name the catalog defines shows its card. */
 function withCode(text: string) {
-	return text.split('`').map((part, at) =>
-		at % 2 ? (
-			<code key={part} className="home-goal-term">
-				{part}
-			</code>
-		) : (
-			part
-		),
-	);
+	return text
+		.split('`')
+		.map((part, at) => (at % 2 ? <InlineCode key={part}>{part}</InlineCode> : part));
 }
 
+/** A beat's place in the left column: the goal, the lede, how it works, and the changes. */
 export function GoalBlock({
 	beat,
 	number,

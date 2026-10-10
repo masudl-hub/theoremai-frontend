@@ -39,7 +39,7 @@ type Chapter = {
 	seeds: ReadonlyMap<string, string>;
 };
 
-const ChapterContext = createContext<Chapter>({ terms: {}, seeds: new Map() });
+export const ChapterContext = createContext<Chapter>({ terms: {}, seeds: new Map() });
 
 /** What the catalog says about a term, and the chapter that lists it. */
 function TermCard({ term }: { term: DocTerm }) {
@@ -63,7 +63,7 @@ function TermCard({ term }: { term: DocTerm }) {
  * A name from the code. One the catalog defines is set as code, and shows its card on hover and on
  * focus. Any other name reads as plain text.
  */
-function InlineCode({ children }: { children: string }) {
+export function InlineCode({ children }: { children: string }) {
 	const term = useContext(ChapterContext).terms[children];
 	if (!term) return children;
 	return (
