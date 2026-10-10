@@ -15,7 +15,7 @@ export function GoalStats() {
 				<StatRange
 					low={b.latencyMessageMs}
 					high={b.latencyDocumentMs}
-					lowLabel="Message"
+					lowLabel={`Message ${String(b.latencyMessageMs)} ms`}
 					highLabel={`Large document ${String(b.latencyDocumentMs)} ms`}
 				/>
 			</StatTile>
