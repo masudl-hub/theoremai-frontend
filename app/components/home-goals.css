@@ -245,6 +245,35 @@
 	display: none;
 }
 
+/* The costs beat's readouts, over the large still where the agent was. They arrive as the
+   editor leaves. */
+.home-goal-stats {
+	position: absolute;
+	z-index: 2;
+	top: 0;
+	left: 0;
+	width: calc(var(--home-still-size) * var(--home-goal-ratio, 1));
+	height: calc(var(--home-still-size) * var(--home-goal-ratio, 1));
+	display: grid;
+	align-content: center;
+	gap: var(--spacing-3);
+	padding: var(--spacing-4);
+	box-sizing: border-box;
+	container-type: inline-size;
+	transform: translateY(
+		calc(
+			var(--home-goal-walk) *
+			(var(--home-still-size) * (1.5 - var(--home-goal-ratio, 1) / 2) + var(--spacing-4))
+		)
+	);
+	opacity: clamp(0, 2.2 * (var(--home-goals-pull, 0) - var(--home-goal-edited, 99)) - 1.2, 1);
+	pointer-events: none;
+}
+
+.home-goal-stats:not([inert]) {
+	pointer-events: auto;
+}
+
 /* Reduced motion stacks the page: every beat is in the column, and the tiles stay at rest. */
 .home-contract[data-reduced] .home-stage-leads {
 	display: flex;
@@ -261,6 +290,7 @@
 /* The stacked page has no agent, so it has no changes to make to one. */
 .home-contract[data-reduced] .home-goal-controls,
 .home-contract[data-reduced] .home-goal-editor,
+.home-contract[data-reduced] .home-goal-stats,
 .home-contract[data-reduced] .home-goal-live {
 	display: none;
 }
@@ -269,6 +299,7 @@
 @media (width < 768px) {
 	.home-goal-beat,
 	.home-goal-editor,
+	.home-goal-stats,
 	.home-goal-live {
 		display: none;
 	}
