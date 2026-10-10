@@ -159,13 +159,6 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 			},
 		],
 	},
-	{
-		goal: 'boundaries',
-		lede: 'What it costs, and what it catches.',
-		explainer:
-			'Each check adds time to a reply. The reply still streams while it is read. A harmless text that is stopped is a failure, the same as an attack that passes.',
-		controls: [],
-	},
 ];
 
 export function isGoalId(id: string): id is GoalId {
