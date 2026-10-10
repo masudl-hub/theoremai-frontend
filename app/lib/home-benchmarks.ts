@@ -5,8 +5,9 @@
 export const BENCHMARKS = {
 	latencyMessageMs: 180,
 	latencyDocumentMs: 950,
-	boundariesChecked: 24,
-	boundariesTotal: 30,
 	accuracy: 0.97,
 	falsePositive: 0.01,
 } as const;
+
+/** The places text crosses in one turn, in order. These are the boundaries of the guardrails docs. */
+export const BOUNDARIES = ['To the model', 'Tool call', 'Tool result', 'To the person'] as const;

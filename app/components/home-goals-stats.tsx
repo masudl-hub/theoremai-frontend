@@ -1,5 +1,5 @@
-import { BENCHMARKS } from '../lib/home-benchmarks';
-import { StatDots, StatRange, StatRing, StatTile } from './stat-tiles/stat-tile';
+import { BENCHMARKS, BOUNDARIES } from '../lib/home-benchmarks';
+import { StatDial, StatDots, StatOrbit, StatRange, StatTile } from './stat-tiles/stat-tile';
 
 const percent = (share: number) => String(Math.round(share * 1000) / 10);
 
@@ -16,11 +16,11 @@ export function GoalStats() {
 					highLabel={`Large document ${String(b.latencyDocumentMs)} ms`}
 				/>
 			</StatTile>
-			<StatTile label="Boundaries checked" value={String(b.boundariesChecked)}>
-				<StatDots count={b.boundariesTotal} fill={b.boundariesChecked} columns={10} />
+			<StatTile label="Boundaries checked" value={String(BOUNDARIES.length)} unit="per turn">
+				<StatOrbit layers={BOUNDARIES} />
 			</StatTile>
 			<StatTile label="Accuracy" value={percent(b.accuracy)} unit="%">
-				<StatRing share={b.accuracy} caption="across our datasets" />
+				<StatDial share={b.accuracy} caption="across our datasets" />
 			</StatTile>
 			<StatTile label="False positives" value={percent(b.falsePositive)} unit="%">
 				<StatDots count={100} fill={Math.max(1, Math.round(b.falsePositive * 100))} columns={20} />
