@@ -7,12 +7,6 @@ const beat = createSharedValue(0);
 export const setGoalBeat = beat.set;
 export const useGoalBeat = beat.use;
 
-/** Whether the editor and the agent are both up, so they appear together and not one by one. */
-const ready = createSharedValue(false);
-
-export const setGoalReady = ready.set;
-export const useGoalReady = ready.use;
-
 /** The lines of the agent's file a change or a test has just marked, as lines of the whole source. */
 const marked = createSharedValue<Lines | undefined>(undefined);
 

@@ -12,8 +12,7 @@ export type GoalTokenId =
 	| 'stream-reply'
 	| 'typed-choice'
 	| 'declared-shape'
-	| 'openrouter'
-	| 'pick-model'
+	| 'providers'
 	| 'picture'
 	| 'live-call'
 	| 'block-secret'
@@ -97,21 +96,13 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 				label: 'Change the agent',
 				tokens: [
 					{
-						id: 'openrouter',
-						label: 'Use OpenRouter instead',
-						prompt: 'Now ask what to pack for March.',
-						ask: 'What should I pack for Lisbon in March?',
-						result: 'The default model is on OpenRouter.',
-						line: "provider: 'openrouter'",
-					},
-					{
-						id: 'pick-model',
-						label: 'Let the visitor pick the model and effort',
+						id: 'providers',
+						label: 'Add another provider and allow selection',
 						prompt: 'Now pick a model and an effort, and ask what to pack.',
 					},
 					{
 						id: 'picture',
-						label: 'A picture in place of text',
+						label: 'Generate images instead',
 						prompt: 'Now ask for a postcard of Lisbon at dusk.',
 						ask: 'A postcard of Lisbon at dusk.',
 						result: 'The reply is a picture.',
@@ -119,7 +110,7 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 					},
 					{
 						id: 'live-call',
-						label: 'A live voice call',
+						label: 'Convert to a live call',
 						prompt: 'Now start the call and ask about the weather.',
 					},
 				],

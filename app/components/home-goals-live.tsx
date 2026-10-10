@@ -31,7 +31,7 @@ import { HOME_AGENT_STUDIO, keepHomeAgent } from '../lib/home-agent-handoff';
 import type { HomeAgentState, HomeAgentStore, HomeGood } from '../lib/home-agent-store';
 import { changedLines, type Excerpt, excerptOf, type Lines } from '../lib/home-excerpt';
 import type { GoalBeat, GoalId, GoalToken } from '../lib/home-goals';
-import { setGoalMarked, setGoalReady } from './home-goals-beat';
+import { setGoalMarked } from './home-goals-beat';
 import { GoalExcerpt } from './home-goals-excerpt';
 
 function useHomeAgent(store: HomeAgentStore): HomeAgentState {
@@ -137,7 +137,6 @@ function useOpenOnProfile(isShown: boolean) {
 			if (open && line) {
 				isDone.current = true;
 				open.revealLineNearTop(line);
-				setGoalReady(true);
 				return;
 			}
 			tries += 1;
@@ -293,9 +292,6 @@ export function GoalEditor({
 	const { good } = state;
 	const excerpt = useMemo(() => (good ? excerptOf(good.source, goal) : undefined), [good, goal]);
 	useOpenOnProfile(isShown && !excerpt);
-	useEffect(() => {
-		if (isShown && excerpt) setGoalReady(true);
-	}, [isShown, excerpt]);
 	useShowChange(state, isShown && view === 'code');
 
 	if (!good) return null;

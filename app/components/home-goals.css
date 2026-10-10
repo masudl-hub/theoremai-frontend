@@ -89,17 +89,6 @@
 	overscroll-behavior: contain;
 }
 
-/* The editor and the agent come up together: nothing is drawn until both are there. */
-.home-goal-editor > *,
-.home-goal-live > * {
-	transition: opacity 0.4s ease;
-}
-
-.home-goal-editor[data-pending] > *,
-.home-goal-live[data-pending] > * {
-	opacity: 0;
-}
-
 /* Until a click, the wheel is the page's: the cover takes the pointer and the editor does not. */
 .home-goal-editor-cover {
 	position: absolute;

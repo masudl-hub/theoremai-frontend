@@ -173,12 +173,7 @@ const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
 	},
 };
 
-const MODEL_TOKENS = { openrouter: 'isOpen', 'pick-model': 'isPicked' } as const;
-
-type ModelToken = keyof typeof MODEL_TOKENS;
 type ModelChoice = { isOpen: boolean; isPicked: boolean };
-
-const isModelToken = (id: GoalTokenId): id is ModelToken => id in MODEL_TOKENS;
 
 /** Which of the two model changes a text agent has, read from its models. */
 const modelChoice = (draft: StudioDraft): ModelChoice => ({
@@ -243,12 +238,14 @@ export function tokenIsOn(agent: HomeAgent, id: GoalTokenId): boolean {
 	if (field) return field.isOn(draft);
 	const type = TYPES[id];
 	if (type) return draft.identity.profileType === type;
-	return isModelToken(id) && modelChoice(draftOf(textOf(agent)))[MODEL_TOKENS[id]];
+	if (id !== 'providers') return false;
+	const { isOpen, isPicked } = modelChoice(draftOf(textOf(agent)));
+	return isOpen && isPicked;
 }
 
 /** A token with nothing to change: it only says what to try. */
 export function tokenEdits(id: GoalTokenId): boolean {
-	return id in FIELD_EDITS || id in MODEL_TOKENS || id in TYPES;
+	return id in FIELD_EDITS || id === 'providers' || id in TYPES;
 }
 
 export function toggleToken(agent: HomeAgent, id: GoalTokenId): HomeAgent {
@@ -264,11 +261,10 @@ export function toggleToken(agent: HomeAgent, id: GoalTokenId): HomeAgent {
 	const text = textOf(agent);
 	const type = TYPES[id];
 	if (type) return isOn ? { workspace: text } : { workspace: typed(text, type), text };
-	if (!isModelToken(id)) return agent;
-	const choice = modelChoice(draftOf(text));
+	if (id !== 'providers') return agent;
 	const next = edited(text, (draft) => ({
 		...draft,
-		...modelsFor({ ...choice, [MODEL_TOKENS[id]]: !isOn }),
+		...modelsFor({ isOpen: !isOn, isPicked: !isOn }),
 	}));
 	// The models are the text agent's. A picture or a call on screen stays on screen.
 	const shown = typeOf(agent.workspace);

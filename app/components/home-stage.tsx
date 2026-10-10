@@ -18,7 +18,7 @@ import { HEADLINE } from '../lib/home-content';
 import { EDITED_BEATS, GOAL_BEATS, type GoalToken } from '../lib/home-goals';
 import { ARGUMENT, GOALS } from '../lib/site-pitch';
 import { GoalBlock, goalStackVars, goalTileVars, type PickedTokens } from './home-goals';
-import { useGoalBeat, useGoalReady } from './home-goals-beat';
+import { useGoalBeat } from './home-goals-beat';
 import { HomeIntro } from './home-intro';
 import { StillText, StillTitle } from './still-caption';
 import './home-stage.css';
@@ -72,7 +72,7 @@ const noStore = () => () => {};
 
 /**
  * The agent, its editor and its runner are the studio's, and they are fetched after the page is
- * up. The editor itself waits until the goals screen is first reached.
+ * up, and they come in with the screen's own motion.
  */
 function useLiveAgent() {
 	const [loaded, setLoaded] = useState<Loaded>();
@@ -110,14 +110,6 @@ function StageCopy() {
 	const [picked, setPicked] = useState<PickedTokens>({});
 	const { loaded, state, load } = useLiveAgent();
 	const beat = useGoalBeat();
-	const isReady = useGoalReady();
-	const [hasArrived, setHasArrived] = useState(false);
-	useEffect(() => {
-		if (beat > 0)
-			startTransition(() => {
-				setHasArrived(true);
-			});
-	}, [beat]);
 	// Starting over takes the prompts with it.
 	const runs = state?.runs;
 	const ran = useRef(runs);
@@ -137,7 +129,6 @@ function StageCopy() {
 			setPicked((now) => ({ ...now, [number]: wasOn ? undefined : token }));
 		});
 	};
-	const isLive = loaded && hasArrived;
 	return (
 		<div className="home-hero-copy">
 			<div className="home-stage-frame">
@@ -165,10 +156,9 @@ function StageCopy() {
 						<div
 							className="home-goal-editor"
 							inert={beat < 1 || beat > EDITED_BEATS}
-							data-pending={!isReady || undefined}
 							style={EDITED_VARS}
 						>
-							{isLive ? (
+							{loaded ? (
 								<loaded.GoalEditor
 									store={loaded.store}
 									goal={GOAL_BEATS[Math.max(beat, 1) - 1].goal}
@@ -181,8 +171,8 @@ function StageCopy() {
 						{GOALS.map((still, index) => (
 							<StillRow key={still.title} still={still} index={index} />
 						))}
-						<div className="home-goal-live" inert={beat < 1} data-pending={!isReady || undefined}>
-							{isLive ? (
+						<div className="home-goal-live" inert={beat < 1}>
+							{loaded ? (
 								<loaded.GoalLive
 									store={loaded.store}
 									beat={GOAL_BEATS[beat - 1]}
