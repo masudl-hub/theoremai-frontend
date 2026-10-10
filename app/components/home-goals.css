@@ -25,7 +25,7 @@
 	align-self: end;
 }
 
-/* The agent's file, under the words. It is one editor for every beat, so it does not travel. */
+/* The agent's file, under the words. It is one editor for every beat. */
 .home-goal-editor {
 	grid-area: 3 / 1;
 	display: grid;
@@ -36,10 +36,13 @@
 	margin-block-start: var(--spacing-6);
 	padding-inline-start: clamp(2rem, 6vw, 5rem);
 	box-sizing: border-box;
-	opacity: clamp(0, var(--home-goals-pull, 0), 1);
+	/* It travels with the words: one column, one editor, handed from each beat to the next. */
+	--home-goal-off: calc(var(--home-goals-pull, 0) - round(max(var(--home-goals-pull, 0), 1), 1));
+	transform: translateY(calc(var(--home-goal-off) * -100cqh));
+	opacity: clamp(0, 1 - 2.2 * max(var(--home-goal-off), -1 * var(--home-goal-off)), 1);
 	/* The editor is the heaviest thing on the page. Scroll fades it, and never lays it out. */
 	contain: layout paint;
-	will-change: opacity;
+	will-change: transform, opacity;
 }
 
 .home-goal-editor-pane {
