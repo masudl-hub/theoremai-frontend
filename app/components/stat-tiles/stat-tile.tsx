@@ -34,29 +34,90 @@ export function StatTile({
 	);
 }
 
-/** Two ends of a range on one bar: the first fades up into the second. */
-export function StatRange({
-	low,
-	high,
-	lowLabel,
-	highLabel,
-}: {
-	low: number;
-	high: number;
-	lowLabel: string;
-	highLabel: string;
-}) {
-	const share = Math.min(Math.max(low / high, 0.05), 1) * 100;
+const polar = (radius: number, degrees: number) => ({
+	x: 50 + radius * Math.cos((degrees * Math.PI) / 180),
+	y: 50 + radius * Math.sin((degrees * Math.PI) / 180),
+});
+
+/** An open-bottom dial: a thick track, filled to `share` (0 to 1). Nothing else on it. */
+export function StatDial({ share, caption }: { share: number; caption: string }) {
+	const clamped = Math.min(Math.max(share, 0), 1);
+	const begin = polar(38, 135);
+	const end = polar(38, 405);
+	const path = `M ${String(begin.x)} ${String(begin.y)} A 38 38 0 1 1 ${String(end.x)} ${String(end.y)}`;
 	return (
-		<div className="stat-range">
-			<div className="stat-range-bars">
-				<span className="stat-range-fade" style={{ width: `${String(share)}%` }} />
-				<span className="stat-range-rest" />
-			</div>
-			<div className="stat-range-ends">
-				<span>{lowLabel}</span>
-				<span>{highLabel}</span>
-			</div>
+		<div className="stat-dial">
+			<svg viewBox="0 0 100 100" aria-hidden>
+				<path d={path} className="stat-dial-track" pathLength={1} />
+				<path
+					d={path}
+					className="stat-dial-fill"
+					pathLength={1}
+					strokeDasharray={`${String(clamped)} 1`}
+				/>
+			</svg>
+			<span className="stat-dial-caption">{caption}</span>
+		</div>
+	);
+}
+
+/** Two bars on one scale: ours, then the one we are compared to. */
+export function StatCompare({
+	ours,
+	theirs,
+	oursLabel,
+	theirsLabel,
+}: {
+	ours: number;
+	theirs: number;
+	oursLabel: string;
+	theirsLabel: string;
+}) {
+	const scale = Math.max(ours, theirs);
+	return (
+		<div className="stat-compare">
+			<span
+				className="stat-compare-bar"
+				data-ours=""
+				style={{ width: `${String((ours / scale) * 100)}%` }}
+			>
+				{oursLabel}
+			</span>
+			<span className="stat-compare-bar" style={{ width: `${String((theirs / scale) * 100)}%` }}>
+				{theirsLabel}
+			</span>
+		</div>
+	);
+}
+
+/** Upright sticks, the first `fill` of `count` solid. */
+export function StatSticks({ count, fill }: { count: number; fill: number }) {
+	const style = { '--sticks': count, '--sticks-on': fill } as CSSProperties;
+	return (
+		<div className="stat-sticks" style={style} aria-hidden>
+			<span className="stat-sticks-on" />
+		</div>
+	);
+}
+
+/** A grid of dots: one row for each name, lit where its cells are on. */
+export function StatMatrix({
+	rows,
+}: {
+	rows: readonly { key: string; cells: readonly { key: string; isOn: boolean }[] }[];
+}) {
+	const style = { '--matrix-columns': rows[0]?.cells.length ?? 0 } as CSSProperties;
+	return (
+		<div className="stat-matrix" style={style} aria-hidden>
+			{rows.flatMap((row) =>
+				row.cells.map((cell) => (
+					<span
+						key={`${row.key}:${cell.key}`}
+						className="stat-matrix-dot"
+						data-on={cell.isOn ? '' : undefined}
+					/>
+				)),
+			)}
 		</div>
 	);
 }
@@ -79,82 +140,5 @@ export function StatDots({
 				<span key={dot} className="stat-dot" data-on={dot < fill ? '' : undefined} />
 			))}
 		</div>
-	);
-}
-
-const polar = (radius: number, degrees: number, centre = 50) => ({
-	x: centre + radius * Math.cos((degrees * Math.PI) / 180),
-	y: centre + radius * Math.sin((degrees * Math.PI) / 180),
-});
-
-const SWEEP = 270;
-const START = 135;
-
-/** An open-bottom dial: a track, a fill to `share` (0 to 1), a needle on it, and ticks around. */
-export function StatDial({ share, caption }: { share: number; caption: string }) {
-	const clamped = Math.min(Math.max(share, 0), 1);
-	const begin = polar(38, START);
-	const end = polar(38, START + SWEEP);
-	const path = `M ${String(begin.x)} ${String(begin.y)} A 38 38 0 1 1 ${String(end.x)} ${String(end.y)}`;
-	const tip = polar(30, START + SWEEP * clamped);
-	const ticks = Array.from({ length: 11 }, (_, at) => START + (SWEEP * at) / 10);
-	return (
-		<div className="stat-dial">
-			<svg viewBox="0 0 100 100" aria-hidden>
-				{ticks.map((degrees) => {
-					const from = polar(46, degrees);
-					const to = polar(49, degrees);
-					return (
-						<line
-							key={degrees}
-							x1={from.x}
-							y1={from.y}
-							x2={to.x}
-							y2={to.y}
-							className="stat-dial-tick"
-						/>
-					);
-				})}
-				<path d={path} className="stat-dial-track" pathLength={1} />
-				<path
-					d={path}
-					className="stat-dial-fill"
-					pathLength={1}
-					strokeDasharray={`${String(clamped)} 1`}
-				/>
-				<line x1="50" y1="50" x2={tip.x} y2={tip.y} className="stat-dial-needle" />
-				<circle cx="50" cy="50" r="4" className="stat-dial-hub" />
-			</svg>
-			<span className="stat-dial-caption">{caption}</span>
-		</div>
-	);
-}
-
-/**
- * Rings around a centre, one per layer, innermost first. Each ring has a marker on it, with its
- * name drawn out to the right.
- */
-export function StatOrbit({ layers }: { layers: readonly string[] }) {
-	const step = 44 / layers.length;
-	const rise = 100 / (layers.length + 1);
-	return (
-		<svg className="stat-orbit" viewBox="0 0 220 100" aria-hidden>
-			<circle cx="50" cy="50" r="5" className="stat-orbit-core" />
-			{layers.map((layer, at) => {
-				const radius = 11 + step * at;
-				const labelY = rise * (at + 1);
-				const at2 = polar(radius, at % 2 ? 35 : -35);
-				return (
-					<g key={layer}>
-						<circle cx="50" cy="50" r={radius} className="stat-orbit-ring" />
-						<line x1={at2.x} y1={at2.y} x2="112" y2={labelY} className="stat-orbit-lead" />
-						<circle cx={at2.x} cy={at2.y} r="2.6" className="stat-orbit-mark" />
-						<text x="117" y={labelY} className="stat-orbit-label">
-							{layer}
-						</text>
-					</g>
-				);
-			})}
-		</svg>
 	);
 }

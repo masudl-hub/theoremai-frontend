@@ -33,39 +33,6 @@
 	min-width: 0;
 }
 
-.stat-range {
-	display: grid;
-	gap: var(--spacing-1);
-	font-size: var(--font-size-xs, 0.75rem);
-	color: var(--color-text-secondary);
-}
-
-.stat-range-bars {
-	display: flex;
-	height: 1.9rem;
-	gap: var(--spacing-1);
-}
-
-.stat-range-bars > span {
-	border-radius: var(--radius-sm, 6px);
-}
-
-.stat-range-fade {
-	flex: none;
-	background: linear-gradient(90deg, var(--color-text-primary), var(--color-background-muted));
-	max-width: 80%;
-}
-
-.stat-range-rest {
-	flex: 1;
-	background: var(--color-accent);
-}
-
-.stat-range-ends {
-	display: flex;
-	justify-content: space-between;
-}
-
 .stat-dots {
 	display: grid;
 	grid-template-columns: repeat(var(--dot-columns), 1fr);
@@ -90,13 +57,13 @@
 }
 
 .stat-dial svg {
-	width: 5.5rem;
+	width: 5rem;
 }
 
 .stat-dial-track,
 .stat-dial-fill {
 	fill: none;
-	stroke-width: 7;
+	stroke-width: 12;
 	stroke-linecap: round;
 }
 
@@ -108,53 +75,59 @@
 	stroke: var(--color-accent);
 }
 
-.stat-dial-tick {
-	stroke: var(--color-text-secondary);
-	stroke-width: 1.2;
-	stroke-linecap: round;
-}
-
-.stat-dial-needle {
-	stroke: var(--color-text-primary);
-	stroke-width: 2.5;
-	stroke-linecap: round;
-}
-
-.stat-dial-hub {
-	fill: var(--color-text-primary);
-}
-
 .stat-dial-caption {
-	margin-top: calc(-1 * var(--spacing-2));
+	margin-top: calc(-1 * var(--spacing-3));
+	text-align: center;
 }
 
-.stat-orbit {
-	width: 100%;
-	max-height: 5.6rem;
-	overflow: visible;
+.stat-compare {
+	display: grid;
+	gap: var(--spacing-1);
+	font-size: var(--font-size-xs, 0.75rem);
 }
 
-.stat-orbit-core {
-	fill: var(--color-text-primary);
+.stat-compare-bar {
+	display: block;
+	min-width: max-content;
+	padding: 0.35rem var(--spacing-2);
+	border-radius: var(--radius-sm, 6px);
+	background: var(--color-accent);
+	color: var(--color-text-on-accent, #fff);
+	white-space: nowrap;
 }
 
-.stat-orbit-ring {
-	fill: none;
-	stroke: var(--color-border-emphasized);
-	stroke-width: 1;
+.stat-compare-bar[data-ours] {
+	background: var(--color-text-primary);
+	color: var(--color-background-body);
 }
 
-.stat-orbit-lead {
-	stroke: var(--color-border-emphasized);
-	stroke-width: 0.6;
+.stat-sticks {
+	--stick: linear-gradient(90deg, transparent 25%, currentcolor 25% 75%, transparent 75%);
+	height: 2.2rem;
+	color: var(--color-border-emphasized);
+	background: var(--stick) 0 0 / calc(100% / var(--sticks)) 100% repeat-x;
 }
 
-.stat-orbit-mark {
-	fill: var(--color-accent);
+.stat-sticks-on {
+	display: block;
+	height: 100%;
+	width: calc(100% * var(--sticks-on) / var(--sticks));
+	color: var(--color-text-primary);
+	background: var(--stick) 0 0 / calc(100% / var(--sticks-on)) 100% repeat-x;
 }
 
-.stat-orbit-label {
-	dominant-baseline: middle;
-	font-size: 8px;
-	fill: var(--color-text-secondary);
+.stat-matrix {
+	display: grid;
+	grid-template-columns: repeat(var(--matrix-columns), 1fr);
+	gap: 2px;
+}
+
+.stat-matrix-dot {
+	aspect-ratio: 1;
+	border-radius: 50%;
+	background: var(--color-border);
+}
+
+.stat-matrix-dot[data-on] {
+	background: var(--color-accent);
 }
