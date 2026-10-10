@@ -9,7 +9,7 @@ export type GoalId = (typeof GOALS)[number]['id'];
 
 export type GoalTokenId =
 	| 'allow-media'
-	| 'one-file'
+	| 'stream-reply'
 	| 'typed-choice'
 	| 'declared-shape'
 	| 'openrouter'
@@ -60,9 +60,12 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 						prompt: 'Now attach the photo, or record a voice note.',
 					},
 					{
-						id: 'one-file',
-						label: 'One file per message',
-						prompt: 'Now attach two photos.',
+						id: 'stream-reply',
+						label: 'Stream the reply as it is written',
+						prompt: 'Now ask what to pack for March.',
+						ask: 'What should I pack for Lisbon in March?',
+						result: 'The reply arrives as it is written, not all at once.',
+						line: "mode: 'sse'",
 					},
 					{
 						id: 'typed-choice',

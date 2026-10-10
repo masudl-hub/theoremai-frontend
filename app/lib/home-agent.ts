@@ -32,7 +32,6 @@ const SYSTEM = [
 
 const MEDIA = { attachmentsAccept: ['image/*'], voiceAccept: ['audio/*'] };
 const NO_MEDIA = { attachmentsAccept: [], voiceAccept: [] };
-const FILES_PER_MESSAGE = 5;
 const WEATHER_HOSTS = ['api.open-meteo.com'];
 
 const TRIP_STYLES = JSON.stringify({ style: ['budget', 'comfort', 'splurge'] });
@@ -67,9 +66,9 @@ function createHomeDraft(): StudioDraft {
 			...concierge.inputs,
 			...NO_MEDIA,
 			limitsByMimeJson: MEDIA_LIMITS,
-			maxFiles: FILES_PER_MESSAGE,
 		},
 		// The kernel's own defaults, so each boundary token is a change the file shows.
+		outputs: { ...concierge.outputs, streamMode: 'buffered' },
 		guardrails: { ...createBlankDraft().guardrails, allowedHosts: WEATHER_HOSTS },
 	};
 }
@@ -124,6 +123,10 @@ const inputsEdit = (inputs: Partial<StudioDraft['inputs']>): DraftEdit => {
 	return (draft) => ({ ...draft, inputs: { ...draft.inputs, ...inputs } });
 };
 
+const outputsEdit = (outputs: Partial<StudioDraft['outputs']>): DraftEdit => {
+	return (draft) => ({ ...draft, outputs: { ...draft.outputs, ...outputs } });
+};
+
 const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
 	'allow-media': {
 		isOn: (draft) =>
@@ -132,10 +135,10 @@ const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
 		on: inputsEdit(MEDIA),
 		off: inputsEdit(NO_MEDIA),
 	},
-	'one-file': {
-		isOn: (draft) => draft.inputs.maxFiles === 1,
-		on: inputsEdit({ maxFiles: 1 }),
-		off: inputsEdit({ maxFiles: FILES_PER_MESSAGE }),
+	'stream-reply': {
+		isOn: (draft) => draft.outputs.streamMode === 'sse',
+		on: outputsEdit({ streamMode: 'sse' }),
+		off: outputsEdit({ streamMode: 'buffered' }),
 	},
 	'typed-choice': {
 		isOn: (draft) => draft.inputs.slotsJson.trim() !== '',
