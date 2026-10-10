@@ -102,16 +102,16 @@
 }
 
 .stat-dial-track {
-	stroke: var(--color-accent);
+	stroke: var(--color-data-categorical-orange);
 }
 
 .stat-dial-fill {
-	stroke: var(--color-text-primary);
+	stroke: var(--color-on-light);
 }
 
 .stat-dial-knob {
-	fill: var(--color-text-primary);
-	stroke: var(--color-accent);
+	fill: var(--color-on-light);
+	stroke: var(--color-data-categorical-orange);
 	stroke-width: 3;
 }
 
