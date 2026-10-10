@@ -250,19 +250,6 @@
 	min-height: 0;
 }
 
-/* A choice the profile declares is drawn over the conversation it goes with. */
-.home-goal-live-chat[data-slots] {
-	grid-template-rows: minmax(0, 1fr) auto;
-	grid-auto-rows: auto;
-}
-
-/* Under the composer, where the chat's own selectors sit. */
-.home-goal-slots {
-	display: flex;
-	gap: var(--spacing-1);
-	padding: var(--spacing-1) var(--spacing-3) var(--spacing-2);
-}
-
 .home-goal-live-pane.home-goal-live-pane[hidden],
 .home-goal-live-chat[hidden],
 .home-goal-live-test[hidden] {

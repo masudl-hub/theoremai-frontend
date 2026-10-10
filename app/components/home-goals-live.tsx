@@ -2,7 +2,6 @@ import { Button } from '@astryxdesign/core/Button';
 import { Card } from '@astryxdesign/core/Card';
 import { Icon } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
-import { Selector } from '@astryxdesign/core/Selector';
 import { Text } from '@astryxdesign/core/Text';
 import {
 	IconAdjustmentsHorizontal,
@@ -13,7 +12,6 @@ import {
 import type { TheoremChatHandle } from '@theoremjs/react/ui';
 import { StudioCode } from '@theoremjs/studio/ui/code/studio-code.tsx';
 import { GuardrailTester } from '@theoremjs/studio/ui/guardrail-tester.tsx';
-import { pageInputsOf } from '@theoremjs/studio/ui/lib/studio-page.ts';
 import type { CodeIssue } from '@theoremjs/studio/ui/studio-host.ts';
 import { StudioRunner } from '@theoremjs/studio/ui/studio-runner.tsx';
 import {
@@ -339,61 +337,6 @@ export function GoalEditor({
 	);
 }
 
-/** The picker the page draws for each choice the profile declares, and the values it sends. */
-function useSlots(good: HomeGood | undefined) {
-	const [picked, setPicked] = useState<Record<string, string>>({});
-	const declared = useMemo(
-		() => (good ? pageInputsOf(good.payload)?.slots : undefined) ?? {},
-		[good],
-	);
-	const values = useMemo(
-		() =>
-			Object.fromEntries(
-				Object.entries(declared).map(([name, allowed]) => [
-					name,
-					allowed.find((value) => value === picked[name]) ?? allowed.at(0) ?? '',
-				]),
-			),
-		[declared, picked],
-	);
-	return { declared, values, setPicked };
-}
-
-/**
- * A choice the profile declares, drawn by the page that hosts the chat. It is the composer's own
- * model selector: a small ghost selector whose list opens above it.
- */
-function GoalSlots({
-	declared,
-	values,
-	onPick,
-}: {
-	declared: Readonly<Record<string, readonly string[]>>;
-	values: Readonly<Record<string, string>>;
-	onPick: (pick: (now: Record<string, string>) => Record<string, string>) => void;
-}) {
-	return (
-		<div className="home-goal-slots">
-			{Object.entries(declared).map(([name, allowed]) => (
-				<Selector
-					key={name}
-					label={name}
-					isLabelHidden
-					size="sm"
-					variant="ghost"
-					startIcon={<IconAdjustmentsHorizontal size={14} />}
-					placement="above"
-					value={values[name] ?? ''}
-					options={allowed.map((value) => ({ value, label: value }))}
-					onChange={(value) => {
-						onPick((now) => ({ ...now, [name]: value }));
-					}}
-				/>
-			))}
-		</div>
-	);
-}
-
 /** What to try next, with the message itself when one message is the whole test. */
 function GoalPrompt({
 	prompt,
@@ -478,7 +421,6 @@ export function GoalLive({
 	const state = useHomeAgent(store);
 	const chat = useRef<TheoremChatHandle | null>(null);
 	const { good, runs } = state;
-	const { declared, values, setPicked } = useSlots(good);
 	const { isTester, isEmpty, isTesting, hasTested } = useStill(beat);
 	const { result, send } = useTest(chat, picked, good?.source, beat?.goal);
 	if (!good) return null;
@@ -503,22 +445,16 @@ export function GoalLive({
 				className="home-goal-live-pane"
 				hidden={isEmpty}
 			>
-				<div
-					className="home-goal-live-chat"
-					data-slots={Object.keys(declared).length > 0 ? '' : undefined}
-					hidden={isTester}
-				>
+				<div className="home-goal-live-chat" hidden={isTester}>
 					<StudioRunner
 						key={runs}
 						payload={good.payload}
 						mode="demo"
 						runtime={null}
 						chatRef={chat}
-						slots={values}
 						initialChat={HOME_CHAT}
 						onActivity={store.talked}
 					/>
-					<GoalSlots declared={declared} values={values} onPick={setPicked} />
 				</div>
 				{hasTested ? (
 					<div className="home-goal-live-test" hidden={!isTesting}>
