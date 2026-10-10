@@ -2,7 +2,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { Card } from '@astryxdesign/core/Card';
 import { Icon } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
-import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
+import { Selector } from '@astryxdesign/core/Selector';
 import { Text } from '@astryxdesign/core/Text';
 import {
 	IconAdjustmentsHorizontal,
@@ -359,7 +359,10 @@ function useSlots(good: HomeGood | undefined) {
 	return { declared, values, setPicked };
 }
 
-/** A choice the profile declares, drawn by the page that hosts the chat. */
+/**
+ * A choice the profile declares, drawn by the page that hosts the chat. It is the composer's own
+ * model selector: a small ghost selector whose list opens above it.
+ */
 function GoalSlots({
 	declared,
 	values,
@@ -369,22 +372,26 @@ function GoalSlots({
 	values: Readonly<Record<string, string>>;
 	onPick: (pick: (now: Record<string, string>) => Record<string, string>) => void;
 }) {
-	return Object.entries(declared).map(([name, allowed]) => (
-		<SegmentedControl
-			key={name}
-			label={name}
-			size="sm"
-			layout="fill"
-			value={values[name] ?? ''}
-			onChange={(value) => {
-				onPick((now) => ({ ...now, [name]: value }));
-			}}
-		>
-			{allowed.map((value) => (
-				<SegmentedControlItem key={value} value={value} label={value} />
+	return (
+		<div className="home-goal-slots">
+			{Object.entries(declared).map(([name, allowed]) => (
+				<Selector
+					key={name}
+					label={name}
+					isLabelHidden
+					size="sm"
+					variant="ghost"
+					startIcon={<IconAdjustmentsHorizontal size={14} />}
+					placement="above"
+					value={values[name] ?? ''}
+					options={allowed.map((value) => ({ value, label: value }))}
+					onChange={(value) => {
+						onPick((now) => ({ ...now, [name]: value }));
+					}}
+				/>
 			))}
-		</SegmentedControl>
-	));
+		</div>
+	);
 }
 
 /** What to try next, with the message itself when one message is the whole test. */
@@ -501,7 +508,6 @@ export function GoalLive({
 					data-slots={Object.keys(declared).length > 0 ? '' : undefined}
 					hidden={isTester}
 				>
-					<GoalSlots declared={declared} values={values} onPick={setPicked} />
 					<StudioRunner
 						key={runs}
 						payload={good.payload}
@@ -512,6 +518,7 @@ export function GoalLive({
 						initialChat={HOME_CHAT}
 						onActivity={store.talked}
 					/>
+					<GoalSlots declared={declared} values={values} onPick={setPicked} />
 				</div>
 				{hasTested ? (
 					<div className="home-goal-live-test" hidden={!isTesting}>
