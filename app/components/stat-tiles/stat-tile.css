@@ -35,39 +35,6 @@
 	min-width: 0;
 }
 
-.stat-range {
-	display: grid;
-	gap: var(--spacing-1);
-	font-size: var(--font-size-xs, 0.75rem);
-	color: var(--color-text-secondary);
-}
-
-.stat-range-bars {
-	display: flex;
-	height: 1.9rem;
-	gap: var(--spacing-1);
-}
-
-.stat-range-bars > span {
-	border-radius: 999px;
-}
-
-.stat-range-fade {
-	flex: none;
-	background: var(--color-text-primary);
-	max-width: 80%;
-}
-
-.stat-range-rest {
-	flex: 1;
-	background: var(--color-border-emphasized);
-}
-
-.stat-range-ends {
-	display: flex;
-	justify-content: space-between;
-}
-
 .stat-ticks {
 	display: flex;
 	gap: 0.2rem;
@@ -157,4 +124,13 @@
 .stat-pair-names > span {
 	flex-basis: 0;
 	white-space: nowrap;
+}
+
+.stat-note.stat-note {
+	grid-template-columns: auto minmax(0, 1fr);
+}
+
+.stat-note-words {
+	display: grid;
+	gap: var(--spacing-1);
 }

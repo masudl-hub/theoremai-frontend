@@ -34,33 +34,6 @@ export function StatTile({
 	);
 }
 
-/** Two ends of a range on one bar: the first fades up into the second. */
-export function StatRange({
-	low,
-	high,
-	lowLabel,
-	highLabel,
-}: {
-	low: number;
-	high: number;
-	lowLabel: string;
-	highLabel: string;
-}) {
-	const share = Math.min(Math.max(low / high, 0.05), 1) * 100;
-	return (
-		<div className="stat-range">
-			<div className="stat-range-bars">
-				<span className="stat-range-fade" style={{ width: `${String(share)}%` }} />
-				<span className="stat-range-rest" />
-			</div>
-			<div className="stat-range-ends">
-				<span>{lowLabel}</span>
-				<span>{highLabel}</span>
-			</div>
-		</div>
-	);
-}
-
 /** A row of rounded bars, the first `fill` of `count` solid. */
 export function StatTicks({ count, fill }: { count: number; fill: number }) {
 	const ticks = Array.from({ length: count }, (_, at) => at);
@@ -134,5 +107,20 @@ export function StatPair({
 				<span style={{ flexGrow: second.weight }}>{second.label}</span>
 			</div>
 		</div>
+	);
+}
+
+/** A tile with no drawing: a large phrase, and two lines of words beside it. */
+export function StatNote({ value, title, text }: { value: string; title: string; text: string }) {
+	return (
+		<Card variant="glass" padding={0} elevation="med" className="stat-tile stat-note">
+			<span className="stat-tile-value">{value}</span>
+			<div className="stat-note-words">
+				<Text>{title}</Text>
+				<Text size="sm" color="secondary">
+					{text}
+				</Text>
+			</div>
+		</Card>
 	);
 }
