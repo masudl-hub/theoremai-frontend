@@ -17,6 +17,9 @@ export const DETECTOR_BOUNDARY_COUNTS: readonly { detector: string; count: numbe
 	{ detector: 'tool_leak', count: 4 },
 ];
 
+/** The boundaries there are: the detectors that read at all of them have this count. */
+export const BOUNDARY_TOTAL = 26;
+
 /** Every check: each detector at each boundary it reads at. */
 export const BOUNDARIES_CHECKED = DETECTOR_BOUNDARY_COUNTS.reduce(
 	(sum, { count }) => sum + count,

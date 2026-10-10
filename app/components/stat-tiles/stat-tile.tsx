@@ -115,13 +115,24 @@ export function StatDial({ near, far, caption }: { near: number; far: number; ca
 	);
 }
 
-/** One pill split into parts. Each part is as wide as its weight, so the whole is the total. */
-export function StatParts({ parts }: { parts: readonly { key: string; weight: number }[] }) {
+/** Two pills on one row, each as wide as its weight, each named underneath. The second is blue. */
+export function StatPair({
+	first,
+	second,
+}: {
+	first: { weight: number; label: string };
+	second: { weight: number; label: string };
+}) {
 	return (
-		<div className="stat-parts" aria-hidden>
-			{parts.map(({ key, weight }) => (
-				<span key={key} className="stat-part" style={{ flexGrow: weight }} />
-			))}
+		<div className="stat-pair">
+			<div className="stat-pair-bars">
+				<span className="stat-pair-first" style={{ flexGrow: first.weight }} />
+				<span className="stat-pair-second" style={{ flexGrow: second.weight }} />
+			</div>
+			<div className="stat-pair-names">
+				<span style={{ flexGrow: first.weight }}>{first.label}</span>
+				<span style={{ flexGrow: second.weight }}>{second.label}</span>
+			</div>
 		</div>
 	);
 }

@@ -1,5 +1,7 @@
 /* Readout tiles. Colour comes from the theme's own tokens; nothing here is specific to the app. */
 .stat-tile.stat-tile {
+	/* The trace charts' own blue: the second step of their ramp (shade1 in trace-patterns.tsx). */
+	--stat-blue: light-dark(#3b5580, #6582ad);
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
 	align-items: center;
@@ -106,9 +108,8 @@
 	stroke: var(--color-border-emphasized);
 }
 
-/* The trace charts' own blue: the second step of their ramp (shade1 in trace-patterns.tsx). */
 .stat-dial-far {
-	stroke: light-dark(#3b5580, #6582ad);
+	stroke: var(--stat-blue);
 }
 
 .stat-dial-near {
@@ -123,15 +124,37 @@
 	margin-top: calc(-1 * var(--spacing-2));
 }
 
-.stat-parts {
+.stat-pair {
+	display: grid;
+	gap: var(--spacing-1);
+	font-size: var(--font-size-xs, 0.75rem);
+	color: var(--color-text-secondary);
+}
+
+.stat-pair-bars,
+.stat-pair-names {
 	display: flex;
-	gap: 2px;
+	gap: var(--spacing-1);
+}
+
+.stat-pair-bars {
 	height: 1.9rem;
 }
 
-.stat-part {
-	flex: 1 1 0;
-	min-width: 3px;
+.stat-pair-bars > span {
+	flex-basis: 0;
 	border-radius: 999px;
+}
+
+.stat-pair-first {
 	background: var(--color-text-primary);
+}
+
+.stat-pair-second {
+	background: var(--stat-blue);
+}
+
+.stat-pair-names > span {
+	flex-basis: 0;
+	white-space: nowrap;
 }
