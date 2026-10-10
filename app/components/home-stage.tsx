@@ -3,6 +3,7 @@ import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 import { IconBrush, IconCircleDot, IconShieldCheck } from '@tabler/icons-react';
 import {
+	type CSSProperties,
 	type RefObject,
 	startTransition,
 	useCallback,
@@ -14,7 +15,7 @@ import {
 import { Link } from 'react-router';
 import type { HomeAgentStore } from '../lib/home-agent-store';
 import { HEADLINE } from '../lib/home-content';
-import { GOAL_BEATS, type GoalToken } from '../lib/home-goals';
+import { EDITED_BEATS, GOAL_BEATS, type GoalToken } from '../lib/home-goals';
 import { ARGUMENT, GOALS } from '../lib/site-pitch';
 import { GoalBlock, goalStackVars, goalTileVars, type PickedTokens } from './home-goals';
 import { useGoalBeat, useGoalReady } from './home-goals-beat';
@@ -161,12 +162,17 @@ function StageCopy() {
 								onPick={pick(index + 1)}
 							/>
 						))}
-						<div className="home-goal-editor" inert={beat < 1} data-pending={!isReady || undefined}>
+						<div
+							className="home-goal-editor"
+							inert={beat < 1 || beat > EDITED_BEATS}
+							data-pending={!isReady || undefined}
+							style={EDITED_VARS}
+						>
 							{isLive ? (
 								<loaded.GoalEditor
 									store={loaded.store}
 									goal={GOAL_BEATS[Math.max(beat, 1) - 1].goal}
-									isShown={beat > 0}
+									isShown={beat > 0 && beat <= EDITED_BEATS}
 								/>
 							) : null}
 						</div>
@@ -191,6 +197,7 @@ function StageCopy() {
 	);
 }
 
+const EDITED_VARS = { '--home-goal-edited': EDITED_BEATS } as CSSProperties;
 const GOAL_STOPS = GOAL_BEATS.map(({ goal }) => goal);
 
 /** Landing, then overview, then the beats of the three goals. Showcase is the next screen. */

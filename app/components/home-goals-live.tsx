@@ -394,7 +394,8 @@ function useTest(
 /** What the open beat puts on its still: the chat, the tester, or nothing. */
 function useStill(beat: GoalBeat | undefined) {
 	const isTester = beat?.goal === 'boundaries';
-	const isEmpty = !beat;
+	// The numbers beat has no agent on its still.
+	const isEmpty = !beat || (isTester && beat.controls.length === 0);
 	const isTesting = isTester && !isEmpty;
 	// Once it has been opened, the tester keeps what was sent while the visitor is elsewhere.
 	const [hasTested, setHasTested] = useState(false);

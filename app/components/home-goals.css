@@ -39,7 +39,11 @@
 	/* It travels with the words: one column, one editor, handed from each beat to the next. */
 	--home-goal-off: calc(var(--home-goals-pull, 0) - round(max(var(--home-goals-pull, 0), 1), 1));
 	transform: translateY(calc(var(--home-goal-off) * -100cqh));
-	opacity: clamp(0, 1 - 2.2 * max(var(--home-goal-off), -1 * var(--home-goal-off)), 1);
+	opacity: min(
+		clamp(0, 1 - 2.2 * max(var(--home-goal-off), -1 * var(--home-goal-off)), 1),
+		/* A beat after the last that has the file takes the still alone: the editor goes. */
+		clamp(0, 1 - 2.2 * (var(--home-goals-pull, 0) - var(--home-goal-edited, 99)), 1)
+	);
 	/* The editor is the heaviest thing on the page. Scroll fades it, and never lays it out. */
 	contain: layout paint;
 	will-change: transform, opacity;

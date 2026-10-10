@@ -159,7 +159,17 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 			},
 		],
 	},
+	{
+		goal: 'boundaries',
+		lede: 'Guardrails run inside the turn, before a reply leaves.',
+		explainer:
+			'Each check reads the reply as it streams, so it adds time to the turn. Only a short tail is held back, in case a match is still being written. The rest is released as it arrives.',
+		controls: [],
+	},
 ];
+
+/** How many beats come with the agent's file. Any beat after them has the still to itself. */
+export const EDITED_BEATS = GOAL_BEATS.findIndex(({ controls }) => controls.length === 0);
 
 export function isGoalId(id: string): id is GoalId {
 	return GOALS.some((goal) => goal.id === id);
