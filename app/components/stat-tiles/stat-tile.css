@@ -47,7 +47,7 @@
 }
 
 .stat-range-bars > span {
-	border-radius: var(--radius-sm, 6px);
+	border-radius: 999px;
 }
 
 .stat-range-fade {
@@ -67,17 +67,54 @@
 }
 
 .stat-ticks {
-	--tick: linear-gradient(90deg, transparent 25%, currentcolor 25% 75%, transparent 75%);
+	display: flex;
+	gap: 0.2rem;
 	height: 2.4rem;
-	color: var(--color-border-emphasized);
-	background: var(--tick) 0 0 / calc(100% / var(--ticks)) 100% repeat-x;
-	mask: none;
 }
 
-.stat-ticks-on {
-	display: block;
-	height: 100%;
-	width: calc(100% * var(--ticks-on) / var(--ticks));
-	color: var(--color-text-primary);
-	background: var(--tick) 0 0 / calc(100% / var(--ticks-on)) 100% repeat-x;
+.stat-tick {
+	flex: 1;
+	border-radius: 999px;
+	background: var(--color-border-emphasized);
+}
+
+.stat-tick[data-on] {
+	background: var(--color-text-primary);
+}
+
+.stat-dial {
+	display: grid;
+	justify-items: center;
+	font-size: var(--font-size-xs, 0.75rem);
+	color: var(--color-text-secondary);
+}
+
+.stat-dial svg {
+	width: 100%;
+	overflow: visible;
+}
+
+.stat-dial-track,
+.stat-dial-fill {
+	fill: none;
+	stroke-width: 20;
+	stroke-linecap: round;
+}
+
+.stat-dial-track {
+	stroke: var(--color-accent);
+}
+
+.stat-dial-fill {
+	stroke: var(--color-text-primary);
+}
+
+.stat-dial-knob {
+	fill: var(--color-text-primary);
+	stroke: var(--color-accent);
+	stroke-width: 3;
+}
+
+.stat-dial-caption {
+	margin-top: calc(-1 * var(--spacing-2));
 }

@@ -1,6 +1,6 @@
 import { Card } from '@astryxdesign/core/Card';
 import { Text } from '@astryxdesign/core/Text';
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import './stat-tile.css';
 
 /**
@@ -61,12 +61,49 @@ export function StatRange({
 	);
 }
 
-/** A row of ticks, the first `fill` of `count` drawn solid. */
+/** A row of rounded bars, the first `fill` of `count` solid. */
 export function StatTicks({ count, fill }: { count: number; fill: number }) {
-	const style = { '--ticks': count, '--ticks-on': fill } as CSSProperties;
+	const ticks = Array.from({ length: count }, (_, at) => at);
 	return (
-		<div className="stat-ticks" style={style} aria-hidden>
-			<span className="stat-ticks-on" />
+		<div className="stat-ticks" aria-hidden>
+			{ticks.map((tick) => (
+				<span key={tick} className="stat-tick" data-on={tick < fill ? '' : undefined} />
+			))}
+		</div>
+	);
+}
+
+const DIAL = { x: 180, y: 200, radius: 190, half: 48.9 };
+
+const onDial = (share: number) => {
+	const angle = ((-DIAL.half + 2 * DIAL.half * share) * Math.PI) / 180;
+	return { x: DIAL.x + DIAL.radius * Math.sin(angle), y: DIAL.y - DIAL.radius * Math.cos(angle) };
+};
+
+/**
+ * A shallow dial. Its track runs the whole scale; a dark stroke runs from the start to `near`, with
+ * a knob there, and a second knob marks `far`. Both are shares of the scale (0 to 1).
+ */
+export function StatDial({ near, far, caption }: { near: number; far: number; caption: string }) {
+	const begin = onDial(0);
+	const end = onDial(1);
+	const path = `M ${String(begin.x)} ${String(begin.y)} A ${String(DIAL.radius)} ${String(DIAL.radius)} 0 0 1 ${String(end.x)} ${String(end.y)}`;
+	const nearKnob = onDial(near);
+	const farKnob = onDial(far);
+	return (
+		<div className="stat-dial">
+			<svg viewBox="0 0 360 100" aria-hidden>
+				<path d={path} className="stat-dial-track" />
+				<path
+					d={path}
+					className="stat-dial-fill"
+					pathLength={1}
+					strokeDasharray={`${String(near)} 1`}
+				/>
+				<circle cx={nearKnob.x} cy={nearKnob.y} r="11" className="stat-dial-knob" />
+				<circle cx={farKnob.x} cy={farKnob.y} r="11" className="stat-dial-knob" />
+			</svg>
+			<span className="stat-dial-caption">{caption}</span>
 		</div>
 	);
 }

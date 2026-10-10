@@ -1,5 +1,5 @@
-import { BENCHMARKS } from '../lib/home-benchmarks';
-import { StatRange, StatTicks, StatTile } from './stat-tiles/stat-tile';
+import { BARS, BENCHMARKS, BOUNDARIES_CHECKED } from '../lib/home-benchmarks';
+import { StatDial, StatRange, StatTicks, StatTile } from './stat-tiles/stat-tile';
 
 const percent = (share: number) => String(Math.round(share * 1000) / 10);
 
@@ -9,23 +9,27 @@ export function GoalStats() {
 	return (
 		<>
 			<StatTile label="Accuracy" value={percent(b.accuracy)} unit="%">
-				<StatTicks count={b.boundariesTotal} fill={Math.round(b.accuracy * b.boundariesTotal)} />
+				<StatTicks count={BARS} fill={Math.round(b.accuracy * BARS)} />
 			</StatTile>
 			<StatTile label="Average latency" value={String(b.latencyMessageMs)} unit="ms">
+				<StatDial
+					near={b.latencyMessageMs / b.dialMaxMs}
+					far={b.latencyDocumentMs / b.dialMaxMs}
+					caption={`Message ${String(b.latencyMessageMs)} ms, document ${String(b.latencyDocumentMs)} ms`}
+				/>
+			</StatTile>
+			<StatTile label="Boundaries checked" value={String(BOUNDARIES_CHECKED)}>
+				<StatTicks count={BARS} fill={BARS} />
+			</StatTile>
+			<StatTile label="False positives" value={percent(b.falsePositive)} unit="%">
+				<StatTicks count={BARS} fill={Math.max(1, Math.round(b.falsePositive * BARS))} />
+			</StatTile>
+			<StatTile label="Large document" value={String(b.latencyDocumentMs)} unit="ms">
 				<StatRange
 					low={b.latencyMessageMs}
 					high={b.latencyDocumentMs}
 					lowLabel={`Message ${String(b.latencyMessageMs)} ms`}
-					highLabel={`Large document ${String(b.latencyDocumentMs)} ms`}
-				/>
-			</StatTile>
-			<StatTile label="Boundaries checked" value={String(b.boundariesChecked)}>
-				<StatTicks count={b.boundariesTotal} fill={b.boundariesChecked} />
-			</StatTile>
-			<StatTile label="False positives" value={percent(b.falsePositive)} unit="%">
-				<StatTicks
-					count={b.boundariesTotal}
-					fill={Math.max(1, Math.round(b.falsePositive * b.boundariesTotal))}
+					highLabel={`Document ${String(b.latencyDocumentMs)} ms`}
 				/>
 			</StatTile>
 		</>
