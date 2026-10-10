@@ -1,7 +1,7 @@
 /* Readout tiles. Colour comes from the theme's own tokens; nothing here is specific to the app. */
 .stat-tile.stat-tile {
-	/* The trace charts' own blue: the second step of their ramp (shade1 in trace-patterns.tsx). */
-	--stat-blue: light-dark(#3b5580, #6582ad);
+	/* The lightest water in the goals still beneath the tiles (th30_obsidianshores), sampled. */
+	--stat-blue: #4d626c;
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
 	align-items: center;
