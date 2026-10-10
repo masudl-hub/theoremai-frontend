@@ -1,7 +1,3 @@
-import { TheoremMark } from '@theoremjs/studio/ui/theorem-mark.tsx';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { useLocation, useNavigation } from 'react-router';
 import {
 	captureShape,
 	HOLD_MS,
@@ -12,11 +8,15 @@ import {
 	prefersReducedMotion,
 	REGULAR_SHAPE,
 	settleShell,
-	shapeAt,
 	shellCanMove,
 	sleep,
 	takeShape,
-} from './shell-motion';
+} from '@theoremjs/studio/ui/shell-motion.ts';
+import { TheoremMark } from '@theoremjs/studio/ui/theorem-mark.tsx';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useLocation, useNavigation } from 'react-router';
+import { shapeAt } from './shell-motion';
 
 const SHOW_AFTER_MS = 180;
 const HOLD_AFTER_DRAW_MS = 80;
@@ -51,7 +51,7 @@ export function NavMark() {
 	useLayoutEffect(() => {
 		if (pending) {
 			if (flight.current) return;
-			if (!hasCapturedShape()) captureShape(here.current, hash);
+			if (!hasCapturedShape()) captureShape(shapeAt(here.current, hash));
 			const own: Flight = { loading: null };
 			drawn.current.done = false;
 			flight.current = own;

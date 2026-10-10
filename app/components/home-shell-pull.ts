@@ -1,5 +1,5 @@
+import { SHELL_INTRO_DONE, shellIntroOwnsPull } from '@theoremjs/studio/ui/shell-motion.ts';
 import { type RefObject, useLayoutEffect, useSyncExternalStore } from 'react';
-import { SHELL_INTRO_DONE, shellIntroOwnsPull } from './shell-motion';
 
 function subscribeReducedMotion(onStoreChange: () => void): () => void {
 	const mq = window.matchMedia('(prefers-reduced-motion: reduce)');

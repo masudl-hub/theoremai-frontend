@@ -1,6 +1,15 @@
 import { AppShell } from '@astryxdesign/core/AppShell';
 import { LinkProvider } from '@astryxdesign/core/Link';
 import { useSideNavRenderMode } from '@astryxdesign/core/SideNav';
+import { BootMark } from '@theoremjs/studio/ui/boot-mark.tsx';
+import {
+	captureShape,
+	enterShell,
+	HOLD_MS,
+	holdShell,
+	peekShape,
+	shellCanMove,
+} from '@theoremjs/studio/ui/shell-motion.ts';
 import { ShellBounds, StudioRail } from '@theoremjs/studio/ui/studio-shell.tsx';
 import {
 	Link,
@@ -14,20 +23,11 @@ import {
 import { theoremSiteTheme } from '../built/theorem-site';
 import '../components/docs/docs.css';
 import '../components/page-transition.css';
+import '@theoremjs/studio/ui/shell-motion.css';
 import '../components/shell.css';
-import { BootMark } from '../components/boot-mark';
 import { holdDocsArticleTransition } from '../components/docs/article-transition';
 import { pageOwnsDocsNav } from '../components/docs/shell-slot';
-import {
-	captureShape,
-	enterShell,
-	HOLD_MS,
-	holdShell,
-	peekShape,
-	shellCanMove,
-	shellKindFor,
-	shellKindOfHref,
-} from '../components/shell-motion';
+import { shapeAt, shellKindFor, shellKindOfHref } from '../components/shell-motion';
 import { NavMark } from '../components/shell-navigation';
 import { Th30Provider, Th30Trigger } from '../components/th30-dock';
 import { getDocIndex } from '../lib/docs/.server/load-index';
@@ -92,7 +92,7 @@ function ShellLink({ onClick, to, ...props }: LinkProps) {
 				}
 				if (moves && shellCanMove()) {
 					event.preventDefault();
-					captureShape(location.pathname, location.hash);
+					captureShape(shapeAt(location.pathname, location.hash));
 					holdShell();
 					window.setTimeout(() => {
 						enterShell(peekShape());
@@ -174,7 +174,7 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
 						/>
 					}
 				>
-					<BootMark />
+					<BootMark shape={() => shapeAt(window.location.pathname, window.location.hash)} />
 					<Outlet context={{ origin: loaderData.origin, studioJsonLd: loaderData.studioJsonLd }} />
 					<NavMark />
 					<ShellBounds />

@@ -25,8 +25,9 @@ import './built/theme.css';
 // After the theme: motion Astryx's theme API can't express.
 import '@theoremjs/studio/ui/motion.css';
 import './components/layout.css';
+import { BOOT_PAINT, BOOT_PAINT_NOSCRIPT } from '@theoremjs/studio/ui/boot-paint.ts';
+import { bootHasPlayed, SHELL_REVEAL } from '@theoremjs/studio/ui/shell-motion.ts';
 import { theoremSiteTheme } from './built/theorem-site';
-import { bootHasPlayed, SHELL_REVEAL } from './components/shell-motion';
 
 export const links: Route.LinksFunction = () => [
 	{ rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
@@ -63,17 +64,9 @@ export function Layout({ children }: { children: ReactNode }) {
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
 				<meta name="theme-color" content={theoremSiteTheme.tokens['--color-background-body']} />
 				{/* The shell paint is inline so the first frame is already the panel the mark draws in. */}
-				<style>
-					{
-						'html{color-scheme:dark}html,body{margin:0;background:#000}html[data-boot-pending],html[data-boot-pending] body{background:#262626}html[data-boot-pending] .astryx-app-shell{height:100dvh}html[data-boot-pending] .astryx-app-shell-sidenav{position:absolute;inset-block:0;inset-inline-start:0;z-index:0;width:3rem}html[data-boot-pending] #astryx-app-shell-main{position:relative;z-index:1;width:100%;height:100%;max-width:none;margin:0;border-radius:0;clip-path:none;background:#262626;color:#fff}html[data-boot-pending] #astryx-app-shell-main>:not([data-boot]){visibility:hidden}html[data-boot-pending] [data-boot]{position:absolute;inset:0;z-index:2;display:grid;place-items:center;background:#262626;color:#fff}'
-					}
-				</style>
+				<style>{BOOT_PAINT}</style>
 				<noscript>
-					<style>
-						{
-							'html[data-boot-pending],html[data-boot-pending] body{background:#000}html[data-boot-pending] #astryx-app-shell-main>:not([data-boot]){visibility:visible !important}[data-boot]{display:none !important}'
-						}
-					</style>
+					<style>{BOOT_PAINT_NOSCRIPT}</style>
 				</noscript>
 				<Meta />
 				<Links />
