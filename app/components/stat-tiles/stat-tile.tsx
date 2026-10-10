@@ -61,34 +61,44 @@ export function StatRange({
 	);
 }
 
-/** A row of ticks, the first `fill` of `count` drawn solid. */
-export function StatTicks({ count, fill }: { count: number; fill: number }) {
-	const style = { '--ticks': count, '--ticks-on': fill } as CSSProperties;
+/** A field of dots, the first `fill` of `count` solid. With a few filled, it shows how rare they are. */
+export function StatDots({
+	count,
+	fill,
+	columns,
+}: {
+	count: number;
+	fill: number;
+	columns: number;
+}) {
+	const dots = Array.from({ length: count }, (_, at) => at);
+	const style = { '--dot-columns': columns } as CSSProperties;
 	return (
-		<div className="stat-ticks" style={style} aria-hidden>
-			<span className="stat-ticks-on" />
+		<div className="stat-dots" style={style} aria-hidden>
+			{dots.map((dot) => (
+				<span key={dot} className="stat-dot" data-on={dot < fill ? '' : undefined} />
+			))}
 		</div>
 	);
 }
 
-/** An arc filled to `share` (0 to 1), with a knob at the end. */
-export function StatArc({ share, caption }: { share: number; caption: string }) {
+/** A ring filled to `share` (0 to 1), with a caption beneath. */
+export function StatRing({ share, caption }: { share: number; caption: string }) {
 	const clamped = Math.min(Math.max(share, 0), 1);
-	const angle = Math.PI * (1 - clamped);
-	const knob = { x: 100 + 80 * Math.cos(angle), y: 100 - 80 * Math.sin(angle) };
 	return (
-		<div className="stat-arc">
-			<svg viewBox="0 0 200 110" aria-hidden>
-				<path d="M 20 100 A 80 80 0 0 1 180 100" className="stat-arc-track" pathLength={1} />
-				<path
-					d="M 20 100 A 80 80 0 0 1 180 100"
-					className="stat-arc-fill"
+		<div className="stat-ring">
+			<svg viewBox="0 0 100 100" aria-hidden>
+				<circle cx="50" cy="50" r="40" className="stat-ring-track" />
+				<circle
+					cx="50"
+					cy="50"
+					r="40"
+					className="stat-ring-fill"
 					pathLength={1}
 					strokeDasharray={`${String(clamped)} 1`}
 				/>
-				<circle cx={knob.x} cy={knob.y} r="9" className="stat-arc-knob" />
 			</svg>
-			<span className="stat-arc-caption">{caption}</span>
+			<span className="stat-ring-caption">{caption}</span>
 		</div>
 	);
 }

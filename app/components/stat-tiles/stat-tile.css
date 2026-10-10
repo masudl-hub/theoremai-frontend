@@ -66,56 +66,47 @@
 	justify-content: space-between;
 }
 
-.stat-ticks {
-	--tick: linear-gradient(90deg, transparent 25%, currentcolor 25% 75%, transparent 75%);
-	height: 2.4rem;
-	color: var(--color-border-emphasized);
-	background: var(--tick) 0 0 / calc(100% / var(--ticks)) 100% repeat-x;
-	mask: none;
-}
-
-.stat-ticks-on {
-	display: block;
-	height: 100%;
-	width: calc(100% * var(--ticks-on) / var(--ticks));
-	color: var(--color-text-primary);
-	background: var(--tick) 0 0 / calc(100% / var(--ticks-on)) 100% repeat-x;
-}
-
-.stat-arc {
+.stat-dots {
 	display: grid;
-	justify-items: center;
+	grid-template-columns: repeat(var(--dot-columns), 1fr);
+	gap: 0.28rem;
 }
 
-.stat-arc svg {
-	width: 100%;
-	max-height: 4.2rem;
-	overflow: visible;
+.stat-dot {
+	aspect-ratio: 1;
+	border-radius: 50%;
+	background: var(--color-border-emphasized);
 }
 
-.stat-arc-track,
-.stat-arc-fill {
-	fill: none;
-	stroke-width: 16;
-	stroke-linecap: round;
+.stat-dot[data-on] {
+	background: var(--color-accent);
 }
 
-.stat-arc-track {
-	stroke: var(--color-accent);
-}
-
-.stat-arc-fill {
-	stroke: var(--color-text-primary);
-}
-
-.stat-arc-knob {
-	fill: var(--color-text-primary);
-	stroke: var(--color-accent);
-	stroke-width: 4;
-}
-
-.stat-arc-caption {
-	margin-top: calc(-1 * var(--spacing-2));
+.stat-ring {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-3);
 	font-size: var(--font-size-xs, 0.75rem);
 	color: var(--color-text-secondary);
+}
+
+.stat-ring svg {
+	flex: none;
+	width: 4.2rem;
+	rotate: -90deg;
+}
+
+.stat-ring-track,
+.stat-ring-fill {
+	fill: none;
+	stroke-width: 12;
+}
+
+.stat-ring-track {
+	stroke: var(--color-border-emphasized);
+}
+
+.stat-ring-fill {
+	stroke: var(--color-accent);
+	stroke-linecap: round;
 }
