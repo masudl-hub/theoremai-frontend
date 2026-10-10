@@ -91,7 +91,7 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 		goal: 'experiment',
 		lede: 'Switch models, providers and modalities without rebuilding.',
 		explainer:
-			'Your application starts an agent by its profile name. Change `provider` or `type` in the profile, and the model and the kind of reply change with it. Your code does not.',
+			'Your application starts an agent by its profile name. Change what runs in `models` and `defaultModel`, or what it makes in `type`, and your code stays the same.',
 		controls: [
 			{
 				label: 'What runs it',

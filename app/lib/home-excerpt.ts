@@ -44,6 +44,7 @@ export function changedLines(before: string, after: string): Lines | undefined {
 /** The profile fields each goal shows. A goal without an entry shows the whole file. */
 const EXCERPT_FIELDS: Readonly<Partial<Record<string, readonly string[]>>> = {
 	'source-of-truth': ['inputs', 'outputs'],
+	experiment: ['type', 'models', 'defaultModel', 'allowModelSelect'],
 };
 
 export type Excerpt = {
@@ -72,7 +73,7 @@ function fieldLines(lines: string[], from: number, name: string): number[] {
 
 /**
  * The fields of the profile that `goal` is about, wrapped in the call that defines them, with the
- * schema the outputs register above it. The whole file when the goal has no fields.
+ * schema the outputs register above it. Fields that sit side by side in the file sit side by side here. The whole file when the goal has no fields.
  */
 export function excerptOf(source: string, goal: string): Excerpt | undefined {
 	const names = EXCERPT_FIELDS[goal];
@@ -82,17 +83,18 @@ export function excerptOf(source: string, goal: string): Excerpt | undefined {
 	if (define < 0) return undefined;
 	const shown: { text: string; at: number | undefined }[] = [];
 	const add = (text: string, at?: number) => shown.push({ text, at });
-	const registered = statementLines(lines, 'registerStructured(');
+	const registered = names.includes('outputs') ? statementLines(lines, 'registerStructured(') : [];
 	for (const at of registered) add(lines[at], at + 1);
 	if (registered.length) add('');
 	add('defineProfile({', define + 1);
-	let gap = false;
+	let last: number | undefined;
 	for (const name of names) {
 		const field = fieldLines(lines, define, name);
 		if (!field.length) continue;
-		if (gap) add('  // ...');
+		const first = field[0];
+		if (last !== undefined && first !== last + 1) add('  // ...');
 		for (const at of field) add(lines[at], at + 1);
-		gap = true;
+		last = field.at(-1);
 	}
 	add('});');
 	return { code: shown.map(({ text }) => text).join('\n'), from: shown.map(({ at }) => at) };

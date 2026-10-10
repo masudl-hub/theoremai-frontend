@@ -62,3 +62,18 @@ test('a change in the source marks the same lines of the excerpt', () => {
 	const range = changedLines(SOURCE, after);
 	assert.deepEqual(shown && excerptLines(shown, range), [8]);
 });
+
+test('the model goal shows what runs and what it makes, with no schema above it', () => {
+	assert.equal(
+		excerptOf(SOURCE, 'experiment')?.code,
+		[
+			'defineProfile({',
+			"  type: 'text',",
+			'  // ...',
+			'  models: {',
+			'    smart: {},',
+			'  },',
+			'});',
+		].join('\n'),
+	);
+});
