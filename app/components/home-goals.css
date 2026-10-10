@@ -54,6 +54,24 @@
 	height: 100%;
 }
 
+.home-goal-editor-pane > .home-goal-view-toggle {
+	position: absolute;
+	top: var(--spacing-2);
+	right: var(--spacing-2);
+	z-index: 3;
+	height: auto;
+}
+
+/* The file fills the pane's box, which Monaco measures. */
+.home-goal-editor-pane > .home-goal-code {
+	position: absolute;
+	inset: 0;
+}
+
+.home-goal-code > div {
+	height: 100%;
+}
+
 .home-goal-editor-pane > [hidden] {
 	display: none;
 }

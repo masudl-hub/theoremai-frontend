@@ -4,7 +4,12 @@ import { Icon } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { Text } from '@astryxdesign/core/Text';
-import { IconPlayerPlay, IconRotateClockwise } from '@tabler/icons-react';
+import {
+	IconAdjustmentsHorizontal,
+	IconCode,
+	IconPlayerPlay,
+	IconRotateClockwise,
+} from '@tabler/icons-react';
 import type { TheoremChatHandle } from '@theoremjs/react/ui';
 import { StudioCode } from '@theoremjs/studio/ui/code/studio-code.tsx';
 import { GuardrailTester } from '@theoremjs/studio/ui/guardrail-tester.tsx';
@@ -203,32 +208,11 @@ type EditorView = 'code' | 'form';
 /** Goals one and two begin on the file, and goal three on the form. */
 const startView = (goal: GoalId): EditorView => (goal === 'boundaries' ? 'form' : 'code');
 
-/** Under the editor: the form or the file, the way to the studio, and the way back to the start. */
-function EditorFoot({
-	store,
-	isFresh,
-	view,
-	onView,
-}: {
-	store: HomeAgentStore;
-	isFresh: boolean;
-	view: EditorView;
-	onView: (view: EditorView) => void;
-}) {
+/** Under the editor: the way to the studio, and the way back to the start. */
+function EditorFoot({ store, isFresh }: { store: HomeAgentStore; isFresh: boolean }) {
 	const navigate = useNavigate();
 	return (
 		<div className="home-goal-editor-foot">
-			<SegmentedControl
-				label="View"
-				size="sm"
-				value={view}
-				onChange={(next) => {
-					onView(next === 'form' ? 'form' : 'code');
-				}}
-			>
-				<SegmentedControlItem value="form" label="Form" />
-				<SegmentedControlItem value="code" label="Code" />
-			</SegmentedControl>
 			<Button
 				variant="secondary"
 				size="md"
@@ -250,6 +234,34 @@ function EditorFoot({
 						: 'Reset this agent and its conversation to how they started'
 				}
 				onClick={store.startOver}
+			/>
+		</div>
+	);
+}
+
+const VIEW_TOGGLE = {
+	form: { label: 'Code', icon: IconCode, tooltip: 'Edit as TypeScript', next: 'code' },
+	code: {
+		label: 'Editor',
+		icon: IconAdjustmentsHorizontal,
+		tooltip: 'Edit as a form',
+		next: 'form',
+	},
+} as const;
+
+/** The studio's own switch between the form and the file, floating over the editor's corner. */
+function ViewToggle({ view, onView }: { view: EditorView; onView: (view: EditorView) => void }) {
+	const toggle = VIEW_TOGGLE[view];
+	return (
+		<div className="home-goal-view-toggle">
+			<IconButton
+				label={toggle.label}
+				variant="ghost"
+				icon={<Icon icon={toggle.icon} size="sm" />}
+				tooltip={toggle.tooltip}
+				onClick={() => {
+					onView(toggle.next);
+				}}
 			/>
 		</div>
 	);
@@ -280,7 +292,7 @@ export function GoalEditor({
 	return (
 		<>
 			<div ref={pane} className="home-goal-editor-pane">
-				<div hidden={view !== 'code'}>
+				<div className="home-goal-code" hidden={view !== 'code'}>
 					<StudioCode
 						text={good.source}
 						hold={!state.compiled.ok}
@@ -293,6 +305,12 @@ export function GoalEditor({
 						<GoalForm store={store} state={state} goal={goal} />
 					</Suspense>
 				) : null}
+				<ViewToggle
+					view={view}
+					onView={(next) => {
+						setViews((now) => ({ ...now, [goal]: next }));
+					}}
+				/>
 				{isArmed || view !== 'code' ? null : (
 					<button
 						type="button"
@@ -305,14 +323,7 @@ export function GoalEditor({
 					</button>
 				)}
 			</div>
-			<EditorFoot
-				store={store}
-				isFresh={state.isFresh}
-				view={view}
-				onView={(next) => {
-					setViews((now) => ({ ...now, [goal]: next }));
-				}}
-			/>
+			<EditorFoot store={store} isFresh={state.isFresh} />
 		</>
 	);
 }
