@@ -132,10 +132,10 @@
 
 .home-stage-lead .home-goal-lede.home-goal-lede {
 	max-width: 36rem;
-	font-size: var(--text-display-3-size);
+	font-size: var(--text-display-1-size);
 	font-weight: 700;
-	line-height: 1.04;
-	letter-spacing: -0.03em;
+	line-height: 0.98;
+	letter-spacing: -0.038em;
 	text-wrap: balance;
 }
 

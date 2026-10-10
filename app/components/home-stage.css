@@ -125,7 +125,8 @@
 		padding-inline-start: 0;
 	}
 
-	.home-stage-lead .home-stage-headline.home-stage-headline {
+	.home-stage-lead .home-stage-headline.home-stage-headline,
+	.home-stage-lead .home-goal-lede.home-goal-lede {
 		font-size: 2rem;
 	}
 
