@@ -49,7 +49,7 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 		goal: 'source-of-truth',
 		lede: 'Manage the frontend and backend from one source.',
 		explainer:
-			'Your profile declares what the agent accepts, what it returns and which tools it can call. The server checks every turn against it, and the interface builds the message box from the same file. There is no second copy to keep in step.',
+			'Declare `inputs` and `outputs` once in the profile. The server checks every turn against them, and the interface builds the message box from the same profile.',
 		controls: [
 			{
 				label: 'Change the contract',
@@ -88,7 +88,7 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 		goal: 'experiment',
 		lede: 'Switch models, providers and modalities without rebuilding.',
 		explainer:
-			'Your application starts an agent by the name of its profile. The profile holds the model, the provider and the type of reply, so one changed line changes what runs it and what it makes. Your application code stays as it is.',
+			'Your application starts an agent by its profile name. Change `provider` or `type` in the profile, and the model and the kind of reply change with it. Your code does not.',
 		controls: [
 			{
 				label: 'What runs it',
@@ -132,7 +132,7 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 		goal: 'boundaries',
 		lede: 'Protect data with guardrails at every boundary.',
 		explainer:
-			'Text crosses a boundary when a message comes in, a tool result returns, a tool is called or the reply goes out. Each check has its own setting at each boundary: ignore, flag, redact or block. The tester sends one text across one boundary. It calls no model.',
+			'Text crosses a boundary when a message comes in, a tool is called, a tool result returns and the reply goes out. Set each check at each boundary to ignore, flag, redact or block.',
 		controls: [
 			{
 				label: 'Set a boundary',

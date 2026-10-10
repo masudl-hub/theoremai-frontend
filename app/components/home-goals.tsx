@@ -49,6 +49,19 @@ export function goalTileVars(index: number): CSSProperties {
 }
 
 /** A beat's place in the left column: the goal, the lede, how it works, and the changes. */
+/** Names between backticks are set as code, the way a docs page sets a prop. */
+function withCode(text: string) {
+	return text.split('`').map((part, at) =>
+		at % 2 ? (
+			<code key={part} className="home-goal-term">
+				{part}
+			</code>
+		) : (
+			part
+		),
+	);
+}
+
 export function GoalBlock({
 	beat,
 	number,
@@ -74,7 +87,7 @@ export function GoalBlock({
 			<Heading className="home-goal-lede" level={2}>
 				{beat.lede}
 			</Heading>
-			<Text className="home-stage-statement">{beat.explainer}</Text>
+			<Text className="home-stage-statement">{withCode(beat.explainer)}</Text>
 			{beat.controls.map(({ label, tokens }) => (
 				<div key={label} className="home-goal-controls" role="group" aria-label={label}>
 					<Text className="home-goal-controls-label" size="sm" color="secondary">
