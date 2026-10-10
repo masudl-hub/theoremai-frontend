@@ -122,3 +122,16 @@
 .stat-dial-caption {
 	margin-top: calc(-1 * var(--spacing-2));
 }
+
+.stat-parts {
+	display: flex;
+	gap: 2px;
+	height: 1.9rem;
+}
+
+.stat-part {
+	flex: 1 1 0;
+	min-width: 3px;
+	border-radius: 999px;
+	background: var(--color-text-primary);
+}

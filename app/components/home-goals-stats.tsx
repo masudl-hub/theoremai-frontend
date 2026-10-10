@@ -1,5 +1,6 @@
-import { BARS, BENCHMARKS, BOUNDARIES_CHECKED } from '../lib/home-benchmarks';
-import { StatDial, StatRange, StatTicks, StatTile } from './stat-tiles/stat-tile';
+import { BARS, BENCHMARKS } from '../lib/home-benchmarks';
+import { BOUNDARIES_CHECKED, DETECTOR_BOUNDARY_COUNTS } from '../lib/home-guardrail-checks';
+import { StatDial, StatParts, StatRange, StatTicks, StatTile } from './stat-tiles/stat-tile';
 
 const percent = (share: number) => String(Math.round(share * 1000) / 10);
 
@@ -19,7 +20,12 @@ export function GoalStats() {
 				/>
 			</StatTile>
 			<StatTile label="Boundaries checked" value={String(BOUNDARIES_CHECKED)}>
-				<StatTicks count={BARS} fill={BARS} />
+				<StatParts
+					parts={DETECTOR_BOUNDARY_COUNTS.map(({ detector, count }) => ({
+						key: detector,
+						weight: count,
+					}))}
+				/>
 			</StatTile>
 			<StatTile label="False positives" value={percent(b.falsePositive)} unit="%">
 				<StatTicks count={BARS} fill={Math.max(1, Math.round(b.falsePositive * BARS))} />

@@ -114,3 +114,14 @@ export function StatDial({ near, far, caption }: { near: number; far: number; ca
 		</div>
 	);
 }
+
+/** One pill split into parts. Each part is as wide as its weight, so the whole is the total. */
+export function StatParts({ parts }: { parts: readonly { key: string; weight: number }[] }) {
+	return (
+		<div className="stat-parts" aria-hidden>
+			{parts.map(({ key, weight }) => (
+				<span key={key} className="stat-part" style={{ flexGrow: weight }} />
+			))}
+		</div>
+	);
+}
