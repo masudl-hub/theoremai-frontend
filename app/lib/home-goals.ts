@@ -91,7 +91,7 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 		goal: 'experiment',
 		lede: 'Switch models, providers and modalities without rebuilding.',
 		explainer:
-			'Your application starts an agent by its profile name. Change what runs in `models` and `defaultModel`, or what it makes in `type`, and your code stays the same.',
+			"Your code calls `runTurn` with the profile's `id`. Change what runs in `models` and `defaultModel`, or what it makes in `type`, and that call stays the same.",
 		controls: [
 			{
 				label: 'Change the agent',

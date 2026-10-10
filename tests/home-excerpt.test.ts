@@ -53,7 +53,7 @@ test('a goal shows only its fields, the registered schema and the call that hold
 });
 
 test('a goal with no fields has no excerpt', () => {
-	assert.equal(excerptOf(SOURCE, 'boundaries'), undefined);
+	assert.equal(excerptOf(SOURCE, 'showcase'), undefined);
 });
 
 test('a change in the source marks the same lines of the excerpt', () => {

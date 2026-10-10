@@ -44,6 +44,7 @@ export function changedLines(before: string, after: string): Lines | undefined {
 /** The profile fields each goal shows. A goal without an entry shows the whole file. */
 const EXCERPT_FIELDS: Readonly<Partial<Record<string, readonly string[]>>> = {
 	'source-of-truth': ['inputs', 'outputs'],
+	boundaries: ['guardrails'],
 	experiment: ['type', 'models', 'defaultModel', 'allowModelSelect'],
 };
 

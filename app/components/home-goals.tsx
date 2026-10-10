@@ -79,8 +79,8 @@ export function GoalBlock({
 			data-home-beat={number}
 			style={vars({ '--home-goal-beat': number })}
 		>
-			<Heading className="home-goal-lede" level={2}>
-				{beat.lede}
+			<Heading className="home-stage-headline home-goal-lede" level={2}>
+				<span className="home-stage-line is-quiet">{beat.lede}</span>
 			</Heading>
 			<Text className="home-stage-statement">{withCode(beat.explainer)}</Text>
 			{beat.controls.map(({ label, tokens }) => (
