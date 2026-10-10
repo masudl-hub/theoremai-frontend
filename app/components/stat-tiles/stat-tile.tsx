@@ -70,25 +70,3 @@ export function StatTicks({ count, fill }: { count: number; fill: number }) {
 		</div>
 	);
 }
-
-/** An arc filled to `share` (0 to 1), with a knob at the end. */
-export function StatArc({ share, caption }: { share: number; caption: string }) {
-	const clamped = Math.min(Math.max(share, 0), 1);
-	const angle = Math.PI * (1 - clamped);
-	const knob = { x: 100 + 80 * Math.cos(angle), y: 100 - 80 * Math.sin(angle) };
-	return (
-		<div className="stat-arc">
-			<svg viewBox="0 0 200 110" aria-hidden>
-				<path d="M 20 100 A 80 80 0 0 1 180 100" className="stat-arc-track" pathLength={1} />
-				<path
-					d="M 20 100 A 80 80 0 0 1 180 100"
-					className="stat-arc-fill"
-					pathLength={1}
-					strokeDasharray={`${String(clamped)} 1`}
-				/>
-				<circle cx={knob.x} cy={knob.y} r="9" className="stat-arc-knob" />
-			</svg>
-			<span className="stat-arc-caption">{caption}</span>
-		</div>
-	);
-}

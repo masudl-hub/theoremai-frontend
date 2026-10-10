@@ -1,5 +1,5 @@
 import { BENCHMARKS } from '../lib/home-benchmarks';
-import { StatArc, StatRange, StatTicks, StatTile } from './stat-tiles/stat-tile';
+import { StatRange, StatTicks, StatTile } from './stat-tiles/stat-tile';
 
 const percent = (share: number) => String(Math.round(share * 1000) / 10);
 
@@ -8,6 +8,9 @@ export function GoalStats() {
 	const b = BENCHMARKS;
 	return (
 		<>
+			<StatTile label="Accuracy" value={percent(b.accuracy)} unit="%">
+				<StatTicks count={10} fill={Math.floor(b.accuracy * 10)} />
+			</StatTile>
 			<StatTile label="Average latency" value={String(b.latencyMessageMs)} unit="ms">
 				<StatRange
 					low={b.latencyMessageMs}
@@ -19,11 +22,8 @@ export function GoalStats() {
 			<StatTile label="Boundaries checked" value={String(b.boundariesChecked)}>
 				<StatTicks count={b.boundariesTotal} fill={b.boundariesChecked} />
 			</StatTile>
-			<StatTile label="Accuracy" value={percent(b.accuracy)} unit="%">
-				<StatArc share={b.accuracy} caption="across our datasets" />
-			</StatTile>
 			<StatTile label="False positives" value={percent(b.falsePositive)} unit="%">
-				<StatTicks count={30} fill={Math.max(1, Math.round(b.falsePositive * 30))} />
+				<StatTicks count={100} fill={Math.max(1, Math.round(b.falsePositive * 100))} />
 			</StatTile>
 		</>
 	);
