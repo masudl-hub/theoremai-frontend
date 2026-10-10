@@ -106,9 +106,9 @@
 	stroke: var(--color-border-emphasized);
 }
 
-/* The trace panel's navy for the model (TRACE_HUE.navy in @theoremjs/react). */
+/* The trace charts' own blue: the second step of their ramp (shade1 in trace-patterns.tsx). */
 .stat-dial-far {
-	stroke: light-dark(#152350, #2b4596);
+	stroke: light-dark(#3b5580, #6582ad);
 }
 
 .stat-dial-near {
