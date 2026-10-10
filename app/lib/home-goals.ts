@@ -8,8 +8,8 @@ import { GOALS } from './site-pitch';
 export type GoalId = (typeof GOALS)[number]['id'];
 
 export type GoalTokenId =
-	| 'images-only'
-	| 'limit-by-type'
+	| 'allow-media'
+	| 'one-file'
 	| 'typed-choice'
 	| 'declared-shape'
 	| 'openrouter'
@@ -55,14 +55,14 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 				label: 'Change the contract',
 				tokens: [
 					{
-						id: 'images-only',
-						label: 'Images, not spreadsheets',
-						prompt: 'Now attach the photo, then the CSV file.',
+						id: 'allow-media',
+						label: 'Allow images and voice',
+						prompt: 'Now attach the photo, or record a voice note.',
 					},
 					{
-						id: 'limit-by-type',
-						label: 'A size limit for each file type',
-						prompt: 'Now attach the large photo, then the PDF of the same size.',
+						id: 'one-file',
+						label: 'One file per message',
+						prompt: 'Now attach two photos.',
 					},
 					{
 						id: 'typed-choice',

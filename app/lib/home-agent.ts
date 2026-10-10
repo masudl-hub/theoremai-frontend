@@ -30,11 +30,13 @@ const SYSTEM = [
 	'When a file is attached, say what you can use from it.',
 ].join('\n');
 
-const ACCEPT = ['image/*', 'application/pdf', 'text/csv'];
+const MEDIA = { attachmentsAccept: ['image/*'], voiceAccept: ['audio/*'] };
+const NO_MEDIA = { attachmentsAccept: [], voiceAccept: [] };
+const FILES_PER_MESSAGE = 5;
 const WEATHER_HOSTS = ['api.open-meteo.com'];
 
 const TRIP_STYLES = JSON.stringify({ style: ['budget', 'comfort', 'splurge'] });
-const IMAGE_LIMIT = JSON.stringify({ 'image/*': 512_000 });
+const MEDIA_LIMITS = JSON.stringify({ 'image/*': 512_000, 'audio/*': 2_000_000 });
 const ITINERARY = JSON.stringify({
 	type: 'object',
 	properties: {
@@ -61,7 +63,12 @@ function createHomeDraft(): StudioDraft {
 		...modelsFor({ isOpen: false, isPicked: false }),
 		tools: { ...concierge.tools, t2Loader: '' },
 		toolSpecs: concierge.toolSpecs.filter(({ toolName }) => toolName === 'get_weather'),
-		inputs: { ...concierge.inputs, attachmentsAccept: ACCEPT, voiceAccept: [] },
+		inputs: {
+			...concierge.inputs,
+			...NO_MEDIA,
+			limitsByMimeJson: MEDIA_LIMITS,
+			maxFiles: FILES_PER_MESSAGE,
+		},
 		// The kernel's own defaults, so each boundary token is a change the file shows.
 		guardrails: { ...createBlankDraft().guardrails, allowedHosts: WEATHER_HOSTS },
 	};
@@ -118,15 +125,17 @@ const inputsEdit = (inputs: Partial<StudioDraft['inputs']>): DraftEdit => {
 };
 
 const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
-	'images-only': {
-		isOn: (draft) => sameList(draft.inputs.attachmentsAccept, ['image/*']),
-		on: inputsEdit({ attachmentsAccept: ['image/*'] }),
-		off: inputsEdit({ attachmentsAccept: ACCEPT }),
+	'allow-media': {
+		isOn: (draft) =>
+			sameList(draft.inputs.attachmentsAccept, MEDIA.attachmentsAccept) &&
+			sameList(draft.inputs.voiceAccept, MEDIA.voiceAccept),
+		on: inputsEdit(MEDIA),
+		off: inputsEdit(NO_MEDIA),
 	},
-	'limit-by-type': {
-		isOn: (draft) => draft.inputs.limitsByMimeJson.trim() !== '',
-		on: inputsEdit({ limitsByMimeJson: IMAGE_LIMIT }),
-		off: inputsEdit({ limitsByMimeJson: '' }),
+	'one-file': {
+		isOn: (draft) => draft.inputs.maxFiles === 1,
+		on: inputsEdit({ maxFiles: 1 }),
+		off: inputsEdit({ maxFiles: FILES_PER_MESSAGE }),
 	},
 	'typed-choice': {
 		isOn: (draft) => draft.inputs.slotsJson.trim() !== '',
