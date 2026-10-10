@@ -1,9 +1,5 @@
 import { BARS, BENCHMARKS } from '../lib/home-benchmarks';
-import {
-	BOUNDARIES_CHECKED,
-	BOUNDARY_TOTAL,
-	DETECTOR_BOUNDARY_COUNTS,
-} from '../lib/home-guardrail-checks';
+import { BOUNDARY_TOTAL, CHECKS_BY_DEFAULT, DEFAULT_READS } from '../lib/home-guardrail-checks';
 import { StatDial, StatNote, StatPair, StatTicks, StatTile } from './stat-tiles/stat-tile';
 
 const percent = (share: number) => String(Math.round(share * 1000) / 10);
@@ -23,11 +19,11 @@ export function GoalStats() {
 			<StatTile label="Accuracy" value={percent(b.accuracy)} unit="%">
 				<StatTicks count={BARS} fill={Math.round(b.accuracy * BARS)} />
 			</StatTile>
-			<StatTile label="Boundaries checked" value={String(BOUNDARIES_CHECKED)}>
+			<StatTile label="Checks run by default" value={String(CHECKS_BY_DEFAULT)}>
 				<StatPair
 					first={{
-						weight: DETECTOR_BOUNDARY_COUNTS.length,
-						label: `${String(DETECTOR_BOUNDARY_COUNTS.length)} detectors`,
+						weight: DEFAULT_READS.length,
+						label: `${String(DEFAULT_READS.length)} detectors`,
 					}}
 					second={{ weight: BOUNDARY_TOTAL, label: `${String(BOUNDARY_TOTAL)} boundaries` }}
 				/>
