@@ -81,27 +81,34 @@ const onDial = (share: number) => {
 };
 
 /**
- * A shallow dial. Its track runs the whole scale; a dark stroke runs from the start to `near`, with
- * a knob there, and a second knob marks `far`. Both are shares of the scale (0 to 1).
+ * A shallow dial. The track runs the whole scale. A coloured stroke runs from the start to `far`,
+ * and a white one over it to `near`, each with a dot inside its end. Both are shares of the scale
+ * (0 to 1).
  */
 export function StatDial({ near, far, caption }: { near: number; far: number; caption: string }) {
 	const begin = onDial(0);
 	const end = onDial(1);
 	const path = `M ${String(begin.x)} ${String(begin.y)} A ${String(DIAL.radius)} ${String(DIAL.radius)} 0 0 1 ${String(end.x)} ${String(end.y)}`;
-	const nearKnob = onDial(near);
-	const farKnob = onDial(far);
+	const nearDot = onDial(near);
+	const farDot = onDial(far);
 	return (
 		<div className="stat-dial">
 			<svg viewBox="0 0 360 100" aria-hidden>
 				<path d={path} className="stat-dial-track" />
 				<path
 					d={path}
-					className="stat-dial-fill"
+					className="stat-dial-far"
+					pathLength={1}
+					strokeDasharray={`${String(far)} 1`}
+				/>
+				<path
+					d={path}
+					className="stat-dial-near"
 					pathLength={1}
 					strokeDasharray={`${String(near)} 1`}
 				/>
-				<circle cx={nearKnob.x} cy={nearKnob.y} r="11" className="stat-dial-knob" />
-				<circle cx={farKnob.x} cy={farKnob.y} r="11" className="stat-dial-knob" />
+				<circle cx={farDot.x} cy={farDot.y} r="6" className="stat-dial-dot" />
+				<circle cx={nearDot.x} cy={nearDot.y} r="6" className="stat-dial-dot" />
 			</svg>
 			<span className="stat-dial-caption">{caption}</span>
 		</div>

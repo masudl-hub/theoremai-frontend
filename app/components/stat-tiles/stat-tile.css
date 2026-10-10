@@ -95,24 +95,28 @@
 }
 
 .stat-dial-track,
-.stat-dial-fill {
+.stat-dial-far,
+.stat-dial-near {
 	fill: none;
 	stroke-width: 20;
 	stroke-linecap: round;
 }
 
 .stat-dial-track {
-	stroke: var(--color-data-categorical-orange);
+	stroke: var(--color-border-emphasized);
 }
 
-.stat-dial-fill {
-	stroke: var(--color-on-light);
+/* The trace panel's navy for the model (TRACE_HUE.navy in @theoremjs/react). */
+.stat-dial-far {
+	stroke: light-dark(#152350, #2b4596);
 }
 
-.stat-dial-knob {
-	fill: var(--color-on-light);
-	stroke: var(--color-data-categorical-orange);
-	stroke-width: 3;
+.stat-dial-near {
+	stroke: var(--color-text-primary);
+}
+
+.stat-dial-dot {
+	fill: var(--color-background-body);
 }
 
 .stat-dial-caption {
