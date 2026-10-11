@@ -7,6 +7,8 @@ import { caughtStatus } from '@theoremjs/agents/host';
 import type { TheoremReplay, TheoremTurnRequest } from '@theoremjs/react';
 import {
 	checkRequest,
+	pageToolResultSchema,
+	readBody,
 	steerUnitOf,
 	theoremHostCallRequestSchema,
 	theoremInvokeRequestSchema,
@@ -18,6 +20,7 @@ import type { SiteEnv } from '../../cloudflare';
 import { badRequestJson, errorMessage, ndjsonEventStream } from './ndjson-stream';
 import { takeAllowance, visitorAddress } from './studio-allowance';
 import { allowanceStore } from './studio-decide-allowance';
+import { recordStudioSession, sessionResponse, studioSession } from './studio-session';
 import { studioSteerInbox } from './studio-steer';
 import { streamStudioCall, streamStudioInvoke, streamStudioTurn } from './studio-turn';
 import { getKernelPackageVersion, getSubmoduleHead } from './theoremai';
@@ -57,40 +60,54 @@ export function kernelInfo(): Response {
 }
 
 /** The paused calls a turn walks away from, each with the replay the browser sent for it. */
-function walkedAwayCalls(turn: TheoremTurnRequest): { callId: string; replay: TheoremReplay }[] {
-	return (turn.abandon ?? []).map((callId) => {
-		const replay = turn.replay?.abandon?.[callId];
+function walkedAwayCalls(
+	turn: TheoremTurnRequest,
+): { callId: string; operationId: string; replay: TheoremReplay }[] {
+	return (turn.abandon ?? []).map(({ callId, operationId }) => {
+		const replay = turn.replay?.abandon?.[operationId];
 		if (!replay) {
 			// lexicon-exempt: internal diagnostic; the user reads error.request
 			throw new TheoremError('request', `turn: no replay for walked-away call ${callId}`);
 		}
-		return { callId, replay };
+		return { callId, operationId, replay };
 	});
 }
 
 /** POST /api/studio/turn — NDJSON turn events. */
 export async function studioTurn(request: Request, env: SiteEnv): Promise<Response> {
 	try {
-		const draft = await request.json<StudioDraft>();
+		const draft = (await readBody(request, z.unknown())) as StudioDraft;
+		const boundary = await studioSession(request);
 		const turn = checkRequest(theoremTurnRequestSchema, draft, 'request body');
-		return ndjsonEventStream(
-			streamStudioTurn({
-				profile: draft.profile,
-				customTools: draft.customTools ?? [],
-				structured: draft.structured,
-				dependencies: draft.dependencies,
-				input: turn.input,
-				providerState: turn.providerState,
-				sessionPermissions: turn.replay?.sessionPermissions,
-				abandon: walkedAwayCalls(turn),
-				model: turn.model,
-				effort: turn.effort,
-				signal: request.signal,
-				env,
-				onAgentCall: agentCallAllowance(request, env),
-				steer: studioSteerInbox(env.STEER_INBOX),
-			}),
-			draft.profile.lexicon,
+		return sessionResponse(
+			boundary,
+			ndjsonEventStream(
+				recordStudioSession(
+					boundary,
+					streamStudioTurn({
+						profile: draft.profile,
+						customTools: draft.customTools ?? [],
+						structured: draft.structured,
+						dependencies: draft.dependencies,
+						input: turn.input,
+						providerState: await boundary.prepareProviderState(
+							turn.providerState,
+							turn.input.history,
+						),
+						sessionPermissions: turn.replay?.sessionPermissions,
+						abandon: walkedAwayCalls(turn),
+						model: turn.model,
+						effort: turn.effort,
+						signal: request.signal,
+						execution: boundary.toolExecution,
+						pageExecution: boundary.pageExecution,
+						env,
+						onAgentCall: agentCallAllowance(request, env),
+						steer: studioSteerInbox(env.STEER_INBOX),
+					}),
+				),
+				draft.profile.lexicon,
+			),
 		);
 	} catch (err) {
 		return badRequestJson(err);
@@ -100,19 +117,29 @@ export async function studioTurn(request: Request, env: SiteEnv): Promise<Respon
 /** POST /api/studio/invoke — NDJSON events for the user's answer to a paused call. */
 export async function studioInvoke(request: Request, env: SiteEnv): Promise<Response> {
 	try {
-		const draft = await request.json<StudioDraft>();
+		const draft = (await readBody(request, z.unknown())) as StudioDraft;
+		const boundary = await studioSession(request);
 		const answer = checkRequest(theoremInvokeRequestSchema, draft, 'request body');
-		return ndjsonEventStream(
-			streamStudioInvoke({
-				profile: draft.profile,
-				customTools: draft.customTools ?? [],
-				structured: draft.structured,
-				dependencies: draft.dependencies,
-				answer,
-				env,
-				onAgentCall: agentCallAllowance(request, env),
-			}),
-			draft.profile.lexicon,
+		return sessionResponse(
+			boundary,
+			ndjsonEventStream(
+				recordStudioSession(
+					boundary,
+					streamStudioInvoke({
+						profile: draft.profile,
+						customTools: draft.customTools ?? [],
+						structured: draft.structured,
+						dependencies: draft.dependencies,
+						answer,
+						signal: request.signal,
+						execution: boundary.toolExecution,
+						pageExecution: boundary.pageExecution,
+						env,
+						onAgentCall: agentCallAllowance(request, env),
+					}),
+				),
+				draft.profile.lexicon,
+			),
 		);
 	} catch (err) {
 		return badRequestJson(err);
@@ -149,7 +176,10 @@ async function takeCall(request: Request, env: SiteEnv): Promise<void> {
 export async function studioCall(request: Request, env: SiteEnv): Promise<Response> {
 	let draft: (StudioDraft & { sessionPermissions?: unknown }) | undefined;
 	try {
-		draft = await request.json<StudioDraft & { sessionPermissions?: unknown }>();
+		draft = (await readBody(request, z.unknown())) as StudioDraft & {
+			sessionPermissions?: unknown;
+		};
+		const boundary = await studioSession(request);
 		const call = checkRequest(theoremHostCallRequestSchema, draft, 'request body');
 		const sessionPermissions = checkRequest(
 			pagePermissions,
@@ -158,18 +188,26 @@ export async function studioCall(request: Request, env: SiteEnv): Promise<Respon
 		);
 		// Counted only once the request is one a host would run.
 		await takeCall(request, env);
-		return ndjsonEventStream(
-			streamStudioCall({
-				profile: draft.profile,
-				customTools: draft.customTools ?? [],
-				dependencies: draft.dependencies,
-				call,
-				sessionPermissions,
-				signal: request.signal,
-				env,
-				onAgentCall: agentCallAllowance(request, env),
-			}),
-			draft.profile.lexicon,
+		return sessionResponse(
+			boundary,
+			ndjsonEventStream(
+				recordStudioSession(
+					boundary,
+					streamStudioCall({
+						profile: draft.profile,
+						customTools: draft.customTools ?? [],
+						dependencies: draft.dependencies,
+						call,
+						execution: boundary.toolExecution,
+						pageExecution: boundary.pageExecution,
+						sessionPermissions,
+						signal: request.signal,
+						env,
+						onAgentCall: agentCallAllowance(request, env),
+					}),
+				),
+				draft.profile.lexicon,
+			),
 		);
 	} catch (err) {
 		if (!(err instanceof TheoremError) || err.kind === 'request') return badRequestJson(err);
@@ -184,7 +222,11 @@ export async function studioCall(request: Request, env: SiteEnv): Promise<Respon
 export async function studioSteer(request: Request, env: SiteEnv): Promise<Response> {
 	try {
 		// The inbox the server opened for the turn is the turn id the browser steers.
-		const steer = checkRequest(theoremSteerRequestSchema, await request.json(), 'request body');
+		const steer = checkRequest(
+			theoremSteerRequestSchema,
+			await readBody(request, z.unknown()),
+			'request body',
+		);
 		if (!(await studioSteerInbox(env.STEER_INBOX).enqueue(steer.turnId, steerUnitOf(steer)))) {
 			// lexicon-exempt: internal diagnostic; the user reads session.turn_ended
 			throw new TheoremError('request', 'steer: no open run has this inbox', {
@@ -194,5 +236,16 @@ export async function studioSteer(request: Request, env: SiteEnv): Promise<Respo
 		return Response.json({ ok: true });
 	} catch (err) {
 		return Response.json({ error: errorMessage(err) }, { status: 400 });
+	}
+}
+
+export async function studioPageResult(request: Request): Promise<Response> {
+	try {
+		const boundary = await studioSession(request);
+		const result = await readBody(request, pageToolResultSchema);
+		await boundary.answerPageResult(result);
+		return sessionResponse(boundary, Response.json({ accepted: true }));
+	} catch (error) {
+		return badRequestJson(error);
 	}
 }

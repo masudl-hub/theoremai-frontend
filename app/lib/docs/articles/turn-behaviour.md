@@ -1,6 +1,6 @@
 ---
 title: Setting turn behaviour
-updated: 2026-10-08
+updated: 2026-10-11
 summary: Continue an early-stopped reply, and choose if a turn takes new messages.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/stop.ts, src/kernel/registry/resolve.ts
@@ -130,6 +130,22 @@ The shipper sends a correction while the desk still works. Your `onStage` handle
 A refused inject does not stop the turn. The `stage` event reports it in `stageWarnings` with the code `inject_not_allowed`.
 
 A text profile also shows `allowSteering` in its interface, so that the chat can offer the user a way to steer ([Building the interface](/docs/interface)).
+
+### 5. Choose what the last step does
+
+`maxSteps` limits the model calls in one turn. The last call can still ask for tools. Then the tools run, no call is left to read their results, and the turn ends with no reply. Its `done` has the stop kind `step_limit`.
+
+Set `atStepLimit` to `'answer'` to get a reply instead. Theorem then sends the last call without tools, so the model writes its reply from the results that the turn has.
+
+```ts frame=profile:text
+turnBehaviour: {
+	atStepLimit: 'answer',
+},
+```
+
+- Only a text profile takes `atStepLimit`.
+- Leave it out, or set it to `'stop'`, to keep tools on the last call.
+- A profile with `atStepLimit: 'answer'` and `maxSteps: 1` fails with a `config` error, because no call could use a tool.
 
 ## Fix a refused continue or inject
 

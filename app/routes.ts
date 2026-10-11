@@ -25,6 +25,7 @@ export default [
 	route('api/studio/turn', 'routes/api.studio.turn.ts'),
 	route('api/studio/turn/steer', 'routes/api.studio.turn.steer.ts'),
 	route('api/studio/invoke', 'routes/api.studio.invoke.ts'),
+	route('api/studio/page-result', 'routes/api.studio.page-result.ts'),
 	route('api/studio/call', 'routes/api.studio.call.ts'),
 	route('api/studio/decide', 'routes/api.studio.decide.ts'),
 	route('api/studio/probe', 'routes/api.studio.probe.ts'),

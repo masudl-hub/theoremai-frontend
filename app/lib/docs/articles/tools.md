@@ -1,6 +1,6 @@
 ---
 title: Registering tools
-updated: 2026-10-09
+updated: 2026-10-10
 summary: Give an agent a tool that runs your code or calls a URL, MCP or agent.
 entry: src/kernel/tools/mod.ts
 covers: src/kernel/tools, src/kernel/auth
@@ -247,6 +247,14 @@ A call that must ask is a **gate**. The turn ends with `stop.kind` set to `gate`
 
 After the answer, your server runs the call again with the answer ([Running a turn](/docs/runner), step 5). The chat component does all of this for you ([Building the interface](/docs/interface)).
 
+Saved tool outcomes bypass preparation hooks during replay. The kernel checks current tool eligibility before returning them.
+A trusted execution coordinator must check current resource access before disclosing saved results.
+New claims retain accepted intent and final prepared input as `SavedToolInvocation`.
+For browser tools, the server issues a dispatch grant after that claim. The callback receives the final prepared input.
+The browser returns its result against the grant. Old page gates do not authorize callbacks.
+Use this evidence to authorize access to the affected resource.
+With a coordinator, prepared input must be JSON-compatible before dispatch.
+
 Your own code can make the same decision for each call. A tool can set `preTool`, and a request can set `onStage`. Each one can refuse the call, change the arguments or ask for a yes.
 
 ### 7. Load a tool only when the turn needs it
@@ -377,13 +385,15 @@ Each rule below stops one known attack. You set nothing to get them.
 
 An OAuth token expires. Theorem refreshes a token that is within 30 seconds of its expiry, before the call. It saves the new credential to your `credentials` object first, then runs the call. Calls that find the same old token share one refresh.
 
-If the service refuses the credential, the call is a gate again, and the user signs in again.
+Before dispatch, a refused credential can create another sign-in gate.
+After dispatch, a refusal retains the claim or an uncertain outcome. It does not restore approval.
+Check the destination before creating another action.
 
 ### Sign in from your own code
 
 A `function` tool can take the same `auth`. Its handler then receives `ctx.signedInFetch(url, request)`. This function sends the credential to that URL only, so the handler never sees the token.
 
-If the service refuses the credential, `signedInFetch` throws `CredentialRefusedError`, from `@theoremjs/agents/kernel`. A handler that catches its own errors must throw this one again. Theorem then starts a new sign-in.
+If the service refuses the credential, `signedInFetch` throws `CredentialRefusedError`, from `@theoremjs/agents/kernel`. A handler that catches its own errors must throw this one again. Before dispatch, Theorem can request sign-in. After dispatch, reconcile the uncertain operation before another action.
 
 ## Read a failed call
 

@@ -254,11 +254,11 @@ function textArg(value: unknown): string | undefined {
 	return typeof value === 'string' && value.trim() ? value : undefined;
 }
 
-/** thirty's page tools: open a path on this site, or focus and mark something already showing. */
+/** The page answers a highlight after the relay checks its call. */
 async function applyPageTool(
-	navigate: NavigateFunction,
 	client: LiveSessionClient,
 	callId: string,
+	operationId: string,
 	name: string,
 	args: Record<string, unknown>,
 ): Promise<void> {
@@ -268,6 +268,8 @@ async function applyPageTool(
 		const found = target ? highlightBlock(target, label) : false;
 		await client.executeToolOnRelay({
 			callId,
+			operationId,
+			decision: 'approve',
 			output: {
 				success: found,
 				highlighted: target,
@@ -276,19 +278,25 @@ async function applyPageTool(
 		});
 		return;
 	}
-	if (name === 'navigate') {
-		const to = textArg(args.to);
-		const resolved = to ? resolveSitePath(to) : undefined;
-		if (resolved?.ok) {
-			// flushSync: the call's level updates are continuous, and a transition navigation never commits.
-			void navigate(resolved.href, { flushSync: true });
-			if (resolved.hash) {
-				const pathname = resolved.href.split('#')[0] ?? resolved.href;
-				highlightWhenPresent(resolved.hash, pathname);
-			}
-		}
+}
+
+function applyNavigation(navigate: NavigateFunction, output: unknown): void {
+	if (
+		typeof output !== 'object' ||
+		output === null ||
+		!('success' in output) ||
+		output.success !== true ||
+		!('navigatedTo' in output) ||
+		typeof output.navigatedTo !== 'string'
+	)
+		return;
+	const resolved = resolveSitePath(output.navigatedTo);
+	if (!resolved.ok) return;
+	void navigate(resolved.href, { flushSync: true });
+	if (resolved.hash) {
+		const pathname = resolved.href.split('#')[0] ?? resolved.href;
+		highlightWhenPresent(resolved.hash, pathname);
 	}
-	await client.executeToolOnRelay({ callId });
 }
 
 /** The kernel's line for a failure. The diagnostic stays in the console. */
@@ -390,10 +398,16 @@ async function answerSurface(
 	name: string,
 	args: Record<string, unknown>,
 	callId: string,
+	operationId: string,
 ): Promise<void> {
 	const output = await th30Surfaces.answer(name, args, callId);
 	try {
-		await clientRef.current?.executeToolOnRelay({ callId, output });
+		await clientRef.current?.executeToolOnRelay({
+			callId,
+			operationId,
+			decision: 'approve',
+			output,
+		});
 	} catch {
 		th30Surfaces.settled(callId, 'undelivered');
 	}
@@ -409,6 +423,7 @@ function callCallbacks(
 	set: CallSetters,
 	onToolCall: CallOptions['onToolCall'],
 	captionsRef: RefObject<CaptionLog>,
+	navigate: NavigateFunction,
 ): Pick<
 	CallOptions,
 	'onStatusChange' | 'onError' | 'onVolumeLevel' | 'onToolCall' | 'onTurnEvent' | 'onTranscript'
@@ -439,11 +454,13 @@ function callCallbacks(
 			if (!isCurrent()) return;
 			captionsRef.current.applyTranscript(text, isUser, meta?.interim);
 		},
-		// Th30's tools never gate. The relay runs the server ones; the page answers look and act.
+		// Page callbacks run only after the relay returns their page gate.
 		onToolCall,
 		onTurnEvent: (event) => {
-			if (event.type !== 'tool') return;
-			if (isCurrent()) set.noteTool(event.tool);
+			if (event.type !== 'tool' || !isCurrent()) return;
+			set.noteTool(event.tool);
+			if (event.tool.name === 'navigate' && event.tool.phase === 'complete')
+				applyNavigation(navigate, event.tool.output);
 			if (event.tool.phase === 'cancel') th30Surfaces.settled(event.tool.callId, 'cancelled');
 		},
 	};
@@ -499,15 +516,19 @@ async function startCall({
 			greet,
 			set,
 			async (name, args, meta) => {
+				const active = clientRef.current;
+				if (!active || active !== client) return;
+				const checked = await active.executeToolOnRelay(meta);
+				if (clientRef.current !== active) return;
+				if (checked.status !== 'gated' || checked.gate.kind !== 'page') return;
 				if (th30Surfaces.isSurfaceTool(name)) {
-					await answerSurface(clientRef, name, args, meta.callId);
+					await answerSurface(clientRef, name, args, meta.callId, meta.operationId);
 					return;
 				}
-				const current = clientRef.current;
-				if (!current) return;
-				await applyPageTool(navigate, current, meta.callId, name, args);
+				await applyPageTool(active, meta.callId, meta.operationId, name, args);
 			},
 			captionsRef,
+			navigate,
 		),
 	});
 	clientRef.current = client;

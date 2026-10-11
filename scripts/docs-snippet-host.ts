@@ -27,9 +27,10 @@ export declare const input: unknown;
 export declare const history: TurnHistoryMessage[];
 export declare const manifestBase64: string;
 export declare const gateId: string;
+export declare const operationId: string;
 export declare const onEvent: (event: unknown) => void;
 export declare const transport: {
-	invoke(request: { gateId: string; decision: 'approve' | 'deny' }, onEvent: (event: unknown) => void): Promise<void>;
+	invoke(request: import('@theoremjs/react').TheoremInvokeRequest, onEvent: (event: unknown) => void): Promise<void>;
 };
 export declare const request: TurnRequest;
 export declare const secrets: { oauthStateSecret: string };

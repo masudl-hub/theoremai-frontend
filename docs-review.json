@@ -80,7 +80,7 @@
 		}
 	},
 	"interface": {
-		"reviewed": "2026-10-08",
+		"reviewed": "2026-10-10",
 		"files": {
 			"src/interface/blocks.ts": "bcc99faad945d422cfef03cfd1829c104ea720d8",
 			"src/interface/composer-actions.ts": "220d00650c649be934c20b29d1632260970f5e62",
@@ -107,7 +107,7 @@
 		}
 	},
 	"models": {
-		"reviewed": "2026-10-09",
+		"reviewed": "2026-10-10",
 		"files": {
 			"src/kernel/registry/catalog.ts": "084866baf0ca7dfd1eabb36f705b9096a412321b",
 			"src/kernel/registry/profiles.ts": "c225c28dad713358c5798ee7a74abc2d8a5d9580",
@@ -144,7 +144,6 @@
 			"src/providers/openrouter/resolve-api-key.ts": "6487c24fd3c92c049a3e70c9c974875f3c54df92",
 			"src/providers/openrouter/speech.ts": "3adf239e77ef5dfb3201dea4b69da7fa723e1a5c",
 			"src/providers/openrouter/transport.ts": "9faf236a37a89924f67053420d6bc2349a5a373c",
-			"src/providers/shared/builtin-wire.ts": "38980c48cecf29624fef383befc6b306bbf0dfb4",
 			"src/providers/shared/pcm.ts": "cf9d3abc01ed787e38c02399e4584d3ad7f7bcb8",
 			"src/providers/shared/response-identity.ts": "5fb1166a5b17477e3131bb61344565b2a179cac5",
 			"src/providers/shared/retry.ts": "8666a644505d27e1c9551615d5f4f4bb155d512a",
@@ -210,7 +209,7 @@
 		}
 	},
 	"tools": {
-		"reviewed": "2026-10-09",
+		"reviewed": "2026-10-10",
 		"files": {
 			"src/kernel/auth/credential-source.ts": "b791a1d6f39ce5b5e048c83f3db108c68c8baf6d",
 			"src/kernel/auth/crypto.ts": "5e7511b45f27b5c84307f141c303047186b0e28c",
@@ -221,6 +220,7 @@
 			"src/kernel/auth/types.ts": "4f2eaeacf9724bb1db1e10e6bee81cf0613784f0",
 			"src/kernel/tools/activity-label.ts": "1a5522f63d0ab73d95cbdf41695038d3a39e5b66",
 			"src/kernel/tools/agent.ts": "1455781cb644f98b3f7cdd399b27263949d5bd4b",
+			"src/kernel/tools/coordinate.ts": "0ae560846d66a86ffea4f2d825399baa921c5f07",
 			"src/kernel/tools/events.ts": "3bf9f7dd13a76576882e71c797c489c2f8c44fb5",
 			"src/kernel/tools/execute.ts": "b6f505a4069f50b6ef4c5bcf00b30048978b8afc",
 			"src/kernel/tools/gate-answer.ts": "070b0b4445bed815835bc2bcdf839026b43ac4ba",
@@ -229,6 +229,7 @@
 			"src/kernel/tools/mcp-sessions.ts": "f8f250d1d866ba8037e4de3e5e1b17745c06648c",
 			"src/kernel/tools/mod.ts": "03cf381debdaaf75b7842651f00046fe1427254c",
 			"src/kernel/tools/model-text.ts": "6a30718496f0f443626ced1f62ea005008181bd1",
+			"src/kernel/tools/operation.ts": "8498e07a7db2c0faa861f67e9435fa11994ae621",
 			"src/kernel/tools/page-answer.ts": "cce6789e48547a69b8e92313d89a8d1d48fab8e5",
 			"src/kernel/tools/permission.ts": "9fbcb6ac4cda38e715e3ca299f61976e87579c7f",
 			"src/kernel/tools/project.ts": "56d5b865fca0470b3315b5f77b24653a50d23501",

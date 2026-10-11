@@ -19,15 +19,27 @@ import {
 	TheoremError,
 } from '@theoremjs/agents';
 import {
+	createMemorySessionStore,
+	createTheoremSessionBoundary,
 	type LiveOpenMessage,
-	liveSessionOpen,
 	parseLiveOpenMessage,
+	type SessionBoundaryOptions,
+	type TheoremSessionBoundary,
 } from '@theoremjs/react/server';
 import type { StudioLiveDraftMessage, StudioTraceLine } from '@theoremjs/studio';
 import { attachStudioLiveSession } from '@theoremjs/studio/browser';
 import { ensureKernelInitialized } from './kernel-init';
 import { studioScope } from './studio-register';
 import { studioProviders, studioTraces } from './studio-turn';
+
+const liveSessionStore = createMemorySessionStore();
+
+export type LiveRelayOptions = Partial<
+	Pick<
+		SessionBoundaryOptions,
+		'session' | 'sessionStore' | 'gateTtlMs' | 'operationRetentionMs' | 'sessionLimits'
+	>
+>;
 
 export type LiveRelayEnv = {
 	GEMINI_API_KEY_FREE_A?: string;
@@ -77,13 +89,19 @@ async function openLiveSession(
 	metadata: Record<string, string>,
 	open: LiveOpenMessage,
 	openWebSocket: (url: string) => Promise<WebSocket>,
+	boundary: TheoremSessionBoundary,
 ): Promise<LiveSession> {
 	const { vault } = studioProviders(env, scope.profiles.get(profileId), scope.providers);
 	if (!vault || !Object.values(vault).some(Boolean))
 		throw new TheoremError('auth', 'No demo Gemini credentials configured.'); // lexicon-exempt: internal diagnostic
 	return scope.runSession(
-		{ ...liveSessionOpen(open), profile: profileId, metadata },
-		{ vault, openWebSocket },
+		{ ...(await boundary.prepareLiveOpen(open)), profile: profileId, metadata },
+		{
+			vault,
+			openWebSocket,
+			execution: boundary.toolExecution,
+			pageExecution: boundary.pageExecution,
+		},
 	);
 }
 
@@ -156,6 +174,7 @@ async function relayLiveSession(
 	serverWs: WebSocket,
 	profileParam: string | null,
 	env: LiveRelayEnv,
+	boundary: TheoremSessionBoundary,
 ): Promise<void> {
 	// The call's id, picked here and sent to the browser on `ready`.
 	const sessionId = globalThis.crypto.randomUUID();
@@ -193,6 +212,7 @@ async function relayLiveSession(
 			traces.metadata,
 			open,
 			openCloudflareUpstreamWebSocket,
+			boundary,
 		);
 	} catch (err) {
 		traces.close();
@@ -209,11 +229,20 @@ async function relayLiveSession(
 	// A queued client call waits behind tryAgent (up to 60s), so the default 20s watchdog is too short.
 	void attachStudioLiveSession(serverWs, session, profileId, sessionId, traces, lexicon, {
 		clientCallTimeoutMs: 90_000,
+		pageResult: (result) => boundary.answerPageResult(result),
+		beforeEvent: async (event) => {
+			if ((event.type === 'provider_checkpoint' || event.type === 'done') && event.providerState)
+				await boundary.recordCheckpoint(event.providerState);
+		},
 	});
 }
 
 /** Handle incoming WebSocket upgrade request and spawn duplex relay pipe. */
-export function handleLiveRelay(request: Request, env: LiveRelayEnv): Response {
+export async function handleLiveRelay(
+	request: Request,
+	env: LiveRelayEnv,
+	options: LiveRelayOptions = {},
+): Promise<Response> {
 	if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') {
 		return new Response('WebSocket upgrade endpoint for THEOREM Gemini Live relay.', {
 			status: 426,
@@ -222,12 +251,20 @@ export function handleLiveRelay(request: Request, env: LiveRelayEnv): Response {
 	}
 
 	ensureKernelInitialized();
+	const boundary = await createTheoremSessionBoundary({
+		...options,
+		request,
+		sessionStore: options.sessionStore ?? liveSessionStore,
+	});
 
-	// Cloudflare Workers duplex pair for browser ↔ worker relay. Upgrade first: a browser
-	// WebSocket never reads an HTTP error body, so every failure travels as an error envelope.
+	// Conversation authority is checked before upgrade. Later session failures use socket envelopes.
 	const [clientWs, serverWs] = Object.values(new WebSocketPair());
 	serverWs.accept();
-	void relayLiveSession(serverWs, new URL(request.url).searchParams.get('profile'), env);
+	void relayLiveSession(serverWs, new URL(request.url).searchParams.get('profile'), env, boundary);
 
-	return new Response(null, { status: 101, webSocket: clientWs });
+	return new Response(null, {
+		status: 101,
+		webSocket: clientWs,
+		headers: boundary.setCookie ? { 'set-cookie': boundary.setCookie } : undefined,
+	});
 }

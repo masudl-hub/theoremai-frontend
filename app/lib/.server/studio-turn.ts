@@ -82,35 +82,51 @@ export function studioProviders(
 }
 
 /** What a run needs beside its request: the site's keys, and the check each agent call passes first. */
-export type RunHost = { env?: StudioTurnEnv; onAgentCall?: StudioRuntime['onAgentCall'] };
+export type RunHost = {
+	env?: StudioTurnEnv;
+	onAgentCall?: StudioRuntime['onAgentCall'];
+	execution?: StudioRuntime['execution'];
+	pageExecution?: StudioRuntime['pageExecution'];
+};
 
-function runtime({ env = {}, onAgentCall }: RunHost): StudioRuntime {
+function runtime({ env = {}, onAgentCall, execution, pageExecution }: RunHost): StudioRuntime {
 	return {
 		mode: 'demo',
 		resolveHost,
 		hostOptions: (profile) => studioProviders(env, profile),
 		onAgentCall,
+		execution,
+		pageExecution,
 	};
 }
 
 export function streamStudioTurn({
 	env,
 	onAgentCall,
+	execution,
+	pageExecution,
 	...args
 }: Omit<Parameters<typeof sharedTurn>[0], 'runtime'> & RunHost) {
-	return sharedTurn({ ...args, runtime: runtime({ env, onAgentCall }) });
+	return sharedTurn({ ...args, runtime: runtime({ env, onAgentCall, execution, pageExecution }) });
 }
 export function streamStudioInvoke({
 	env,
 	onAgentCall,
+	execution,
+	pageExecution,
 	...args
 }: Omit<Parameters<typeof sharedInvoke>[0], 'runtime'> & RunHost) {
-	return sharedInvoke({ ...args, runtime: runtime({ env, onAgentCall }) });
+	return sharedInvoke({
+		...args,
+		runtime: runtime({ env, onAgentCall, execution, pageExecution }),
+	});
 }
 export function streamStudioCall({
 	env,
 	onAgentCall,
+	execution,
+	pageExecution,
 	...args
 }: Omit<Parameters<typeof sharedCall>[0], 'runtime'> & RunHost) {
-	return sharedCall({ ...args, runtime: runtime({ env, onAgentCall }) });
+	return sharedCall({ ...args, runtime: runtime({ env, onAgentCall, execution, pageExecution }) });
 }

@@ -1,6 +1,6 @@
 ---
 title: Binding models
-updated: 2026-10-09
+updated: 2026-10-10
 summary: Register a provider, bind a model to it, pick one per request, and fix failed bindings.
 entry: src/providers/mod.ts
 covers: src/providers, src/kernel/registry/vault.ts, src/kernel/registry/catalog.ts, src/kernel/registry/profiles.ts, src/kernel/schema.ts
@@ -94,6 +94,7 @@ const hostOptions = {
 ```
 
 A vault entry is a string, a JSON credential object, or a resolver function.
+Each entry must be an own property of the vault. Theorem ignores inherited entries.
 A resolver can return a promise. Theorem calls it when the adapter needs the credential.
 The adapter checks the resolved value. The host owns caching and refresh.
 Pass the same host options to `runSession` or `runDecision` for those profile types ([Running a turn](/docs/runner)).
@@ -128,6 +129,15 @@ allowModelSelect: true,
 ```note
 A live session takes no `model`. It always runs `defaultModel`.
 ```
+
+## Bound provider operations
+
+Set `limits` in provider host options when your service needs tighter deadlines or response budgets.
+The defaults allow 120 seconds per operation and 30 seconds to open a live connection.
+Creation, credential resolution, and retries share the deadline. HTTP retries also share the byte budget.
+Normalized limits count media, tool arguments, and native state as well as text.
+Limits remain host code. They do not enter a model binding or profile.
+External adapters must use the injected transport and signal to receive these protections.
 
 ## Key slot rules
 
@@ -166,8 +176,14 @@ A declaration records verified features. It does not add protocol behavior to th
 ### Implement a different protocol
 
 Implement the public `ProviderAdapter` contract when the endpoint requires different request or response formats.
+Use `verifyProviderAdapter` from `@theoremjs/agents/providers/testing` to test it with offline fixtures.
+The report separates passing fixtures, failed fixtures, and unverified checks.
+Missing evidence does not verify a capability declaration.
 Declare schemas, capabilities, request validation, and supported operations. Register the adapter under your own provider ID.
 Its executable code remains on the host. Profiles contain only its ID and JSON settings.
+An adapter can be an object or a class. The kernel preserves the receiver of each method.
+Each run captures the selected definition. Registration changes apply to later runs.
+Keep private adapter state stable during a run. The kernel does not copy that state.
 The kernel retains authority over guardrails, approvals, and client-tool execution.
 
 A `speech` profile with `format: 'mp3'` needs a model that can make mp3. Use an OpenRouter model. Gemini speech returns `pcm`.
@@ -179,9 +195,13 @@ The `.model()` helper and profile registration validate options with the selecte
 Unknown options fail validation.
 
 - `openRouterAdapter`: `cache` sets prompt caching, `{ mode: 'automatic' }` or `{ mode: 'system' }`, with an optional `ttl` of `5m` or `1h`.
-- `googleAdapter`: `store`, `persistViaInteractionId` and `googleMapsLocation`.
+- `googleAdapter`: `store` and `persistViaInteractionId`.
 - `openAIChat`: `server`.
 - `typesafeAdapter`: none.
+
+Provider built-in tools also belong to the adapter. The adapter validates their arguments and encodes them for its protocol.
+For Google Maps, pass the location through `builtInArgs.googleMaps.location` on the request.
+Google Live rejects built-in arguments.
 
 ## Keep Google interaction state
 

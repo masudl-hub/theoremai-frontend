@@ -1,6 +1,6 @@
 ---
 title: Getting started
-updated: 2026-10-09
+updated: 2026-10-10
 summary: Write a profile, run a turn, and see Theorem refuse what it doesn't state.
 entry: src/kernel/engine/runner/mod.ts
 covers: mod.ts, src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -137,6 +137,7 @@ registerProfile(desk);
 
 Keep credentials outside the profile. Its model names a **key slot**, here `openrouter`.
 Fill this slot in a **vault**, an object that maps slot names to credential values or resolver functions.
+Supply each slot as an own property. Theorem ignores inherited credentials and resolvers.
 
 You pass the vault when you run a turn. The profile can then stay in your repository, and the key stays in your environment.
 

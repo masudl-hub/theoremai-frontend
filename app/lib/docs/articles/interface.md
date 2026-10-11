@@ -1,6 +1,6 @@
 ---
 title: Building the interface
-updated: 2026-10-08
+updated: 2026-10-10
 summary: Serve one profile from your server and show a chat that reads it.
 entry: src/interface/mod.ts
 covers: src/interface
@@ -92,7 +92,7 @@ The desk takes a payment only after the user approves it. A tool that waits for 
 
 ```ts frame=statements
 await transport.invoke(
-	{ gateId, decision: 'approve' },
+	{ gateId, operationId, decision: 'approve' },
 	onEvent,
 )
 ```
@@ -102,6 +102,7 @@ The client answers with `POST /invoke`. The server runs the tool and streams the
 Field | Required | What it is
 --- | --- | ---
 `gateId` | Yes | The call id of the tool
+`operationId` | Yes | The kernel-issued action id from the gate event
 `decision` | Yes | `approve` or `deny`
 `input` | No | The edit that the user made to the tool input
 `secret` | No | A key that the user typed at a sign-in prompt
@@ -114,7 +115,9 @@ A user does not always answer an approval immediately. A gate waits `gateTtlMs` 
 
 A new message while a gate waits walks away from it. The client sends the message to `/turn` with `abandon`, which names the waiting calls. The server settles each call as abandoned and then runs the new turn.
 
-A request can end before it settles a call, for example when the client disconnects. The server then puts the call back to wait, so the user can answer again. See [Running a turn](/docs/runner).
+A disconnected request can leave an accepted answer ready if dispatch did not start.
+After dispatch, the server retains the claim or an uncertain outcome. It does not restore approval.
+Check the destination before creating a replacement action. See [Running a turn](/docs/runner).
 
 ## Build your own screen
 
@@ -208,9 +211,83 @@ The handler keeps the open gates and the tool credentials of each session. Use `
 
 `sessionStore`, `credentialStore` and `steerInbox` keep open gates, tool credentials and queued steers. Their default is process memory.
 
+The handler applies finite `sessionLimits` before it claims a new tool action. Full storage refuses new dispatch; unresolved actions remain protected.
+Set `operationRetentionMs` to choose how long the handler retains settled outcomes. The default is 24 hours from settlement.
+Gates and outcomes store absolute deadlines. Changing the handler policy does not extend issued gates or shorten retained outcomes.
+
 ```warning
 If requests can reach different instances of your server, pass stores that every instance shares. A gate in the memory of one instance is not visible to the others.
 ```
+
+The session store loads a snapshot with `revision` and `state`.
+Its `compareAndSwap(sessionId, expectedRevision, next)` method must compare and replace state in one atomic storage operation.
+A null revision creates an absent session. A matching revision replaces the state and returns a new opaque revision.
+On conflict, return `{ written: false }`. The handler reads again before it claims an approval.
+Do not implement this method as a separate read and write.
+
+Each action receives a kernel-issued `operationId`. The provider's `callId` identifies the upstream call.
+An approval must preserve both values from the gate event. The built-in clients do this for you.
+The live client checks each call with its relay before invoking page code. Permission and sign-in gates come first.
+The server claims the action before it issues a browser dispatch grant.
+The grant supplies the final checked arguments. The callback returns its result with both IDs and the grant ID.
+If a check changes input before confirmation, the approval shows those prepared arguments.
+An unchanged approval uses them. Edited approval runs the check again.
+Saved transcripts and old page gates do not run callbacks. Cached terminal replay issues no new grant.
+The built-in chat and live clients follow this order.
+A new action gets a new operation ID when its provider reuses a call ID.
+Historical events remain readable. An event without an operation ID cannot authorize a new action.
+An older pending gate does not prove that its body never ran. Verify the destination before restoring execution authority.
+The current session state uses version 3. Its gates and operation records use operation IDs as keys.
+A gate belongs to the profile that issued it. Another profile cannot consume it through shared session storage.
+The handler saves an accepted answer before execution. A retry before dispatch must repeat the same answer.
+A settled replay may omit input. Supplied input must match the saved accepted invocation.
+Immediately before the tool body, an atomic claim identifies the worker that can execute it.
+The handler saves the terminal outcome before it sends completion. A later answer receives the saved result without another execution.
+A failure after dispatch never restores an approval. The operation remains running or becomes uncertain.
+The host must check the destination before creating a replacement action.
+Settled outcomes remain for `operationRetentionMs` from settlement, with a default of 24 hours. Ready, running, and uncertain operations do not expire automatically.
+Before replay, the handler checks current tool registration, the profile allowlist, and current output rules.
+Required redaction or refusal withholds the saved result. The action remains settled.
+Use `authorizeToolReplay` for current role or resource access. A refusal withholds the result without making the action executable again.
+New operation records retain accepted intent and final prepared input in `operation.invocation`.
+Use this evidence in `authorizeToolReplay` when cached results require current resource access.
+Older records can lack evidence. Refuse disclosure if the check requires it.
+
+
+The handler rejects invalid or unversioned stored state. Migrate existing unversioned, version 1, or version 2 state explicitly before you attach the store.
+The separate credential store retains its `load` and `save` methods.
+Atomic session updates prevent duplicate dispatch of the same operation. The default memory store protects unresolved claims from eviction.
+A process restart still requires shared durable storage to preserve authority.
+These claims do not provide exactly-once effects at the destination. Use the operation ID with destination idempotency when available.
+
+### Authenticate a live conversation
+
+Use `createTheoremSessionBoundary` before your relay opens an upstream session.
+Supply the same authenticated session resolver and atomic session store used by your chat handler.
+Call `prepareLiveOpen` to validate conversation ownership and separate browser context from server context.
+Pass `toolExecution` and `pageExecution` to `runSession`. Forward correlated page results to `answerPageResult`.
+Save each checkpoint with `recordCheckpoint` before browser delivery.
+An ownership write failure must end delivery of that checkpoint.
+Without an authenticated resolver, forward the boundary's anonymous cookie in the upgrade response.
+
+The boundary rejects native state from another conversation. Ownership also covers the saved operation state.
+An older live checkpoint cannot revive a completed action. It also refuses native resumption while an operation remains running or uncertain.
+Ready, running, and uncertain operations require resolution before native resumption.
+Use trusted host reconciliation to resolve the operation; browser history cannot authorize another attempt.
+
+### Return a browser tool result
+
+A browser callback needs an active dispatch grant. `createTheoremHandler` saves that grant before the callback runs.
+`createHttpTransport` and `createHostTransport` return the result through `/page-result`.
+The built-in chat and host console supply this transport behavior.
+Pass `pageTools` to `TheoremHost`, or use the second argument of `useTheoremHost` for your own host view.
+For your own transport, implement `pageResult` and use `withPageToolDispatch` to run callbacks from the active stream.
+The helper does not execute callbacks from a restored transcript.
+
+The default result broker retains active waiters in process memory. The result deadline is 20 seconds.
+When requests can reach several workers, provide `pageToolBroker` or route the result to its issuing worker.
+A shared broker delivers results. The atomic session store retains execution authority.
+A lost delivery cannot authorize another dispatch. Resolve the uncertain operation through trusted host reconciliation.
 
 ## Fix a chat that fails
 
