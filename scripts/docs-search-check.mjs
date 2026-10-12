@@ -45,7 +45,7 @@ const done = await withDocsServer({ repoRoot, theoremai }, async (load) => {
 	});
 	const query = await load('/app/lib/docs/query.ts');
 	const model = await load('/app/lib/docs/search-model.ts');
-	const { SEARCH_MODEL, SEARCH_MANIFEST_FILE, SEARCH_VECTORS_DIR } = model;
+	const { SEARCH_MODEL, SEARCH_MODEL_DIR, SEARCH_MANIFEST_FILE, SEARCH_VECTORS_DIR } = model;
 	const dir = path.join(repoRoot, 'public', SEARCH_VECTORS_DIR);
 	const manifest = JSON.parse(readFileSync(path.join(dir, SEARCH_MANIFEST_FILE), 'utf8'));
 	const problems = model.manifestDrift(manifest, await model.passageHashes(query.docSearchPassages(index)));
@@ -56,7 +56,9 @@ const done = await withDocsServer({ repoRoot, theoremai }, async (load) => {
 		data: new Float32Array(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)),
 	};
 
-	const { pipeline } = await import('@huggingface/transformers');
+	const { env, pipeline } = await import('@huggingface/transformers');
+	env.allowRemoteModels = false;
+	env.localModelPath = `${path.join(repoRoot, 'public', SEARCH_MODEL_DIR)}/`;
 	const extract = await pipeline('feature-extraction', SEARCH_MODEL.id, {
 		revision: SEARCH_MODEL.revision,
 		dtype: SEARCH_MODEL.dtype,

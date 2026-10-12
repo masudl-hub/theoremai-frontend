@@ -15,6 +15,13 @@ export const SEARCH_MODEL = {
 	queryPrefix: 'Represent this sentence for searching relevant passages: ',
 } as const;
 
+/**
+ * Where the site serves the model's files from, so searching the docs never reaches another host.
+ * The files are the model's own layout (`<id>/config.json`, `<id>/onnx/...`) at `revision`; fetch
+ * them with `npm run docs:model`.
+ */
+export const SEARCH_MODEL_DIR = 'docs-search/model';
+
 /** Where the generator writes, and where the site serves them from. */
 export const SEARCH_VECTORS_DIR = 'docs-search';
 export const SEARCH_MANIFEST_FILE = 'manifest.json';

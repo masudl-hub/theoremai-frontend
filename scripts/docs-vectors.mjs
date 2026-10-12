@@ -27,7 +27,7 @@ const { passages, search } = await withDocsServer({ repoRoot, theoremai }, async
 	const { docSearchPassages } = await load('/app/lib/docs/query.ts');
 	return { passages: docSearchPassages(index), search: await load('/app/lib/docs/search-model.ts') };
 });
-const { SEARCH_MODEL, SEARCH_VECTORS_DIR, SEARCH_MANIFEST_FILE, manifestDrift, passageHashes } = search;
+const { SEARCH_MODEL, SEARCH_MODEL_DIR, SEARCH_VECTORS_DIR, SEARCH_MANIFEST_FILE, manifestDrift, passageHashes } = search;
 
 const dir = path.join(repoRoot, 'public', SEARCH_VECTORS_DIR);
 const manifestFile = path.join(dir, SEARCH_MANIFEST_FILE);
@@ -61,7 +61,9 @@ const rows = fresh.map(({ key, hash }) => reusable.get(`${key}\n${hash}`));
 const missing = rows.flatMap((row, at) => (row === undefined ? [at] : []));
 if (missing.length > 0) {
 	console.log(`embedding ${String(missing.length)} of ${String(rows.length)} entries with ${SEARCH_MODEL.id}`);
-	const { pipeline } = await import('@huggingface/transformers');
+	const { env, pipeline } = await import('@huggingface/transformers');
+	env.allowRemoteModels = false;
+	env.localModelPath = `${path.join(repoRoot, 'public', SEARCH_MODEL_DIR)}/`;
 	const extract = await pipeline('feature-extraction', SEARCH_MODEL.id, {
 		revision: SEARCH_MODEL.revision,
 		dtype: SEARCH_MODEL.dtype,

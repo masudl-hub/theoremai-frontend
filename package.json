@@ -9,6 +9,7 @@
 		"dev": "react-router dev --port 5174 --strictPort",
 		"prebuild": "node --experimental-strip-types scripts/ensure-theoremai.mjs && npm run docs:vectors:check",
 		"docs:compose": "node scripts/docs-compose.mjs",
+		"docs:model": "node scripts/docs-model.mjs",
 		"docs:vectors": "node scripts/docs-vectors.mjs",
 		"docs:vectors:check": "node scripts/docs-vectors.mjs --check",
 		"docs:search-check": "node scripts/docs-search-check.mjs",
