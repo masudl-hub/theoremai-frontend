@@ -33,12 +33,16 @@ import { Th30Trigger } from '../th30-dock';
 const SEARCH_LIMIT = 16;
 const SEARCH_HINTS = [
 	'Search, or ask a question',
-	'Try “runTurn”',
-	'Try “guardrails”',
-	'Try “structured outputs”',
-	'Try “when a tool pauses”',
-	'Try “how do I stop a run early”',
-	'Try “recording traces”',
+	'Try “let people attach a PDF”',
+	'Try “get JSON back instead of free text”',
+	'Try “use a local model instead of a cloud API”',
+	'Try “where do my run logs get written”',
+	'Try “my api key is not being picked up”',
+	'Try “agent keeps going when it should stop”',
+	'Try “have one agent hand work to another”',
+	'Try “different instructions for different users”',
+	'Try “talk to the agent with my voice”',
+	'Try “maxRetries”',
 ];
 const TYPE_MS = 55;
 const ERASE_MS = 25;
