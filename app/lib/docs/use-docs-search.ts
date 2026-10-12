@@ -11,6 +11,9 @@ export type DocsSearch = {
 	ranking: 'words' | 'meaning' | 'words-only';
 };
 
+/** One shared answer for an empty question, so callers that key effects on `results` see no change. */
+const NO_QUESTION: DocsSearch = { results: [], totalMatches: 0, ranking: 'words' };
+
 type Semantic = Awaited<ReturnType<typeof import('./semantic').searchDocsSemantic>>;
 
 /**
@@ -45,7 +48,7 @@ export function useDocsSearch(index: DocIndex, query: string, limit: number): Do
 		};
 	}, [index, term, limit]);
 
-	if (!term) return { results: [], totalMatches: 0, ranking: 'words' };
+	if (!term) return NO_QUESTION;
 	if (answer === 'failed') return { ...words, ranking: 'words-only' };
 	if (answer && answer.term === term && answer.index === index) {
 		return {
