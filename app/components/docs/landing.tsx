@@ -247,7 +247,9 @@ function landingTileCards(tiles: LandingTile[], phase: TilePhase) {
 					{showMeta ? (
 						<HStack gap={2} wrap="wrap">
 							<Token label={article.slug} />
-							<Token label={`${String(article.ttrMinutes)} min`} />
+							{article.slug === 'glossary' ? null : (
+								<Token label={`${String(article.ttrMinutes)} min`} />
+							)}
 						</HStack>
 					) : null}
 					<StillText maxLines={3}>{excerpt}</StillText>

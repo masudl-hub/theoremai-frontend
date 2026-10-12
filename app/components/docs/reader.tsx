@@ -488,7 +488,9 @@ function ArticleStill({ article }: { article: DocArticle }) {
 							</MediaTheme>
 							<HStack gap={2} wrap="wrap" vAlign="center">
 								{updated ? <Token label={updated} /> : null}
-								<Token label={`${String(article.ttrMinutes)} min`} />
+								{article.slug === 'glossary' ? null : (
+									<Token label={`${String(article.ttrMinutes)} min`} />
+								)}
 								<MediaTheme mode="dark">
 									<HStack gap={2} vAlign="center">
 										<CopyMarkdownButton article={article} />
