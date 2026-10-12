@@ -1,4 +1,11 @@
 {
+	"glossary": {
+		"reviewed": "2026-10-12",
+		"files": {
+			"src/kernel/registry/catalog.ts": "20b3891d13501c62b6b932c141aaab9aac2f6686",
+			"src/kernel/schema.ts": "1adfb6ec5c20675a01a25aa2da63dfc6329a4bf9"
+		}
+	},
 	"guardrails": {
 		"reviewed": "2026-10-09",
 		"files": {
@@ -80,23 +87,23 @@
 		}
 	},
 	"interface": {
-		"reviewed": "2026-10-10",
+		"reviewed": "2026-10-12",
 		"files": {
-			"src/interface/blocks.ts": "bcc99faad945d422cfef03cfd1829c104ea720d8",
+			"src/interface/blocks.ts": "ed9db56abdd543de8468360d7a015ed47023ad2b",
 			"src/interface/composer-actions.ts": "220d00650c649be934c20b29d1632260970f5e62",
 			"src/interface/draft.ts": "6feb766bf891c9d3d5611079b2dffbe801ee4738",
-			"src/interface/from-profile.ts": "18193582be2366e09506cc16a3de04d55be6b457",
-			"src/interface/history.ts": "2851b977f479b7e9a90109b80368c58b22b66cea",
+			"src/interface/from-profile.ts": "6a06a8f11cedeec96487eb3448b671f63497039f",
+			"src/interface/history.ts": "475e0751fc3b58ae69b462f291a45c84d13864b6",
 			"src/interface/inputs.ts": "9b74aaf90fdf1c77a3049affe90708b2a49332a4",
 			"src/interface/mod.ts": "e5c89fef00a69e8ef985022afc48512402aa4369",
 			"src/interface/models.ts": "949e7876f56f0fd16ad1fe45ce3de72c61fbe375",
-			"src/interface/pending.ts": "23547d9ecb3322eea2e643ac912e7efc4ec4306b",
-			"src/interface/profile-interface.ts": "93bba2133d58944981b36211fc5f9dab351f3126",
-			"src/interface/session.ts": "4dfc5a3515b9dcb65ce064cf8c11df796691113b",
-			"src/interface/tool-calls.ts": "d0453fac09818328c15c73b671d2fb29f32afe65",
+			"src/interface/pending.ts": "3813df55b58009934ae0343e067733ba2c4ac486",
+			"src/interface/profile-interface.ts": "62bf2ef84129f265e656454198962e2529de72bf",
+			"src/interface/session.ts": "ef1806845b96e1ed7502c4c646bcec66a4923cd2",
+			"src/interface/tool-calls.ts": "51457b337108fc18fc07f74671adfb64a2830dce",
 			"src/interface/tool-invoke.ts": "3297e1407cadbdec1b0d029efeef2dc17b6b8973",
 			"src/interface/tool-media.ts": "8892b56ccbdfc88c37b10ffe26cb18b680d56c2f",
-			"src/interface/types.ts": "1cd5e30de914691d2fb263c666b40072f9fd8cba"
+			"src/interface/types.ts": "e39011a5890a0853392507a6c2cccc0167f2116b"
 		}
 	},
 	"modalities": {
@@ -200,12 +207,12 @@
 		}
 	},
 	"statuses": {
-		"reviewed": "2026-10-08",
+		"reviewed": "2026-10-12",
 		"files": {
-			"src/guardrails/error.ts": "87d9b1ab3a14a6558d27012b2bb70a4c975cde89",
-			"src/guardrails/lexicon.ts": "f22d887d8dc4b2778a2ffb3569e38cd10fcd09db",
-			"src/kernel/stop.ts": "59643af5c8c84807391f1b6931b84ea5cd1b5ac4",
-			"src/kernel/turn-events.ts": "c0ee86d271e072ca5ab14ccb535713e1b196006c"
+			"src/guardrails/error.ts": "2882fdcc8773e949929f9b00bcea4bbb09b8055a",
+			"src/guardrails/labels.ts": "c7e219c47d9f616fc07887acde2231171c11d9c2",
+			"src/kernel/stop.ts": "2e158285a6f20ec1dccc7f726e4a4afd8b3d3060",
+			"src/kernel/turn-events.ts": "fe584cd919312b6c6a3aeb72c204533fe1489eb5"
 		}
 	},
 	"tools": {
@@ -244,18 +251,18 @@
 		}
 	},
 	"traces": {
-		"reviewed": "2026-10-07",
+		"reviewed": "2026-10-12",
 		"files": {
 			"src/observability/destinations.ts": "e7cf2454aea6da31ab30a510eea7640b51d52fb7",
 			"src/observability/jsonl.ts": "6f9946122f685536e4308efa80f595a044ace0bb",
-			"src/observability/mod.ts": "3da68659dc099021dfd420b94b37fbfa1b869608",
+			"src/observability/mod.ts": "5a8463b9a81eb1b3a0d0f9fd6e97dcb29cd63ab6",
 			"src/observability/openinference.ts": "41284aaf9b9c11bd0fc2db5f287883da98d6d1ca",
 			"src/observability/otlp.ts": "d9dccb43c24f847ca35c81b938de4228bbb76f96",
 			"src/observability/phoenix.ts": "8b257a726babab3a6f92f1c8c6bfc732b8595cc5",
 			"src/observability/policy.ts": "ff190f523dff9c0d4e4997fa010e56e2e1248455",
 			"src/observability/resolve-policy.ts": "2f140cf6d4b57ac25564571271931ceb1aedf793",
 			"src/observability/spans.ts": "d285879a6773bfff8dd77000ade4d42c93a9e924",
-			"src/observability/trace-catalog.ts": "0562f2c7d39362f251a83ba60b2c859c6a7b6717",
+			"src/observability/trace-catalog.ts": "f862e751b9855d1b805854fdb93fca1a366a5b6f",
 			"src/observability/trace-record.ts": "1b9670ebcb1940afd35f29c2ea57ca9a806fb944",
 			"src/observability/trace-schema.ts": "2c0d3944fdbacd3a3b66e1642d66dd168f1332ca",
 			"src/observability/trace-sink.ts": "7c47b133e04ef979aa293fb58ada04fd248960d0",
@@ -265,10 +272,10 @@
 		}
 	},
 	"turn-behaviour": {
-		"reviewed": "2026-10-08",
+		"reviewed": "2026-10-12",
 		"files": {
-			"src/kernel/registry/resolve.ts": "2dd21948011c25a54cea08fa6a2b8045bd3a4634",
-			"src/kernel/stop.ts": "59643af5c8c84807391f1b6931b84ea5cd1b5ac4"
+			"src/kernel/registry/resolve.ts": "521207029816f08a321d064bf9af3491bc5d4734",
+			"src/kernel/stop.ts": "2e158285a6f20ec1dccc7f726e4a4afd8b3d3060"
 		}
 	}
 }
