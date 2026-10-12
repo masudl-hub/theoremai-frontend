@@ -142,7 +142,7 @@ function searchUnitsOf(index: DocIndex): SearchUnit[] {
 					blockId: section.id,
 					kind: 'section',
 					title: section.title,
-					excerpt: clipExcerpt(under),
+					excerpt: clipExcerpt(under.replace(/```[\s\S]*?```/g, '\n')),
 				},
 				words: idWords(section.id),
 				body: text,
@@ -246,12 +246,57 @@ function coveredByListedSection(ranked: DocSearchHit[], slug: string, blockId: s
 	);
 }
 
+const QUESTION_FILLER = new Set(
+	'a an and are as at be by can do does for from get has have how i in is it its me my of on or so that the this to use was what when where which who why with you your'.split(
+		' ',
+	),
+);
+
+/** The lowercase words of a text that carry meaning, as prefixes long enough to match their other forms. */
+function stems(text: string): string[] {
+	return (text.toLowerCase().match(/[a-z0-9]+/g) ?? [])
+		.filter((word) => word.length > 2 && !QUESTION_FILLER.has(word))
+		.map((word) => word.slice(0, 5));
+}
+
+/**
+ * The line of a section that answers the question: the sentence sharing the most words with it,
+ * so a hit shows what matched rather than how the section opens. A section with no sentence in
+ * common keeps its opening.
+ */
+function focusExcerpt(body: string, term: string, title: string, opening: string): string {
+	const wanted = new Set(stems(term));
+	if (wanted.size === 0) return opening;
+	let best = { at: -1, shared: 0 };
+	const sentences = body
+		.replace(/```[\s\S]*?```/g, '\n')
+		.split(/\n+|(?<=[.!?])\s+/)
+		.map((line) =>
+			line
+				.replace(/^[\s#>*-]+/, '')
+				.replace(/\|/g, ' ')
+				.replace(/\s+/g, ' ')
+				.trim(),
+		)
+		.filter((line) => line.length > 12 && line !== title && !/^[-: |]+$/.test(line));
+	sentences.forEach((line, at) => {
+		const shared = new Set(stems(line).filter((stem) => wanted.has(stem))).size;
+		if (shared > best.shared) best = { at, shared };
+	});
+	const line = sentences[best.at];
+	if (line === undefined) return opening;
+	const clipped = clipExcerpt(line);
+	return clipped.startsWith(opening.slice(0, 30)) ? opening : clipped;
+}
+
 /** Hits in order as links, capped per chapter and without sub-entries of listed sections. */
 function rankHits(
 	index: DocIndex,
 	entries: Map<string, SearchEntry>,
 	hits: { id: string; score: number }[],
+	term: string,
 ): DocSearchHit[] {
+	const units = searchUnitsOf(index);
 	const ranked: DocSearchHit[] = [];
 	const perChapter = new Map<string, number>();
 	for (const hit of hits) {
@@ -268,7 +313,7 @@ function rankHits(
 			slug: entry.slug,
 			title: entry.title,
 			href: articleHref(article, blockId),
-			excerpt: entry.excerpt,
+			excerpt: focusExcerpt(units[Number(hit.id)]?.body ?? '', term, entry.title, entry.excerpt),
 			score: hit.score,
 			blockId,
 		});
@@ -294,7 +339,7 @@ export function searchDocs(
 	if (!term) return { query, results: [], totalMatches: 0 };
 	const { db, entries } = searchIndex(index);
 	const { every, some } = lexicalMatches(db, term, entries.size);
-	const ranked = rankHits(index, entries, [...every, ...some]);
+	const ranked = rankHits(index, entries, [...every, ...some], term);
 	return { query, results: ranked.slice(0, limit), totalMatches: ranked.length };
 }
 
@@ -310,6 +355,12 @@ export const ALL_WORDS_BONUS = 0.05;
 export const REFERENCE_PENALTY = 0.03;
 /** Below this closeness a place is not an answer: nonsense questions reach about 0.58 at most. */
 export const SIMILARITY_FLOOR = 0.58;
+
+/**
+ * How far below the best place a hit may score and still be shown. Past it the places only read
+ * vaguely like the question, and listing them buries the answer.
+ */
+export const SCORE_WINDOW = 0.05;
 
 function rowDot(query: Float32Array, vectors: DocVectors, row: number): number {
 	const base = row * vectors.dims;
@@ -350,7 +401,9 @@ export function searchDocsHybrid(
 		scored.push({ id, score });
 	}
 	scored.sort((a, b) => b.score - a.score);
-	const ranked = rankHits(index, entries, scored);
+	const best = scored[0]?.score ?? 0;
+	const near = scored.filter((hit) => hit.score >= best - SCORE_WINDOW);
+	const ranked = rankHits(index, entries, near, term);
 	return { query, results: ranked.slice(0, limit), totalMatches: ranked.length };
 }
 

@@ -30,7 +30,7 @@ import { NewTabLink } from '../links';
 import { StillText, StillTitle } from '../still-caption';
 import { Th30Trigger } from '../th30-dock';
 
-const SEARCH_LIMIT = 16;
+const SEARCH_LIMIT = 8;
 const SEARCH_HINTS = [
 	'Search, or ask a question',
 	'Try “let people attach a PDF”',
