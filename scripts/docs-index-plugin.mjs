@@ -20,7 +20,7 @@ const DOCS_RESOLVED = `\0${DOCS_VIRTUAL}`;
  * @param {(load: (file: string) => Promise<Record<string, any>>) => Promise<T>} use
  * @returns {Promise<T>}
  */
-async function withDocsServer({ repoRoot, theoremai }, use) {
+export async function withDocsServer({ repoRoot, theoremai }, use) {
 	const server = await createServer({
 		configFile: false,
 		root: repoRoot,

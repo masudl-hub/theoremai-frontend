@@ -83,14 +83,21 @@ export type DocSearchHit = {
 	blockId?: string;
 };
 
+/** What one searchable unit is: a chapter, one of its sections, or one dictionary entry. */
+type SearchKind = 'chapter' | 'section' | 'symbol';
+
 /** One searchable unit: a chapter (its title and summary), a section, or a dictionary entry. */
 type SearchEntry = {
 	slug: string;
 	/** The section or entry id; absent for the chapter itself. */
 	blockId?: string;
+	kind: SearchKind;
 	title: string;
 	excerpt: string;
 };
+
+/** An entry with the words its id splits into, and the text it is found by. */
+type SearchUnit = { entry: SearchEntry; words: string; body: string };
 
 const SEARCH_SCHEMA = { title: 'string', key: 'string', body: 'string' } as const;
 type SearchDb = Orama<typeof SEARCH_SCHEMA>;
@@ -108,6 +115,72 @@ function idWords(id: string): string {
 	return id.replace(/[.:_-]+/g, ' ');
 }
 
+/** The units of the index in a fixed order: chapters, then each one's sections, then its entries. */
+const searchUnits = new WeakMap<DocIndex, SearchUnit[]>();
+function searchUnitsOf(index: DocIndex): SearchUnit[] {
+	const cached = searchUnits.get(index);
+	if (cached) return cached;
+	const units: SearchUnit[] = [];
+	for (const article of index.articles) {
+		units.push({
+			entry: {
+				slug: article.slug,
+				kind: 'chapter',
+				title: article.title,
+				excerpt: article.summary,
+			},
+			words: idWords(article.slug),
+			body: `${article.summary}\n${introText(article)}`,
+		});
+		for (const section of article.sections) {
+			const text = article.body.slice(section.start, section.end);
+			// The excerpt starts under the heading line; the title already shows it.
+			const under = text.slice(text.indexOf('\n') + 1);
+			units.push({
+				entry: {
+					slug: article.slug,
+					blockId: section.id,
+					kind: 'section',
+					title: section.title,
+					excerpt: clipExcerpt(under),
+				},
+				words: idWords(section.id),
+				body: text,
+			});
+		}
+		for (const symbol of article.symbols) {
+			const { name, text } = symbolTerm(symbol);
+			units.push({
+				entry: {
+					slug: article.slug,
+					blockId: symbol.id,
+					kind: 'symbol',
+					title: name,
+					excerpt: text,
+				},
+				words: idWords(symbol.id),
+				body: text,
+			});
+		}
+	}
+	searchUnits.set(index, units);
+	return units;
+}
+
+/** The longest text a unit's meaning is read from. */
+const PASSAGE_MAX_CHARS = 4000;
+
+/**
+ * What the embedding model reads for each unit, in index order, under a key that names the unit.
+ * The vectors are made from exactly this text, so a change to it makes them stale.
+ */
+export function docSearchPassages(index: DocIndex): { key: string; passage: string }[] {
+	return searchUnitsOf(index).map(({ entry, body }) => ({
+		key: entry.blockId === undefined ? entry.slug : `${entry.slug}#${entry.blockId}`,
+		passage: `${entry.title}\n${body}`.slice(0, PASSAGE_MAX_CHARS),
+	}));
+}
+
 /**
  * The index as an Orama database, built once per composed index. English stemming lets "images"
  * find "image"; entries keep their place in `entries` by Orama id.
@@ -121,41 +194,11 @@ function searchIndex(index: DocIndex) {
 		components: { tokenizer: { language: 'english', stemming: true } },
 	});
 	const entries = new Map<string, SearchEntry>();
-	const add = (entry: SearchEntry, key: string, body: string) => {
+	for (const { entry, words, body } of searchUnitsOf(index)) {
 		const id = String(entries.size);
 		entries.set(id, entry);
 		// No async hooks are configured, so insert completes synchronously.
-		void insert(db, { id, title: entry.title, key, body });
-	};
-	for (const article of index.articles) {
-		add(
-			{ slug: article.slug, title: article.title, excerpt: article.summary },
-			idWords(article.slug),
-			`${article.summary}\n${introText(article)}`,
-		);
-		for (const section of article.sections) {
-			const text = article.body.slice(section.start, section.end);
-			// The excerpt starts under the heading line; the title already shows it.
-			const under = text.slice(text.indexOf('\n') + 1);
-			add(
-				{
-					slug: article.slug,
-					blockId: section.id,
-					title: section.title,
-					excerpt: clipExcerpt(under),
-				},
-				idWords(section.id),
-				text,
-			);
-		}
-		for (const symbol of article.symbols) {
-			const { name, text } = symbolTerm(symbol);
-			add(
-				{ slug: article.slug, blockId: symbol.id, title: name, excerpt: text },
-				idWords(symbol.id),
-				text,
-			);
-		}
+		void insert(db, { id, title: entry.title, key: words, body });
 	}
 	const built = { db, entries };
 	searchIndexes.set(index, built);
@@ -175,8 +218,8 @@ function typoTolerance(term: string): number {
 	return shortest >= 8 ? 2 : shortest >= 4 ? 1 : 0;
 }
 
-/** Hits matching every word first, then those matching only some. */
-function matchingHits(db: SearchDb, term: string, size: number) {
+/** The hits matching every word of the term, and those matching only some. */
+function lexicalMatches(db: SearchDb, term: string, size: number) {
 	const tolerance = typoTolerance(term);
 	const run = (threshold: number) => {
 		const result = search(db, {
@@ -192,7 +235,7 @@ function matchingHits(db: SearchDb, term: string, size: number) {
 	};
 	const every = run(0);
 	const seen = new Set(every.map((hit) => hit.id));
-	return [...every, ...run(1).filter((hit) => !seen.has(hit.id))];
+	return { every, some: run(1).filter((hit) => !seen.has(hit.id)) };
 }
 
 /** A section already listed stands for its own sub-entries. */
@@ -250,7 +293,64 @@ export function searchDocs(
 	const term = query.trim();
 	if (!term) return { query, results: [], totalMatches: 0 };
 	const { db, entries } = searchIndex(index);
-	const ranked = rankHits(index, entries, matchingHits(db, term, entries.size));
+	const { every, some } = lexicalMatches(db, term, entries.size);
+	const ranked = rankHits(index, entries, [...every, ...some]);
+	return { query, results: ranked.slice(0, limit), totalMatches: ranked.length };
+}
+
+/** One vector per unit of the index, in index order: row `i` is `data[i * dims]` to the next row. */
+export type DocVectors = { dims: number; data: Float32Array };
+
+/** What a place that matches every query word gains over one that only reads close in meaning. */
+export const ALL_WORDS_BONUS = 0.05;
+/**
+ * What a dictionary entry loses to a how-to section. Entries are short and read close to many
+ * questions, so without it they crowd the guides out of the first hits.
+ */
+export const REFERENCE_PENALTY = 0.03;
+/** Below this closeness a place is not an answer: nonsense questions reach about 0.58 at most. */
+export const SIMILARITY_FLOOR = 0.58;
+
+function rowDot(query: Float32Array, vectors: DocVectors, row: number): number {
+	const base = row * vectors.dims;
+	let sum = 0;
+	for (let at = 0; at < vectors.dims; at++)
+		sum += (query[at] ?? 0) * (vectors.data[base + at] ?? 0);
+	return sum;
+}
+
+/**
+ * Search by meaning and by words: how close each place reads to the question, plus a bonus for the
+ * places that match all its words (typos allowed), minus a penalty for dictionary entries. The
+ * question's vector comes from the same model that made `vectors`, with its query prefix.
+ */
+export function searchDocsHybrid(
+	index: DocIndex,
+	query: string,
+	queryVector: Float32Array,
+	vectors: DocVectors,
+	limit = 5,
+): { query: string; results: DocSearchHit[]; totalMatches: number } {
+	const term = query.trim();
+	if (!term) return { query, results: [], totalMatches: 0 };
+	const { db, entries } = searchIndex(index);
+	if (vectors.data.length !== entries.size * vectors.dims || queryVector.length !== vectors.dims) {
+		throw new Error(
+			`Docs vectors do not fit the index: ${String(vectors.data.length / vectors.dims)} rows for ${String(entries.size)} entries`,
+		);
+	}
+	const matchesEvery = new Set(lexicalMatches(db, term, entries.size).every.map((hit) => hit.id));
+	const scored: { id: string; score: number }[] = [];
+	for (const [id, entry] of entries) {
+		const closeness = rowDot(queryVector, vectors, Number(id));
+		const all = matchesEvery.has(id);
+		if (closeness < SIMILARITY_FLOOR && !all) continue;
+		const score =
+			closeness + (all ? ALL_WORDS_BONUS : 0) - (entry.kind === 'symbol' ? REFERENCE_PENALTY : 0);
+		scored.push({ id, score });
+	}
+	scored.sort((a, b) => b.score - a.score);
+	const ranked = rankHits(index, entries, scored);
 	return { query, results: ranked.slice(0, limit), totalMatches: ranked.length };
 }
 

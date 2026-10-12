@@ -34,7 +34,10 @@ import {
 import { type NavigateFunction, useLocation, useMatches, useNavigate } from 'react-router';
 import { z } from 'zod';
 import { theoremSiteTheme } from '../built/theorem-site';
+import { clientDocIndex } from '../lib/docs/client-index';
+import { searchDocs } from '../lib/docs/query';
 import { highlightBlock, highlightWhenPresent } from '../lib/docs/th30-client';
+import { th30SearchOutput } from '../lib/docs/th30-search';
 import { resolveSitePath } from '../lib/site-path';
 import { TH30_PROFILE_ID } from '../lib/th30-id';
 import {
@@ -254,7 +257,25 @@ function textArg(value: unknown): string | undefined {
 	return typeof value === 'string' && value.trim() ? value : undefined;
 }
 
-/** The page answers a highlight after the relay checks its call. */
+/** Load the search model while the call connects, so the first question does not wait for it. */
+function warmTh30Search(): void {
+	void Promise.all([clientDocIndex(), import('../lib/docs/semantic')])
+		.then(([index, { warmDocsSearch }]) => {
+			warmDocsSearch(index);
+		})
+		.catch(() => undefined);
+}
+
+/** The docs hits for a question: by meaning when the model loads, by words when it cannot. */
+async function searchForTh30(query: string, limit: number | undefined) {
+	const index = await clientDocIndex();
+	const found = await import('../lib/docs/semantic')
+		.then(({ searchDocsSemantic }) => searchDocsSemantic(index, query, limit))
+		.catch(() => searchDocs(index, query, limit));
+	return th30SearchOutput(index, found);
+}
+
+/** The page answers a highlight or a docs search after the relay checks its call. */
 async function applyPageTool(
 	client: LiveSessionClient,
 	callId: string,
@@ -262,6 +283,17 @@ async function applyPageTool(
 	name: string,
 	args: Record<string, unknown>,
 ): Promise<void> {
+	if (name === 'searchDocs') {
+		const query = textArg(args.query) ?? '';
+		const limit = typeof args.limit === 'number' ? args.limit : undefined;
+		try {
+			const output = await searchForTh30(query, limit);
+			await client.executeToolOnRelay({ callId, operationId, decision: 'approve', output });
+		} catch {
+			await client.executeToolOnRelay({ callId, operationId, decision: 'deny' });
+		}
+		return;
+	}
 	if (name === 'highlight') {
 		const target = textArg(args.target) ?? textArg(args.blockId) ?? '';
 		const label = textArg(args.label);
@@ -534,6 +566,7 @@ async function startCall({
 	clientRef.current = client;
 	set.setFailure(null);
 	set.setPhase('connecting');
+	warmTh30Search();
 	try {
 		await client.connect();
 	} catch (err) {

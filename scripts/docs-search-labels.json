@@ -1,0 +1,1078 @@
+{
+	"note": "Questions and the places that answer them, by chapter and title, so a renamed block id does not break them. Edit when the docs change on purpose.",
+	"queries": [
+		{
+			"q": "make the agent wait for a human before running a tool",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "tools",
+					"title": "6. Ask a person first"
+				}
+			]
+		},
+		{
+			"q": "stop the agent from leaking its system prompt",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "guardrails",
+					"title": "3. Keep the instruction private"
+				},
+				{
+					"slug": "identity",
+					"title": "3. Mark the lines that the agent must not repeat"
+				}
+			]
+		},
+		{
+			"q": "cap how many requests one user can make in a day",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "guardrails",
+					"title": "9. Limit turns per day"
+				}
+			]
+		},
+		{
+			"q": "get JSON back instead of free text",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "outputs",
+					"title": "1. Register the schema"
+				},
+				{
+					"slug": "outputs",
+					"title": "Give the Harbor desk a fixed reply"
+				}
+			]
+		},
+		{
+			"q": "use a local model instead of a cloud API",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "models",
+					"title": "Run a model on your machine"
+				}
+			]
+		},
+		{
+			"q": "where do my run logs get written",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "traces",
+					"title": "1. Register a destination"
+				},
+				{
+					"slug": "traces",
+					"title": "Record the runs of the Harbor desk"
+				}
+			]
+		},
+		{
+			"q": "log files keep growing, how are they cleaned up",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "traces",
+					"title": "Know how the JSONL files rotate"
+				}
+			]
+		},
+		{
+			"q": "the user talks over the agent while it is replying",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "turn-behaviour",
+					"title": "4. Accept a message during a turn"
+				},
+				{
+					"slug": "modalities",
+					"title": "Live"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.ingress"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.ingress.audio"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.ingress.video"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.ingress.text"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.voice"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.vad"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.vad.activityHandling"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.vad.startSensitivity"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.vad.endSensitivity"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.vad.prefixPaddingMs"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.vad.silenceDurationMs"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.sessionResumption"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.greeting"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.resumed"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.resumed.prompt"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.resumed.afterMs"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.contextCompression"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.contextCompression.triggerTokens"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.contextCompression.slidingWindow"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.contextCompression.slidingWindow.targetTokens"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.transcription"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.transcription.input"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.transcription.output"
+				}
+			]
+		},
+		{
+			"q": "change the wording of messages shown to users",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "statuses",
+					"title": "Give the Harbor desk its own words"
+				},
+				{
+					"slug": "statuses",
+					"title": "2. Replace the line in the profile"
+				}
+			]
+		},
+		{
+			"q": "let people attach a PDF",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "inputs",
+					"title": "2. Accept files"
+				},
+				{
+					"slug": "inputs",
+					"title": "3. Send a file"
+				}
+			]
+		},
+		{
+			"q": "talk to the agent with my voice",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "inputs",
+					"title": "4. Accept voice"
+				},
+				{
+					"slug": "modalities",
+					"title": "Live"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.ingress"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.ingress.audio"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.ingress.video"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.ingress.text"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.voice"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.vad"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.vad.activityHandling"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.vad.startSensitivity"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.vad.endSensitivity"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.vad.prefixPaddingMs"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.vad.silenceDurationMs"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.sessionResumption"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.greeting"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.resumed"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.resumed.prompt"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.resumed.afterMs"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.contextCompression"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.contextCompression.triggerTokens"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.contextCompression.slidingWindow"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.contextCompression.slidingWindow.targetTokens"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.transcription"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.transcription.input"
+				},
+				{
+					"slug": "modalities",
+					"title": "live.transcription.output"
+				},
+				{
+					"slug": "runner",
+					"title": "Run a live session"
+				}
+			]
+		},
+		{
+			"q": "let the user sign in to a third party service for a tool",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "tools",
+					"title": "Sign the user in to a tool"
+				},
+				{
+					"slug": "tools",
+					"title": "The three parts of an OAuth sign-in"
+				}
+			]
+		},
+		{
+			"q": "the login expired in the middle of a conversation",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "tools",
+					"title": "When a token gets old"
+				}
+			]
+		},
+		{
+			"q": "restrict which sites a tool is allowed to reach",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "guardrails",
+					"title": "7. Limit what tools can reach"
+				}
+			]
+		},
+		{
+			"q": "prevent private data leaving through image links",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "guardrails",
+					"title": "4. Stop images and links that carry data out"
+				}
+			]
+		},
+		{
+			"q": "hide credit card numbers in what the agent says",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "guardrails",
+					"title": "1. Choose an action for each match"
+				},
+				{
+					"slug": "guardrails",
+					"title": "Know the defaults"
+				}
+			]
+		},
+		{
+			"q": "different instructions for different users",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "identity",
+					"title": "2. Give each role its own instruction"
+				}
+			]
+		},
+		{
+			"q": "use another model just for one request",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "models",
+					"title": "4. Let a request pick the model"
+				}
+			]
+		},
+		{
+			"q": "my api key is not being picked up",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "models",
+					"title": "3. Fill the key slot"
+				},
+				{
+					"slug": "models",
+					"title": "Key slot rules"
+				},
+				{
+					"slug": "models",
+					"title": "Fix a binding that fails"
+				}
+			]
+		},
+		{
+			"q": "show the conversation in a web page",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "interface",
+					"title": "2. Show the chat"
+				},
+				{
+					"slug": "interface",
+					"title": "Put the Harbor desk on a page"
+				}
+			]
+		},
+		{
+			"q": "build my own chat screen instead of the default one",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "interface",
+					"title": "Build your own screen"
+				}
+			]
+		},
+		{
+			"q": "agent keeps going when it should stop",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "turn-behaviour",
+					"title": "3. Choose which stops continue"
+				}
+			]
+		},
+		{
+			"q": "show the reply as it is typed out",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "outputs",
+					"title": "Choose how the reply streams"
+				},
+				{
+					"slug": "runner",
+					"title": "3. Read the stream"
+				}
+			]
+		},
+		{
+			"q": "generate a picture",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "modalities",
+					"title": "Image"
+				},
+				{
+					"slug": "modalities",
+					"title": "image.aspectRatio"
+				},
+				{
+					"slug": "modalities",
+					"title": "image.resolution"
+				},
+				{
+					"slug": "modalities",
+					"title": "image.mimeType"
+				},
+				{
+					"slug": "modalities",
+					"title": "image.quality"
+				},
+				{
+					"slug": "modalities",
+					"title": "image.background"
+				},
+				{
+					"slug": "modalities",
+					"title": "image.n"
+				},
+				{
+					"slug": "modalities",
+					"title": "image.seed"
+				},
+				{
+					"slug": "modalities",
+					"title": "image.outputCompression"
+				},
+				{
+					"slug": "modalities",
+					"title": "image.references"
+				},
+				{
+					"slug": "modalities",
+					"title": "image.includeText"
+				},
+				{
+					"slug": "outputs",
+					"title": "Return an image or speech"
+				}
+			]
+		},
+		{
+			"q": "call a tool directly without involving the model",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "runner",
+					"title": "Run a tool without a model"
+				}
+			]
+		},
+		{
+			"q": "how long does a paused approval wait before giving up",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "interface",
+					"title": "Know how long a gate waits"
+				}
+			]
+		},
+		{
+			"q": "have one agent hand work to another",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "tools",
+					"title": "4. Call another agent"
+				}
+			]
+		},
+		{
+			"q": "only load a tool when it is needed to save tokens",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "tools",
+					"title": "7. Load a tool only when the turn needs it"
+				}
+			]
+		},
+		{
+			"q": "save the records to a file for later analysis",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "traces",
+					"title": "4. Export the records"
+				},
+				{
+					"slug": "traces",
+					"title": "Write to your own sink"
+				}
+			]
+		},
+		{
+			"q": "write my own rule that blocks certain replies",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "guardrails",
+					"title": "6. Add your own check"
+				}
+			]
+		},
+		{
+			"q": "keep a back and forth chat going over many messages",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "runner",
+					"title": "2. Continue a chat"
+				}
+			]
+		},
+		{
+			"q": "the request was rejected before the model ran",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "inputs",
+					"title": "Fix a refused turn"
+				},
+				{
+					"slug": "runner",
+					"title": "Fix a failed call"
+				}
+			]
+		},
+		{
+			"q": "which kind of agent should I pick for my use case",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "modalities",
+					"title": "Pick a type"
+				},
+				{
+					"slug": "modalities"
+				}
+			]
+		},
+		{
+			"q": "react to each event as it happens",
+			"kind": "intent",
+			"accept": [
+				{
+					"slug": "interface",
+					"title": "Receive every event"
+				},
+				{
+					"slug": "runner",
+					"title": "3. Read the stream"
+				}
+			]
+		},
+		{
+			"q": "install",
+			"kind": "keyword",
+			"accept": [
+				{
+					"slug": "start",
+					"title": "Install"
+				}
+			]
+		},
+		{
+			"q": "mcp server",
+			"kind": "keyword",
+			"accept": [
+				{
+					"slug": "tools",
+					"title": "3. Call an MCP server"
+				}
+			]
+		},
+		{
+			"q": "key slot",
+			"kind": "keyword",
+			"accept": [
+				{
+					"slug": "models",
+					"title": "Key slot rules"
+				},
+				{
+					"slug": "models",
+					"title": "3. Fill the key slot"
+				}
+			]
+		},
+		{
+			"q": "providerOptions",
+			"kind": "keyword",
+			"accept": [
+				{
+					"slug": "models",
+					"title": "Set providerOptions"
+				}
+			]
+		},
+		{
+			"q": "jsonl",
+			"kind": "keyword",
+			"accept": [
+				{
+					"slug": "traces",
+					"title": "Know how the JSONL files rotate"
+				},
+				{
+					"slug": "traces"
+				}
+			]
+		},
+		{
+			"q": "continue turn",
+			"kind": "keyword",
+			"accept": [
+				{
+					"slug": "turn-behaviour",
+					"title": "2. Send the continue turn"
+				},
+				{
+					"slug": "turn-behaviour"
+				}
+			]
+		},
+		{
+			"q": "oauth",
+			"kind": "keyword",
+			"accept": [
+				{
+					"slug": "tools",
+					"title": "The three parts of an OAuth sign-in"
+				},
+				{
+					"slug": "tools",
+					"title": "Sign the user in to a tool"
+				}
+			]
+		},
+		{
+			"q": "gaurdrails",
+			"kind": "typo",
+			"accept": [
+				{
+					"slug": "guardrails"
+				}
+			]
+		},
+		{
+			"q": "aprroval",
+			"kind": "typo",
+			"accept": [
+				{
+					"slug": "tools",
+					"title": "6. Ask a person first"
+				},
+				{
+					"slug": "interface",
+					"title": "3. Answer a tool that waits"
+				}
+			]
+		},
+		{
+			"q": "recieve events",
+			"kind": "typo",
+			"accept": [
+				{
+					"slug": "interface",
+					"title": "Receive every event"
+				}
+			]
+		},
+		{
+			"q": "identiy",
+			"kind": "typo",
+			"accept": [
+				{
+					"slug": "identity"
+				}
+			]
+		},
+		{
+			"q": "maxRetries",
+			"kind": "field-name",
+			"accept": [
+				{
+					"slug": "outputs",
+					"title": "outputs.validation.maxRetries"
+				}
+			]
+		},
+		{
+			"q": "allowSteering",
+			"kind": "field-name",
+			"accept": [
+				{
+					"slug": "turn-behaviour",
+					"title": "turnBehaviour.allowSteering"
+				}
+			]
+		},
+		{
+			"q": "outputCompression",
+			"kind": "field-name",
+			"accept": [
+				{
+					"slug": "modalities",
+					"title": "image.outputCompression"
+				}
+			]
+		},
+		{
+			"q": "silenceDurationMs",
+			"kind": "field-name",
+			"accept": [
+				{
+					"slug": "modalities",
+					"title": "live.vad.silenceDurationMs"
+				}
+			]
+		},
+		{
+			"q": "fallbackKeySlot",
+			"kind": "field-name",
+			"accept": [
+				{
+					"slug": "models",
+					"title": "models.*.fallbackKeySlot"
+				}
+			]
+		},
+		{
+			"q": "t2Loader",
+			"kind": "field-name",
+			"accept": [
+				{
+					"slug": "tools",
+					"title": "tools.t2Loader"
+				}
+			]
+		},
+		{
+			"q": "sampleRate",
+			"kind": "field-name",
+			"accept": [
+				{
+					"slug": "traces",
+					"title": "observability.sampleRate"
+				}
+			]
+		},
+		{
+			"q": "limitsByMime",
+			"kind": "field-name",
+			"accept": [
+				{
+					"slug": "inputs",
+					"title": "inputs.limitsByMime"
+				},
+				{
+					"slug": "inputs",
+					"title": "inputs.limitsByMime.*"
+				}
+			]
+		},
+		{
+			"q": "pathParams",
+			"kind": "field-name",
+			"accept": [
+				{
+					"slug": "tools",
+					"title": "mapping.pathParams"
+				}
+			]
+		},
+		{
+			"q": "defaultEffort",
+			"kind": "field-name",
+			"accept": [
+				{
+					"slug": "models",
+					"title": "models.*.defaultEffort"
+				}
+			]
+		},
+		{
+			"q": "live.vad.endSensitivity",
+			"kind": "field-dotted",
+			"accept": [
+				{
+					"slug": "modalities",
+					"title": "live.vad.endSensitivity"
+				}
+			]
+		},
+		{
+			"q": "inputs.attachments.accept",
+			"kind": "field-dotted",
+			"accept": [
+				{
+					"slug": "inputs",
+					"title": "inputs.attachments.accept"
+				}
+			]
+		},
+		{
+			"q": "observability.include.usage",
+			"kind": "field-dotted",
+			"accept": [
+				{
+					"slug": "traces",
+					"title": "observability.include.usage"
+				}
+			]
+		},
+		{
+			"q": "turnBehaviour.resumption.maxContinues",
+			"kind": "field-dotted",
+			"accept": [
+				{
+					"slug": "turn-behaviour",
+					"title": "turnBehaviour.resumption.maxContinues"
+				}
+			]
+		},
+		{
+			"q": "models.*.compaction.compactAt",
+			"kind": "field-dotted",
+			"accept": [
+				{
+					"slug": "models",
+					"title": "models.*.compaction.compactAt"
+				}
+			]
+		},
+		{
+			"q": "auth.onUnauthenticated",
+			"kind": "field-dotted",
+			"accept": [
+				{
+					"slug": "tools",
+					"title": "auth.onUnauthenticated"
+				}
+			]
+		},
+		{
+			"q": "how many times can the model rewrite a reply that fails validation",
+			"kind": "field-described",
+			"accept": [
+				{
+					"slug": "outputs",
+					"title": "outputs.validation.maxRetries"
+				}
+			]
+		},
+		{
+			"q": "what is the aspect ratio setting for generated images",
+			"kind": "field-described",
+			"accept": [
+				{
+					"slug": "modalities",
+					"title": "image.aspectRatio"
+				}
+			]
+		},
+		{
+			"q": "how long a silence ends the user's speech",
+			"kind": "field-described",
+			"accept": [
+				{
+					"slug": "modalities",
+					"title": "live.vad.silenceDurationMs"
+				}
+			]
+		},
+		{
+			"q": "which file types may a turn send",
+			"kind": "field-described",
+			"accept": [
+				{
+					"slug": "inputs",
+					"title": "inputs.attachments.accept"
+				}
+			]
+		},
+		{
+			"q": "limit the number of files per turn",
+			"kind": "field-described",
+			"accept": [
+				{
+					"slug": "inputs",
+					"title": "inputs.maxFiles"
+				}
+			]
+		},
+		{
+			"q": "setting for how random the wording is",
+			"kind": "field-described",
+			"accept": [
+				{
+					"slug": "models",
+					"title": "models.*.temperature"
+				}
+			]
+		},
+		{
+			"q": "what share of traces are kept",
+			"kind": "field-described",
+			"accept": [
+				{
+					"slug": "traces",
+					"title": "observability.sampleRate"
+				}
+			]
+		},
+		{
+			"q": "which header carries the tool credential",
+			"kind": "field-described",
+			"accept": [
+				{
+					"slug": "tools",
+					"title": "auth.headerName"
+				}
+			]
+		},
+		{
+			"q": "most times one turn may call a tool",
+			"kind": "field-described",
+			"accept": [
+				{
+					"slug": "tools",
+					"title": "maxCallsPerTurn"
+				}
+			]
+		},
+		{
+			"q": "does a tool call need the host's approval",
+			"kind": "field-described",
+			"accept": [
+				{
+					"slug": "tools",
+					"title": "permission"
+				},
+				{
+					"slug": "tools",
+					"title": "6. Ask a person first"
+				}
+			]
+		},
+		{
+			"q": "the most model calls one turn may make",
+			"kind": "field-described",
+			"accept": [
+				{
+					"slug": "models",
+					"title": "maxSteps"
+				}
+			]
+		},
+		{
+			"q": "keep the exact text a guardrail matched",
+			"kind": "field-described",
+			"accept": [
+				{
+					"slug": "traces",
+					"title": "observability.include.guardrailMatchPreview"
+				}
+			]
+		},
+		{
+			"q": "gate_expired",
+			"kind": "field-name",
+			"accept": [
+				{
+					"slug": "statuses",
+					"title": "session.gate_expired"
+				}
+			]
+		},
+		{
+			"q": "attachments.mime_not_allowed",
+			"kind": "field-dotted",
+			"accept": [
+				{
+					"slug": "statuses",
+					"title": "attachments.mime_not_allowed"
+				}
+			]
+		}
+	]
+}

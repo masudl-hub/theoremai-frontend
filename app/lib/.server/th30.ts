@@ -16,6 +16,7 @@ import { SURFACE_PROMPT, SURFACE_TOOL_NAMES, surfaceTools } from '@theoremjs/age
 import { z } from 'zod';
 import { getDocIndex } from '../docs/.server/load-index';
 import { formatNavigableForPrompt, readDoc, searchDocs } from '../docs/query';
+import { th30SearchOutput } from '../docs/th30-search';
 import { resolveSitePath } from '../site-path';
 import { ARGUMENT, GOALS, HOME_TAGLINE } from '../site-pitch';
 import { TH30_PROFILE_ID } from '../th30-id';
@@ -72,7 +73,11 @@ const ReadOutputSchema = z.object({
 });
 
 const SearchDocsInputSchema = z.object({
-	query: z.string().describe('Words or field names; plurals, typos and partial words still match'),
+	query: z
+		.string()
+		.describe(
+			'What the visitor asked, in their words, or a field or section name; typos and partial words still match',
+		),
 	limit: z.number().int().positive().max(10).optional(),
 });
 
@@ -164,11 +169,11 @@ const th30ReadTool = {
 	},
 };
 
-const th30SearchDocsTool = {
+const th30SearchDocsFields = {
 	type: 'function' as const,
 	name: 'searchDocs',
 	description:
-		'Search the docs: chapter titles, sections, fields and code examples. Each hit carries the slug and blockId to navigate, highlight or read.',
+		'Search the docs by meaning and by words: chapter titles, sections, fields and code examples. Ask the way the visitor did; the hits that answer it come first. Each hit carries the slug and blockId to navigate, highlight or read.',
 	category: 'docs',
 	access: 'read-only' as const,
 	paths: ['*'],
@@ -180,21 +185,17 @@ const th30SearchDocsTool = {
 	},
 	input: SearchDocsInputSchema,
 	output: SearchDocsOutputSchema,
+};
+
+/** The live call's search: the visitor's page runs it, with the model that reads meaning. */
+const th30SearchDocsPageTool = { ...th30SearchDocsFields, answeredBy: 'page' as const };
+
+/** The eval twin's search: no page to ask, so the server answers with the keyword ranking. */
+const th30SearchDocsServerTool = {
+	...th30SearchDocsFields,
 	handler: (input: SearchDocsInput) => {
 		const index = getDocIndex();
-		const searchRes = searchDocs(index, input.query, input.limit);
-		return {
-			query: searchRes.query,
-			results: searchRes.results.map((hit) => ({
-				title: hit.title,
-				source: sourceOf(index.bySlug[hit.slug]?.title, hit.title, hit.href),
-				slug: hit.slug,
-				blockId: hit.blockId,
-				urlOrAnchor: hit.href,
-				excerpt: hit.excerpt,
-			})),
-			totalMatches: searchRes.totalMatches,
-		};
+		return th30SearchOutput(index, searchDocs(index, input.query, input.limit));
 	},
 };
 
@@ -265,12 +266,15 @@ export const TH30_TOOL_IDS = [
 	'askRepo',
 ] as const;
 
-/** Register all Th30 tools into the process-local tool registry. */
-export function registerTh30Tools(): void {
+/**
+ * Register all Th30 tools into the process-local tool registry. The live call has the visitor's
+ * page search the docs; a run with no page (the evals) passes `docsSearch: 'server'`.
+ */
+export function registerTh30Tools(options: { docsSearch?: 'page' | 'server' } = {}): void {
 	registerTool(th30NavigateTool);
 	registerTool(th30HighlightTool);
 	registerTool(th30ReadTool);
-	registerTool(th30SearchDocsTool);
+	registerTool(options.docsSearch === 'server' ? th30SearchDocsServerTool : th30SearchDocsPageTool);
 	registerTool(th30SearchWebTool);
 	registerTool(th30AskRepoTool);
 	for (const tool of surfaceTools({ category: 'page' })) registerTool(tool);
@@ -295,12 +299,6 @@ When they ask you to build, or to make the one on screen any good:
 /* -------------------------------------------------------------------------- */
 /* System Prompt & Profile Definition                                         */
 /* -------------------------------------------------------------------------- */
-
-/** The words th30 says when it cites a hit: the chapter, the part of it, and where it is. */
-function sourceOf(chapter: string | undefined, part: string, href: string): string {
-	const named = chapter && chapter !== part ? `${chapter}, ${part}` : part;
-	return `${named} (${href})`;
-}
 
 /** The overview's own words on Theorem: public text th30 may repeat. */
 function theoremIs(): string {
@@ -346,7 +344,7 @@ Tools:
 - navigate: { to } — a path on this site: /, /overview, /examples, /studio, /studio/run, /docs, or /docs/<slug>, with an optional #id. Not the open web.
 - highlight: { target, label? } — focus and mark something already on the page. target is an element id, a docs block id, or the visible words of a heading, link, or button. Not a CSS selector. It fails when nothing matches; say so.
 - read: slug, slug#block, or full_page. Line-numbered markdown from the same projector as the page.
-- searchDocs: { query } — stemmed, typo-tolerant search over titles, sections, fields and examples. Hits that match every word come first. Each hit has slug and blockId: navigate to /docs/<slug>#<blockId>, or highlight the block when the visitor is already on that chapter, then read it before you answer.
+- searchDocs: { query } — search over titles, sections, fields and examples by meaning and by words, run in the visitor's browser. Ask it the way the visitor did, or in the field's own words; the best answers come first and a nonsense question returns nothing. Each hit has slug and blockId: navigate to /docs/<slug>#<blockId>, or highlight the block when the visitor is already on that chapter, then read it before you answer.
 - searchWeb: { query } — the web, through Exa. Only for providers, models, other libraries and news. Not for Theorem.
 - askRepo: { question, repoName? } — DeepWiki for a public GitHub repo. Omit repoName for ${TH30_REPO}; pass owner/repo to ask about another public repo. Call it only when searchDocs has no answer. A field the docs define is answered from the docs.
 

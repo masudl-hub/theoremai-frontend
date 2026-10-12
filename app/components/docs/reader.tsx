@@ -34,8 +34,9 @@ import {
 	setChapterCollapsed,
 } from '../../lib/docs/chapter-navigation';
 import { projectArticleText } from '../../lib/docs/project-text';
-import { articleHref, chapterNeighbors, type DocSearchHit, searchDocs } from '../../lib/docs/query';
+import { articleHref, chapterNeighbors, type DocSearchHit } from '../../lib/docs/query';
 import type { DocArticle, DocIndex, DocTreeNode } from '../../lib/docs/schema';
+import { useDocsSearch, warmDocsSearchFor } from '../../lib/docs/use-docs-search';
 import { NewTabLink } from '../links';
 import { holdDocsArticleTransition } from './article-transition';
 import { DocsBody } from './body';
@@ -195,6 +196,7 @@ type ChapterPaneProps = {
 	updated: string | undefined;
 	query: string;
 	onQueryChange: (value: string) => void;
+	onWarm: () => void;
 	tree: readonly DocTreeNode[];
 	article: DocArticle | undefined;
 	hashId: string | undefined;
@@ -225,7 +227,8 @@ function ChapterPaneHeader({ updated }: { updated: string | undefined }) {
 function ChapterSearch({
 	query,
 	onQueryChange,
-}: Pick<ChapterPaneProps, 'query' | 'onQueryChange'>) {
+	onWarm,
+}: Pick<ChapterPaneProps, 'query' | 'onQueryChange'> & { onWarm: () => void }) {
 	return (
 		<TextInput
 			label="Search docs"
@@ -233,6 +236,7 @@ function ChapterSearch({
 			placeholder="Search"
 			value={query}
 			onChange={onQueryChange}
+			onFocus={onWarm}
 			startIcon={IconSearch}
 			hasClear
 		/>
@@ -271,7 +275,7 @@ function ChapterPane(pane: ChapterPaneProps) {
 		<Section variant="raised" height="100%" padding={4}>
 			<VStack gap={4} height="100%">
 				<ChapterPaneHeader updated={pane.updated} />
-				<ChapterSearch query={pane.query} onQueryChange={pane.onQueryChange} />
+				<ChapterSearch query={pane.query} onQueryChange={pane.onQueryChange} onWarm={pane.onWarm} />
 				<StackItem size="fill">
 					<ScrollableArea label="Chapters" height="100%">
 						<ChapterTree {...pane} />
@@ -333,12 +337,11 @@ function useChapterPane(
 	const [opened, setOpened] = useState<ReadonlyMap<string, boolean>>(() => new Map());
 	const updated = docsUpdatedOn(latestModified(index));
 	const searching = query.trim().length > 0;
+	const found = useDocsSearch(index, query, SEARCH_LIMIT);
 	const tree = useMemo(() => {
-		const matches = searching
-			? treeFromHits(index.tree, searchDocs(index, query, SEARCH_LIMIT).results)
-			: index.tree;
+		const matches = searching ? treeFromHits(index.tree, found.results) : index.tree;
 		return chapterNavigationTree(matches);
-	}, [index, query, searching]);
+	}, [index, found.results, searching]);
 	const onOpenChange = (id: string, collapsed: boolean) => {
 		setOpened((prev) => setChapterCollapsed(prev, id, collapsed));
 	};
@@ -346,6 +349,9 @@ function useChapterPane(
 		updated,
 		query,
 		onQueryChange: setQuery,
+		onWarm: () => {
+			warmDocsSearchFor(index);
+		},
 		tree,
 		article,
 		hashId,
@@ -434,7 +440,11 @@ export function DocsFrame({
 						header={<ChapterPaneHeader updated={pane.updated} />}
 					>
 						<VStack gap={4}>
-							<ChapterSearch query={pane.query} onQueryChange={pane.onQueryChange} />
+							<ChapterSearch
+								query={pane.query}
+								onQueryChange={pane.onQueryChange}
+								onWarm={pane.onWarm}
+							/>
 							<ChapterTree {...pane} />
 						</VStack>
 					</MobileNav>

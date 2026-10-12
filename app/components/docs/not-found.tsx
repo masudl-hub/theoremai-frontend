@@ -3,15 +3,15 @@ import { LayoutContent } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { VStack } from '@astryxdesign/core/VStack';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router';
-import { searchDocs } from '../../lib/docs/query';
 import type { DocIndex } from '../../lib/docs/schema';
+import { useDocsSearch, warmDocsSearchFor } from '../../lib/docs/use-docs-search';
 import { DocsFrame } from './reader';
 
 export function DocsNotFound({ index, slug }: { index: DocIndex; slug: string }) {
 	const [query, setQuery] = useState(slug.replace(/-/g, ' '));
-	const hits = useMemo(() => searchDocs(index, query, 6).results, [index, query]);
+	const hits = useDocsSearch(index, query, 6).results;
 
 	return (
 		<DocsFrame index={index}>
@@ -19,7 +19,15 @@ export function DocsNotFound({ index, slug }: { index: DocIndex; slug: string })
 				<VStack gap={4}>
 					<Heading level={1}>No /docs/{slug}</Heading>
 					<Text color="secondary">Search the same index Th30 reads.</Text>
-					<TextInput label="Search docs" value={query} onChange={setQuery} hasClear />
+					<TextInput
+						label="Search docs"
+						value={query}
+						onChange={setQuery}
+						onFocus={() => {
+							warmDocsSearchFor(index);
+						}}
+						hasClear
+					/>
 					<VStack gap={2}>
 						{hits.map((hit) => (
 							<Link key={hit.href} to={hit.href}>

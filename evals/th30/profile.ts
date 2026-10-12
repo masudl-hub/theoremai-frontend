@@ -2,6 +2,8 @@
  * The text twin of th30: the live profile's system prompt and docs tools, answered in text so
  * the suite can run it. Live profiles do not run in eval suites; the prompt and tools are the
  * same ones the live call uses, so what is graded here is what th30 is told and what it can read.
+ * One difference: the live call searches the docs in the visitor's browser, by meaning, and this
+ * twin has no browser, so its searchDocs ranks by words alone.
  */
 import { defineProvider, googleAdapter, registerProfile, registerProvider } from '@theoremjs/agents';
 import { EVAL_JUDGMENT } from '@theoremjs/agents/evals';
@@ -24,7 +26,7 @@ const MODEL = google.model('gemini-3.5-flash-lite', {
 	builtInTools: [],
 });
 
-registerTh30Tools();
+registerTh30Tools({ docsSearch: 'server' });
 
 registerProfile({
 	type: 'text',

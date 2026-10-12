@@ -20,8 +20,9 @@ import {
 	IconSearch,
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { articleHref, searchDocs } from '../../lib/docs/query';
+import { articleHref, type DocSearchHit } from '../../lib/docs/query';
 import type { DocArticle, DocIndex } from '../../lib/docs/schema';
+import { useDocsSearch, warmDocsSearchFor } from '../../lib/docs/use-docs-search';
 import 'virtual:docs/landing.css';
 import { starterPrompt } from '../../lib/docs/starter-prompt';
 import { IconDeepWiki } from '../deepwiki-icon';
@@ -179,7 +180,11 @@ function useSearchHint(paused: boolean): string {
 	return shown < 0 ? text : text.slice(0, shown);
 }
 
-function tilesFromIndex(index: DocIndex, query: string): LandingTile[] {
+function tilesFromIndex(
+	index: DocIndex,
+	query: string,
+	hits: readonly DocSearchHit[],
+): LandingTile[] {
 	const trimmed = query.trim();
 	if (!trimmed) {
 		return FEATURED.flatMap(({ slug, title }) => {
@@ -197,7 +202,7 @@ function tilesFromIndex(index: DocIndex, query: string): LandingTile[] {
 					];
 		});
 	}
-	return searchDocs(index, trimmed, SEARCH_LIMIT).results.flatMap((hit) => {
+	return hits.flatMap((hit) => {
 		const article = index.bySlug[hit.slug];
 		return article === undefined
 			? []
@@ -340,7 +345,11 @@ function LandingResults({
 
 export function DocsLanding({ index }: { index: DocIndex }) {
 	const [query, setQuery] = useState('');
-	const target = useMemo(() => tilesFromIndex(index, query), [index, query]);
+	const found = useDocsSearch(index, query, SEARCH_LIMIT);
+	const target = useMemo(
+		() => tilesFromIndex(index, query, found.results),
+		[index, query, found.results],
+	);
 	const { tiles, phase } = useEasedTiles(target);
 	const searching = query.trim().length > 0;
 	const [focused, setFocused] = useState(false);
@@ -359,6 +368,7 @@ export function DocsLanding({ index }: { index: DocIndex }) {
 									className="docs-landing-query"
 									onFocus={() => {
 										setFocused(true);
+										warmDocsSearchFor(index);
 									}}
 									onBlur={() => {
 										setFocused(false);
