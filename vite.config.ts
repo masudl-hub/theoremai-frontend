@@ -71,8 +71,10 @@ export default defineConfig({
 			`${theoremai.root}/studio/**/*.{ts,tsx}`,
 			`!${theoremai.root}/studio/app/**`,
 			`!${theoremai.root}/**/*.test.*`,
-			// The studio's own installed packages are not sources to scan; their declaration files do not parse.
-			`!${theoremai.root}/**/node_modules/**`,
+			// The studio's installed packages are not sources to scan, and their declaration files do not
+			// parse. Vite sends any pattern spelling out "node_modules" to a separate glob that skips
+			// the other patterns, so the folder name is spelled with a character class.
+			`!${theoremai.root}/**/node_modul[e]s/**`,
 		],
 		// Served per icon by tablerIconFiles instead.
 		exclude: ['@tabler/icons-react'],
