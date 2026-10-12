@@ -32,11 +32,12 @@ import { Th30Trigger } from '../th30-dock';
 
 const SEARCH_LIMIT = 16;
 const SEARCH_HINTS = [
-	'Search the docs',
+	'Search, or ask a question',
 	'Try “runTurn”',
 	'Try “guardrails”',
 	'Try “structured outputs”',
 	'Try “when a tool pauses”',
+	'Try “how do I stop a run early”',
 	'Try “recording traces”',
 ];
 const TYPE_MS = 55;
@@ -176,7 +177,7 @@ function useSearchHint(paused: boolean): string {
 			window.clearTimeout(timer);
 		};
 	}, [paused]);
-	const text = SEARCH_HINTS[hint] ?? 'Search the docs';
+	const text = SEARCH_HINTS[hint] ?? 'Search, or ask a question';
 	return shown < 0 ? text : text.slice(0, shown);
 }
 
@@ -272,7 +273,7 @@ function StarterPromptButton() {
 		<Button
 			variant="primary"
 			size="md"
-			label={isCopied ? 'Copied. Paste it into your agent' : 'Copy a starter prompt'}
+			label={isCopied ? 'Copied. Paste it into your agent' : 'Starter prompt'}
 			icon={isCopied ? <IconCheck aria-hidden /> : <IconCopy aria-hidden />}
 			onClick={() => {
 				void copy(starterPrompt(window.location.origin));

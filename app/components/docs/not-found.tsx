@@ -21,6 +21,7 @@ export function DocsNotFound({ index, slug }: { index: DocIndex; slug: string })
 					<Text color="secondary">Search the same index Th30 reads.</Text>
 					<TextInput
 						label="Search docs"
+						placeholder="Search, or ask a question"
 						value={query}
 						onChange={setQuery}
 						onFocus={() => {

@@ -233,7 +233,7 @@ function ChapterSearch({
 		<TextInput
 			label="Search docs"
 			isLabelHidden
-			placeholder="Search"
+			placeholder="Search or ask"
 			value={query}
 			onChange={onQueryChange}
 			onFocus={onWarm}
