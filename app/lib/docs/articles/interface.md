@@ -128,7 +128,7 @@ Use the hooks when you draw the chat with your own components.
 
 `useTheoremChat` takes a turn interface. A live interface is not one, so check `iface.type` first.
 
-Bind each control to `iface`: `inputs`, `tools.allow`, `models` and `lexicon`. A text profile also has `allowSteering`. Do not write these fields again in the client ([Declaring inputs](/docs/inputs), [Describing statuses](/docs/statuses)).
+Bind each control to `iface`: `inputs`, `tools.allow`, `models` and `labels`. A text profile also has `allowSteering`. Do not write these fields again in the client ([Declaring inputs](/docs/inputs), [Describing statuses](/docs/statuses)).
 
 ```ts
 import { createHttpTransport, useTheoremChat, useTheoremInterface } from '@theoremjs/react';

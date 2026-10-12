@@ -13,7 +13,7 @@ export function symbolTerm(symbol: PageSymbol): { name: string; text: string } {
 		case 'export':
 		case 'union-member':
 		case 'trace':
-		case 'lexicon':
+		case 'label':
 			return { name: symbol.name, text: textOf(symbol) };
 	}
 }
@@ -25,7 +25,7 @@ function textOf(symbol: Exclude<PageSymbol, { kind: 'field' | 'request-field' }>
 			return symbol.doc;
 		case 'trace':
 			return `${symbol.label}: ${symbol.doc}`;
-		case 'lexicon':
+		case 'label':
 			return symbol.text;
 	}
 }

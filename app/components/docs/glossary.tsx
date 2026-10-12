@@ -46,7 +46,7 @@ const KIND_LABEL: Record<PageSymbol['kind'], string> = {
 	'request-field': 'Field',
 	'union-member': 'Union member',
 	trace: 'Trace record',
-	lexicon: 'Label',
+	label: 'Label',
 };
 
 /** The kinds in the order the filter lists them. */
@@ -71,7 +71,7 @@ function extraWords(symbol: PageSymbol): string {
 		case 'export':
 			return symbol.exported;
 		case 'union-member':
-		case 'lexicon':
+		case 'label':
 			return '';
 	}
 }

@@ -44,7 +44,7 @@ function spentCap(
 	allowance: DurableObjectNamespace<StudioDecideAllowance> | undefined,
 ): Promise<number | null> {
 	if (!allowance) {
-		// lexicon-exempt: developer contract error
+		// labels-exempt: developer contract error
 		throw new TheoremError('config', 'studio decide: no DECIDE_ALLOWANCE binding');
 	}
 	return takeAllowance(
@@ -55,11 +55,11 @@ function spentCap(
 }
 
 export async function studioDecide(request: Request, env: StudioDecideEnv): Promise<Response> {
-	let lexicon: DecisionProfileDefinition['lexicon'];
+	let labels: DecisionProfileDefinition['labels'];
 	try {
 		const body = await readBody(request, studioDecisionRequestSchema);
 		const profile = defineProfile(body.profile as DecisionProfileDefinition);
-		lexicon = profile.lexicon;
+		labels = profile.labels;
 		// Counted only once the request is one configured decision model would answer.
 		const binding = Object.values(profile.models)[0];
 		const selected = { ...binding, protocol: 'decision' as const, builtInTools: [] };
@@ -81,10 +81,10 @@ export async function studioDecide(request: Request, env: StudioDecideEnv): Prom
 		validateDecisionRequest(decisionRequest, profile);
 		const vault = studioDemoVault(env, profile);
 		if (!Object.values(vault).some(Boolean))
-			throw new TheoremError('auth', 'studio decide: provider key is missing'); // lexicon-exempt: internal diagnostic
+			throw new TheoremError('auth', 'studio decide: provider key is missing'); // labels-exempt: internal diagnostic
 		const cap = await spentCap(request, env.DECIDE_ALLOWANCE);
 		if (cap !== null) {
-			// lexicon-exempt: internal diagnostic; the user reads quota.exhausted
+			// labels-exempt: internal diagnostic; the user reads quota.exhausted
 			throw new TheoremError('rate_limit', "studio decide: today's decisions are spent", {
 				copy: { key: 'quota.exhausted', params: { perDay: cap } },
 			});
@@ -102,6 +102,6 @@ export async function studioDecide(request: Request, env: StudioDecideEnv): Prom
 		);
 		return json(200, { result, traces });
 	} catch (err) {
-		return json(caughtStatus(err), { error: publicError(err, lexicon), errorKind: errorKind(err) });
+		return json(caughtStatus(err), { error: publicError(err, labels), errorKind: errorKind(err) });
 	}
 }

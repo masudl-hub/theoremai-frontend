@@ -12,7 +12,7 @@ import {
 	defaultKernelScope,
 	errorKind,
 	type KernelScope,
-	type LexiconOverrides,
+	type LabelOverrides,
 	type LiveSession,
 	type Profile,
 	publicError,
@@ -74,12 +74,12 @@ function resolveGeminiApiKey(env: LiveRelayEnv): string | undefined {
 }
 
 /** A relay failure as the browser reads it: the profile's wording and the kind, never the detail. */
-function errorBody(err: unknown, lexicon?: LexiconOverrides): { error: string; errorKind: string } {
-	return { error: publicError(err, lexicon), errorKind: errorKind(err) };
+function errorBody(err: unknown, labels?: LabelOverrides): { error: string; errorKind: string } {
+	return { error: publicError(err, labels), errorKind: errorKind(err) };
 }
 
-function errorEnvelope(err: unknown, lexicon?: LexiconOverrides): string {
-	return JSON.stringify({ type: 'error', ...errorBody(err, lexicon) });
+function errorEnvelope(err: unknown, labels?: LabelOverrides): string {
+	return JSON.stringify({ type: 'error', ...errorBody(err, labels) });
 }
 
 async function openLiveSession(
@@ -93,7 +93,7 @@ async function openLiveSession(
 ): Promise<LiveSession> {
 	const { vault } = studioProviders(env, scope.profiles.get(profileId), scope.providers);
 	if (!vault || !Object.values(vault).some(Boolean))
-		throw new TheoremError('auth', 'No demo Gemini credentials configured.'); // lexicon-exempt: internal diagnostic
+		throw new TheoremError('auth', 'No demo Gemini credentials configured.'); // labels-exempt: internal diagnostic
 	return scope.runSession(
 		{ ...(await boundary.prepareLiveOpen(open)), profile: profileId, metadata },
 		{
@@ -106,8 +106,8 @@ async function openLiveSession(
 }
 
 /** Setup failures reach the browser like session failures: over the socket, worded, with their kind. */
-function failRelay(serverWs: WebSocket, err: unknown, lexicon?: LexiconOverrides): void {
-	serverWs.send(errorEnvelope(err, lexicon));
+function failRelay(serverWs: WebSocket, err: unknown, labels?: LabelOverrides): void {
+	serverWs.send(errorEnvelope(err, labels));
 	try {
 		serverWs.close(1011, 'session error');
 	} catch {
@@ -128,7 +128,7 @@ function openMessage(serverWs: WebSocket): Promise<LiveOpenMessage> {
 		};
 		const onClose = () => {
 			serverWs.removeEventListener('message', onMessage);
-			// lexicon-exempt: internal diagnostic; the user reads error.network
+			// labels-exempt: internal diagnostic; the user reads error.network
 			reject(new TheoremError('network', 'Live socket closed before its first message'));
 		};
 		serverWs.addEventListener('message', onMessage, { once: true });
@@ -163,7 +163,7 @@ async function resolveLiveProfile(
 	if (!isDraftMessage(message)) {
 		throw new TheoremError(
 			'request',
-			// lexicon-exempt: internal diagnostic; the user reads error.request
+			// labels-exempt: internal diagnostic; the user reads error.request
 			'A live call without ?profile= must open with a draft message',
 		);
 	}
@@ -184,7 +184,7 @@ async function relayLiveSession(
 		const line: StudioTraceLine = { type: 'trace', record };
 		serverWs.send(JSON.stringify(line));
 	});
-	let lexicon: LexiconOverrides | undefined;
+	let labels: LabelOverrides | undefined;
 	let profileId: string;
 	let session: LiveSession;
 	try {
@@ -192,16 +192,16 @@ async function relayLiveSession(
 		const open = await openMessage(serverWs);
 		const { scope, profile } = await resolveLiveProfile(open, profileParam);
 		profileId = profile.id;
-		lexicon = profile.lexicon;
+		labels = profile.labels;
 		if (profile.type !== 'live') {
-			// lexicon-exempt: internal diagnostic; the user reads error.config
+			// labels-exempt: internal diagnostic; the user reads error.config
 			throw new TheoremError('config', `Profile '${profile.id}' is not type 'live'`);
 		}
 		const apiKey = resolveGeminiApiKey(env);
 		if (!apiKey) {
 			throw new TheoremError(
 				'config',
-				// lexicon-exempt: internal diagnostic; the user reads error.config
+				// labels-exempt: internal diagnostic; the user reads error.config
 				'No Gemini API key configured (GEMINI_API_KEY_FREE_A/B/C)',
 			);
 		}
@@ -216,7 +216,7 @@ async function relayLiveSession(
 		);
 	} catch (err) {
 		traces.close();
-		failRelay(serverWs, err, lexicon);
+		failRelay(serverWs, err, labels);
 		return;
 	}
 
@@ -227,7 +227,7 @@ async function relayLiveSession(
 		return;
 	}
 	// A queued client call waits behind tryAgent (up to 60s), so the default 20s watchdog is too short.
-	void attachStudioLiveSession(serverWs, session, profileId, sessionId, traces, lexicon, {
+	void attachStudioLiveSession(serverWs, session, profileId, sessionId, traces, labels, {
 		clientCallTimeoutMs: 90_000,
 		pageResult: (result) => boundary.answerPageResult(result),
 		beforeEvent: async (event) => {

@@ -24,7 +24,7 @@ export const CHAPTER_ICON = {
 	'turn-behaviour': FACET_ICON.turnBehaviour,
 	guardrails: FACET_ICON.guardrails,
 	traces: FACET_ICON.observability,
-	statuses: FACET_ICON.wording,
+	statuses: FACET_ICON.labels,
 	runner: IconPlayerPlay,
 	interface: IconCode,
 	glossary: IconListSearch,

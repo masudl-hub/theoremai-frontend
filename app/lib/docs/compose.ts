@@ -7,7 +7,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createMarkdownFrontmatter } from '@astryxdesign/core/Markdown/plugins';
-import { lexiconCatalogRows } from '@theoremjs/agents/guardrails';
+import { labelCatalogRows } from '@theoremjs/agents/guardrails';
 import { traceCatalogRows } from '@theoremjs/agents/observability';
 import {
 	API_EXPORTS,
@@ -326,9 +326,9 @@ function catalogSymbols(section: DocSection, byFacet: Map<string, string[]>): Pl
 	}
 	if (section === 'statuses') {
 		symbols.push(
-			...lexiconCatalogRows().map((row) => ({
-				kind: 'lexicon' as const,
-				id: `lexicon:${row.name}`,
+			...labelCatalogRows().map((row) => ({
+				kind: 'label' as const,
+				id: `label:${row.name}`,
 				...row,
 				area: areaOfName(row.name),
 			})),

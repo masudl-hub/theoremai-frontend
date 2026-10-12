@@ -1064,7 +1064,7 @@
 			"accept": [
 				{
 					"slug": "glossary",
-					"title": "lexicon.session.gate_expired"
+					"title": "labels.session.gate_expired"
 				}
 			]
 		},
@@ -1074,7 +1074,7 @@
 			"accept": [
 				{
 					"slug": "glossary",
-					"title": "lexicon.attachments.mime_not_allowed"
+					"title": "labels.attachments.mime_not_allowed"
 				}
 			]
 		}

@@ -65,12 +65,12 @@ export async function gateStudioRequest(
 ): Promise<Response | null> {
 	if (!new URL(request.url).pathname.startsWith(STUDIO_API)) return null;
 	if (!store) {
-		// lexicon-exempt: developer contract error
+		// labels-exempt: developer contract error
 		return refusal(new TheoremError('config', 'studio: no allowance store'), 503, now);
 	}
 	const cap = await takeAllowance(store, 'request', visitorAddress(request), now);
 	if (cap === null) return null;
-	// lexicon-exempt: internal diagnostic; the user reads quota.exhausted
+	// labels-exempt: internal diagnostic; the user reads quota.exhausted
 	const spent = new TheoremError('rate_limit', "studio: today's requests are spent", {
 		copy: { key: 'quota.exhausted', params: { perDay: cap } },
 	});

@@ -22,7 +22,7 @@ const FACET_CHAPTER: Partial<Record<string, DocSection>> = {
 	turnBehaviour: 'turn-behaviour',
 	guardrails: 'guardrails',
 	observability: 'traces',
-	wording: 'statuses',
+	labels: 'statuses',
 	image: 'modalities',
 	speech: 'modalities',
 	live: 'modalities',

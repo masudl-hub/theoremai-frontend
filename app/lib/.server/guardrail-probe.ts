@@ -93,10 +93,10 @@ export async function studioProbe(
 	log: ProbeLog | undefined,
 	defer: (work: Promise<unknown>) => void,
 ): Promise<Response> {
-	let lexicon: ProfileDefinition['lexicon'];
+	let labels: ProfileDefinition['labels'];
 	try {
 		const body = await readBody(request, probeRequestSchema);
-		lexicon = body.profile.lexicon;
+		labels = body.profile.labels;
 		const answers = await runGuardrailProbes({
 			profile: body.profile,
 			customTools: body.customTools ?? [],
@@ -121,6 +121,6 @@ export async function studioProbe(
 		}
 		return json(200, { answers });
 	} catch (err) {
-		return json(caughtStatus(err), { error: publicError(err, lexicon), errorKind: errorKind(err) });
+		return json(caughtStatus(err), { error: publicError(err, labels), errorKind: errorKind(err) });
 	}
 }

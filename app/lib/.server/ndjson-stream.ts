@@ -1,5 +1,5 @@
 import type { ProfileDefinition } from '@theoremjs/agents';
-import { toErrorEvent, withPublicWording } from '@theoremjs/agents/guardrails';
+import { toErrorEvent, withPublicLabels } from '@theoremjs/agents/guardrails';
 
 const NDJSON_HEADERS = {
 	'content-type': 'application/x-ndjson; charset=utf-8',
@@ -14,11 +14,11 @@ export function errorMessage(err: unknown): string {
  * NDJSON response that streams a run's events. A failure the run didn't turn into an event itself
  * (one thrown before the kernel's turn starts, such as registering the profile or creating its
  * provider) ends the stream as the kernel's own error event: the user reads its kind's wording,
- * from the profile's `lexicon` when it has one, and the raw detail stays in `errorInternal`.
+ * from the profile's `labels` when it has one, and the raw detail stays in `errorInternal`.
  */
 export function ndjsonEventStream(
 	source: AsyncIterable<unknown>,
-	lexicon?: ProfileDefinition['lexicon'],
+	labels?: ProfileDefinition['labels'],
 ): Response {
 	const encoder = new TextEncoder();
 	const stream = new ReadableStream({
@@ -30,7 +30,7 @@ export function ndjsonEventStream(
 				controller.close();
 			} catch (err) {
 				controller.enqueue(
-					encoder.encode(`${JSON.stringify(withPublicWording(toErrorEvent(err), lexicon))}\n`),
+					encoder.encode(`${JSON.stringify(withPublicLabels(toErrorEvent(err), labels))}\n`),
 				);
 				controller.close();
 			}

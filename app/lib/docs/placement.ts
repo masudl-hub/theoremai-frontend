@@ -27,7 +27,7 @@ export const FACET_SECTION = {
 	turnBehaviour: 'turn-behaviour',
 	guardrails: 'guardrails',
 	observability: 'traces',
-	wording: 'statuses',
+	labels: 'statuses',
 } as const satisfies Record<ProfileGraphFacetId, DocSection>;
 
 /** The chapter that explains the fields of a `runTurn` request. */
@@ -49,8 +49,8 @@ export const EXPORT_SECTION = {
 	compactHistory: 'runner',
 	takeSlot: 'guardrails',
 	releaseSlot: 'guardrails',
-	overrideLexicon: 'statuses',
-	resetLexicon: 'statuses',
+	overrideLabels: 'statuses',
+	resetLabels: 'statuses',
 	TheoremError: 'runner',
 } as const satisfies Record<keyof typeof API_EXPORTS, DocSection>;
 
@@ -81,8 +81,8 @@ export const EXPORT_AREA = {
 	compactHistory: 'runner',
 	takeSlot: 'guardrails',
 	releaseSlot: 'guardrails',
-	overrideLexicon: 'labels',
-	resetLexicon: 'labels',
+	overrideLabels: 'labels',
+	resetLabels: 'labels',
 	TheoremError: 'runner',
 } as const satisfies Record<keyof typeof API_EXPORTS, GlossaryArea>;
 
@@ -93,7 +93,6 @@ export const EXPORT_AREA = {
 const HEAD_AREA = {
 	providerContinuation: 'models',
 	turnBehaviour: 'turn-behaviour',
-	lexicon: 'labels',
 	registerTool: 'tools',
 	registerStructured: 'outputs',
 	runTurn: 'runner',

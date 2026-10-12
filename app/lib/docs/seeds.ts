@@ -121,7 +121,7 @@ function firstTurnDraft(): StudioDraft {
 		// One tool of each kind: a function, an HTTP endpoint and an MCP server.
 		toolSpecs: [harborHoldToolSpec(), ...demoSpecs('get_weather', 'search_web')],
 		inputs: harborDeskInputs(),
-		wording: {
+		labels: {
 			'error.auth': 'Sign in to Harbor to continue at the desk.',
 		},
 	};

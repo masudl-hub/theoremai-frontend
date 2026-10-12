@@ -66,7 +66,7 @@ function walkedAwayCalls(
 	return (turn.abandon ?? []).map(({ callId, operationId }) => {
 		const replay = turn.replay?.abandon?.[operationId];
 		if (!replay) {
-			// lexicon-exempt: internal diagnostic; the user reads error.request
+			// labels-exempt: internal diagnostic; the user reads error.request
 			throw new TheoremError('request', `turn: no replay for walked-away call ${callId}`);
 		}
 		return { callId, operationId, replay };
@@ -106,7 +106,7 @@ export async function studioTurn(request: Request, env: SiteEnv): Promise<Respon
 						steer: studioSteerInbox(env.STEER_INBOX),
 					}),
 				),
-				draft.profile.lexicon,
+				draft.profile.labels,
 			),
 		);
 	} catch (err) {
@@ -138,7 +138,7 @@ export async function studioInvoke(request: Request, env: SiteEnv): Promise<Resp
 						onAgentCall: agentCallAllowance(request, env),
 					}),
 				),
-				draft.profile.lexicon,
+				draft.profile.labels,
 			),
 		);
 	} catch (err) {
@@ -152,7 +152,7 @@ const pagePermissions = z.array(z.string().min(1).max(128)).max(256).optional();
 /** Spends one of today's calls for this address; with no binding, nothing runs at all. */
 async function takeCall(request: Request, env: SiteEnv): Promise<void> {
 	if (!env.DECIDE_ALLOWANCE) {
-		// lexicon-exempt: developer contract error
+		// labels-exempt: developer contract error
 		throw new TheoremError('config', 'studio call: no DECIDE_ALLOWANCE binding');
 	}
 	const cap = await takeAllowance(
@@ -161,7 +161,7 @@ async function takeCall(request: Request, env: SiteEnv): Promise<void> {
 		visitorAddress(request),
 	);
 	if (cap !== null) {
-		// lexicon-exempt: internal diagnostic; the user reads quota.exhausted
+		// labels-exempt: internal diagnostic; the user reads quota.exhausted
 		throw new TheoremError('rate_limit', "studio call: today's calls are spent", {
 			copy: { key: 'quota.exhausted', params: { perDay: cap } },
 		});
@@ -206,13 +206,13 @@ export async function studioCall(request: Request, env: SiteEnv): Promise<Respon
 						onAgentCall: agentCallAllowance(request, env),
 					}),
 				),
-				draft.profile.lexicon,
+				draft.profile.labels,
 			),
 		);
 	} catch (err) {
 		if (!(err instanceof TheoremError) || err.kind === 'request') return badRequestJson(err);
 		return Response.json(
-			{ error: publicError(err, draft?.profile.lexicon), errorKind: errorKind(err) },
+			{ error: publicError(err, draft?.profile.labels), errorKind: errorKind(err) },
 			{ status: caughtStatus(err), headers: { 'cache-control': 'no-store' } },
 		);
 	}
@@ -228,7 +228,7 @@ export async function studioSteer(request: Request, env: SiteEnv): Promise<Respo
 			'request body',
 		);
 		if (!(await studioSteerInbox(env.STEER_INBOX).enqueue(steer.turnId, steerUnitOf(steer)))) {
-			// lexicon-exempt: internal diagnostic; the user reads session.turn_ended
+			// labels-exempt: internal diagnostic; the user reads session.turn_ended
 			throw new TheoremError('request', 'steer: no open run has this inbox', {
 				copy: { key: 'session.turn_ended' },
 			});

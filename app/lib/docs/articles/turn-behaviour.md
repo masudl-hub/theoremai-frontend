@@ -92,7 +92,7 @@ runTurn(
 
 What the continue turn carries depends on the type of profile:
 
-- On a text profile, end `input.history` with the cut reply as an assistant message. Leave out `input.text`. Theorem sends the lexicon text `continue.instruction` in its place.
+- On a text profile, end `input.history` with the cut reply as an assistant message. Leave out `input.text`. Theorem sends the label text `continue.instruction` in its place.
 - On an image or speech profile, send the original request again.
 
 If the profile sets `maxContinues`, each continue must carry `continuation`. It counts the continues of one reply, and it starts at 1.

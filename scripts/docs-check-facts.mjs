@@ -1,8 +1,8 @@
 /**
  * Hold the claims in /docs prose and tables to the package's own catalogs. Every inline-code
  * config path (`guardrails.egress.onBlock`, `models.<id>.apiId`) must be a field the profile
- * catalog (`PROFILE_FIELDS`, `EXTRA_FIELDS`) declares, and every `lexicon.<key>` must be a
- * lexicon key. A renamed or removed field then fails here instead of staying in a chapter.
+ * catalog (`PROFILE_FIELDS`, `EXTRA_FIELDS`) declares, and every `labels.<key>` must be a
+ * labels key. A renamed or removed field then fails here instead of staying in a chapter.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -27,7 +27,7 @@ const catalog = JSON.parse(
 		'deno',
 		[
 			'eval',
-			'import { PROFILE_FIELDS, EXTRA_FIELDS, LEXICON_KEYS } from "./mod.ts"; console.log(JSON.stringify({ fields: Object.keys(PROFILE_FIELDS), meta: PROFILE_FIELDS, extra: Object.keys(EXTRA_FIELDS), lexicon: LEXICON_KEYS }))',
+			'import { PROFILE_FIELDS, EXTRA_FIELDS, LABEL_KEYS } from "./mod.ts"; console.log(JSON.stringify({ fields: Object.keys(PROFILE_FIELDS), meta: PROFILE_FIELDS, extra: Object.keys(EXTRA_FIELDS), labels: LABEL_KEYS }))',
 		],
 		{ cwd: theoremai.root, encoding: 'utf8' },
 	),
@@ -36,7 +36,7 @@ const catalog = JSON.parse(
 const paths = [...catalog.fields, ...catalog.extra].map((p) => p.split('.'));
 // The tool-spec fields share the catalog; `input`, `output` and `profile` there are not profile paths.
 const heads = new Set([...catalog.fields.map((p) => p.split('.')[0]), 'mapping', 'auth', 'studio', 'labels']);
-const lexicon = new Set(catalog.lexicon);
+const labels = new Set(catalog.labels);
 
 /** A segment pattern matches when each segment is equal or either side is a wildcard. */
 const matches = (claim) =>
@@ -53,10 +53,10 @@ for (const article of index.articles) {
 		const span = code.trim().replace(/\(\)$/, '').replace(/<[^>]*>/g, '*');
 		if (!/^[A-Za-z][\w]*(\.[\w*-]+)+$/.test(span)) continue;
 		const claim = span.split('.');
-		if (claim[0] === 'lexicon') {
+		if (claim[0] === 'labels') {
 			read += 1;
-			if (!lexicon.has(claim.slice(1).join('.')) && claim[1] !== '*') {
-				problems.push(`${article.slug}: \`${span}\` is not a lexicon key`);
+			if (!labels.has(claim.slice(1).join('.')) && claim[1] !== '*') {
+				problems.push(`${article.slug}: \`${span}\` is not a labels key`);
 			}
 		} else if (heads.has(claim[0])) {
 			read += 1;
