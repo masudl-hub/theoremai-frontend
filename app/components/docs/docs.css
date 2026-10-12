@@ -1,23 +1,16 @@
-.docs-dictionary {
+.docs-glossary {
 	min-width: 0;
 	width: 100%;
 }
 
-.docs-dictionary dl {
-	grid-template-columns: fit-content(20rem) minmax(0, 1fr);
+.docs-glossary-search {
+	flex: 1 1 280px;
+	min-width: 0;
 }
 
-.docs-dictionary dt {
-	display: block;
-	max-width: 100%;
-	min-width: 0;
-	white-space: pre-line;
+.docs-glossary-name {
 	overflow-wrap: anywhere;
-}
-
-.docs-dictionary dd {
-	min-width: 0;
-	overflow-wrap: anywhere;
+	scroll-margin-top: 80px;
 }
 
 .docs-prose {
@@ -190,10 +183,6 @@
 	.docs-landing-query > * {
 		max-width: 100%;
 		width: 100%;
-	}
-
-	.docs-dictionary dl {
-		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 	}
 
 	.docs-landing .docs-landing-tile-still {

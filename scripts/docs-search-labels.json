@@ -96,95 +96,95 @@
 					"title": "Live"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.ingress"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.ingress.audio"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.ingress.video"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.ingress.text"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.voice"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.vad"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.vad.activityHandling"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.vad.startSensitivity"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.vad.endSensitivity"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.vad.prefixPaddingMs"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.vad.silenceDurationMs"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.sessionResumption"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.greeting"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.resumed"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.resumed.prompt"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.resumed.afterMs"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.contextCompression"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.contextCompression.triggerTokens"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.contextCompression.slidingWindow"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.contextCompression.slidingWindow.targetTokens"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.transcription"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.transcription.input"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.transcription.output"
 				}
 			]
@@ -230,95 +230,95 @@
 					"title": "Live"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.ingress"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.ingress.audio"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.ingress.video"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.ingress.text"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.voice"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.vad"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.vad.activityHandling"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.vad.startSensitivity"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.vad.endSensitivity"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.vad.prefixPaddingMs"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.vad.silenceDurationMs"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.sessionResumption"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.greeting"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.resumed"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.resumed.prompt"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.resumed.afterMs"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.contextCompression"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.contextCompression.triggerTokens"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.contextCompression.slidingWindow"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.contextCompression.slidingWindow.targetTokens"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.transcription"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.transcription.input"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.transcription.output"
 				},
 				{
@@ -480,43 +480,43 @@
 					"title": "Image"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "image.aspectRatio"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "image.resolution"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "image.mimeType"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "image.quality"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "image.background"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "image.n"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "image.seed"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "image.outputCompression"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "image.references"
 				},
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "image.includeText"
 				},
 				{
@@ -730,6 +730,10 @@
 			"accept": [
 				{
 					"slug": "guardrails"
+				},
+				{
+					"slug": "glossary",
+					"title": "guardrails"
 				}
 			]
 		},
@@ -771,7 +775,7 @@
 			"kind": "field-name",
 			"accept": [
 				{
-					"slug": "outputs",
+					"slug": "glossary",
 					"title": "outputs.validation.maxRetries"
 				}
 			]
@@ -781,7 +785,7 @@
 			"kind": "field-name",
 			"accept": [
 				{
-					"slug": "turn-behaviour",
+					"slug": "glossary",
 					"title": "turnBehaviour.allowSteering"
 				}
 			]
@@ -791,7 +795,7 @@
 			"kind": "field-name",
 			"accept": [
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "image.outputCompression"
 				}
 			]
@@ -801,7 +805,7 @@
 			"kind": "field-name",
 			"accept": [
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.vad.silenceDurationMs"
 				}
 			]
@@ -811,7 +815,7 @@
 			"kind": "field-name",
 			"accept": [
 				{
-					"slug": "models",
+					"slug": "glossary",
 					"title": "models.*.fallbackKeySlot"
 				}
 			]
@@ -821,7 +825,7 @@
 			"kind": "field-name",
 			"accept": [
 				{
-					"slug": "tools",
+					"slug": "glossary",
 					"title": "tools.t2Loader"
 				}
 			]
@@ -831,7 +835,7 @@
 			"kind": "field-name",
 			"accept": [
 				{
-					"slug": "traces",
+					"slug": "glossary",
 					"title": "observability.sampleRate"
 				}
 			]
@@ -841,11 +845,11 @@
 			"kind": "field-name",
 			"accept": [
 				{
-					"slug": "inputs",
+					"slug": "glossary",
 					"title": "inputs.limitsByMime"
 				},
 				{
-					"slug": "inputs",
+					"slug": "glossary",
 					"title": "inputs.limitsByMime.*"
 				}
 			]
@@ -855,7 +859,7 @@
 			"kind": "field-name",
 			"accept": [
 				{
-					"slug": "tools",
+					"slug": "glossary",
 					"title": "mapping.pathParams"
 				}
 			]
@@ -865,7 +869,7 @@
 			"kind": "field-name",
 			"accept": [
 				{
-					"slug": "models",
+					"slug": "glossary",
 					"title": "models.*.defaultEffort"
 				}
 			]
@@ -875,7 +879,7 @@
 			"kind": "field-dotted",
 			"accept": [
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.vad.endSensitivity"
 				}
 			]
@@ -885,7 +889,7 @@
 			"kind": "field-dotted",
 			"accept": [
 				{
-					"slug": "inputs",
+					"slug": "glossary",
 					"title": "inputs.attachments.accept"
 				}
 			]
@@ -895,7 +899,7 @@
 			"kind": "field-dotted",
 			"accept": [
 				{
-					"slug": "traces",
+					"slug": "glossary",
 					"title": "observability.include.usage"
 				}
 			]
@@ -905,7 +909,7 @@
 			"kind": "field-dotted",
 			"accept": [
 				{
-					"slug": "turn-behaviour",
+					"slug": "glossary",
 					"title": "turnBehaviour.resumption.maxContinues"
 				}
 			]
@@ -915,7 +919,7 @@
 			"kind": "field-dotted",
 			"accept": [
 				{
-					"slug": "models",
+					"slug": "glossary",
 					"title": "models.*.compaction.compactAt"
 				}
 			]
@@ -925,7 +929,7 @@
 			"kind": "field-dotted",
 			"accept": [
 				{
-					"slug": "tools",
+					"slug": "glossary",
 					"title": "auth.onUnauthenticated"
 				}
 			]
@@ -935,7 +939,7 @@
 			"kind": "field-described",
 			"accept": [
 				{
-					"slug": "outputs",
+					"slug": "glossary",
 					"title": "outputs.validation.maxRetries"
 				}
 			]
@@ -945,7 +949,7 @@
 			"kind": "field-described",
 			"accept": [
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "image.aspectRatio"
 				}
 			]
@@ -955,7 +959,7 @@
 			"kind": "field-described",
 			"accept": [
 				{
-					"slug": "modalities",
+					"slug": "glossary",
 					"title": "live.vad.silenceDurationMs"
 				}
 			]
@@ -965,7 +969,7 @@
 			"kind": "field-described",
 			"accept": [
 				{
-					"slug": "inputs",
+					"slug": "glossary",
 					"title": "inputs.attachments.accept"
 				}
 			]
@@ -975,7 +979,7 @@
 			"kind": "field-described",
 			"accept": [
 				{
-					"slug": "inputs",
+					"slug": "glossary",
 					"title": "inputs.maxFiles"
 				}
 			]
@@ -985,7 +989,7 @@
 			"kind": "field-described",
 			"accept": [
 				{
-					"slug": "models",
+					"slug": "glossary",
 					"title": "models.*.temperature"
 				}
 			]
@@ -995,7 +999,7 @@
 			"kind": "field-described",
 			"accept": [
 				{
-					"slug": "traces",
+					"slug": "glossary",
 					"title": "observability.sampleRate"
 				}
 			]
@@ -1005,7 +1009,7 @@
 			"kind": "field-described",
 			"accept": [
 				{
-					"slug": "tools",
+					"slug": "glossary",
 					"title": "auth.headerName"
 				}
 			]
@@ -1015,7 +1019,7 @@
 			"kind": "field-described",
 			"accept": [
 				{
-					"slug": "tools",
+					"slug": "glossary",
 					"title": "maxCallsPerTurn"
 				}
 			]
@@ -1025,7 +1029,7 @@
 			"kind": "field-described",
 			"accept": [
 				{
-					"slug": "tools",
+					"slug": "glossary",
 					"title": "permission"
 				},
 				{
@@ -1039,7 +1043,7 @@
 			"kind": "field-described",
 			"accept": [
 				{
-					"slug": "models",
+					"slug": "glossary",
 					"title": "maxSteps"
 				}
 			]
@@ -1049,7 +1053,7 @@
 			"kind": "field-described",
 			"accept": [
 				{
-					"slug": "traces",
+					"slug": "glossary",
 					"title": "observability.include.guardrailMatchPreview"
 				}
 			]
@@ -1059,7 +1063,7 @@
 			"kind": "field-name",
 			"accept": [
 				{
-					"slug": "statuses",
+					"slug": "glossary",
 					"title": "session.gate_expired"
 				}
 			]
@@ -1069,7 +1073,7 @@
 			"kind": "field-dotted",
 			"accept": [
 				{
-					"slug": "statuses",
+					"slug": "glossary",
 					"title": "attachments.mime_not_allowed"
 				}
 			]

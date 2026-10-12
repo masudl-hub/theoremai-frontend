@@ -181,7 +181,7 @@ const sameSet = (what, docSet, kernelSet) => {
 	sameSet('runner/decision-error-codes', new Set(markdownInlineCode(listed)), kernelCodes);
 }
 
-// Every link to a chapter must reach one that exists, and its `#` a section or dictionary entry there.
+// Every link to a chapter must reach one that exists, and its `#` a section or glossary row there.
 {
 	for (const article of index.articles) {
 		for (const url of markdownLinks(article.body)) {

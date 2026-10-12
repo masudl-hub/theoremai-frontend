@@ -338,7 +338,7 @@ ${SURFACE_PROMPT}
 ${TH30_BUILDER_PROMPT}
 
 Docs live at /docs. Chapters: ${chapters}.
-Type-scoped pins are on modalities (image, speech, live, decision, host). Each chapter ends with a dictionary of its fields. Do not invent field copy — read it.
+Type-scoped pins are on modalities (image, speech, live, decision, host). The glossary, the last chapter, lists every field, function, union member, trace record and status line, with the chapter that explains each. Do not invent field copy — read it.
 
 Tools:
 - navigate: { to } — a path on this site: /, /overview, /examples, /studio, /studio/run, /docs, or /docs/<slug>, with an optional #id. Not the open web.

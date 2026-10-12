@@ -1,5 +1,5 @@
 /**
- * Trace and lexicon rows for the topic dictionary.
+ * Trace and lexicon rows for the glossary.
  * Same catalogs the kernel exports — no authored copies.
  */
 

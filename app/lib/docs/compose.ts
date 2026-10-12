@@ -44,6 +44,7 @@ import {
 	SNIPPET_FRAMES,
 	STUDIO_SEED_IDS,
 	type StudioSeedId,
+	type SymbolRow,
 } from './schema';
 import { compileSeedSource } from './seeds';
 import { ttrMinutesFromText } from './text-format';
@@ -243,14 +244,14 @@ function chapterSections(slug: DocSection, body: string): DocSectionEntry[] {
 	return sections;
 }
 
-function fieldSymbol(fieldPath: string): PageSymbol {
+function fieldSymbol(fieldPath: string): SymbolRow {
 	const meta = fieldMeta(fieldPath);
 	if (meta === undefined) throw new Error(`fieldMeta(${fieldPath}) is undefined`);
 	return { kind: 'field', id: fieldPath, path: fieldPath, meta };
 }
 
 /** The request fields and the exports that `section` lists. */
-function apiSymbols(section: DocSection): PageSymbol[] {
+function apiSymbols(section: DocSection): SymbolRow[] {
 	const requestFields =
 		section === REQUEST_SECTION
 			? Object.entries(REQUEST_FIELDS).map(([fieldPath, meta]) => ({
@@ -272,9 +273,9 @@ function apiSymbols(section: DocSection): PageSymbol[] {
 	return [...exports, ...requestFields];
 }
 
-/** The catalog rows a chapter's dictionary lists. */
-function catalogSymbols(section: DocSection, byFacet: Map<string, string[]>): PageSymbol[] {
-	const symbols: PageSymbol[] = apiSymbols(section);
+/** The catalog rows a chapter explains. */
+function catalogSymbols(section: DocSection, byFacet: Map<string, string[]>): SymbolRow[] {
+	const symbols: SymbolRow[] = apiSymbols(section);
 	for (const facet of PROFILE_GRAPH) {
 		if (FACET_SECTION[facet.id] !== section) continue;
 		symbols.push(...(byFacet.get(facet.id) ?? []).map(fieldSymbol));
@@ -309,21 +310,26 @@ function catalogSymbols(section: DocSection, byFacet: Map<string, string[]>): Pa
 	return symbols;
 }
 
-/** Catalog rows, minus any a section's id already takes, once each. */
-function pageSymbols(
+/** The catalog rows `section` explains, minus any its own sections' ids already take, once each. */
+function areaSymbols(
 	section: DocSection,
 	sections: readonly DocSectionEntry[],
 	byFacet: Map<string, string[]>,
 ): PageSymbol[] {
 	const taken = new Set(sections.map((entry) => entry.id));
-	return catalogSymbols(section, byFacet).filter((symbol) => {
-		if (taken.has(symbol.id)) return false;
-		taken.add(symbol.id);
-		return true;
-	});
+	return catalogSymbols(section, byFacet)
+		.filter((symbol) => {
+			if (taken.has(symbol.id)) return false;
+			taken.add(symbol.id);
+			return true;
+		})
+		.map((symbol) => ({ ...symbol, area: section }));
 }
 
 type Listed = Pick<DocArticle, 'slug' | 'canonicalPath' | 'title' | 'symbols'>;
+
+/** The glossary, which lists every row. A row's chapter is its `area`, and the chapter that explains it. */
+const GLOSSARY = 'glossary' satisfies DocSection;
 
 /**
  * Every field, trace record and status line by its name. A union member is left out, because its
@@ -331,6 +337,7 @@ type Listed = Pick<DocArticle, 'slug' | 'canonicalPath' | 'title' | 'symbols'>;
  * is left out too.
  */
 function termIndex(articles: readonly Listed[]): Map<string, DocTerm> {
+	const titles = new Map(articles.map((article) => [article.slug, article.title]));
 	const terms = new Map<string, DocTerm>();
 	const shared = new Set<string>();
 	for (const article of articles) {
@@ -340,9 +347,9 @@ function termIndex(articles: readonly Listed[]): Map<string, DocTerm> {
 			if (terms.has(name)) shared.add(name);
 			terms.set(name, {
 				symbol,
-				slug: article.slug,
+				slug: symbol.area,
 				href: `${article.canonicalPath}#${symbol.id}`,
-				chapter: article.title,
+				chapter: titles.get(symbol.area) ?? article.title,
 			});
 		}
 	}
@@ -398,6 +405,7 @@ export async function composeDocIndex(options: ComposeOptions): Promise<DocIndex
 		chapters.map((chapter) => chapter.cover.src),
 	);
 
+	const owned: PageSymbol[] = [];
 	const listed = chapters.map(({ markdown, ...head }) => {
 		const body = resolveBody({ markdown, ...head });
 		const sections = chapterSections(head.slug, body);
@@ -408,12 +416,17 @@ export async function composeDocIndex(options: ComposeOptions): Promise<DocIndex
 			dateModified: head.updated,
 			body,
 			sections,
-			symbols: pageSymbols(head.slug, sections, byFacet),
+			symbols: [] as PageSymbol[],
 		};
+		owned.push(...areaSymbols(head.slug, sections, byFacet));
 		return { ...article, ttrMinutes: ttrMinutesFromText(readableText(article)) };
 	});
-	const index = termIndex(listed);
-	const articles = listed.map(
+	const listing = listed.map((article) => ({
+		...article,
+		symbols: article.slug === GLOSSARY ? owned : [],
+	}));
+	const index = termIndex(listing);
+	const articles = listing.map(
 		(article): DocArticle => ({ ...article, terms: chapterTerms(article.body, index) }),
 	);
 

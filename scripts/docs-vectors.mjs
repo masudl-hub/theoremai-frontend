@@ -1,5 +1,5 @@
 /**
- * The vectors behind docs search by meaning: one per chapter, section and dictionary entry, made by
+ * The vectors behind docs search by meaning: one per chapter, section and glossary row, made by
  * the model in app/lib/docs/search-model.ts from the text app/lib/docs/query.ts indexes.
  *
  *   npm run docs:vectors          embed what changed, write public/docs-search/

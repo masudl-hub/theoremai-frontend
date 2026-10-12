@@ -1,6 +1,6 @@
 /**
- * Editorial placement: which chapter's dictionary lists each facet's fields
- * and each worthy union's members.
+ * Editorial placement: which chapter explains each facet's fields and each worthy union's
+ * members. The glossary lists them all, and names this chapter as the row's area.
  */
 
 import {
@@ -30,10 +30,10 @@ export const FACET_SECTION = {
 	wording: 'statuses',
 } as const satisfies Record<ProfileGraphFacetId, DocSection>;
 
-/** The chapter whose dictionary lists the fields of a `runTurn` request. */
+/** The chapter that explains the fields of a `runTurn` request. */
 export const REQUEST_SECTION = 'runner' satisfies DocSection;
 
-/** The chapter whose dictionary lists each export a builder calls by name. */
+/** The chapter that explains each export a builder calls by name. */
 export const EXPORT_SECTION = {
 	defineProfile: 'modalities',
 	registerProfile: 'runner',

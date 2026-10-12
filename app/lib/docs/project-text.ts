@@ -12,10 +12,10 @@ import { plainMarkdown } from './text-format';
 /** The article fields the projection reads. */
 export type ProjectedArticle = Pick<DocArticle, 'title' | 'summary' | 'body' | 'symbols'>;
 
-/** The dictionary as a headed list, or nothing when the chapter owns no catalog rows. */
+/** The glossary rows as a headed list, or nothing for a chapter that lists none. */
 export function dictionaryText(symbols: readonly PageSymbol[]): string[] {
 	const terms = symbols.map(symbolTerm).map(({ name, text }) => `${name} — ${text}`);
-	return terms.length ? ['', '## dictionary', ...terms] : [];
+	return terms.length ? ['', '## rows', ...terms] : [];
 }
 
 /** Every code sample in the chapter, in order. */
@@ -54,7 +54,7 @@ export function projectArticleText(
 
 /**
  * What a reader reads in an article, for its reading time: the title, summary and prose, with the
- * steps of each figure. Code samples, markdown marks and the dictionary are left out; the dictionary
+ * steps of each figure. Code samples, markdown marks and the glossary rows are left out; the glossary
  * is looked things up in, not read through.
  */
 export function readableText(article: ProjectedArticle): string {

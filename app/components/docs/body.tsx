@@ -23,8 +23,8 @@ import { commandChoices } from '../../lib/docs/commands';
 import { parseFigure } from '../../lib/docs/figure';
 import type { DocArticle, DocTerm } from '../../lib/docs/schema';
 import { CopyIconButton } from './copy-button';
-import { FieldCard } from './dictionary';
 import { DocsFigure } from './figure';
+import { FieldCard } from './glossary';
 
 /** In-app links go through the router; the rest are plain anchors. */
 function ProseLink({ href, children }: { href: string; children: ReactNode }) {

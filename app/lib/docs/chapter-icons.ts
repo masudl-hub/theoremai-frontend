@@ -3,7 +3,13 @@
  * a single chrome icon. Headings stay bare.
  */
 
-import { IconBook, IconCode, IconGitBranch, IconPlayerPlay } from '@tabler/icons-react';
+import {
+	IconBook,
+	IconCode,
+	IconGitBranch,
+	IconListSearch,
+	IconPlayerPlay,
+} from '@tabler/icons-react';
 import { FACET_ICON } from '@theoremjs/studio/ui/lib/facet-icons.ts';
 import { DOC_SECTIONS, type DocSection } from './schema';
 
@@ -21,6 +27,7 @@ export const CHAPTER_ICON = {
 	statuses: FACET_ICON.wording,
 	runner: IconPlayerPlay,
 	interface: IconCode,
+	glossary: IconListSearch,
 } satisfies Record<DocSection, typeof IconBook>;
 
 export function chapterIcon(id: string) {

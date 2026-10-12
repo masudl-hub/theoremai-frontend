@@ -21,6 +21,7 @@ export const DOC_SECTIONS = [
 	'interface',
 	'statuses',
 	'traces',
+	'glossary',
 ] as const;
 export type DocSection = (typeof DOC_SECTIONS)[number];
 
@@ -108,8 +109,8 @@ export type DocSectionEntry = {
 	end: number;
 };
 
-/** Catalog rows owned by a topic page — rendered as a filterable dictionary. */
-export type PageSymbol =
+/** One catalog row, before it is placed in an area. */
+export type SymbolRow =
 	| { kind: 'field'; id: string; path: string; meta: FieldMeta }
 	| { kind: 'request-field'; id: string; path: string; meta: FieldMeta }
 	| { kind: 'export'; id: string; name: string; exported: ApiExportMeta['kind']; doc: string }
@@ -123,7 +124,13 @@ export type PageSymbol =
 	| { kind: 'trace'; id: string; key: string; label: string; doc: string }
 	| { kind: 'lexicon'; id: string; key: string; text: string };
 
-/** A catalog row that a chapter's inline code names, and the chapter whose dictionary lists it. */
+/**
+ * A catalog row of the glossary, the one page that lists them all. `area` is the chapter that
+ * explains it, and the one whose placement in `placement.ts` it follows.
+ */
+export type PageSymbol = SymbolRow & { area: DocSection };
+
+/** A catalog row that a chapter's inline code names: its glossary row, and the chapter that explains it. */
 export type DocTerm = { symbol: PageSymbol; slug: DocSection; href: string; chapter: string };
 
 export type DocArticle = Omit<DocArticleHead, 'cover'> & {
@@ -135,7 +142,7 @@ export type DocArticle = Omit<DocArticleHead, 'cover'> & {
 	/** The chapter as Markdown, without its front matter and with every seed fence filled. */
 	body: string;
 	sections: readonly DocSectionEntry[];
-	/** Facet fields, worthy-union members, and the trace or lexicon catalog this topic owns. */
+	/** The glossary lists every catalog row; every other chapter has none. */
 	symbols: readonly PageSymbol[];
 	/** The inline-code spans in `body` that name one catalog row, by the span's text. */
 	terms: Readonly<Partial<Record<string, DocTerm>>>;

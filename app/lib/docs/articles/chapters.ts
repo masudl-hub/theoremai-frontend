@@ -1,7 +1,7 @@
 /**
  * The chapters' Markdown sources and the retired URLs. Each chapter is one `.md` file here, named
- * for its section in `DOC_SECTIONS`. Catalog symbols compose into its dictionary: do not paste
- * `FieldMeta.doc` into a chapter.
+ * for its section in `DOC_SECTIONS`. Catalog symbols compose into the glossary, the last chapter:
+ * do not paste `FieldMeta.doc` into a chapter.
  */
 
 export const SITE_REDIRECTS = [

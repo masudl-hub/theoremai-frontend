@@ -19,7 +19,7 @@ flowchart LR
 | --- | --- |
 | A chapter's words, code, cover, date | its own Markdown file in [articles/](../app/lib/docs/articles/), e.g. `articles/tools.md` |
 | Chapter order, or add a chapter | `DOC_SECTIONS` in [schema.ts](../app/lib/docs/schema.ts), then `articles/<section>.md` |
-| Which chapter lists a facet's fields or a union's members | [placement.ts](../app/lib/docs/placement.ts) |
+| Which chapter explains a facet's fields or a union's members (its row's area in the glossary) | [placement.ts](../app/lib/docs/placement.ts) |
 | Getting started's full program | the `firstTurn` draft in [seeds.ts](../app/lib/docs/seeds.ts) |
 | A retired URL | `SITE_REDIRECTS` in [chapters.ts](../app/lib/docs/articles/chapters.ts) |
 | The landing backdrop | `LANDING_STILL` in chapters.ts |
@@ -54,7 +54,7 @@ The body is plain Markdown. Headings start at `##`. Each heading is a section: i
 
 1. Cover, title, date, reading time
 2. The chapter's Markdown
-3. The dictionary: catalog rows this chapter owns, from compose. A section with the same id replaces its row.
+3. On the glossary only: one table of every catalog row, from compose, with the chapter that explains each. A section with the same id replaces its row.
 4. Previous and next, in `DOC_SECTIONS` order
 
 ## Compose

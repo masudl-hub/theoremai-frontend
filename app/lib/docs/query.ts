@@ -28,7 +28,7 @@ export function chapterNeighbors(
 	};
 }
 
-/** One section or one dictionary entry of the article, as text. */
+/** One section or one glossary row of the article, as text. */
 function fragmentText(article: DocArticle, fragment: string): string | undefined {
 	const section = article.sections.find((entry) => entry.id === fragment);
 	if (section) return sectionText(article, section);
@@ -83,15 +83,17 @@ export type DocSearchHit = {
 	blockId?: string;
 };
 
-/** What one searchable unit is: a chapter, one of its sections, or one dictionary entry. */
+/** What one searchable unit is: a chapter, one of its sections, or one glossary row. */
 type SearchKind = 'chapter' | 'section' | 'symbol';
 
-/** One searchable unit: a chapter (its title and summary), a section, or a dictionary entry. */
+/** One searchable unit: a chapter (its title and summary), a section, or a glossary row. */
 type SearchEntry = {
 	slug: string;
 	/** The section or entry id; absent for the chapter itself. */
 	blockId?: string;
 	kind: SearchKind;
+	/** The chapter this place belongs to: a glossary row belongs to the chapter that explains it. */
+	home: string;
 	title: string;
 	excerpt: string;
 };
@@ -126,6 +128,7 @@ function searchUnitsOf(index: DocIndex): SearchUnit[] {
 			entry: {
 				slug: article.slug,
 				kind: 'chapter',
+				home: article.slug,
 				title: article.title,
 				excerpt: article.summary,
 			},
@@ -141,6 +144,7 @@ function searchUnitsOf(index: DocIndex): SearchUnit[] {
 					slug: article.slug,
 					blockId: section.id,
 					kind: 'section',
+					home: article.slug,
 					title: section.title,
 					excerpt: clipExcerpt(under.replace(/```[\s\S]*?```/g, '\n')),
 				},
@@ -155,6 +159,7 @@ function searchUnitsOf(index: DocIndex): SearchUnit[] {
 					slug: article.slug,
 					blockId: symbol.id,
 					kind: 'symbol',
+					home: symbol.area,
 					title: name,
 					excerpt: text,
 				},
@@ -244,10 +249,14 @@ function lexicalMatches(
 }
 
 /** A section already listed stands for its own sub-entries. */
-function coveredByListedSection(ranked: DocSearchHit[], slug: string, blockId: string): boolean {
+function coveredByListedSection(
+	ranked: { hit: DocSearchHit; home: string }[],
+	home: string,
+	blockId: string,
+): boolean {
 	return ranked.some(
-		(kept) =>
-			kept.slug === slug && kept.blockId !== undefined && isChildFragment(blockId, kept.blockId),
+		({ hit, home: keptHome }) =>
+			keptHome === home && hit.blockId !== undefined && isChildFragment(blockId, hit.blockId),
 	);
 }
 
@@ -288,7 +297,10 @@ function focusExcerpt(body: string, term: string, title: string, opening: string
 	return clipped.startsWith(opening.slice(0, 30)) ? opening : clipped;
 }
 
-/** Hits in order as links, capped per chapter and without sub-entries of listed sections. */
+/**
+ * Hits in order as links, capped per chapter and without sub-entries of listed sections. A glossary
+ * row counts toward the chapter that explains it, so one area cannot fill the list.
+ */
 function rankHits(
 	index: DocIndex,
 	entries: Map<string, SearchEntry>,
@@ -296,37 +308,40 @@ function rankHits(
 	term: string,
 ): DocSearchHit[] {
 	const units = searchUnitsOf(index);
-	const ranked: DocSearchHit[] = [];
+	const ranked: { hit: DocSearchHit; home: string }[] = [];
 	const perChapter = new Map<string, number>();
-	for (const hit of hits) {
-		const entry = entries.get(hit.id);
+	for (const found of hits) {
+		const entry = entries.get(found.id);
 		if (!entry) continue;
-		const taken = perChapter.get(entry.slug) ?? 0;
+		const taken = perChapter.get(entry.home) ?? 0;
 		if (taken >= HITS_PER_CHAPTER) continue;
 		const { blockId } = entry;
-		if (blockId && coveredByListedSection(ranked, entry.slug, blockId)) continue;
-		perChapter.set(entry.slug, taken + 1);
+		if (blockId && coveredByListedSection(ranked, entry.home, blockId)) continue;
+		perChapter.set(entry.home, taken + 1);
 		const article = index.bySlug[entry.slug];
 		if (!article) continue;
 		ranked.push({
-			slug: entry.slug,
-			title: entry.title,
-			href: articleHref(article, blockId),
-			excerpt: focusExcerpt(
-				units[Number(hit.id)]?.body ?? '',
-				term,
-				entry.title,
-				clipExcerpt(entry.excerpt),
-			),
-			score: hit.score,
-			blockId,
+			home: entry.home,
+			hit: {
+				slug: entry.slug,
+				title: entry.title,
+				href: articleHref(article, blockId),
+				excerpt: focusExcerpt(
+					units[Number(found.id)]?.body ?? '',
+					term,
+					entry.title,
+					clipExcerpt(entry.excerpt),
+				),
+				score: found.score,
+				blockId,
+			},
 		});
 	}
-	return ranked;
+	return ranked.map(({ hit }) => hit);
 }
 
 /**
- * Full-text search over chapters, sections and dictionary entries: stemmed, prefix-matched as you
+ * Full-text search over chapters, sections and glossary rows: stemmed, prefix-matched as you
  * type, and forgiving of typos in longer words. Places matching every word come first, then those
  * matching some.
  */
@@ -355,7 +370,7 @@ export const ALL_WORDS_BONUS = 0.05;
 /** The smaller gain when the words are only somewhere in the text, which nearly any long section has. */
 export const BODY_WORDS_BONUS = 0.01;
 /**
- * What a dictionary entry loses to a how-to section. Entries are short and read close to many
+ * What a glossary row loses to a how-to section. Entries are short and read close to many
  * questions, so without it they crowd the guides out of the first hits.
  */
 export const REFERENCE_PENALTY = 0.03;
@@ -378,7 +393,7 @@ function rowDot(query: Float32Array, vectors: DocVectors, row: number): number {
 
 /**
  * Search by meaning and by words: how close each place reads to the question, plus a bonus for the
- * places that match all its words (typos allowed), minus a penalty for dictionary entries. The
+ * places that match all its words (typos allowed), minus a penalty for glossary rows. The
  * question's vector comes from the same model that made `vectors`, with its query prefix.
  */
 export function searchDocsHybrid(

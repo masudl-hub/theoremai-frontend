@@ -41,7 +41,7 @@ import { NewTabLink } from '../links';
 import { holdDocsArticleTransition } from './article-transition';
 import { DocsBody } from './body';
 import { CopyIconButton } from './copy-button';
-import { PageDictionary } from './dictionary';
+import { Glossary } from './glossary';
 import '../hero-video.css';
 
 const SEARCH_LIMIT = 64;
@@ -596,6 +596,10 @@ export function DocsReader({ index, article }: { index: DocIndex; article: DocAr
 	const outline = outlineItems(outlineNodes(index, article));
 	const { prev, next } = chapterNeighbors(index, article.slug);
 	const contentRef = useArticleScroll(article.slug, hashId);
+	const titles = useMemo(
+		() => new Map(index.articles.map((chapter) => [chapter.slug, chapter.title])),
+		[index],
+	);
 
 	const selectSection = (blockId: string) => {
 		const nextHash = `#${blockId}`;
@@ -618,7 +622,7 @@ export function DocsReader({ index, article }: { index: DocIndex; article: DocAr
 					<StackItem size="fill">
 						<VStack gap={6} padding={8} className="docs-prose">
 							<DocsBody article={article} />
-							<PageDictionary symbols={article.symbols} />
+							<Glossary symbols={article.symbols} titles={titles} />
 							<ChapterNeighbors prev={prev} next={next} />
 						</VStack>
 					</StackItem>
