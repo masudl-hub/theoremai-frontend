@@ -31,7 +31,11 @@
 		// @theoremjs/react is compiled from source and ships its own @types/react and Astryx;
 		// resolve both to this install so their types unify (and the site theme's variants hold).
 		// @theoremjs/studio's screen has no install of its own, so its icons resolve here too.
+		// zod as well: two installs a patch apart are two sets of types, and checking a schema
+		// from one against the other runs the type-check out of memory.
 		"paths": {
+			"zod": ["./node_modules/zod"],
+			"zod/*": ["./node_modules/zod/*"],
 			"@tabler/icons-react": ["./node_modules/@tabler/icons-react"],
 			"@astryxdesign/core": ["./node_modules/@astryxdesign/core/dist/index.d.ts"],
 			"@astryxdesign/core/*": ["./node_modules/@astryxdesign/core/dist/*/index.d.ts"],
