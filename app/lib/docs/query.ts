@@ -102,8 +102,24 @@ type SearchUnit = { entry: SearchEntry; words: string; body: string };
 const SEARCH_SCHEMA = { title: 'string', key: 'string', body: 'string' } as const;
 type SearchDb = Orama<typeof SEARCH_SCHEMA>;
 
+/** Markdown as the text a person would read: no fences, backticks, emphasis, link targets or table rules. */
+function plainMarkdown(text: string): string {
+	return text
+		.replace(/```[\s\S]*?(```|$)/g, '\n')
+		.replace(/^\s*\|?[-: |]{3,}\|?\s*$/gm, '')
+		.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+		.replace(/`+([^`\n]*)`+/g, '$1')
+		.replace(/(\*\*|__)(.+?)\1/g, '$2')
+		.replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,;:]|$)/g, '$1$2')
+		.replace(/^[ \t]*(#{1,6}|>|[-*+]|\d+\.)[ \t]+/gm, '')
+		.replace(/\s*\|\s*/g, ' · ')
+		.replace(/^ · | · $/gm, '')
+		.replace(/[ \t]+/g, ' ')
+		.trim();
+}
+
 function clipExcerpt(text: string, max = 160): string {
-	const flat = text.split('\n').filter(Boolean).join(' ');
+	const flat = plainMarkdown(text).split('\n').filter(Boolean).join(' ');
 	if (flat.length <= max) return flat;
 	const cut = flat.slice(0, max);
 	const space = cut.lastIndexOf(' ');
@@ -274,16 +290,10 @@ function focusExcerpt(body: string, term: string, title: string, opening: string
 	if (wanted.size === 0) return opening;
 	let best = { at: -1, shared: 0 };
 	const sentences = body
-		.replace(/```[\s\S]*?```/g, '\n')
+		.replace(/```[\s\S]*?(```|$)/g, '\n')
 		.split(/\n+|(?<=[.!?])\s+/)
-		.map((line) =>
-			line
-				.replace(/^[\s#>*-]+/, '')
-				.replace(/\|/g, ' ')
-				.replace(/\s+/g, ' ')
-				.trim(),
-		)
-		.filter((line) => line.length > 12 && line !== title && !/^[-: |]+$/.test(line));
+		.map(plainMarkdown)
+		.filter((line) => line.length > 12 && line !== title);
 	sentences.forEach((line, at) => {
 		const shared = new Set(stems(line).filter((stem) => wanted.has(stem))).size;
 		if (shared > best.shared) best = { at, shared };
@@ -318,7 +328,12 @@ function rankHits(
 			slug: entry.slug,
 			title: entry.title,
 			href: articleHref(article, blockId),
-			excerpt: focusExcerpt(units[Number(hit.id)]?.body ?? '', term, entry.title, entry.excerpt),
+			excerpt: focusExcerpt(
+				units[Number(hit.id)]?.body ?? '',
+				term,
+				entry.title,
+				clipExcerpt(entry.excerpt),
+			),
 			score: hit.score,
 			blockId,
 		});
