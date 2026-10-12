@@ -860,7 +860,7 @@
 			"accept": [
 				{
 					"slug": "glossary",
-					"title": "mapping.pathParams"
+					"title": "registerTool.mapping.pathParams"
 				}
 			]
 		},
@@ -930,7 +930,7 @@
 			"accept": [
 				{
 					"slug": "glossary",
-					"title": "auth.onUnauthenticated"
+					"title": "registerTool.auth.onUnauthenticated"
 				}
 			]
 		},
@@ -1010,7 +1010,7 @@
 			"accept": [
 				{
 					"slug": "glossary",
-					"title": "auth.headerName"
+					"title": "registerTool.auth.headerName"
 				}
 			]
 		},
@@ -1020,7 +1020,7 @@
 			"accept": [
 				{
 					"slug": "glossary",
-					"title": "maxCallsPerTurn"
+					"title": "registerTool.maxCallsPerTurn"
 				}
 			]
 		},
@@ -1030,7 +1030,7 @@
 			"accept": [
 				{
 					"slug": "glossary",
-					"title": "permission"
+					"title": "registerTool.permission"
 				},
 				{
 					"slug": "tools",
@@ -1064,7 +1064,7 @@
 			"accept": [
 				{
 					"slug": "glossary",
-					"title": "session.gate_expired"
+					"title": "lexicon.session.gate_expired"
 				}
 			]
 		},
@@ -1074,7 +1074,7 @@
 			"accept": [
 				{
 					"slug": "glossary",
-					"title": "attachments.mime_not_allowed"
+					"title": "lexicon.attachments.mime_not_allowed"
 				}
 			]
 		}

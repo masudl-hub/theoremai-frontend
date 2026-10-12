@@ -81,7 +81,7 @@ export const FACET_AREA = {
 	turnBehaviour: 'turn-behaviour',
 	guardrails: 'guardrails',
 	observability: 'observability',
-	wording: 'wording',
+	wording: 'labels',
 } as const satisfies Record<ProfileGraphFacetId, GlossaryArea>;
 
 /** The area of each export: the domain it acts on. */
@@ -100,8 +100,8 @@ export const EXPORT_AREA = {
 	compactHistory: 'runner',
 	takeSlot: 'guardrails',
 	releaseSlot: 'guardrails',
-	overrideLexicon: 'wording',
-	resetLexicon: 'wording',
+	overrideLexicon: 'labels',
+	resetLexicon: 'labels',
 	TheoremError: 'runner',
 } as const satisfies Record<keyof typeof API_EXPORTS, GlossaryArea>;
 

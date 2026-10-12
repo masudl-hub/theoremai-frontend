@@ -258,11 +258,16 @@ function chapterSections(slug: DocSection, body: string): DocSectionEntry[] {
 
 type Placed = SymbolRow & { area: GlossaryArea };
 
-function fieldSymbol(fieldPath: string, area: GlossaryArea): Placed {
+/** A field named by the object it belongs to: a profile path already is, a tool's bare `name` is not. */
+function fieldSymbol(fieldPath: string, area: GlossaryArea, object?: string): Placed {
 	const meta = fieldMeta(fieldPath);
 	if (meta === undefined) throw new Error(`fieldMeta(${fieldPath}) is undefined`);
-	return { kind: 'field', id: fieldPath, path: fieldPath, meta, area };
+	const path = object === undefined ? fieldPath : `${object}.${fieldPath}`;
+	return { kind: 'field', id: fieldPath, path, meta, area };
 }
+
+/** The extra catalog rows whose paths already start with the function or section they belong to. */
+const NAMED_EXTRA = /^(registerTool|registerStructured|decision)\./;
 
 /** The request fields and the exports that `section` lists. */
 function apiSymbols(section: DocSection): Placed[] {
@@ -271,7 +276,7 @@ function apiSymbols(section: DocSection): Placed[] {
 			? Object.entries(REQUEST_FIELDS).map(([fieldPath, meta]) => ({
 					kind: 'request-field' as const,
 					id: `request:${fieldPath}`,
-					path: fieldPath,
+					path: `runTurn.${fieldPath}`,
 					meta,
 					area: 'runner' as const,
 				}))
@@ -296,10 +301,9 @@ function catalogSymbols(section: DocSection, byFacet: Map<string, string[]>): Pl
 		if (FACET_SECTION[facet.id] !== section) continue;
 		symbols.push(
 			...(byFacet.get(facet.id) ?? []).map((path) =>
-				fieldSymbol(
-					path,
-					path === 'id' || path === 'type' ? PROFILE_FIELD_AREA[path] : FACET_AREA[facet.id],
-				),
+				path === 'id' || path === 'type'
+					? fieldSymbol(path, PROFILE_FIELD_AREA[path], 'profile')
+					: fieldSymbol(path, FACET_AREA[facet.id]),
 			),
 		);
 	}
@@ -307,7 +311,13 @@ function catalogSymbols(section: DocSection, byFacet: Map<string, string[]>): Pl
 		symbols.push(
 			...Object.keys(EXTRA_FIELDS)
 				.filter((path) => !STUDIO_ONLY_PREFIXES.some((prefix) => path.startsWith(prefix)))
-				.map((path) => fieldSymbol(path, extraFieldArea(path))),
+				.map((path) =>
+					fieldSymbol(
+						path,
+						extraFieldArea(path),
+						NAMED_EXTRA.test(path) ? undefined : 'registerTool',
+					),
+				),
 		);
 	}
 	for (const [name, place] of Object.entries(UNION_SECTION)) {
@@ -340,7 +350,7 @@ function catalogSymbols(section: DocSection, byFacet: Map<string, string[]>): Pl
 				kind: 'lexicon' as const,
 				id: `lexicon:${row.key}`,
 				...row,
-				area: 'wording' as const,
+				area: 'labels' as const,
 			})),
 		);
 	}
@@ -369,7 +379,7 @@ type Listed = Pick<DocArticle, 'slug' | 'canonicalPath' | 'title' | 'symbols'>;
 const GLOSSARY = 'glossary' satisfies DocSection;
 
 /**
- * Every field, trace record and status line by its name. A union member is left out, because its
+ * Every field, trace record and label by its name. A union member is left out, because its
  * value is a common word: `text` is a profile type and also an event. A name that two rows share
  * is left out too.
  */

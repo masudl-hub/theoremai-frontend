@@ -39,10 +39,10 @@ export function symbolTerm(symbol: PageSymbol): { name: string; text: string } {
 		case 'export':
 			return { name: symbol.name, text: symbol.doc };
 		case 'union-member':
-			return { name: symbol.value, text: symbol.doc };
+			return { name: `${symbol.union}.${symbol.value}`, text: symbol.doc };
 		case 'trace':
-			return { name: symbol.key, text: `${symbol.label}: ${symbol.doc}` };
+			return { name: `trace.${symbol.key}`, text: `${symbol.label}: ${symbol.doc}` };
 		case 'lexicon':
-			return { name: symbol.key, text: symbol.text };
+			return { name: `lexicon.${symbol.key}`, text: symbol.text };
 	}
 }

@@ -140,7 +140,7 @@ export const AREA_LABEL = {
 	'turn-behaviour': 'Turn behaviour',
 	guardrails: 'Guardrails',
 	observability: 'Observability',
-	wording: 'Wording',
+	labels: 'Labels',
 	runner: 'Runner',
 } as const;
 

@@ -4,7 +4,6 @@
 
 import { HoverCard } from '@astryxdesign/core/HoverCard';
 import { HStack } from '@astryxdesign/core/HStack';
-import { Link } from '@astryxdesign/core/Link';
 import { Selector } from '@astryxdesign/core/Selector';
 import { pixel, proportional, Table } from '@astryxdesign/core/Table';
 import { Text } from '@astryxdesign/core/Text';
@@ -43,11 +42,11 @@ export function FieldCard({ meta }: { meta: FieldMeta }) {
 /** What a kind of row is called in the Kind column and in its filter. */
 const KIND_LABEL: Record<PageSymbol['kind'], string> = {
 	export: 'Function or class',
-	'request-field': 'Request field',
 	field: 'Field',
+	'request-field': 'Field',
 	'union-member': 'Union member',
 	trace: 'Trace record',
-	lexicon: 'Status line',
+	lexicon: 'Label',
 };
 
 /** The kinds in the order the filter lists them. */
@@ -84,14 +83,12 @@ type Row = {
 	kind: string;
 	area: string;
 	areaTitle: string;
-	chapter: string;
-	chapterTitle: string;
 	text: string;
 	haystack: string;
 	symbol: PageSymbol;
 };
 
-function rowOf(symbol: PageSymbol, chapterTitle: string): Row {
+function rowOf(symbol: PageSymbol): Row {
 	const { name, text } = symbolTerm(symbol);
 	const kind = KIND_LABEL[symbol.kind];
 	return {
@@ -100,11 +97,9 @@ function rowOf(symbol: PageSymbol, chapterTitle: string): Row {
 		kind,
 		area: symbol.area,
 		areaTitle: AREA_LABEL[symbol.area],
-		chapter: symbol.chapter,
-		chapterTitle,
 		text,
 		haystack:
-			`${name} ${kind} ${AREA_LABEL[symbol.area]} ${chapterTitle} ${text} ${extraWords(symbol)}`.toLowerCase(),
+			`${name} ${kind} ${AREA_LABEL[symbol.area]} ${text} ${extraWords(symbol)}`.toLowerCase(),
 		symbol,
 	};
 }
@@ -114,13 +109,9 @@ const ALL = 'all';
 /** The rows whose every typed word appears in the row, in the chosen area and kind. */
 function useGlossaryRows(
 	symbols: readonly PageSymbol[],
-	titles: ReadonlyMap<string, string>,
 	filter: { query: string; area: string; kind: string },
 ) {
-	const rows = useMemo(
-		() => symbols.map((symbol) => rowOf(symbol, titles.get(symbol.chapter) ?? symbol.chapter)),
-		[symbols, titles],
-	);
+	const rows = useMemo(() => symbols.map(rowOf), [symbols]);
 	return useMemo(() => {
 		const words = filter.query.toLowerCase().split(/\s+/).filter(Boolean);
 		return rows.filter(
@@ -152,18 +143,12 @@ function MeaningCell({ row }: { row: Row }) {
 	return <span>{row.text}</span>;
 }
 
-/** Every catalog row in one table. `titles` names each area's chapter, by slug. */
-export function Glossary({
-	symbols,
-	titles,
-}: {
-	symbols: readonly PageSymbol[];
-	titles: ReadonlyMap<string, string>;
-}) {
+/** Every catalog row in one table, with the area it belongs to. */
+export function Glossary({ symbols }: { symbols: readonly PageSymbol[] }) {
 	const [query, setQuery] = useState('');
 	const [area, setArea] = useState(ALL);
 	const [kind, setKind] = useState(ALL);
-	const rows = useGlossaryRows(symbols, titles, { query, area, kind });
+	const rows = useGlossaryRows(symbols, { query, area, kind });
 
 	const areaOptions = useMemo(() => {
 		const present = new Set(symbols.map((symbol) => symbol.area));
@@ -178,10 +163,9 @@ export function Glossary({
 		const present = new Set(symbols.map((symbol) => symbol.kind));
 		return [
 			{ value: ALL, label: 'All kinds' },
-			...KINDS.filter((item) => present.has(item)).map((item) => ({
-				value: KIND_LABEL[item],
-				label: KIND_LABEL[item],
-			})),
+			...[
+				...new Set(KINDS.filter((item) => present.has(item)).map((item) => KIND_LABEL[item])),
+			].map((label) => ({ value: label, label })),
 		];
 	}, [symbols]);
 
@@ -239,12 +223,6 @@ export function Glossary({
 					},
 					{ key: 'kind', header: 'Kind', width: pixel(150) },
 					{ key: 'areaTitle', header: 'Area', width: pixel(140) },
-					{
-						key: 'chapterTitle',
-						header: 'Chapter',
-						width: pixel(160),
-						renderCell: (row) => <Link href={`/docs/${row.chapter}`}>{row.chapterTitle}</Link>,
-					},
 					{
 						key: 'text',
 						header: 'What it does',

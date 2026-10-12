@@ -598,10 +598,6 @@ export function DocsReader({ index, article }: { index: DocIndex; article: DocAr
 	const outline = outlineItems(outlineNodes(index, article));
 	const { prev, next } = chapterNeighbors(index, article.slug);
 	const contentRef = useArticleScroll(article.slug, hashId);
-	const titles = useMemo(
-		() => new Map(index.articles.map((chapter) => [chapter.slug, chapter.title])),
-		[index],
-	);
 
 	const selectSection = (blockId: string) => {
 		const nextHash = `#${blockId}`;
@@ -624,7 +620,7 @@ export function DocsReader({ index, article }: { index: DocIndex; article: DocAr
 					<StackItem size="fill">
 						<VStack gap={6} padding={8} className="docs-prose">
 							<DocsBody article={article} />
-							<Glossary symbols={article.symbols} titles={titles} />
+							<Glossary symbols={article.symbols} />
 							<ChapterNeighbors prev={prev} next={next} />
 						</VStack>
 					</StackItem>
