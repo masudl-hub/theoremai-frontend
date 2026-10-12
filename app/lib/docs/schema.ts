@@ -124,11 +124,33 @@ export type SymbolRow =
 	| { kind: 'trace'; id: string; key: string; label: string; doc: string }
 	| { kind: 'lexicon'; id: string; key: string; text: string };
 
+/** The domains the glossary sorts its rows by, as a builder thinks of them, and what it calls each. */
+export const AREA_LABEL = {
+	profile: 'Profile',
+	identity: 'Identity',
+	models: 'Models',
+	providers: 'Providers',
+	decision: 'Decision',
+	image: 'Image',
+	speech: 'Speech',
+	live: 'Live',
+	tools: 'Tools',
+	inputs: 'Inputs',
+	outputs: 'Outputs',
+	'turn-behaviour': 'Turn behaviour',
+	guardrails: 'Guardrails',
+	observability: 'Observability',
+	wording: 'Wording',
+	runner: 'Runner',
+} as const;
+
+export type GlossaryArea = keyof typeof AREA_LABEL;
+
 /**
- * A catalog row of the glossary, the one page that lists them all. `area` is the chapter that
- * explains it, and the one whose placement in `placement.ts` it follows.
+ * A catalog row of the glossary, the one page that lists them all. `area` is the domain it belongs
+ * to; `chapter` is the chapter that explains it, per the placement in `placement.ts`.
  */
-export type PageSymbol = SymbolRow & { area: DocSection };
+export type PageSymbol = SymbolRow & { area: GlossaryArea; chapter: DocSection };
 
 /** A catalog row that a chapter's inline code names: its glossary row, and the chapter that explains it. */
 export type DocTerm = { symbol: PageSymbol; slug: DocSection; href: string; chapter: string };

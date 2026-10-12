@@ -15,7 +15,7 @@ import { IconSearch } from '@tabler/icons-react';
 import type { FieldMeta } from '@theoremjs/agents/schema';
 import { useMemo, useState } from 'react';
 import { symbolTerm } from '../../lib/docs/catalog-rows';
-import { DOC_SECTIONS, type PageSymbol } from '../../lib/docs/schema';
+import { AREA_LABEL, type GlossaryArea, type PageSymbol } from '../../lib/docs/schema';
 
 /** A field's catalog card: what it does, what it takes, and when it applies. */
 export function FieldCard({ meta }: { meta: FieldMeta }) {
@@ -84,12 +84,14 @@ type Row = {
 	kind: string;
 	area: string;
 	areaTitle: string;
+	chapter: string;
+	chapterTitle: string;
 	text: string;
 	haystack: string;
 	symbol: PageSymbol;
 };
 
-function rowOf(symbol: PageSymbol, areaTitle: string): Row {
+function rowOf(symbol: PageSymbol, chapterTitle: string): Row {
 	const { name, text } = symbolTerm(symbol);
 	const kind = KIND_LABEL[symbol.kind];
 	return {
@@ -97,9 +99,12 @@ function rowOf(symbol: PageSymbol, areaTitle: string): Row {
 		name,
 		kind,
 		area: symbol.area,
-		areaTitle,
+		areaTitle: AREA_LABEL[symbol.area],
+		chapter: symbol.chapter,
+		chapterTitle,
 		text,
-		haystack: `${name} ${kind} ${areaTitle} ${text} ${extraWords(symbol)}`.toLowerCase(),
+		haystack:
+			`${name} ${kind} ${AREA_LABEL[symbol.area]} ${chapterTitle} ${text} ${extraWords(symbol)}`.toLowerCase(),
 		symbol,
 	};
 }
@@ -113,7 +118,7 @@ function useGlossaryRows(
 	filter: { query: string; area: string; kind: string },
 ) {
 	const rows = useMemo(
-		() => symbols.map((symbol) => rowOf(symbol, titles.get(symbol.area) ?? symbol.area)),
+		() => symbols.map((symbol) => rowOf(symbol, titles.get(symbol.chapter) ?? symbol.chapter)),
 		[symbols, titles],
 	);
 	return useMemo(() => {
@@ -164,12 +169,11 @@ export function Glossary({
 		const present = new Set(symbols.map((symbol) => symbol.area));
 		return [
 			{ value: ALL, label: 'All areas' },
-			...DOC_SECTIONS.filter((slug) => present.has(slug)).map((slug) => ({
-				value: slug,
-				label: titles.get(slug) ?? slug,
-			})),
+			...(Object.keys(AREA_LABEL) as GlossaryArea[])
+				.filter((slug) => present.has(slug))
+				.map((slug) => ({ value: slug, label: AREA_LABEL[slug] })),
 		];
-	}, [symbols, titles]);
+	}, [symbols]);
 	const kindOptions = useMemo(() => {
 		const present = new Set(symbols.map((symbol) => symbol.kind));
 		return [
@@ -234,11 +238,12 @@ export function Glossary({
 						renderCell: (row) => <NameCell row={row} />,
 					},
 					{ key: 'kind', header: 'Kind', width: pixel(150) },
+					{ key: 'areaTitle', header: 'Area', width: pixel(140) },
 					{
-						key: 'areaTitle',
-						header: 'Area',
-						width: pixel(150),
-						renderCell: (row) => <Link href={`/docs/${row.area}`}>{row.areaTitle}</Link>,
+						key: 'chapterTitle',
+						header: 'Chapter',
+						width: pixel(160),
+						renderCell: (row) => <Link href={`/docs/${row.chapter}`}>{row.chapterTitle}</Link>,
 					},
 					{
 						key: 'text',

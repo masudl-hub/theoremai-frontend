@@ -19,7 +19,8 @@ flowchart LR
 | --- | --- |
 | A chapter's words, code, cover, date | its own Markdown file in [articles/](../app/lib/docs/articles/), e.g. `articles/tools.md` |
 | Chapter order, or add a chapter | `DOC_SECTIONS` in [schema.ts](../app/lib/docs/schema.ts), then `articles/<section>.md` |
-| Which chapter explains a facet's fields or a union's members (its row's area in the glossary) | [placement.ts](../app/lib/docs/placement.ts) |
+| Which chapter explains a facet's fields or a union's members (its row's chapter in the glossary) | [placement.ts](../app/lib/docs/placement.ts) |
+| Which area (domain) each glossary row belongs to, and which studio-only rows it leaves out | [placement.ts](../app/lib/docs/placement.ts), labels in [schema.ts](../app/lib/docs/schema.ts) |
 | Getting started's full program | the `firstTurn` draft in [seeds.ts](../app/lib/docs/seeds.ts) |
 | A retired URL | `SITE_REDIRECTS` in [chapters.ts](../app/lib/docs/articles/chapters.ts) |
 | The landing backdrop | `LANDING_STILL` in chapters.ts |

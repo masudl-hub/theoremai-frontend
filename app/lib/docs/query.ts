@@ -159,7 +159,7 @@ function searchUnitsOf(index: DocIndex): SearchUnit[] {
 					slug: article.slug,
 					blockId: symbol.id,
 					kind: 'symbol',
-					home: symbol.area,
+					home: symbol.chapter,
 					title: name,
 					excerpt: text,
 				},

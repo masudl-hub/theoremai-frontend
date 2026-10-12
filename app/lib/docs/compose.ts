@@ -27,7 +27,18 @@ import {
 import { stillFilters } from './exposure';
 import { parseFigure } from './figure';
 import { fieldsByFacet } from './ownership';
-import { EXPORT_SECTION, FACET_SECTION, REQUEST_SECTION, UNION_SECTION } from './placement';
+import {
+	EXPORT_AREA,
+	EXPORT_SECTION,
+	extraFieldArea,
+	FACET_AREA,
+	FACET_SECTION,
+	PROFILE_FIELD_AREA,
+	REQUEST_SECTION,
+	STUDIO_ONLY_PREFIXES,
+	UNION_AREA,
+	UNION_SECTION,
+} from './placement';
 import { readableText } from './project-text';
 import {
 	type ComposeOptions,
@@ -40,6 +51,7 @@ import {
 	type DocTerm,
 	type DocTreeNode,
 	FENCE_LANGUAGES,
+	type GlossaryArea,
 	type PageSymbol,
 	SNIPPET_FRAMES,
 	STUDIO_SEED_IDS,
@@ -244,14 +256,16 @@ function chapterSections(slug: DocSection, body: string): DocSectionEntry[] {
 	return sections;
 }
 
-function fieldSymbol(fieldPath: string): SymbolRow {
+type Placed = SymbolRow & { area: GlossaryArea };
+
+function fieldSymbol(fieldPath: string, area: GlossaryArea): Placed {
 	const meta = fieldMeta(fieldPath);
 	if (meta === undefined) throw new Error(`fieldMeta(${fieldPath}) is undefined`);
-	return { kind: 'field', id: fieldPath, path: fieldPath, meta };
+	return { kind: 'field', id: fieldPath, path: fieldPath, meta, area };
 }
 
 /** The request fields and the exports that `section` lists. */
-function apiSymbols(section: DocSection): SymbolRow[] {
+function apiSymbols(section: DocSection): Placed[] {
 	const requestFields =
 		section === REQUEST_SECTION
 			? Object.entries(REQUEST_FIELDS).map(([fieldPath, meta]) => ({
@@ -259,6 +273,7 @@ function apiSymbols(section: DocSection): SymbolRow[] {
 					id: `request:${fieldPath}`,
 					path: fieldPath,
 					meta,
+					area: 'runner' as const,
 				}))
 			: [];
 	const exports = Object.entries(API_EXPORTS)
@@ -269,24 +284,44 @@ function apiSymbols(section: DocSection): SymbolRow[] {
 			name,
 			exported: meta.kind,
 			doc: meta.doc,
+			area: EXPORT_AREA[name as keyof typeof API_EXPORTS],
 		}));
 	return [...exports, ...requestFields];
 }
 
-/** The catalog rows a chapter explains. */
-function catalogSymbols(section: DocSection, byFacet: Map<string, string[]>): SymbolRow[] {
-	const symbols: SymbolRow[] = apiSymbols(section);
+/** The catalog rows a chapter explains, each in its area. */
+function catalogSymbols(section: DocSection, byFacet: Map<string, string[]>): Placed[] {
+	const symbols: Placed[] = apiSymbols(section);
 	for (const facet of PROFILE_GRAPH) {
 		if (FACET_SECTION[facet.id] !== section) continue;
-		symbols.push(...(byFacet.get(facet.id) ?? []).map(fieldSymbol));
+		symbols.push(
+			...(byFacet.get(facet.id) ?? []).map((path) =>
+				fieldSymbol(
+					path,
+					path === 'id' || path === 'type' ? PROFILE_FIELD_AREA[path] : FACET_AREA[facet.id],
+				),
+			),
+		);
 	}
-	if (section === 'tools') symbols.push(...Object.keys(EXTRA_FIELDS).map(fieldSymbol));
+	if (section === 'tools') {
+		symbols.push(
+			...Object.keys(EXTRA_FIELDS)
+				.filter((path) => !STUDIO_ONLY_PREFIXES.some((prefix) => path.startsWith(prefix)))
+				.map((path) => fieldSymbol(path, extraFieldArea(path))),
+		);
+	}
 	for (const [name, place] of Object.entries(UNION_SECTION)) {
 		if (place.section !== section) continue;
 		const union = name as keyof typeof UNION_SECTION;
 		const prefix = union.toLowerCase().replace(/_/g, '-');
 		for (const member of unionMembers(union)) {
-			symbols.push({ kind: 'union-member', id: `${prefix}:${member.value}`, union, ...member });
+			symbols.push({
+				kind: 'union-member',
+				id: `${prefix}:${member.value}`,
+				union,
+				...member,
+				area: UNION_AREA[union],
+			});
 		}
 	}
 	if (section === 'traces') {
@@ -295,6 +330,7 @@ function catalogSymbols(section: DocSection, byFacet: Map<string, string[]>): Sy
 				kind: 'trace' as const,
 				id: `trace:${row.key}`,
 				...row,
+				area: 'observability' as const,
 			})),
 		);
 	}
@@ -304,6 +340,7 @@ function catalogSymbols(section: DocSection, byFacet: Map<string, string[]>): Sy
 				kind: 'lexicon' as const,
 				id: `lexicon:${row.key}`,
 				...row,
+				area: 'wording' as const,
 			})),
 		);
 	}
@@ -323,7 +360,7 @@ function areaSymbols(
 			taken.add(symbol.id);
 			return true;
 		})
-		.map((symbol) => ({ ...symbol, area: section }));
+		.map((symbol) => ({ ...symbol, chapter: section }));
 }
 
 type Listed = Pick<DocArticle, 'slug' | 'canonicalPath' | 'title' | 'symbols'>;
@@ -347,9 +384,9 @@ function termIndex(articles: readonly Listed[]): Map<string, DocTerm> {
 			if (terms.has(name)) shared.add(name);
 			terms.set(name, {
 				symbol,
-				slug: symbol.area,
+				slug: symbol.chapter,
 				href: `${article.canonicalPath}#${symbol.id}`,
-				chapter: titles.get(symbol.area) ?? article.title,
+				chapter: titles.get(symbol.chapter) ?? article.title,
 			});
 		}
 	}
