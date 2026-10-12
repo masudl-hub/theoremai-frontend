@@ -71,6 +71,8 @@ export default defineConfig({
 			`${theoremai.root}/studio/**/*.{ts,tsx}`,
 			`!${theoremai.root}/studio/app/**`,
 			`!${theoremai.root}/**/*.test.*`,
+			// The studio's own installed packages are not sources to scan; their declaration files do not parse.
+			`!${theoremai.root}/**/node_modules/**`,
 		],
 		// Served per icon by tablerIconFiles instead.
 		exclude: ['@tabler/icons-react'],
