@@ -219,12 +219,17 @@ function typoTolerance(term: string): number {
 }
 
 /** The hits matching every word of the term, and those matching only some. */
-function lexicalMatches(db: SearchDb, term: string, size: number) {
+function lexicalMatches(
+	db: SearchDb,
+	term: string,
+	size: number,
+	properties: ('title' | 'key' | 'body')[] = ['title', 'key', 'body'],
+) {
 	const tolerance = typoTolerance(term);
 	const run = (threshold: number) => {
 		const result = search(db, {
 			term,
-			properties: ['title', 'key', 'body'],
+			properties,
 			boost: { title: 3, key: 2 },
 			tolerance,
 			threshold,
@@ -346,8 +351,10 @@ export function searchDocs(
 /** One vector per unit of the index, in index order: row `i` is `data[i * dims]` to the next row. */
 export type DocVectors = { dims: number; data: Float32Array };
 
-/** What a place that matches every query word gains over one that only reads close in meaning. */
+/** What a place whose title or id has every query word gains over one that only reads close in meaning. */
 export const ALL_WORDS_BONUS = 0.05;
+/** The smaller gain when the words are only somewhere in the text, which nearly any long section has. */
+export const BODY_WORDS_BONUS = 0.01;
 /**
  * What a dictionary entry loses to a how-to section. Entries are short and read close to many
  * questions, so without it they crowd the guides out of the first hits.
@@ -391,13 +398,16 @@ export function searchDocsHybrid(
 		);
 	}
 	const matchesEvery = new Set(lexicalMatches(db, term, entries.size).every.map((hit) => hit.id));
+	const namesEvery = new Set(
+		lexicalMatches(db, term, entries.size, ['title', 'key']).every.map((hit) => hit.id),
+	);
 	const scored: { id: string; score: number }[] = [];
 	for (const [id, entry] of entries) {
 		const closeness = rowDot(queryVector, vectors, Number(id));
 		const all = matchesEvery.has(id);
 		if (closeness < SIMILARITY_FLOOR && !all) continue;
-		const score =
-			closeness + (all ? ALL_WORDS_BONUS : 0) - (entry.kind === 'symbol' ? REFERENCE_PENALTY : 0);
+		const bonus = namesEvery.has(id) ? ALL_WORDS_BONUS : all ? BODY_WORDS_BONUS : 0;
+		const score = closeness + bonus - (entry.kind === 'symbol' ? REFERENCE_PENALTY : 0);
 		scored.push({ id, score });
 	}
 	scored.sort((a, b) => b.score - a.score);
