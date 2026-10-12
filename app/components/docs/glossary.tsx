@@ -66,12 +66,11 @@ function extraWords(symbol: PageSymbol): string {
 			]
 				.filter(Boolean)
 				.join(' ');
-		case 'union-member':
-			return symbol.union;
 		case 'trace':
 			return symbol.label;
 		case 'export':
 			return symbol.exported;
+		case 'union-member':
 		case 'lexicon':
 			return '';
 	}

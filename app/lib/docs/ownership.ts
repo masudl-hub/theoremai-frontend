@@ -42,18 +42,19 @@ function prefixOwner(path: string): Owner | undefined {
 	return best;
 }
 
-/** True when the facet lists `top` in ownsFields and it is not a cross-link. */
-function ownsTopField(facet: ProfileGraphFacet, top: string): boolean {
+/** True when the facet lists the field, or the top-level key it sits under, and it is not a cross-link. */
+function ownsTopField(facet: ProfileGraphFacet, path: string, top: string): boolean {
 	const extra = facet.ownsFields ?? [];
 	const skipped = CROSS_LINK_OWNS[facet.id] ?? [];
-	return extra.includes(top) && !skipped.includes(top);
+	return (extra.includes(path) || extra.includes(top)) && !skipped.includes(top);
 }
 
 function ownerForField(path: string): ProfileGraphFacetId {
 	let best = prefixOwner(path);
 	const top = path.split('.')[0] ?? path;
 	for (const facet of PROFILE_GRAPH) {
-		if (ownsTopField(facet, top)) best = better(best, { id: facet.id, score: 500 + top.length });
+		if (ownsTopField(facet, path, top))
+			best = better(best, { id: facet.id, score: 500 + top.length });
 	}
 
 	if (!best) throw new Error(`No PROFILE_GRAPH owner for field ${path}`);

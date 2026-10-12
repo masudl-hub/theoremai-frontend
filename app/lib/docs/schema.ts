@@ -114,15 +114,9 @@ export type SymbolRow =
 	| { kind: 'field'; id: string; path: string; meta: FieldMeta }
 	| { kind: 'request-field'; id: string; path: string; meta: FieldMeta }
 	| { kind: 'export'; id: string; name: string; exported: ApiExportMeta['kind']; doc: string }
-	| {
-			kind: 'union-member';
-			id: string;
-			union: ArrayUnionName;
-			value: string;
-			doc: string;
-	  }
-	| { kind: 'trace'; id: string; key: string; label: string; doc: string }
-	| { kind: 'lexicon'; id: string; key: string; text: string };
+	| { kind: 'union-member'; id: string; name: string; value: string; doc: string }
+	| { kind: 'trace'; id: string; name: string; label: string; doc: string }
+	| { kind: 'lexicon'; id: string; name: string; text: string };
 
 /** The domains the glossary sorts its rows by, as a builder thinks of them, and what it calls each. */
 export const AREA_LABEL = {

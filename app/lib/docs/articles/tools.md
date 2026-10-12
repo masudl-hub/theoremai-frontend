@@ -243,7 +243,7 @@ registerTool({
 - `session_consent` asks one time. The approval lasts while your host sends the name of the tool in `sessionPermissions`.
 - `always_confirm` asks before every call.
 
-A call that must ask is a **gate**. The turn ends with `stop.kind` set to `gate`, and the tool does not run. Your interface shows the request and collects the answer. `labels.request` is the line that the person reads. `{shipmentId}` takes its value from the arguments.
+A call that must ask is a **gate**. The turn ends with `stop.kind` set to `gate`, and the tool does not run. Your interface shows the request and collects the answer. `registerTool.labels.request` is the line that the person reads. `{shipmentId}` takes its value from the arguments.
 
 After the answer, your server runs the call again with the answer ([Running a turn](/docs/runner), step 5). The chat component does all of this for you ([Building the interface](/docs/interface)).
 
@@ -437,5 +437,5 @@ Code | Cause | Fix
 `mcp_http_<status>` | The MCP server answered with a status that is not a success | Read the status, and check `serverUrl`
 `mcp_rpc_error_<code>` | The MCP server refused the call | Check `mcpToolName` and the arguments
 `mcp_tool_execution_failed` | The tool on the MCP server reported an error | Read the message. The fault is in the server's tool
-`out_of_scope` | The service wants a scope that `auth.scopes` does not list | Add the scope to `auth.scopes`
+`out_of_scope` | The service wants a scope that `registerTool.auth.scopes` does not list | Add the scope to `registerTool.auth.scopes`
 `agent_failed` | The other agent gave no reply | Read the trace of that agent's turn

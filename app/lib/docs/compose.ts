@@ -7,6 +7,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createMarkdownFrontmatter } from '@astryxdesign/core/Markdown/plugins';
+import { lexiconCatalogRows } from '@theoremjs/agents/guardrails';
+import { traceCatalogRows } from '@theoremjs/agents/observability';
 import {
 	API_EXPORTS,
 	EXTRA_FIELDS,
@@ -16,7 +18,7 @@ import {
 	REQUEST_FIELDS,
 } from '@theoremjs/agents/schema';
 import { CHAPTER_SOURCES, SITE_REDIRECTS } from './articles/chapters';
-import { lexiconCatalogRows, symbolTerm, traceCatalogRows } from './catalog-rows';
+import { symbolTerm } from './catalog-rows';
 import {
 	type Fence,
 	fenceMarkdown,
@@ -28,15 +30,12 @@ import { stillFilters } from './exposure';
 import { parseFigure } from './figure';
 import { fieldsByFacet } from './ownership';
 import {
+	areaOfName,
 	EXPORT_AREA,
 	EXPORT_SECTION,
-	extraFieldArea,
-	FACET_AREA,
 	FACET_SECTION,
-	PROFILE_FIELD_AREA,
+	isStudioOnly,
 	REQUEST_SECTION,
-	STUDIO_ONLY_PREFIXES,
-	UNION_AREA,
 	UNION_SECTION,
 } from './placement';
 import { readableText } from './project-text';
@@ -258,27 +257,23 @@ function chapterSections(slug: DocSection, body: string): DocSectionEntry[] {
 
 type Placed = SymbolRow & { area: GlossaryArea };
 
-/** A field named by the object it belongs to: a profile path already is, a tool's bare `name` is not. */
-function fieldSymbol(fieldPath: string, area: GlossaryArea, object?: string): Placed {
-	const meta = fieldMeta(fieldPath);
-	if (meta === undefined) throw new Error(`fieldMeta(${fieldPath}) is undefined`);
-	const path = object === undefined ? fieldPath : `${object}.${fieldPath}`;
-	return { kind: 'field', id: fieldPath, path, meta, area };
+/** A field under the name the catalog gives it, in the area that name's first segment says. */
+function fieldSymbol(path: string): Placed {
+	const meta = fieldMeta(path);
+	if (meta === undefined) throw new Error(`fieldMeta(${path}) is undefined`);
+	return { kind: 'field', id: path, path, meta, area: areaOfName(path) };
 }
-
-/** The extra catalog rows whose paths already start with the function or section they belong to. */
-const NAMED_EXTRA = /^(registerTool|registerStructured|decision)\./;
 
 /** The request fields and the exports that `section` lists. */
 function apiSymbols(section: DocSection): Placed[] {
 	const requestFields =
 		section === REQUEST_SECTION
-			? Object.entries(REQUEST_FIELDS).map(([fieldPath, meta]) => ({
+			? Object.entries(REQUEST_FIELDS).map(([path, meta]) => ({
 					kind: 'request-field' as const,
-					id: `request:${fieldPath}`,
-					path: `runTurn.${fieldPath}`,
+					id: `request:${path}`,
+					path,
 					meta,
-					area: 'runner' as const,
+					area: areaOfName(path),
 				}))
 			: [];
 	const exports = Object.entries(API_EXPORTS)
@@ -299,38 +294,23 @@ function catalogSymbols(section: DocSection, byFacet: Map<string, string[]>): Pl
 	const symbols: Placed[] = apiSymbols(section);
 	for (const facet of PROFILE_GRAPH) {
 		if (FACET_SECTION[facet.id] !== section) continue;
-		symbols.push(
-			...(byFacet.get(facet.id) ?? []).map((path) =>
-				path === 'id' || path === 'type'
-					? fieldSymbol(path, PROFILE_FIELD_AREA[path], 'profile')
-					: fieldSymbol(path, FACET_AREA[facet.id]),
-			),
-		);
+		symbols.push(...(byFacet.get(facet.id) ?? []).map(fieldSymbol));
 	}
 	if (section === 'tools') {
 		symbols.push(
 			...Object.keys(EXTRA_FIELDS)
-				.filter((path) => !STUDIO_ONLY_PREFIXES.some((prefix) => path.startsWith(prefix)))
-				.map((path) =>
-					fieldSymbol(
-						path,
-						extraFieldArea(path),
-						NAMED_EXTRA.test(path) ? undefined : 'registerTool',
-					),
-				),
+				.filter((path) => !isStudioOnly(path))
+				.map(fieldSymbol),
 		);
 	}
 	for (const [name, place] of Object.entries(UNION_SECTION)) {
 		if (place.section !== section) continue;
-		const union = name as keyof typeof UNION_SECTION;
-		const prefix = union.toLowerCase().replace(/_/g, '-');
-		for (const member of unionMembers(union)) {
+		for (const member of unionMembers(name as keyof typeof UNION_SECTION)) {
 			symbols.push({
 				kind: 'union-member',
-				id: `${prefix}:${member.value}`,
-				union,
+				id: `union:${member.name}`,
 				...member,
-				area: UNION_AREA[union],
+				area: areaOfName(member.name),
 			});
 		}
 	}
@@ -338,7 +318,7 @@ function catalogSymbols(section: DocSection, byFacet: Map<string, string[]>): Pl
 		symbols.push(
 			...traceCatalogRows().map((row) => ({
 				kind: 'trace' as const,
-				id: `trace:${row.key}`,
+				id: `trace:${row.name}`,
 				...row,
 				area: 'observability' as const,
 			})),
@@ -348,9 +328,9 @@ function catalogSymbols(section: DocSection, byFacet: Map<string, string[]>): Pl
 		symbols.push(
 			...lexiconCatalogRows().map((row) => ({
 				kind: 'lexicon' as const,
-				id: `lexicon:${row.key}`,
+				id: `lexicon:${row.name}`,
 				...row,
-				area: 'labels' as const,
+				area: areaOfName(row.name),
 			})),
 		);
 	}

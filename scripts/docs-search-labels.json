@@ -1044,7 +1044,7 @@
 			"accept": [
 				{
 					"slug": "glossary",
-					"title": "maxSteps"
+					"title": "profile.maxSteps"
 				}
 			]
 		},

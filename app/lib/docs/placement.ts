@@ -10,7 +10,7 @@ import {
 	STREAM_MODES,
 	TOOL_LOAD_TIERS,
 } from '@theoremjs/agents/schema';
-import type { ArrayUnionName, DocSection, GlossaryArea } from './schema';
+import { AREA_LABEL, type ArrayUnionName, type DocSection, type GlossaryArea } from './schema';
 
 export const FACET_SECTION = {
 	identity: 'identity',
@@ -65,25 +65,6 @@ export const UNION_SECTION = {
 
 export type DocWorthyUnion = keyof typeof UNION_SECTION;
 
-/** The area of each profile section's fields. */
-export const FACET_AREA = {
-	identity: 'identity',
-	decision: 'decision',
-	models: 'models',
-	modelBinding: 'models',
-	image: 'image',
-	speech: 'speech',
-	live: 'live',
-	tools: 'tools',
-	toolSpec: 'tools',
-	inputs: 'inputs',
-	outputs: 'outputs',
-	turnBehaviour: 'turn-behaviour',
-	guardrails: 'guardrails',
-	observability: 'observability',
-	wording: 'labels',
-} as const satisfies Record<ProfileGraphFacetId, GlossaryArea>;
-
 /** The area of each export: the domain it acts on. */
 export const EXPORT_AREA = {
 	defineProfile: 'profile',
@@ -105,25 +86,30 @@ export const EXPORT_AREA = {
 	TheoremError: 'runner',
 } as const satisfies Record<keyof typeof API_EXPORTS, GlossaryArea>;
 
-/** The area of each union's members. */
-export const UNION_AREA = {
-	PROFILE_TYPES: 'profile',
-	TOOL_LOAD_TIERS: 'tools',
-	STREAM_MODES: 'outputs',
-} as const satisfies Record<keyof typeof UNION_SECTION, GlossaryArea>;
-
-/** The profile's own top-level fields, which belong to no section. */
-export const PROFILE_FIELD_AREA = { id: 'profile', type: 'profile' } as const;
-
 /**
- * Catalog rows the glossary leaves out because only the studio shows them: its local-model
- * connection, and the editor's per-tool test fields. A builder never sets them.
+ * The area of a name whose first segment is not itself an area: a profile section whose area is
+ * written differently, and the functions whose fields the catalog names after them.
  */
-export const STUDIO_ONLY_PREFIXES = ['studio.', 'local.'] as const;
+const HEAD_AREA = {
+	providerContinuation: 'models',
+	turnBehaviour: 'turn-behaviour',
+	lexicon: 'labels',
+	registerTool: 'tools',
+	registerStructured: 'outputs',
+	runTurn: 'runner',
+} as const satisfies Record<string, GlossaryArea>;
 
-/** The area of an extra catalog row that no profile section owns. */
-export function extraFieldArea(path: string): GlossaryArea {
-	if (path === 'decision.questions.type') return 'decision';
-	if (path === 'registerStructured.jsonSchema') return 'outputs';
-	return 'tools';
+/** First segments of catalog names that only the studio shows, so the glossary leaves them out. */
+const STUDIO_ONLY_HEADS: ReadonlySet<string> = new Set(['studio', 'local']);
+
+export function isStudioOnly(name: string): boolean {
+	return STUDIO_ONLY_HEADS.has(name.split('.')[0] ?? '');
+}
+
+/** The area a catalog name belongs to: its first segment, which the catalog already makes the object. */
+export function areaOfName(name: string): GlossaryArea {
+	const head = name.split('.')[0] ?? name;
+	const area = head in HEAD_AREA ? HEAD_AREA[head as keyof typeof HEAD_AREA] : head;
+	if (!(area in AREA_LABEL)) throw new Error(`${name} names no glossary area (${head})`);
+	return area as GlossaryArea;
 }
