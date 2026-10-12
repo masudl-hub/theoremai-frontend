@@ -28,7 +28,7 @@ import { stillFilters } from './exposure';
 import { parseFigure } from './figure';
 import { fieldsByFacet } from './ownership';
 import { EXPORT_SECTION, FACET_SECTION, REQUEST_SECTION, UNION_SECTION } from './placement';
-import { projectArticleText } from './project-text';
+import { readableText } from './project-text';
 import {
 	type ComposeOptions,
 	DOC_SECTIONS,
@@ -410,7 +410,7 @@ export async function composeDocIndex(options: ComposeOptions): Promise<DocIndex
 			sections,
 			symbols: pageSymbols(head.slug, sections, byFacet),
 		};
-		return { ...article, ttrMinutes: ttrMinutesFromText(projectArticleText(article)) };
+		return { ...article, ttrMinutes: ttrMinutesFromText(readableText(article)) };
 	});
 	const index = termIndex(listed);
 	const articles = listed.map(

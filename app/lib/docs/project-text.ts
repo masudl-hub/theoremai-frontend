@@ -7,6 +7,7 @@ import { symbolTerm } from './catalog-rows';
 import { fenceMarkdown, markdownFences } from './chapter-markdown';
 import { figureMarkdown, parseFigure } from './figure';
 import type { DocArticle, PageSymbol } from './schema';
+import { plainMarkdown } from './text-format';
 
 /** The article fields the projection reads. */
 export type ProjectedArticle = Pick<DocArticle, 'title' | 'summary' | 'body' | 'symbols'>;
@@ -49,4 +50,15 @@ export function projectArticleText(
 			: [codeOnly(article.body)];
 	const list = detail === 'full' && facts.length ? [...facts.map((fact) => `- ${fact}`), ''] : [];
 	return [`# ${article.title}`, '', article.summary, '', ...list, ...body].join('\n').trim();
+}
+
+/**
+ * What a reader reads in an article, for its reading time: the title, summary and prose, with the
+ * steps of each figure. Code samples, markdown marks and the dictionary are left out; the dictionary
+ * is looked things up in, not read through.
+ */
+export function readableText(article: ProjectedArticle): string {
+	return plainMarkdown(
+		[article.title, article.summary, bodyWithFigures(article.body)].join('\n\n'),
+	);
 }

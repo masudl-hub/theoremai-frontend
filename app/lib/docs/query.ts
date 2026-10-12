@@ -7,7 +7,7 @@ import { symbolTerm } from './catalog-rows';
 import { introText, sectionText } from './chapter-markdown';
 import { projectArticleText } from './project-text';
 import type { DocArticle, DocIndex } from './schema';
-import { formatWithLineNumbers } from './text-format';
+import { formatWithLineNumbers, plainMarkdown } from './text-format';
 
 export function articleHref(article: Pick<DocArticle, 'canonicalPath'>, blockId?: string): string {
 	return blockId ? `${article.canonicalPath}#${blockId}` : article.canonicalPath;
@@ -101,22 +101,6 @@ type SearchUnit = { entry: SearchEntry; words: string; body: string };
 
 const SEARCH_SCHEMA = { title: 'string', key: 'string', body: 'string' } as const;
 type SearchDb = Orama<typeof SEARCH_SCHEMA>;
-
-/** Markdown as the text a person would read: no fences, backticks, emphasis, link targets or table rules. */
-function plainMarkdown(text: string): string {
-	return text
-		.replace(/```[\s\S]*?(```|$)/g, '\n')
-		.replace(/^\s*\|?[-: |]{3,}\|?\s*$/gm, '')
-		.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
-		.replace(/`+([^`\n]*)`+/g, '$1')
-		.replace(/(\*\*|__)(.+?)\1/g, '$2')
-		.replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,;:]|$)/g, '$1$2')
-		.replace(/^[ \t]*(#{1,6}|>|[-*+]|\d+\.)[ \t]+/gm, '')
-		.replace(/\s*\|\s*/g, ' · ')
-		.replace(/^ · | · $/gm, '')
-		.replace(/[ \t]+/g, ' ')
-		.trim();
-}
 
 function clipExcerpt(text: string, max = 160): string {
 	const flat = plainMarkdown(text).split('\n').filter(Boolean).join(' ');
