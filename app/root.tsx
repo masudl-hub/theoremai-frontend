@@ -80,11 +80,14 @@ export function Layout({ children }: { children: ReactNode }) {
 	);
 }
 
+/** Toasts sit a step inside the playground's frame, which is itself a step inside the window. */
+const TOASTS = { inset: { bottom: 32, end: 32 } };
+
 export default function App() {
 	return (
 		<Theme theme={theoremSiteTheme} mode="dark">
 			{/* AppShell doesn't mount the layer systems; toasts need this to have a viewport. */}
-			<LayerProvider>
+			<LayerProvider toast={TOASTS}>
 				<Outlet />
 			</LayerProvider>
 		</Theme>
