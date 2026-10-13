@@ -112,7 +112,6 @@ function firstTurnDraft(): StudioDraft {
 		modelBindings: [
 			defaultModelBinding({
 				modelId: 'main',
-				protocol: 'openAi',
 				provider: 'openrouter',
 				apiId: 'openrouter/free',
 				keySlot: 'openrouter',

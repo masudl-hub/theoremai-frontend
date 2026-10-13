@@ -13,6 +13,8 @@ import {
 	decisionQuestionViolation,
 	decisionStateViolation,
 	modelBindingViolation,
+	modelRoute,
+	STUDIO_PROVIDERS,
 	studioDecisionRequestSchema,
 } from '@theoremjs/studio';
 import { failedDecisionTraces, runStudioDecision } from '@theoremjs/studio/runtime';
@@ -40,7 +42,10 @@ export async function studioDecide(request: Request, env: StudioDecideEnv): Prom
 		labels = profile.labels;
 		// Counted only once the request is one configured decision model would answer.
 		const binding = Object.values(profile.models)[0];
-		const selected = { ...binding, protocol: 'decision' as const, builtInTools: [] };
+		const selected = {
+			...modelRoute(STUDIO_PROVIDERS, 'decision', binding),
+			builtInTools: [],
+		};
 		const modelViolation = modelBindingViolation(selected);
 		if (modelViolation)
 			throw new TheoremError('request', `studio decide: ${modelViolation.message}`);
