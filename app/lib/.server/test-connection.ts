@@ -97,6 +97,9 @@ function unansweredReason(err: unknown): { code: string; error: string } {
 			error: "The test doesn't call this address. It calls public web addresses only.",
 		};
 	}
+	if (kind === 'request') {
+		return { code: 'invalid_url', error: "That isn't a web address the test can call." };
+	}
 	if (kind === 'timeout') {
 		return {
 			code: 'network_error',

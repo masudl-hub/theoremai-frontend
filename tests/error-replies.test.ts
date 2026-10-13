@@ -54,6 +54,9 @@ test('the tool test words its own failures', async () => {
 	assert.equal(blocked.code, 'ssrf_blocked');
 	assert.ok(!blocked.error.includes('127.0.0.1'));
 
+	const typo = await probe({ type: 'mcp', serverUrl: 'nope' });
+	assert.equal(((await typo.json()) as { code: string }).code, 'invalid_url');
+
 	const unfilled = await probe({
 		type: 'http',
 		endpoint: 'https://example.com/users/{id}',
