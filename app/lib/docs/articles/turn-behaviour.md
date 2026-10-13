@@ -1,6 +1,6 @@
 ---
 title: Setting turn behaviour
-updated: 2026-10-11
+updated: 2026-10-13
 summary: Continue an early-stopped reply, and choose if a turn takes new messages.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/stop.ts, src/kernel/registry/resolve.ts
@@ -109,15 +109,23 @@ Three fields of `resumption` use these kinds:
 
 - `allowContinue` lists the stops for which your application offers Continue. Leave it out to allow all three. Set it to `[]` to allow none.
 - `autoContinue` lists the stops that your application continues without a question to the user. Leave it out to use `length` and `stream_incomplete`. Set it to `[]` to use none.
-- `maxContinues` limits how many times one reply can continue. Leave it out for no limit.
+- `maxContinues` limits how many times one reply can continue. Leave it out for no limit. It also limits the failed calls that one text turn sends again (see below).
 
 The two lists are separate. A stop in `autoContinue` does not have to be in `allowContinue`, so your application can continue a stop without offering Continue for it. A list can name only the three kinds above. A profile that names another kind fails with a `config` error.
 
 ```warning
-These lists guide your application. Theorem does not refuse a continue because its stop is not on a list. Use `isResumeableStop` and `shouldAutoContinue` to apply the lists.
+These lists guide the continues that your application sends. Theorem does not refuse a continue because its stop is not on a list. Use `isResumeableStop` and `shouldAutoContinue` to apply the lists.
 ```
 
 Wait `AUTO_CONTINUE_DELAY_MS` (1,500 ms) before an automatic continue, so that a weak connection can recover.
+
+A text turn also sends a failed model call again itself, in the same turn. Your application sends no continue for it. All of these must be true:
+
+- The profile sets `autoContinue`, and the list names the stop. If the profile leaves out `autoContinue`, a turn sends nothing again.
+- The stop is `provider_error` or `stream_incomplete`. A reply that stops at `length` is not sent again, because the same call stops at the same place.
+- The failed call gave no reply and no tool call.
+
+Theorem waits `AUTO_CONTINUE_DELAY_MS`, then sends the call again. The turn keeps its history and its step count. Your application gets no `error` event for the call that failed. One turn sends at most `maxContinues` calls again, or one call if the profile sets no `maxContinues`. If the last call also fails, the turn ends with that stop, and your application can continue it. The trace records each call that is sent again as `theorem.step.resume` ([Glossary](/docs/glossary)).
 
 ### 4. Accept a message during a turn
 

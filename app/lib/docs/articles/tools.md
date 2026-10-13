@@ -1,6 +1,6 @@
 ---
 title: Registering tools
-updated: 2026-10-10
+updated: 2026-10-13
 summary: Give an agent a tool that runs your code or calls a URL, MCP or agent.
 entry: src/kernel/tools/mod.ts
 covers: src/kernel/tools, src/kernel/auth
@@ -199,7 +199,7 @@ The tool takes `text` from the model, and any other channel that the other agent
 - You register it before you register the tool.
 - None of its own tools can stop for a person. Each one has `permission: 'auto'`, and none stops for a sign-in.
 
-`maxCallsPerTurn` limits the calls to this tool in one turn of the desk. To change what goes to the other agent, set `onAgentCall` on the request. `hostFields` adds fields that the model fills and only `onAgentCall` reads. `hostOnly` keeps a channel from the model, so only `onAgentCall` sends it.
+`maxCallsPerTurn` limits the calls to this tool in one turn of the desk. To change what goes to the other agent, set `onAgentCall` on the request. `hostFields` adds fields that the model fills and only `onAgentCall` reads. `hostOnly` keeps a channel from the model, so only `onAgentCall` sends it. The desk's `host` value does not go to the other agent. Its tools read a `ctx.host` only if `onAgentCall` returns a `host`.
 
 ### 5. Allow the tools
 
@@ -243,7 +243,7 @@ registerTool({
 - `session_consent` asks one time. The approval lasts while your host sends the name of the tool in `sessionPermissions`.
 - `always_confirm` asks before every call.
 
-A call that must ask is a **gate**. The turn ends with `stop.kind` set to `gate`, and the tool does not run. Your interface shows the request and collects the answer. `registerTool.labels.request` is the line that the person reads. `{shipmentId}` takes its value from the arguments.
+A call that must ask is a **gate**. The turn ends with `stop.kind` set to `gate`, and the tool does not run. Your interface shows the request and collects the answer. `registerTool.labels.request` is the line that the person reads. `{shipmentId}` takes its value from the arguments. A label can also be a list of lines. Theorem reads the list from the top and shows the first line that fits. A line fits when each `{path}` in it has a value and its condition is true, as in `when status is archived: archiving {title}`. Neighbouring lines that open with `+ ` show together. The last line must always fit.
 
 After the answer, your server runs the call again with the answer ([Running a turn](/docs/runner), step 5). The chat component does all of this for you ([Building the interface](/docs/interface)).
 
@@ -438,4 +438,4 @@ Code | Cause | Fix
 `mcp_rpc_error_<code>` | The MCP server refused the call | Check `mcpToolName` and the arguments
 `mcp_tool_execution_failed` | The tool on the MCP server reported an error | Read the message. The fault is in the server's tool
 `out_of_scope` | The service wants a scope that `registerTool.auth.scopes` does not list | Add the scope to `registerTool.auth.scopes`
-`agent_failed` | The other agent gave no reply | Read the trace of that agent's turn
+`agent_failed` | The other agent gave no reply | Read the message for the reason that agent gave, then the trace of its turn

@@ -3,7 +3,7 @@
 		"reviewed": "2026-10-13",
 		"files": {
 			"src/kernel/registry/catalog.ts": "20b3891d13501c62b6b932c141aaab9aac2f6686",
-			"src/kernel/schema.ts": "7ab2fb62041b5b69a9a41bbe1e38c28ec276e162"
+			"src/kernel/schema.ts": "9cccb0cdfdce6b6985089bf36e7d09165a9e4920"
 		}
 	},
 	"guardrails": {
@@ -71,7 +71,7 @@
 	"identity": {
 		"reviewed": "2026-10-13",
 		"files": {
-			"src/kernel/registry/profiles.ts": "8b0d8a2d4b878fe15cba29db7bcae93b111878b8",
+			"src/kernel/registry/profiles.ts": "fdd9cb99904849f1f3fd135ed85b397b332646c8",
 			"src/kernel/registry/system-prompt.ts": "fad7eb6064107e7047d0193e432bca523578768c",
 			"src/kernel/registry/system-role.ts": "1761367ce570fa2bbf9666a0dfeed2cb456395a3",
 			"src/kernel/system-parts.ts": "8cc33f9274f783f57b24891eac02c7a1a8595030"
@@ -109,17 +109,17 @@
 	"modalities": {
 		"reviewed": "2026-10-13",
 		"files": {
-			"src/kernel/registry/profiles.ts": "8b0d8a2d4b878fe15cba29db7bcae93b111878b8",
-			"src/kernel/schema.ts": "7ab2fb62041b5b69a9a41bbe1e38c28ec276e162"
+			"src/kernel/registry/profiles.ts": "fdd9cb99904849f1f3fd135ed85b397b332646c8",
+			"src/kernel/schema.ts": "9cccb0cdfdce6b6985089bf36e7d09165a9e4920"
 		}
 	},
 	"models": {
 		"reviewed": "2026-10-13",
 		"files": {
 			"src/kernel/registry/catalog.ts": "20b3891d13501c62b6b932c141aaab9aac2f6686",
-			"src/kernel/registry/profiles.ts": "8b0d8a2d4b878fe15cba29db7bcae93b111878b8",
+			"src/kernel/registry/profiles.ts": "fdd9cb99904849f1f3fd135ed85b397b332646c8",
 			"src/kernel/registry/vault.ts": "ec9e03f01c2bd58d921eedc7b32f10c273b3aef7",
-			"src/kernel/schema.ts": "7ab2fb62041b5b69a9a41bbe1e38c28ec276e162",
+			"src/kernel/schema.ts": "9cccb0cdfdce6b6985089bf36e7d09165a9e4920",
 			"src/providers/adapters.ts": "0bbda0b545068e951492705226249e8ddc799eb8",
 			"src/providers/decision/native.ts": "ec96013351a586fc36fad1cb5b74f3fd8488e241",
 			"src/providers/decision/usage.ts": "d56c1af0a0c60ae15d90aa74acccaa28f4dc487b",
@@ -155,7 +155,7 @@
 			"src/providers/openrouter/transport.ts": "9faf236a37a89924f67053420d6bc2349a5a373c",
 			"src/providers/shared/pcm.ts": "cf9d3abc01ed787e38c02399e4584d3ad7f7bcb8",
 			"src/providers/shared/response-identity.ts": "5fb1166a5b17477e3131bb61344565b2a179cac5",
-			"src/providers/shared/retry.ts": "8666a644505d27e1c9551615d5f4f4bb155d512a",
+			"src/providers/shared/retry.ts": "f0a532f1d0c147cfdacf610dbfe935c9abf96ff1",
 			"src/providers/shared/sse.ts": "7656a8c9d924b3e8487d86db2abc539c0e0f1660",
 			"src/providers/shared/structured-output.ts": "b1c6019a809918bf9b9e0b9c1fa123634f8e5c6b",
 			"src/providers/shared/tool-args.ts": "e69ad0b07dc34381c33ed802c10e2e1ef1efdd1c",
@@ -177,14 +177,14 @@
 	"runner": {
 		"reviewed": "2026-10-13",
 		"files": {
-			"src/kernel/engine/decision.ts": "bd0ab76fd47d12008a1ecbb873ae6c6ff857d8e4",
+			"src/kernel/engine/decision.ts": "5df079448849ba4a3f9a36e961805446bfa2ccba",
 			"src/kernel/engine/runner/gates.ts": "e5e2077ce46780a2c288a31b87467aed44b7ea7e",
 			"src/kernel/engine/runner/mod.ts": "c72dcffdd9f1d96023b719ba83d9062e4c661978",
-			"src/kernel/engine/runner/nested.ts": "94bb2b08084e57b6f579a9b0af0078f45838814f",
+			"src/kernel/engine/runner/nested.ts": "63ac3c631837b63a6b809b175009faa38292c9e0",
 			"src/kernel/engine/runner/schema-validation.ts": "83cccab0a8aefaa9eae890182e8ccb695a82d77e",
 			"src/kernel/engine/runner/stages.ts": "c711687619587bbcf84626cd4082da48d18595a3",
-			"src/kernel/engine/runner/state.ts": "a6c9a3203e26dc244c32f60547401b5d5ccdc147",
-			"src/kernel/engine/runner/steps.ts": "f8a842521844bd9241e3738d8c2068ae0de6586f",
+			"src/kernel/engine/runner/state.ts": "2049b6abbf5ad2ada51fc2e8771ba6f110325de0",
+			"src/kernel/engine/runner/steps.ts": "0a9312c0b13c5f8452898af7088efec011018ae6",
 			"src/kernel/engine/runner/stream.ts": "eb113beffe3cd719a7ddd1aa05e0338c98f1d431",
 			"src/kernel/engine/runner/usage.ts": "9df40698fbd855a50a8a7c5d526afe4a8821085c",
 			"src/kernel/engine/session/mod.ts": "dae409747076bde9a9367adbb61e4344031137c8",
@@ -199,14 +199,14 @@
 			"mod.ts": "107866f889d496acb641df6dec03049e71737b3a",
 			"src/kernel/engine/runner/gates.ts": "e5e2077ce46780a2c288a31b87467aed44b7ea7e",
 			"src/kernel/engine/runner/mod.ts": "c72dcffdd9f1d96023b719ba83d9062e4c661978",
-			"src/kernel/engine/runner/nested.ts": "94bb2b08084e57b6f579a9b0af0078f45838814f",
+			"src/kernel/engine/runner/nested.ts": "63ac3c631837b63a6b809b175009faa38292c9e0",
 			"src/kernel/engine/runner/schema-validation.ts": "83cccab0a8aefaa9eae890182e8ccb695a82d77e",
 			"src/kernel/engine/runner/stages.ts": "c711687619587bbcf84626cd4082da48d18595a3",
-			"src/kernel/engine/runner/state.ts": "a6c9a3203e26dc244c32f60547401b5d5ccdc147",
-			"src/kernel/engine/runner/steps.ts": "f8a842521844bd9241e3738d8c2068ae0de6586f",
+			"src/kernel/engine/runner/state.ts": "2049b6abbf5ad2ada51fc2e8771ba6f110325de0",
+			"src/kernel/engine/runner/steps.ts": "0a9312c0b13c5f8452898af7088efec011018ae6",
 			"src/kernel/engine/runner/stream.ts": "eb113beffe3cd719a7ddd1aa05e0338c98f1d431",
 			"src/kernel/engine/runner/usage.ts": "9df40698fbd855a50a8a7c5d526afe4a8821085c",
-			"src/kernel/registry/profiles.ts": "8b0d8a2d4b878fe15cba29db7bcae93b111878b8"
+			"src/kernel/registry/profiles.ts": "fdd9cb99904849f1f3fd135ed85b397b332646c8"
 		}
 	},
 	"statuses": {
@@ -214,7 +214,7 @@
 		"files": {
 			"src/guardrails/error.ts": "a318df81a223467fc94e552d1131667557adbba6",
 			"src/guardrails/labels.ts": "c7e219c47d9f616fc07887acde2231171c11d9c2",
-			"src/kernel/stop.ts": "2e158285a6f20ec1dccc7f726e4a4afd8b3d3060",
+			"src/kernel/stop.ts": "4c94ec26d816cb704ffa7cdab655bcd7d66fb295",
 			"src/kernel/turn-events.ts": "fe584cd919312b6c6a3aeb72c204533fe1489eb5"
 		}
 	},
@@ -228,7 +228,7 @@
 			"src/kernel/auth/scope-refusal.ts": "32af737d1562a10600a03b0ddae0408f64d9dd55",
 			"src/kernel/auth/typed-secret.ts": "307a280cf1ba474928b3f7be8389d4d97df81dbf",
 			"src/kernel/auth/types.ts": "4f2eaeacf9724bb1db1e10e6bee81cf0613784f0",
-			"src/kernel/tools/activity-label.ts": "3b42f2a2f9c4a890fca184e00188460ef92c3bac",
+			"src/kernel/tools/activity-label.ts": "4d2ff750b595749cb5ec281b53e0937a9ff84080",
 			"src/kernel/tools/agent.ts": "30b1d29569808cc215abb0562af20603682aa361",
 			"src/kernel/tools/coordinate.ts": "33520cad5fdbb73225b501e06767f011df06fca6",
 			"src/kernel/tools/events.ts": "8fc5e806fe1677a5fe4f13940a90a1cd39386f38",
@@ -249,7 +249,7 @@
 			"src/kernel/tools/schema.ts": "80139c4a59ef3ff6010fda7b786da2dd97cb8ff9",
 			"src/kernel/tools/signed-in-fetch.ts": "012198ae54905bb628e8b3ab51b14e040c99a54a",
 			"src/kernel/tools/stage-run.ts": "7a2c227fccb5bee87c46a6c30621959a3072f9ab",
-			"src/kernel/tools/types.ts": "d4a5d9a2ffb09656d8635cf1cd40a772755300ee",
+			"src/kernel/tools/types.ts": "c85d8f0a5b249c5e32cfed3a544f4e69ecf37f50",
 			"src/kernel/tools/unchecked-output.ts": "cd3ad46a12d91555ceec356258efc9f3707f0ecb"
 		}
 	},
@@ -265,7 +265,7 @@
 			"src/observability/policy.ts": "ff190f523dff9c0d4e4997fa010e56e2e1248455",
 			"src/observability/resolve-policy.ts": "2f140cf6d4b57ac25564571271931ceb1aedf793",
 			"src/observability/spans.ts": "d285879a6773bfff8dd77000ade4d42c93a9e924",
-			"src/observability/trace-catalog.ts": "21b17b2bb8964b07d325e849fd57af048facb2ad",
+			"src/observability/trace-catalog.ts": "9517cadf8355d768133e5a34fad08121c5ed4017",
 			"src/observability/trace-record.ts": "1b9670ebcb1940afd35f29c2ea57ca9a806fb944",
 			"src/observability/trace-schema.ts": "2c0d3944fdbacd3a3b66e1642d66dd168f1332ca",
 			"src/observability/trace-sink.ts": "7c47b133e04ef979aa293fb58ada04fd248960d0",
@@ -275,10 +275,10 @@
 		}
 	},
 	"turn-behaviour": {
-		"reviewed": "2026-10-12",
+		"reviewed": "2026-10-13",
 		"files": {
 			"src/kernel/registry/resolve.ts": "521207029816f08a321d064bf9af3491bc5d4734",
-			"src/kernel/stop.ts": "2e158285a6f20ec1dccc7f726e4a4afd8b3d3060"
+			"src/kernel/stop.ts": "4c94ec26d816cb704ffa7cdab655bcd7d66fb295"
 		}
 	}
 }
