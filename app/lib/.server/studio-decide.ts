@@ -16,7 +16,7 @@ import {
 	studioDecisionRequestSchema,
 } from '@theoremjs/studio';
 import { failedDecisionTraces, runStudioDecision } from '@theoremjs/studio/runtime';
-import { takeAllowance } from './studio-allowance';
+import { spendAllowance } from './studio-allowance';
 import { allowanceStore, type StudioDecideAllowance } from './studio-decide-allowance';
 import { studioDemoVault } from './studio-turn';
 
@@ -30,22 +30,6 @@ export type StudioDecideEnv = {
 
 function json(status: number, body: unknown): Response {
 	return Response.json(body, { status, headers: { 'cache-control': 'no-store' } });
-}
-
-/** Spends one of today's decisions for this address; the spent day's cap, or `null` when there was room. With no binding, the house key isn't spent at all. */
-function spentCap(
-	request: Request,
-	allowance: DurableObjectNamespace<StudioDecideAllowance> | undefined,
-): Promise<number | null> {
-	if (!allowance) {
-		// labels-exempt: developer contract error
-		throw new TheoremError('config', 'studio decide: no DECIDE_ALLOWANCE binding');
-	}
-	return takeAllowance(
-		allowanceStore(allowance),
-		'decision',
-		request.headers.get('CF-Connecting-IP') ?? 'local',
-	);
 }
 
 export async function studioDecide(request: Request, env: StudioDecideEnv): Promise<Response> {
@@ -76,13 +60,11 @@ export async function studioDecide(request: Request, env: StudioDecideEnv): Prom
 		const vault = studioDemoVault(env, profile);
 		if (!Object.values(vault).some(Boolean))
 			throw new TheoremError('auth', 'studio decide: provider key is missing'); // labels-exempt: internal diagnostic
-		const cap = await spentCap(request, env.DECIDE_ALLOWANCE);
-		if (cap !== null) {
-			// labels-exempt: internal diagnostic; the user reads quota.exhausted
-			throw new TheoremError('rate_limit', "studio decide: today's decisions are spent", {
-				copy: { key: 'quota.exhausted', params: { perDay: cap } },
-			});
-		}
+		await spendAllowance(
+			env.DECIDE_ALLOWANCE && allowanceStore(env.DECIDE_ALLOWANCE),
+			'decision',
+			request,
+		);
 		const { result, traces } = await runStudioDecision(
 			{
 				agentId: profile.id,

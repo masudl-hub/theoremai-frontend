@@ -2,7 +2,7 @@
  * POST /api/studio/probe — one text sent across every guardrail boundary of
  * the draft, each on a scripted model: no key is spent and no host is reached.
  * A text some boundary let through untouched is kept as sent, with every
- * boundary's answer, for review. With `only`, the draft reads with that
+ * boundary's answer, for review, and for `PROBE_RETENTION_DAYS`. With `only`, the draft reads with that
  * detector alone and nothing is kept: what the others would catch passes there.
  */
 import { type ProfileDefinition, z } from '@theoremjs/agents';
@@ -31,13 +31,19 @@ export type ProbeEntry = {
 
 export type ProbeLog = (entry: ProbeEntry, at: Date) => Promise<void>;
 
+/** How long a kept probe stays: long enough to review, and no visitor's text is held past it. */
+export const PROBE_RETENTION_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 /**
  * The probe tables (`migrations/0001_probe_log.sql`): one `probes` row with the
- * kernel version that ran it, and one `probe_answers` row a boundary.
+ * kernel version that ran it, and one `probe_answers` row a boundary. Each write also takes
+ * away the probes older than `PROBE_RETENTION_DAYS`, so the log needs no job to keep its promise.
  */
 export function d1ProbeLog(db: D1Database, kernel: string): ProbeLog {
 	return async (entry, at) => {
 		const id = crypto.randomUUID();
+		const expired = new Date(at.getTime() - PROBE_RETENTION_DAYS * DAY_MS).toISOString();
 		await db.batch([
 			db
 				.prepare('INSERT INTO probes (id, at, text, guardrails, kernel) VALUES (?, ?, ?, ?, ?)')
@@ -56,6 +62,10 @@ export function d1ProbeLog(db: D1Database, kernel: string): ProbeLog {
 						answer.passed ?? null,
 					),
 			),
+			db
+				.prepare('DELETE FROM probe_answers WHERE probe IN (SELECT id FROM probes WHERE at < ?)')
+				.bind(expired),
+			db.prepare('DELETE FROM probes WHERE at < ?').bind(expired),
 		]);
 	};
 }

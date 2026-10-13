@@ -2,6 +2,8 @@
  * Asks a key's provider whether it accepts the key, so th30 (and the person) can tell a bad key
  * from a bad setting. The key is used for this one request: never logged, kept or echoed back.
  */
+import { z } from '@theoremjs/agents';
+import { readBody } from '@theoremjs/react/server';
 
 const TIMEOUT_MS = 8000;
 const MAX_KEY_LENGTH = 512;
@@ -54,7 +56,7 @@ export async function testKey(request: Request): Promise<Response> {
 	if (request.method !== 'POST') return new Response(null, { status: 405 });
 	let key = '';
 	try {
-		const body: unknown = await request.json();
+		const body = await readBody(request, z.unknown());
 		const value = (body as { key?: unknown } | null)?.key;
 		key = typeof value === 'string' ? value.trim() : '';
 	} catch {

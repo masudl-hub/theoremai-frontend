@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { TheoremError } from '@theoremjs/agents';
+import { SECURITY_HEADERS, withSecurityHeaders } from '../app/lib/.server/security-headers.ts';
 import {
 	type AllowanceStore,
 	DAILY_ALLOWANCES,
 	gateStudioRequest,
+	spendAllowance,
 } from '../app/lib/.server/studio-allowance.ts';
 
 /** Counters in memory, as the Durable Objects keep them. */
@@ -66,4 +70,41 @@ test('with no store the studio API does not run', async () => {
 	const refused = await gateStudioRequest(post('/api/studio/turn'), undefined, NOON);
 	assert.equal(refused?.status, 503);
 	assert.equal(await gateStudioRequest(post('/docs'), undefined, NOON), null);
+});
+
+test("a voice call spends the day's voice calls, and is refused with the cap once they are spent", async () => {
+	const { store, counts } = memoryStore();
+	const call = post('/api/live/relay');
+	const { perAddress: calls } = DAILY_ALLOWANCES.live;
+	await spendAllowance(store, 'live', call, NOON);
+	assert.equal(counts.get('2026-10-01:live:address:203.0.113.7'), 1);
+	counts.set('2026-10-01:live:address:203.0.113.7', calls);
+	await assert.rejects(spendAllowance(store, 'live', call, NOON), (err: unknown) => {
+		assert.ok(err instanceof TheoremError);
+		assert.equal(err.kind, 'rate_limit');
+		assert.deepEqual(err.copy, { key: 'quota.exhausted', params: { perDay: calls } });
+		return true;
+	});
+	await assert.rejects(spendAllowance(undefined, 'live', call, NOON), { kind: 'config' });
+});
+
+test('every response carries the site headers, and a route keeps one it set itself', () => {
+	const plain = withSecurityHeaders(new Response('ok'));
+	for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+		assert.equal(plain.headers.get(name), value);
+	}
+	const own = withSecurityHeaders(
+		new Response('ok', { headers: { 'Referrer-Policy': 'no-referrer' } }),
+	);
+	assert.equal(own.headers.get('Referrer-Policy'), 'no-referrer');
+	assert.equal(own.headers.get('X-Content-Type-Options'), 'nosniff');
+});
+
+test('the static files carry the same headers as the Worker sets', () => {
+	const file = readFileSync(new URL('../public/_headers', import.meta.url), 'utf8');
+	const lines = file.split('\n').filter((line) => line.startsWith('  '));
+	assert.deepEqual(
+		lines.map((line) => line.trim()),
+		Object.entries(SECURITY_HEADERS).map(([name, value]) => `${name}: ${value}`),
+	);
 });

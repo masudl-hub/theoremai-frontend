@@ -18,7 +18,7 @@ import {
 import type { StructuredRegistration, StudioDependency, ToolRegistration } from '@theoremjs/studio';
 import type { SiteEnv } from '../../cloudflare';
 import { badRequestJson, errorMessage, ndjsonEventStream } from './ndjson-stream';
-import { takeAllowance, visitorAddress } from './studio-allowance';
+import { spendAllowance, takeAllowance, visitorAddress } from './studio-allowance';
 import { allowanceStore } from './studio-decide-allowance';
 import { recordStudioSession, sessionResponse, studioSession } from './studio-session';
 import { studioSteerInbox } from './studio-steer';
@@ -149,25 +149,6 @@ export async function studioInvoke(request: Request, env: SiteEnv): Promise<Resp
 /** The tools a page allowed for the rest of its visit, as the browser holds them. */
 const pagePermissions = z.array(z.string().min(1).max(128)).max(256).optional();
 
-/** Spends one of today's calls for this address; with no binding, nothing runs at all. */
-async function takeCall(request: Request, env: SiteEnv): Promise<void> {
-	if (!env.DECIDE_ALLOWANCE) {
-		// labels-exempt: developer contract error
-		throw new TheoremError('config', 'studio call: no DECIDE_ALLOWANCE binding');
-	}
-	const cap = await takeAllowance(
-		allowanceStore(env.DECIDE_ALLOWANCE),
-		'call',
-		visitorAddress(request),
-	);
-	if (cap !== null) {
-		// labels-exempt: internal diagnostic; the user reads quota.exhausted
-		throw new TheoremError('rate_limit', "studio call: today's calls are spent", {
-			copy: { key: 'quota.exhausted', params: { perDay: cap } },
-		});
-	}
-}
-
 /**
  * POST /api/studio/call — NDJSON events for one call of a host draft's
  * tool. Each visitor address, and the site, gets a day's calls: the tools run
@@ -187,7 +168,11 @@ export async function studioCall(request: Request, env: SiteEnv): Promise<Respon
 			'session permissions',
 		);
 		// Counted only once the request is one a host would run.
-		await takeCall(request, env);
+		await spendAllowance(
+			env.DECIDE_ALLOWANCE && allowanceStore(env.DECIDE_ALLOWANCE),
+			'call',
+			request,
+		);
 		return sessionResponse(
 			boundary,
 			ndjsonEventStream(

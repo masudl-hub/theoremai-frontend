@@ -107,7 +107,7 @@ test('a request that is not a probe is refused and nothing is logged', async () 
 	assert.equal(plain.status, 400);
 });
 
-test('the D1 log writes the probe and one row a boundary, in one batch', async () => {
+test('the D1 log writes the probe and one row a boundary, and drops probes past their keep, in one batch', async () => {
 	const batches: unknown[][][] = [];
 	const db = {
 		prepare: (sql: string) => ({ bind: (...values: unknown[]) => [sql, ...values] }),
@@ -157,6 +157,11 @@ test('the D1 log writes the probe and one row a boundary, in one batch', async (
 				'[]',
 				null,
 			],
+			[
+				'DELETE FROM probe_answers WHERE probe IN (SELECT id FROM probes WHERE at < ?)',
+				'2026-09-05T12:00:00.000Z',
+			],
+			['DELETE FROM probes WHERE at < ?', '2026-09-05T12:00:00.000Z'],
 		],
 	]);
 });

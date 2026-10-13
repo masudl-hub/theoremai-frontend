@@ -10,14 +10,14 @@
 	"upload_source_maps": true,
 	// The studio's mid-turn steer inboxes, one object per inbox id; and the
 	// day's studio allowances (every API request, decisions on the site's
-	// TypeSafe key, host tool calls), per visitor address and for the site.
+	// TypeSafe key, host tool calls, voice calls), per visitor address and for the site.
 	"durable_objects": {
 		"bindings": [
 			{ "name": "STEER_INBOX", "class_name": "StudioSteerInbox" },
 			{ "name": "DECIDE_ALLOWANCE", "class_name": "StudioDecideAllowance" }
 		]
 	},
-	// Guardrail probes some boundary let through, kept for review. With no
+	// Guardrail probes some boundary let through, kept 30 days for review. With no
 	// database_id, the first deploy creates the database; its tables are
 	// `wrangler d1 migrations apply theorem-probe-log` (add --local for dev).
 	"d1_databases": [

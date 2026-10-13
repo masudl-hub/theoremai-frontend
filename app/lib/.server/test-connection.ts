@@ -8,8 +8,11 @@ import {
 	MCP_PROTOCOL_VERSIONS,
 	parseMcpRpcResponse,
 	TheoremError,
+	z,
 } from '@theoremjs/agents';
+import { caughtStatus } from '@theoremjs/agents/host';
 import type { HttpMethod } from '@theoremjs/agents/schema';
+import { readBody } from '@theoremjs/react/server';
 import { errorMessage } from './ndjson-stream';
 import { resolveHost } from './resolve-host';
 
@@ -377,7 +380,7 @@ async function handleMcpProbe(
 export async function testConnection(request: Request): Promise<Response> {
 	const start = Date.now();
 	try {
-		const rawBody: unknown = await request.json();
+		const rawBody = await readBody(request, z.unknown());
 		if (!rawBody || typeof rawBody !== 'object' || !('type' in rawBody)) {
 			return Response.json(
 				{ ok: false, error: 'Missing type in test connection request' },
@@ -392,6 +395,6 @@ export async function testConnection(request: Request): Promise<Response> {
 		if (body.type === 'http') return await handleHttpProbe(body, start);
 		return await handleMcpProbe(body, start);
 	} catch (err) {
-		return Response.json({ ok: false, error: errorMessage(err) }, { status: 500 });
+		return Response.json({ ok: false, error: errorMessage(err) }, { status: caughtStatus(err) });
 	}
 }

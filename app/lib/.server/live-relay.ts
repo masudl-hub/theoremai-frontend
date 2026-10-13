@@ -38,7 +38,10 @@ export type LiveRelayOptions = Partial<
 		SessionBoundaryOptions,
 		'session' | 'sessionStore' | 'gateTtlMs' | 'operationRetentionMs' | 'sessionLimits'
 	>
->;
+> & {
+	/** Spends the call's allowance before it opens; throws the refusal the browser reads. */
+	admit?: () => Promise<void>;
+};
 
 export type LiveRelayEnv = {
 	GEMINI_API_KEY_FREE_A?: string;
@@ -170,6 +173,7 @@ async function relayLiveSession(
 	profileParam: string | null,
 	env: LiveRelayEnv,
 	boundary: TheoremSessionBoundary,
+	admit?: () => Promise<void>,
 ): Promise<void> {
 	// The call's id, picked here and sent to the browser on `ready`.
 	const sessionId = globalThis.crypto.randomUUID();
@@ -200,6 +204,8 @@ async function relayLiveSession(
 				'No Gemini API key configured (GEMINI_API_KEY_FREE_A/B/C)',
 			);
 		}
+		// Counted only once the call is one the relay would open.
+		await admit?.();
 		session = await openLiveSession(
 			scope,
 			profileId,
@@ -245,9 +251,17 @@ export async function handleLiveRelay(
 		});
 	}
 
+	// A socket is not held to the same-origin rule: another site's page could open one here with
+	// the visitor's session, so the relay answers only this site's own pages.
+	const origin = request.headers.get('Origin');
+	if (origin && URL.parse(origin)?.host !== new URL(request.url).host) {
+		return new Response(null, { status: 403 });
+	}
+
 	ensureKernelInitialized();
+	const { admit, ...session } = options;
 	const boundary = await createTheoremSessionBoundary({
-		...options,
+		...session,
 		request,
 		sessionStore: options.sessionStore ?? liveSessionStore,
 	});
@@ -255,7 +269,13 @@ export async function handleLiveRelay(
 	// Conversation authority is checked before upgrade. Later session failures use socket envelopes.
 	const [clientWs, serverWs] = Object.values(new WebSocketPair());
 	serverWs.accept();
-	void relayLiveSession(serverWs, new URL(request.url).searchParams.get('profile'), env, boundary);
+	void relayLiveSession(
+		serverWs,
+		new URL(request.url).searchParams.get('profile'),
+		env,
+		boundary,
+		admit,
+	);
 
 	return new Response(null, {
 		status: 101,
