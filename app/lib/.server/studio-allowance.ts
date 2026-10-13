@@ -9,7 +9,8 @@
  * counter store, so the policy runs anywhere.
  */
 
-import { errorKind, publicError, TheoremError } from '@theoremjs/agents';
+import { TheoremError } from '@theoremjs/agents';
+import { clientError } from '@theoremjs/agents/host';
 
 /** Each kind's daily caps, per visitor address and for the whole site however many addresses ask. */
 export const DAILY_ALLOWANCES = {
@@ -83,5 +84,5 @@ function refusal(err: TheoremError, status: number, now: number): Response {
 		// Seconds until the next UTC midnight, when the day's counts start over.
 		headers['retry-after'] = String(Math.ceil((Math.ceil(now / DAY_MS) * DAY_MS - now) / 1000));
 	}
-	return Response.json({ error: publicError(err), errorKind: errorKind(err) }, { status, headers });
+	return Response.json(clientError(err), { status, headers });
 }

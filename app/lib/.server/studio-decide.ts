@@ -5,14 +5,8 @@
  * the fields a studio decision compiles to, caps what it asks, and holds
  * each visitor address, and the site, to a day's decisions before it spends anything.
  */
-import {
-	defineProfile,
-	errorKind,
-	publicError,
-	TheoremError,
-	validateDecisionRequest,
-} from '@theoremjs/agents';
-import { caughtStatus } from '@theoremjs/agents/host';
+import { defineProfile, TheoremError, validateDecisionRequest } from '@theoremjs/agents';
+import { caughtStatus, clientError } from '@theoremjs/agents/host';
 import type { DecisionProfileDefinition } from '@theoremjs/agents/kernel';
 import { readBody } from '@theoremjs/react/server';
 import {
@@ -105,8 +99,7 @@ export async function studioDecide(request: Request, env: StudioDecideEnv): Prom
 		// A failed decision is traced too; the page shows what it left.
 		const traces = failedDecisionTraces(err);
 		return json(caughtStatus(err), {
-			error: publicError(err, labels),
-			errorKind: errorKind(err),
+			...clientError(err, labels),
 			...(traces.length > 0 ? { traces } : {}),
 		});
 	}

@@ -2,8 +2,8 @@
  * Site API handlers — plain `Request` in, `Response` out, no framework imports.
  * Route files only resolve the Cloudflare env and delegate here.
  */
-import { errorKind, type ProfileDefinition, publicError, TheoremError, z } from '@theoremjs/agents';
-import { caughtStatus } from '@theoremjs/agents/host';
+import { type ProfileDefinition, TheoremError, z } from '@theoremjs/agents';
+import { caughtStatus, clientError } from '@theoremjs/agents/host';
 import type { TheoremReplay, TheoremTurnRequest } from '@theoremjs/react';
 import {
 	checkRequest,
@@ -211,10 +211,10 @@ export async function studioCall(request: Request, env: SiteEnv): Promise<Respon
 		);
 	} catch (err) {
 		if (!(err instanceof TheoremError) || err.kind === 'request') return badRequestJson(err);
-		return Response.json(
-			{ error: publicError(err, draft?.profile.labels), errorKind: errorKind(err) },
-			{ status: caughtStatus(err), headers: { 'cache-control': 'no-store' } },
-		);
+		return Response.json(clientError(err, draft?.profile.labels), {
+			status: caughtStatus(err),
+			headers: { 'cache-control': 'no-store' },
+		});
 	}
 }
 

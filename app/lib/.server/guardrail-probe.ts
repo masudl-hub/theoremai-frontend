@@ -5,8 +5,8 @@
  * boundary's answer, for review. With `only`, the draft reads with that
  * detector alone and nothing is kept: what the others would catch passes there.
  */
-import { errorKind, type ProfileDefinition, publicError, z } from '@theoremjs/agents';
-import { caughtStatus } from '@theoremjs/agents/host';
+import { type ProfileDefinition, z } from '@theoremjs/agents';
+import { caughtStatus, clientError } from '@theoremjs/agents/host';
 import { readBody } from '@theoremjs/react/server';
 import {
 	type GuardrailProbeAnswer,
@@ -121,6 +121,6 @@ export async function studioProbe(
 		}
 		return json(200, { answers });
 	} catch (err) {
-		return json(caughtStatus(err), { error: publicError(err, labels), errorKind: errorKind(err) });
+		return json(caughtStatus(err), clientError(err, labels));
 	}
 }

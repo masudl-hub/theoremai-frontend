@@ -10,14 +10,13 @@
 
 import {
 	defaultKernelScope,
-	errorKind,
 	type KernelScope,
 	type LabelOverrides,
 	type LiveSession,
 	type Profile,
-	publicError,
 	TheoremError,
 } from '@theoremjs/agents';
+import { clientError } from '@theoremjs/agents/host';
 import {
 	createMemorySessionStore,
 	createTheoremSessionBoundary,
@@ -74,12 +73,8 @@ function resolveGeminiApiKey(env: LiveRelayEnv): string | undefined {
 }
 
 /** A relay failure as the browser reads it: the profile's wording and the kind, never the detail. */
-function errorBody(err: unknown, labels?: LabelOverrides): { error: string; errorKind: string } {
-	return { error: publicError(err, labels), errorKind: errorKind(err) };
-}
-
 function errorEnvelope(err: unknown, labels?: LabelOverrides): string {
-	return JSON.stringify({ type: 'error', ...errorBody(err, labels) });
+	return JSON.stringify({ type: 'error', ...clientError(err, labels) });
 }
 
 async function openLiveSession(
