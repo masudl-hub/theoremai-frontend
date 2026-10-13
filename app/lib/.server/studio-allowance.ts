@@ -41,12 +41,12 @@ const STUDIO_API = '/api/studio/';
 export const LIVE_RELAY_PATH = '/api/live/relay';
 
 /** Who is asking, as Cloudflare saw them; `local` in dev. */
-export function visitorAddress(request: Request): string {
+function visitorAddress(request: Request): string {
 	return request.headers.get('CF-Connecting-IP') ?? 'local';
 }
 
 /** Spends one of today's `kind` for `address`, then one of the site's; the spent day's cap, or `null` when both had room. */
-export async function takeAllowance(
+async function takeAllowance(
 	store: AllowanceStore,
 	kind: AllowanceKind,
 	address: string,

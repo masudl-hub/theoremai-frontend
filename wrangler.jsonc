@@ -17,6 +17,8 @@
 			{ "name": "DECIDE_ALLOWANCE", "class_name": "StudioDecideAllowance" }
 		]
 	},
+	// Once a day: the Worker takes away the guardrail probes kept past their 30 days.
+	"triggers": { "crons": ["17 3 * * *"] },
 	// Guardrail probes some boundary let through, kept 30 days for review. With no
 	// database_id, the first deploy creates the database; its tables are
 	// `wrangler d1 migrations apply theorem-probe-log` (add --local for dev).

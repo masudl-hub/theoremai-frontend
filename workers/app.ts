@@ -1,5 +1,6 @@
 import { createRequestHandler, RouterContextProvider } from 'react-router';
 import { cloudflareContext, type SiteEnv } from '../app/cloudflare';
+import { pruneProbeLog } from '../app/lib/.server/guardrail-probe';
 import { handleLiveRelay } from '../app/lib/.server/live-relay';
 import { withSecurityHeaders } from '../app/lib/.server/security-headers';
 import {
@@ -44,5 +45,9 @@ async function respond(request: Request, env: SiteEnv, ctx: ExecutionContext): P
 export default {
 	async fetch(request, env, ctx) {
 		return withSecurityHeaders(await respond(request, env, ctx));
+	},
+	// Once a day (`wrangler.jsonc` `triggers`): no kept probe outlives its days.
+	scheduled(_controller, env, ctx) {
+		if (env.PROBE_LOG) ctx.waitUntil(pruneProbeLog(env.PROBE_LOG, new Date()));
 	},
 } satisfies ExportedHandler<SiteEnv>;

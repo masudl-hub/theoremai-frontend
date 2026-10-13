@@ -12,9 +12,9 @@ export type SiteEnv = {
 	OPENROUTER_API_KEY?: string;
 	/** TypeSafe's key for direct studio decisions. */
 	'theoremai.typesafe_api_key'?: string;
-	/** Each day's studio allowances (every request, decisions, host tool calls), per visitor address and for the site (`wrangler.jsonc` `durable_objects`). */
+	/** Each day's studio allowances (every request, decisions, host tool calls, voice calls), per visitor address and for the site (`wrangler.jsonc` `durable_objects`). */
 	DECIDE_ALLOWANCE?: DurableObjectNamespace<StudioDecideAllowance>;
-	/** Guardrail probes no guardrail acted on (`wrangler.jsonc` `d1_databases`). */
+	/** Guardrail probes no guardrail acted on, kept 30 days (`wrangler.jsonc` `d1_databases`). */
 	PROBE_LOG?: D1Database;
 };
 

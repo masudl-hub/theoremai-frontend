@@ -37,13 +37,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * The probe tables (`migrations/0001_probe_log.sql`): one `probes` row with the
- * kernel version that ran it, and one `probe_answers` row a boundary. Each write also takes
- * away the probes older than `PROBE_RETENTION_DAYS`, so the log needs no job to keep its promise.
+ * kernel version that ran it, and one `probe_answers` row a boundary.
  */
 export function d1ProbeLog(db: D1Database, kernel: string): ProbeLog {
 	return async (entry, at) => {
 		const id = crypto.randomUUID();
-		const expired = new Date(at.getTime() - PROBE_RETENTION_DAYS * DAY_MS).toISOString();
 		await db.batch([
 			db
 				.prepare('INSERT INTO probes (id, at, text, guardrails, kernel) VALUES (?, ?, ?, ?, ?)')
@@ -62,12 +60,22 @@ export function d1ProbeLog(db: D1Database, kernel: string): ProbeLog {
 						answer.passed ?? null,
 					),
 			),
-			db
-				.prepare('DELETE FROM probe_answers WHERE probe IN (SELECT id FROM probes WHERE at < ?)')
-				.bind(expired),
-			db.prepare('DELETE FROM probes WHERE at < ?').bind(expired),
 		]);
 	};
+}
+
+/**
+ * Takes away every probe kept longer than `PROBE_RETENTION_DAYS`, with its answers. The Worker
+ * runs it once a day (`wrangler.jsonc` `triggers`), so a text leaves whether or not another comes.
+ */
+export async function pruneProbeLog(db: D1Database, now: Date): Promise<void> {
+	const expired = new Date(now.getTime() - PROBE_RETENTION_DAYS * DAY_MS).toISOString();
+	await db.batch([
+		db
+			.prepare('DELETE FROM probe_answers WHERE probe IN (SELECT id FROM probes WHERE at < ?)')
+			.bind(expired),
+		db.prepare('DELETE FROM probes WHERE at < ?').bind(expired),
+	]);
 }
 
 function part<T>() {

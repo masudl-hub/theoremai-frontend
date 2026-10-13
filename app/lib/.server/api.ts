@@ -18,7 +18,7 @@ import {
 import type { StructuredRegistration, StudioDependency, ToolRegistration } from '@theoremjs/studio';
 import type { SiteEnv } from '../../cloudflare';
 import { badRequestJson, errorMessage, ndjsonEventStream } from './ndjson-stream';
-import { spendAllowance, takeAllowance, visitorAddress } from './studio-allowance';
+import { spendAllowance } from './studio-allowance';
 import { allowanceStore } from './studio-decide-allowance';
 import { recordStudioSession, sessionResponse, studioSession } from './studio-session';
 import { studioSteerInbox } from './studio-steer';
@@ -44,10 +44,19 @@ type StudioDraft = {
  */
 function agentCallAllowance(request: Request, env: SiteEnv) {
 	return async () => {
-		if (!env.DECIDE_ALLOWANCE) return { refuse: 'This agent is not available here.' };
-		const store = allowanceStore(env.DECIDE_ALLOWANCE);
-		const cap = await takeAllowance(store, 'request', visitorAddress(request));
-		return cap === null ? undefined : { refuse: "Today's studio requests are spent." };
+		try {
+			await spendAllowance(
+				env.DECIDE_ALLOWANCE && allowanceStore(env.DECIDE_ALLOWANCE),
+				'request',
+				request,
+			);
+			return undefined;
+		} catch (err) {
+			const spent = err instanceof TheoremError && err.kind === 'rate_limit';
+			return {
+				refuse: spent ? "Today's studio requests are spent." : 'This agent is not available here.',
+			};
+		}
 	};
 }
 
