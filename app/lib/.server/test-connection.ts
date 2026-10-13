@@ -180,6 +180,23 @@ function previewResponseBody(text: string, contentType: string): string {
 	}
 }
 
+/**
+ * Why the endpoint and the sample input made no URL, naming the path parameter left unfilled. The
+ * name is read from the endpoint the visitor sent; the caught failure's text stays on the server.
+ */
+function mappingReason(
+	endpoint: string,
+	pathParams: readonly string[],
+	sampleInput: Record<string, unknown>,
+): string {
+	const named = [...endpoint.matchAll(/\{([a-zA-Z0-9_-]+)\}/g)].map(([, name]) => name);
+	const unlisted = named.find((name) => !pathParams.includes(name));
+	if (unlisted) return `{${unlisted}} is in the endpoint, but isn't one of its path parameters.`;
+	const unfilled = named.find((name) => sampleInput[name] === undefined);
+	if (unfilled) return `The sample input has no value for the path parameter {${unfilled}}.`;
+	return "The endpoint and the sample input don't make a URL. Start the endpoint with a fixed scheme and host, and keep . and .. out of its path parameters.";
+}
+
 async function handleHttpProbe(
 	body: Extract<TestConnectionRequest, { type: 'http' }>,
 	start: number,
@@ -211,8 +228,7 @@ async function handleHttpProbe(
 		return Response.json({
 			ok: false,
 			code: 'invalid_mapping',
-			error:
-				"The endpoint and the sample input don't make a URL. Start the endpoint with a fixed scheme and host, and give every {parameter} in its path a value.",
+			error: mappingReason(body.endpoint, body.pathParams ?? [], sampleInput),
 			elapsedMs: elapsedSince(start),
 		});
 	}

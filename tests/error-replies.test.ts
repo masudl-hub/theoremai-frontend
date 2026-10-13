@@ -65,5 +65,5 @@ test('the tool test words its own failures', async () => {
 	});
 	const mapping = (await unfilled.json()) as { code: string; error: string };
 	assert.equal(mapping.code, 'invalid_mapping');
-	assert.ok(!mapping.error.includes('example.com'));
+	assert.equal(mapping.error, 'The sample input has no value for the path parameter {id}.');
 });
