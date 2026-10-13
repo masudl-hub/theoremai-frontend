@@ -21,7 +21,7 @@ import {
 	modelBindingViolation,
 	studioDecisionRequestSchema,
 } from '@theoremjs/studio';
-import { runStudioDecision } from '@theoremjs/studio/runtime';
+import { failedDecisionTraces, runStudioDecision } from '@theoremjs/studio/runtime';
 import { takeAllowance } from './studio-allowance';
 import { allowanceStore, type StudioDecideAllowance } from './studio-decide-allowance';
 import { studioDemoVault } from './studio-turn';
@@ -102,6 +102,12 @@ export async function studioDecide(request: Request, env: StudioDecideEnv): Prom
 		);
 		return json(200, { result, traces });
 	} catch (err) {
-		return json(caughtStatus(err), { error: publicError(err, labels), errorKind: errorKind(err) });
+		// A failed decision is traced too; the page shows what it left.
+		const traces = failedDecisionTraces(err);
+		return json(caughtStatus(err), {
+			error: publicError(err, labels),
+			errorKind: errorKind(err),
+			...(traces.length > 0 ? { traces } : {}),
+		});
 	}
 }
