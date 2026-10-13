@@ -111,7 +111,7 @@ Three fields of `resumption` use these kinds:
 - `autoContinue` lists the stops that your application continues without a question to the user. Leave it out to use `length` and `stream_incomplete`. Set it to `[]` to use none.
 - `maxContinues` limits how many times one reply can continue. Leave it out for no limit.
 
-Each kind in `autoContinue` must also be in `allowContinue`. A list can name only the three kinds above. If a profile breaks one of these rules, it fails with a `config` error.
+The two lists are separate. A stop in `autoContinue` does not have to be in `allowContinue`, so your application can continue a stop without offering Continue for it. A list can name only the three kinds above. A profile that names another kind fails with a `config` error.
 
 ```warning
 These lists guide your application. Theorem does not refuse a continue because its stop is not on a list. Use `isResumeableStop` and `shouldAutoContinue` to apply the lists.
@@ -154,7 +154,6 @@ A wrong list fails when the profile is checked. A wrong continue fails the turn.
 Where | What you see | Fix
 --- | --- | ---
 Registering the profile, kind `config` | `allowContinue` or `autoContinue` lists a kind other than `length`, `stream_incomplete` or `provider_error` | List only those three kinds
-Registering the profile, kind `config` | `autoContinue` has a kind that `allowContinue` leaves out | Add the kind to `allowContinue`
 A turn, kind `request` | The profile is `live` | Use `live.sessionResumption`
 A turn, kind `request` | A text continue carries `input.text` | Remove `input.text`
 A turn, kind `request` | `maxContinues` is set, and `continuation` is missing, below 1 or above `maxContinues` | Send `continuation`, counting from 1
