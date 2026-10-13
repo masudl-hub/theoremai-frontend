@@ -46,7 +46,7 @@ Theorem reports these operations as **events**. Your code can act at five fixed 
 		},
 		{
 			"label": "post_tool",
-			"text": "Your code can inject, abort, deny or mutate."
+			"text": "Your code can inject, abort, deny, mutate or label the call as failed."
 		},
 		{
 			"label": "before_end",
@@ -113,6 +113,7 @@ The checkpoint contains native state for the adapter. Portable history remains n
 The kernel checks provider identity, model identity, deployment, state version, and the covered history prefix.
 On a mismatch, it rebuilds from portable history and emits `provider_warning` by default.
 Set `providerContinuation: { onMismatch: 'error' }` to reject the mismatch instead.
+Set the profile's `providerContinuation: { history: 'provider' }` to send the checkpoint alone. A request that also carries history is then a mismatch. With `'stateless'`, a request that carries history or a checkpoint is refused, and completion carries no checkpoint.
 Google persistence uses this same checkpoint boundary ([Binding models](/docs/models)).
 
 ### 3. Read the stream
@@ -146,12 +147,13 @@ Stage | Results that it allows
 --- | ---
 `pre_turn` | inject, abort
 `pre_tool` | abort, deny, confirm, mutate
-`post_tool` | inject, abort, deny, mutate
+`post_tool` | inject, abort, deny, mutate, labelFailed
 `before_end` | inject, abort
 `post_turn` | none
 
 - A `confirm` on `pre_tool` opens a **gate**. A gate pauses the tool until a person decides.
 - A `mutate` replaces the tool input or output. Theorem validates the new value again.
+- `labelFailed: true` on `post_tool` keeps the result and the phase, and shows the tool's failed activity label on the terminal `tool` event.
 - Set `injectId` to name an inject on the `stage` event.
 
 ### 5. Resume a gate

@@ -193,13 +193,13 @@ registerTool({
 });
 ```
 
-The tool takes `{ text }` from the model and returns the reply of the other agent. Three rules apply to that agent:
+The tool takes `text` from the model, and any other channel that the other agent declares in its `inputs`: `attachments`, `voice` and `slots`, and `speech` for a `speech` profile. The tool returns the reply of the other agent: its `text`, or its `structured` reply, with any media and `sources` it cited. Three rules apply to that agent:
 
 - It is a `text`, `image` or `speech` profile that takes text.
 - You register it before you register the tool.
 - None of its own tools can stop for a person. Each one has `permission: 'auto'`, and none stops for a sign-in.
 
-`maxCallsPerTurn` limits the calls to this tool in one turn of the desk. To send more than the text of the model to the other agent, set `onAgentCall` on the request.
+`maxCallsPerTurn` limits the calls to this tool in one turn of the desk. To change what goes to the other agent, set `onAgentCall` on the request. `hostFields` adds fields that the model fills and only `onAgentCall` reads. `hostOnly` keeps a channel from the model, so only `onAgentCall` sends it.
 
 ### 5. Allow the tools
 

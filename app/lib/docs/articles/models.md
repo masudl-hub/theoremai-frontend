@@ -123,7 +123,7 @@ allowModelSelect: true,
 ```
 
 - With two bindings or more, set `defaultModel`. With one binding, that binding is the default.
-- `allowModelSelect: true` lets a request pass `model`. It needs two bindings or more.
+- `allowModelSelect: true` lets a request pass `model`. A name that is not a key of `models` is refused.
 - A turn runs `defaultModel` unless the request names another key of `models`.
 
 ```note
@@ -254,7 +254,6 @@ Where | What you see | Fix
 `defineProfile`, kind `config` | The profile sets `key`, `fallbackKey`, `protocol` or `provider` | Use registered provider IDs in bindings; put credential defaults in provider definitions
 `defineProfile`, kind `config` | The model needs `provider` and `apiId` | Set both on the binding
 `defineProfile`, kind `config` | The profile must set `defaultModel` when it declares more than one model | Set `defaultModel`
-`defineProfile`, kind `config` | `allowModelSelect` requires at least two models | Add a model, or remove the flag
 `defineProfile`, kind `config` | `keySlot` is not a key slot name | Use up to 32 letters, digits, `-` or `_`
 `defineProfile`, kind `config` | A binding sets a key that its model does not know | Remove it, or move it into `providerOptions`
 `registerProvider` or `registerProfile`, kind `config` | The fallback slot is the same slot as the primary | Name a different slot

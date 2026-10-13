@@ -37,7 +37,7 @@ In Theorem, all the parts are in one object, the profile.
 				{ "label": "Outputs", "chapter": "outputs", "text": "What it returns: text, JSON that a schema checks, an image or speech." },
 				{ "label": "Turn behaviour", "chapter": "turn-behaviour", "text": "If a reply that stopped early can continue, and if a running turn can be steered." },
 				{ "label": "Guardrails", "chapter": "guardrails", "text": "How Theorem guards each input and each output." },
-				{ "label": "Wording", "chapter": "statuses", "text": "Its own words for the error lines and notices that a person sees." },
+				{ "label": "Labels", "chapter": "statuses", "text": "Its own labels for the error lines and notices that a person sees." },
 				{ "label": "Observability", "chapter": "traces", "text": "Where the record of each turn goes, and what the record keeps." }
 			]
 		},
