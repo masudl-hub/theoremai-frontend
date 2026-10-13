@@ -3,6 +3,7 @@
  */
 import {
 	buildHttpToolTarget,
+	errorKind,
 	fetchGuarded,
 	isUnsupportedMcpProtocolError,
 	MCP_PROTOCOL_VERSIONS,
@@ -10,10 +11,9 @@ import {
 	TheoremError,
 	z,
 } from '@theoremjs/agents';
-import { caughtStatus } from '@theoremjs/agents/host';
+import { caughtStatus, clientError } from '@theoremjs/agents/host';
 import type { HttpMethod } from '@theoremjs/agents/schema';
 import { readBody } from '@theoremjs/react/server';
-import { errorMessage } from './ndjson-stream';
 import { resolveHost } from './resolve-host';
 
 type AuthProbe = {
@@ -85,19 +85,34 @@ function redirectResponse(res: Response, start: number) {
 	});
 }
 
-/** A probe that never got an answer: refused by the network guard, or failed on the way. */
-function fetchErrorResponse(start: number, err: unknown) {
-	const blocked = err instanceof TheoremError && err.kind === 'blocked';
-	return Response.json({
-		ok: false,
-		code: blocked ? 'ssrf_blocked' : 'network_error',
-		error: errorMessage(err),
-		elapsedMs: elapsedSince(start),
-	});
-}
-
 /** How long a probe waits for the whole response, body included. */
 const TIMEOUT_MS = 10_000;
+
+/** Why a probe got no answer, in the test's own words: the caught failure's text stays on the server. */
+function unansweredReason(err: unknown): { code: string; error: string } {
+	const kind = errorKind(err);
+	if (kind === 'blocked') {
+		return {
+			code: 'ssrf_blocked',
+			error: "The test doesn't call this address. It calls public web addresses only.",
+		};
+	}
+	if (kind === 'timeout') {
+		return {
+			code: 'network_error',
+			error: `No complete response within ${String(TIMEOUT_MS / 1000)} s.`,
+		};
+	}
+	return {
+		code: 'network_error',
+		error: "The request didn't get a response. Check that the service is up.",
+	};
+}
+
+/** A probe that never got an answer: refused by the network guard, or failed on the way. */
+function fetchErrorResponse(start: number, err: unknown) {
+	return Response.json({ ok: false, ...unansweredReason(err), elapsedMs: elapsedSince(start) });
+}
 
 /** How much of a response body a probe reads; enough for a large MCP tool list. */
 const MAX_BODY_BYTES = 1_000_000;
@@ -144,7 +159,8 @@ async function fetchWithTimeout(
 		return { res, text: await readCapped(res) };
 	} catch (err) {
 		if (controller.signal.aborted) {
-			throw new Error(`No complete response within ${String(TIMEOUT_MS / 1000)} s.`);
+			// labels-exempt: internal diagnostic; the visitor reads the test's own line for a timeout
+			throw new TheoremError('timeout', 'probe: no complete response in time');
 		}
 		throw err;
 	} finally {
@@ -188,11 +204,12 @@ async function handleHttpProbe(
 		});
 		requestUrl = target.url;
 		requestBody = target.body;
-	} catch (buildErr) {
+	} catch {
 		return Response.json({
 			ok: false,
 			code: 'invalid_mapping',
-			error: errorMessage(buildErr),
+			error:
+				"The endpoint and the sample input don't make a URL. Start the endpoint with a fixed scheme and host, and give every {parameter} in its path a value.",
 			elapsedMs: elapsedSince(start),
 		});
 	}
@@ -395,6 +412,6 @@ export async function testConnection(request: Request): Promise<Response> {
 		if (body.type === 'http') return await handleHttpProbe(body, start);
 		return await handleMcpProbe(body, start);
 	} catch (err) {
-		return Response.json({ ok: false, error: errorMessage(err) }, { status: caughtStatus(err) });
+		return Response.json({ ok: false, ...clientError(err) }, { status: caughtStatus(err) });
 	}
 }

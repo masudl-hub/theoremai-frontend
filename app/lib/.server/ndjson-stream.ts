@@ -1,20 +1,17 @@
 import type { ProfileDefinition } from '@theoremjs/agents';
 import { toErrorEvent, withPublicLabels } from '@theoremjs/agents/guardrails';
+import { caughtStatus, clientError, forClient } from '@theoremjs/agents/host';
 
 const NDJSON_HEADERS = {
 	'content-type': 'application/x-ndjson; charset=utf-8',
 	'cache-control': 'no-store',
 } as const;
 
-export function errorMessage(err: unknown): string {
-	return err instanceof Error ? err.message : String(err);
-}
-
 /**
  * NDJSON response that streams a run's events. A failure the run didn't turn into an event itself
  * (one thrown before the kernel's turn starts, such as registering the profile or creating its
- * provider) ends the stream as the kernel's own error event: the user reads its kind's wording,
- * from the profile's `labels` when it has one, and the raw detail stays in `errorInternal`.
+ * provider) ends the stream as the kernel's own error event, as a visitor may have it: its kind's
+ * wording, from the profile's `labels` when it has one, and never the raw detail.
  */
 export function ndjsonEventStream(
 	source: AsyncIterable<unknown>,
@@ -30,7 +27,9 @@ export function ndjsonEventStream(
 				controller.close();
 			} catch (err) {
 				controller.enqueue(
-					encoder.encode(`${JSON.stringify(withPublicLabels(toErrorEvent(err), labels))}\n`),
+					encoder.encode(
+						`${JSON.stringify(forClient(withPublicLabels(toErrorEvent(err), labels)))}\n`,
+					),
 				);
 				controller.close();
 			}
@@ -39,6 +38,13 @@ export function ndjsonEventStream(
 	return new Response(stream, { headers: NDJSON_HEADERS });
 }
 
-export function badRequestJson(err: unknown): Response {
-	return Response.json({ error: errorMessage(err) }, { status: 400 });
+/**
+ * The reply for a failure caught before a route had anything to stream: the status of its kind,
+ * and the wording a visitor may read, from the profile's `labels` when the request carried one.
+ */
+export function errorJson(err: unknown, labels?: ProfileDefinition['labels']): Response {
+	return Response.json(clientError(err, labels), {
+		status: caughtStatus(err),
+		headers: { 'cache-control': 'no-store' },
+	});
 }

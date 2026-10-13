@@ -3,7 +3,6 @@
  * Route files only resolve the Cloudflare env and delegate here.
  */
 import { type ProfileDefinition, TheoremError, z } from '@theoremjs/agents';
-import { caughtStatus, clientError } from '@theoremjs/agents/host';
 import type { TheoremReplay, TheoremTurnRequest } from '@theoremjs/react';
 import {
 	checkRequest,
@@ -17,7 +16,7 @@ import {
 } from '@theoremjs/react/server';
 import type { StructuredRegistration, StudioDependency, ToolRegistration } from '@theoremjs/studio';
 import type { SiteEnv } from '../../cloudflare';
-import { badRequestJson, errorMessage, ndjsonEventStream } from './ndjson-stream';
+import { errorJson, ndjsonEventStream } from './ndjson-stream';
 import { spendAllowance } from './studio-allowance';
 import { allowanceStore } from './studio-decide-allowance';
 import { recordStudioSession, sessionResponse, studioSession } from './studio-session';
@@ -82,10 +81,17 @@ function walkedAwayCalls(
 	});
 }
 
+/** The labels a failed request's reply is worded with: its draft's, once the body is read. */
+function draftLabels(draft: StudioDraft | undefined): ProfileDefinition['labels'] {
+	// The body is unchecked when most failures are caught, so the draft may hold anything.
+	return (draft as { profile?: Partial<ProfileDefinition> } | null | undefined)?.profile?.labels;
+}
+
 /** POST /api/studio/turn — NDJSON turn events. */
 export async function studioTurn(request: Request, env: SiteEnv): Promise<Response> {
+	let draft: StudioDraft | undefined;
 	try {
-		const draft = (await readBody(request, z.unknown())) as StudioDraft;
+		draft = (await readBody(request, z.unknown())) as StudioDraft;
 		const boundary = await studioSession(request);
 		const turn = checkRequest(theoremTurnRequestSchema, draft, 'request body');
 		return sessionResponse(
@@ -119,14 +125,15 @@ export async function studioTurn(request: Request, env: SiteEnv): Promise<Respon
 			),
 		);
 	} catch (err) {
-		return badRequestJson(err);
+		return errorJson(err, draftLabels(draft));
 	}
 }
 
 /** POST /api/studio/invoke — NDJSON events for the user's answer to a paused call. */
 export async function studioInvoke(request: Request, env: SiteEnv): Promise<Response> {
+	let draft: StudioDraft | undefined;
 	try {
-		const draft = (await readBody(request, z.unknown())) as StudioDraft;
+		draft = (await readBody(request, z.unknown())) as StudioDraft;
 		const boundary = await studioSession(request);
 		const answer = checkRequest(theoremInvokeRequestSchema, draft, 'request body');
 		return sessionResponse(
@@ -151,7 +158,7 @@ export async function studioInvoke(request: Request, env: SiteEnv): Promise<Resp
 			),
 		);
 	} catch (err) {
-		return badRequestJson(err);
+		return errorJson(err, draftLabels(draft));
 	}
 }
 
@@ -204,11 +211,7 @@ export async function studioCall(request: Request, env: SiteEnv): Promise<Respon
 			),
 		);
 	} catch (err) {
-		if (!(err instanceof TheoremError) || err.kind === 'request') return badRequestJson(err);
-		return Response.json(clientError(err, draft?.profile.labels), {
-			status: caughtStatus(err),
-			headers: { 'cache-control': 'no-store' },
-		});
+		return errorJson(err, draftLabels(draft));
 	}
 }
 
@@ -229,7 +232,7 @@ export async function studioSteer(request: Request, env: SiteEnv): Promise<Respo
 		}
 		return Response.json({ ok: true });
 	} catch (err) {
-		return Response.json({ error: errorMessage(err) }, { status: 400 });
+		return errorJson(err);
 	}
 }
 
@@ -240,6 +243,6 @@ export async function studioPageResult(request: Request): Promise<Response> {
 		await boundary.answerPageResult(result);
 		return sessionResponse(boundary, Response.json({ accepted: true }));
 	} catch (error) {
-		return badRequestJson(error);
+		return errorJson(error);
 	}
 }
