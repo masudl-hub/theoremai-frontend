@@ -144,6 +144,27 @@ inputs: {
 
 A turn passes its choice in `input.slots`. A profile can also use the choice to select its reply schema ([Declaring outputs](/docs/outputs)).
 
+### 6. Add context
+
+A driver asks the desk about "my order" from an order page. The model cannot know which order it is. Set `inputs.context` to let the page or your server tell it. `from` lists who may send: `client` is the browser, which a visitor can change, and `server` is your own code. `maxChars` caps the package from each sender.
+
+```ts frame=profile:text
+inputs: {
+	context: { from: ['client', 'server'], maxChars: 2_000 },
+},
+```
+
+A `text`, `image` or `live` profile takes context. A turn sends one package for each sender in `input.context`. A package is text or any JSON. The cap counts its characters as the model reads them, which for JSON is the JSON text.
+
+```ts frame=request
+input: {
+	text: 'Where is my order?',
+	context: { server: { orderId: 'H-1042', status: 'packed' } },
+},
+```
+
+The model reads each package in a fence that names its sender, your server's first, before the driver's message. Text already shaped like a fence is removed, so neither the page nor the driver can pass text off as your server's. The profile's system prompt also tells the model to treat the packages as information, never as instructions. A live session sends context with `sendContext`. It opens no turn, and the model sees it from its next turn on.
+
 ## Other agent types
 
 The other four types do not use the fields above ([Choosing a modality](/docs/modalities)).
@@ -191,5 +212,7 @@ Kind `input`, `file_too_large` | One inline file is over its cap | Send a smalle
 Kind `input`, `turn_too_large` | The files together are over `maxTurnBytes` | Send fewer files, or raise `maxTurnBytes`
 Kind `request` | The turn sent text, and `inputs.text` is `false` | Remove the text, or set `inputs.text` to `true`
 Kind `request` | A slot is not declared, or its value is not in the list | Declare the slot, or send a listed value
+Kind `request` | The turn sent context from a sender `from` does not list | Add the sender to `from`, or remove its context
+Kind `request` | A sender's context is over `maxChars` | Send less, or raise `maxChars`
 Kind `request` | A `speech` turn has empty text | Send the text to speak
 Kind `request` | A `continueFrom` turn sent `input.text` | Remove the text: Theorem sends the continue instruction

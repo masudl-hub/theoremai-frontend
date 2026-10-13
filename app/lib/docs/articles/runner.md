@@ -127,6 +127,20 @@ Read the event stream to completion. An `error` event can precede terminal `done
 
 A `done` with `length`, `stream_incomplete` or `provider_error` can continue ([Setting turn behaviour](/docs/turn-behaviour)).
 
+Every `done` carries a `stop.kind` that says why the turn ended:
+
+- `completed`: the model finished its reply.
+- `length`: the model reached its token limit.
+- `tool`: the model called tools and the turn hands them to you, in `done.tools`.
+- `gate`: a `pre_tool` stage held a tool call. You resume it with `invokeTool`, not `continueFrom`.
+- `filtered`: the provider filtered the reply, or the egress guardrail withheld it.
+- `provider_error`: the provider failed or reported an error.
+- `cancelled`: the turn was cancelled, by the user or by a stage that aborted it.
+- `stream_incomplete`: the stream ended without the provider reporting a final status.
+- `step_limit`: the last model call `maxSteps` allows asked for tools, so the turn ended with no answer ([Setting turn behaviour](/docs/turn-behaviour)).
+- `interrupted`: a live utterance was cut off by an interruption.
+- `generation_complete`: live, the model finished generating audio or text for this utterance. The turn may still be open.
+
 A `guardrail` event reports a policy decision. It is not a stage result ([Setting guardrails](/docs/guardrails)).
 
 ### 4. Act at a stage

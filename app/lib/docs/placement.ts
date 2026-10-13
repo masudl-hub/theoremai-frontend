@@ -9,6 +9,7 @@ import {
 	type ProfileGraphFacetId,
 	STREAM_MODES,
 	TOOL_LOAD_TIERS,
+	TURN_STOP_KINDS,
 } from '@theoremjs/agents/schema';
 import { AREA_LABEL, type ArrayUnionName, type DocSection, type GlossaryArea } from './schema';
 
@@ -59,11 +60,20 @@ export const UNION_SECTION = {
 	PROFILE_TYPES: { section: 'modalities', values: PROFILE_TYPES },
 	TOOL_LOAD_TIERS: { section: 'tools', values: TOOL_LOAD_TIERS },
 	STREAM_MODES: { section: 'outputs', values: STREAM_MODES },
+	TURN_STOP_KINDS: { section: 'runner', values: TURN_STOP_KINDS },
 } as const satisfies Partial<
 	Record<ArrayUnionName, { section: DocSection; values: readonly string[] }>
 >;
 
 export type DocWorthyUnion = keyof typeof UNION_SECTION;
+
+/** The chapter that explains each group of fields the catalog holds outside the profile. */
+export const EXTRA_FIELD_SECTION = {
+	registerTool: 'tools',
+	registerStructured: 'outputs',
+	decision: 'modalities',
+	done: 'runner',
+} as const satisfies Record<string, DocSection>;
 
 /** The area of each export: the domain it acts on. */
 export const EXPORT_AREA = {
@@ -96,6 +106,7 @@ const HEAD_AREA = {
 	registerTool: 'tools',
 	registerStructured: 'outputs',
 	runTurn: 'runner',
+	done: 'runner',
 } as const satisfies Record<string, GlossaryArea>;
 
 /** First segments of catalog names that only the studio shows, so the glossary leaves them out. */
@@ -111,4 +122,11 @@ export function areaOfName(name: string): GlossaryArea {
 	const area = head in HEAD_AREA ? HEAD_AREA[head as keyof typeof HEAD_AREA] : head;
 	if (!(area in AREA_LABEL)) throw new Error(`${name} names no glossary area (${head})`);
 	return area as GlossaryArea;
+}
+
+/** The chapter for a field the catalog holds outside the profile; throws when its object has none. */
+export function extraFieldSection(path: string): DocSection {
+	const head = path.split('.')[0] ?? path;
+	if (!(head in EXTRA_FIELD_SECTION)) throw new Error(`${path} has no chapter (${head})`);
+	return EXTRA_FIELD_SECTION[head as keyof typeof EXTRA_FIELD_SECTION];
 }

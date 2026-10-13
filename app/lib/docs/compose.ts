@@ -33,6 +33,7 @@ import {
 	areaOfName,
 	EXPORT_AREA,
 	EXPORT_SECTION,
+	extraFieldSection,
 	FACET_SECTION,
 	isStudioOnly,
 	REQUEST_SECTION,
@@ -296,13 +297,11 @@ function catalogSymbols(section: DocSection, byFacet: Map<string, string[]>): Pl
 		if (FACET_SECTION[facet.id] !== section) continue;
 		symbols.push(...(byFacet.get(facet.id) ?? []).map(fieldSymbol));
 	}
-	if (section === 'tools') {
-		symbols.push(
-			...Object.keys(EXTRA_FIELDS)
-				.filter((path) => !isStudioOnly(path))
-				.map(fieldSymbol),
-		);
-	}
+	symbols.push(
+		...Object.keys(EXTRA_FIELDS)
+			.filter((path) => !isStudioOnly(path) && extraFieldSection(path) === section)
+			.map(fieldSymbol),
+	);
 	for (const [name, place] of Object.entries(UNION_SECTION)) {
 		if (place.section !== section) continue;
 		for (const member of unionMembers(name as keyof typeof UNION_SECTION)) {

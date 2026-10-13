@@ -3,7 +3,7 @@
 		"reviewed": "2026-10-13",
 		"files": {
 			"src/kernel/registry/catalog.ts": "20b3891d13501c62b6b932c141aaab9aac2f6686",
-			"src/kernel/schema.ts": "5ed4792a42aade89e7758f3818698fd8cd0ecca4"
+			"src/kernel/schema.ts": "68b102ebc2a602988a77cfb34ed054ff2c3eac13"
 		}
 	},
 	"guardrails": {
@@ -110,7 +110,7 @@
 		"reviewed": "2026-10-13",
 		"files": {
 			"src/kernel/registry/profiles.ts": "8b0d8a2d4b878fe15cba29db7bcae93b111878b8",
-			"src/kernel/schema.ts": "5ed4792a42aade89e7758f3818698fd8cd0ecca4"
+			"src/kernel/schema.ts": "68b102ebc2a602988a77cfb34ed054ff2c3eac13"
 		}
 	},
 	"models": {
@@ -119,7 +119,7 @@
 			"src/kernel/registry/catalog.ts": "20b3891d13501c62b6b932c141aaab9aac2f6686",
 			"src/kernel/registry/profiles.ts": "8b0d8a2d4b878fe15cba29db7bcae93b111878b8",
 			"src/kernel/registry/vault.ts": "ec9e03f01c2bd58d921eedc7b32f10c273b3aef7",
-			"src/kernel/schema.ts": "5ed4792a42aade89e7758f3818698fd8cd0ecca4",
+			"src/kernel/schema.ts": "68b102ebc2a602988a77cfb34ed054ff2c3eac13",
 			"src/providers/adapters.ts": "0bbda0b545068e951492705226249e8ddc799eb8",
 			"src/providers/decision/native.ts": "ec96013351a586fc36fad1cb5b74f3fd8488e241",
 			"src/providers/decision/usage.ts": "d56c1af0a0c60ae15d90aa74acccaa28f4dc487b",
