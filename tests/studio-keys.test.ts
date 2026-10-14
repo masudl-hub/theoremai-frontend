@@ -3,7 +3,13 @@ import { test } from 'node:test';
 import { defineProfile } from '@theoremjs/agents';
 import {
 	compileStudio,
+	compileWorkspace,
+	createArchitectWorkspace,
+	createConsoleExampleDraft,
+	createDecisionExampleDraft,
 	createExampleDraft,
+	createLiveExampleDraft,
+	createNarratorExampleDraft,
 	createSpanExampleDraft,
 	modelBindingViolation,
 	modelRoute,
@@ -184,4 +190,20 @@ test("runs on the site's keys reach public hosts only, and refuse destructive ca
 		studioTaintNote(ON_SITE_KEYS),
 		"This page's keys refuse destructive calls after a remote read. Stricter settings hold.",
 	);
+});
+
+test("every worked example the studio offers runs on the site's keys as it opens", () => {
+	const drafts = {
+		travel: createExampleDraft(),
+		live: createLiveExampleDraft(),
+		narrator: createNarratorExampleDraft(),
+		console: createConsoleExampleDraft(),
+		decision: createDecisionExampleDraft(),
+		span: createSpanExampleDraft(),
+	};
+	for (const [name, draft] of Object.entries(drafts)) {
+		assert.deepEqual(issues(draft), [], name);
+	}
+	const architect = compileWorkspace(createArchitectWorkspace(), ON_SITE_KEYS);
+	assert.deepEqual(architect.ok ? [] : architect.issues, [], 'architect');
 });
