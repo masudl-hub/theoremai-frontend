@@ -3,25 +3,38 @@
  * Route files only resolve the Cloudflare env and delegate here.
  */
 import { type ProfileDefinition, TheoremError, z } from '@theoremjs/agents';
-import type { TheoremReplay, TheoremTurnRequest } from '@theoremjs/react';
 import {
 	checkRequest,
+	createSealedConversationStore,
 	pageToolResultSchema,
 	readBody,
 	steerUnitOf,
+	type TheoremSessionBoundary,
+	theoremConversationRequestSchema,
 	theoremHostCallRequestSchema,
 	theoremInvokeRequestSchema,
+	theoremRewindRequestSchema,
 	theoremSteerRequestSchema,
 	theoremTurnRequestSchema,
 } from '@theoremjs/react/server';
 import type { StructuredRegistration, StudioDependency, ToolRegistration } from '@theoremjs/studio';
+import { newConversationKey } from '@theoremjs/studio/runtime';
 import type { SiteEnv } from '../../cloudflare';
+import { HOME_EXCHANGE } from '../home-agent-chat';
 import { errorJson, ndjsonEventStream } from './ndjson-stream';
 import { spendAllowance } from './studio-allowance';
 import { allowanceStore } from './studio-decide-allowance';
 import { recordStudioSession, sessionResponse, studioSession } from './studio-session';
 import { studioSteerInbox } from './studio-steer';
-import { streamStudioCall, streamStudioInvoke, streamStudioTurn } from './studio-turn';
+import {
+	readStudioConversation,
+	rewindStudioConversation,
+	startStudioChat,
+	streamStudioCall,
+	streamStudioHostInvoke,
+	streamStudioInvoke,
+	streamStudioTurn,
+} from './studio-turn';
 import { getKernelPackageVersion, getSubmoduleHead } from './theoremai';
 
 /**
@@ -67,18 +80,19 @@ export function kernelInfo(): Response {
 	});
 }
 
-/** The paused calls a turn walks away from, each with the replay the browser sent for it. */
-function walkedAwayCalls(
-	turn: TheoremTurnRequest,
-): { callId: string; operationId: string; replay: TheoremReplay }[] {
-	return (turn.abandon ?? []).map(({ callId, operationId }) => {
-		const replay = turn.replay?.abandon?.[operationId];
-		if (!replay) {
-			// labels-exempt: internal diagnostic; the user reads error.request
-			throw new TheoremError('request', `turn: no replay for walked-away call ${callId}`);
-		}
-		return { callId, operationId, replay };
-	});
+/**
+ * Where the demo's chats keep their conversations: sealed into the ref the page holds, with a key
+ * this server instance makes. Its sessions are held in memory, so they end with it, and a key of
+ * the same lifetime opens every ref they can still use.
+ */
+const conversationStore = createSealedConversationStore({
+	keys: { 1: newConversationKey() },
+	keyVersion: 1,
+});
+
+/** The conversations of the session `boundary` holds. */
+function conversationsOf(boundary: TheoremSessionBoundary) {
+	return { sessionId: boundary.sessionId, store: conversationStore };
 }
 
 /** The labels a failed request's reply is worded with: its draft's, once the body is read. */
@@ -100,24 +114,10 @@ export async function studioTurn(request: Request, env: SiteEnv): Promise<Respon
 				recordStudioSession(
 					boundary,
 					streamStudioTurn({
-						profile: draft.profile,
-						customTools: draft.customTools ?? [],
-						structured: draft.structured,
-						dependencies: draft.dependencies,
-						input: turn.input,
-						providerState: await boundary.prepareProviderState(
-							turn.providerState,
-							turn.input.history,
-						),
-						sessionPermissions: turn.replay?.sessionPermissions,
-						abandon: walkedAwayCalls(turn),
-						model: turn.model,
-						effort: turn.effort,
+						...draftRun(draft, boundary, request, env),
+						request: turn,
+						conversations: conversationsOf(boundary),
 						signal: request.signal,
-						execution: boundary.toolExecution,
-						pageExecution: boundary.pageExecution,
-						env,
-						onAgentCall: agentCallAllowance(request, env),
 						steer: studioSteerInbox(env.STEER_INBOX),
 					}),
 				),
@@ -136,23 +136,20 @@ export async function studioInvoke(request: Request, env: SiteEnv): Promise<Resp
 		draft = (await readBody(request, z.unknown())) as StudioDraft;
 		const boundary = await studioSession(request);
 		const answer = checkRequest(theoremInvokeRequestSchema, draft, 'request body');
+		const run = draftRun(draft, boundary, request, env);
 		return sessionResponse(
 			boundary,
 			ndjsonEventStream(
 				recordStudioSession(
 					boundary,
-					streamStudioInvoke({
-						profile: draft.profile,
-						customTools: draft.customTools ?? [],
-						structured: draft.structured,
-						dependencies: draft.dependencies,
-						answer,
-						signal: request.signal,
-						execution: boundary.toolExecution,
-						pageExecution: boundary.pageExecution,
-						env,
-						onAgentCall: agentCallAllowance(request, env),
-					}),
+					draft.profile.type === 'host'
+						? streamStudioHostInvoke({ ...run, answer, signal: request.signal })
+						: streamStudioInvoke({
+								...run,
+								answer,
+								conversations: conversationsOf(boundary),
+								signal: request.signal,
+							}),
 				),
 				draft.profile.labels,
 			),
@@ -160,6 +157,79 @@ export async function studioInvoke(request: Request, env: SiteEnv): Promise<Resp
 	} catch (err) {
 		return errorJson(err, draftLabels(draft));
 	}
+}
+
+/** POST /api/studio/conversation — the conversation under a ref, as the page draws it. */
+export async function studioConversation(request: Request, env: SiteEnv): Promise<Response> {
+	let draft: StudioDraft | undefined;
+	try {
+		draft = (await readBody(request, z.unknown())) as StudioDraft;
+		const boundary = await studioSession(request);
+		const read = checkRequest(theoremConversationRequestSchema, draft, 'request body');
+		const view = await readStudioConversation(
+			draftRun(draft, boundary, request, env),
+			conversationsOf(boundary),
+			read,
+		);
+		return sessionResponse(boundary, Response.json(view));
+	} catch (err) {
+		return errorJson(err, draftLabels(draft));
+	}
+}
+
+/** POST /api/home/start — the goals screen's opening exchange, as a conversation of this session's. */
+export async function homeStart(request: Request, env: SiteEnv): Promise<Response> {
+	let draft: StudioDraft | undefined;
+	try {
+		draft = (await readBody(request, z.unknown())) as StudioDraft;
+		const boundary = await studioSession(request);
+		const started = await startStudioChat(
+			draftRun(draft, boundary, request, env),
+			conversationsOf(boundary),
+			HOME_EXCHANGE,
+		);
+		return sessionResponse(boundary, Response.json(started));
+	} catch (err) {
+		return errorJson(err, draftLabels(draft));
+	}
+}
+
+/** POST /api/studio/rewind — the conversation cut after one block, under a new ref. */
+export async function studioRewind(request: Request, env: SiteEnv): Promise<Response> {
+	let draft: StudioDraft | undefined;
+	try {
+		draft = (await readBody(request, z.unknown())) as StudioDraft;
+		const boundary = await studioSession(request);
+		const rewind = checkRequest(theoremRewindRequestSchema, draft, 'request body');
+		const rewound = await rewindStudioConversation(
+			draftRun(draft, boundary, request, env),
+			conversationsOf(boundary),
+			rewind,
+			request.signal,
+		);
+		return sessionResponse(boundary, Response.json(rewound));
+	} catch (err) {
+		return errorJson(err, draftLabels(draft));
+	}
+}
+
+/** A draft as a run takes it, on this session's tool execution and the site's keys. */
+function draftRun(
+	draft: StudioDraft,
+	boundary: TheoremSessionBoundary,
+	request: Request,
+	env: SiteEnv,
+) {
+	return {
+		profile: draft.profile,
+		customTools: draft.customTools ?? [],
+		structured: draft.structured,
+		dependencies: draft.dependencies,
+		execution: boundary.toolExecution,
+		pageExecution: boundary.pageExecution,
+		env,
+		onAgentCall: agentCallAllowance(request, env),
+	};
 }
 
 /** The tools a page allowed for the rest of its visit, as the browser holds them. */

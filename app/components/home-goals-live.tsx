@@ -9,7 +9,9 @@ import {
 	IconPlayerPlay,
 	IconRotateClockwise,
 } from '@tabler/icons-react';
+import type { ConversationView } from '@theoremjs/react';
 import type { TheoremChatHandle } from '@theoremjs/react/ui';
+import type { StudioRunPayload } from '@theoremjs/studio';
 import { StudioCode } from '@theoremjs/studio/ui/code/studio-code.tsx';
 import { GuardrailTester } from '@theoremjs/studio/ui/guardrail-tester.tsx';
 import type { CodeIssue } from '@theoremjs/studio/ui/studio-host.ts';
@@ -27,7 +29,6 @@ import {
 } from 'react';
 import { useNavigate } from 'react-router';
 import { homeAgentDraft } from '../lib/home-agent';
-import { HOME_CHAT } from '../lib/home-agent-chat';
 import { HOME_AGENT_STUDIO, keepHomeAgent } from '../lib/home-agent-handoff';
 import type { HomeAgentState, HomeAgentStore, HomeGood } from '../lib/home-agent-store';
 import { changedLines, type Excerpt, excerptOf, type Lines } from '../lib/home-excerpt';
@@ -406,6 +407,53 @@ function useStill(beat: GoalBeat | undefined) {
 	return { isTester, isEmpty, isTesting, hasTested };
 }
 
+type Opening = { conversation: string; view: ConversationView };
+
+/** Stores the opening exchange on `draft`: its ref and view, or null when it could not be stored. */
+async function startOpening(draft: StudioRunPayload, signal: AbortSignal): Promise<Opening | null> {
+	const { profile, customTools, structured, dependencies } = draft;
+	try {
+		const response = await fetch('/api/home/start', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ profile, customTools, structured, dependencies }),
+			signal,
+		});
+		if (!response.ok) return null;
+		const body: Partial<Opening> = await response.json();
+		return typeof body.conversation === 'string' && body.view
+			? { conversation: body.conversation, view: body.view }
+			: null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * The conversation the chat opens on: the opening exchange, stored by the server for this visit
+ * and read by the agent's guardrails, with the view the chat draws at once. Started again each
+ * time the visitor starts over. Undefined while it is stored; null when it could not be, and the
+ * chat opens empty.
+ */
+function useOpening(payload: StudioRunPayload | undefined, runs: number) {
+	const [opening, setOpening] = useState<{ runs: number; started: Opening | null }>();
+	const latest = useRef(payload);
+	latest.current = payload;
+	const hasPayload = payload !== undefined;
+	useEffect(() => {
+		const draft = latest.current;
+		if (!hasPayload || !draft) return;
+		const controller = new AbortController();
+		void startOpening(draft, controller.signal).then((started) => {
+			if (!controller.signal.aborted) setOpening({ runs, started });
+		});
+		return () => {
+			controller.abort();
+		};
+	}, [hasPayload, runs]);
+	return opening?.runs === runs ? opening : undefined;
+}
+
 /**
  * What sits on the open goal's still: the agent itself, as the studio runs it. The first two
  * goals talk to it. The third sends texts across its boundaries, which calls no model.
@@ -424,6 +472,7 @@ export function GoalLive({
 	const { good, runs } = state;
 	const { isTester, isEmpty, isTesting, hasTested } = useStill(beat);
 	const { result, send } = useTest(chat, picked, good?.source, beat?.goal);
+	const opening = useOpening(good?.payload, runs);
 	if (!good) return null;
 	const ask = isTester ? undefined : picked?.ask;
 	return (
@@ -447,15 +496,18 @@ export function GoalLive({
 				hidden={isEmpty}
 			>
 				<div className="home-goal-live-chat" hidden={isTester}>
-					<StudioRunner
-						key={runs}
-						payload={good.payload}
-						mode="demo"
-						runtime={null}
-						chatRef={chat}
-						initialChat={HOME_CHAT}
-						onActivity={store.talked}
-					/>
+					{opening ? (
+						<StudioRunner
+							key={runs}
+							payload={good.payload}
+							mode="demo"
+							runtime={null}
+							chatRef={chat}
+							conversation={opening.started?.conversation}
+							conversationView={opening.started?.view}
+							onActivity={store.talked}
+						/>
+					) : null}
 				</div>
 				{hasTested ? (
 					<div className="home-goal-live-test" hidden={!isTesting}>
