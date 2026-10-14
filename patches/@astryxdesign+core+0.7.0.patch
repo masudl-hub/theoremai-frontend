@@ -1,8 +1,8 @@
 diff --git a/node_modules/@astryxdesign/core/dist/SideNav/SideNavItem.js b/node_modules/@astryxdesign/core/dist/SideNav/SideNavItem.js
-index b56c9d5..1d1863b 100644
+index c406f0f..bf76a2b 100644
 --- a/node_modules/@astryxdesign/core/dist/SideNav/SideNavItem.js
 +++ b/node_modules/@astryxdesign/core/dist/SideNav/SideNavItem.js
-@@ -412,10 +412,15 @@ export function SideNavItem({
+@@ -419,10 +419,15 @@ export function SideNavItem({
        ...collapsedItemStyles,
        children: collapsedIcon
      });
