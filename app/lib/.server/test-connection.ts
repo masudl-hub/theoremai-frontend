@@ -3,12 +3,15 @@
  */
 import {
 	buildHttpToolTarget,
+	type CredentialQuery,
+	credentialPlacement,
 	errorKind,
 	fetchGuarded,
 	isUnsupportedMcpProtocolError,
 	MCP_PROTOCOL_VERSIONS,
 	parseMcpRpcResponse,
 	TheoremError,
+	withCredentialQuery,
 	z,
 } from '@theoremjs/agents';
 import { caughtStatus, clientError } from '@theoremjs/agents/host';
@@ -21,6 +24,7 @@ type AuthProbe = {
 	type?: 'bearer' | 'api_key' | 'oauth2';
 	headerName?: string;
 	headerPrefix?: string;
+	queryParam?: string;
 };
 
 type TestConnectionRequest =
@@ -58,16 +62,25 @@ function elapsedSince(start: number): number {
 	return Date.now() - start;
 }
 
-function applyAuthHeaders(
-	headers: Record<string, string>,
+/** Where the test credential goes: wherever the kernel would put the tool's own. */
+function probeCredential(
 	auth: AuthProbe | undefined,
 	testCredential: string | undefined,
-): void {
-	if (!auth?.type || !testCredential) return;
-	const headerName = auth.headerName?.trim() || 'Authorization';
-	// The kernel's defaults: an API key goes in bare, a bearer or OAuth token after `Bearer `.
-	const prefix = auth.headerPrefix ?? (auth.type === 'api_key' ? '' : 'Bearer ');
-	headers[headerName] = `${prefix}${testCredential}`;
+): { headers: Record<string, string>; query?: CredentialQuery } {
+	if (!auth?.type || !testCredential) return { headers: {} };
+	// A pasted OAuth token is sent as the bearer token it is.
+	const credential =
+		auth.type === 'api_key'
+			? ({ type: 'api_key', key: testCredential } as const)
+			: ({ type: 'bearer', token: testCredential } as const);
+	return credentialPlacement(
+		{
+			headerName: auth.headerName?.trim() || undefined,
+			headerPrefix: auth.headerPrefix,
+			queryParam: auth.queryParam?.trim() || undefined,
+		},
+		credential,
+	);
 }
 
 function isRedirect(res: Response): boolean {
@@ -205,11 +218,12 @@ async function handleHttpProbe(
 		return Response.json({ ok: false, error: 'Endpoint URL is required' }, { status: 400 });
 	}
 
+	const signed = probeCredential(body.auth, body.testCredential);
 	const headers: Record<string, string> = {
 		Accept: 'application/json, text/plain, */*',
 		...(body.headers ?? {}),
+		...signed.headers,
 	};
-	applyAuthHeaders(headers, body.auth, body.testCredential);
 
 	const method = (body.method?.toUpperCase() || 'GET') as HttpMethod;
 	const sampleInput = body.sampleInput ?? {};
@@ -222,7 +236,7 @@ async function handleHttpProbe(
 			queryParams: body.queryParams,
 			bodyParam: body.bodyParam,
 		});
-		requestUrl = target.url;
+		requestUrl = withCredentialQuery(new URL(target.url), signed.query).href;
 		requestBody = target.body;
 	} catch {
 		return Response.json({
@@ -350,12 +364,13 @@ function mcpAnswerResponse(
 /** Asks the server for its tools under one protocol version. */
 async function attemptMcpProbe(
 	body: Extract<TestConnectionRequest, { type: 'mcp' }>,
+	url: string,
 	baseHeaders: Record<string, string>,
 	protocolVersion: string,
 	start: number,
 ): Promise<McpAttempt> {
 	const { res, text } = await fetchWithTimeout(
-		body.serverUrl,
+		url,
 		mcpToolsListRequest(baseHeaders, protocolVersion),
 	);
 	if (isRedirect(res)) return { response: redirectResponse(res, start) };
@@ -379,20 +394,22 @@ async function handleMcpProbe(
 		return Response.json({ ok: false, error: 'Server URL is required' }, { status: 400 });
 	}
 
+	const signed = probeCredential(body.auth, body.testCredential);
 	const baseHeaders: Record<string, string> = {
 		'Content-Type': 'application/json',
 		Accept: 'application/json, text/event-stream',
 		...(body.headers ?? {}),
+		...signed.headers,
 	};
-	applyAuthHeaders(baseHeaders, body.auth, body.testCredential);
 
 	try {
+		const url = withCredentialQuery(new URL(body.serverUrl), signed.query).href;
 		let lastStatus = 0;
 		let lastProtocolError: McpRpcResponse['error'];
 
 		// Preferred version first; a server that refuses one is asked again under the next.
 		for (const protocolVersion of MCP_PROTOCOL_VERSIONS) {
-			const attempt = await attemptMcpProbe(body, baseHeaders, protocolVersion, start);
+			const attempt = await attemptMcpProbe(body, url, baseHeaders, protocolVersion, start);
 			if ('response' in attempt) return attempt.response;
 			lastStatus = attempt.status;
 			lastProtocolError = attempt.protocolError;
