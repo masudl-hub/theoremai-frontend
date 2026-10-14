@@ -25,6 +25,22 @@
 	container-type: size;
 }
 
+/* A screen of room past the canvas on every side, so it pans as far as the pointer goes. */
+.examples-room {
+	width: max-content;
+	padding: 100vh 100vw;
+	cursor: grab;
+	user-select: none;
+}
+
+.examples-room[data-panning] {
+	cursor: grabbing;
+}
+
+.examples-room :is(a, button) {
+	cursor: pointer;
+}
+
 .examples-canvas {
 	position: relative;
 	width: calc(var(--spacing-12) * 21);

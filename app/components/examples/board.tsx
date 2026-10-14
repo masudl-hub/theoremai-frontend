@@ -5,6 +5,8 @@ import { Heading } from '@astryxdesign/core/Heading';
 import { ScrollableArea } from '@astryxdesign/core/ScrollableArea';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
+import { fieldStart, scrollOnce, usePan } from '@theoremjs/studio/ui/pan.ts';
+import { useLayoutEffect, useRef } from 'react';
 import { EXAMPLES, type ExampleAction } from '../../lib/home-content';
 import { NewTabLink } from '../links';
 import './examples.css';
@@ -45,6 +47,13 @@ function ExampleCardView({ example }: { example: ExampleCard }) {
  * of the panel; the cards travel with the canvas.
  */
 export function ExamplesBoard() {
+	const canvas = useRef<HTMLDivElement>(null);
+	const { panning, pan } = usePan('a, button');
+	// The canvas starts past the room around it.
+	useLayoutEffect(() => {
+		const node = canvas.current;
+		return node ? scrollOnce(node, (scroller) => fieldStart(node, scroller)) : undefined;
+	}, []);
 	return (
 		<div className="examples-frame">
 			<div className="examples-mark">
@@ -65,10 +74,12 @@ export function ExamplesBoard() {
 				height="100%"
 				overscroll="allow"
 			>
-				<div className="examples-canvas">
-					{EXAMPLES.map((example) => (
-						<ExampleCardView key={example.id} example={example} />
-					))}
+				<div className="examples-room" data-panning={panning ? '' : undefined} onPointerDown={pan}>
+					<div ref={canvas} className="examples-canvas">
+						{EXAMPLES.map((example) => (
+							<ExampleCardView key={example.id} example={example} />
+						))}
+					</div>
 				</div>
 			</ScrollableArea>
 		</div>
