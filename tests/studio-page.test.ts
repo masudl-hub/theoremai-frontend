@@ -3,19 +3,21 @@ import { test } from 'node:test';
 import {
 	compileStudio,
 	createExampleDraft,
-	type StudioRunPayload,
+	ON_OWN_KEYS,
 	setProfileType,
+	type StudioRunPayload,
 } from '@theoremjs/studio';
+import { SITE_KEYS } from '../app/lib/studio-keys.ts';
 import { pageInputsOf, sentPageValues } from '@theoremjs/studio/ui/lib/studio-page.ts';
 
 function payloadOf(draft: ReturnType<typeof createExampleDraft>): StudioRunPayload {
-	const compiled = compileStudio(draft);
+	const compiled = compileStudio(draft, ON_OWN_KEYS);
 	if (!compiled.ok) throw new Error(JSON.stringify(compiled.issues));
 	return { agentId: 'agent', profile: compiled.profile, customTools: compiled.customTools };
 }
 
 function withPage(type: 'text' | 'live') {
-	const draft = setProfileType(createExampleDraft(), type);
+	const draft = setProfileType(createExampleDraft(), type, SITE_KEYS);
 	draft.inputs = {
 		...draft.inputs,
 		slotsJson: '{"language":["en","fr"]}',

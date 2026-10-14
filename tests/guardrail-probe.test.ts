@@ -4,6 +4,7 @@ import {
 	compileWorkspace,
 	createExampleDraft,
 	type GuardrailProbeAnswer,
+	ON_OWN_KEYS,
 	PROBE_BATTERY,
 	probeDraft,
 	workspaceFromDraft,
@@ -18,7 +19,7 @@ import {
 } from '../app/lib/.server/guardrail-probe.ts';
 
 function concierge() {
-	const compiled = compileWorkspace(workspaceFromDraft(createExampleDraft()));
+	const compiled = compileWorkspace(workspaceFromDraft(createExampleDraft()), ON_OWN_KEYS);
 	assert(compiled.ok);
 	const run = workspaceRunAgent(compiled, 'travel.concierge');
 	assert(run);

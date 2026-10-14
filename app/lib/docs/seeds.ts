@@ -10,6 +10,7 @@ import {
 	defaultToolSpec,
 	demoToolSpecs,
 	excludeFacet,
+	ON_OWN_KEYS,
 	type StudioDraft,
 	setProfileType,
 	studioSource,
@@ -183,7 +184,7 @@ export function docsSeedDraft(seed: StudioSeedId): StudioDraft {
 }
 
 export function compileSeedSource(seed: StudioSeedId): string {
-	const compiled = compileStudio(docsSeedDraft(seed));
+	const compiled = compileStudio(docsSeedDraft(seed), ON_OWN_KEYS);
 	if (!compiled.ok) {
 		const issues = compiled.issues.map((issue) => issue.message).join('; ');
 		throw new Error(`DOCS_SEEDS.${seed} failed to compile: ${issues}`);

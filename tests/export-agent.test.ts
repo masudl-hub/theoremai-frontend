@@ -10,17 +10,19 @@ import {
 	createExampleDraft,
 	createSpanExampleDraft,
 	defaultToolSpec,
-	type StudioWorkspace,
+	ON_OWN_KEYS,
 	setProfileType,
+	type StudioWorkspace,
 	withAgentDraft,
 	workspaceFromDraft,
 } from '@theoremjs/studio';
+import { SITE_KEYS } from '../app/lib/studio-keys.ts';
 import { exportFiles, exportText, llmBrief } from '@theoremjs/studio/ui/lib/export-agent.ts';
 import { zipFiles } from '@theoremjs/studio/ui/lib/zip.ts';
 
 /** The concierge, calling a helper through an agent tool. */
 function conciergeAndHelper(): StudioWorkspace {
-	const blank = setProfileType(createBlankDraft(), 'text');
+	const blank = setProfileType(createBlankDraft(), 'text', SITE_KEYS);
 	const helper = { ...blank, identity: { ...blank.identity, agentId: 'travel.helper', handle: 'helper' } };
 	const workspace = addAgent(workspaceFromDraft(createExampleDraft()), helper);
 	const [concierge, added] = workspace.agents;
@@ -37,7 +39,7 @@ function conciergeAndHelper(): StudioWorkspace {
 }
 
 function compiled(workspace: StudioWorkspace): CompiledWorkspace {
-	const result = compileWorkspace(workspace);
+	const result = compileWorkspace(workspace, ON_OWN_KEYS);
 	assert(result.ok, JSON.stringify(!result.ok && result.issues));
 	return result;
 }
@@ -99,7 +101,7 @@ test('the zip holds every file', () => {
 });
 
 test('an exported chat passes a value per slot and its context, and the route its server context', () => {
-	const blank = setProfileType(createBlankDraft(), 'text');
+	const blank = setProfileType(createBlankDraft(), 'text', SITE_KEYS);
 	const draft = {
 		...blank,
 		identity: { ...blank.identity, agentId: 'travel.guide', handle: 'guide' },
@@ -121,13 +123,13 @@ test('an exported chat passes a value per slot and its context, and the route it
 });
 
 test('a local export configures the registered adapter URL and keeps host options to the vault', () => {
-  const draft = setProfileType(createBlankDraft(), 'text');
+  const draft = setProfileType(createBlankDraft(), 'text', SITE_KEYS);
   draft.identity.agentId = 'local.test';
   draft.identity.handle = 'Local';
   draft.modelBindings[0].provider = 'local';
   draft.modelBindings[0].protocol = 'openAi';
   draft.modelBindings[0].apiId = 'local-model';
-  const workspace = compileWorkspace(workspaceFromDraft(draft), 'local');
+  const workspace = compileWorkspace(workspaceFromDraft(draft), { mode: 'local' });
   assert(workspace.ok, JSON.stringify(!workspace.ok && workspace.issues));
   const files = exportFiles(workspace, workspace.agents[0]);
   const registration = files.find(file => file.path === 'theorem.ts')?.code ?? '';

@@ -15,6 +15,7 @@ import {
 
 export { studioTraces } from '@theoremjs/studio/runtime';
 
+import { SITE_KEYS } from '../studio-keys';
 import { resolveHost } from './resolve-host';
 
 type StudioTurnEnv = {
@@ -92,6 +93,7 @@ export type RunHost = {
 function runtime({ env = {}, onAgentCall, execution, pageExecution }: RunHost): StudioRuntime {
 	return {
 		mode: 'demo',
+		keys: SITE_KEYS,
 		resolveHost,
 		hostOptions: (profile) => studioProviders(env, profile),
 		onAgentCall,

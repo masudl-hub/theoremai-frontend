@@ -11,6 +11,7 @@ import { takeHomeAgent } from '../lib/home-agent-handoff';
 import { SITE_NAME } from '../lib/home-content';
 import { KERNEL_PACKAGE_VERSION } from '../lib/kernel-version';
 import { STUDIO_TITLE, studioDescription } from '../lib/studio-content';
+import { SITE_KEYS } from '../lib/studio-keys';
 import { reportTh30Studio } from '../lib/th30-studio-state';
 import { th30Surfaces } from '../lib/th30-surfaces';
 import type { Route } from './+types/studio';
@@ -73,6 +74,7 @@ const HOST: StudioHost = {
 	kernelVersion: KERNEL_PACKAGE_VERSION,
 	mountSurface: (surface) => th30Surfaces.mount(surface),
 	onReport: reportTh30Studio,
+	lentKeys: SITE_KEYS,
 };
 
 /** The studio screen from `@theoremjs/studio`, on the site's page. */

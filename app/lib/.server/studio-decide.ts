@@ -9,17 +9,12 @@ import { defineProfile, TheoremError, validateDecisionRequest } from '@theoremjs
 import { caughtStatus, clientError } from '@theoremjs/agents/host';
 import type { DecisionProfileDefinition } from '@theoremjs/agents/kernel';
 import { readBody } from '@theoremjs/react/server';
-import {
-	decisionQuestionViolation,
-	decisionStateViolation,
-	modelBindingViolation,
-	modelRoute,
-	STUDIO_PROVIDERS,
-	studioDecisionRequestSchema,
-} from '@theoremjs/studio';
+import { modelRoute, STUDIO_PROVIDERS } from '@theoremjs/studio';
 import { failedDecisionTraces, runStudioDecision } from '@theoremjs/studio/runtime';
+import { decisionStateViolation, SITE_KEYS } from '../studio-keys';
 import { spendAllowance } from './studio-allowance';
 import { allowanceStore, type StudioDecideAllowance } from './studio-decide-allowance';
+import { studioDecisionRequestSchema } from './studio-decision-request';
 import { studioDemoVault } from './studio-turn';
 
 export type StudioDecideEnv = {
@@ -46,13 +41,13 @@ export async function studioDecide(request: Request, env: StudioDecideEnv): Prom
 			...modelRoute(STUDIO_PROVIDERS, 'decision', binding),
 			builtInTools: [],
 		};
-		const modelViolation = modelBindingViolation(selected);
+		const modelViolation = SITE_KEYS.violation(selected);
 		if (modelViolation)
 			throw new TheoremError('request', `studio decide: ${modelViolation.message}`);
 		const stateViolation = decisionStateViolation(selected, body.state);
 		if (stateViolation) throw new TheoremError('request', `studio decide: ${stateViolation}`);
 		for (const question of Object.values(body.questions)) {
-			const violation = decisionQuestionViolation(selected, question);
+			const violation = SITE_KEYS.questionViolation(selected, question);
 			if (violation) throw new TheoremError('request', `studio decide: ${violation}`);
 		}
 		const decisionRequest = {

@@ -22,6 +22,7 @@ import {
 	workspaceRunAgent,
 } from '@theoremjs/studio';
 import type { GoalTokenId } from './home-goals';
+import { SITE_KEYS } from './studio-keys';
 
 const SYSTEM = [
 	'You are a travel concierge.',
@@ -219,8 +220,8 @@ const typeOf = (workspace: StudioWorkspace) => draftOf(workspace).identity.profi
 const typed = (text: StudioWorkspace, type: 'image' | 'live') =>
 	edited(text, (draft) =>
 		type === 'image'
-			? { ...setProfileType(draft, type), toolSpecs: [] }
-			: setProfileType(draft, type),
+			? { ...setProfileType(draft, type, SITE_KEYS), toolSpecs: [] }
+			: setProfileType(draft, type, SITE_KEYS),
 	);
 
 /** The text agent under whatever is on screen. */
@@ -228,7 +229,7 @@ function textOf(agent: HomeAgent): StudioWorkspace {
 	if (agent.text) return agent.text;
 	return typeOf(agent.workspace) === 'text'
 		? agent.workspace
-		: edited(agent.workspace, (draft) => setProfileType(draft, 'text'));
+		: edited(agent.workspace, (draft) => setProfileType(draft, 'text', SITE_KEYS));
 }
 
 /** Whether the agent has a token's change now, read from the draft and never kept beside it. */
@@ -279,7 +280,7 @@ export type HomeCompile =
 	| { ok: false; issues: StudioIssue[] };
 
 export function compileHomeAgent({ workspace }: HomeAgent): HomeCompile {
-	const compiled = compileWorkspace(workspace, 'demo');
+	const compiled = compileWorkspace(workspace, { mode: 'demo', keys: SITE_KEYS });
 	if (!compiled.ok) return { ok: false, issues: compiled.issues };
 	const run = workspaceRunAgent(compiled, draftOf(workspace).identity.agentId.trim());
 	if (!run) return { ok: false, issues: [] };

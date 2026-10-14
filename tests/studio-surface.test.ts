@@ -3,23 +3,25 @@ import { test } from 'node:test';
 import { createSurfaceRuntime } from '@theoremjs/agents/surface';
 import {
 	createBlankDraft,
+	ON_OWN_KEYS,
+	setProfileType,
 	type StudioDraft,
 	type StudioWorkspace,
-	setProfileType,
 	workspaceFromDraft,
 } from '@theoremjs/studio';
+import { SITE_KEYS } from '../app/lib/studio-keys.ts';
 import { type StudioSurfaceHost, studioSurface } from '@theoremjs/studio/surface';
 import { createStudioStore } from '@theoremjs/studio/ui/lib/studio-store.ts';
 
 const KEY = ['AIzaSy', 'TESTONLY0000000000000000000000000'].join('');
 
-function setup(draft: StudioDraft = setProfileType(createBlankDraft(), 'text')) {
+function setup(draft: StudioDraft = setProfileType(createBlankDraft(), 'text', SITE_KEYS)) {
 	const store = createStudioStore({ workspace: workspaceFromDraft(draft), revision: 0 });
 	const vault: Record<string, string> = {};
 	const host: StudioSurfaceHost = {
 		getDraft: store.getDraft,
 		getRevision: store.getRevision,
-		getMode: () => 'byok',
+		getRunsOn: () => ON_OWN_KEYS,
 		update: (next) => store.updateDraft(next, 'th30'),
 		replaceDraft: (next) => store.updateDraft(next, 'th30'),
 		select: store.select,

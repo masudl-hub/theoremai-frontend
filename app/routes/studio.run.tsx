@@ -1,6 +1,7 @@
 import { openStudioRun } from '@theoremjs/studio/ui/lib/studio-run-open.ts';
 import { StudioRunScreen, studioRunTitle } from '@theoremjs/studio/ui/studio-run.tsx';
 import { redirect } from 'react-router';
+import { SITE_KEYS } from '../lib/studio-keys';
 import type { Th30PageHandle } from '../lib/th30-page';
 import type { Route } from './+types/studio.run';
 
@@ -27,5 +28,5 @@ export function HydrateFallback() {
 
 /** The run page from `@theoremjs/studio`, in the site's shell. */
 export default function StudioRun({ loaderData }: Route.ComponentProps) {
-	return <StudioRunScreen opened={loaderData} />;
+	return <StudioRunScreen opened={loaderData} lentKeys={SITE_KEYS} />;
 }
