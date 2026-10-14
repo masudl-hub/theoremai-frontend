@@ -9,8 +9,12 @@ import {
 	type MarkdownAstRoot,
 	parseMarkdownAst,
 } from '@astryxdesign/core/Markdown/parser';
+import { createMarkdownHeadingLinks } from '@astryxdesign/core/Markdown/plugins';
 import { parseOutlineFromMarkdown } from '@astryxdesign/core/Outline';
 import type { DocSectionEntry } from './schema';
+
+/** Every heading gets the id the outline links to, and a button that copies a link to it. */
+export const CHAPTER_PLUGINS = [createMarkdownHeadingLinks()];
 
 /** A fenced block. `start` and `end` are its offsets in the Markdown, fence lines included. */
 export type Fence = {
@@ -69,7 +73,7 @@ export function markdownSections(markdown: string): DocSectionEntry[] {
 		if (start === undefined) throw new Error('a heading has no position in the chapter');
 		starts.push(start);
 	}
-	return parseOutlineFromMarkdown(markdown).map((item, at) => ({
+	return parseOutlineFromMarkdown(markdown, { plugins: CHAPTER_PLUGINS }).map((item, at) => ({
 		id: item.id,
 		title: item.label,
 		level: item.level,

@@ -18,7 +18,7 @@ import { createContext, type ReactNode, useContext, useMemo, useState } from 're
 import { Link } from 'react-router';
 import { symbolTerm } from '../../lib/docs/catalog-rows';
 import { CHAPTER_ICON } from '../../lib/docs/chapter-icons';
-import { markdownFences } from '../../lib/docs/chapter-markdown';
+import { CHAPTER_PLUGINS, markdownFences } from '../../lib/docs/chapter-markdown';
 import { commandChoices } from '../../lib/docs/commands';
 import { parseFigure } from '../../lib/docs/figure';
 import type { DocArticle, DocTerm } from '../../lib/docs/schema';
@@ -212,7 +212,9 @@ export function DocsBody({ article }: { article: Pick<DocArticle, 'body' | 'term
 	);
 	return (
 		<ChapterContext value={chapter}>
-			<Markdown components={BODY_COMPONENTS}>{article.body}</Markdown>
+			<Markdown components={BODY_COMPONENTS} plugins={CHAPTER_PLUGINS}>
+				{article.body}
+			</Markdown>
 		</ChapterContext>
 	);
 }
