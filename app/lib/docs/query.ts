@@ -291,7 +291,7 @@ function focusExcerpt(body: string, term: string, title: string, opening: string
 		const shared = new Set(stems(line).filter((stem) => wanted.has(stem))).size;
 		if (shared > best.shared) best = { at, shared };
 	});
-	const line = sentences[best.at];
+	const line = sentences.at(best.at);
 	if (line === undefined) return opening;
 	const clipped = clipExcerpt(line);
 	return clipped.startsWith(opening.slice(0, 30)) ? opening : clipped;

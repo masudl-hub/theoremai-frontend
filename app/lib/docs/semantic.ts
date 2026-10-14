@@ -49,7 +49,7 @@ async function fetchVectors(index: DocIndex): Promise<DocVectors> {
 	const base = `/${SEARCH_VECTORS_DIR}/`;
 	const response = await fetch(`${base}${SEARCH_MANIFEST_FILE}`);
 	if (!response.ok) throw new Error(`docs vectors manifest: ${String(response.status)}`);
-	const manifest = (await response.json()) as SearchManifest;
+	const manifest: SearchManifest = await response.json();
 	const problems = manifestDrift(manifest, await passageHashes(docSearchPassages(index)));
 	if (problems.length > 0) throw new Error(`docs vectors are stale: ${problems.join('; ')}`);
 	const binary = await fetch(`${base}${manifest.vectors}`);

@@ -40,6 +40,7 @@ export default ts.config(
 			'**/.fallow/**',
 			'**/.wrangler/**',
 			'**/.claude/**',
+			'tmp/**',
 			'app/built/**',
 			'scripts/**',
 			'vite.config.ts',

@@ -13,6 +13,7 @@ const NOT_IN_STUDIO: Record<string, string> = {
 	'tools.t1Policy': 'A function that picks T1 tools each turn, written in code.',
 	'inputs.state': 'Set by the Decision profile type.',
 	'outputs.validation.fields': 'Check functions, written in code.',
+	'outputs.validation.items.*.check': 'A check function on each item, written in code.',
 	'guardrails.disclosure': 'A check function on decision state, written in code.',
 	'guardrails.detect.ids.compiled': COMPILED,
 	'guardrails.detect.financial.compiled': COMPILED,

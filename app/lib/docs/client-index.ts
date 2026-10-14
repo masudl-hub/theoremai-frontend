@@ -14,7 +14,8 @@ export function clientDocIndex(): Promise<DocIndex> {
 	fetching ??= fetch('/docs/index.json')
 		.then(async (response) => {
 			if (!response.ok) throw new Error(`docs index: ${String(response.status)}`);
-			return (await response.json()) as DocIndex;
+			const index: DocIndex = await response.json();
+			return index;
 		})
 		.then((index) => {
 			remembered = index;
