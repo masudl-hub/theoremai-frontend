@@ -2,6 +2,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { Heading } from '@astryxdesign/core/Heading';
 import { useClipboard } from '@astryxdesign/core/hooks';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
+import { IconCheck, IconCopy } from '@tabler/icons-react';
 import {
 	type CSSProperties,
 	type ReactNode,
@@ -33,7 +34,7 @@ function IntroNavItem({
 }) {
 	const slotRef = useRef<HTMLDivElement>(null);
 	const external = href.startsWith('http');
-	const icon = <Icon size={26} stroke="1.75" aria-hidden />;
+	const icon = <Icon stroke="1.75" aria-hidden />;
 	return (
 		<div
 			ref={(node) => {
@@ -45,7 +46,7 @@ function IntroNavItem({
 			<Button
 				as={external ? NewTabLink : undefined}
 				variant="ghost"
-				size="md"
+				size="lg"
 				href={href}
 				label={label}
 				icon={icon}
@@ -64,6 +65,7 @@ function InstallCopy() {
 			className="home-intro-install"
 			variant="ghost"
 			size="sm"
+			icon={isCopied ? <IconCheck aria-hidden /> : <IconCopy aria-hidden />}
 			label={isCopied ? 'Copied' : KERNEL_INSTALL_CMD}
 			onClick={() => {
 				void copy(KERNEL_INSTALL_CMD);
@@ -167,7 +169,7 @@ export function HomeIntro({
 							) : (
 								<div className="home-intro-groups">{nav}</div>
 							)}
-							<Heading level={2} className="home-intro-tagline">
+							<Heading level={2} className="home-intro-tagline" textWrap="balance">
 								{HOME_TAGLINE}
 							</Heading>
 						</div>

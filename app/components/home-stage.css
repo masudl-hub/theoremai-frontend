@@ -10,11 +10,15 @@
 	height: 100%;
 }
 
+/* The two columns share one frame, centred on a wide screen. The tiles' column takes its share of
+   the width, so the open goal's square grows with the screen until the height stops it. */
 .home-stage-split {
 	height: 100%;
 	min-height: 0;
+	max-inline-size: 100rem;
+	margin-inline: auto;
 	display: grid;
-	grid-template-columns: minmax(15rem, 1fr) auto;
+	grid-template-columns: minmax(15rem, 1fr) minmax(max-content, 0.8fr);
 	column-gap: clamp(1.75rem, 4vw, 4.5rem);
 	align-items: center;
 }

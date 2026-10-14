@@ -1,5 +1,6 @@
 import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
+import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
 import { IconBrush, IconCircleDot, IconShieldCheck } from '@tabler/icons-react';
 import {
@@ -32,22 +33,28 @@ const GOAL_ICONS = {
 
 type Still = (typeof GOALS)[number];
 
-/** A tile is also the way to its goal: the small ones are the map of the goals screen. */
+/**
+ * A tile is also the way to its goal: the small ones are the map of the goals screen. Once a goal
+ * is open the captions are gone, so a tile names its goal on hover.
+ */
 function StillRow({ still, index }: { still: Still; index: number }) {
 	const Icon = GOAL_ICONS[still.id];
+	const isCaptioned = useGoalBeat() < 1;
 	return (
 		<figure className="home-stage-still" style={goalTileVars(index)}>
-			<Link
-				className="home-stage-still-media"
-				to={{ hash: `#${still.id}` }}
-				preventScrollReset
-				aria-label={`Go to: ${still.title}`}
-			>
-				<img src={still.src} alt={still.alt} decoding="async" fetchPriority="low" />
-				<span className="home-stage-still-icon" aria-hidden>
-					<Icon size={40} stroke={1.5} />
-				</span>
-			</Link>
+			<Tooltip content={still.title} placement="end" isEnabled={!isCaptioned}>
+				<Link
+					className="home-stage-still-media"
+					to={{ hash: `#${still.id}` }}
+					preventScrollReset
+					aria-label={`Go to: ${still.title}`}
+				>
+					<img src={still.src} alt={still.alt} decoding="async" fetchPriority="low" />
+					<span className="home-stage-still-icon" aria-hidden>
+						<Icon size={40} stroke={1.5} />
+					</span>
+				</Link>
+			</Tooltip>
 			<figcaption>
 				<StillTitle>{still.title}</StillTitle>
 				<StillText>{still.text}</StillText>
