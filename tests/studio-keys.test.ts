@@ -11,6 +11,8 @@ import {
 	type StudioDraft,
 	type StudioIssue,
 	setProfileType,
+	studioNetworkNote,
+	studioTaintNote,
 } from '@theoremjs/studio';
 import { studioDecisionRequestSchema } from '../app/lib/.server/studio-decision-request.ts';
 import { decisionStateViolation, SITE_KEYS } from '../app/lib/studio-keys.ts';
@@ -174,4 +176,12 @@ test("the site's handlers answer its example tools", () => {
 	const convert = SITE_TOOL_HANDLERS.convert_units;
 	assert(convert);
 	assert.equal(typeof convert({ value: 32, from: 'f', to: 'c' }).result, 'number');
+});
+
+test("runs on the site's keys reach public hosts only, and refuse destructive calls after a remote read", () => {
+	assert.equal(studioNetworkNote(ON_SITE_KEYS), "This page's keys reach public hosts only.");
+	assert.equal(
+		studioTaintNote(ON_SITE_KEYS),
+		"This page's keys refuse destructive calls after a remote read. Stricter settings hold.",
+	);
 });

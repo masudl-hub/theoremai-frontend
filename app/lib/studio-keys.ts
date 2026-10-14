@@ -187,4 +187,9 @@ export const SITE_KEYS: LentKeys = {
 	 * the site's limit, not the model's.
 	 */
 	liveInputTokens: 65_536,
+	/**
+	 * Anyone's draft runs on the site's server, so it reaches public hosts only, and fetched text
+	 * can't steer it into deleting or overwriting.
+	 */
+	holds: { publicHostsOnly: true, afterRemoteRead: 'destructive' },
 };
