@@ -23,6 +23,7 @@ import {
 } from '@theoremjs/studio';
 import type { GoalTokenId } from './home-goals';
 import { SITE_KEYS } from './studio-keys';
+import { ON_SITE } from './studio-supplies';
 
 const SYSTEM = [
 	'You are a travel concierge.',
@@ -280,7 +281,7 @@ export type HomeCompile =
 	| { ok: false; issues: StudioIssue[] };
 
 export function compileHomeAgent({ workspace }: HomeAgent): HomeCompile {
-	const compiled = compileWorkspace(workspace, { mode: 'demo', keys: SITE_KEYS });
+	const compiled = compileWorkspace(workspace, ON_SITE);
 	if (!compiled.ok) return { ok: false, issues: compiled.issues };
 	const run = workspaceRunAgent(compiled, draftOf(workspace).identity.agentId.trim());
 	if (!run) return { ok: false, issues: [] };

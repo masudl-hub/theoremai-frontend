@@ -14,8 +14,9 @@ import {
 } from '@theoremjs/studio';
 import { studioDecisionRequestSchema } from '../app/lib/.server/studio-decision-request.ts';
 import { decisionStateViolation, SITE_KEYS } from '../app/lib/studio-keys.ts';
+import { ON_SITE as ON_SITE_KEYS } from '../app/lib/studio-supplies.ts';
+import { SITE_TOOL_HANDLERS } from '../app/lib/studio-tool-handlers.ts';
 
-const ON_SITE_KEYS = { mode: 'demo', keys: SITE_KEYS } as const;
 
 function issues(draft: StudioDraft): StudioIssue[] {
 	const result = compileStudio(draft, ON_SITE_KEYS);
@@ -167,4 +168,10 @@ test('the decide request keeps the key slots the draft chose, and refuses a slot
 		state: 'test',
 	});
 	assert.equal(refused.success, false);
+});
+
+test("the site's handlers answer its example tools", () => {
+	const convert = SITE_TOOL_HANDLERS.convert_units;
+	assert(convert);
+	assert.equal(typeof convert({ value: 32, from: 'f', to: 'c' }).result, 'number');
 });
