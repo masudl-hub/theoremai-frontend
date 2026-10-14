@@ -9,6 +9,7 @@ import {
 	readHomeSource,
 	toggleToken,
 } from './home-agent';
+import { longestExcerpt } from './home-excerpt';
 import type { GoalTokenId } from './home-goals';
 
 export type HomeGood = Extract<HomeCompile, { ok: true }>;
@@ -54,6 +55,8 @@ export function createHomeAgentStore() {
 		for (const listener of listeners) listener();
 	};
 	return {
+		/** The pane's height in lines, from the file the page starts with, so a change never resizes it. */
+		codeLines: start === undefined ? 0 : longestExcerpt(start),
 		get: () => state,
 		subscribe: (listener: () => void) => {
 			listeners.add(listener);

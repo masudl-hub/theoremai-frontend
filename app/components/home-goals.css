@@ -29,9 +29,7 @@
 .home-goal-editor {
 	grid-area: 3 / 1;
 	display: grid;
-	grid-template-rows: minmax(0, 1fr) auto;
 	gap: var(--spacing-3);
-	height: clamp(11rem, 42cqh, 26rem);
 	max-width: 48rem;
 	margin-block-start: var(--spacing-6);
 	padding-inline-start: clamp(2rem, 6vw, 5rem);
@@ -51,7 +49,16 @@
 
 .home-goal-editor-pane {
 	position: relative;
-	min-height: 0;
+	height: min(
+		calc(
+			var(--home-goal-code-lines) *
+			var(--text-code-size) *
+			var(--text-code-leading) +
+			2 *
+			var(--spacing-3)
+		),
+		clamp(8rem, 36cqh, 32rem)
+	);
 	border: 1px solid var(--color-border);
 	border-radius: var(--radius-container);
 	overflow: hidden;

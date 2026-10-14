@@ -101,6 +101,13 @@ export function excerptOf(source: string, goal: string): Excerpt | undefined {
 	return { code: shown.map(({ text }) => text).join('\n'), from: shown.map(({ at }) => at) };
 }
 
+/** How many lines the longest goal's excerpt of `source` has: the height the excerpt's pane is set to. */
+export function longestExcerpt(source: string): number {
+	return Math.max(
+		...Object.keys(EXCERPT_FIELDS).map((goal) => excerptOf(source, goal)?.from.length ?? 0),
+	);
+}
+
 /** The lines of an excerpt that a range of the source covers, as 1-based line numbers of it. */
 export function excerptLines({ from }: Excerpt, range: Lines | undefined): number[] {
 	if (!range) return [];

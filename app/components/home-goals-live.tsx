@@ -15,6 +15,7 @@ import { GuardrailTester } from '@theoremjs/studio/ui/guardrail-tester.tsx';
 import type { CodeIssue } from '@theoremjs/studio/ui/studio-host.ts';
 import { StudioRunner } from '@theoremjs/studio/ui/studio-runner.tsx';
 import {
+	type CSSProperties,
 	lazy,
 	type RefObject,
 	Suspense,
@@ -297,7 +298,11 @@ export function GoalEditor({
 	if (!good) return null;
 	return (
 		<>
-			<div ref={pane} className="home-goal-editor-pane">
+			<div
+				ref={pane}
+				className="home-goal-editor-pane"
+				style={{ '--home-goal-code-lines': store.codeLines } as CSSProperties}
+			>
 				<GoalCode
 					excerpt={excerpt}
 					good={good}
