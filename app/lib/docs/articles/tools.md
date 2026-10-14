@@ -312,6 +312,43 @@ When the slot is empty, the call is a gate, as in step 6. The user signs in, and
 
 Theorem never stores a credential, and a credential never belongs in the browser. `createTheoremHandler` keeps credentials in a store on your server ([Building the interface](/docs/interface)).
 
+### Where the key goes
+
+A `bearer` token goes in the `Authorization` header, after `Bearer `. An `api_key` goes in the `Authorization` header as it is. If the service reads a different header, set `headerName`, and `headerPrefix` for text before the key.
+
+Some services take the key in the URL instead, as `?key=…`. For these, set `queryParam` to the name of that parameter. Theorem adds the key to the URL when the call is sent, and sends no header.
+
+```ts
+import { registerTool } from '@theoremjs/agents';
+import { z } from 'zod';
+
+registerTool({
+	type: 'http',
+	name: 'port_distance',
+	description: 'Find the sailing distance between two ports.',
+	category: 'ops',
+	access: 'read-only',
+	paths: ['*'],
+	loadTier: 'T0',
+	permission: 'auto',
+	endpoint: 'https://api.routes.example/distance',
+	method: 'GET',
+	auth: { slot: 'routes', type: 'api_key', service: 'Routes', queryParam: 'key' },
+	input: z.object({ from: z.string(), to: z.string() }),
+	output: z.object({ nauticalMiles: z.number() }),
+});
+```
+
+`registerTool` refuses `queryParam` in three cases:
+
+- the `type` is not `api_key`;
+- `headerName` or `headerPrefix` is also set, because the key goes in one place;
+- the name is also one of `registerTool.mapping.queryParams`, so the model's input could fill it.
+
+Never write the key into `endpoint` or `serverUrl` yourself. A key in `auth` comes from the credentials of the request at the time of the call, and Theorem omits it from any response that repeats it.
+
+In the [studio](/studio), open the tool and choose **API key** under Auth. Fill in **Query parameter** for a key in the URL, or **Header** and **Prefix** for a key in a header. While **Query parameter** has a value, the header rows are hidden. If the URL you type has a query parameter with a name like `key`, `token` or `secret` and a value, the studio refuses the URL and points you to Auth.
+
 ### The three parts of an OAuth sign-in
 
 For `oauth2`, you need no OAuth library. The helpers come from `@theoremjs/agents/kernel`.
