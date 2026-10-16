@@ -36,15 +36,22 @@
 	text-align: center;
 }
 
-/* The still is a little larger than the preview, so it shows as a border around it. */
+/* The still is a little larger than the preview, so it shows as a border around it. It takes what
+   the text leaves, so the preview always fits the screen, and the preview is as tall as that allows
+   at 16:9, and no wider than the stage. */
 .home-platform-stage {
 	position: relative;
+	display: grid;
+	grid-template-rows: 100%;
+	place-items: center;
 	box-sizing: border-box;
-	inline-size: min(100%, 70rem);
+	flex: 1 1 0;
+	min-height: 0;
+	inline-size: 100%;
+	max-inline-size: 70rem;
 	padding: clamp(0.75rem, 2vw, 1.5rem);
 	border-radius: var(--radius-container);
 	overflow: hidden;
-	margin-block: auto;
 }
 
 /* A new tab fades its still in over the last one. */
@@ -71,7 +78,8 @@
 .home-platform-preview {
 	position: relative;
 	z-index: 1;
-	inline-size: 100%;
+	block-size: 100%;
+	max-inline-size: 100%;
 	aspect-ratio: 16 / 9;
 	border: 1px solid var(--color-border);
 	border-radius: var(--radius-container);
@@ -98,6 +106,16 @@
 	.home-platform-card {
 		height: auto;
 		min-height: 100%;
+	}
+
+	.home-platform-stage {
+		flex: none;
+		max-inline-size: none;
+	}
+
+	.home-platform-preview {
+		block-size: auto;
+		inline-size: 100%;
 	}
 
 	.home-platform-stop {
