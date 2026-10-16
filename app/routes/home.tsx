@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router';
 import { ContributeBoard } from '../components/contribute/board';
 import { ChapterContext } from '../components/docs/body';
 import { ExamplesBoard } from '../components/examples/board';
+import { HomePlatform } from '../components/home-platform';
+import { scrollTopOf } from '../components/home-scroll-stops';
 import { HomeStage } from '../components/home-stage';
 import { PageJsonLd } from '../components/page-summary';
 import '../components/home-scroll.css';
@@ -10,6 +12,7 @@ import { homeTerms } from '../lib/.server/home-terms';
 import { SITE_REDIRECTS } from '../lib/docs/articles/chapters';
 import { HOME_DESCRIPTION, homeJsonLd, KERNEL, SITE_NAME } from '../lib/home-content';
 import { type GoalId, isGoalId } from '../lib/home-goals';
+import { isPlatformId, type PlatformId } from '../lib/home-platform';
 import { GOALS, HOME_TAGLINE } from '../lib/site-pitch';
 import type { Route } from './+types/home';
 export function loader({ request }: Route.LoaderArgs) {
@@ -58,7 +61,7 @@ function RetiredHashRedirect() {
 	return null;
 }
 
-type LandingScreen = 'landing' | 'overview' | GoalId | 'showcase' | 'contribute';
+type LandingScreen = 'landing' | 'overview' | GoalId | PlatformId | 'showcase' | 'contribute';
 
 /** `#examples` is the previous showcase id. An empty hash is landing. */
 function landingScreen(hash: string): LandingScreen | null {
@@ -66,6 +69,7 @@ function landingScreen(hash: string): LandingScreen | null {
 	if (id === '' || id === 'landing') return 'landing';
 	if (id === 'overview') return 'overview';
 	if (isGoalId(id)) return id;
+	if (isPlatformId(id)) return id;
 	if (id === 'showcase' || id === 'examples') return 'showcase';
 	if (id === 'contribute') return 'contribute';
 	return null;
@@ -86,6 +90,16 @@ function goalStops(scroller: HTMLElement): { screen: GoalId; stop: HTMLElement }
 	return out;
 }
 
+/** The stops of the screen after the goals, one for each tab. */
+function platformStops(scroller: HTMLElement): { screen: PlatformId; stop: HTMLElement }[] {
+	const out: { screen: PlatformId; stop: HTMLElement }[] = [];
+	for (const stop of scroller.querySelectorAll<HTMLElement>('[data-home-stop]')) {
+		const screen = stop.dataset.homeStop ?? '';
+		if (isPlatformId(screen) && stop.offsetHeight > 0) out.push({ screen, stop });
+	}
+	return out;
+}
+
 /** Snap offsets for the screens. Overview uses the settle band, and a goal has a stop for each beat. */
 function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number }[] {
 	const settle = scroller.querySelector<HTMLElement>('.home-contract-settle');
@@ -100,6 +114,10 @@ function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number
 		{ screen: 'landing', at: 0 },
 		{ screen: 'overview', at: overviewAt },
 		...goalStops(scroller).map(({ screen, stop }) => ({ screen, at: stop.offsetTop })),
+		...platformStops(scroller).map(({ screen, stop }) => ({
+			screen,
+			at: scrollTopOf(scroller, stop),
+		})),
 		{ screen: 'showcase', at: showcase?.offsetTop ?? overviewAt },
 		{ screen: 'contribute', at: contribute?.offsetTop ?? showcase?.offsetTop ?? overviewAt },
 	];
@@ -146,6 +164,14 @@ function scrollToLandingScreen(scroller: HTMLElement, screen: LandingScreen) {
 			block.scrollIntoView({ block: 'start' });
 			return;
 		}
+	}
+	if (isPlatformId(screen)) {
+		platformStops(scroller)
+			.find((stop) => stop.screen === screen)
+			?.stop.scrollIntoView({
+				block: 'start',
+			});
+		return;
 	}
 	if (screen === 'overview' || isGoalId(screen)) {
 		const settle = scroller.querySelector<HTMLElement>('.home-contract-settle');
@@ -219,6 +245,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 			<ChapterContext.Provider value={chapter}>
 				<HomeStage scrollRoot={scrollRef} />
 			</ChapterContext.Provider>
+			<HomePlatform scrollRoot={scrollRef} />
 			<div className="home-dotted">
 				<section className="home-page" id="showcase" aria-label="Showcase">
 					<ExamplesBoard />
