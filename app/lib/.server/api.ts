@@ -101,12 +101,23 @@ function draftLabels(draft: StudioDraft | undefined): ProfileDefinition['labels'
 	return (draft as { profile?: Partial<ProfileDefinition> } | null | undefined)?.profile?.labels;
 }
 
-/** POST /api/studio/turn — NDJSON turn events. */
-export async function studioTurn(request: Request, env: SiteEnv): Promise<Response> {
+/** A studio request: its draft read, its session opened, and a failure worded with the draft's labels. */
+async function draftRequest(
+	request: Request,
+	handle: (draft: StudioDraft, boundary: TheoremSessionBoundary) => Response | Promise<Response>,
+): Promise<Response> {
 	let draft: StudioDraft | undefined;
 	try {
 		draft = (await readBody(request, z.unknown())) as StudioDraft;
-		const boundary = await studioSession(request);
+		return await handle(draft, await studioSession(request));
+	} catch (err) {
+		return errorJson(err, draftLabels(draft));
+	}
+}
+
+/** POST /api/studio/turn — NDJSON turn events. */
+export async function studioTurn(request: Request, env: SiteEnv): Promise<Response> {
+	return draftRequest(request, (draft, boundary) => {
 		const turn = checkRequest(theoremTurnRequestSchema, draft, 'request body');
 		return sessionResponse(
 			boundary,
@@ -124,17 +135,12 @@ export async function studioTurn(request: Request, env: SiteEnv): Promise<Respon
 				draft.profile.labels,
 			),
 		);
-	} catch (err) {
-		return errorJson(err, draftLabels(draft));
-	}
+	});
 }
 
 /** POST /api/studio/invoke — NDJSON events for the user's answer to a paused call. */
 export async function studioInvoke(request: Request, env: SiteEnv): Promise<Response> {
-	let draft: StudioDraft | undefined;
-	try {
-		draft = (await readBody(request, z.unknown())) as StudioDraft;
-		const boundary = await studioSession(request);
+	return draftRequest(request, (draft, boundary) => {
 		const answer = checkRequest(theoremInvokeRequestSchema, draft, 'request body');
 		const run = draftRun(draft, boundary, request, env);
 		return sessionResponse(
@@ -154,17 +160,12 @@ export async function studioInvoke(request: Request, env: SiteEnv): Promise<Resp
 				draft.profile.labels,
 			),
 		);
-	} catch (err) {
-		return errorJson(err, draftLabels(draft));
-	}
+	});
 }
 
 /** POST /api/studio/conversation — the conversation under a ref, as the page draws it. */
 export async function studioConversation(request: Request, env: SiteEnv): Promise<Response> {
-	let draft: StudioDraft | undefined;
-	try {
-		draft = (await readBody(request, z.unknown())) as StudioDraft;
-		const boundary = await studioSession(request);
+	return draftRequest(request, async (draft, boundary) => {
 		const read = checkRequest(theoremConversationRequestSchema, draft, 'request body');
 		const view = await readStudioConversation(
 			draftRun(draft, boundary, request, env),
@@ -172,34 +173,24 @@ export async function studioConversation(request: Request, env: SiteEnv): Promis
 			read,
 		);
 		return sessionResponse(boundary, Response.json(view));
-	} catch (err) {
-		return errorJson(err, draftLabels(draft));
-	}
+	});
 }
 
 /** POST /api/home/start — the goals screen's opening exchange, as a conversation of this session's. */
 export async function homeStart(request: Request, env: SiteEnv): Promise<Response> {
-	let draft: StudioDraft | undefined;
-	try {
-		draft = (await readBody(request, z.unknown())) as StudioDraft;
-		const boundary = await studioSession(request);
+	return draftRequest(request, async (draft, boundary) => {
 		const started = await startStudioChat(
 			draftRun(draft, boundary, request, env),
 			conversationsOf(boundary),
 			HOME_EXCHANGE,
 		);
 		return sessionResponse(boundary, Response.json(started));
-	} catch (err) {
-		return errorJson(err, draftLabels(draft));
-	}
+	});
 }
 
 /** POST /api/studio/rewind — the conversation cut after one block, under a new ref. */
 export async function studioRewind(request: Request, env: SiteEnv): Promise<Response> {
-	let draft: StudioDraft | undefined;
-	try {
-		draft = (await readBody(request, z.unknown())) as StudioDraft;
-		const boundary = await studioSession(request);
+	return draftRequest(request, async (draft, boundary) => {
 		const rewind = checkRequest(theoremRewindRequestSchema, draft, 'request body');
 		const rewound = await rewindStudioConversation(
 			draftRun(draft, boundary, request, env),
@@ -208,9 +199,7 @@ export async function studioRewind(request: Request, env: SiteEnv): Promise<Resp
 			request.signal,
 		);
 		return sessionResponse(boundary, Response.json(rewound));
-	} catch (err) {
-		return errorJson(err, draftLabels(draft));
-	}
+	});
 }
 
 /** A draft as a run takes it, on this session's tool execution and the site's keys. */

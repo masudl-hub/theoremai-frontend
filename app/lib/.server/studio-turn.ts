@@ -149,7 +149,7 @@ export function streamStudioHostInvoke({
 }
 
 /** A draft as the conversation reads take it: the run's host in place of its runtime. */
-type DraftRun = Omit<Parameters<typeof studioConversation>[0], 'runtime'> & RunHost;
+export type DraftRun = Omit<Parameters<typeof studioConversation>[0], 'runtime'> & RunHost;
 
 function withRuntime({ env, onAgentCall, execution, pageExecution, ...draft }: DraftRun) {
 	return { ...draft, runtime: runtime({ env, onAgentCall, execution, pageExecution }) };

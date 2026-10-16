@@ -340,20 +340,15 @@ function rankHits(
 	return ranked.map(({ hit }) => hit);
 }
 
+/** A search's hits, best first, and how many places matched in all. */
+export type DocSearchResults = { query: string; results: DocSearchHit[]; totalMatches: number };
+
 /**
  * Full-text search over chapters, sections and glossary rows: stemmed, prefix-matched as you
  * type, and forgiving of typos in longer words. Places matching every word come first, then those
  * matching some.
  */
-export function searchDocs(
-	index: DocIndex,
-	query: string,
-	limit = 5,
-): {
-	query: string;
-	results: DocSearchHit[];
-	totalMatches: number;
-} {
+export function searchDocs(index: DocIndex, query: string, limit = 5): DocSearchResults {
 	const term = query.trim();
 	if (!term) return { query, results: [], totalMatches: 0 };
 	const { db, entries } = searchIndex(index);
@@ -402,7 +397,7 @@ export function searchDocsHybrid(
 	queryVector: Float32Array,
 	vectors: DocVectors,
 	limit = 5,
-): { query: string; results: DocSearchHit[]; totalMatches: number } {
+): DocSearchResults {
 	const term = query.trim();
 	if (!term) return { query, results: [], totalMatches: 0 };
 	const { db, entries } = searchIndex(index);

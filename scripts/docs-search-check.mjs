@@ -12,6 +12,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { withDocsServer } from './docs-index-plugin.mjs';
+import { loadDocSearch, searchExtractor } from './docs-search-index.mjs';
 import { resolveTheoremaiRoot } from './resolve-theoremai-root.mjs';
 
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -38,17 +39,11 @@ const plain = (text) =>
 		.trim();
 
 const done = await withDocsServer({ repoRoot, theoremai }, async (load) => {
-	const compose = await load('/app/lib/docs/compose.ts');
-	const index = await compose.composeDocIndex({
-		publicRoot: path.join(repoRoot, 'public'),
-		kernelRoot: theoremai.root,
-	});
-	const query = await load('/app/lib/docs/query.ts');
-	const model = await load('/app/lib/docs/search-model.ts');
-	const { SEARCH_MODEL, SEARCH_MODEL_DIR, SEARCH_MANIFEST_FILE, SEARCH_VECTORS_DIR } = model;
+	const { index, query, model, passages } = await loadDocSearch(load, { repoRoot, theoremai });
+	const { SEARCH_MODEL, SEARCH_MANIFEST_FILE, SEARCH_VECTORS_DIR } = model;
 	const dir = path.join(repoRoot, 'public', SEARCH_VECTORS_DIR);
 	const manifest = JSON.parse(readFileSync(path.join(dir, SEARCH_MANIFEST_FILE), 'utf8'));
-	const problems = model.manifestDrift(manifest, await model.passageHashes(query.docSearchPassages(index)));
+	const problems = model.manifestDrift(manifest, await model.passageHashes(passages));
 	if (problems.length > 0) throw new Error(`docs vectors are stale: ${problems.join('; ')}`);
 	const bytes = readFileSync(path.join(dir, manifest.vectors));
 	const vectors = {
@@ -56,13 +51,7 @@ const done = await withDocsServer({ repoRoot, theoremai }, async (load) => {
 		data: new Float32Array(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)),
 	};
 
-	const { env, pipeline } = await import('@huggingface/transformers');
-	env.allowRemoteModels = false;
-	env.localModelPath = `${path.join(repoRoot, 'public', SEARCH_MODEL_DIR)}/`;
-	const extract = await pipeline('feature-extraction', SEARCH_MODEL.id, {
-		revision: SEARCH_MODEL.revision,
-		dtype: SEARCH_MODEL.dtype,
-	});
+	const extract = await searchExtractor(repoRoot, model);
 	const search = async (text) => {
 		const out = await extract(`${SEARCH_MODEL.queryPrefix}${text}`, {
 			pooling: SEARCH_MODEL.pooling,

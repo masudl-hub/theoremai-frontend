@@ -12,22 +12,17 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { withDocsServer } from './docs-index-plugin.mjs';
+import { loadDocSearch, searchExtractor } from './docs-search-index.mjs';
 import { resolveTheoremaiRoot } from './resolve-theoremai-root.mjs';
 
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const theoremai = resolveTheoremaiRoot(repoRoot);
 const check = process.argv.includes('--check');
 
-const { passages, search } = await withDocsServer({ repoRoot, theoremai }, async (load) => {
-	const compose = await load('/app/lib/docs/compose.ts');
-	const index = await compose.composeDocIndex({
-		publicRoot: path.join(repoRoot, 'public'),
-		kernelRoot: theoremai.root,
-	});
-	const { docSearchPassages } = await load('/app/lib/docs/query.ts');
-	return { passages: docSearchPassages(index), search: await load('/app/lib/docs/search-model.ts') };
-});
-const { SEARCH_MODEL, SEARCH_MODEL_DIR, SEARCH_VECTORS_DIR, SEARCH_MANIFEST_FILE, manifestDrift, passageHashes } = search;
+const { passages, model: search } = await withDocsServer({ repoRoot, theoremai }, (load) =>
+	loadDocSearch(load, { repoRoot, theoremai }),
+);
+const { SEARCH_MODEL, SEARCH_VECTORS_DIR, SEARCH_MANIFEST_FILE, manifestDrift, passageHashes } = search;
 
 const dir = path.join(repoRoot, 'public', SEARCH_VECTORS_DIR);
 const manifestFile = path.join(dir, SEARCH_MANIFEST_FILE);
@@ -61,13 +56,7 @@ const rows = fresh.map(({ key, hash }) => reusable.get(`${key}\n${hash}`));
 const missing = rows.flatMap((row, at) => (row === undefined ? [at] : []));
 if (missing.length > 0) {
 	console.log(`embedding ${String(missing.length)} of ${String(rows.length)} entries with ${SEARCH_MODEL.id}`);
-	const { env, pipeline } = await import('@huggingface/transformers');
-	env.allowRemoteModels = false;
-	env.localModelPath = `${path.join(repoRoot, 'public', SEARCH_MODEL_DIR)}/`;
-	const extract = await pipeline('feature-extraction', SEARCH_MODEL.id, {
-		revision: SEARCH_MODEL.revision,
-		dtype: SEARCH_MODEL.dtype,
-	});
+	const extract = await searchExtractor(repoRoot, search);
 	for (let from = 0; from < missing.length; from += 16) {
 		const batch = missing.slice(from, from + 16);
 		const out = await extract(
