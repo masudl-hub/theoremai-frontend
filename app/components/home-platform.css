@@ -40,6 +40,8 @@
 	display: flex;
 	flex-direction: column;
 	align-items: center;
+	/* The group of tabs, text and preview is centred, so the space above and below it is the same. */
+	justify-content: center;
 	gap: 1.5rem;
 	height: 100%;
 	padding: var(--home-platform-edge) clamp(1.25rem, 3vw, 2.75rem);
@@ -56,15 +58,16 @@
 	margin-inline: auto;
 }
 
-/* Takes what the text leaves, down to the same edge the tabs have above. */
+/* Three quarters of the height the tabs, the text and the edges leave, so the preview is smaller. */
 .home-platform-stage {
 	position: relative;
 	display: grid;
 	grid-template-rows: 100%;
 	place-items: center;
 	box-sizing: border-box;
-	flex: 1 1 0;
-	min-height: 0;
+	flex: none;
+	block-size: calc((100% - 2 * var(--home-platform-edge) - 13rem) * 0.75);
+	min-block-size: 0;
 	inline-size: fit-content;
 	max-inline-size: 100%;
 }
@@ -115,7 +118,7 @@
 	}
 
 	.home-platform-stage {
-		flex: none;
+		block-size: auto;
 		max-inline-size: none;
 	}
 
