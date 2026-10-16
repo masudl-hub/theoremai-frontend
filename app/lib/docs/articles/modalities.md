@@ -188,9 +188,9 @@ Use `embedding` when your application needs vectors for text or media. Run it wi
 
 - Must set: `identity`, `models` and `inputs`.
 - Cannot set: `identity.system`, `tools`, `outputs` or `turnBehaviour`.
-- First-party protocols: `geminiEmbedding` or `openRouterEmbedding`.
+- First-party protocols: `geminiEmbedding`, `openRouterEmbedding` or `ollamaEmbedding`.
 
-The profile keeps input and output details in the provider protocol. The kernel returns normalized vectors.
+Vector size and other model settings go in the binding's `options`, and the protocol checks them. The kernel checks every reply: one vector per input, in input order, with finite values.
 
 ```ts frame=statements
 const searchIndex = defineProfile({

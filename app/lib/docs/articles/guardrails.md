@@ -1,6 +1,6 @@
 ---
 title: Setting guardrails
-updated: 2026-10-09
+updated: 2026-10-16
 summary: Check text in and out of the model. Limit tools, replies and turns per day.
 entry: src/guardrails/mod.ts
 covers: src/guardrails
@@ -301,6 +301,8 @@ Guardrail | `text`, `image` | `live` | `speech` | `host` | `decision`
 `network` | Yes | Yes | No | Yes | No
 `quota` | Yes | Yes | Yes | No | No
 `disclosure` | No | No | No | No | Yes
+
+An `embedding` profile takes no guardrail.
 
 `defineProfile` refuses any other field with a `config` error. On a `host` profile, `detect` takes the tool boundaries only.
 

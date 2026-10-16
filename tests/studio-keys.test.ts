@@ -64,13 +64,23 @@ test("the site's keys hold text to their Gemini list and OpenRouter's free route
 });
 
 test('switching type on the site starts on the first Gemini model the keys list for it', () => {
-	for (const type of ['image', 'speech', 'live'] as const) {
+	for (const type of ['image', 'speech', 'live', 'embedding'] as const) {
 		const draft = setProfileType(createExampleDraft(), type, SITE_KEYS);
 		assert.deepEqual(
 			draft.modelBindings.map((binding) => binding.apiId),
-			[SITE_KEYS.models(type, 'google')[0]?.id],
+			[SITE_KEYS.models(type, 'gemini')[0]?.id],
 		);
 	}
+});
+
+test('the site policy handles embedding routes without an undefined model list', () => {
+	assert.deepEqual(
+		SITE_KEYS.models('embedding', 'gemini').map((model) => model.id),
+		['gemini-embedding-2-preview', 'gemini-embedding-001'],
+	);
+	assert.equal(SITE_KEYS.runs('embedding', 'gemini'), true);
+	assert.equal(SITE_KEYS.runs('embedding', 'openrouter'), true);
+	assert.equal(SITE_KEYS.runs('embedding', 'typesafe'), false);
 });
 
 test('decisions on the site run on TypeSafe or Span only', () => {

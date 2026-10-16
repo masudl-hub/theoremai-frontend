@@ -1,6 +1,6 @@
 ---
 title: Building the interface
-updated: 2026-10-10
+updated: 2026-10-16
 summary: Serve one profile from your server and show a chat that reads it.
 entry: src/interface/mod.ts
 covers: src/interface
@@ -295,7 +295,7 @@ Each row is one failure, its cause and its fix.
 
 What you see | Cause | Fix
 --- | --- | ---
-`createTheoremHandler` throws when you create it | The profile is `live`, `host` or `decision` | Use `createTheoremHostHandler` for a host profile and `createTheoremDecisionHandler` for a decision profile. A live profile uses `LiveRunner`
+`createTheoremHandler` throws when you create it | The profile is `live`, `host`, `decision` or `embedding` | Use `createTheoremHostHandler` for a host profile, `createTheoremDecisionHandler` for a decision profile and `createTheoremEmbeddingHandler` for an embedding profile. A live profile uses `LiveRunner`
 Status 401 | `session` returned `undefined` | Return a session id for a signed-in user
 The user reads "Sorry, the assistant can’t connect at the moment." | The profile’s key slot is empty in `provider.vault` (an `error` event of kind `auth`) | Fill the slot ([Binding models](/docs/models))
 A turn ends with a `config` error | The handler has no `provider` | Pass `provider`, with a `vault` that fills each slot

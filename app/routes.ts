@@ -31,6 +31,7 @@ export default [
 	route('api/studio/page-result', 'routes/api.studio.page-result.ts'),
 	route('api/studio/call', 'routes/api.studio.call.ts'),
 	route('api/studio/decide', 'routes/api.studio.decide.ts'),
+	route('api/studio/embedding/embed', 'routes/api.studio.embedding.ts'),
 	route('api/studio/probe', 'routes/api.studio.probe.ts'),
 	route('api/studio/test-connection', 'routes/api.studio.test-connection.ts'),
 	route('api/studio/test-key', 'routes/api.studio.test-key.ts'),

@@ -1,6 +1,6 @@
 ---
 title: Setting the identity
-updated: 2026-10-08
+updated: 2026-10-16
 summary: Name your agent, tell the model who it is, and hide secret lines.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/profiles.ts, src/kernel/registry/system-prompt.ts, src/kernel/registry/system-role.ts, src/kernel/system-parts.ts
@@ -139,7 +139,7 @@ Not every type of profile reads an instruction ([Choosing a modality](/docs/moda
 Profile type | `handle` | `system` and `systemByRole`
 --- | --- | ---
 `text`, `image`, `live` | Yes | Yes
-`speech`, `decision` | Yes | No
+`speech`, `decision`, `embedding` | Yes | No
 `host` | No `identity` | No `identity`
 
 ## Fix a role that does not behave

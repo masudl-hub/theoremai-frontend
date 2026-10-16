@@ -67,13 +67,13 @@ for (const article of index.articles) {
 
 // ---- Tables that restate kernel data: parse each, then compare it with the catalog. ----
 
-/** The body rows of the one table in a section, each cell as `{ code, text }`. */
-const tableCells = (slug, id) => {
+/** The body rows of a section's table, each cell as `{ code, text }`: its only table, or its first of `count`. */
+const tableCells = (slug, id, count = 1) => {
 	const article = index.articles.find((a) => a.slug === slug);
 	const section = article?.sections.find((entry) => entry.id === id);
 	const tables = section ? markdownTables(sectionText(article, section)) : [];
-	if (tables.length !== 1) {
-		problems.push(`${slug}#${id}: need one section with one table, found ${String(tables.length)} tables`);
+	if (tables.length !== count) {
+		problems.push(`${slug}#${id}: need one section with ${String(count)} tables, found ${String(tables.length)}`);
 		return [];
 	}
 	return tables[0];
@@ -85,11 +85,12 @@ const sameSet = (what, docSet, kernelSet) => {
 	if (extra.length > 0) problems.push(`${what}: the chapter has ${extra.join(', ')}, the kernel does not`);
 };
 
-// models#choose-a-provider-for-the-profile-type: the pairs `registerProfile` accepts, found by trying each one.
+// models#choose-a-protocol-for-the-profile-type: the protocol / type pairs `registerProfile` accepts from a
+// first-party provider, found by trying each one. The section's second table is the providers.
 {
 	const docPairs = new Set();
-	for (const [adapter, types] of tableCells('models', 'choose-a-provider-for-the-profile-type')) {
-		for (const type of types.code) docPairs.add(`${adapter.code[0]}/${type}`);
+	for (const [protocol, types] of tableCells('models', 'choose-a-protocol-for-the-profile-type', 2)) {
+		for (const type of types.code) docPairs.add(`${protocol.code[0]}/${type}`);
 	}
 	const kernelPairs = new Set(
 		JSON.parse(
@@ -99,7 +100,7 @@ const sameSet = (what, docSet, kernelSet) => {
 			}),
 		),
 	);
-	sameSet('models#choose-a-provider-for-the-profile-type', docPairs, kernelPairs);
+	sameSet('models#choose-a-protocol-for-the-profile-type', docPairs, kernelPairs);
 }
 
 // guardrails#which-profiles-take-which-guardrail: each cell against the `profileTypes` of the guardrail's field.

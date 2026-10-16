@@ -80,7 +80,7 @@ To set the slot one time, set `keySlot` in the registration and leave it out of 
 
 The number of bindings depends on the type of profile:
 
-- A `text`, `image`, `speech` or `live` profile declares one binding or more.
+- A `text`, `image`, `speech`, `live` or `embedding` profile declares one binding or more.
 - A `decision` profile declares exactly one binding.
 - A `host` profile declares none.
 
@@ -98,7 +98,7 @@ A vault entry is a string, a JSON credential object, or a resolver function.
 Each entry must be an own property of the vault. Theorem ignores inherited entries.
 A resolver can return a promise. Theorem calls it before it signs the request.
 The provider's key schema checks the resolved value. The host owns caching and refresh.
-Pass the same host options to `runSession` or `runDecision` for those profile types ([Running a turn](/docs/runner)).
+Pass the same host options to `runSession`, `runDecision` or `runEmbedding` for those profile types ([Running a turn](/docs/runner)).
 
 ### 4. Let a request pick the model
 
@@ -164,9 +164,12 @@ Protocol | Profile types | Served by
 --- | --- | ---
 `openRouter` | `text`, `speech` | `openRouterProvider`
 `openRouterImages` | `image` | `openRouterProvider`
+`openRouterEmbedding` | `embedding` | `openRouterProvider`
 `geminiInteractions` | `text`, `image`, `speech` | `geminiProvider`
 `geminiLive` | `live` | `geminiProvider`
+`geminiEmbedding` | `embedding` | `geminiProvider`
 `openAi` | `text`, `speech` | `localProvider`
+`ollamaEmbedding` | `embedding` | `localProvider`
 `systemOne` | `decision` | `openRouterProvider`, `typesafeProvider`
 
 Each first-party provider has a default ID and a connection:
@@ -244,6 +247,9 @@ Unknown options fail validation.
 
 - `openRouter`: `cache` sets prompt caching, `{ mode: 'automatic' }` or `{ mode: 'system' }`, with an optional `ttl` of `5m` or `1h`.
 - `geminiInteractions`: `store` and `persistViaInteractionId`.
+- `geminiEmbedding`: `taskType`, such as `RETRIEVAL_QUERY`, and `outputDimensionality` of 768, 1536 or 3072.
+- `openRouterEmbedding`: `encodingFormat`, `float` or `base64`.
+- `ollamaEmbedding`: `truncate` and `dimensions`.
 - Every other first-party protocol: none.
 
 ```ts

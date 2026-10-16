@@ -5,17 +5,23 @@
  */
 import type { DecisionQuestion } from '@theoremjs/agents';
 import { googleFreeTierBuiltins } from '@theoremjs/agents/presets';
-import type {
-	LentBinding,
-	LentKeys,
-	LentModel,
-	ModelBindingViolation,
-	ModelProfileType,
-	ModelRoute,
+import {
+	firstServed,
+	KNOWN_GEMINI_EMBEDDING_MODELS,
+	KNOWN_OPENROUTER_EMBEDDING_MODELS,
+	type LentBinding,
+	type LentKeys,
+	type LentModel,
+	type ModelBindingViolation,
+	type ModelProfileType,
+	type ModelRoute,
 } from '@theoremjs/studio';
 
 /** The only OpenRouter model the site's key calls for an agent that isn't a decision. */
 const OPENROUTER_FREE = 'openrouter/free';
+const OPENROUTER_EMBEDDINGS: readonly LentModel[] = KNOWN_OPENROUTER_EMBEDDING_MODELS.map(
+	(model) => ({ id: model.id, label: model.label }),
+);
 
 /** The only OpenRouter decision model: Span's free one. */
 const SPAN_DECISION: LentModel = { id: 'respan/span-01-lite:free', label: 'Span 01 Lite Free' };
@@ -53,6 +59,10 @@ const GEMINI: Readonly<Record<Exclude<ModelProfileType, 'decision'>, readonly Le
 		{ id: 'gemini-3.8-live', label: '3.8 Live' },
 		{ id: 'gemini-3.8-live-extended-thinking', label: '3.8 Live Extended Thinking' },
 	],
+	embedding: KNOWN_GEMINI_EMBEDDING_MODELS.map((model) => ({
+		id: model.id,
+		label: model.label,
+	})),
 };
 
 const GEMINI_IDS = new Set(
@@ -65,38 +75,42 @@ function builtins(apiId: string): readonly string[] {
 	return [...googleFreeTierBuiltins(apiId), 'urlContext'];
 }
 
-function models(type: ModelProfileType, adapter: string | undefined): readonly LentModel[] {
+function models(type: ModelProfileType, definition: string | undefined): readonly LentModel[] {
 	if (type === 'decision')
-		return adapter === 'typesafe' ? [JEV] : adapter === 'openrouter' ? [SPAN_DECISION] : [];
-	if (adapter === 'google') return GEMINI[type];
-	if (adapter === 'openrouter' && type === 'text')
-		return [{ id: OPENROUTER_FREE, label: 'Free router' }];
+		return definition === 'typesafe' ? [JEV] : definition === 'openrouter' ? [SPAN_DECISION] : [];
+	if (definition === 'gemini') return GEMINI[type];
+	if (definition === 'openrouter') {
+		if (type === 'text') return [{ id: OPENROUTER_FREE, label: 'Free router' }];
+		if (type === 'embedding') return OPENROUTER_EMBEDDINGS;
+	}
 	return [];
 }
 
 /** Why `binding` can't run on the site's keys: models off their lists, and grounding without quota. */
 function violation(binding: LentBinding): ModelBindingViolation | null {
 	const apiId = binding.apiId.trim();
-	if (binding.decision) {
-		if (binding.adapter === 'typesafe') return null;
-		if (binding.adapter === 'openrouter')
-			return apiId === SPAN_DECISION.id
-				? null
-				: { field: 'apiId', message: `${apiId} is not a studio OpenRouter decision model.` };
-	}
-	if (binding.adapter === 'openrouter')
-		return apiId === OPENROUTER_FREE
+	if (binding.decision && binding.definition === 'typesafe') return null;
+	if (binding.definition === 'openrouter')
+		return models(binding.profileType, 'openrouter').some((model) => model.id === apiId)
 			? null
-			: { field: 'apiId', message: `OpenRouter models in the studio must use ${OPENROUTER_FREE}.` };
-	if (binding.adapter !== 'google')
+			: { field: 'apiId', message: `${apiId} is not one of the studio's free OpenRouter models.` };
+	if (binding.definition !== 'gemini')
 		return { field: 'provider', message: 'The studio runs Google and OpenRouter models only.' };
 	if (!GEMINI_IDS.has(apiId))
 		return {
 			field: 'apiId',
 			message: `${apiId} is not a studio Gemini model — pro and unrated models are blocked.`,
 		};
+	return builtinViolation(apiId, binding.builtInTools);
+}
+
+/** The first built-in `apiId` has no free-tier quota for. */
+function builtinViolation(
+	apiId: string,
+	builtInTools: readonly string[],
+): ModelBindingViolation | null {
 	const allowed = builtins(apiId);
-	const refused = binding.builtInTools.find((builtin) => !allowed.includes(builtin));
+	const refused = builtInTools.find((builtin) => !allowed.includes(builtin));
 	if (refused === undefined) return null;
 	const grounding = { googleMaps: 'map-grounding', googleSearch: 'search-grounding' }[refused];
 	return {
@@ -107,8 +121,8 @@ function violation(binding: LentBinding): ModelBindingViolation | null {
 	};
 }
 
-function isSpan(route: Pick<ModelRoute, 'adapter' | 'apiId' | 'decision'>): boolean {
-	return route.decision && route.adapter === 'openrouter' && route.apiId.startsWith('respan/');
+function isSpan(route: Pick<ModelRoute, 'definition' | 'apiId' | 'decision'>): boolean {
+	return route.decision && route.definition === 'openrouter' && route.apiId.startsWith('respan/');
 }
 
 /** Span asks Number questions only, each with true and false described. */
@@ -130,7 +144,7 @@ function questionViolation(route: ModelRoute, question: DecisionQuestion): strin
 
 /** Span's state is text, or input and output messages. */
 export function decisionStateViolation(
-	route: Pick<ModelRoute, 'adapter' | 'apiId' | 'decision'>,
+	route: Pick<ModelRoute, 'definition' | 'apiId' | 'decision'>,
 	state: unknown,
 ): string | null {
 	if (!isSpan(route) || typeof state === 'string') return null;
@@ -164,11 +178,11 @@ function spanMessage(value: unknown): boolean {
 
 export const SITE_KEYS: LentKeys = {
 	models,
-	runs: (type, adapter) => models(type, adapter).length > 0,
+	runs: (type, definition) => models(type, definition).length > 0,
 	start: (type) =>
 		type === 'decision'
-			? { provider: 'typesafe', apiId: JEV.id }
-			: { provider: 'google', apiId: GEMINI[type][0].id },
+			? { ...firstServed('typesafe', type), apiId: JEV.id }
+			: { ...firstServed('gemini', type), apiId: GEMINI[type][0]?.id ?? '' },
 	violation,
 	builtins,
 	decision: {

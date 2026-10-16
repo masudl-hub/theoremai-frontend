@@ -1,6 +1,6 @@
 ---
 title: Recording traces
-updated: 2026-10-07
+updated: 2026-10-16
 summary: Record what each run did, and choose what a trace record keeps and scrubs.
 entry: src/observability/mod.ts
 covers: src/observability
@@ -117,7 +117,7 @@ A failed write never fails the run. Theorem passes the error to `onWriteError` o
 To capture a single call, for a test or a single check, pass a sink to that call. The sink replaces `writeTo` for the call. The call always records, and it ignores `sampleRate`.
 
 - `runTurn`, `runSession`, `compactHistory` and `invokeTool` take the sink as the last argument ([Running a turn](/docs/runner)).
-- `runDecision` takes it as `options.sink`.
+- `runDecision` and `runEmbedding` take it as `options.sink`.
 
 ## Fix a missing record
 

@@ -270,4 +270,5 @@ What you see | Cause | Fix
 `DecisionError`, code `authentication` | The vault has no key in the slot, or the provider refused it | Fill the slot, or check the key
 `stage` event with `stageWarnings` | A stage returned a result that the stage does not allow | Return only the results in the stage table above
 `session.gate_expired` | A live gate waited longer than `gateTtlMs` | Settle the gate sooner, or raise `gateTtlMs`
-`runTurn`, kind `unsupported` | The profile is `live`, `host` or `decision`, which a turn cannot run | Use `runSession`, `invokeTool` or `runDecision` ([Choosing a modality](/docs/modalities))
+`runTurn`, kind `unsupported` | The profile is `live`, which a turn cannot run | Use `runSession` ([Choosing a modality](/docs/modalities))
+`runTurn`, kind `request` | The profile is `host`, `decision` or `embedding`, which runs no turn | Use `invokeTool`, `runDecision` or `runEmbedding` ([Choosing a modality](/docs/modalities))
