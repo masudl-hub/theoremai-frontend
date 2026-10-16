@@ -47,8 +47,8 @@
 	box-sizing: border-box;
 	flex: 1 1 0;
 	min-height: 0;
-	inline-size: 100%;
-	max-inline-size: 70rem;
+	inline-size: fit-content;
+	max-inline-size: 100%;
 	padding: clamp(0.75rem, 2vw, 1.5rem);
 	border-radius: var(--radius-container);
 	overflow: hidden;
@@ -79,6 +79,7 @@
 	position: relative;
 	z-index: 1;
 	block-size: 100%;
+	inline-size: auto;
 	max-inline-size: 100%;
 	aspect-ratio: 16 / 9;
 	border: 1px solid var(--color-border);
