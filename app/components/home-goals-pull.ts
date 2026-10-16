@@ -35,19 +35,22 @@ function pullGoals(run: HTMLElement, pull: number) {
 	run.style.setProperty('--home-goals-pull', String(pull));
 }
 
-function restGoals(nearest: number, run: HTMLElement) {
+/** Every beat but `nearest` is inert. With no beat (`null`), none is. */
+function setInert(run: HTMLElement, nearest: number | null) {
 	for (const beat of run.querySelectorAll<HTMLElement>('[data-home-beat]')) {
-		beat.toggleAttribute('inert', Number(beat.dataset.homeBeat) !== nearest);
+		beat.toggleAttribute('inert', nearest !== null && Number(beat.dataset.homeBeat) !== nearest);
 	}
+}
+
+function restGoals(nearest: number, run: HTMLElement) {
+	setInert(run, nearest);
 	setGoalBeat(nearest);
 }
 
 function clearGoals(run: HTMLElement) {
 	run.style.removeProperty('--home-goals-pull');
 	run.style.removeProperty('--home-goal-ratio');
-	for (const beat of run.querySelectorAll<HTMLElement>('[data-home-beat]')) {
-		beat.removeAttribute('inert');
-	}
+	setInert(run, null);
 	setGoalBeat(0);
 }
 

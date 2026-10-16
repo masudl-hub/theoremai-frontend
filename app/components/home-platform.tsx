@@ -42,7 +42,7 @@ export function HomePlatform({ scrollRoot }: { scrollRoot: RefObject<HTMLDivElem
 							<Tab key={each.id} value={each.id} label={each.label} />
 						))}
 					</TabList>
-					<Text className="home-platform-text">
+					<Text className="home-platform-text" justify="center">
 						Lorem ipsum dolor sit amet consectetur adipiscing elit illum voluptatum veniam aut
 						libero in est dignissimos nihil dolore animi similique nisi qui voluptas odio expedita
 						sunt non reprehenderit eu.
@@ -57,7 +57,7 @@ export function HomePlatform({ scrollRoot }: { scrollRoot: RefObject<HTMLDivElem
 							fetchPriority="low"
 						/>
 						<div className="home-platform-preview">
-							{tab.id === 'performance' ? (
+							{tab.readouts ? (
 								<div className="home-platform-readouts">
 									<GoalStats />
 								</div>

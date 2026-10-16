@@ -80,22 +80,15 @@ function hashFor(screen: LandingScreen): string {
 	return `#${screen}`;
 }
 
-/** The stops of one goal, where they are laid out. A phone and reduced motion have none. */
-function goalStops(scroller: HTMLElement): { screen: GoalId; stop: HTMLElement }[] {
-	const out: { screen: GoalId; stop: HTMLElement }[] = [];
+/** The stops of the screens that pass `isScreen`, where they are laid out. A phone and reduced motion have none. */
+function stopsOf<S extends LandingScreen>(
+	scroller: HTMLElement,
+	isScreen: (id: string) => id is S,
+): { screen: S; stop: HTMLElement }[] {
+	const out: { screen: S; stop: HTMLElement }[] = [];
 	for (const stop of scroller.querySelectorAll<HTMLElement>('[data-home-stop]')) {
 		const screen = stop.dataset.homeStop ?? '';
-		if (isGoalId(screen) && stop.offsetHeight > 0) out.push({ screen, stop });
-	}
-	return out;
-}
-
-/** The stops of the screen after the goals, one for each tab. */
-function platformStops(scroller: HTMLElement): { screen: PlatformId; stop: HTMLElement }[] {
-	const out: { screen: PlatformId; stop: HTMLElement }[] = [];
-	for (const stop of scroller.querySelectorAll<HTMLElement>('[data-home-stop]')) {
-		const screen = stop.dataset.homeStop ?? '';
-		if (isPlatformId(screen) && stop.offsetHeight > 0) out.push({ screen, stop });
+		if (isScreen(screen) && stop.offsetHeight > 0) out.push({ screen, stop });
 	}
 	return out;
 }
@@ -113,11 +106,9 @@ function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number
 	return [
 		{ screen: 'landing', at: 0 },
 		{ screen: 'overview', at: overviewAt },
-		...goalStops(scroller).map(({ screen, stop }) => ({ screen, at: stop.offsetTop })),
-		...platformStops(scroller).map(({ screen, stop }) => ({
-			screen,
-			at: scrollTopOf(scroller, stop),
-		})),
+		...[...stopsOf(scroller, isGoalId), ...stopsOf(scroller, isPlatformId)].map(
+			({ screen, stop }) => ({ screen, at: scrollTopOf(scroller, stop) }),
+		),
 		{ screen: 'showcase', at: showcase?.offsetTop ?? overviewAt },
 		{ screen: 'contribute', at: contribute?.offsetTop ?? showcase?.offsetTop ?? overviewAt },
 	];
@@ -154,7 +145,7 @@ function scrollToLandingScreen(scroller: HTMLElement, screen: LandingScreen) {
 		return;
 	}
 	if (isGoalId(screen)) {
-		const first = goalStops(scroller).find((stop) => stop.screen === screen);
+		const first = stopsOf(scroller, isGoalId).find((stop) => stop.screen === screen);
 		if (first) {
 			first.stop.scrollIntoView({ block: 'start' });
 			return;
@@ -166,11 +157,9 @@ function scrollToLandingScreen(scroller: HTMLElement, screen: LandingScreen) {
 		}
 	}
 	if (isPlatformId(screen)) {
-		platformStops(scroller)
+		stopsOf(scroller, isPlatformId)
 			.find((stop) => stop.screen === screen)
-			?.stop.scrollIntoView({
-				block: 'start',
-			});
+			?.stop.scrollIntoView({ block: 'start' });
 		return;
 	}
 	if (screen === 'overview' || isGoalId(screen)) {

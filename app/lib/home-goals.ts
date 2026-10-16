@@ -152,7 +152,7 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 	},
 ];
 
-/** How many beats come with the agent's file. Every beat does now. */
+/** The number of beats. The goal stage fades out as scroll passes it. */
 export const EDITED_BEATS = GOAL_BEATS.length;
 
 export function isGoalId(id: string): id is GoalId {

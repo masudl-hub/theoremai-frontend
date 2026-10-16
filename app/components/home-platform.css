@@ -1,6 +1,8 @@
 /* The screen after the goals. The run is the frame and one screen of travel for each tab. The frame
    stays put; scroll changes the tab, and the still, the text and the preview with it. */
 .home-platform {
+	/* One screen of the run: the frame, or a stop for each tab. */
+	--home-platform-step: calc(100% / (1 + var(--home-platform-stops, 0)));
 	position: relative;
 	height: calc((1 + var(--home-platform-stops, 0)) * 100%);
 }
@@ -9,8 +11,7 @@
 	position: sticky;
 	top: 0;
 	box-sizing: border-box;
-	/* One screen of the run, which is the frame and a stop for each tab. */
-	height: calc(100% / (1 + var(--home-platform-stops, 0)));
+	height: var(--home-platform-step);
 	overflow: hidden;
 }
 
@@ -33,7 +34,6 @@
 	inline-size: 100%;
 	max-inline-size: 40rem;
 	margin-inline: auto;
-	text-align: center;
 }
 
 /* The still is a little larger than the preview, so it shows as a border around it. It takes what
@@ -99,7 +99,7 @@
 }
 
 .home-platform-stop {
-	height: calc(100% / (1 + var(--home-platform-stops, 0)));
+	height: var(--home-platform-step);
 }
 
 /* Reduced motion and a phone have no screen of travel. The frame is a plain block, and a tab is
