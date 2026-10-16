@@ -35,14 +35,6 @@ export function HomePlatform({ scrollRoot }: { scrollRoot: RefObject<HTMLDivElem
 			style={{ '--home-platform-stops': PLATFORM_TABS.length } as CSSProperties}
 		>
 			<div className="home-platform-frame">
-				<img
-					key={tab.id}
-					className="home-platform-still"
-					src={tab.src}
-					alt=""
-					decoding="async"
-					fetchPriority="low"
-				/>
 				<div className="home-platform-card">
 					<TabList className="home-platform-tabs" value={tab.id} onChange={choose}>
 						{PLATFORM_TABS.map((each) => (
@@ -54,7 +46,17 @@ export function HomePlatform({ scrollRoot }: { scrollRoot: RefObject<HTMLDivElem
 						libero in est dignissimos nihil dolore animi similique nisi qui voluptas odio expedita
 						sunt non reprehenderit eu.
 					</Text>
-					<div className="home-platform-preview" aria-hidden />
+					<div className="home-platform-stage">
+						<img
+							key={tab.id}
+							className="home-platform-still"
+							src={tab.src}
+							alt=""
+							decoding="async"
+							fetchPriority="low"
+						/>
+						<div className="home-platform-preview" aria-hidden />
+					</div>
 				</div>
 			</div>
 			{PLATFORM_TABS.map((each) => (
