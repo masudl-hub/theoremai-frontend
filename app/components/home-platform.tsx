@@ -3,6 +3,7 @@ import { Text } from '@astryxdesign/core/Text';
 import { type CSSProperties, type RefObject, useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { PLATFORM_TABS } from '../lib/home-platform';
+import { GoalStats } from './home-goals-stats';
 import { useScrollStops } from './home-scroll-stops';
 import './home-platform.css';
 
@@ -55,7 +56,13 @@ export function HomePlatform({ scrollRoot }: { scrollRoot: RefObject<HTMLDivElem
 							decoding="async"
 							fetchPriority="low"
 						/>
-						<div className="home-platform-preview" aria-hidden />
+						<div className="home-platform-preview">
+							{tab.id === 'performance' ? (
+								<div className="home-platform-readouts">
+									<GoalStats />
+								</div>
+							) : null}
+						</div>
 					</div>
 				</div>
 			</div>

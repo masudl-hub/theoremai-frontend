@@ -20,7 +20,6 @@ import { EDITED_BEATS, GOAL_BEATS, type GoalToken } from '../lib/home-goals';
 import { ARGUMENT, GOALS } from '../lib/site-pitch';
 import { GoalBlock, goalStackVars, goalTileVars, type PickedTokens } from './home-goals';
 import { useGoalBeat } from './home-goals-beat';
-import { GoalStats } from './home-goals-stats';
 import { HomeIntro } from './home-intro';
 import { StillText, StillTitle } from './still-caption';
 import './home-stage.css';
@@ -179,9 +178,6 @@ function StageCopy() {
 						{GOALS.map((still, index) => (
 							<StillRow key={still.title} still={still} index={index} />
 						))}
-						<div className="home-goal-stats" inert={beat <= EDITED_BEATS} style={EDITED_VARS}>
-							<GoalStats />
-						</div>
 						<div className="home-goal-live" inert={beat < 1}>
 							{loaded ? (
 								<loaded.GoalLive

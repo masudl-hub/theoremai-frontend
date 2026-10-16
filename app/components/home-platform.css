@@ -74,6 +74,17 @@
 	}
 }
 
+/* The performance readouts, laid over the preview's rectangle. */
+.home-platform-readouts {
+	display: grid;
+	align-content: center;
+	gap: var(--spacing-3);
+	block-size: 100%;
+	box-sizing: border-box;
+	padding: var(--spacing-4);
+	container-type: inline-size;
+}
+
 /* A landscape rectangle. */
 .home-platform-preview {
 	position: relative;

@@ -5,7 +5,7 @@
 export const PLATFORM_TABS = [
 	{ id: 'tab-one', label: 'Tab one', src: '/imagery/th30_alpinelake.png' },
 	{ id: 'tab-two', label: 'Tab two', src: '/imagery/th30_arctic.png' },
-	{ id: 'tab-three', label: 'Tab three', src: '/imagery/th30_atoll.png' },
+	{ id: 'performance', label: 'Performance', src: '/imagery/th30_atoll.png' },
 	{ id: 'tab-four', label: 'Tab four', src: '/imagery/th30_autumn.png' },
 	{ id: 'tab-five', label: 'Tab five', src: '/imagery/th30_basaltplanes.png' },
 ] as const;
