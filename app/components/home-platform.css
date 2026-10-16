@@ -34,18 +34,20 @@
 }
 
 .home-platform-card {
+	/* The space above the tabs and below the preview is the same, and the text sits 24px from each. */
+	--home-platform-edge: clamp(1.25rem, 4vh, 2.5rem);
 	box-sizing: border-box;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: clamp(1.25rem, 3vh, 2.25rem);
+	gap: 1.5rem;
 	height: 100%;
-	padding: clamp(1.25rem, 3vh, 2.25rem) clamp(1.25rem, 3vw, 2.75rem);
+	padding: var(--home-platform-edge) clamp(1.25rem, 3vw, 2.75rem);
 	position: relative;
 }
 
 .home-platform-tabs {
-	margin-block-start: clamp(1rem, 5vh, 3.5rem);
+	flex: none;
 }
 
 .home-platform-text {
@@ -54,7 +56,7 @@
 	margin-inline: auto;
 }
 
-/* Takes what the text leaves, so the preview fits the screen. */
+/* Takes what the text leaves, down to the same edge the tabs have above. */
 .home-platform-stage {
 	position: relative;
 	display: grid;
@@ -78,10 +80,10 @@
 	container-type: inline-size;
 }
 
-/* A landscape rectangle, three quarters of the height the stage allows. */
+/* A landscape rectangle, as tall as the stage. */
 .home-platform-preview {
 	position: relative;
-	block-size: 75%;
+	block-size: 100%;
 	inline-size: auto;
 	max-inline-size: 100%;
 	aspect-ratio: 16 / 9;
