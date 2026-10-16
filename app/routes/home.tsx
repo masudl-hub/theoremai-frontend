@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router';
 import { ContributeBoard } from '../components/contribute/board';
 import { ChapterContext } from '../components/docs/body';
 import { ExamplesBoard } from '../components/examples/board';
+import { HomeMorph } from '../components/home-morph';
 import { HomePlatform } from '../components/home-platform';
 import { scrollTopOf } from '../components/home-scroll-stops';
 import { HomeStage } from '../components/home-stage';
@@ -235,6 +236,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 				<HomeStage scrollRoot={scrollRef} />
 			</ChapterContext.Provider>
 			<HomePlatform scrollRoot={scrollRef} />
+			<HomeMorph scrollRoot={scrollRef} />
 			<div className="home-dotted">
 				<section className="home-page" id="showcase" aria-label="Showcase">
 					<ExamplesBoard />

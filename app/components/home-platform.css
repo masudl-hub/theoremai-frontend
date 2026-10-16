@@ -54,7 +54,8 @@
 	overflow: hidden;
 }
 
-/* A new tab fades its still in over the last one. */
+/* Every still is mounted and preloaded. Each one's opacity is set by how far the scroll pull is from
+   its own stop, so neighbours cross as the page moves, and nothing waits on a load. */
 .home-platform-still {
 	position: absolute;
 	inset: 0;
@@ -62,16 +63,7 @@
 	height: 100%;
 	object-fit: cover;
 	z-index: 0;
-	animation: home-platform-still 480ms ease-out both;
-}
-
-@keyframes home-platform-still {
-	from {
-		opacity: 0;
-	}
-	to {
-		opacity: 1;
-	}
+	opacity: clamp(0, 1 - abs(var(--home-platform-pull, 0) - var(--home-platform-index)), 1);
 }
 
 /* The performance readouts, laid over the preview's rectangle. */
@@ -132,5 +124,14 @@
 
 	.home-platform-stop {
 		display: none;
+	}
+
+	/* No pull to cross with, so the tab chosen from the bar shows its still alone. */
+	.home-platform-still {
+		opacity: 0;
+	}
+
+	.home-platform-still[data-active] {
+		opacity: 1;
 	}
 }
