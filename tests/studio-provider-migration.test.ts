@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createKernelScope, defineProfile, defineProvider, googleAdapter } from '@theoremjs/agents';
-import { createMemorySteerInbox } from '@theoremjs/react/server';
+import { createKernelScope, defineProfile, geminiProvider } from '@theoremjs/agents';
+import { createMemoryConversationStore, createMemorySteerInbox } from '@theoremjs/react/server';
 import { studioDemoVault, streamStudioTurn } from '../app/lib/.server/studio-turn.ts';
 
 const env = {
@@ -12,20 +12,12 @@ const env = {
 
 test('demo vault resolves model slots, provider defaults and explicit fallback without crossing providers', () => {
 	const scope = createKernelScope();
-	scope.providers.register(
-		defineProvider({
-			id: 'google',
-			connection: {},
-			keySlot: 'main',
-			fallbackKeySlot: 'overflow',
-			adapter: googleAdapter(),
-		}),
-	);
+	scope.providers.register(geminiProvider, { keySlot: 'main', fallbackKeySlot: 'overflow' });
 	const profile = defineProfile({
 		id: 'test',
 		type: 'text',
 		identity: { handle: 'test' },
-		models: { main: { provider: 'google', apiId: 'gemini-3.5-flash-lite' } },
+		models: { main: { protocol: 'geminiInteractions', provider: 'gemini', apiId: 'gemini-3.5-flash-lite' } },
 		inputs: { text: true },
 		tools: { allow: [] },
 	});
@@ -49,7 +41,7 @@ test('demo vault resolves model slots, provider defaults and explicit fallback w
 			...profile,
 			models: {
 				main: { ...profile.models.main, keySlot: 'shared' },
-				other: { provider: 'openrouter', apiId: 'openrouter/free', keySlot: 'shared' },
+				other: { protocol: 'openRouter', provider: 'openrouter', apiId: 'openrouter/free', keySlot: 'shared' },
 			},
 		}),
 		{ shared: undefined },
@@ -65,7 +57,6 @@ test('server studio runs a registered OpenRouter provider using the demo vault',
 		assert.equal(request.headers.get('authorization'), 'Bearer fixture-router');
 		const body = await request.json();
 		assert.equal(body.model, 'openrouter/free');
-		assert.equal(body.provider.require_parameters, true);
 		calls++;
 		return new Response(
 			`data: ${JSON.stringify({ id: 'fixture-response', model: 'fixture/free', created: 0, object: 'chat.completion.chunk', choices: [{ index: 0, delta: { content: 'Verified.' }, finish_reason: 'stop' }] })}\n\ndata: [DONE]\n\n`,
@@ -79,13 +70,15 @@ test('server studio runs a registered OpenRouter provider using the demo vault',
 					id: 'server-smoke',
 					type: 'text',
 					identity: { handle: 'Smoke' },
-					models: { main: { provider: 'openrouter', apiId: 'openrouter/free', keySlot: 'router' } },
+					models: { main: { protocol: 'openRouter', provider: 'openrouter', apiId: 'openrouter/free', keySlot: 'router' } },
 					inputs: { text: true },
 					tools: { allow: [] },
 				},
 				customTools: [],
 				steer: createMemorySteerInbox(),
-				input: { text: 'Hello' },
+				request: { input: { text: 'Hello' } },
+				conversations: { sessionId: 'server-smoke', store: createMemoryConversationStore() },
+				signal: new AbortController().signal,
 				env,
 			}),
 		);

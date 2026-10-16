@@ -6,7 +6,7 @@ export const DEFAULT_READS: readonly { detector: string; count: number }[] = [
 	{ detector: 'ids', count: 22 },
 	{ detector: 'financial', count: 22 },
 	{ detector: 'network', count: 22 },
-	{ detector: 'credentials', count: 22 },
+	{ detector: 'credentials', count: 28 },
 	{ detector: 'injection', count: 18 },
 	{ detector: 'tool_instructions', count: 6 },
 	{ detector: 'canary_leak', count: 8 },
@@ -18,7 +18,7 @@ export const DEFAULT_READS: readonly { detector: string; count: number }[] = [
 ];
 
 /** How many boundaries there are. */
-export const BOUNDARY_TOTAL = 26;
+export const BOUNDARY_TOTAL = 30;
 
 /** Every detector at every boundary it reads at, with nothing set. */
 export const CHECKS_BY_DEFAULT = DEFAULT_READS.reduce((sum, { count }) => sum + count, 0);

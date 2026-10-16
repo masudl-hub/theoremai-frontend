@@ -122,7 +122,7 @@ test('an exported chat passes a value per slot and its context, and the route it
 	assert.match(files.find((file) => file.path === 'route.ts')?.code ?? '', /context: \(\) => \(\{\}\),/);
 });
 
-test('a local export configures the registered adapter URL and keeps host options to the vault', () => {
+test('a local export registers the local provider at its URL and keeps host options to the vault', () => {
   const draft = setProfileType(createBlankDraft(), 'text', SITE_KEYS);
   draft.identity.agentId = 'local.test';
   draft.identity.handle = 'Local';
@@ -134,7 +134,7 @@ test('a local export configures the registered adapter URL and keeps host option
   const files = exportFiles(workspace, workspace.agents[0]);
   const registration = files.find(file => file.path === 'theorem.ts')?.code ?? '';
   assert.match(registration, /LOCAL_MODEL_URL/);
-  assert.match(registration, /openAIChat/);
+  assert.match(registration, /registerProvider\(localProvider, /);
   assert.ok(registration.includes("replace(/\\/$/, '') + '/v1'"));
   const route = files.find(file => file.path === 'route.ts')?.code ?? '';
   assert.doesNotMatch(route, /local: \{ baseUrl/);

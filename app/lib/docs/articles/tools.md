@@ -1,6 +1,6 @@
 ---
 title: Registering tools
-updated: 2026-10-13
+updated: 2026-10-16
 summary: Give an agent a tool that runs your code or calls a URL, MCP or agent.
 entry: src/kernel/tools/mod.ts
 covers: src/kernel/tools, src/kernel/auth
@@ -17,7 +17,7 @@ A **tool** is code that the model can ask Theorem to run. Register the tool once
 A model cannot run code. It can only ask. In most applications, the code that answers is a loop that you write, and each tool gets its own checks. One tool checks its arguments. A second tool forgets.
 
 Theorem executes client tools through one checked pipeline. A client tool can call a function, URL, MCP server, or agent.
-The provider adapter reports the request. The kernel validates successful model-step termination before it releases pending client calls.
+The model's protocol reports the request. The kernel validates successful model-step termination before it releases pending client calls.
 An incomplete or failed stream cannot authorize those calls. The kernel then applies permissions, argument checks, and result checks.
 
 ```figure

@@ -5,18 +5,22 @@
  * One difference: the live call searches the docs in the visitor's browser, by meaning, and this
  * twin has no browser, so its searchDocs ranks by words alone.
  */
-import { defineProvider, googleAdapter, registerProfile, registerProvider } from '@theoremjs/agents';
+import {
+	geminiInteractions,
+	geminiProvider,
+	registerProfile,
+	registerProvider,
+} from '@theoremjs/agents';
 import { EVAL_JUDGMENT } from '@theoremjs/agents/evals';
 import { registerTh30Tools, th30SystemPrompt } from '../../app/lib/.server/th30.ts';
 
 export const TH30_EVAL = 'th30.eval';
 export const TH30_JUDGE = 'th30.eval.judge';
 
-const google = defineProvider({ id: 'th30-eval-google', connection: {}, keySlot: 'main', adapter: googleAdapter() });
-registerProvider(google);
+const gemini = registerProvider(geminiProvider, { id: 'th30-eval-gemini', keySlot: 'main' });
 
-const MODEL = google.model('gemini-3.5-flash-lite', {
-	providerOptions: { persistViaInteractionId: true },
+const MODEL = gemini.model(geminiInteractions, 'gemini-3.5-flash-lite', {
+	options: { persistViaInteractionId: true },
 	efforts: { normal: 'minimal', low: 'low', medium: 'medium', high: 'high' },
 	defaultEffort: 'normal',
 	allowEffortSelect: true,

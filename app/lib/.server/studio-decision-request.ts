@@ -36,11 +36,12 @@ export const studioDecisionRequestSchema = z.object({
 			.record(
 				name,
 				z.object({
+					protocol: z.literal('systemOne'),
 					provider: z.enum(['typesafe', 'openrouter']),
 					apiId: id,
 					keySlot: slot.optional(),
 					fallbackKeySlot: slot.optional(),
-					providerOptions: z.record(z.string(), z.json()).optional(),
+					options: z.record(z.string(), z.json()).optional(),
 					timeoutMs: z.number().int().min(1).max(limits.timeoutMs).optional(),
 				}),
 			)

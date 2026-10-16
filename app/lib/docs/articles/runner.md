@@ -1,6 +1,6 @@
 ---
 title: Running a turn
-updated: 2026-10-09
+updated: 2026-10-16
 summary: Resolve a registered model, run the profile, save history, and resume a paused tool.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/engine/decision.ts, src/kernel/engine/session, src/kernel/tools/invoke.ts, src/kernel/stages.ts
@@ -22,7 +22,7 @@ A profile describes an agent. A **runner** function runs it. Each type of profil
 - `invokeTool` runs one tool of a `host` profile. It also resumes a tool that a gate paused.
 
 Each model runner resolves the registered provider from the selected binding ([Binding models](/docs/models)).
-The host options supply credentials and optional transport functions. The profile contains no executable adapter.
+The host options supply credentials and optional transport functions. The profile contains no executable code for the model.
 
 A turn can include several model steps. The model requests a tool, reads its result, and produces another response.
 Theorem reports these operations as **events**. Your code can act at five fixed **stages**.
@@ -109,10 +109,9 @@ runTurn(
 
 Each message has a `role` (`user`, `assistant`, `system` or `tool`) and its `content`.
 
-The checkpoint contains native state for the adapter. Portable history remains necessary for recovery.
-The kernel checks provider identity, model identity, deployment, state version, and the covered history prefix.
-On a mismatch, it rebuilds from portable history and emits `provider_warning` by default.
-Set `providerContinuation: { onMismatch: 'error' }` to reject the mismatch instead.
+The checkpoint contains native state for the protocol. Portable history remains necessary for recovery.
+The kernel checks the protocol, provider, model, connection, key slot, state version, and the covered history prefix.
+On a mismatch, it rebuilds from portable history and emits `provider_warning` with code `provider_state_rebuilt`.
 Set the profile's `providerContinuation: { history: 'provider' }` to send the checkpoint alone. A request that also carries history is then a mismatch. With `'stateless'`, a request that carries history or a checkpoint is refused, and completion carries no checkpoint.
 Google persistence uses this same checkpoint boundary ([Binding models](/docs/models)).
 

@@ -39,7 +39,7 @@ export type { StudioTurnEnv };
  */
 function siteKey(env: StudioTurnEnv, provider: string, rank: 0 | 1): string | undefined {
 	const keys =
-		provider === 'google'
+		provider === 'gemini'
 			? [env.GEMINI_API_KEY_FREE_A, env.GEMINI_API_KEY_FREE_B, env.GEMINI_API_KEY_FREE_C]
 			: provider === 'openrouter'
 				? [env.OPENROUTER_API_KEY]

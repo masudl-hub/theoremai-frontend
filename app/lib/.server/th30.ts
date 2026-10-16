@@ -5,8 +5,7 @@
  */
 import {
 	defineProfile,
-	defineProvider,
-	googleAdapter,
+	geminiProvider,
 	registerProfile,
 	registerProvider,
 	registerTool,
@@ -354,7 +353,8 @@ When you point at something on the page, call highlight with it. Never claim you
 
 /** Th30 runs on free keys, so it holds to the Google preset's free-tier rules. */
 const TH30_MODEL = {
-	provider: 'google',
+	protocol: 'geminiLive',
+	provider: 'gemini',
 	apiId: 'gemini-3.8-live',
 	maxOutputTokens: 2048,
 } as const;
@@ -363,15 +363,7 @@ export function ensureTh30ProfileRegistered(): void {
 	const violation = googleBindingViolation(TH30_MODEL, { freeTier: true });
 	if (violation) throw new Error(`th30: ${violation.message}`);
 	registerTh30Tools();
-	registerProvider(
-		defineProvider({
-			id: 'google',
-			connection: {},
-			keySlot: 'main',
-			fallbackKeySlot: 'overflow',
-			adapter: googleAdapter(),
-		}),
-	);
+	registerProvider(geminiProvider, { keySlot: 'main', fallbackKeySlot: 'overflow' });
 
 	const profile = defineProfile({
 		type: 'live',

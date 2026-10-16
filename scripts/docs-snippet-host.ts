@@ -59,7 +59,9 @@ export const base: {
 		type: 'text',
 		id: 'snippet.text',
 		identity: { handle: 'snippet', system: 'You help.' },
-		models: { main: { provider: 'openrouter', apiId: 'openrouter/free', keySlot: 'openrouter' } },
+		models: {
+			main: { protocol: 'openRouter', provider: 'openrouter', apiId: 'openrouter/free', keySlot: 'openrouter' },
+		},
 		tools: { allow: [] },
 		inputs: {},
 	},
@@ -69,9 +71,10 @@ export const base: {
 		identity: { handle: 'snippet', system: 'Draw.' },
 		models: {
 			main: {
-				provider: 'google',
+				protocol: 'geminiInteractions',
+				provider: 'gemini',
 				apiId: 'gemini-2.5-flash-image',
-				keySlot: 'google',
+				keySlot: 'gemini',
 			},
 		},
 		tools: { allow: [] },
@@ -84,9 +87,10 @@ export const base: {
 		identity: { handle: 'snippet' },
 		models: {
 			main: {
-				provider: 'google',
+				protocol: 'geminiInteractions',
+				provider: 'gemini',
 				apiId: 'gemini-3.1-flash-tts-preview',
-				keySlot: 'google',
+				keySlot: 'gemini',
 			},
 		},
 		speech: {},
@@ -95,7 +99,9 @@ export const base: {
 		type: 'live',
 		id: 'snippet.live',
 		identity: { handle: 'snippet', system: 'You talk.' },
-		models: { main: { provider: 'google', apiId: 'gemini-3.1-flash-live-preview', keySlot: 'google' } },
+		models: {
+			main: { protocol: 'geminiLive', provider: 'gemini', apiId: 'gemini-3.1-flash-live-preview', keySlot: 'gemini' },
+		},
 		tools: { allow: [] },
 		live: {},
 	},
@@ -103,7 +109,7 @@ export const base: {
 		type: 'decision',
 		id: 'snippet.decision',
 		identity: { handle: 'snippet' },
-		models: { jev: { provider: 'typesafe', apiId: 'jev-latest', keySlot: 'typesafe' } },
+		models: { jev: { protocol: 'systemOne', provider: 'typesafe', apiId: 'jev-latest', keySlot: 'typesafe' } },
 		inputs: { state: 'json' },
 		decision: { contract: 'snippet.v1' },
 	},

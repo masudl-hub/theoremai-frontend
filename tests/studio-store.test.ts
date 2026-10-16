@@ -64,7 +64,7 @@ test('an agent kept with a field of another type is set aside', () => {
 	sessionStorage.clear();
 });
 
-test('a draft kept by the one-agent studio opens as a workspace holding it', () => {
+test('a draft kept by the one-agent studio opens as a workspace holding it, without its conversation', () => {
 	const draft = createExampleDraft();
 	keepV1(draft);
 	sessionStorage.setItem('theorem.studio.v1.chat', JSON.stringify({ blocks: [], session: {} }));
@@ -77,7 +77,8 @@ test('a draft kept by the one-agent studio opens as a workspace holding it', () 
 	assert.equal(agent?.identity.agentId, 'travel.concierge');
 	assert.deepEqual(agent.tools.allow, draft.toolSpecs.map((tool) => tool.key));
 	assert.equal(workspace.selected, agentNodeId(agent.key, 'models'));
-	assert.ok(restoreConversation(agent.key));
+	assert.equal(restoreConversation(agent.key, 'page'), undefined);
+	assert.equal(sessionStorage.getItem('theorem.studio.v1.chat'), null);
 	assert.equal(sessionStorage.getItem(V1_KEY), null);
 	sessionStorage.clear();
 });
@@ -120,11 +121,11 @@ test('a library tool keeps the agent that was open', () => {
 });
 
 test('each agent keeps a conversation of its own', () => {
-	saveConversation('a', { blocks: [], session: { id: 'a' } } as never);
-	saveConversation('b', { blocks: [], session: { id: 'b' } } as never);
+	saveConversation('a', 'page', 'ref-a');
+	saveConversation('b', 'page', 'ref-b');
 	clearConversation('a');
-	assert.equal(restoreConversation('a'), undefined);
-	assert.ok(restoreConversation('b'));
+	assert.equal(restoreConversation('a', 'page'), undefined);
+	assert.equal(restoreConversation('b', 'page'), 'ref-b');
 	clearConversation();
-	assert.equal(restoreConversation('b'), undefined);
+	assert.equal(restoreConversation('b', 'page'), undefined);
 });

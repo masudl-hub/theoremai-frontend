@@ -101,6 +101,9 @@ function redirectResponse(res: Response, start: number) {
 /** How long a probe waits for the whole response, body included. */
 const TIMEOUT_MS = 10_000;
 
+/** A probe whose address can't be called. */
+const INVALID_URL = { code: 'invalid_url', error: "That isn't a web address the test can call." };
+
 /** Why a probe got no answer, in the test's own words: the caught failure's text stays on the server. */
 function unansweredReason(err: unknown): { code: string; error: string } {
 	const kind = errorKind(err);
@@ -110,9 +113,7 @@ function unansweredReason(err: unknown): { code: string; error: string } {
 			error: "The test doesn't call this address. It calls public web addresses only.",
 		};
 	}
-	if (kind === 'request') {
-		return { code: 'invalid_url', error: "That isn't a web address the test can call." };
-	}
+	if (kind === 'request') return INVALID_URL;
 	if (kind === 'timeout') {
 		return {
 			code: 'network_error',
@@ -402,8 +403,13 @@ async function handleMcpProbe(
 		...signed.headers,
 	};
 
+	const serverUrl = URL.parse(body.serverUrl);
+	if (!serverUrl) {
+		return Response.json({ ok: false, ...INVALID_URL, elapsedMs: elapsedSince(start) });
+	}
+
 	try {
-		const url = withCredentialQuery(new URL(body.serverUrl), signed.query).href;
+		const url = withCredentialQuery(serverUrl, signed.query).href;
 		let lastStatus = 0;
 		let lastProtocolError: McpRpcResponse['error'];
 

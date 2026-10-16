@@ -1,6 +1,6 @@
 ---
 title: Getting started
-updated: 2026-10-10
+updated: 2026-10-16
 summary: Write a profile, run a turn, and see Theorem refuse what it doesn't state.
 entry: src/kernel/engine/runner/mod.ts
 covers: mod.ts, src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -107,24 +107,30 @@ The five fields from `category` to `permission` describe the tool to Theorem. [R
 
 This profile is a text agent with one model. `tools.allow` names the one tool that the model can call.
 
-`registerProvider` tells Theorem how to reach OpenRouter, the server that runs the model. `defineProfile` checks the profile. `registerProfile` stores it under its `id`, so that a request can name it. An `id` can have at most 64 characters. Register the provider first, because the profile names it.
+`registerProvider` tells Theorem how to reach OpenRouter, the service that runs the model. `defineProfile` checks the profile. `registerProfile` stores it under its `id`, so that a request can name it. An `id` can have at most 64 characters. Register the provider first, because the profile names it.
+The binding under `models` names the protocol, the provider and the model ([Binding models](/docs/models)).
 
 ```ts
 import {
 	defineProfile,
-	openRouterAdapter,
+	openRouterProvider,
 	registerProfile,
 	registerProvider,
 } from '@theoremjs/agents';
 
-registerProvider({ id: 'openrouter', connection: {}, adapter: openRouterAdapter() });
+registerProvider(openRouterProvider);
 
 const desk = defineProfile({
 	type: 'text',
 	id: 'harbor.desk',
 	identity: { handle: 'desk', system: 'You are the Harbor front desk. Answer in short sentences.' },
 	models: {
-		main: { provider: 'openrouter', apiId: 'openrouter/free', keySlot: 'openrouter' },
+		main: {
+			protocol: 'openRouter',
+			provider: 'openrouter',
+			apiId: 'openrouter/free',
+			keySlot: 'openrouter',
+		},
 	},
 	tools: { allow: ['harbor_holdStatus'] },
 	inputs: { text: true },

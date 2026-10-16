@@ -61,7 +61,13 @@ export class StudioSteerInbox extends DurableObject {
 
 /** The `SteerInbox` over the `STEER_INBOX` binding: each inbox id names its own object. */
 export function studioSteerInbox(namespace: DurableObjectNamespace<StudioSteerInbox>): SteerInbox {
-	const inbox = (inboxId: string) => namespace.get(namespace.idFromName(inboxId));
+	// why: the stub type workers derive from the class walks the steer's JSON (a reasoning part's data)
+	// past TypeScript's depth limit, so the calls are named from the class instead.
+	const inbox = (inboxId: string) =>
+		namespace.get(namespace.idFromName(inboxId)) as unknown as Pick<
+			StudioSteerInbox,
+			'open' | 'enqueue' | 'consume' | 'close'
+		>;
 	return {
 		open: (inboxId) => inbox(inboxId).open(),
 		enqueue: (inboxId, unit) => inbox(inboxId).enqueue(unit),

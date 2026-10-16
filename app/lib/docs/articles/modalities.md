@@ -1,7 +1,7 @@
 ---
 title: Choosing a modality
-updated: 2026-10-09
-summary: Pick the profile type: text, image, speech, live, decision or host.
+updated: 2026-10-16
+summary: Pick the profile type: text, image, speech, live, decision, embedding or host.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/profiles.ts, src/kernel/schema.ts
 cover: /imagery/th30_dyevats.png
@@ -10,12 +10,11 @@ coverPosition: 44% 82%
 suggest: 2
 ---
 
-Choose what kind of agent you build. The **type** of a profile is its modality: text, image, speech, live, decision or host.
+Choose what kind of agent you build. The **type** of a profile is its modality: text, image, speech, live, decision, embedding or host.
 
 ## The idea
 
-The type selects the runner and permitted profile fields. The registered adapter must provide the required model operation.
-Its capability declaration restricts profile types and request features ([Binding models](/docs/models)).
+The type selects the runner and permitted profile fields. Each model's protocol must have an endpoint for the type ([Binding models](/docs/models)).
 
 The type decides two things:
 
@@ -26,7 +25,7 @@ The type decides two things:
 
 ## Pick a type
 
-Harbor, the freight company in this guide, uses all six types. Each row is one job and the agent that does it.
+Harbor, the freight company in this guide, uses all seven types. Each row is one job and the agent that does it.
 
 The agent must | Type | Run it with | At Harbor
 --- | --- | --- | ---
@@ -35,13 +34,14 @@ Return a picture | `image` | `runTurn` | The label artist
 Read a transcript aloud | `speech` | `runTurn` | The dock announcer
 Hold a realtime voice or video call | `live` | `runSession` | The phone line
 Answer typed questions about JSON state | `decision` | `runDecision` | The router
+Create vectors for text or media | `embedding` | `runEmbedding` | The search index
 Run your tools with no model | `host` | `invokeTool` | The toolbox
 
-Start with `text` for turn-based conversation. First-party or external adapters can provide the required model operation.
-Registration checks the adapter's declared profile types.
+Start with `text` for turn-based conversation.
+Registration checks that each model's protocol has an endpoint for the profile type.
 
 ```note
-Every example on this page sets `keySlot` on its model. That field names the vault slot that holds the provider key. The examples assume that the provider is registered ([Binding models](/docs/models)).
+Every example on this page sets `protocol` and `keySlot` on its model. `protocol` names the API shape that the model uses. That field names the vault slot that holds the provider key. The examples assume that the provider is registered ([Binding models](/docs/models)).
 ```
 
 ## Text
@@ -50,7 +50,7 @@ The Harbor front desk answers questions and looks up shipments. Use `text` for a
 
 - Must set: `identity`, `models`, `tools` and `inputs`.
 - Can set: `outputs` and `turnBehaviour`.
-- Shipped adapters: `openRouterAdapter`, `googleAdapter` or `openAIChat`.
+- First-party protocols: `openRouter`, `geminiInteractions` or `openAi`.
 
 ```ts frame=statements
 const desk = defineProfile({
@@ -58,7 +58,12 @@ const desk = defineProfile({
 	id: 'harbor.desk',
 	identity: { handle: 'desk', system: 'You are the Harbor front desk.' },
 	models: {
-		main: { provider: 'openrouter', apiId: 'openrouter/free', keySlot: 'openrouter' },
+		main: {
+			protocol: 'openRouter',
+			provider: 'openrouter',
+			apiId: 'openrouter/free',
+			keySlot: 'openrouter',
+		},
 	},
 	tools: { allow: [] },
 	inputs: {},
@@ -71,7 +76,7 @@ The label artist draws the art for a shipping label. Use `image` for an agent th
 
 - Must set: the same fields as `text`, plus `image`.
 - Cannot set: `inputs.voice`, `outputs.structured` or `turnBehaviour.allowSteering`.
-- Shipped adapters: `openRouterAdapter` or `googleAdapter`.
+- First-party protocols: `openRouterImages` or `geminiInteractions`.
 
 ```ts frame=statements
 const illustrator = defineProfile({
@@ -80,9 +85,10 @@ const illustrator = defineProfile({
 	identity: { handle: 'label', system: 'Draw clear shipping-label art.' },
 	models: {
 		main: {
-			provider: 'google',
+			protocol: 'geminiInteractions',
+			provider: 'gemini',
 			apiId: 'gemini-2.5-flash-image',
-			keySlot: 'google',
+			keySlot: 'gemini',
 		},
 	},
 	tools: { allow: [] },
@@ -97,6 +103,7 @@ The dock announcer reads a notice to the dock. Use `speech` to read a transcript
 
 - Must set: `identity` with a `handle` only, `models` and `speech`.
 - Cannot set: `identity.system`, `tools` or `inputs`.
+- First-party protocols: `openRouter`, `geminiInteractions` or `openAi`.
 - Canary: Theorem adds no canary to a speech profile, because it has no system prompt.
 
 `speech.format` is `pcm` or `mp3`. `pcm` is delivered as WAV. `mp3` needs a model that can make it, such as an OpenRouter model.
@@ -108,9 +115,10 @@ const announcer = defineProfile({
 	identity: { handle: 'announce' },
 	models: {
 		main: {
-			provider: 'google',
+			protocol: 'geminiInteractions',
+			provider: 'gemini',
 			apiId: 'gemini-3.1-flash-tts-preview',
-			keySlot: 'google',
+			keySlot: 'gemini',
 		},
 	},
 	speech: { voice: 'Kore' },
@@ -123,10 +131,10 @@ The phone line talks with a shipper in real time. Use `live` for a realtime voic
 
 - Must set: `identity`, `models`, `tools` and `live`.
 - Cannot set: `inputs` or `outputs`. `live.ingress` replaces `inputs`.
-- Shipped adapter: `googleAdapter`.
+- First-party protocol: `geminiLive`.
 
 If you omit an ingress channel, audio and video default to on. Text defaults to off.
-At least one channel must be on. The adapter must declare the selected input kinds and audio output.
+At least one channel must be on.
 
 Use `live.sessionResumption` in place of `turnBehaviour.resumption`. Use `live.contextCompression` in place of model `compaction`.
 
@@ -136,7 +144,12 @@ const line = defineProfile({
 	id: 'harbor.line',
 	identity: { handle: 'line', system: 'You are on a live call with a Harbor shipper.' },
 	models: {
-		main: { provider: 'google', apiId: 'gemini-3.1-flash-live-preview', keySlot: 'google' },
+		main: {
+			protocol: 'geminiLive',
+			provider: 'gemini',
+			apiId: 'gemini-3.1-flash-live-preview',
+			keySlot: 'gemini',
+		},
 	},
 	tools: { allow: [] },
 	live: {
@@ -152,7 +165,7 @@ The router decides which dock takes a shipment. Use `decision` to get typed answ
 
 - Must set: `identity` with a `handle` only, one model, `inputs.state: "json"` and `decision.contract`.
 - Cannot set: `identity.system`, `tools`, `outputs` or `turnBehaviour`.
-- Shipped adapters: `typesafeAdapter` or `openRouterAdapter`.
+- First-party protocol: `systemOne`, served by the TypeSafe and OpenRouter providers.
 
 The contract is your own id for the decision. Theorem records it on the trace and does not send it to the model. The questions and the state travel on the `runDecision` request ([Running a turn](/docs/runner)).
 
@@ -162,10 +175,40 @@ const router = defineProfile({
 	id: 'harbor.route',
 	identity: { handle: 'route' },
 	models: {
-		jev: { provider: 'typesafe', apiId: 'jev-latest', keySlot: 'typesafe' },
+		jev: { protocol: 'systemOne', provider: 'typesafe', apiId: 'jev-latest', keySlot: 'typesafe' },
 	},
 	inputs: { state: 'json' },
 	decision: { contract: 'harbor.route.v1' },
+})
+```
+
+## Embedding
+
+Use `embedding` when your application needs vectors for text or media. Run it with `runEmbedding`.
+
+- Must set: `identity`, `models` and `inputs`.
+- Cannot set: `identity.system`, `tools`, `outputs` or `turnBehaviour`.
+- First-party protocols: `geminiEmbedding` or `openRouterEmbedding`.
+
+The profile keeps input and output details in the provider protocol. The kernel returns normalized vectors.
+
+```ts frame=statements
+const searchIndex = defineProfile({
+	type: 'embedding',
+	id: 'harbor.search',
+	identity: { handle: 'search' },
+	models: {
+		main: {
+			protocol: 'geminiEmbedding',
+			provider: 'gemini',
+			apiId: 'gemini-embedding-2-preview',
+			keySlot: 'gemini',
+		},
+	},
+	inputs: {
+		text: true,
+		attachments: { accept: ['image', 'audio', 'video', 'document'] },
+	},
 })
 ```
 
