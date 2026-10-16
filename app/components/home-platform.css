@@ -1,16 +1,13 @@
 /* The screen after the goals. The run is the frame and one screen of travel for each tab. The frame
-   stays put; scroll changes the tab, and the text and the preview with it. The dots run behind the
-   whole screen, bottom-anchored, so they meet the showcase's field, which is top-anchored, with no
-   seam: both grids share the same tile size and the boundary is a whole number of tiles from each. */
+   stays put; scroll changes the tab, and the text and the preview with it. The dots are on the frame,
+   bottom-anchored, and fade out going up. At the end of the run the frame's bottom edge is the
+   showcase's top edge, and the showcase's dots are full there too, so they meet with no seam. */
 .home-platform {
 	/* One screen of the run: the frame, or a stop for each tab. */
 	--home-platform-step: calc(100% / (1 + var(--home-platform-stops, 0)));
 	position: relative;
 	height: calc((1 + var(--home-platform-stops, 0)) * 100%);
 	background-color: var(--color-background-surface);
-	background-image: radial-gradient(circle, var(--color-border) 1px, transparent 1px);
-	background-size: var(--spacing-6) var(--spacing-6);
-	background-position: 0 100%;
 }
 
 .home-platform-frame {
@@ -19,6 +16,12 @@
 	box-sizing: border-box;
 	height: var(--home-platform-step);
 	overflow: hidden;
+	background-color: var(--color-background-surface);
+	background-image: radial-gradient(circle, var(--color-border) 1px, transparent 1px);
+	background-size: var(--spacing-6) var(--spacing-6);
+	background-position: 0 100%;
+	/* Full at the bottom edge, gone by 80% of the way up. */
+	mask-image: linear-gradient(to top, #000 0%, transparent 80%);
 }
 
 .home-platform-card {
