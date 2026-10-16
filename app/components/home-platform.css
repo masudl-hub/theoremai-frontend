@@ -20,8 +20,8 @@
 	background-image: radial-gradient(circle, var(--color-border) 1px, transparent 1px);
 	background-size: var(--spacing-6) var(--spacing-6);
 	background-position: 0 100%;
-	/* Full at the bottom edge, gone by 80% of the way up. */
-	mask-image: linear-gradient(to top, #000 0%, transparent 80%);
+	/* Full at the bottom edge, gone by 20% of the way up. */
+	mask-image: linear-gradient(to top, #000 0%, transparent 20%);
 }
 
 .home-platform-card {
