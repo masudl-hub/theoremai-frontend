@@ -16,12 +16,21 @@
 	box-sizing: border-box;
 	height: var(--home-platform-step);
 	overflow: hidden;
+}
+
+/* The dots are their own layer, so the fade is on them alone and not on the text and tabs. Full at
+   the bottom edge, gone by 20% of the way up. */
+.home-platform-frame::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: -1;
 	background-color: var(--color-background-surface);
 	background-image: radial-gradient(circle, var(--color-border) 1px, transparent 1px);
 	background-size: var(--spacing-6) var(--spacing-6);
 	background-position: 0 100%;
-	/* Full at the bottom edge, gone by 20% of the way up. */
 	mask-image: linear-gradient(to top, #000 0%, transparent 20%);
+	pointer-events: none;
 }
 
 .home-platform-card {
