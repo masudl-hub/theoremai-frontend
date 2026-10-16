@@ -33,25 +33,7 @@ function platformStage(scroller: HTMLElement, src: string): Picture | null {
 	return pictureOf(scroller.querySelector<HTMLElement>('.home-platform-stage'), src);
 }
 
-/** The last goal tile is the one the goals scroll on into the platform. */
-function lastGoalTile(scroller: HTMLElement): Picture | null {
-	const tiles = scroller.querySelectorAll<HTMLElement>(
-		'.home-stage-stills .home-stage-still-media',
-	);
-	const tile = tiles[tiles.length - 1];
-	return pictureOf(tile, tile?.querySelector('img')?.src);
-}
-
 const MORPHS: Morph[] = [
-	// The last goal tile grows into the platform's stage as the platform scrolls up under it.
-	{
-		from: lastGoalTile,
-		to: (scroller) => platformStage(scroller, PLATFORM_TABS[0].src),
-		progress: (scroller) => {
-			const screen = scroller.querySelector<HTMLElement>('.home-platform');
-			return screen ? across(screen.getBoundingClientRect().top, window.innerHeight) : 0;
-		},
-	},
 	// The platform's last still shrinks into the first showcase card as the showcase comes up.
 	{
 		from: (scroller) => platformStage(scroller, PLATFORM_TABS[PLATFORM_TABS.length - 1].src),
@@ -69,7 +51,7 @@ const MORPHS: Morph[] = [
 const STATIC_QUERY = '(width < 768px), (prefers-reduced-motion: reduce)';
 
 /**
- * The overlay for the morphs. It is fixed over the page and moves between the two pictures from the
+ * The overlay for the morph. It is fixed over the page and moves between the two pictures from the
  * scroll. Nothing is in it while the page is at rest, so the real pictures show as they always do.
  */
 export function HomeMorph({ scrollRoot }: { scrollRoot: RefObject<HTMLDivElement | null> }) {

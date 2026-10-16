@@ -7,13 +7,23 @@ import { GoalStats } from './home-goals-stats';
 import { useScrollStops } from './home-scroll-stops';
 import './home-platform.css';
 
-/** The stills cross as the scroll pull moves between stops, so each is at its own stop's index. */
+/**
+ * The stills cross as the scroll pull moves between stops, so each is at its own stop's index. The
+ * dots start to come up into the bottom of the frame on the last tab, where the showcase's field
+ * begins.
+ */
 function pullPlatform(run: HTMLElement, pull: number) {
 	run.style.setProperty('--home-platform-pull', String(pull));
+	const last = PLATFORM_TABS.length - 1;
+	run.style.setProperty(
+		'--home-platform-dots',
+		String(Math.min(1, Math.max(0, pull - (last - 1)))),
+	);
 }
 
 function clearPlatform(run: HTMLElement) {
 	run.style.removeProperty('--home-platform-pull');
+	run.style.removeProperty('--home-platform-dots');
 }
 
 /**

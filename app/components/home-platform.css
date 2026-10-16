@@ -15,6 +15,26 @@
 	overflow: hidden;
 }
 
+/* The showcase's field of dots, coming up from below into the bottom of the frame. It is the same
+   field as `.home-dotted`, so the two meet with no seam. */
+.home-platform-frame::after {
+	content: "";
+	position: absolute;
+	inset-inline: 0;
+	bottom: 0;
+	z-index: -1;
+	height: 45%;
+	pointer-events: none;
+	opacity: var(--home-platform-dots, 0);
+	background-color: var(--color-background-surface);
+	background-image:
+		linear-gradient(to bottom, transparent 0%, var(--color-background-surface) 100%),
+		radial-gradient(circle, var(--color-border) 1px, transparent 1px);
+	background-size:
+		100% 100%,
+		var(--spacing-6) var(--spacing-6);
+}
+
 .home-platform-card {
 	box-sizing: border-box;
 	display: flex;
@@ -105,6 +125,10 @@
 		position: relative;
 		height: auto;
 		min-height: 100%;
+	}
+
+	.home-platform-frame::after {
+		display: none;
 	}
 
 	.home-platform-card {
