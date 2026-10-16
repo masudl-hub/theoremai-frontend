@@ -8,27 +8,8 @@ import { useScrollStops } from './home-scroll-stops';
 import './home-platform.css';
 
 /**
- * The stills cross as the scroll pull moves between stops, so each is at its own stop's index. The
- * dots start to come up into the bottom of the frame on the last tab, where the showcase's field
- * begins.
- */
-function pullPlatform(run: HTMLElement, pull: number) {
-	run.style.setProperty('--home-platform-pull', String(pull));
-	const last = PLATFORM_TABS.length - 1;
-	run.style.setProperty(
-		'--home-platform-dots',
-		String(Math.min(1, Math.max(0, pull - (last - 1)))),
-	);
-}
-
-function clearPlatform(run: HTMLElement) {
-	run.style.removeProperty('--home-platform-pull');
-	run.style.removeProperty('--home-platform-dots');
-}
-
-/**
  * The screen after the goals. The page is fixed: scroll moves from one tab to the next, and the
- * tab bar, the text, the preview and the still behind it change with the tab.
+ * tab bar, the text and the preview change with the tab.
  */
 export function HomePlatform({ scrollRoot }: { scrollRoot: RefObject<HTMLDivElement | null> }) {
 	const runRef = useRef<HTMLElement>(null);
@@ -37,15 +18,7 @@ export function HomePlatform({ scrollRoot }: { scrollRoot: RefObject<HTMLDivElem
 	const onRest = useCallback((next: number) => {
 		setIndex(next);
 	}, []);
-	useScrollStops({
-		scrollRoot,
-		runRef,
-		stop: 'home-platform-stop',
-		lead: false,
-		onPull: pullPlatform,
-		onRest,
-		onClear: clearPlatform,
-	});
+	useScrollStops({ scrollRoot, runRef, stop: 'home-platform-stop', lead: false, onRest });
 
 	const tab = PLATFORM_TABS[index];
 	const choose = (id: string) => {
@@ -75,18 +48,6 @@ export function HomePlatform({ scrollRoot }: { scrollRoot: RefObject<HTMLDivElem
 						sunt non reprehenderit eu.
 					</Text>
 					<div className="home-platform-stage">
-						{PLATFORM_TABS.map((each, i) => (
-							<img
-								key={each.id}
-								className="home-platform-still"
-								src={each.src}
-								alt=""
-								decoding="async"
-								fetchPriority="low"
-								data-active={i === index ? '' : undefined}
-								style={{ '--home-platform-index': i } as CSSProperties}
-							/>
-						))}
 						<div className="home-platform-preview">
 							{tab.readouts ? (
 								<div className="home-platform-readouts">
