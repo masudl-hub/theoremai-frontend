@@ -10,6 +10,12 @@ export const PLATFORM_TABS = [
 	{ id: 'tab-five', label: 'Tab five', readouts: false },
 ] as const;
 
+/**
+ * Whether the capabilities screen is on the home page. It is off until the screen is ready to ship:
+ * the screen, its hashes and its stops are all held back while this is false.
+ */
+export const PLATFORM_SHOWN = false;
+
 export type PlatformId = (typeof PLATFORM_TABS)[number]['id'];
 
 export function isPlatformId(id: string): id is PlatformId {

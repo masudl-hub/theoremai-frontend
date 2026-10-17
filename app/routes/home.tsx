@@ -12,7 +12,7 @@ import { homeTerms } from '../lib/.server/home-terms';
 import { SITE_REDIRECTS } from '../lib/docs/articles/chapters';
 import { HOME_DESCRIPTION, homeJsonLd, KERNEL, SITE_NAME } from '../lib/home-content';
 import { type GoalId, isGoalId } from '../lib/home-goals';
-import { isPlatformId, type PlatformId } from '../lib/home-platform';
+import { isPlatformId, PLATFORM_SHOWN, type PlatformId } from '../lib/home-platform';
 import { GOALS, HOME_TAGLINE } from '../lib/site-pitch';
 import type { Route } from './+types/home';
 export function loader({ request }: Route.LoaderArgs) {
@@ -69,7 +69,7 @@ function landingScreen(hash: string): LandingScreen | null {
 	if (id === '' || id === 'landing') return 'landing';
 	if (id === 'overview') return 'overview';
 	if (isGoalId(id)) return id;
-	if (isPlatformId(id)) return id;
+	if (isPlatformId(id)) return PLATFORM_SHOWN ? id : null;
 	if (id === 'showcase' || id === 'examples') return 'showcase';
 	if (id === 'contribute') return 'contribute';
 	return null;
@@ -106,9 +106,10 @@ function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number
 	return [
 		{ screen: 'landing', at: 0 },
 		{ screen: 'overview', at: overviewAt },
-		...[...stopsOf(scroller, isGoalId), ...stopsOf(scroller, isPlatformId)].map(
-			({ screen, stop }) => ({ screen, at: scrollTopOf(scroller, stop) }),
-		),
+		...[
+			...stopsOf(scroller, isGoalId),
+			...(PLATFORM_SHOWN ? stopsOf(scroller, isPlatformId) : []),
+		].map(({ screen, stop }) => ({ screen, at: scrollTopOf(scroller, stop) })),
 		{ screen: 'showcase', at: showcase?.offsetTop ?? overviewAt },
 		{ screen: 'contribute', at: contribute?.offsetTop ?? showcase?.offsetTop ?? overviewAt },
 	];
@@ -234,7 +235,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 			<ChapterContext.Provider value={chapter}>
 				<HomeStage scrollRoot={scrollRef} />
 			</ChapterContext.Provider>
-			<HomePlatform scrollRoot={scrollRef} />
+			{PLATFORM_SHOWN ? <HomePlatform scrollRoot={scrollRef} /> : null}
 			<div className="home-dotted">
 				<section className="home-page" id="showcase" aria-label="Showcase">
 					<ExamplesBoard />
