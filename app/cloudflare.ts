@@ -10,6 +10,8 @@ export type SiteEnv = {
 	GEMINI_API_KEY_FREE_B?: string;
 	GEMINI_API_KEY_FREE_C?: string;
 	OPENROUTER_API_KEY?: string;
+	/** Seals the chats' conversations, so any isolate and any deploy opens a visitor's chat. */
+	CONVERSATION_SEAL_KEY?: string;
 	/** TypeSafe's key for direct studio decisions. */
 	'theoremai.typesafe_api_key'?: string;
 	/** Each day's studio allowances (every request, decisions, host tool calls, voice calls), per visitor address and for the site (`wrangler.jsonc` `durable_objects`). */

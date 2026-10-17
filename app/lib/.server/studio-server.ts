@@ -28,8 +28,9 @@ const ALLOWANCE: Record<StudioSpend, AllowanceKind> = {
 const built = new WeakMap<SiteEnv, StudioDraftHandler>();
 
 /**
- * The handler for `env`. A Worker's isolate keeps one `env`, so its sessions, the chats' sealing
- * key and the in-memory page tool results last as long as the isolate.
+ * The handler for `env`. A Worker's isolate keeps one `env`, so its sessions and the in-memory page
+ * tool results last as long as the isolate; the chats' sealing key is the site's, so every isolate
+ * opens every chat.
  */
 export function studioServer(env: SiteEnv): StudioDraftHandler {
 	let handler = built.get(env);
@@ -48,6 +49,7 @@ export function studioServer(env: SiteEnv): StudioDraftHandler {
 					request,
 				),
 			steer: studioSteerInbox(env.STEER_INBOX),
+			...(env.CONVERSATION_SEAL_KEY ? { conversationKey: env.CONVERSATION_SEAL_KEY } : {}),
 			...(env.PROBE_LOG
 				? { onProbePassed: d1ProbeLog(env.PROBE_LOG, getKernelPackageVersion()) }
 				: {}),
