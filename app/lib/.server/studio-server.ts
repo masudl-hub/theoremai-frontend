@@ -25,15 +25,16 @@ const ALLOWANCE: Record<StudioSpend, AllowanceKind> = {
 	agent: 'request',
 };
 
-const built = new WeakMap<SiteEnv, StudioDraftHandler>();
+let built: StudioDraftHandler | undefined;
 
 /**
- * The handler for `env`. A Worker's isolate keeps one `env`, so its sessions and the in-memory page
- * tool results last as long as the isolate; the chats' sealing key is the site's, so every isolate
- * opens every chat.
+ * The isolate's handler, built from the first request's `env`: every request in an isolate has the
+ * same bindings, but not always the same `env` object (the dev server gives each its own), and a
+ * handler per object would forget each chat and session after one reply. The chats' sealing key is
+ * the site's, so every isolate opens every chat.
  */
 export function studioServer(env: SiteEnv): StudioDraftHandler {
-	let handler = built.get(env);
+	let handler = built;
 	if (!handler) {
 		handler = createStudioDraftHandler({
 			lent: {
@@ -54,7 +55,7 @@ export function studioServer(env: SiteEnv): StudioDraftHandler {
 				? { onProbePassed: d1ProbeLog(env.PROBE_LOG, getKernelPackageVersion()) }
 				: {}),
 		});
-		built.set(env, handler);
+		built = handler;
 	}
 	return handler;
 }
