@@ -9,7 +9,7 @@
 	// A .d.ts beside a .ts of the same name is dropped from `include`. These are the
 	// editor contribution modules, so the file has to be named here to be part of the program.
 	"files": [
-		"node_modules/@theoremjs/studio/ui/code/studio-monaco.d.ts",
+		"node_modules/@theoremjs/studio/ui/code/monaco-contributions.d.ts",
 		"node_modules/@theoremjs/studio/ui/code/studio-type-sources.d.ts"
 	],
 	"compilerOptions": {
