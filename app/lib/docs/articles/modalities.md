@@ -192,6 +192,8 @@ Use `embedding` when your application needs vectors for text or media. Run it wi
 
 Vector size and other model settings go in the binding's `options`, and the protocol checks them. The kernel checks every reply: one vector per input, in input order, with finite values.
 
+For search, set `task` on the request: `document` when you index, `query` when you search. The protocol tells the model which it is. A model that embeds both the same way ignores it.
+
 ```ts frame=statements
 const searchIndex = defineProfile({
 	type: 'embedding',
