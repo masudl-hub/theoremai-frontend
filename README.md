@@ -28,18 +28,19 @@ theoremai-frontend/
     routes/
       home.tsx                  # landing (/), overview (/overview), showcase (/examples)
       docs.tsx / docs.$slug.tsx # composed /docs landing + reader
-      studio.run.tsx        # run host for a compiled studio draft (@theoremjs/react)
-      api.*.ts                  # resource routes → app/lib/.server/api.ts
+      studio.run.tsx            # run host for a compiled studio draft (@theoremjs/react)
+      api.studio.$.ts           # every /api/studio/* request → @theoremjs/studio/server's handler
+      api.*.ts                  # other resource routes → app/lib/.server/api.ts
     lib/
       docs/                     # DocIndex schema, compose, projector (UI + Th30 + .md twins)
       .server/                  # server-only (React Router refuses to ship .server modules to the client)
         api.ts                  # framework-free Request → Response handlers
         live-relay.ts           # Gemini Live WebSocket relay (WebSocketPair)
-        studio-turn.ts      # studio turns and tool calls; the studio trace destination, whose records go back on each run's stream
-        studio-register.ts  # registers a compiled draft's profile, custom tools and structured spec
-        studio-steer.ts     # mid-turn steer inbox
+        studio-server.ts        # the studio's draft handler with the site's policy: lent keys, allowances, steer inbox, probe log
+        studio-turn.ts          # the providers and lent vault a studio draft runs on
+        studio-register.ts      # registers a compiled draft's profile, custom tools and structured spec
+        studio-steer.ts         # mid-turn steer inbox
         th30.ts                 # Th30 site assistant profile
-        test-connection.ts      # SSRF-guarded tool connection test
   scripts/                      # kernel checkout resolution + build-time kernel metadata + docs:compose
 ```
 

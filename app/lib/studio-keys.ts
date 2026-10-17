@@ -143,7 +143,7 @@ function questionViolation(route: ModelRoute, question: DecisionQuestion): strin
 }
 
 /** Span's state is text, or input and output messages. */
-export function decisionStateViolation(
+function stateViolation(
 	route: Pick<ModelRoute, 'definition' | 'apiId' | 'decision'>,
 	state: unknown,
 ): string | null {
@@ -196,6 +196,7 @@ export const SITE_KEYS: LentKeys = {
 		timeoutMs: 30_000,
 	},
 	questionViolation,
+	stateViolation,
 	/**
 	 * The model pages list 131,072, but the free key holds a Live session to about half, so this is
 	 * the site's limit, not the model's.

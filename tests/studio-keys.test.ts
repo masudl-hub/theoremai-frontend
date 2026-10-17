@@ -20,11 +20,14 @@ import {
 	studioNetworkNote,
 	studioTaintNote,
 } from '@theoremjs/studio';
-import { studioDecisionRequestSchema } from '../app/lib/.server/studio-decision-request.ts';
-import { decisionStateViolation, SITE_KEYS } from '../app/lib/studio-keys.ts';
+import { decisionRequestSchema } from '@theoremjs/studio/server';
+import { SITE_KEYS } from '../app/lib/studio-keys.ts';
 import { ON_SITE as ON_SITE_KEYS } from '../app/lib/studio-supplies.ts';
 import { SITE_TOOL_HANDLERS } from '../app/lib/studio-tool-handlers.ts';
 
+
+/** The decide request the site's keys answer. */
+const studioDecisionRequestSchema = decisionRequestSchema(SITE_KEYS.decision);
 
 function issues(draft: StudioDraft): StudioIssue[] {
 	const result = compileStudio(draft, ON_SITE_KEYS);
@@ -115,10 +118,10 @@ test('Span asks Number questions with true and false described', () => {
 
 test("Span's state is text, or input and output messages", () => {
 	const route = spanRoute();
-	assert.equal(decisionStateViolation(route, 'request text'), null);
-	assert.equal(decisionStateViolation(route, { input: 'request', output: 'response' }), null);
+	assert.equal(SITE_KEYS.stateViolation(route, 'request text'), null);
+	assert.equal(SITE_KEYS.stateViolation(route, { input: 'request', output: 'response' }), null);
 	assert.equal(
-		decisionStateViolation(route, {
+		SITE_KEYS.stateViolation(route, {
 			input: [{ role: 'user', content: 'request' }],
 			output: { role: 'assistant', content: 'response' },
 		}),
@@ -133,10 +136,10 @@ test("Span's state is text, or input and output messages", () => {
 		{ input: [{}] },
 		{ output: { role: 'assistant', content: 4 } },
 	])
-		assert.match(decisionStateViolation(route, state) ?? '', /Span state/);
+		assert.match(SITE_KEYS.stateViolation(route, state) ?? '', /Span state/);
 	// Jev takes any JSON state.
 	const jev = { ...route, adapter: 'typesafe', apiId: 'jev-latest' };
-	assert.equal(decisionStateViolation(jev, { unrelated: true }), null);
+	assert.equal(SITE_KEYS.stateViolation(jev, { unrelated: true }), null);
 });
 
 test('a decision that compiles on the site passes the decide request; one over its limits does not compile', () => {

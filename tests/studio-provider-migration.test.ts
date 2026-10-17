@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createKernelScope, defineProfile, geminiProvider } from '@theoremjs/agents';
-import { createMemoryConversationStore, createMemorySteerInbox } from '@theoremjs/react/server';
-import { studioDemoVault, streamStudioTurn } from '../app/lib/.server/studio-turn.ts';
+import { createStudioDraftHandler } from '@theoremjs/studio/server';
+import { studioDemoVault, studioProviders } from '../app/lib/.server/studio-turn.ts';
+import { ON_SITE } from '../app/lib/studio-supplies.ts';
 
 const env = {
 	GEMINI_API_KEY_FREE_A: 'fixture-google-a',
@@ -64,24 +65,33 @@ test('server studio runs a registered OpenRouter provider using the demo vault',
 		);
 	};
 	try {
-		const events = await Array.fromAsync(
-			streamStudioTurn({
-				profile: {
-					id: 'server-smoke',
-					type: 'text',
-					identity: { handle: 'Smoke' },
-					models: { main: { protocol: 'openRouter', provider: 'openrouter', apiId: 'openrouter/free', keySlot: 'router' } },
-					inputs: { text: true },
-					tools: { allow: [] },
-				},
-				customTools: [],
-				steer: createMemorySteerInbox(),
-				request: { input: { text: 'Hello' } },
-				conversations: { sessionId: 'server-smoke', store: createMemoryConversationStore() },
-				signal: new AbortController().signal,
-				env,
+		const handler = createStudioDraftHandler({
+			lent: { ...ON_SITE, hostOptions: (profile) => studioProviders(env, profile) },
+		});
+		const response = await handler(
+			new Request('https://theorem.test/api/studio/turn', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					profile: {
+						id: 'server-smoke',
+						type: 'text',
+						identity: { handle: 'Smoke' },
+						models: {
+							main: { protocol: 'openRouter', provider: 'openrouter', apiId: 'openrouter/free', keySlot: 'router' },
+						},
+						inputs: { text: true },
+						tools: { allow: [] },
+					},
+					customTools: [],
+					input: { text: 'Hello' },
+				}),
 			}),
 		);
+		const events = (await response.text())
+			.trim()
+			.split('\n')
+			.map((line) => JSON.parse(line));
 		assert.equal(calls, 1);
 		assert.equal(
 			events

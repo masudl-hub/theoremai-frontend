@@ -6,21 +6,8 @@ import type {
 	ProviderHostOptions,
 	ProviderRegistry,
 } from '@theoremjs/agents';
-import {
-	rewindStudio,
-	type StudioRuntime,
-	streamStudioCall as sharedCall,
-	streamStudioHostInvoke as sharedHostInvoke,
-	streamStudioInvoke as sharedInvoke,
-	streamStudioTurn as sharedTurn,
-	startStudioConversation,
-	studioConversation,
-} from '@theoremjs/studio/runtime';
 
 export { studioTraces } from '@theoremjs/studio/runtime';
-
-import { ON_SITE } from '../studio-supplies';
-import { resolveHost } from './resolve-host';
 
 type StudioTurnEnv = {
 	GEMINI_API_KEY_FREE_A?: string;
@@ -84,101 +71,4 @@ export function studioProviders(
 	defaults?: Pick<ProviderRegistry, 'get'>,
 ): ProviderHostOptions {
 	return { vault: studioDemoVault(env, profile, defaults) };
-}
-
-/** What a run needs beside its request: the site's keys, and the check each agent call passes first. */
-export type RunHost = {
-	env?: StudioTurnEnv;
-	onAgentCall?: StudioRuntime['onAgentCall'];
-	execution?: StudioRuntime['execution'];
-	pageExecution?: StudioRuntime['pageExecution'];
-};
-
-function runtime({ env = {}, onAgentCall, execution, pageExecution }: RunHost): StudioRuntime {
-	return {
-		...ON_SITE,
-		resolveHost,
-		hostOptions: (profile) => studioProviders(env, profile),
-		onAgentCall,
-		execution,
-		pageExecution,
-	};
-}
-
-export function streamStudioTurn({
-	env,
-	onAgentCall,
-	execution,
-	pageExecution,
-	...args
-}: Omit<Parameters<typeof sharedTurn>[0], 'runtime'> & RunHost) {
-	return sharedTurn({ ...args, runtime: runtime({ env, onAgentCall, execution, pageExecution }) });
-}
-export function streamStudioInvoke({
-	env,
-	onAgentCall,
-	execution,
-	pageExecution,
-	...args
-}: Omit<Parameters<typeof sharedInvoke>[0], 'runtime'> & RunHost) {
-	return sharedInvoke({
-		...args,
-		runtime: runtime({ env, onAgentCall, execution, pageExecution }),
-	});
-}
-export function streamStudioCall({
-	env,
-	onAgentCall,
-	execution,
-	pageExecution,
-	...args
-}: Omit<Parameters<typeof sharedCall>[0], 'runtime'> & RunHost) {
-	return sharedCall({ ...args, runtime: runtime({ env, onAgentCall, execution, pageExecution }) });
-}
-export function streamStudioHostInvoke({
-	env,
-	onAgentCall,
-	execution,
-	pageExecution,
-	...args
-}: Omit<Parameters<typeof sharedHostInvoke>[0], 'runtime'> & RunHost) {
-	return sharedHostInvoke({
-		...args,
-		runtime: runtime({ env, onAgentCall, execution, pageExecution }),
-	});
-}
-
-/** A draft as the conversation reads take it: the run's host in place of its runtime. */
-export type DraftRun = Omit<Parameters<typeof studioConversation>[0], 'runtime'> & RunHost;
-
-function withRuntime({ env, onAgentCall, execution, pageExecution, ...draft }: DraftRun) {
-	return { ...draft, runtime: runtime({ env, onAgentCall, execution, pageExecution }) };
-}
-
-/** The conversation under a ref, as the page draws it. */
-export function readStudioConversation(
-	draft: DraftRun,
-	conversations: Parameters<typeof studioConversation>[1],
-	request: Parameters<typeof studioConversation>[2],
-) {
-	return studioConversation(withRuntime(draft), conversations, request);
-}
-
-/** The conversation cut after one block. */
-export function rewindStudioConversation(
-	draft: DraftRun,
-	conversations: Parameters<typeof rewindStudio>[1],
-	request: Parameters<typeof rewindStudio>[2],
-	signal: AbortSignal,
-) {
-	return rewindStudio(withRuntime(draft), conversations, request, signal);
-}
-
-/** A conversation that opens on blocks the page wrote, read first by the draft's guardrails. */
-export function startStudioChat(
-	draft: DraftRun,
-	conversations: Parameters<typeof startStudioConversation>[1],
-	blocks: Parameters<typeof startStudioConversation>[2],
-) {
-	return startStudioConversation(withRuntime(draft), conversations, blocks);
 }

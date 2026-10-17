@@ -14,7 +14,7 @@ export const PLATFORM_TABS = [
  * Whether the capabilities screen is on the home page. It is off until the screen is ready to ship:
  * the screen, its hashes and its stops are all held back while this is false.
  */
-export const PLATFORM_SHOWN = false;
+export const PLATFORM_SHOWN: boolean = false;
 
 export type PlatformId = (typeof PLATFORM_TABS)[number]['id'];
 
