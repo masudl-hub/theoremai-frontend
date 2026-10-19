@@ -16,9 +16,20 @@ import { z } from 'zod';
 import { getDocIndex } from '../docs/.server/load-index';
 import { formatNavigableForPrompt, readDoc, searchDocs } from '../docs/query';
 import { th30SearchOutput } from '../docs/th30-search';
+import { SHOWCASE_SHOWN } from '../home-content';
 import { resolveSitePath } from '../site-path';
 import { ARGUMENT, GOALS, HOME_TAGLINE } from '../site-pitch';
 import { TH30_PROFILE_ID } from '../th30-id';
+
+/** The pages th30 may open, as its tools and prompt name them. */
+const SITE_PATHS = [
+	'/',
+	'/overview',
+	...(SHOWCASE_SHOWN ? ['/examples'] : []),
+	'/studio',
+	'/studio/run',
+	'/docs',
+].join(', ');
 
 /* -------------------------------------------------------------------------- */
 /* Tool Schemas (Strict Zod Contracts)                                        */
@@ -28,7 +39,7 @@ const NavigateInputSchema = z.object({
 	to: z
 		.string()
 		.describe(
-			'A path on this site: /, /overview, /examples, /studio, /studio/run, /docs, or /docs/<slug>. Optional #<id> scrolls to that element.',
+			`A path on this site: ${SITE_PATHS}, or /docs/<slug>. Optional #<id> scrolls to that element.`,
 		),
 });
 
@@ -340,7 +351,7 @@ Docs live at /docs. Chapters: ${chapters}.
 Type-scoped pins are on modalities (image, speech, live, decision, host). The glossary, the last chapter, lists every field, function, union member, trace record and label, each under its area. Do not invent field copy — read it.
 
 Tools:
-- navigate: { to } — a path on this site: /, /overview, /examples, /studio, /studio/run, /docs, or /docs/<slug>, with an optional #id. Not the open web.
+- navigate: { to } — a path on this site: ${SITE_PATHS}, or /docs/<slug>, with an optional #id. Not the open web.
 - highlight: { target, label? } — focus and mark something already on the page. target is an element id, a docs block id, or the visible words of a heading, link, or button. Not a CSS selector. It fails when nothing matches; say so.
 - read: slug, slug#block, or full_page. Line-numbered markdown from the same projector as the page.
 - searchDocs: { query } — search over titles, sections, fields and examples by meaning and by words, run in the visitor's browser. Ask it the way the visitor did, or in the field's own words; the best answers come first and a nonsense question returns nothing. Each hit has slug and blockId: navigate to /docs/<slug>#<blockId>, or highlight the block when the visitor is already on that chapter, then read it before you answer.

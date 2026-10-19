@@ -10,7 +10,13 @@ import { PageJsonLd } from '../components/page-summary';
 import '../components/home-scroll.css';
 import { homeTerms } from '../lib/.server/home-terms';
 import { SITE_REDIRECTS } from '../lib/docs/articles/chapters';
-import { HOME_DESCRIPTION, homeJsonLd, KERNEL, SITE_NAME } from '../lib/home-content';
+import {
+	HOME_DESCRIPTION,
+	homeJsonLd,
+	KERNEL,
+	SHOWCASE_SHOWN,
+	SITE_NAME,
+} from '../lib/home-content';
 import { type GoalId, isGoalId } from '../lib/home-goals';
 import { isPlatformId, PLATFORM_SHOWN, type PlatformId } from '../lib/home-platform';
 import { GOALS, HOME_TAGLINE } from '../lib/site-pitch';
@@ -71,7 +77,7 @@ function landingScreen(hash: string): LandingScreen | null {
 	if (id === 'source-of-truth') return 'experience';
 	if (isGoalId(id)) return id;
 	if (isPlatformId(id)) return PLATFORM_SHOWN ? id : null;
-	if (id === 'showcase' || id === 'examples') return 'showcase';
+	if (id === 'showcase' || id === 'examples') return SHOWCASE_SHOWN ? 'showcase' : 'contribute';
 	if (id === 'contribute') return 'contribute';
 	return null;
 }
@@ -111,7 +117,7 @@ function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number
 			...stopsOf(scroller, isGoalId),
 			...(PLATFORM_SHOWN ? stopsOf(scroller, isPlatformId) : []),
 		].map(({ screen, stop }) => ({ screen, at: scrollTopOf(scroller, stop) })),
-		{ screen: 'showcase', at: showcase?.offsetTop ?? overviewAt },
+		...(showcase ? [{ screen: 'showcase' as const, at: showcase.offsetTop }] : []),
 		{ screen: 'contribute', at: contribute?.offsetTop ?? showcase?.offsetTop ?? overviewAt },
 	];
 }
@@ -174,7 +180,7 @@ function scrollToLandingScreen(scroller: HTMLElement, screen: LandingScreen) {
 	scroller.querySelector<HTMLElement>(`#${screen}`)?.scrollIntoView({ block: 'start' });
 }
 
-/** Landing (/), then overview (/overview), the three goals, showcase (/examples) and contribute (/contribute). */
+/** Landing (/), then overview (/overview), the goals, showcase (/examples) while it is shown, and contribute (/contribute). */
 export default function Home({ loaderData }: Route.ComponentProps) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const chapter = useMemo(
@@ -237,10 +243,12 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 				<HomeStage scrollRoot={scrollRef} />
 			</ChapterContext.Provider>
 			{PLATFORM_SHOWN ? <HomePlatform scrollRoot={scrollRef} /> : null}
-			<div className="home-dotted">
-				<section className="home-page" id="showcase" aria-label="Showcase">
-					<ExamplesBoard />
-				</section>
+			<div className="home-dotted" data-pages={SHOWCASE_SHOWN ? 2 : 1}>
+				{SHOWCASE_SHOWN ? (
+					<section className="home-page" id="showcase" aria-label="Showcase">
+						<ExamplesBoard />
+					</section>
+				) : null}
 				<section className="home-page" id="contribute" aria-label="Contribute">
 					<ContributeBoard />
 				</section>

@@ -60,6 +60,12 @@ export type ExampleAction =
 	| { kind: 'studio'; href: string }
 	| { kind: 'hosted'; href: string; label: string };
 
+/**
+ * Whether the showcase screen is on the home page. It is off until there are agents worth showing:
+ * the screen, its stop and its mentions are held back, and `#showcase` lands on contribute.
+ */
+export const SHOWCASE_SHOWN: boolean = false;
+
 /** The first cards on the showcase board. Positions live in examples.css. */
 export const EXAMPLES: readonly {
 	id: string;
@@ -161,7 +167,9 @@ export function homeScreens(): readonly HomeScreen[] {
 			text: `${HEADLINE_TEXT} ${ARGUMENT} ${goals}`,
 		},
 		...GOALS.map(({ id, title }) => ({ id, name: title, text: goalText(id) })),
-		{ id: 'showcase', name: 'Showcase', text: `Built with theorem. ${examples}` },
+		...(SHOWCASE_SHOWN
+			? [{ id: 'showcase', name: 'Showcase', text: `Built with theorem. ${examples}` }]
+			: []),
 		{
 			id: 'contribute',
 			name: 'Contribute',
