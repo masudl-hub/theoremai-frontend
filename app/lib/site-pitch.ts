@@ -6,6 +6,12 @@
 export const HOME_TAGLINE =
 	'One typed definition connects your agent’s runtime, interface, and guardrails.';
 
+/** The token over the tagline, and what it says on hover. */
+export const EARLY_DAYS = {
+	label: 'Early days',
+	note: 'Theorem is a personal exploration in its early days. Expect changes, fixes and evolving ideas as the theory is tested.',
+} as const;
+
 export const ARGUMENT =
 	'Your intent belongs in the system itself. Theorem turns what you design into an explicit contract—carried through the interface, the agent, and the rules governing each interaction.';
 

@@ -91,6 +91,27 @@
 	display: none;
 }
 
+/* Scroll writes these on the page every frame, and custom properties inherit: every element
+   under them would be styled again each frame, and the guardrails form has hundreds. The editor
+   and the live pane read none of them, so they stop here. */
+.home-goal-editor-pane,
+.home-goal-live > * {
+	--home-goals-pull: initial;
+	--home-goal-ratio: initial;
+	--home-goal-off: initial;
+	--home-goal-at: initial;
+	--home-goal-in: initial;
+	--home-goal-walk: initial;
+	--home-goal-grow-0: initial;
+	--home-goal-grow-1: initial;
+	--home-goal-grow-2: initial;
+	--home-goal-size-0: initial;
+	--home-goal-size-1: initial;
+	--home-goal-size-2: initial;
+	--home-goal-large: initial;
+	--home-goal-open: initial;
+}
+
 /* The form is the studio's own editor for one section of the profile, in a pane that scrolls. */
 .home-goal-form {
 	overflow: auto;

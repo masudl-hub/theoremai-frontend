@@ -1,8 +1,10 @@
 import { Button } from '@astryxdesign/core/Button';
 import { Heading } from '@astryxdesign/core/Heading';
 import { useClipboard } from '@astryxdesign/core/hooks';
+import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
+import { Token } from '@astryxdesign/core/Token';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
-import { IconCheck, IconCopy } from '@tabler/icons-react';
+import { IconCheck, IconCopy, IconFlask } from '@tabler/icons-react';
 import {
 	type CSSProperties,
 	type ReactNode,
@@ -12,9 +14,9 @@ import {
 	useState,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { KERNEL_INSTALL_CMD } from '../lib/home-content';
+import { INSTALL_COMMANDS } from '../lib/home-content';
 import { SITE_PACKAGES, SITE_SECTIONS } from '../lib/site-nav';
-import { HOME_TAGLINE } from '../lib/site-pitch';
+import { EARLY_DAYS, HOME_TAGLINE } from '../lib/site-pitch';
 import { useHomeGoalsScroll } from './home-goals-pull';
 import { useHomeIntroWordmarkFit } from './home-intro-wordmark-fit';
 import { useHomeIntroScroll } from './home-shell-pull';
@@ -58,19 +60,46 @@ function IntroNavItem({
 	);
 }
 
+/** A package's install command to copy, and the switch between packages; the switch stays put as the command changes length. */
 function InstallCopy() {
 	const { copy, isCopied } = useClipboard({ announce: 'Install command copied' });
+	const [chosen, setChosen] = useState<string>(INSTALL_COMMANDS[0].id);
+	const { command } = INSTALL_COMMANDS.find(({ id }) => id === chosen) ?? INSTALL_COMMANDS[0];
 	return (
-		<Button
-			className="home-intro-install"
-			variant="ghost"
-			size="sm"
-			icon={isCopied ? <IconCheck aria-hidden /> : <IconCopy aria-hidden />}
-			label={isCopied ? 'Copied' : KERNEL_INSTALL_CMD}
-			onClick={() => {
-				void copy(KERNEL_INSTALL_CMD);
-			}}
-		/>
+		<div className="home-intro-install">
+			<Button
+				className="home-intro-install-copy"
+				variant="ghost"
+				size="sm"
+				icon={isCopied ? <IconCheck aria-hidden /> : <IconCopy aria-hidden />}
+				label={isCopied ? 'Copied' : command}
+				onClick={() => {
+					void copy(command);
+				}}
+			/>
+			<SegmentedControl label="Package" size="sm" value={chosen} onChange={setChosen}>
+				{INSTALL_COMMANDS.map(({ id, label }) => (
+					<SegmentedControlItem key={id} value={id} label={label} />
+				))}
+			</SegmentedControl>
+		</div>
+	);
+}
+
+/** Where Theorem stands, over the tagline: early, and changing. */
+function EarlyDays() {
+	const ref = useRef<HTMLSpanElement>(null);
+	return (
+		<span ref={ref} className="home-intro-status">
+			<Token label={EARLY_DAYS.label} size="sm" icon={<IconFlask aria-hidden />} tabIndex={0} />
+			<Tooltip
+				content={EARLY_DAYS.note}
+				placement="end"
+				anchorRef={ref}
+				focusTrigger="always"
+				touchTrigger="tap"
+			/>
+		</span>
 	);
 }
 
@@ -177,6 +206,7 @@ export function HomeIntro({
 						<div className="home-intro-spacer" aria-hidden />
 					</div>
 					<div className="home-intro-bottom">
+						<EarlyDays />
 						<Heading level={2} className="home-intro-tagline" textWrap="balance">
 							{HOME_TAGLINE}
 						</Heading>

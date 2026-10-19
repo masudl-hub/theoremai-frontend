@@ -188,6 +188,26 @@ html[data-shell-move] .home-intro-flight {
 	pointer-events: auto;
 }
 
+.home-intro-install {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-2);
+	min-width: 0;
+}
+
+.home-intro-install-copy {
+	min-width: 0;
+}
+
+/* The early-days token sits on the tagline's left edge, over it. */
+.home-intro-status {
+	position: relative;
+	z-index: 2;
+	align-self: flex-start;
+	margin-inline: var(--home-intro-pad-inline);
+	border-radius: var(--radius-full);
+}
+
 .home-intro-wordmark-track {
 	position: relative;
 	z-index: 1;
@@ -228,6 +248,13 @@ html[data-home-intro-done] .home-intro-pin {
 
 	.home-intro-install-row {
 		grid-column: 1;
+		min-width: 0;
+	}
+
+	/* A phone shows the switch, and the command shortens to fit beside it. */
+	.home-intro-install-copy {
+		flex: 1 1 auto;
+		overflow: hidden;
 	}
 
 	.home-intro-tagline.home-intro-tagline {

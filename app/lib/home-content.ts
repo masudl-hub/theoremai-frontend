@@ -34,7 +34,20 @@ export const KERNEL = {
 
 export const REPO_URL = envString('KERNEL_REPOSITORY') || 'https://github.com/masudl-hub/theoremai';
 export const DISCORD_URL = 'https://discord.gg/X6RQvSWQ58';
-export const KERNEL_INSTALL_CMD = `npm install ${KERNEL_NAME} zod`;
+/** What each package's README says to install, by the name the switcher shows. */
+export const INSTALL_COMMANDS = [
+	{ id: 'agents', label: 'Agents', command: `npm install ${KERNEL_NAME} zod` },
+	{
+		id: 'react',
+		label: 'React',
+		command: `npm install @theoremjs/react ${KERNEL_NAME} zod react react-dom`,
+	},
+	{
+		id: 'studio',
+		label: 'Studio',
+		command: `npm install -D @theoremjs/studio ${KERNEL_NAME} @theoremjs/react`,
+	},
+] as const;
 export const PACKAGE_LINKS = packageLinks(KERNEL_NAME, REPO_URL);
 
 export const HEADLINE = [
@@ -140,7 +153,7 @@ export function homeScreens(): readonly HomeScreen[] {
 		{
 			id: 'landing',
 			name: 'Landing',
-			text: `${HOME_TAGLINE} Install it with ${KERNEL_INSTALL_CMD}. Open the ${SITE_PAGES.map(({ label }) => label).join(' or ')}, or find the package on ${PACKAGE_LINKS.map(({ label }) => label).join(', ')}.`,
+			text: `${HOME_TAGLINE} Install it with ${INSTALL_COMMANDS.map(({ label, command }) => `${command} (${label})`).join(', ')}. Open the ${SITE_PAGES.map(({ label }) => label).join(' or ')}, or find the package on ${PACKAGE_LINKS.map(({ label }) => label).join(', ')}.`,
 		},
 		{
 			id: 'overview',
@@ -171,7 +184,7 @@ export function homeMarkdown(origin: string): string {
 		`> ${HOME_DESCRIPTION}`,
 		'',
 		`- Package: ${KERNEL_NAME} ${KERNEL.version} (${KERNEL.license || 'see repository'})`,
-		`- Install: \`${KERNEL_INSTALL_CMD}\``,
+		...INSTALL_COMMANDS.map(({ label, command }) => `- Install ${label}: \`${command}\``),
 		...PACKAGE_LINKS.map(({ label, href }) => `- ${label}: ${href}`),
 		`- Studio: ${origin}/studio`,
 		`- Docs: ${origin}/docs`,
