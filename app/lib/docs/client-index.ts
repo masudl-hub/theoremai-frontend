@@ -1,24 +1,28 @@
 import type { DocIndex } from './schema';
 
-let remembered: DocIndex | undefined;
+let loaded: DocIndex | undefined;
 let fetching: Promise<DocIndex> | undefined;
 
-/** A docs page has the index in hand; remember it so a search elsewhere does not fetch it again. */
-export function rememberDocIndex(index: DocIndex): void {
-	remembered = index;
+/** The docs index, if this page has fetched it already. */
+export function loadedDocIndex(): DocIndex | undefined {
+	return loaded;
 }
 
-/** The docs index in the browser: the one a docs page loaded, or else the site's own copy of it. */
+/**
+ * The whole docs index in the browser, fetched once from the site's own copy. A docs page carries
+ * only the chapter cards; search, Th30 and the glossary cards read this.
+ */
 export function clientDocIndex(): Promise<DocIndex> {
-	if (remembered) return Promise.resolve(remembered);
+	if (loaded) return Promise.resolve(loaded);
 	fetching ??= fetch('/docs/index.json')
 		.then(async (response) => {
 			if (!response.ok) throw new Error(`docs index: ${String(response.status)}`);
-			const index: DocIndex = await response.json();
-			return index;
-		})
-		.then((index) => {
-			remembered = index;
+			const body: Omit<DocIndex, 'bySlug'> = await response.json();
+			const index: DocIndex = {
+				...body,
+				bySlug: Object.fromEntries(body.articles.map((article) => [article.slug, article])),
+			};
+			loaded = index;
 			return index;
 		})
 		.finally(() => {

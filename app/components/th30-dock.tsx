@@ -38,6 +38,7 @@ import { clientDocIndex } from '../lib/docs/client-index';
 import { searchDocs } from '../lib/docs/query';
 import { highlightBlock, highlightWhenPresent } from '../lib/docs/th30-client';
 import { th30SearchOutput } from '../lib/docs/th30-search';
+import { warmDocsSearch } from '../lib/docs/use-docs-search';
 import { resolveSitePath } from '../lib/site-path';
 import { TH30_PROFILE_ID } from '../lib/th30-id';
 import {
@@ -255,15 +256,6 @@ function useSiteSurface(navigate: NavigateFunction): void {
 
 function textArg(value: unknown): string | undefined {
 	return typeof value === 'string' && value.trim() ? value : undefined;
-}
-
-/** Load the search model while the call connects, so the first question does not wait for it. */
-function warmTh30Search(): void {
-	void Promise.all([clientDocIndex(), import('../lib/docs/semantic')])
-		.then(([index, { warmDocsSearch }]) => {
-			warmDocsSearch(index);
-		})
-		.catch(() => undefined);
 }
 
 /** The docs hits for a question: by meaning when the model loads, by words when it cannot. */
@@ -566,7 +558,8 @@ async function startCall({
 	clientRef.current = client;
 	set.setFailure(null);
 	set.setPhase('connecting');
-	warmTh30Search();
+	// why: the search model loads while the call connects, so the first question does not wait for it.
+	warmDocsSearch();
 	try {
 		await client.connect();
 	} catch (err) {

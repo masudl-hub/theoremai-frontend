@@ -5,16 +5,16 @@ import { TextInput } from '@astryxdesign/core/TextInput';
 import { VStack } from '@astryxdesign/core/VStack';
 import { useState } from 'react';
 import { Link } from 'react-router';
-import type { DocIndex } from '../../lib/docs/schema';
-import { useDocsSearch, warmDocsSearchFor } from '../../lib/docs/use-docs-search';
+import type { DocShell } from '../../lib/docs/schema';
+import { useDocsSearch, warmDocsSearch } from '../../lib/docs/use-docs-search';
 import { DocsFrame } from './reader';
 
-export function DocsNotFound({ index, slug }: { index: DocIndex; slug: string }) {
+export function DocsNotFound({ shell, slug }: { shell: DocShell; slug: string }) {
 	const [query, setQuery] = useState(slug.replace(/-/g, ' '));
-	const hits = useDocsSearch(index, query, 6).results;
+	const hits = useDocsSearch(query, 6).results;
 
 	return (
-		<DocsFrame index={index}>
+		<DocsFrame shell={shell}>
 			<LayoutContent padding={8}>
 				<VStack gap={4}>
 					<Heading level={1}>No /docs/{slug}</Heading>
@@ -25,7 +25,7 @@ export function DocsNotFound({ index, slug }: { index: DocIndex; slug: string })
 						value={query}
 						onChange={setQuery}
 						onFocus={() => {
-							warmDocsSearchFor(index);
+							warmDocsSearch();
 						}}
 						hasClear
 					/>

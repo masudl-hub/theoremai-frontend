@@ -1,6 +1,6 @@
 import { DocsLanding } from '../components/docs/landing';
 import { PageJsonLd } from '../components/page-summary';
-import { getDocIndex } from '../lib/docs/.server/load-index';
+import { getDocShell } from '../lib/docs/.server/load-index';
 import { docsLandingJsonLd } from '../lib/docs/machine';
 import { SITE_NAME } from '../lib/home-content';
 import type { Route } from './+types/docs';
@@ -23,14 +23,14 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export function loader({ request }: Route.LoaderArgs) {
-	return { index: getDocIndex(), origin: new URL(request.url).origin };
+	return { shell: getDocShell(), origin: new URL(request.url).origin };
 }
 
 export default function DocsLandingPage({ loaderData }: Route.ComponentProps) {
 	return (
 		<>
-			<PageJsonLd data={docsLandingJsonLd(loaderData.index, loaderData.origin)} />
-			<DocsLanding index={loaderData.index} />
+			<PageJsonLd data={docsLandingJsonLd(loaderData.shell, loaderData.origin)} />
+			<DocsLanding shell={loaderData.shell} />
 		</>
 	);
 }

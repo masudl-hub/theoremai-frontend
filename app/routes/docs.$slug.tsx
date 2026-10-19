@@ -2,7 +2,7 @@ import { data, redirect } from 'react-router';
 import { DocsNotFound } from '../components/docs/not-found';
 import { DocsReader } from '../components/docs/reader';
 import { PageJsonLd } from '../components/page-summary';
-import { getDocIndex } from '../lib/docs/.server/load-index';
+import { getDocIndex, getDocShell } from '../lib/docs/.server/load-index';
 import { articleJsonLd } from '../lib/docs/machine';
 import { SITE_NAME } from '../lib/home-content';
 import type { Route } from './+types/docs.$slug';
@@ -13,10 +13,16 @@ export function loader({ params, request }: Route.LoaderArgs) {
 	if (article === undefined) {
 		const retired = index.redirects.find((item) => item.from === `/docs/${params.slug}`);
 		if (retired) return redirect(retired.to);
-		return data({ ok: false as const, index, slug: params.slug }, { status: 404 });
+		return data({ ok: false as const, shell: getDocShell(), slug: params.slug }, { status: 404 });
 	}
 	const origin = new URL(request.url).origin;
-	return { ok: true as const, index, article, origin, jsonLd: articleJsonLd(article, origin) };
+	return {
+		ok: true as const,
+		shell: getDocShell(),
+		article,
+		origin,
+		jsonLd: articleJsonLd(article, origin),
+	};
 }
 
 export function headers() {
@@ -56,12 +62,12 @@ export function meta({ loaderData }: Route.MetaArgs) {
 
 export default function DocsArticlePage({ loaderData }: Route.ComponentProps) {
 	if (!loaderData.ok) {
-		return <DocsNotFound index={loaderData.index} slug={loaderData.slug} />;
+		return <DocsNotFound shell={loaderData.shell} slug={loaderData.slug} />;
 	}
 	return (
 		<>
 			<PageJsonLd data={loaderData.jsonLd} />
-			<DocsReader index={loaderData.index} article={loaderData.article} />
+			<DocsReader shell={loaderData.shell} article={loaderData.article} />
 		</>
 	);
 }

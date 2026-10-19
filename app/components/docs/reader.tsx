@@ -35,8 +35,8 @@ import {
 } from '../../lib/docs/chapter-navigation';
 import { projectArticleText } from '../../lib/docs/project-text';
 import { articleHref, chapterNeighbors, type DocSearchHit } from '../../lib/docs/query';
-import type { DocArticle, DocIndex, DocTreeNode } from '../../lib/docs/schema';
-import { useDocsSearch, warmDocsSearchFor } from '../../lib/docs/use-docs-search';
+import type { DocArticle, DocShell, DocTreeNode } from '../../lib/docs/schema';
+import { useDocsSearch, warmDocsSearch } from '../../lib/docs/use-docs-search';
 import { NewTabLink } from '../links';
 import { holdDocsArticleTransition } from './article-transition';
 import { DocsBody } from './body';
@@ -188,8 +188,8 @@ function outlineItems(nodes: readonly DocTreeNode[], level = 2): OutlineItem[] {
 	]);
 }
 
-function outlineNodes(index: DocIndex, article: DocArticle): readonly DocTreeNode[] {
-	return index.tree.find((node) => node.id === article.slug)?.children ?? [];
+function outlineNodes(shell: DocShell, article: DocArticle): readonly DocTreeNode[] {
+	return shell.tree.find((node) => node.id === article.slug)?.children ?? [];
 }
 
 type ChapterPaneProps = {
@@ -299,8 +299,8 @@ function docsUpdatedOn(iso: string | undefined): string | undefined {
 	return day === undefined ? undefined : `Docs updated: ${day}`;
 }
 
-function latestModified(index: DocIndex): string | undefined {
-	return index.articles
+function latestModified(shell: DocShell): string | undefined {
+	return shell.articles
 		.map((item) => item.dateModified)
 		.sort()
 		.at(-1);
@@ -328,20 +328,20 @@ function ChaptersLaunch({ onOpen }: { onOpen: () => void }) {
 
 /** The chapter tree's search, fold state and filtered tree, as props for a chapter pane. */
 function useChapterPane(
-	index: DocIndex,
+	shell: DocShell,
 	article: DocArticle | undefined,
 	hashId: string | undefined,
 	onSection: (blockId: string) => void,
 ): ChapterPaneProps {
 	const [query, setQuery] = useState('');
 	const [opened, setOpened] = useState<ReadonlyMap<string, boolean>>(() => new Map());
-	const updated = docsUpdatedOn(latestModified(index));
+	const updated = docsUpdatedOn(latestModified(shell));
 	const searching = query.trim().length > 0;
-	const found = useDocsSearch(index, query, SEARCH_LIMIT);
+	const found = useDocsSearch(query, SEARCH_LIMIT);
 	const tree = useMemo(() => {
-		const matches = searching ? treeFromHits(index.tree, found.results) : index.tree;
+		const matches = searching ? treeFromHits(shell.tree, found.results) : shell.tree;
 		return chapterNavigationTree(matches);
-	}, [index, found.results, searching]);
+	}, [shell, found.results, searching]);
 	const onOpenChange = (id: string, collapsed: boolean) => {
 		setOpened((prev) => setChapterCollapsed(prev, id, collapsed));
 	};
@@ -349,9 +349,7 @@ function useChapterPane(
 		updated,
 		query,
 		onQueryChange: setQuery,
-		onWarm: () => {
-			warmDocsSearchFor(index);
-		},
+		onWarm: warmDocsSearch,
 		tree,
 		article,
 		hashId,
@@ -389,14 +387,14 @@ function DocsTreePanel({ resizable, pane }: { resizable: ResizableProps; pane: C
 }
 
 export function DocsFrame({
-	index,
+	shell,
 	article,
 	hashId,
 	onSection,
 	children,
 	className,
 }: {
-	index: DocIndex;
+	shell: DocShell;
 	article?: DocArticle;
 	hashId?: string;
 	onSection?: (blockId: string) => void;
@@ -416,7 +414,7 @@ export function DocsFrame({
 		setChaptersOpen(false);
 		onSection?.(blockId);
 	};
-	const pane = useChapterPane(index, article, hashId, chooseSection);
+	const pane = useChapterPane(shell, article, hashId, chooseSection);
 
 	return (
 		<Layout
@@ -593,10 +591,10 @@ function useArticleScroll(slug: string, hashId: string | undefined) {
 	return contentRef;
 }
 
-export function DocsReader({ index, article }: { index: DocIndex; article: DocArticle }) {
+export function DocsReader({ shell, article }: { shell: DocShell; article: DocArticle }) {
 	const { hashId, pick } = useSectionId(article.slug);
-	const outline = outlineItems(outlineNodes(index, article));
-	const { prev, next } = chapterNeighbors(index, article.slug);
+	const outline = outlineItems(outlineNodes(shell, article));
+	const { prev, next } = chapterNeighbors(shell, article.slug);
 	const contentRef = useArticleScroll(article.slug, hashId);
 
 	const selectSection = (blockId: string) => {
@@ -613,7 +611,7 @@ export function DocsReader({ index, article }: { index: DocIndex; article: DocAr
 	};
 
 	return (
-		<DocsFrame index={index} article={article} hashId={hashId} onSection={selectSection}>
+		<DocsFrame shell={shell} article={article} hashId={hashId} onSection={selectSection}>
 			<LayoutContent ref={contentRef} padding={0} className="docs-reader">
 				<ArticleStill article={article} />
 				<HStack className="docs-article" align="start">

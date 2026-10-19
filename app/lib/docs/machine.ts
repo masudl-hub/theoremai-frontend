@@ -14,7 +14,7 @@ import {
 import { studioMarkdown } from '../studio-content';
 import { symbolTerm } from './catalog-rows';
 import { projectArticleText } from './project-text';
-import type { DocArticle, DocIndex } from './schema';
+import type { DocArticle, DocIndex, DocShell } from './schema';
 
 /** The sections (level 2) of a chapter, each as a deep link. */
 function outline(article: DocArticle, origin: string): string[] {
@@ -153,7 +153,7 @@ export function articleJsonLd(
 }
 
 /** The docs landing: a collection of the chapters, each named with what it covers. */
-export function docsLandingJsonLd(index: DocIndex, origin: string): Record<string, unknown> {
+export function docsLandingJsonLd(shell: DocShell, origin: string): Record<string, unknown> {
 	return {
 		'@context': 'https://schema.org',
 		'@type': 'CollectionPage',
@@ -168,7 +168,7 @@ export function docsLandingJsonLd(index: DocIndex, origin: string): Record<strin
 		]),
 		mainEntity: {
 			'@type': 'ItemList',
-			itemListElement: index.articles.map((article, position) => ({
+			itemListElement: shell.articles.map((article, position) => ({
 				'@type': 'ListItem',
 				position: position + 1,
 				name: article.title,

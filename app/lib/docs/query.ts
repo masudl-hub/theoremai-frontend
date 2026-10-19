@@ -6,25 +6,30 @@ import { create, insert, type Orama, search } from '@orama/orama';
 import { symbolTerm } from './catalog-rows';
 import { introText, sectionText } from './chapter-markdown';
 import { projectArticleText } from './project-text';
-import type { DocArticle, DocIndex } from './schema';
+import type { DocArticle, DocArticleCard, DocIndex, DocShell } from './schema';
 import { formatWithLineNumbers, plainMarkdown } from './text-format';
 
 export function articleHref(article: Pick<DocArticle, 'canonicalPath'>, blockId?: string): string {
 	return blockId ? `${article.canonicalPath}#${blockId}` : article.canonicalPath;
 }
 
+/** A chapter's card by its slug. */
+export function cardFor(shell: DocShell, slug: string): DocArticleCard | undefined {
+	return shell.articles.find((article) => article.slug === slug);
+}
+
 export function chapterNeighbors(
-	index: DocIndex,
+	shell: DocShell,
 	slug: string,
-): { prev?: DocArticle; next?: DocArticle } {
-	const slugs = index.tree.flatMap((node) => (node.slug === undefined ? [] : [node.slug]));
+): { prev?: DocArticleCard; next?: DocArticleCard } {
+	const slugs = shell.tree.flatMap((node) => (node.slug === undefined ? [] : [node.slug]));
 	const at = slugs.indexOf(slug);
 	if (at < 0) return {};
 	const prevSlug = at > 0 ? slugs[at - 1] : undefined;
 	const nextSlug = at < slugs.length - 1 ? slugs[at + 1] : undefined;
 	return {
-		prev: prevSlug === undefined ? undefined : index.bySlug[prevSlug],
-		next: nextSlug === undefined ? undefined : index.bySlug[nextSlug],
+		prev: prevSlug === undefined ? undefined : cardFor(shell, prevSlug),
+		next: nextSlug === undefined ? undefined : cardFor(shell, nextSlug),
 	};
 }
 

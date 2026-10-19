@@ -170,6 +170,9 @@ export type DocArticle = Omit<DocArticleHead, 'cover'> & {
 	terms: Readonly<Partial<Record<string, DocTerm>>>;
 };
 
+/** A chapter as a docs page lists it: everything but its text, which only its own page and search read. */
+export type DocArticleCard = Omit<DocArticle, 'body' | 'sections' | 'symbols' | 'terms'>;
+
 export type DocTreeNode = {
 	id: string;
 	label: string;
@@ -184,6 +187,15 @@ export type DocIndex = {
 	suggested: readonly { slug: string; rank: 1 | 2 | 3 | 4 | 5 | 6 }[];
 	bySlug: Readonly<Record<string, DocArticle | undefined>>;
 	redirects: readonly { from: string; to: string; reason?: string }[];
+};
+
+/**
+ * What every docs page carries: the chapter tree and each chapter's card. Search fetches the
+ * whole index the first time it is used, so a page does not ship every chapter's text.
+ */
+export type DocShell = {
+	tree: DocIndex['tree'];
+	articles: readonly DocArticleCard[];
 };
 
 export type ComposeOptions = {

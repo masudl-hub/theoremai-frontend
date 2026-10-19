@@ -20,9 +20,9 @@ import {
 	IconSearch,
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { articleHref, type DocSearchHit } from '../../lib/docs/query';
-import type { DocArticle, DocIndex } from '../../lib/docs/schema';
-import { useDocsSearch, warmDocsSearchFor } from '../../lib/docs/use-docs-search';
+import { articleHref, cardFor, type DocSearchHit } from '../../lib/docs/query';
+import type { DocArticleCard, DocShell } from '../../lib/docs/schema';
+import { useDocsSearch, warmDocsSearch } from '../../lib/docs/use-docs-search';
 import 'virtual:docs/landing.css';
 import { starterPrompt } from '../../lib/docs/starter-prompt';
 import { IconDeepWiki } from '../deepwiki-icon';
@@ -69,7 +69,7 @@ const RESOURCES = [
 ] as const;
 
 type LandingTile = {
-	article: DocArticle;
+	article: DocArticleCard;
 	href: string;
 	title: string;
 	excerpt: string;
@@ -185,15 +185,15 @@ function useSearchHint(paused: boolean): string {
 	return shown < 0 ? text : text.slice(0, shown);
 }
 
-function tilesFromIndex(
-	index: DocIndex,
+function tilesFromShell(
+	shell: DocShell,
 	query: string,
 	hits: readonly DocSearchHit[],
 ): LandingTile[] {
 	const trimmed = query.trim();
 	if (!trimmed) {
 		return FEATURED.flatMap(({ slug, title }) => {
-			const article = index.bySlug[slug];
+			const article = cardFor(shell, slug);
 			return article === undefined
 				? []
 				: [
@@ -208,7 +208,7 @@ function tilesFromIndex(
 		});
 	}
 	return hits.flatMap((hit) => {
-		const article = index.bySlug[hit.slug];
+		const article = cardFor(shell, hit.slug);
 		return article === undefined
 			? []
 			: [
@@ -350,12 +350,12 @@ function LandingResults({
 	);
 }
 
-export function DocsLanding({ index }: { index: DocIndex }) {
+export function DocsLanding({ shell }: { shell: DocShell }) {
 	const [query, setQuery] = useState('');
-	const found = useDocsSearch(index, query, SEARCH_LIMIT);
+	const found = useDocsSearch(query, SEARCH_LIMIT);
 	const target = useMemo(
-		() => tilesFromIndex(index, query, found.results),
-		[index, query, found.results],
+		() => tilesFromShell(shell, query, found.results),
+		[shell, query, found.results],
 	);
 	const { tiles, phase } = useEasedTiles(target);
 	const searching = query.trim().length > 0;
@@ -375,7 +375,7 @@ export function DocsLanding({ index }: { index: DocIndex }) {
 									className="docs-landing-query"
 									onFocus={() => {
 										setFocused(true);
-										warmDocsSearchFor(index);
+										warmDocsSearch();
 									}}
 									onBlur={() => {
 										setFocused(false);
