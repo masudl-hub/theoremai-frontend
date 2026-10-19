@@ -19,7 +19,7 @@ import { HEADLINE } from '../lib/home-content';
 import { EDITED_BEATS, GOAL_BEATS, type GoalToken } from '../lib/home-goals';
 import { ARGUMENT, GOALS } from '../lib/site-pitch';
 import { GoalBlock, goalStackVars, goalTileVars, type PickedTokens } from './home-goals';
-import { useGoalBeat } from './home-goals-beat';
+import { useGoalBeat, useGoalBeatInTransition } from './home-goals-beat';
 import { HomeIntro } from './home-intro';
 import { StillTitle } from './still-caption';
 import './home-stage.css';
@@ -122,7 +122,7 @@ function useLiveAgent() {
 function StageCopy() {
 	const [picked, setPicked] = useState<PickedTokens>({});
 	const { loaded, state, load } = useLiveAgent();
-	const beat = useGoalBeat();
+	const beat = useGoalBeatInTransition();
 	// Starting over takes the prompts with it.
 	const runs = state?.runs;
 	const ran = useRef(runs);

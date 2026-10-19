@@ -6,6 +6,8 @@ const beat = createSharedValue(0);
 
 export const setGoalBeat = beat.set;
 export const useGoalBeat = beat.use;
+/** The beat, for the goals stage: it re-renders as a transition, so scrolling between beats never waits for it. */
+export const useGoalBeatInTransition = beat.useInTransition;
 
 /** The lines of the agent's file a change or a test has just marked, as lines of the whole source. */
 const marked = createSharedValue<readonly Lines[] | undefined>(undefined);
