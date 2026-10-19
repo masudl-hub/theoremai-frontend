@@ -2,9 +2,8 @@ import { Button } from '@astryxdesign/core/Button';
 import { Heading } from '@astryxdesign/core/Heading';
 import { useClipboard } from '@astryxdesign/core/hooks';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
-import { Token } from '@astryxdesign/core/Token';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
-import { IconCheck, IconCopy, IconFlask } from '@tabler/icons-react';
+import { IconCheck, IconCopy } from '@tabler/icons-react';
 import {
 	type CSSProperties,
 	type ReactNode,
@@ -90,8 +89,9 @@ function InstallCopy() {
 function EarlyDays() {
 	const ref = useRef<HTMLSpanElement>(null);
 	return (
-		<span ref={ref} className="home-intro-status">
-			<Token label={EARLY_DAYS.label} size="sm" icon={<IconFlask aria-hidden />} tabIndex={0} />
+		<span ref={ref} className="home-intro-status" tabIndex={0}>
+			<span className="home-intro-status-dot" aria-hidden />
+			{EARLY_DAYS.label}
 			<Tooltip
 				content={EARLY_DAYS.note}
 				placement="end"

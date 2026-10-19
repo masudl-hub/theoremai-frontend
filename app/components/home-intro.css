@@ -199,13 +199,41 @@ html[data-shell-move] .home-intro-flight {
 	min-width: 0;
 }
 
-/* The early-days token sits on the tagline's left edge, over it. */
+/* The early-days note sits on the tagline's left edge, over it: a hairline, the label's own
+   size, and one warm dot. It reads as a note, not a control. */
 .home-intro-status {
 	position: relative;
 	z-index: 2;
 	align-self: flex-start;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45em;
 	margin-inline: var(--home-intro-pad-inline);
+	padding: 0.2em 0.7em 0.2em 0.6em;
+	border: 1px solid var(--color-border);
 	border-radius: var(--radius-full);
+	color: var(--color-text-secondary);
+	font-size: var(--text-label-size);
+	line-height: var(--text-label-leading);
+	letter-spacing: 0.01em;
+	cursor: default;
+	transition:
+		color 160ms ease,
+		border-color 160ms ease;
+}
+
+.home-intro-status:hover,
+.home-intro-status:focus-visible {
+	color: var(--color-text-primary);
+	border-color: var(--color-border-emphasized);
+	outline: none;
+}
+
+.home-intro-status-dot {
+	width: 0.42em;
+	height: 0.42em;
+	border-radius: var(--radius-full);
+	background: var(--color-icon-orange);
 }
 
 .home-intro-wordmark-track {
