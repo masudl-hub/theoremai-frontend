@@ -1,6 +1,6 @@
 ---
 title: Choosing a modality
-updated: 2026-10-16
+updated: 2026-10-19
 summary: Pick the profile type: text, image, speech, live, decision, embedding or host.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/profiles.ts, src/kernel/schema.ts
@@ -210,9 +210,23 @@ const searchIndex = defineProfile({
 	inputs: {
 		text: true,
 		attachments: { accept: ['image', 'audio', 'video', 'document'] },
+		maxFiles: 6,
+		maxBytes: 20_000_000,
+		maxTurnBytes: 20_000_000,
 	},
 })
 ```
+
+A profile that takes files must set `maxFiles`, `maxBytes` and `maxTurnBytes`. For embedding, `maxFiles` counts the files in one input. `maxBytes` holds each file and `maxTurnBytes` the whole request.
+
+The model has limits of its own, and the kernel holds every request to both before it sends anything. A file type is taken only when the profile and the model both take it:
+
+Model | Takes
+--- | ---
+Gemini Embedding 2 | PNG and JPEG images, up to 6 in an input; one PDF in an input; MP3 and WAV audio; MP4 and MOV video; up to 100 inputs in a request
+`gemini-embedding-001` | Text only, up to 100 inputs in a request
+`openRouterEmbedding` | Images
+`ollamaEmbedding` | Text only
 
 ## Host
 
