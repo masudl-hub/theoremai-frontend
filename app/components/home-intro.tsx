@@ -5,7 +5,7 @@ import { Icon } from '@astryxdesign/core/Icon';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { Token } from '@astryxdesign/core/Token';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
-import { IconCheck, IconCopy, IconFlask } from '@tabler/icons-react';
+import { IconAlpha, IconCheck, IconCopy } from '@tabler/icons-react';
 import {
 	type CSSProperties,
 	type ReactNode,
@@ -95,7 +95,7 @@ function EarlyDays() {
 			<Token
 				label={EARLY_DAYS.label}
 				size="sm"
-				icon={<Icon icon={IconFlask} size="sm" />}
+				icon={<Icon icon={IconAlpha} size="sm" />}
 				tabIndex={0}
 			/>
 			<Tooltip
