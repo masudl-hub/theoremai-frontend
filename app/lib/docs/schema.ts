@@ -113,7 +113,13 @@ export type DocSectionEntry = {
 export type SymbolRow =
 	| { kind: 'field'; id: string; path: string; meta: FieldMeta }
 	| { kind: 'request-field'; id: string; path: string; meta: FieldMeta }
-	| { kind: 'export'; id: string; name: string; exported: ApiExportMeta['kind']; doc: string }
+	| {
+			kind: 'export';
+			id: string;
+			name: string;
+			exported: ApiExportMeta['kind'] | 'type';
+			doc: string;
+	  }
 	| { kind: 'union-member'; id: string; name: string; value: string; doc: string }
 	| { kind: 'trace'; id: string; name: string; label: string; doc: string }
 	| { kind: 'label'; id: string; name: string; text: string };

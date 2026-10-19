@@ -65,6 +65,7 @@ export default defineConfig({
 		],
 	},
 	optimizeDeps: {
+		include: ['@theoremjs/react > recharts', '@astryxdesign/core/PowerSearch'],
 		// Scan every source up front, lazy chunks included, so a dependency first reached mid-session
 		// (the trace's PowerSearch) never forces a re-optimize that strands open tabs on a 504.
 		entries: [

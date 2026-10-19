@@ -68,7 +68,9 @@ export function loadDocs(args) {
  * @param {{ repoRoot: string, theoremai: { root: string, source: string } }} args
  */
 export function docsIndexPlugin(args) {
-	const { repoRoot } = args;
+	const { repoRoot, theoremai } = args;
+	const docsRoot = path.join(repoRoot, 'app/lib/docs');
+	const kernelRoot = path.join(theoremai.root, 'src');
 	/** @type {import('vite').ViteDevServer | undefined} */
 	let parentServer;
 
@@ -78,7 +80,11 @@ export function docsIndexPlugin(args) {
 		name: 'docs-index',
 		configureServer(server) {
 			parentServer = server;
-			server.watcher.add(path.join(repoRoot, 'app/lib/docs'));
+			server.config.configFileDependencies.push(
+				path.join(kernelRoot, 'kernel/types.ts'),
+				path.join(kernelRoot, 'guardrails/detectors.ts'),
+			);
+			server.watcher.add([docsRoot, kernelRoot]);
 		},
 		resolveId(id) {
 			if (id === DOCS_VIRTUAL) return DOCS_RESOLVED;
@@ -96,10 +102,16 @@ export function docsIndexPlugin(args) {
 			return `export const docIndex = ${JSON.stringify(await runCompose())};`;
 		},
 		handleHotUpdate(ctx) {
-			if (!ctx.file.includes(`${path.sep}app${path.sep}lib${path.sep}docs${path.sep}`)) return;
-			const mod = parentServer?.moduleGraph.getModuleById(DOCS_RESOLVED);
-			const css = parentServer?.moduleGraph.getModuleById(LANDING_CSS_RESOLVED);
-			return [mod, css].filter((entry) => entry !== undefined);
+			if (![docsRoot, kernelRoot].some((root) => ctx.file.startsWith(`${root}${path.sep}`))) return;
+			if (!parentServer) return;
+			for (const environment of Object.values(parentServer.environments)) {
+				for (const id of [DOCS_RESOLVED, LANDING_CSS_RESOLVED]) {
+					const module = environment.moduleGraph.getModuleById(id);
+					if (module) environment.moduleGraph.invalidateModule(module);
+				}
+				environment.hot.send({ type: 'full-reload' });
+			}
+			return ctx.modules;
 		},
 	};
 }

@@ -49,6 +49,19 @@ function kernelPackageFacts(theoremaiRoot) {
 }
 
 /**
+ * A type's own description, read at build time so its hover card follows the kernel.
+ * @param {string} theoremaiRoot
+ * @param {string} file
+ * @param {string} name
+ */
+function kernelTypeDoc(theoremaiRoot, file, name) {
+	const source = readFileSync(path.join(theoremaiRoot, file), 'utf8');
+	const match = source.match(new RegExp(String.raw`/\*\*((?:(?!\*/)[\s\S])*)\*/\s*(?:export )?type ${name} =`));
+	if (!match) throw new Error(`The kernel ${name} type needs a documentation comment.`);
+	return match[1].split('\n').map((line) => line.replace(/^\s*\* ?/, '').trim()).join(' ').trim();
+}
+
+/**
  * Vite `define` entries for the kernel the site is built against.
  * @param {{ root: string, source: string }} theoremai
  * @returns {Record<string, string>}
@@ -57,6 +70,8 @@ export function kernelMetaDefine(theoremai) {
 	const facts = kernelPackageFacts(theoremai.root);
 	return {
 		'import.meta.env.KERNEL_DESCRIPTION': JSON.stringify(facts.description),
+		'import.meta.env.KERNEL_PROFILE_DOC': JSON.stringify(kernelTypeDoc(theoremai.root, 'src/kernel/types.ts', 'Profile')),
+		'import.meta.env.KERNEL_DETECTOR_DOC': JSON.stringify(kernelTypeDoc(theoremai.root, 'src/guardrails/detectors.ts', 'Detector')),
 		'import.meta.env.KERNEL_LICENSE': JSON.stringify(facts.license),
 		'import.meta.env.KERNEL_REPOSITORY': JSON.stringify(facts.repository),
 		'import.meta.env.KERNEL_KEYWORDS': JSON.stringify(facts.keywords),
