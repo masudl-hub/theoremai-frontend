@@ -35,10 +35,9 @@ import { type NavigateFunction, useLocation, useMatches, useNavigate } from 'rea
 import { z } from 'zod';
 import { theoremSiteTheme } from '../built/theorem-site';
 import { clientDocIndex } from '../lib/docs/client-index';
-import { searchDocs } from '../lib/docs/query';
 import { highlightBlock, highlightWhenPresent } from '../lib/docs/th30-client';
 import { th30SearchOutput } from '../lib/docs/th30-search';
-import { warmDocsSearch } from '../lib/docs/use-docs-search';
+import { warmDocsSearch } from '../lib/docs/warm-docs-search';
 import { resolveSitePath } from '../lib/site-path';
 import { TH30_PROFILE_ID } from '../lib/th30-id';
 import {
@@ -263,7 +262,9 @@ async function searchForTh30(query: string, limit: number | undefined) {
 	const index = await clientDocIndex();
 	const found = await import('../lib/docs/semantic')
 		.then(({ searchDocsSemantic }) => searchDocsSemantic(index, query, limit))
-		.catch(() => searchDocs(index, query, limit));
+		.catch(() =>
+			import('../lib/docs/query').then(({ searchDocs }) => searchDocs(index, query, limit)),
+		);
 	return th30SearchOutput(index, found);
 }
 

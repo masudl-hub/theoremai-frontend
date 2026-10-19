@@ -6,7 +6,8 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import type { DocShell } from '../../lib/docs/schema';
-import { useDocsSearch, warmDocsSearch } from '../../lib/docs/use-docs-search';
+import { useDocsSearch } from '../../lib/docs/use-docs-search';
+import { warmDocsSearch } from '../../lib/docs/warm-docs-search';
 import { DocsFrame } from './reader';
 
 export function DocsNotFound({ shell, slug }: { shell: DocShell; slug: string }) {

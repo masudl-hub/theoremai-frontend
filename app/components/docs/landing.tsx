@@ -22,7 +22,8 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { articleHref, cardFor, type DocSearchHit } from '../../lib/docs/query';
 import type { DocArticleCard, DocShell } from '../../lib/docs/schema';
-import { useDocsSearch, warmDocsSearch } from '../../lib/docs/use-docs-search';
+import { useDocsSearch } from '../../lib/docs/use-docs-search';
+import { warmDocsSearch } from '../../lib/docs/warm-docs-search';
 import 'virtual:docs/landing.css';
 import { starterPrompt } from '../../lib/docs/starter-prompt';
 import { IconDeepWiki } from '../deepwiki-icon';
