@@ -16,9 +16,10 @@ export function useHomeIntroWordmarkFit(
 			if (!alive) return;
 			const style = getComputedStyle(track);
 			const width =
-				track.clientWidth -
-				Number.parseFloat(style.paddingLeft) -
-				Number.parseFloat(style.paddingRight);
+				(track.clientWidth -
+					Number.parseFloat(style.paddingLeft) -
+					Number.parseFloat(style.paddingRight)) *
+				0.9;
 			if (width < 1) return;
 
 			let lo = 8;

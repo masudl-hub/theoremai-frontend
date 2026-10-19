@@ -21,11 +21,11 @@ import { ARGUMENT, GOALS } from '../lib/site-pitch';
 import { GoalBlock, goalStackVars, goalTileVars, type PickedTokens } from './home-goals';
 import { useGoalBeat } from './home-goals-beat';
 import { HomeIntro } from './home-intro';
-import { StillText, StillTitle } from './still-caption';
+import { StillTitle } from './still-caption';
 import './home-stage.css';
 
 const GOAL_ICONS = {
-	'source-of-truth': IconCircleDot,
+	experience: IconCircleDot,
 	experiment: IconBrush,
 	boundaries: IconShieldCheck,
 } as const;
@@ -56,7 +56,6 @@ function StillRow({ still, index }: { still: Still; index: number }) {
 			</Tooltip>
 			<figcaption>
 				<StillTitle>{still.title}</StillTitle>
-				<StillText>{still.text}</StillText>
 			</figcaption>
 		</figure>
 	);
@@ -83,22 +82,29 @@ const noStore = () => () => {};
  */
 function useLiveAgent() {
 	const [loaded, setLoaded] = useState<Loaded>();
-	const loading = useRef<Promise<Loaded>>(undefined);
+	const catalog = GOAL_BEATS.flatMap((beat) =>
+		beat.controls.flatMap((group) => group.tokens.map((token) => token.id)),
+	).join('|');
+	const loading = useRef<{ catalog: string; promise: Promise<Loaded> }>(undefined);
 	const load = useCallback(() => {
-		loading.current ??= Promise.all([
+		if (loading.current?.catalog === catalog) return loading.current.promise;
+		const promise = Promise.all([
 			import('./home-goals-live'),
 			import('../lib/home-agent-store'),
 			import('../lib/home-agent'),
 		]).then(([{ GoalEditor, GoalLive }, { createHomeAgentStore }, { tokenEdits, tokenIsOn }]) => {
 			const next = { GoalEditor, GoalLive, tokenEdits, tokenIsOn, store: createHomeAgentStore() };
 			// The editor and the chat are a large first render. A scroll or a click comes first.
-			startTransition(() => {
-				setLoaded(next);
-			});
+			if (loading.current?.catalog === catalog) {
+				startTransition(() => {
+					setLoaded(next);
+				});
+			}
 			return next;
 		});
-		return loading.current;
-	}, []);
+		loading.current = { catalog, promise };
+		return promise;
+	}, [catalog]);
 	useEffect(() => {
 		const timer = setTimeout(() => void load(), LIVE_IDLE_MS);
 		return () => {
@@ -143,8 +149,8 @@ function StageCopy() {
 					<div className="home-stage-leads">
 						<div className="home-stage-lead home-goal-block" data-home-beat={0}>
 							<Heading className="home-stage-headline" level={2}>
-								{HEADLINE.map(({ text, claim }) => (
-									<span key={text} className={`home-stage-line ${claim ? 'is-claim' : 'is-quiet'}`}>
+								{HEADLINE.map(({ text }) => (
+									<span key={text} className="home-stage-line is-quiet">
 										{text}
 									</span>
 								))}

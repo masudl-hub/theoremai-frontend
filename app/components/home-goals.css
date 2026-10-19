@@ -30,7 +30,8 @@
 	grid-area: 3 / 1;
 	display: grid;
 	gap: var(--spacing-3);
-	max-width: 48rem;
+	width: 92%;
+	max-width: 42rem;
 	margin-block-start: var(--spacing-6);
 	padding-inline-start: clamp(2rem, 6vw, 5rem);
 	box-sizing: border-box;
@@ -57,7 +58,7 @@
 			2 *
 			var(--spacing-3)
 		),
-		clamp(8rem, 36cqh, 32rem)
+		clamp(8rem, 30cqh, 27rem)
 	);
 	border: 1px solid var(--color-border);
 	border-radius: var(--radius-container);
@@ -94,6 +95,10 @@
 .home-goal-form {
 	overflow: auto;
 	overscroll-behavior: contain;
+}
+
+.home-goal-form-view > .home-goal-form {
+	height: 100%;
 }
 
 /* Until a click, the wheel is the page's: the cover takes the pointer and the editor does not. */
@@ -148,15 +153,12 @@
 	gap: var(--spacing-2);
 }
 
-/* The tile stack. One tile is large while its goal is open and the other two are small. The
-   stack is packed, then shifted so the open tile keeps its own anchor: tile one its top edge,
-   tile two its centre, tile three its bottom edge. --home-goal-walk is the open goal's index. */
+/* Expanded tiles share one frame. Small tiles pack above and below the active tile. */
 .home-stage-stills {
 	--home-still-size: clamp(7.5rem, 16vh, 10.5rem);
 	--home-goal-small: 0.4;
 	--home-goal-at: var(--home-goals-pull, 0);
 	--home-goal-in: clamp(0, var(--home-goal-at), 1);
-	--home-goal-lift: calc(1.5 - var(--home-goal-small) - var(--home-goal-ratio, 1) / 2);
 	position: relative;
 }
 
@@ -164,7 +166,9 @@
 	transform: translateY(
 		calc(
 			var(--home-still-size) *
-			(var(--home-goal-above, 0) + var(--home-goal-lift) * var(--home-goal-walk, 0))
+			var(--home-goal-above, 0) -
+			(var(--home-still-size) * var(--home-goal-small) + var(--spacing-4)) *
+			var(--home-goal-walk, 0)
 		)
 	);
 }
@@ -184,11 +188,13 @@
 	opacity: clamp(0, 1 - 2 * var(--home-goal-in), 1);
 }
 
-/* The open goal's square, for the agent. It walks down the right side with the large still, and
-   is gone while one still shrinks and the next grows. */
+/* The chat and boundary tester stay inset within the shared expanded frame. */
 .home-goal-live {
 	--home-goal-large: calc(var(--home-still-size) * var(--home-goal-ratio, 1));
-	--home-goal-open: max(var(--home-goal-grow-0), var(--home-goal-grow-1), var(--home-goal-grow-2));
+	--home-goal-open: max(
+		calc(var(--home-goal-grow-0) + var(--home-goal-grow-1)),
+		var(--home-goal-grow-2)
+	);
 	position: absolute;
 	z-index: 2;
 	top: 0;
@@ -200,16 +206,24 @@
 	gap: var(--spacing-2);
 	padding: var(--spacing-4);
 	box-sizing: border-box;
-	transform: translateY(
-		calc(
-			var(--home-goal-walk) *
-			(var(--home-still-size) * (1.5 - var(--home-goal-ratio, 1) / 2) + var(--spacing-4))
-		)
-	);
+
 	opacity: clamp(0, 2 * var(--home-goal-open) - 1, 1);
 	pointer-events: none;
 	contain: layout;
-	will-change: transform, opacity;
+	will-change: opacity;
+}
+
+.home-goal-live:has(> .home-goal-prompt:empty) {
+	grid-template-rows: minmax(0, 1fr);
+	gap: 0;
+}
+
+.home-goal-prompt:empty {
+	display: none;
+}
+
+.home-goal-live:has(> .home-goal-prompt:empty) > .home-goal-live-pane {
+	grid-row: 1;
 }
 
 .home-goal-prompt {
@@ -299,4 +313,9 @@
 
 .home-goal-excerpt [data-line] {
 	transition: background-color 0.3s ease;
+}
+
+.home-goal-live-chat {
+	--theorem-pane-background: transparent;
+	--theorem-console-card: transparent;
 }

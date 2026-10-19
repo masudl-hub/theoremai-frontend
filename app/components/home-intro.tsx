@@ -169,17 +169,17 @@ export function HomeIntro({
 							) : (
 								<div className="home-intro-groups">{nav}</div>
 							)}
-							<Heading level={2} className="home-intro-tagline" textWrap="balance">
-								{HOME_TAGLINE}
-							</Heading>
+							<div className="home-intro-install-row home-intro-chrome">
+								<InstallCopy />
+							</div>
 						</div>
 
 						<div className="home-intro-spacer" aria-hidden />
 					</div>
 					<div className="home-intro-bottom">
-						<div className="home-intro-install-row home-intro-chrome">
-							<InstallCopy />
-						</div>
+						<Heading level={2} className="home-intro-tagline" textWrap="balance">
+							{HOME_TAGLINE}
+						</Heading>
 						<div ref={wordmarkTrackRef} className="home-intro-wordmark-track">
 							<Heading ref={wordmarkRef} className="home-intro-wordmark" level={1} hasCapsize>
 								theorem

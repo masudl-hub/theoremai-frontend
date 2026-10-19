@@ -8,7 +8,11 @@ export const setGoalBeat = beat.set;
 export const useGoalBeat = beat.use;
 
 /** The lines of the agent's file a change or a test has just marked, as lines of the whole source. */
-const marked = createSharedValue<Lines | undefined>(undefined);
+const marked = createSharedValue<readonly Lines[] | undefined>(undefined);
 
 export const setGoalMarked = marked.set;
 export const useGoalMarked = marked.use;
+
+const focus = createSharedValue<number | undefined>(undefined);
+export const setGoalFocus = focus.set;
+export const useGoalFocus = focus.use;

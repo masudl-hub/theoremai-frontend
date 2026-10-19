@@ -10,7 +10,7 @@ import {
 	toggleToken,
 } from './home-agent';
 import { longestExcerpt } from './home-excerpt';
-import type { GoalTokenId } from './home-goals';
+import { GOAL_BEATS, type GoalTokenId } from './home-goals';
 
 export type HomeGood = Extract<HomeCompile, { ok: true }>;
 
@@ -21,6 +21,7 @@ export type HomeAgentState = {
 	good: HomeGood | undefined;
 	/** Whether the file on screen came from a token. Typing never moves the editor's view. */
 	fromToken: boolean;
+	focus?: string;
 	/** Counts each start over, so the conversation starts over with the agent. */
 	runs: number;
 	/** Whether the file and the conversation are as the page gave them: nothing to start over. */
@@ -65,7 +66,10 @@ export function createHomeAgentStore() {
 			};
 		},
 		toggle: (id: GoalTokenId) => {
-			set(settle(toggleToken(state.agent, id), state, true));
+			const token = GOAL_BEATS.flatMap((beat) =>
+				beat.controls.flatMap((group) => group.tokens),
+			).find((entry) => entry.id === id);
+			set({ ...settle(toggleToken(state.agent, id), state, true), focus: token?.line });
 		},
 		/** A change from the studio's form. */
 		edit: (change: DraftEdit) => {

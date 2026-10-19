@@ -42,10 +42,15 @@ export const REST_PX = 2;
 
 type Flight = {
 	node: HTMLElement;
+	icon: SVGElement;
+	originColor: string;
+	targetColor: string;
+	originStroke: number;
+	targetStroke: number;
+	iconCenterX: number;
+	iconCenterY: number;
 	originX: number;
 	originY: number;
-	width: number;
-	height: number;
 	targetX: number;
 	targetY: number;
 	targetScale: number;
@@ -97,6 +102,7 @@ export function useHomeIntroScroll(
 		const measure = () => {
 			const settle = section.querySelector<HTMLElement>('.home-contract-settle');
 			travel = settle ? settle.offsetTop : section.offsetHeight;
+			section.style.setProperty('--home-intro-travel', `${String(travel)}px`);
 			if (!flightReady) {
 				flights = [];
 				return;
@@ -105,31 +111,43 @@ export function useHomeIntroScroll(
 			for (const [href, node] of Object.entries(itemRefs.current)) {
 				if (!node) continue;
 				node.style.transform = '';
+				const icon = node.querySelector<SVGElement>('svg');
+				if (!icon) continue;
+				icon.style.color = '';
+				icon.style.strokeWidth = '';
 				const spacer = document.querySelector<HTMLElement>(
 					`[data-home-nav-from="${CSS.escape(href)}"]`,
 				);
 				const target = document.querySelector<HTMLElement>(
 					`[data-home-nav-anchor="${CSS.escape(href)}"]`,
 				);
-				if (!spacer || !target) continue;
+				const targetIcon = target?.querySelector('svg');
+				if (!spacer || !target || !targetIcon) continue;
 				const from = spacer.getBoundingClientRect();
-				const to = target.getBoundingClientRect();
-				const width = node.offsetWidth;
-				const height = node.offsetHeight;
-				if (to.width < 1 || width < 1 || from.width < 1) continue;
+				const to = targetIcon.getBoundingClientRect();
+				const iconBounds = icon.getBoundingClientRect();
+				const nodeBounds = node.getBoundingClientRect();
+				const originStyle = getComputedStyle(icon);
+				const targetStyle = getComputedStyle(targetIcon);
+				if (to.width < 1 || iconBounds.width < 1 || from.width < 1) continue;
 				/* Fixed icons, sticky spacers: both rects are already viewport
 				   coordinates. Adding scrollTop parks the landing end one
 				   screen below the card whenever measure runs after a jump
 				   to overview or showcase. */
 				next.push({
 					node,
+					icon,
+					originColor: originStyle.color,
+					targetColor: targetStyle.color,
+					originStroke: Number.parseFloat(originStyle.strokeWidth),
+					targetStroke: Number.parseFloat(targetStyle.strokeWidth),
+					iconCenterX: iconBounds.left - nodeBounds.left + iconBounds.width / 2,
+					iconCenterY: iconBounds.top - nodeBounds.top + iconBounds.height / 2,
 					originX: from.left + from.width / 2,
 					originY: from.top + from.height / 2,
-					width,
-					height,
 					targetX: to.left + to.width / 2,
 					targetY: to.top + to.height / 2,
-					targetScale: to.width / width,
+					targetScale: to.width / iconBounds.width,
 				});
 			}
 			flights = next;
@@ -157,15 +175,19 @@ export function useHomeIntroScroll(
 				pin.toggleAttribute('inert', hidePin);
 			}
 			for (const flight of flights) {
+				flight.icon.style.color = `color-mix(in srgb, ${flight.originColor}, ${flight.targetColor} ${String(progress * 100)}%)`;
+				flight.icon.style.strokeWidth = String(
+					flight.originStroke + (flight.targetStroke - flight.originStroke) * progress,
+				);
 				const scale = 1 + (flight.targetScale - 1) * progress;
 				const x =
 					flight.originX +
 					(flight.targetX - flight.originX) * progress -
-					(flight.width * scale) / 2;
+					flight.iconCenterX * scale;
 				const y =
 					flight.originY +
 					(flight.targetY - flight.originY) * progress -
-					(flight.height * scale) / 2;
+					flight.iconCenterY * scale;
 				flight.node.style.transform = `translate(${String(x)}px, ${String(y)}px) scale(${String(scale)})`;
 			}
 		};
@@ -185,7 +207,11 @@ export function useHomeIntroScroll(
 			scroller.removeEventListener('scroll', update);
 			window.removeEventListener('resize', onResize);
 			window.removeEventListener(SHELL_INTRO_DONE, onResize);
-			for (const flight of flights) flight.node.style.transform = '';
+			for (const flight of flights) {
+				flight.node.style.transform = '';
+				flight.icon.style.color = '';
+				flight.icon.style.strokeWidth = '';
+			}
 		};
 	}, [flightReady, itemRefs, reduced, runRef, scrollRoot]);
 

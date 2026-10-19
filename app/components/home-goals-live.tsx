@@ -21,6 +21,7 @@ import {
 	lazy,
 	type RefObject,
 	Suspense,
+	startTransition,
 	useEffect,
 	useMemo,
 	useRef,
@@ -28,12 +29,12 @@ import {
 	useSyncExternalStore,
 } from 'react';
 import { useNavigate } from 'react-router';
-import { homeAgentDraft } from '../lib/home-agent';
+import { homeAgentDraft, tokenIsOn } from '../lib/home-agent';
 import { HOME_AGENT_STUDIO, keepHomeAgent } from '../lib/home-agent-handoff';
 import type { HomeAgentState, HomeAgentStore, HomeGood } from '../lib/home-agent-store';
-import { changedLines, type Excerpt, excerptOf, type Lines } from '../lib/home-excerpt';
+import { changedRanges, type Excerpt, excerptOf, type Lines } from '../lib/home-excerpt';
 import type { GoalBeat, GoalId, GoalToken } from '../lib/home-goals';
-import { setGoalMarked } from './home-goals-beat';
+import { setGoalFocus, setGoalMarked } from './home-goals-beat';
 import { GoalExcerpt } from './home-goals-excerpt';
 
 function useHomeAgent(store: HomeAgentStore): HomeAgentState {
@@ -56,65 +57,61 @@ function codeIssues({ agent, compiled }: HomeAgentState): CodeIssue[] {
 	}));
 }
 
-const CHANGED_MS = 1800;
-
-/** Brings lines of the file into view in the studio's editor, and marks them for a moment. */
-function markLines(lines: Lines): () => void {
+/** Brings lines of the file into view in the studio's editor, and keeps all changed ranges marked. */
+function markLines(change: Lines | readonly Lines[], focus?: number): () => void {
+	const lines = 'from' in change ? [change] : change;
+	const largest =
+		lines.find((range) => focus !== undefined && focus >= range.from && focus <= range.to) ??
+		[...lines].sort((a, b) => b.to - b.from - (a.to - a.from))[0];
 	let clear: (() => void) | undefined;
 	let isOver = false;
 	setGoalMarked(lines);
-	const unmark = setTimeout(() => {
-		setGoalMarked(undefined);
-	}, CHANGED_MS);
+	setGoalFocus(focus);
 	// A goal that shows an excerpt has no editor, and the editor is not worth loading to find out.
 	if (!document.querySelector('.home-goal-code .monaco-editor')) {
 		return () => {
-			clearTimeout(unmark);
 			setGoalMarked(undefined);
+			setGoalFocus(undefined);
 		};
 	}
 	void import('@theoremjs/studio/ui/code/studio-monaco.ts').then(({ editor }) => {
 		const open = editor.getEditors().at(0);
 		if (isOver || !open) return;
-		open.revealLinesInCenter(lines.from, lines.to);
-		const marks = open.createDecorationsCollection([
-			{
+		open.revealLinesInCenter(largest.from, largest.to);
+		const marks = open.createDecorationsCollection(
+			lines.map((range) => ({
 				range: {
-					startLineNumber: lines.from,
+					startLineNumber: range.from,
 					startColumn: 1,
-					endLineNumber: lines.to,
+					endLineNumber: range.to,
 					endColumn: 1,
 				},
 				options: { isWholeLine: true, className: 'home-goal-changed' },
-			},
-		]);
-		const timer = setTimeout(() => {
-			marks.clear();
-		}, CHANGED_MS);
+			})),
+		);
 		clear = () => {
-			clearTimeout(timer);
 			marks.clear();
 		};
 	});
 	return () => {
 		isOver = true;
-		clearTimeout(unmark);
 		setGoalMarked(undefined);
+		setGoalFocus(undefined);
 		clear?.();
 	};
 }
 
 /** A token's change is shown where it was written. */
-function useShowChange({ good, fromToken }: HomeAgentState, isShown: boolean) {
+function useShowChange({ good, fromToken, focus }: HomeAgentState, isShown: boolean) {
 	const source = good?.source;
 	const seen = useRef(source);
 	useEffect(() => {
 		const before = seen.current;
 		seen.current = source;
 		if (!isShown || !fromToken || before === undefined || source === undefined) return;
-		const lines = changedLines(before, source);
-		return lines ? markLines(lines) : undefined;
-	}, [source, fromToken, isShown]);
+		const lines = changedRanges(before, source);
+		return lines.length ? markLines(lines, lineOf(source, focus)) : undefined;
+	}, [source, fromToken, isShown, focus]);
 }
 
 const OPEN_POLL_MS = 150;
@@ -244,7 +241,10 @@ function ViewToggle({ view, onView }: { view: EditorView; onView: (view: EditorV
 	);
 }
 
-const GoalForm = lazy(() => import('./home-goals-form'));
+const GOAL_FORM_ORDER: readonly GoalId[] = ['experience', 'experiment', 'boundaries'];
+
+const loadGoalForm = () => import('./home-goals-form');
+const GoalForm = lazy(loadGoalForm);
 
 /** The agent's file: the part a goal is about, or the whole of it in the studio's editor. */
 function GoalCode({
@@ -291,6 +291,33 @@ export function GoalEditor({
 	const { isArmed, setIsArmed } = useArmed(isShown, pane);
 	const [views, setViews] = useState<Partial<Record<GoalId, EditorView>>>({});
 	const view = views[goal] ?? startView(goal);
+	const [formGoals, setFormGoals] = useState<readonly GoalId[]>([]);
+	useEffect(() => {
+		let active = true;
+		const prepare = () => {
+			void loadGoalForm().then(() => {
+				if (!active) return;
+				startTransition(() => {
+					setFormGoals((current) =>
+						current.includes('boundaries') ? current : [...current, 'boundaries'],
+					);
+				});
+			});
+		};
+		const idle = 'requestIdleCallback' in window;
+		const handle = idle
+			? window.requestIdleCallback(prepare, { timeout: 1500 })
+			: window.setTimeout(prepare, 250);
+		return () => {
+			active = false;
+			if (idle) window.cancelIdleCallback(handle);
+			else window.clearTimeout(handle);
+		};
+	}, []);
+	useEffect(() => {
+		if (view !== 'form') return;
+		setFormGoals((current) => (current.includes(goal) ? current : [...current, goal]));
+	}, [goal, view]);
 	const { good } = state;
 	const excerpt = useMemo(() => (good ? excerptOf(good.source, goal) : undefined), [good, goal]);
 	useOpenOnProfile(isShown && !excerpt);
@@ -311,11 +338,15 @@ export function GoalEditor({
 					store={store}
 					isShown={view === 'code'}
 				/>
-				{view === 'form' ? (
-					<Suspense fallback={null}>
-						<GoalForm store={store} state={state} goal={goal} />
-					</Suspense>
-				) : null}
+				{GOAL_FORM_ORDER.filter(
+					(id) => formGoals.includes(id) || (id === goal && view === 'form'),
+				).map((id) => (
+					<div key={id} className="home-goal-form-view" hidden={id !== goal || view !== 'form'}>
+						<Suspense fallback={null}>
+							<GoalForm store={store} state={state} goal={id} />
+						</Suspense>
+					</div>
+				))}
 				<ViewToggle
 					view={view}
 					onView={(next) => {
@@ -344,17 +375,29 @@ function GoalPrompt({
 	prompt,
 	result,
 	onSend,
+	sending,
+	sendLabel,
 }: {
 	prompt: string;
 	/** What the answered test showed. It takes the prompt's place. */
 	result: string | undefined;
 	onSend: (() => void) | undefined;
+	sending: boolean;
+	sendLabel: string;
 }) {
 	if (result) return <Text weight="medium">{result}</Text>;
 	return (
 		<>
 			<Text weight="medium">{prompt}</Text>
-			{onSend ? <Button variant="secondary" size="sm" label="Send it" onClick={onSend} /> : null}
+			{onSend ? (
+				<Button
+					variant="secondary"
+					size="sm"
+					label={sending ? 'Sending…' : sendLabel}
+					isDisabled={sending}
+					onClick={onSend}
+				/>
+			) : null}
 		</>
 	);
 }
@@ -374,7 +417,10 @@ function useTest(
 	picked: GoalToken | undefined,
 	source: string | undefined,
 	goal: GoalId | undefined,
+	attachmentEnabled: boolean,
 ) {
+	const [sending, setSending] = useState(false);
+	const [failure, setFailure] = useState<{ token: GoalToken; message: string }>();
 	const [done, setDone] = useState<GoalToken>();
 	const shown = done === picked ? done : undefined;
 	const line = shown && source ? lineOf(source, shown.line) : undefined;
@@ -383,14 +429,39 @@ function useTest(
 	const number = excerpt && line ? excerpt.from.indexOf(line) + 1 : line;
 	const result =
 		shown?.result && number ? `${shown.result} Line ${String(number)}.` : shown?.result;
-	useEffect(() => (line ? markLines({ from: line, to: line }) : undefined), [line]);
 	const send = (token: GoalToken, ask: string) => () => {
+		if (sending) return;
 		setDone(undefined);
-		void chat.current?.send(ask).then((turn) => {
-			if (turn && !turn.blocks.some(({ kind }) => kind === 'error')) setDone(token);
-		});
+		setFailure(undefined);
+		setSending(true);
+		void (async () => {
+			try {
+				const files: File[] = [];
+				if (token.attachment && attachmentEnabled) {
+					const response = await fetch(token.attachment);
+					if (!response.ok) throw new Error('Attachment unavailable');
+					files.push(
+						new File([await response.blob()], 'lisbon-trip-brief.pdf', { type: 'application/pdf' }),
+					);
+				}
+				const turn = await chat.current?.send(
+					token.attachment && !attachmentEnabled ? token.prompt : ask,
+					files,
+				);
+				if (turn && !turn.blocks.some(({ kind }) => kind === 'error')) setDone(token);
+			} catch {
+				setFailure({ token, message: 'Could not send the example. Please try again.' });
+			} finally {
+				setSending(false);
+			}
+		})();
 	};
-	return { result, send };
+	return {
+		result,
+		send,
+		sending,
+		failure: failure && failure.token === picked ? failure.message : undefined,
+	};
 }
 
 /** What the open beat puts on its still: the chat, the tester, or nothing. */
@@ -443,6 +514,10 @@ function useOpening(payload: StudioRunPayload | undefined, runs: number) {
 	useEffect(() => {
 		const draft = latest.current;
 		if (!hasPayload || !draft) return;
+		if (draft.profile.type !== 'text') {
+			setOpening({ runs, started: null });
+			return;
+		}
 		const controller = new AbortController();
 		void startOpening(draft, controller.signal).then((started) => {
 			if (!controller.signal.aborted) setOpening({ runs, started });
@@ -471,7 +546,14 @@ export function GoalLive({
 	const chat = useRef<TheoremChatHandle | null>(null);
 	const { good, runs } = state;
 	const { isTester, isEmpty, isTesting, hasTested } = useStill(beat);
-	const { result, send } = useTest(chat, picked, good?.source, beat?.goal);
+	const attachmentEnabled = picked !== undefined && tokenIsOn(state.agent, picked.id);
+	const { result, send, sending, failure } = useTest(
+		chat,
+		picked,
+		good?.source,
+		beat?.goal,
+		attachmentEnabled,
+	);
 	const opening = useOpening(good?.payload, runs);
 	if (!good) return null;
 	const ask = isTester ? undefined : picked?.ask;
@@ -481,7 +563,9 @@ export function GoalLive({
 				{picked && !isEmpty ? (
 					<Card variant="glass" padding={0} elevation="med" className="home-goal-prompt-card">
 						<GoalPrompt
-							prompt={picked.prompt}
+							prompt={failure ?? picked.prompt}
+							sending={sending}
+							sendLabel={attachmentEnabled && picked.attachment ? 'Send with PDF' : 'Send it'}
 							result={result}
 							onSend={ask ? send(picked, ask) : undefined}
 						/>
@@ -496,15 +580,19 @@ export function GoalLive({
 				hidden={isEmpty}
 			>
 				<div className="home-goal-live-chat" hidden={isTester}>
-					{opening ? (
+					{good.payload.profile.type !== 'text' || opening ? (
 						<StudioRunner
-							key={runs}
+							key={`${String(runs)}:${good.payload.profile.type}`}
 							payload={good.payload}
 							mode="demo"
 							runtime={null}
 							chatRef={chat}
-							conversation={opening.started?.conversation}
-							conversationView={opening.started?.view}
+							conversation={
+								good.payload.profile.type === 'text' ? opening?.started?.conversation : undefined
+							}
+							conversationView={
+								good.payload.profile.type === 'text' ? opening?.started?.view : undefined
+							}
 							onActivity={store.talked}
 						/>
 					) : null}

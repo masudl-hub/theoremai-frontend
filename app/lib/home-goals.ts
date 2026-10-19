@@ -8,12 +8,15 @@ import { GOALS } from './site-pitch';
 export type GoalId = (typeof GOALS)[number]['id'];
 
 export type GoalTokenId =
-	| 'allow-media'
-	| 'stream-reply'
-	| 'typed-choice'
-	| 'declared-shape'
+	| 'trip-brief'
+	| 'approve-tools'
+	| 'file-types'
+	| 'file-limits'
+	| 'decision'
+	| 'host'
+	| 'embedding'
+	| 'speech'
 	| 'providers'
-	| 'picture'
 	| 'live-call'
 	| 'block-secret'
 	| 'block-injection'
@@ -28,8 +31,10 @@ export type GoalTokenId =
 export type GoalToken = {
 	id: GoalTokenId;
 	label: string;
+	description?: string;
 	prompt: string;
 	ask?: string;
+	attachment?: string;
 	result?: string;
 	line?: string;
 };
@@ -45,42 +50,45 @@ export type GoalBeat = {
 
 export const GOAL_BEATS: readonly GoalBeat[] = [
 	{
-		goal: 'source-of-truth',
-		lede: 'Manage the frontend and backend from one source.',
+		goal: 'experience',
+		lede: GOALS[0].title,
 		explainer:
-			'Declare `inputs` and `outputs` once in the profile. The server checks every turn against them, and the interface builds the message box from the same profile.',
+			'You shouldn’t have to implement the same decision twice. Change your agent’s `profile`. The experience follows.',
 		controls: [
 			{
-				label: 'Change the contract',
+				label: 'Experience examples',
 				tokens: [
 					{
-						id: 'allow-media',
-						label: 'Allow images and voice',
-						prompt: 'Now attach the photo, or record a voice note.',
+						id: 'trip-brief',
+						label: 'Turn a message into a trip brief',
+						prompt: 'Plan two days in Lisbon.',
+						ask: 'Plan two days in Lisbon using the attached trip brief.',
+						attachment: '/examples/lisbon-trip-brief.pdf',
+						result: 'The same profile shapes the trip brief and validates the itinerary.',
+						line: 'inputs:',
 					},
 					{
-						id: 'stream-reply',
-						label: 'Stream the reply as it is written',
-						prompt: 'Now ask what to pack for March.',
-						ask: 'What should I pack for Lisbon in March?',
-						result: 'The reply arrives as it is written, not all at once.',
-						line: "mode: 'sse'",
+						id: 'approve-tools',
+						label: 'Require approval before a tool runs',
+						prompt: 'Ask about Lisbon’s weather.',
+						ask: 'What is the weather in Lisbon?',
+						line: 'permission:',
 					},
 					{
-						id: 'typed-choice',
-						label: 'A typed choice beside the message',
-						prompt: 'Now pick a trip style and ask for a hotel.',
-						ask: 'Find me a hotel in Lisbon.',
-						result: 'The style you picked went with the message.',
-						line: 'slots:',
+						id: 'file-types',
+						label: 'Choose exactly which files are accepted',
+						description:
+							'Accept PDFs, PNGs, and JPEGs. The picker and validation follow the same MIME rules.',
+						prompt: 'Attach a PDF, PNG, or JPEG.',
+						line: 'accept:',
 					},
 					{
-						id: 'declared-shape',
-						label: 'A reply with a declared shape',
-						prompt: 'Now ask for two days in Lisbon.',
-						ask: 'Plan two days in Lisbon.',
-						result: 'The reply has the shape the profile declares.',
-						line: 'outputs:',
+						id: 'file-limits',
+						label: 'Set an upload budget',
+						description:
+							'Limit a message to one PDF under 250 KB, including its MIME-specific limit.',
+						prompt: 'Attach one PDF under 250 KB.',
+						line: 'maxBytes:',
 					},
 				],
 			},
@@ -88,30 +96,56 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 	},
 	{
 		goal: 'experiment',
-		lede: 'Switch models, providers and modalities without rebuilding.',
+		lede: GOALS[1].title,
 		explainer:
-			"Your code calls `runTurn` with the agent's id. Change its `models`, which of them runs by default, or what it makes, and that call stays the same.",
+			'Build agents for any job, without `provider`, `model`, or `modality` lock-in. Same build, one line changed.',
 		controls: [
 			{
-				label: 'Change the agent',
+				label: 'Experiment examples',
 				tokens: [
 					{
 						id: 'providers',
-						label: 'Add another provider and allow selection',
-						prompt: 'Now pick a model and an effort, and ask what to pack.',
-					},
-					{
-						id: 'picture',
-						label: 'Generate images instead',
-						prompt: 'Now ask for a postcard of Lisbon at dusk.',
-						ask: 'A postcard of Lisbon at dusk.',
-						result: 'The reply is a picture.',
-						line: "type: 'image'",
+						label: 'Compare models across providers',
+						prompt: 'Choose a model and ask what to pack.',
+						ask: 'What should I pack for Lisbon in March?',
+						line: 'models:',
 					},
 					{
 						id: 'live-call',
-						label: 'Convert to a live call',
-						prompt: 'Now start the call and ask about the weather.',
+						label: 'Turn the concierge into a live guide',
+						prompt: 'Start a call with your Lisbon guide.',
+						line: 'live:',
+					},
+					{
+						id: 'decision',
+						label: 'Make a typed decision',
+						description:
+							'Evaluate a proposed tool call using structured state and declared decision criteria.',
+						prompt: 'Describe a proposed tool call and run the decision.',
+						line: 'decision:',
+					},
+					{
+						id: 'host',
+						label: 'Run tools without a model',
+						description:
+							'Open a tool console with typed arguments and guarded results. No model call is needed.',
+						prompt: 'Choose a tool and run it directly.',
+						line: 'tools:',
+					},
+					{
+						id: 'embedding',
+						label: 'Generate embeddings',
+						description: 'Encode text or media as vectors with a declared output dimensionality.',
+						prompt: 'Add text or a file, then generate its embedding.',
+						line: 'outputDimensionality:',
+					},
+					{
+						id: 'speech',
+						label: 'Generate a spoken response',
+						description: 'Turn a written script into audio with a declared speaking style.',
+						prompt: 'Write a short script for the narrator.',
+						ask: 'Welcome to Lisbon. Take your time, explore the side streets, and enjoy the journey.',
+						line: 'speech:',
 					},
 				],
 			},
@@ -119,32 +153,40 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 	},
 	{
 		goal: 'boundaries',
-		lede: 'Protect data with guardrails at every boundary.',
+		lede: GOALS[2].title,
 		explainer:
-			'Text crosses a boundary when a message comes in, a tool is called, a tool result returns and the reply goes out. Set each check at each boundary to ignore, flag, redact or block.',
+			'Keep sensitive data from escaping and untrusted content from taking control. Your `guardrails` control how each `detector` responds.',
 		controls: [
 			{
-				label: 'Set a boundary',
+				label: 'Guardrail examples',
 				tokens: [
 					{
 						id: 'block-secret',
-						label: 'Block a secret in a reply',
-						prompt: 'Now send “API key inside a URL”.',
+						label: 'Stop secrets from leaving the agent',
+						description: 'Credential detection catches secrets embedded in URLs, too.',
+						prompt: 'An API key hidden in a URL is blocked before the reply leaves.',
+						line: 'credentials:',
 					},
 					{
 						id: 'block-injection',
-						label: 'Block an injection in a tool result',
-						prompt: 'Now send “Injection in lookalike letters”.',
+						label: 'Stop outside content taking control',
+						description:
+							'Injection detection catches instructions disguised with lookalike letters.',
+						prompt: 'Disguised instructions in a remote tool result are blocked.',
+						line: 'injection:',
 					},
 					{
 						id: 'refuse-after-read',
-						label: 'Refuse tool calls after a remote read',
-						prompt: 'Now send “A page that claims the user already agreed”.',
+						label: 'Restrict actions after a remote read',
+						description: 'Remote content cannot authorize a write on the user’s behalf.',
+						prompt: 'A remote read restricts subsequent writes, even when a page claims approval.',
+						line: 'afterRemoteRead:',
 					},
 					{
 						id: 'harmless',
-						label: 'Let a harmless text through',
-						prompt: 'Now send “Harmless: a placeholder key from the docs”.',
+						label: 'Let harmless content through',
+						description: 'A documentation placeholder is distinguished from a real credential.',
+						prompt: 'A harmless placeholder key passes without blocking the interaction.',
 					},
 				],
 			},

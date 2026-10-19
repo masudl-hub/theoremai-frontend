@@ -1,7 +1,11 @@
+import { DropdownMenu, DropdownMenuItem } from '@astryxdesign/core/DropdownMenu';
 import { Heading } from '@astryxdesign/core/Heading';
+import { Icon } from '@astryxdesign/core/Icon';
+import { IconButton } from '@astryxdesign/core/IconButton';
 import { Text } from '@astryxdesign/core/Text';
 import { Token } from '@astryxdesign/core/Token';
-import type { CSSProperties } from 'react';
+import { IconListDetails } from '@tabler/icons-react';
+import { type CSSProperties, useState } from 'react';
 import { GOAL_BEATS, type GoalBeat, type GoalToken } from '../lib/home-goals';
 import { GOALS } from '../lib/site-pitch';
 import './home-goals.css';
@@ -56,6 +60,64 @@ function withCode(text: string) {
 		.map((part, at) => (at % 2 ? <InlineCode key={part}>{part}</InlineCode> : part));
 }
 
+function GoalExamples({
+	tokens,
+	isOn,
+	onPick,
+}: {
+	tokens: readonly GoalToken[];
+	isOn: (token: GoalToken) => boolean;
+	onPick: (token: GoalToken) => void;
+}) {
+	const extras = tokens.slice(2);
+	const [selected, setSelected] = useState<GoalToken>();
+	const visible = [...tokens.slice(0, 2), ...(selected && isOn(selected) ? [selected] : [])];
+	return (
+		<div className="home-goal-tokens">
+			{visible.map((token) => (
+				<Token
+					key={token.id}
+					label={token.label}
+					color={isOn(token) ? 'blue' : 'default'}
+					aria-pressed={isOn(token)}
+					onClick={() => {
+						onPick(token);
+					}}
+				/>
+			))}
+			{extras.length ? (
+				<DropdownMenu
+					presentation="popover"
+					menuWidth={360}
+					menuMaxHeight={360}
+					renderTrigger={(props) => (
+						<IconButton
+							{...props}
+							label="Show all examples"
+							tooltip="Show all examples"
+							variant="ghost"
+							size="sm"
+							icon={<Icon icon={IconListDetails} size="sm" />}
+						/>
+					)}
+				>
+					{tokens.map((token) => (
+						<DropdownMenuItem
+							key={token.id}
+							label={token.label}
+							description={token.description ?? token.prompt}
+							onClick={() => {
+								if (extras.includes(token)) setSelected(token);
+								onPick(token);
+							}}
+						/>
+					))}
+				</DropdownMenu>
+			) : null}
+		</div>
+	);
+}
+
 /** A beat's place in the left column: the goal, the lede, how it works, and the changes. */
 export function GoalBlock({
 	beat,
@@ -85,22 +147,7 @@ export function GoalBlock({
 			<Text className="home-stage-statement">{withCode(beat.explainer)}</Text>
 			{beat.controls.map(({ label, tokens }) => (
 				<div key={label} className="home-goal-controls" role="group" aria-label={label}>
-					<Text className="home-goal-controls-label" size="sm" color="secondary">
-						{label}
-					</Text>
-					<div className="home-goal-tokens">
-						{tokens.map((token) => (
-							<Token
-								key={token.label}
-								label={token.label}
-								color={isOn(token) ? 'blue' : 'default'}
-								aria-pressed={isOn(token)}
-								onClick={() => {
-									onPick(token);
-								}}
-							/>
-						))}
-					</div>
+					<GoalExamples tokens={tokens} isOn={isOn} onPick={onPick} />
 				</div>
 			))}
 		</section>

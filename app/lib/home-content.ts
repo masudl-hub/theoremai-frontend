@@ -38,10 +38,9 @@ export const KERNEL_INSTALL_CMD = `npm install ${KERNEL_NAME} zod`;
 export const PACKAGE_LINKS = packageLinks(KERNEL_NAME, REPO_URL);
 
 export const HEADLINE = [
-	{ text: 'Agents are', claim: false },
-	{ text: 'probabilistic.', claim: false },
-	{ text: 'Your architecture', claim: true },
-	{ text: 'shouldn’t be.', claim: true },
+	{ text: 'What if agentic', claim: false },
+	{ text: 'experiences kept', claim: false },
+	{ text: 'their promises?', claim: false },
 ] as const;
 
 export type ExampleAction =
@@ -131,7 +130,7 @@ export type HomeScreen = { id: string; name: string; text: string };
 const HEADLINE_TEXT = HEADLINE.map(({ text }) => text).join(' ');
 
 export function homeScreens(): readonly HomeScreen[] {
-	const goals = GOALS.map(({ title, text }) => `${title}: ${text}`).join(' ');
+	const goals = GOALS.map(({ title }) => title).join(' ');
 	const examples = EXAMPLES.map(({ title, description, action }) => {
 		const where = action.kind === 'hosted' ? 'Opens the hosted app.' : 'Opens in the studio.';
 		return `${title}: ${description} ${where}`;

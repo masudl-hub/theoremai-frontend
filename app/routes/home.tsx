@@ -68,6 +68,7 @@ function landingScreen(hash: string): LandingScreen | null {
 	const id = decodeURIComponent(hash.replace(/^#/, ''));
 	if (id === '' || id === 'landing') return 'landing';
 	if (id === 'overview') return 'overview';
+	if (id === 'source-of-truth') return 'experience';
 	if (isGoalId(id)) return id;
 	if (isPlatformId(id)) return PLATFORM_SHOWN ? id : null;
 	if (id === 'showcase' || id === 'examples') return 'showcase';

@@ -1,3 +1,5 @@
+import { resolveGuardrailPolicy } from '@theoremjs/agents';
+import { DETECTORS } from '@theoremjs/agents/guardrails';
 /**
  * The one agent the goals screen edits and runs: the studio's travel concierge, pared to what a
  * first version has. Its draft, compiler, printer and reader are the studio's own. This file adds
@@ -7,7 +9,11 @@ import {
 	agentDraft,
 	compileWorkspace,
 	createBlankDraft,
+	createConsoleExampleDraft,
+	createDecisionExampleDraft,
 	createExampleDraft,
+	createGeminiEmbeddingExampleDraft,
+	createNarratorExampleDraft,
 	readStudioSource,
 	type StudioDraft,
 	type StudioIssue,
@@ -32,15 +38,24 @@ const SYSTEM = [
 	'When a file is attached, say what you can use from it.',
 ].join('\n');
 
-const MEDIA = { attachmentsAccept: ['image/*'], voiceAccept: ['audio/*'] };
+const MEDIA = { attachmentsAccept: ['image/*', 'application/pdf'], voiceAccept: ['audio/*'] };
 const NO_MEDIA = { attachmentsAccept: [], voiceAccept: [] };
 const WEATHER_HOSTS = ['api.open-meteo.com'];
 
-const TRIP_STYLES = JSON.stringify({ style: ['budget', 'comfort', 'splurge'] });
-const MEDIA_LIMITS = JSON.stringify({ 'image/*': 512_000, 'audio/*': 2_000_000 });
+const TRIP_STYLES = JSON.stringify({
+	style: ['budget', 'comfort', 'splurge'],
+	pace: ['relaxed', 'balanced', 'packed'],
+});
+const MEDIA_LIMITS = JSON.stringify({
+	'image/*': 512_000,
+	'application/pdf': 2_000_000,
+	'audio/*': 2_000_000,
+});
 const ITINERARY = JSON.stringify({
 	type: 'object',
 	properties: {
+		destination: { type: 'string' },
+		summary: { type: 'string' },
 		days: {
 			type: 'array',
 			items: {
@@ -53,7 +68,7 @@ const ITINERARY = JSON.stringify({
 			},
 		},
 	},
-	required: ['days'],
+	required: ['destination', 'summary', 'days'],
 });
 
 function createHomeDraft(): StudioDraft {
@@ -94,9 +109,6 @@ export type DraftEdit = (draft: StudioDraft) => StudioDraft;
 /** A change that holds whatever the agent makes. It is written to the text agent set aside too. */
 type FieldEdit = { isOn: (draft: StudioDraft) => boolean; on: DraftEdit; off: DraftEdit };
 
-const sameList = (a: readonly string[], b: readonly string[]) =>
-	a.length === b.length && a.every((value, index) => value === b[index]);
-
 function detectEdit(
 	detector: 'credentials' | 'injection',
 	boundary: 'reply' | 'tool_output_http',
@@ -121,36 +133,13 @@ function detectEdit(
 	};
 }
 
-const inputsEdit = (inputs: Partial<StudioDraft['inputs']>): DraftEdit => {
-	return (draft) => ({ ...draft, inputs: { ...draft.inputs, ...inputs } });
-};
-
-const outputsEdit = (outputs: Partial<StudioDraft['outputs']>): DraftEdit => {
-	return (draft) => ({ ...draft, outputs: { ...draft.outputs, ...outputs } });
-};
-
 const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
-	'allow-media': {
+	'trip-brief': {
 		isOn: (draft) =>
-			sameList(draft.inputs.attachmentsAccept, MEDIA.attachmentsAccept) &&
-			sameList(draft.inputs.voiceAccept, MEDIA.voiceAccept),
-		on: inputsEdit(MEDIA),
-		off: inputsEdit(NO_MEDIA),
-	},
-	'stream-reply': {
-		isOn: (draft) => draft.outputs.streamMode === 'sse',
-		on: outputsEdit({ streamMode: 'sse' }),
-		off: outputsEdit({ streamMode: 'buffered' }),
-	},
-	'typed-choice': {
-		isOn: (draft) => draft.inputs.slotsJson.trim() !== '',
-		on: inputsEdit({ slotsJson: TRIP_STYLES }),
-		off: inputsEdit({ slotsJson: '' }),
-	},
-	'declared-shape': {
-		isOn: (draft) => draft.outputs.mode === 'structured',
+			draft.inputs.slotsJson === TRIP_STYLES && draft.outputs.schemaId === 'itinerary',
 		on: (draft) => ({
 			...draft,
+			inputs: { ...draft.inputs, ...MEDIA, slotsJson: TRIP_STYLES },
 			outputs: {
 				...draft.outputs,
 				mode: 'structured',
@@ -160,7 +149,99 @@ const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
 		}),
 		off: (draft) => ({
 			...draft,
+			inputs: { ...draft.inputs, ...NO_MEDIA, slotsJson: '' },
 			outputs: { ...draft.outputs, mode: 'text', schemaId: '', schemaJson: '' },
+		}),
+	},
+	'approve-tools': {
+		isOn: (draft) =>
+			draft.toolSpecs.some(
+				(tool) => tool.toolName === 'get_weather' && tool.permission === 'always_confirm',
+			),
+		on: (draft) => ({
+			...draft,
+			outputs: { ...draft.outputs, streamMode: 'sse' },
+			guardrails: {
+				...draft.guardrails,
+				detect: {
+					...draft.guardrails.detect,
+					credentials: { ...draft.guardrails.detect.credentials, reply: 'block' },
+				},
+			},
+			toolSpecs: draft.toolSpecs.map((tool) =>
+				tool.toolName === 'get_weather'
+					? {
+							...tool,
+							permission: 'always_confirm',
+							activity: 'Checking the weather',
+							activityPast: 'Weather checked',
+						}
+					: tool,
+			),
+		}),
+		off: (draft) => ({
+			...draft,
+			outputs: { ...draft.outputs, streamMode: 'buffered' },
+			guardrails: {
+				...draft.guardrails,
+				detect: {
+					...draft.guardrails.detect,
+					credentials: {
+						...draft.guardrails.detect.credentials,
+						reply: createBlankDraft().guardrails.detect.credentials.reply,
+					},
+				},
+			},
+			toolSpecs: draft.toolSpecs.map((tool) => {
+				if (tool.toolName !== 'get_weather') return tool;
+				const original = createExampleDraft().toolSpecs.find(
+					(entry) => entry.toolName === 'get_weather',
+				);
+				return {
+					...tool,
+					permission: 'auto',
+					activity: original?.activity,
+					activityPast: original?.activityPast,
+				};
+			}),
+		}),
+	},
+	'file-types': {
+		isOn: (draft) =>
+			draft.inputs.attachmentsAccept.join(',') === 'application/pdf,image/png,image/jpeg',
+		on: (draft) => ({
+			...draft,
+			inputs: {
+				...draft.inputs,
+				attachmentsAccept: ['application/pdf', 'image/png', 'image/jpeg'],
+			},
+		}),
+		off: (draft) => ({ ...draft, inputs: { ...draft.inputs, attachmentsAccept: [] } }),
+	},
+	'file-limits': {
+		isOn: (draft) => draft.inputs.maxFiles === 1 && draft.inputs.maxBytes === 250_000,
+		on: (draft) => ({
+			...draft,
+			inputs: {
+				...draft.inputs,
+				attachmentsAccept: ['application/pdf'],
+				voiceAccept: [],
+				maxFiles: 1,
+				maxBytes: 250_000,
+				maxTurnBytes: 250_000,
+				limitsByMimeJson: JSON.stringify({ 'application/pdf': 250_000 }),
+			},
+		}),
+		off: (draft) => ({
+			...draft,
+			inputs: {
+				...draft.inputs,
+				attachmentsAccept: [],
+				maxFiles: createExampleDraft().inputs.maxFiles,
+				maxBytes: createExampleDraft().inputs.maxBytes,
+				maxTurnBytes: createExampleDraft().inputs.maxTurnBytes,
+				limitsByMimeJson: MEDIA_LIMITS,
+			},
 		}),
 	},
 	'block-secret': detectEdit('credentials', 'reply'),
@@ -183,10 +264,6 @@ const modelChoice = (draft: StudioDraft): ModelChoice => ({
 	isPicked: draft.models.allowModelSelect,
 });
 
-/**
- * The models for each pair of changes, from the concierge's own three. One model has no picker.
- * A picker has two models, and an effort to pick on each model that takes more than one.
- */
 function modelsFor({
 	isOpen,
 	isPicked,
@@ -203,15 +280,53 @@ function modelsFor({
 	const first = isOpen
 		? named('open')
 		: named('smart').map(isPicked ? (binding) => binding : plain);
-	const second = isPicked ? named(isOpen ? 'smart' : 'fast') : [];
+	const gemini = named('smart')[0];
+	const additional = isPicked
+		? [
+				...named('smart'),
+				...named('fast'),
+				...['gemini-3.8-flash'].map((apiId) => ({
+					...gemini,
+					modelId: apiId.replace('gemini-', ''),
+					apiId,
+					efforts: [
+						{ alias: 'Minimal', level: 'minimal' as const },
+						{ alias: 'Medium', level: 'medium' as const },
+						{ alias: 'High', level: 'high' as const },
+					],
+					defaultEffort: 'Medium',
+					allowEffortSelect: true,
+					summaries: true,
+				})),
+			].filter((binding) => !first.some(({ modelId }) => modelId === binding.modelId))
+		: [];
+	const modelNames: Record<string, string> = {
+		'gemini-3.1-flash-lite': 'Gemini 3.1 Flash Lite',
+		'gemini-3.5-flash-lite': 'Gemini 3.5 Flash Lite',
+		'gemini-3.8-flash': 'Gemini 3.8 Flash',
+		'openrouter/free': 'OpenRouter Free',
+	};
+	const bindings = [...first, ...additional].map((binding) => ({
+		...binding,
+		modelId: modelNames[binding.apiId] ?? binding.apiId,
+		efforts: binding.efforts.map((effort) => ({ ...effort, alias: effort.level })),
+		defaultEffort:
+			binding.efforts.find(({ alias }) => alias === binding.defaultEffort)?.level ?? '',
+	}));
 	return {
-		models: { ...models, defaultModel: isOpen ? 'open' : 'smart', allowModelSelect: isPicked },
-		modelBindings: [...first, ...second],
+		models: { ...models, defaultModel: bindings[0].modelId, allowModelSelect: isPicked },
+		modelBindings: bindings,
 	};
 }
 
+const EXAMPLE_DRAFTS: Partial<Record<GoalTokenId, () => StudioDraft>> = {
+	decision: createDecisionExampleDraft,
+	host: createConsoleExampleDraft,
+	embedding: createGeminiEmbeddingExampleDraft,
+	speech: createNarratorExampleDraft,
+};
+
 const TYPES: Partial<Record<GoalTokenId, 'image' | 'live'>> = {
-	picture: 'image',
 	'live-call': 'live',
 };
 
@@ -222,7 +337,16 @@ const typed = (text: StudioWorkspace, type: 'image' | 'live') =>
 	edited(text, (draft) =>
 		type === 'image'
 			? { ...setProfileType(draft, type, SITE_KEYS), toolSpecs: [] }
-			: setProfileType(draft, type, SITE_KEYS),
+			: {
+					...setProfileType(draft, type, SITE_KEYS),
+					live: {
+						...draft.live,
+						transcriptionInput: true,
+						transcriptionOutput: true,
+						vadActivityHandling: 'START_OF_ACTIVITY_INTERRUPTS',
+						greeting: 'Welcome the traveler to Lisbon and ask what they would like to explore.',
+					},
+				},
 	);
 
 /** The text agent under whatever is on screen. */
@@ -237,21 +361,49 @@ function textOf(agent: HomeAgent): StudioWorkspace {
 export function tokenIsOn(agent: HomeAgent, id: GoalTokenId): boolean {
 	const draft = draftOf(agent.workspace);
 	const field = FIELD_EDITS[id];
-	if (field) return field.isOn(draft);
+	if (field) return draft.identity.profileType === 'text' && field.isOn(draft);
+	const example = EXAMPLE_DRAFTS[id];
+	if (example) return draft.identity.profileType === id;
 	const type = TYPES[id];
 	if (type) return draft.identity.profileType === type;
-	if (id !== 'providers') return false;
+	if (id !== 'providers' || draft.identity.profileType !== 'text') return false;
 	const { isOpen, isPicked } = modelChoice(draftOf(textOf(agent)));
 	return isOpen && isPicked;
 }
 
 /** A token with nothing to change: it only says what to try. */
 export function tokenEdits(id: GoalTokenId): boolean {
-	return id in FIELD_EDITS || id === 'providers' || id in TYPES;
+	return id in FIELD_EDITS || id === 'providers' || id in TYPES || id in EXAMPLE_DRAFTS;
 }
 
 export function toggleToken(agent: HomeAgent, id: GoalTokenId): HomeAgent {
+	if ((id in FIELD_EDITS || id === 'providers') && typeOf(agent.workspace) !== 'text') {
+		agent = { workspace: textOf(agent) };
+	}
+	const isMode = id in EXAMPLE_DRAFTS || id in TYPES;
+	if (isMode && !tokenIsOn(agent, id)) {
+		let text = textOf(agent);
+		for (const [fieldId, field] of Object.entries(FIELD_EDITS)) {
+			if (tokenIsOn({ workspace: text }, fieldId as GoalTokenId)) {
+				text = edited(text, field.off);
+			}
+		}
+		text = edited(text, (draft) => ({
+			...draft,
+			...modelsFor({ isOpen: false, isPicked: false }),
+		}));
+		agent = { workspace: text };
+	}
 	const isOn = tokenIsOn(agent, id);
+	const inputExamples: readonly GoalTokenId[] = ['trip-brief', 'file-types', 'file-limits'];
+	if (!isOn && inputExamples.includes(id)) {
+		for (const other of inputExamples) {
+			const edit = FIELD_EDITS[other];
+			if (other !== id && edit && tokenIsOn(agent, other)) {
+				agent = { workspace: edited(agent.workspace, edit.off) };
+			}
+		}
+	}
 	const field = FIELD_EDITS[id];
 	if (field) {
 		const edit = isOn ? field.off : field.on;
@@ -261,6 +413,28 @@ export function toggleToken(agent: HomeAgent, id: GoalTokenId): HomeAgent {
 		};
 	}
 	const text = textOf(agent);
+	const example = EXAMPLE_DRAFTS[id];
+	if (example) {
+		if (isOn) return { workspace: text };
+		const source = draftOf(text);
+		const seed = example();
+		if (!seed.identity.profileType) throw new Error('The example has no profile type.');
+		const draft =
+			seed.identity.profileType === 'host'
+				? seed
+				: setProfileType(seed, seed.identity.profileType, SITE_KEYS);
+		return {
+			workspace: edited(text, () => ({
+				...draft,
+				identity: { ...draft.identity, agentId: source.identity.agentId },
+				toolSpecs: draft.toolSpecs.map((tool) => ({
+					...tool,
+					key: source.toolSpecs.find((entry) => entry.toolName === tool.toolName)?.key ?? tool.key,
+				})),
+			})),
+			text,
+		};
+	}
 	const type = TYPES[id];
 	if (type) return isOn ? { workspace: text } : { workspace: typed(text, type), text };
 	if (id !== 'providers') return agent;
@@ -268,11 +442,7 @@ export function toggleToken(agent: HomeAgent, id: GoalTokenId): HomeAgent {
 		...draft,
 		...modelsFor({ isOpen: !isOn, isPicked: !isOn }),
 	}));
-	// The models are the text agent's. A picture or a call on screen stays on screen.
-	const shown = typeOf(agent.workspace);
-	return shown === 'image' || shown === 'live'
-		? { workspace: typed(next, shown), text: next }
-		: { workspace: next };
+	return { workspace: next };
 }
 
 /** What the open agent compiles to: what runs, and the file the editor shows. */
@@ -286,6 +456,31 @@ export function compileHomeAgent({ workspace }: HomeAgent): HomeCompile {
 	const run = workspaceRunAgent(compiled, draftOf(workspace).identity.agentId.trim());
 	if (!run) return { ok: false, issues: [] };
 	const { agentId, profile, customTools, structured, questions, dependencies } = run;
+	const policy = resolveGuardrailPolicy(profile.guardrails);
+	const declared = profile.guardrails?.detect;
+	const detect = Object.fromEntries(
+		DETECTORS.map((detector) => {
+			const rule = typeof declared === 'object' ? declared[detector] : undefined;
+			return [
+				detector,
+				{
+					...(typeof rule === 'object' ? rule : {}),
+					at: policy.detect[detector],
+				},
+			];
+		}),
+	);
+	const printed = {
+		...run,
+		profile: {
+			...profile,
+			guardrails: {
+				...profile.guardrails,
+				detect: { ...(typeof declared === 'object' ? declared : {}), ...detect },
+				blockedReply: policy.blockedReply,
+			},
+		},
+	};
 	return {
 		ok: true,
 		payload: {
@@ -297,7 +492,7 @@ export function compileHomeAgent({ workspace }: HomeAgent): HomeCompile {
 			dependencies,
 			connectionMode: 'demo',
 		},
-		source: studioSource(run),
+		source: studioSource(printed),
 	};
 }
 
