@@ -54,9 +54,11 @@ export default defineConfig({
 	resolve: {
 		// The kernel packages live outside this repo; pin React, Astryx, and icons to the host
 		// install so the package and the site share one copy (and one ThemeContext). zod too:
-		// the site's schemas go to the kernel, and tsconfig.json resolves it the same way.
+		// the site's schemas go to the kernel, and tsconfig.json resolves it the same way. Astryx
+		// formats its messages with intl-messageformat, so the package's labels share its copy.
 		dedupe: [
 			'zod',
+			'intl-messageformat',
 			'react',
 			'react-dom',
 			'@astryxdesign/core',
