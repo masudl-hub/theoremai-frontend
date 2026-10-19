@@ -41,8 +41,7 @@ const GEMINI: Readonly<Record<Exclude<ModelProfileType, 'decision'>, readonly Le
 		{ id: 'gemini-2.5-flash', label: '2.5 Flash' },
 		{ id: 'gemini-3-flash-preview', label: '3 Flash' },
 		{ id: 'gemini-3.5-flash-lite', label: '3.5 Flash Lite' },
-		{ id: 'gemini-3.5-flash', label: '3.5 Flash' },
-		{ id: 'gemini-3.6-flash', label: '3.6 Flash' },
+		{ id: 'gemini-3.8-flash', label: '3.8 Flash' },
 		{ id: 'gemini-3.7-flash', label: '3.7 Flash' },
 		{ id: 'gemma-4-26b-a4b-it', label: 'Gemma 4 26B' },
 		{ id: 'gemma-4-31b-it', label: 'Gemma 4 31B' },
@@ -55,8 +54,8 @@ const GEMINI: Readonly<Record<Exclude<ModelProfileType, 'decision'>, readonly Le
 		{ id: 'gemini-3.8-flash-lite-tts', label: '3.8 Flash Lite TTS' },
 	],
 	live: [
-		{ id: 'gemini-3.1-flash-live-preview', label: '3.1 Flash Live' },
 		{ id: 'gemini-3.8-live', label: '3.8 Live' },
+		{ id: 'gemini-3.1-flash-live-preview', label: '3.1 Flash Live' },
 		{ id: 'gemini-3.8-live-extended-thinking', label: '3.8 Live Extended Thinking' },
 	],
 	embedding: KNOWN_GEMINI_EMBEDDING_MODELS.map((model) => ({

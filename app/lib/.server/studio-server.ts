@@ -44,11 +44,13 @@ export function studioServer(env: SiteEnv): StudioDraftHandler {
 			},
 			resolveHost,
 			spend: (kind, request) =>
-				spendAllowance(
-					env.DECIDE_ALLOWANCE && allowanceStore(env.DECIDE_ALLOWANCE),
-					ALLOWANCE[kind],
-					request,
-				),
+				import.meta.env.DEV
+					? Promise.resolve()
+					: spendAllowance(
+							env.DECIDE_ALLOWANCE && allowanceStore(env.DECIDE_ALLOWANCE),
+							ALLOWANCE[kind],
+							request,
+						),
 			steer: studioSteerInbox(env.STEER_INBOX),
 			...(env.CONVERSATION_SEAL_KEY ? { conversationKey: env.CONVERSATION_SEAL_KEY } : {}),
 			...(env.PROBE_LOG

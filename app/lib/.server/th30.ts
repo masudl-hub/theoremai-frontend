@@ -301,7 +301,7 @@ When they ask you to build, or to make the one on screen any good:
 
 /** The overview's own words on Theorem: public text th30 may repeat. */
 function theoremIs(): string {
-	const goals = GOALS.map(({ title, text }) => `${title}: ${text}`).join(' ');
+	const goals = GOALS.map(({ title }) => title).join(' ');
 	return `${HOME_TAGLINE} ${ARGUMENT} ${goals}`;
 }
 
