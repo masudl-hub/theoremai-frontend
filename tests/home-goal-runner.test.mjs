@@ -41,10 +41,10 @@ export function StudioRunner({payload}) {
 		for (const first of ids) {
 			for (const second of ids) {
 				const sequence = createHomeAgentStore();
-				sequence.toggle(first);
+				await sequence.toggle(first);
 				assert.equal(sequence.get().compiled.ok, true, first);
 				const wasSelected = tokenIsOn(sequence.get().agent, second);
-				sequence.toggle(second);
+				await sequence.toggle(second);
 				assert.equal(sequence.get().compiled.ok, true, `${first} then ${second}: ${JSON.stringify(sequence.get().compiled)}`);
 				if (first !== second && !wasSelected) {
 					assert.equal(tokenIsOn(sequence.get().agent, second), true, `${second} should be selected after ${first}`);
@@ -60,22 +60,22 @@ export function StudioRunner({payload}) {
 		assert.ok(store.get().good.source.includes('blockedReply:'));
 		assert.deepEqual(store.read(store.get().good.source).errors, []);
 		assert.equal(store.get().compiled.ok, true);
-		store.toggle('providers');
+		await store.toggle('providers');
 		assert.equal(store.get().compiled.ok, true);
 		const models = Object.values(store.get().good.payload.profile.models);
 		assert.equal(models.length, 4);
 		assert.equal(models.filter(({ provider }) => provider === 'gemini').length, 3);
-		store.toggle('providers');
+		await store.toggle('providers');
 		assert.equal(Object.keys(store.get().good.payload.profile.models).length, 1);
 		for (const id of ['host', 'embedding', 'decision', 'speech', 'live-call']) {
 			const picked = beat.controls.flatMap((group) => group.tokens).find((token) => token.id === id);
-			store.toggle(id);
+			await store.toggle(id);
 			const state = store.get();
 			assert.equal(state.compiled.ok, true);
 			const html = renderToString(createElement(GoalLive, { store, beat, picked }));
 			const type = id === 'live-call' ? 'live' : id;
 			assert.ok(html.includes(`data-runner-type="${type}"`), `${id} should render its own runner immediately: ${html.slice(-800)}`);
-			store.toggle(id);
+			await store.toggle(id);
 			assert.equal(store.get().good.payload.profile.type, 'text');
 		}
 	} finally {

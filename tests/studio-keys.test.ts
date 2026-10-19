@@ -205,13 +205,13 @@ test("runs on the site's keys reach public hosts only, and refuse destructive ca
 	);
 });
 
-test("every worked example the studio offers runs on the site's keys as it opens", () => {
+test("every worked example the studio offers runs on the site's keys as it opens", async () => {
 	const drafts = {
 		travel: createExampleDraft(),
 		live: createLiveExampleDraft(),
 		narrator: createNarratorExampleDraft(),
 		console: createConsoleExampleDraft(),
-		decision: createDecisionExampleDraft(),
+		decision: await createDecisionExampleDraft(),
 		span: createSpanExampleDraft(),
 	};
 	for (const [name, draft] of Object.entries(drafts)) {

@@ -319,7 +319,7 @@ function modelsFor({
 	};
 }
 
-const EXAMPLE_DRAFTS: Partial<Record<GoalTokenId, () => StudioDraft>> = {
+const EXAMPLE_DRAFTS: Partial<Record<GoalTokenId, () => StudioDraft | Promise<StudioDraft>>> = {
 	decision: createDecisionExampleDraft,
 	host: createConsoleExampleDraft,
 	embedding: createGeminiEmbeddingExampleDraft,
@@ -376,7 +376,20 @@ export function tokenEdits(id: GoalTokenId): boolean {
 	return id in FIELD_EDITS || id === 'providers' || id in TYPES || id in EXAMPLE_DRAFTS;
 }
 
-export function toggleToken(agent: HomeAgent, id: GoalTokenId): HomeAgent {
+/**
+ * The example a token turns on, made ahead of {@link toggleToken}: the decision example loads its
+ * pictures first. Nothing when the token is no example, or its example is already on.
+ */
+export async function exampleSeed(
+	agent: HomeAgent,
+	id: GoalTokenId,
+): Promise<StudioDraft | undefined> {
+	const example = EXAMPLE_DRAFTS[id];
+	return example && !tokenIsOn(agent, id) ? await example() : undefined;
+}
+
+/** The agent with a token turned on or off. An example token turning on takes its {@link exampleSeed}. */
+export function toggleToken(agent: HomeAgent, id: GoalTokenId, seed?: StudioDraft): HomeAgent {
 	if ((id in FIELD_EDITS || id === 'providers') && typeOf(agent.workspace) !== 'text') {
 		agent = { workspace: textOf(agent) };
 	}
@@ -413,11 +426,10 @@ export function toggleToken(agent: HomeAgent, id: GoalTokenId): HomeAgent {
 		};
 	}
 	const text = textOf(agent);
-	const example = EXAMPLE_DRAFTS[id];
-	if (example) {
+	if (id in EXAMPLE_DRAFTS) {
 		if (isOn) return { workspace: text };
 		const source = draftOf(text);
-		const seed = example();
+		if (!seed) throw new Error(`The ${id} example was not made first.`);
 		if (!seed.identity.profileType) throw new Error('The example has no profile type.');
 		const draft =
 			seed.identity.profileType === 'host'

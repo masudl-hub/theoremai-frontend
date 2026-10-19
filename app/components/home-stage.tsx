@@ -138,7 +138,7 @@ function StageCopy() {
 		void load().then(({ tokenEdits, tokenIsOn, store }) => {
 			const edits = tokenEdits(token.id);
 			const wasOn = edits ? tokenIsOn(store.get().agent, token.id) : picked[number] === token;
-			if (edits) store.toggle(token.id);
+			if (edits) void store.toggle(token.id);
 			setPicked((now) => ({ ...now, [number]: wasOn ? undefined : token }));
 		});
 	};

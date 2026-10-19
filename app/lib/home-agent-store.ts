@@ -4,6 +4,7 @@ import {
 	createHomeAgent,
 	type DraftEdit,
 	editHomeDraft,
+	exampleSeed,
 	type HomeAgent,
 	type HomeCompile,
 	readHomeSource,
@@ -65,11 +66,13 @@ export function createHomeAgentStore() {
 				listeners.delete(listener);
 			};
 		},
-		toggle: (id: GoalTokenId) => {
+		/** Settles once an example token's example is made: the decision example loads its pictures. */
+		toggle: async (id: GoalTokenId) => {
 			const token = GOAL_BEATS.flatMap((beat) =>
 				beat.controls.flatMap((group) => group.tokens),
 			).find((entry) => entry.id === id);
-			set({ ...settle(toggleToken(state.agent, id), state, true), focus: token?.line });
+			const seed = await exampleSeed(state.agent, id);
+			set({ ...settle(toggleToken(state.agent, id, seed), state, true), focus: token?.line });
 		},
 		/** A change from the studio's form. */
 		edit: (change: DraftEdit) => {
