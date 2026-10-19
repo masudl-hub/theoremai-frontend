@@ -28,6 +28,8 @@ const SPAN_DECISION: LentModel = { id: 'respan/span-01-lite:free', label: 'Span 
 
 /** The TypeSafe model a decision starts on. */
 const JEV: LentModel = { id: 'jev-latest', label: 'Jev' };
+/** Jev 1.14, the release that answers Box questions; the studio's decision example runs on it. */
+const JEV_BOXES: LentModel = { id: 'jev-1.14.0', label: 'Jev 1.14' };
 
 /**
  * Non-pro Gemini models with non-zero free-tier quotas (AI Studio, Sep 2026). Wire ids verified
@@ -76,7 +78,11 @@ function builtins(apiId: string): readonly string[] {
 
 function models(type: ModelProfileType, definition: string | undefined): readonly LentModel[] {
 	if (type === 'decision')
-		return definition === 'typesafe' ? [JEV] : definition === 'openrouter' ? [SPAN_DECISION] : [];
+		return definition === 'typesafe'
+			? [JEV, JEV_BOXES]
+			: definition === 'openrouter'
+				? [SPAN_DECISION]
+				: [];
 	if (definition === 'gemini') return GEMINI[type];
 	if (definition === 'openrouter') {
 		if (type === 'text') return [{ id: OPENROUTER_FREE, label: 'Free router' }];
@@ -193,6 +199,8 @@ export const SITE_KEYS: LentKeys = {
 		idChars: 128,
 		stateBytes: 16_384,
 		timeoutMs: 30_000,
+		images: 4,
+		imageBytes: 4_194_304,
 	},
 	questionViolation,
 	stateViolation,
