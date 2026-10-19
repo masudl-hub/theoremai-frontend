@@ -89,22 +89,16 @@ function InstallCopy() {
 
 /** Where Theorem stands, over the tagline: early, and changing. */
 function EarlyDays() {
-	const ref = useRef<HTMLSpanElement>(null);
 	return (
-		<span ref={ref} className="home-intro-status">
-			<Token
-				label={EARLY_DAYS.label}
-				size="sm"
-				icon={<Icon icon={IconAlpha} size="sm" />}
-				tabIndex={0}
-			/>
-			<Tooltip
-				content={EARLY_DAYS.note}
-				placement="end"
-				anchorRef={ref}
-				focusTrigger="always"
-				touchTrigger="tap"
-			/>
+		<span className="home-intro-status">
+			<Tooltip content={EARLY_DAYS.note} placement="end" focusTrigger="always" touchTrigger="tap">
+				<Token
+					label={EARLY_DAYS.label}
+					size="sm"
+					icon={<Icon icon={IconAlpha} size="sm" />}
+					tabIndex={0}
+				/>
+			</Tooltip>
 		</span>
 	);
 }

@@ -13,6 +13,10 @@ function lengthOf(value: string): number {
  * and the gaps are taken out.
  */
 function measureTiles(run: HTMLElement, step: number) {
+	const leads = run.querySelector<HTMLElement>('.home-stage-leads');
+	if (step > 0 && leads) {
+		run.style.setProperty('--home-stage-leads-height', `${String(leads.clientHeight)}px`);
+	}
 	const frame = run.querySelector<HTMLElement>('.home-stage-frame');
 	const stack = run.querySelector<HTMLElement>('.home-stage-stills');
 	const figure = stack?.querySelector<HTMLElement>('.home-stage-still');
@@ -50,6 +54,7 @@ function restGoals(nearest: number, run: HTMLElement) {
 function clearGoals(run: HTMLElement) {
 	run.style.removeProperty('--home-goals-pull');
 	run.style.removeProperty('--home-goal-ratio');
+	run.style.removeProperty('--home-stage-leads-height');
 	setInert(run, null);
 	setGoalBeat(0);
 }
