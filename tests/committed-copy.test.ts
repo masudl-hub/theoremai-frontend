@@ -46,6 +46,35 @@ test('a committed copy holds the last commit: no uncommitted edit, no untracked 
 	}
 });
 
+test("a workspace's link to its own package leads to the copy, not back to the checkout", async () => {
+	const work = await Deno.makeTempDir();
+	try {
+		const repo = `${work}/repo`;
+		await Deno.mkdir(`${repo}/pkg/node_modules/@scope`, { recursive: true });
+		await Deno.mkdir(`${repo}/node_modules/dep`, { recursive: true });
+		await Deno.symlink('../../..', `${repo}/pkg/node_modules/@scope/root`);
+		await Deno.writeTextFile(`${repo}/.gitignore`, 'node_modules\n');
+		await Deno.writeTextFile(`${repo}/pkg/a.txt`, 'pkg');
+		await git(repo, 'init', '-q');
+		await git(repo, 'add', '.');
+		await git(repo, 'commit', '-q', '-m', 'one');
+
+		const copy = `${work}/copy`;
+		exportCommitted(repo, copy);
+		linkInstalled(repo, copy);
+		assert.equal(
+			await Deno.realPath(`${copy}/pkg/node_modules/@scope/root`),
+			await Deno.realPath(copy),
+		);
+		assert.equal(
+			await Deno.realPath(`${copy}/node_modules/dep`),
+			await Deno.realPath(`${repo}/node_modules/dep`),
+		);
+	} finally {
+		await Deno.remove(work, { recursive: true });
+	}
+});
+
 test('a mirrored install links every package but the ones the copy fills itself', async () => {
 	const work = await Deno.makeTempDir();
 	try {

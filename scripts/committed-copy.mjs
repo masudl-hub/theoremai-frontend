@@ -3,7 +3,7 @@
  * read work in progress.
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, symlinkSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readdirSync, realpathSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 
 /**
@@ -35,8 +35,25 @@ export function exportCommitted(repo, dest) {
 }
 
 /**
+ * Links `to` to the package at `from`. A link that leads back into `checkout` (a workspace's own
+ * package) leads to the same place in `copy`, so the copy never builds against the checkout's
+ * uncommitted files, nor holds two copies of one package.
+ *
+ * @param {string} checkout
+ * @param {string} copy
+ * @param {string} from
+ * @param {string} to
+ */
+function linkPackage(checkout, copy, from, to) {
+	const target = realpathSync(from);
+	const inside = path.relative(realpathSync(checkout), target);
+	const own = lstatSync(from).isSymbolicLink() && !inside.startsWith('..') && !path.isAbsolute(inside);
+	symlinkSync(own ? path.join(copy, inside) : target, to, 'dir');
+}
+
+/**
  * Gives `copy` the packages installed in `checkout`: each `node_modules` at the
- * checkout's root or one folder down is linked at the same place in the copy.
+ * checkout's root or one folder down gets a twin in the copy, linking each package.
  *
  * @param {string} checkout
  * @param {string} copy
@@ -47,7 +64,20 @@ export function linkInstalled(checkout, copy) {
 		.map((entry) => entry.name);
 	for (const folder of ['', ...folders]) {
 		const installed = path.join(checkout, folder, 'node_modules');
-		if (existsSync(installed)) symlinkSync(installed, path.join(copy, folder, 'node_modules'), 'dir');
+		if (!existsSync(installed)) continue;
+		const twin = path.join(copy, folder, 'node_modules');
+		mkdirSync(twin, { recursive: true });
+		for (const name of readdirSync(installed)) {
+			const from = path.join(installed, name);
+			if (!name.startsWith('@') || lstatSync(from).isSymbolicLink()) {
+				linkPackage(checkout, copy, from, path.join(twin, name));
+				continue;
+			}
+			mkdirSync(path.join(twin, name));
+			for (const scoped of readdirSync(from)) {
+				linkPackage(checkout, copy, path.join(from, scoped), path.join(twin, name, scoped));
+			}
+		}
 	}
 }
 
