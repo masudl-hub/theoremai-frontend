@@ -31,6 +31,9 @@ import { theoremSiteTheme } from './built/theorem-site';
 
 export const links: Route.LinksFunction = () => [
 	{ rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+	// Search results and crawlers that take no SVG: the same mark as PNG (and /favicon.ico).
+	{ rel: 'icon', href: '/favicon-192.png', type: 'image/png', sizes: '192x192' },
+	{ rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
 	// Body text's face, fetched with the document instead of after the stylesheet is parsed.
 	{
 		rel: 'preload',
