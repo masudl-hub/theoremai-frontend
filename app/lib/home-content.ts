@@ -175,6 +175,11 @@ export function homeScreens(): readonly HomeScreen[] {
 			name: 'Contribute',
 			text: `Contribute to the theory. ${CONTRIBUTE_INTRO} ${ways}`,
 		},
+		{
+			id: 'studio',
+			name: 'Studio',
+			text: 'The studio itself, the same one /studio opens: build an agent without code, chat with it, and take it as source code.',
+		},
 	];
 }
 
