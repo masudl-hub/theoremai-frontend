@@ -1,7 +1,7 @@
 /**
- * The studio's daily allowances, in one table: how much a visitor address,
+ * The site's daily allowances, in one table: how much a visitor address,
  * and the site as a whole, may spend in a UTC day. Every studio API request,
- * and every voice call, spends one `request`. Requests that spend the site's own keys or network
+ * and every voice call, spends one `request`; every docs MCP request spends one `docs`. Requests that spend the site's own keys or network
  * spend their own kind on top. A builder who wants more brings their own key.
  *
  * The counts live in Durable Objects (`studio-decide-allowance.ts`), so every
@@ -22,6 +22,8 @@ export const DAILY_ALLOWANCES = {
 	call: { perAddress: 100, perSite: 2000 },
 	/** A voice call on the site's Gemini keys. */
 	live: { perAddress: 10, perSite: 200 },
+	/** A request to the docs MCP server (`/mcp`). */
+	docs: { perAddress: 500, perSite: 20000 },
 } as const;
 
 export type AllowanceKind = keyof typeof DAILY_ALLOWANCES;
@@ -37,6 +39,8 @@ export type AllowanceStore = (name: string) => AllowanceCounter;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const STUDIO_API = '/api/studio/';
+/** The docs MCP server's endpoint. */
+const DOCS_MCP_PATH = '/mcp';
 /** The voice relay: a socket, so the Worker answers it before any route. */
 export const LIVE_RELAY_PATH = '/api/live/relay';
 
@@ -79,19 +83,27 @@ export async function spendAllowance(
 	});
 }
 
+/** What a request to `pathname` spends, or `undefined` for a path that spends nothing. */
+function gatedKind(pathname: string): AllowanceKind | undefined {
+	if (pathname.startsWith(STUDIO_API)) return 'request';
+	if (pathname === DOCS_MCP_PATH) return 'docs';
+	return undefined;
+}
+
 /**
- * Spends one studio request, before any route sees it. `null` lets the
+ * Spends one studio API or docs MCP request, before any route sees it. `null` lets the
  * request through; otherwise the 429 to send. Other paths pass untouched. With
- * no store, the studio API does not run at all.
+ * no store, neither runs at all.
  */
-export async function gateStudioRequest(
+export async function gateRequest(
 	request: Request,
 	store: AllowanceStore | undefined,
 	now = Date.now(),
 ): Promise<Response | null> {
-	if (!new URL(request.url).pathname.startsWith(STUDIO_API)) return null;
+	const kind = gatedKind(new URL(request.url).pathname);
+	if (!kind) return null;
 	try {
-		await spendAllowance(store, 'request', request, now);
+		await spendAllowance(store, kind, request, now);
 		return null;
 	} catch (err) {
 		return refusal(err, err instanceof TheoremError && err.kind === 'rate_limit' ? 429 : 503, now);

@@ -3,11 +3,7 @@ import { cloudflareContext, type SiteEnv } from '../app/cloudflare';
 import { pruneProbeLog } from '../app/lib/.server/guardrail-probe';
 import { handleLiveRelay } from '../app/lib/.server/live-relay';
 import { withSecurityHeaders } from '../app/lib/.server/security-headers';
-import {
-	gateStudioRequest,
-	LIVE_RELAY_PATH,
-	spendAllowance,
-} from '../app/lib/.server/studio-allowance';
+import { gateRequest, LIVE_RELAY_PATH, spendAllowance } from '../app/lib/.server/studio-allowance';
 import { allowanceStore } from '../app/lib/.server/studio-decide-allowance';
 
 export { StudioDecideAllowance } from '../app/lib/.server/studio-decide-allowance';
@@ -47,8 +43,8 @@ async function respond(request: Request, env: SiteEnv, ctx: ExecutionContext): P
 		};
 		return handleLiveRelay(request, env, import.meta.env.DEV ? {} : { admit });
 	}
-	// Every studio API request spends one of the visitor's and the site's day.
-	const refused = import.meta.env.DEV ? null : await gateStudioRequest(request, allowances(env));
+	// Every studio API and docs MCP request spends one of the visitor's and the site's day.
+	const refused = import.meta.env.DEV ? null : await gateRequest(request, allowances(env));
 	if (refused) return refused;
 	const context = new RouterContextProvider();
 	context.set(cloudflareContext, { env, ctx });

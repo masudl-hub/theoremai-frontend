@@ -157,7 +157,7 @@ const th30HighlightTool = {
 	answeredBy: 'page' as const,
 };
 
-const th30ReadTool = {
+export const th30ReadTool = {
 	type: 'function' as const,
 	name: 'read',
 	description:
@@ -201,7 +201,7 @@ const th30SearchDocsFields = {
 const th30SearchDocsPageTool = { ...th30SearchDocsFields, answeredBy: 'page' as const };
 
 /** The eval twin's search: no page to ask, so the server answers with the keyword ranking. */
-const th30SearchDocsServerTool = {
+export const th30SearchDocsServerTool = {
 	...th30SearchDocsFields,
 	handler: (input: SearchDocsInput) => {
 		const index = getDocIndex();

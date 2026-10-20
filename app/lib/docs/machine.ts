@@ -72,6 +72,7 @@ export function llmsTxt(index: DocIndex, origin: string): string {
 		'',
 		`- [Everything in one file](${origin}/llms-full.txt): the landing page and every chapter, in full.`,
 		`- [Docs index as JSON](${origin}/docs/index.json): every chapter with its body, sections and symbols.`,
+		`- [Docs over MCP](${origin}/mcp): an MCP server (streamable HTTP) with search_docs and read_docs; its card is at /mcp/server-card.`,
 		`- [Sitemap](${origin}/sitemap.xml)`,
 		'',
 	].join('\n');

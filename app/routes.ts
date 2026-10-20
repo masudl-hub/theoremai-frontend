@@ -21,6 +21,13 @@ export default [
 	route('llms-full.txt', 'routes/llms-full[.]txt.ts'),
 	route('robots.txt', 'routes/robots[.]txt.ts'),
 	route('sitemap.xml', 'routes/sitemap[.]xml.ts'),
+	// The docs as an MCP server, its card, and the catalog that lists it (`docs-mcp.ts`).
+	route('mcp', 'routes/mcp.ts'),
+	route('mcp/server-card', 'routes/mcp.server-card.ts', { id: 'mcp-server-card' }),
+	route('.well-known/mcp/server-card.json', 'routes/mcp.server-card.ts', {
+		id: 'well-known-mcp-server-card',
+	}),
+	route('.well-known/ai-catalog.json', 'routes/ai-catalog[.]json.ts'),
 	route('api/kernel', 'routes/api.kernel.ts'),
 	route('api/home/start', 'routes/api.home.start.ts'),
 	// Every request the studio screen makes: the package's handler (`studio-server.ts`).

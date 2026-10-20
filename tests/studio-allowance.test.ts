@@ -6,7 +6,7 @@ import { SECURITY_HEADERS, withSecurityHeaders } from '../app/lib/.server/securi
 import {
 	type AllowanceStore,
 	DAILY_ALLOWANCES,
-	gateStudioRequest,
+	gateRequest,
 	spendAllowance,
 } from '../app/lib/.server/studio-allowance.ts';
 
@@ -36,40 +36,51 @@ function post(path: string, address = '203.0.113.7') {
 
 test('every studio API request spends one of the day, and other paths spend nothing', async () => {
 	const { store, counts } = memoryStore();
-	assert.equal(await gateStudioRequest(post('/api/studio/test-key'), store, NOON), null);
-	assert.equal(await gateStudioRequest(post('/api/studio/turn/steer'), store, NOON), null);
-	assert.equal(await gateStudioRequest(post('/studio'), store, NOON), null);
-	assert.equal(await gateStudioRequest(post('/api/kernel'), store, NOON), null);
+	assert.equal(await gateRequest(post('/api/studio/test-key'), store, NOON), null);
+	assert.equal(await gateRequest(post('/api/studio/turn/steer'), store, NOON), null);
+	assert.equal(await gateRequest(post('/studio'), store, NOON), null);
+	assert.equal(await gateRequest(post('/api/kernel'), store, NOON), null);
 	assert.equal(counts.get('2026-10-01:request:address:203.0.113.7'), 2);
 	assert.equal(counts.get('2026-10-01:request:site'), 2);
+});
+
+test('a docs MCP request spends one of the docs day, and its card spends nothing', async () => {
+	const { store, counts } = memoryStore();
+	assert.equal(await gateRequest(post('/mcp'), store, NOON), null);
+	assert.equal(await gateRequest(post('/mcp/server-card'), store, NOON), null);
+	assert.equal(counts.get('2026-10-01:docs:address:203.0.113.7'), 1);
+	assert.equal(counts.get('2026-10-01:docs:site'), 1);
+	assert.equal(counts.get('2026-10-01:request:site'), undefined);
+	counts.set('2026-10-01:docs:address:203.0.113.7', DAILY_ALLOWANCES.docs.perAddress);
+	assert.equal((await gateRequest(post('/mcp'), store, NOON))?.status, 429);
 });
 
 test("an address past its day gets a 429 until UTC midnight, and others still get in", async () => {
 	const { store, counts } = memoryStore();
 	counts.set('2026-10-01:request:address:203.0.113.7', perAddress);
-	const refused = await gateStudioRequest(post('/api/studio/turn'), store, NOON);
+	const refused = await gateRequest(post('/api/studio/turn'), store, NOON);
 	assert.equal(refused?.status, 429);
 	assert.equal(refused?.headers.get('retry-after'), String(12 * 60 * 60));
 	const body = (await refused?.json()) as { error: string; errorKind: string };
 	assert.equal(body.errorKind, 'rate_limit');
 	assert.match(body.error, new RegExp(String(perAddress)));
 	assert.equal(counts.get('2026-10-01:request:site'), undefined);
-	assert.equal(await gateStudioRequest(post('/api/studio/turn', '198.51.100.2'), store, NOON), null);
+	assert.equal(await gateRequest(post('/api/studio/turn', '198.51.100.2'), store, NOON), null);
 	const tomorrow = NOON + 24 * 60 * 60 * 1000;
-	assert.equal(await gateStudioRequest(post('/api/studio/turn'), store, tomorrow), null);
+	assert.equal(await gateRequest(post('/api/studio/turn'), store, tomorrow), null);
 });
 
 test("the site's day caps every address together", async () => {
 	const { store, counts } = memoryStore();
 	counts.set('2026-10-01:request:site', perSite);
-	const refused = await gateStudioRequest(post('/api/studio/decide', '198.51.100.9'), store, NOON);
+	const refused = await gateRequest(post('/api/studio/decide', '198.51.100.9'), store, NOON);
 	assert.equal(refused?.status, 429);
 });
 
 test('with no store the studio API does not run', async () => {
-	const refused = await gateStudioRequest(post('/api/studio/turn'), undefined, NOON);
+	const refused = await gateRequest(post('/api/studio/turn'), undefined, NOON);
 	assert.equal(refused?.status, 503);
-	assert.equal(await gateStudioRequest(post('/docs'), undefined, NOON), null);
+	assert.equal(await gateRequest(post('/docs'), undefined, NOON), null);
 });
 
 test("a voice call spends the day's voice calls, and is refused with the cap once they are spent", async () => {
