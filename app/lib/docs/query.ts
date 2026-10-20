@@ -34,13 +34,17 @@ export function chapterNeighbors(
 }
 
 /** One section or one glossary row of the article, as text. */
-function fragmentText(article: DocArticle, fragment: string): string | undefined {
+/** One section or glossary row of a chapter: its name, and its text. */
+function fragmentText(
+	article: DocArticle,
+	fragment: string,
+): { name: string; text: string } | undefined {
 	const section = article.sections.find((entry) => entry.id === fragment);
-	if (section) return sectionText(article, section);
+	if (section) return { name: section.title, text: sectionText(article, section) };
 	const symbol = article.symbols.find((item) => item.id === fragment);
 	if (!symbol) return undefined;
 	const { name, text } = symbolTerm(symbol);
-	return `${name} — ${text}`;
+	return { name, text: `${name} — ${text}` };
 }
 
 export function readDoc(
@@ -73,8 +77,12 @@ export function readDoc(
 	}
 
 	const isolated = fragment ? fragmentText(article, fragment) : undefined;
-	if (fragment && isolated !== undefined) {
-		return read(articleHref(article, fragment), `${article.title}#${fragment}`, isolated);
+	if (fragment && isolated) {
+		return read(
+			articleHref(article, fragment),
+			`${article.title}, ${isolated.name}`,
+			isolated.text,
+		);
 	}
 	return read(article.canonicalPath, article.title, projectArticleText(article, detail));
 }
