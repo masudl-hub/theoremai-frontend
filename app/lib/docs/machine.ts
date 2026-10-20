@@ -35,6 +35,22 @@ export function articleMarkdown(index: DocIndex, slug: string, origin: string): 
 	]);
 }
 
+/**
+ * The Markdown twin of a page an agent asks for with `Accept: text/markdown`: the landing page,
+ * the studio, the docs (as the llms.txt index) and each chapter. Any other path has none.
+ */
+export function pageMarkdown(
+	index: DocIndex,
+	pathname: string,
+	origin: string,
+): string | undefined {
+	if (pathname === '/') return homeMarkdown(origin);
+	if (pathname === '/studio') return studioMarkdown(index, origin);
+	if (pathname === '/docs') return llmsTxt(index, origin);
+	const chapter = /^\/docs\/([^/]+)$/.exec(pathname);
+	return chapter ? articleMarkdown(index, chapter[1], origin) : undefined;
+}
+
 /** The llms.txt index: what the site is, then every chapter and its sections, each a link to Markdown. */
 export function llmsTxt(index: DocIndex, origin: string): string {
 	const chapters = index.articles.flatMap((article) => [
@@ -77,6 +93,8 @@ export function robotsTxt(origin: string): string {
 		'User-agent: *',
 		'Allow: /',
 		'Disallow: /api/',
+		// Search, answers that quote the site, and training may all use it: the docs exist to be learned.
+		'Content-Signal: search=yes, ai-input=yes, ai-train=yes',
 		'',
 		`Sitemap: ${origin}/sitemap.xml`,
 		`# For language models: ${origin}/llms.txt (index) and ${origin}/llms-full.txt (everything)`,

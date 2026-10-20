@@ -23,7 +23,20 @@ function allowances(env: SiteEnv) {
 	return env.DECIDE_ALLOWANCE && allowanceStore(env.DECIDE_ALLOWANCE);
 }
 
+/** An agent asked for Markdown by name; a browser's catch-all never does. */
+function wantsMarkdown(request: Request): boolean {
+	return (
+		(request.method === 'GET' || request.method === 'HEAD') &&
+		(request.headers.get('accept') ?? '').includes('text/markdown')
+	);
+}
+
 async function respond(request: Request, env: SiteEnv, ctx: ExecutionContext): Promise<Response> {
+	if (wantsMarkdown(request)) {
+		const { markdownTwin } = await import('../app/lib/docs/.server/markdown-twin');
+		const twin = markdownTwin(new URL(request.url));
+		if (twin) return twin;
+	}
 	// The WebSocket upgrade answers with a 101 + socket pair, which only the
 	// Worker can return — hand it over before React Router sees the request.
 	if (new URL(request.url).pathname === LIVE_RELAY_PATH) {
@@ -48,6 +61,10 @@ export default {
 		// The workers.dev address serves the same pages as the site's own domain: only the domain is indexed.
 		if (response.status !== 101 && new URL(request.url).hostname.endsWith('.workers.dev')) {
 			response.headers.set('X-Robots-Tag', 'noindex');
+		}
+		// A page answers in HTML or, when asked, Markdown: a cache keeps the two apart.
+		if (response.headers.get('content-type')?.startsWith('text/html')) {
+			response.headers.append('Vary', 'Accept');
 		}
 		return response;
 	},

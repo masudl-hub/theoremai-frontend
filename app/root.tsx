@@ -13,6 +13,7 @@ import {
 	Outlet,
 	Scripts,
 	ScrollRestoration,
+	useNavigate,
 } from 'react-router';
 import type { Route } from './+types/root';
 // Figtree is the neutral theme's font; Astryx names it but ships no files. Self-hosted, with its metrics rebalanced.
@@ -28,6 +29,7 @@ import './components/layout.css';
 import { BOOT_PAINT, BOOT_PAINT_NOSCRIPT } from '@theoremjs/studio/ui/boot-paint.ts';
 import { bootHasPlayed, SHELL_REVEAL } from '@theoremjs/studio/ui/shell-motion.ts';
 import { theoremSiteTheme } from './built/theorem-site';
+import { registerSiteTools } from './lib/web-mcp';
 
 export const links: Route.LinksFunction = () => [
 	{ rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
@@ -87,6 +89,15 @@ export function Layout({ children }: { children: ReactNode }) {
 const TOASTS = { inset: { bottom: 32, end: 32 } };
 
 export default function App() {
+	const navigate = useNavigate();
+	// An agent in the visitor's browser gets the site's search, reading and navigation.
+	useEffect(() => {
+		const registered = new AbortController();
+		registerSiteTools((path) => void navigate(path), registered.signal);
+		return () => {
+			registered.abort();
+		};
+	}, [navigate]);
 	return (
 		<Theme theme={theoremSiteTheme} mode="dark">
 			{/* AppShell doesn't mount the layer systems; toasts need this to have a viewport. */}
