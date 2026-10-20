@@ -67,11 +67,13 @@ const HighlightOutputSchema = z.object({
 const ReadInputSchema = z.object({
 	target: z
 		.string()
-		.describe('Chapter slug, slug#blockId, or full_page — projected from the composed index'),
+		.describe('A chapter slug, slug#blockId for one section, or full_page for every chapter'),
 	detail: z
 		.enum(['summary', 'full', 'code_only'])
 		.optional()
-		.describe('summary | full | code_only'),
+		.describe(
+			'How much to read: summary is the title and summary, full is everything (the default), code_only is the code samples',
+		),
 });
 
 const ReadOutputSchema = z.object({
@@ -88,7 +90,13 @@ const SearchDocsInputSchema = z.object({
 		.describe(
 			'What the visitor asked, in their words, or a field or section name; typos and partial words still match',
 		),
-	limit: z.number().int().positive().max(10).optional(),
+	limit: z
+		.number()
+		.int()
+		.positive()
+		.max(10)
+		.optional()
+		.describe('Most hits to return; 5 if omitted'),
 });
 
 const SearchDocsOutputSchema = z.object({

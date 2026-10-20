@@ -236,13 +236,24 @@ function typoTolerance(term: string): number {
 	return shortest >= 8 ? 2 : shortest >= 4 ? 1 : 0;
 }
 
+/**
+ * The words of a question that say what it is about. Words like "a" and "how" match nearly every
+ * place as prefixes, so they are left out; a question of only such words keeps them all.
+ */
+function meaningfulTerm(question: string): string {
+	const words = question.split(/\s+/);
+	const kept = words.filter((word) => !QUESTION_FILLER.has(word.toLowerCase()));
+	return (kept.length > 0 ? kept : words).join(' ');
+}
+
 /** The hits matching every word of the term, and those matching only some. */
 function lexicalMatches(
 	db: SearchDb,
-	term: string,
+	question: string,
 	size: number,
 	properties: ('title' | 'key' | 'body')[] = ['title', 'key', 'body'],
 ) {
+	const term = meaningfulTerm(question);
 	const tolerance = typoTolerance(term);
 	const run = (threshold: number) => {
 		const result = search(db, {
@@ -370,13 +381,23 @@ function searched(
 
 /**
  * Full-text search over chapters, sections and glossary rows: stemmed, prefix-matched as you
- * type, and forgiving of typos in longer words. Places matching every word come first, then those
- * matching some.
+ * type, and forgiving of typos in longer words. Places named by every word come first, then those
+ * matching every word somewhere, then those matching some; at each step a guide comes before a
+ * glossary row.
  */
 export function searchDocs(index: DocIndex, query: string, limit = 5): DocSearchResults {
 	return searched(index, query, ({ term, db, entries }) => {
 		const { every, some } = lexicalMatches(db, term, entries.size);
-		const ranked = rankHits(index, entries, [...every, ...some], term);
+		const named = new Set(
+			lexicalMatches(db, term, entries.size, ['title', 'key']).every.map((hit) => hit.id),
+		);
+		const matchesEvery = new Set(every.map((hit) => hit.id));
+		// why: Glossary rows are short, so word counts favour them over the guide that explains them.
+		const tier = ({ id }: { id: string }) =>
+			(named.has(id) ? 0 : matchesEvery.has(id) ? 2 : 4) +
+			(entries.get(id)?.kind === 'symbol' ? 1 : 0);
+		const ordered = [...every, ...some].sort((a, b) => tier(a) - tier(b));
+		const ranked = rankHits(index, entries, ordered, term);
 		return { query, results: ranked.slice(0, limit), totalMatches: ranked.length };
 	});
 }

@@ -30,7 +30,13 @@ const searchDocsTool = {
 		query: z
 			.string()
 			.describe('Words to find, or a field or section name; typos and partial words still match'),
-		limit: z.number().int().positive().max(10).optional(),
+		limit: z
+			.number()
+			.int()
+			.positive()
+			.max(10)
+			.optional()
+			.describe('Most hits to return; 5 if omitted'),
 	}),
 };
 
