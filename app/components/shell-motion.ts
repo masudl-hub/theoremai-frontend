@@ -1,16 +1,10 @@
 import {
-	captureShape,
-	enterShell,
 	frameShape,
-	HOLD_MS,
-	holdShell,
 	OPEN_SHAPE,
-	peekShape,
 	pinShellWhile,
 	REGULAR_SHAPE,
 	type ShellKind,
 	type ShellShape,
-	shellCanMove,
 } from '@theoremjs/studio/ui/shell-motion.ts';
 
 /* The shell and how it moves are the studio package's (shell-motion.ts there). This is the site's
@@ -58,22 +52,4 @@ export function shapeAt(pathname: string, hash: string): ShellShape {
 	const kind = shellKindFor(pathname, hash);
 	if (kind === 'open') return OPEN_SHAPE;
 	return kind === 'frame' ? frameShape() : REGULAR_SHAPE;
-}
-
-/**
- * Leave this page for one of another shape: its content fades out, then `go` opens the next page
- * while the shell moves to that page's shape, and its content fades in. Where the shell cannot
- * move, `go` opens it at once.
- */
-export function leaveWithShell(pathname: string, hash: string, go: () => void): void {
-	if (!shellCanMove()) {
-		go();
-		return;
-	}
-	captureShape(shapeAt(pathname, hash));
-	holdShell();
-	window.setTimeout(() => {
-		enterShell(peekShape());
-		go();
-	}, HOLD_MS);
 }

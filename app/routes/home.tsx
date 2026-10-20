@@ -6,7 +6,6 @@ import { ExamplesBoard } from '../components/examples/board';
 import { HomePlatform } from '../components/home-platform';
 import { scrollTopOf } from '../components/home-scroll-stops';
 import { HomeStage } from '../components/home-stage';
-import { HomeStudioStop } from '../components/home-studio-stop';
 import { PageJsonLd } from '../components/page-summary';
 import '../components/home-scroll.css';
 import { homeTerms } from '../lib/.server/home-terms';
@@ -181,10 +180,7 @@ function scrollToLandingScreen(scroller: HTMLElement, screen: LandingScreen) {
 	scroller.querySelector<HTMLElement>(`#${screen}`)?.scrollIntoView({ block: 'start' });
 }
 
-/**
- * Landing (/), then overview (/overview), the goals, showcase (/examples) while it is shown, and
- * contribute (/contribute). Scrolling on from contribute opens the studio (/studio).
- */
+/** Landing (/), then overview (/overview), the goals, showcase (/examples) while it is shown, and contribute (/contribute). */
 export default function Home({ loaderData }: Route.ComponentProps) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const chapter = useMemo(
@@ -257,7 +253,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 					<ContributeBoard />
 				</section>
 			</div>
-			<HomeStudioStop scrollRoot={scrollRef} />
 		</div>
 	);
 }

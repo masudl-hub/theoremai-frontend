@@ -2,7 +2,14 @@ import { AppShell } from '@astryxdesign/core/AppShell';
 import { LinkProvider } from '@astryxdesign/core/Link';
 import { useSideNavRenderMode } from '@astryxdesign/core/SideNav';
 import { BootMark } from '@theoremjs/studio/ui/boot-mark.tsx';
-import { shellCanMove } from '@theoremjs/studio/ui/shell-motion.ts';
+import {
+	captureShape,
+	enterShell,
+	HOLD_MS,
+	holdShell,
+	peekShape,
+	shellCanMove,
+} from '@theoremjs/studio/ui/shell-motion.ts';
 import { ShellBounds, StudioRail } from '@theoremjs/studio/ui/studio-shell.tsx';
 import {
 	Link,
@@ -20,7 +27,7 @@ import '@theoremjs/studio/ui/shell-motion.css';
 import '../components/shell.css';
 import { holdDocsArticleTransition } from '../components/docs/article-transition';
 import { pageOwnsDocsNav } from '../components/docs/shell-slot';
-import { leaveWithShell, shapeAt, shellKindFor, shellKindOfHref } from '../components/shell-motion';
+import { shapeAt, shellKindFor, shellKindOfHref } from '../components/shell-motion';
 import { NavMark } from '../components/shell-navigation';
 import { Th30Provider, Th30Trigger } from '../components/th30-dock';
 import { getDocIndex } from '../lib/docs/.server/load-index';
@@ -85,9 +92,12 @@ function ShellLink({ onClick, to, ...props }: LinkProps) {
 				}
 				if (moves && shellCanMove()) {
 					event.preventDefault();
-					leaveWithShell(location.pathname, location.hash, () => {
+					captureShape(shapeAt(location.pathname, location.hash));
+					holdShell();
+					window.setTimeout(() => {
+						enterShell(peekShape());
 						void navigate(to);
-					});
+					}, HOLD_MS);
 					return;
 				}
 				if (!href?.startsWith('/docs/') || !location.pathname.startsWith('/docs/')) return;
