@@ -17,13 +17,14 @@ import {
 	InkWaveform,
 	type InkWaveLevels,
 	type InkWaveStatus,
-	LiveCaptionsPanel,
 	useLiveCaptionLog,
 } from '@theoremjs/react/ui';
 import {
 	createContext,
+	lazy,
 	type ReactNode,
 	type RefObject,
+	Suspense,
 	useCallback,
 	useContext,
 	useEffect,
@@ -559,8 +560,9 @@ async function startCall({
 	clientRef.current = client;
 	set.setFailure(null);
 	set.setPhase('connecting');
-	// why: the search model loads while the call connects, so the first question does not wait for it.
+	// why: the search model and the captions load while the call connects, so neither keeps the call waiting.
 	warmDocsSearch();
+	void captionsPanel().catch(() => undefined);
 	try {
 		await client.connect();
 	} catch (err) {
@@ -916,6 +918,11 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 	);
 }
 
+const captionsPanel = () => import('./th30-captions');
+const LiveCaptionsPanel = lazy(() =>
+	captionsPanel().then(({ LiveCaptionsPanel }) => ({ default: LiveCaptionsPanel })),
+);
+
 /** Messages beside the page: the live runner's captions, and the call's controls. */
 function Th30Messages({ call, open }: { call: Th30Call; open: boolean }) {
 	return (
@@ -961,15 +968,17 @@ function Th30Messages({ call, open }: { call: Th30Call; open: boolean }) {
 				/>
 			</HStack>
 			<div className="th30-messages-body">
-				<LiveCaptionsPanel
-					handle="th30"
-					captions={call.captions}
-					pastCalls={call.pastCalls}
-					draftText={call.draft}
-					onDraftTextChange={call.setDraft}
-					onSubmit={call.send}
-					isDisabled={call.phase !== 'live'}
-				/>
+				<Suspense fallback={null}>
+					<LiveCaptionsPanel
+						handle="th30"
+						captions={call.captions}
+						pastCalls={call.pastCalls}
+						draftText={call.draft}
+						onDraftTextChange={call.setDraft}
+						onSubmit={call.send}
+						isDisabled={call.phase !== 'live'}
+					/>
+				</Suspense>
 			</div>
 		</div>
 	);
