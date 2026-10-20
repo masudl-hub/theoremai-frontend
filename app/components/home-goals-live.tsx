@@ -244,7 +244,9 @@ function ViewToggle({ view, onView }: { view: EditorView; onView: (view: EditorV
 const GOAL_FORM_ORDER: readonly GoalId[] = ['experience', 'experiment', 'boundaries'];
 
 const loadGoalForm = () => import('./home-goals-form');
-const GoalForm = lazy(loadGoalForm);
+const GoalForm = lazy(() =>
+	import('./home-goals-form').then(({ MemoGoalForm }) => ({ default: MemoGoalForm })),
+);
 
 /** The agent's file: the part a goal is about, or the whole of it in the studio's editor. */
 function GoalCode({
@@ -277,20 +279,11 @@ function GoalCode({
 	);
 }
 
-export function GoalEditor({
-	store,
-	goal,
-	isShown,
-}: {
-	store: HomeAgentStore;
-	goal: GoalId;
-	isShown: boolean;
-}) {
-	const state = useHomeAgent(store);
-	const pane = useRef<HTMLDivElement>(null);
-	const { isArmed, setIsArmed } = useArmed(isShown, pane);
-	const [views, setViews] = useState<Partial<Record<GoalId, EditorView>>>({});
-	const view = views[goal] ?? startView(goal);
+/**
+ * The goals whose form is mounted: the boundaries form once the page is idle, and each goal's
+ * once its form is shown, so switching back keeps its state.
+ */
+function useFormGoals(goal: GoalId, view: EditorView): readonly GoalId[] {
 	const [formGoals, setFormGoals] = useState<readonly GoalId[]>([]);
 	useEffect(() => {
 		let active = true;
@@ -318,6 +311,24 @@ export function GoalEditor({
 		if (view !== 'form') return;
 		setFormGoals((current) => (current.includes(goal) ? current : [...current, goal]));
 	}, [goal, view]);
+	return formGoals;
+}
+
+export function GoalEditor({
+	store,
+	goal,
+	isShown,
+}: {
+	store: HomeAgentStore;
+	goal: GoalId;
+	isShown: boolean;
+}) {
+	const state = useHomeAgent(store);
+	const pane = useRef<HTMLDivElement>(null);
+	const { isArmed, setIsArmed } = useArmed(isShown, pane);
+	const [views, setViews] = useState<Partial<Record<GoalId, EditorView>>>({});
+	const view = views[goal] ?? startView(goal);
+	const formGoals = useFormGoals(goal, view);
 	const { good } = state;
 	const excerpt = useMemo(() => (good ? excerptOf(good.source, goal) : undefined), [good, goal]);
 	useOpenOnProfile(isShown && !excerpt);
@@ -533,6 +544,66 @@ function useOpening(payload: StudioRunPayload | undefined, runs: number) {
  * What sits on the open goal's still: the agent itself, as the studio runs it. The first two
  * goals talk to it. The third sends texts across its boundaries, which calls no model.
  */
+/** What to try next, with its send button, while a token is picked. */
+function GoalPromptSlot({
+	picked,
+	isShown,
+	attachmentEnabled,
+	isTester,
+	test,
+}: {
+	picked: GoalToken | undefined;
+	isShown: boolean;
+	attachmentEnabled: boolean;
+	isTester: boolean;
+	test: ReturnType<typeof useTest>;
+}) {
+	const { result, send, sending, failure } = test;
+	if (!picked || !isShown) return null;
+	const ask = isTester ? undefined : picked.ask;
+	return (
+		<Card variant="glass" padding={0} elevation="med" className="home-goal-prompt-card">
+			<GoalPrompt
+				prompt={failure ?? picked.prompt}
+				sending={sending}
+				sendLabel={attachmentEnabled && picked.attachment ? 'Send with PDF' : 'Send it'}
+				result={result}
+				onSend={ask ? send(picked, ask) : undefined}
+			/>
+		</Card>
+	);
+}
+
+/** The agent running: a text agent once its opening conversation is ready, any other at once. */
+function GoalRunner({
+	good,
+	runs,
+	opening,
+	chat,
+	store,
+}: {
+	good: HomeGood;
+	runs: number;
+	opening: ReturnType<typeof useOpening>;
+	chat: RefObject<TheoremChatHandle | null>;
+	store: HomeAgentStore;
+}) {
+	const isText = good.payload.profile.type === 'text';
+	if (isText && !opening) return null;
+	return (
+		<StudioRunner
+			key={`${String(runs)}:${good.payload.profile.type}`}
+			payload={good.payload}
+			mode="demo"
+			runtime={null}
+			chatRef={chat}
+			conversation={isText ? opening?.started?.conversation : undefined}
+			conversationView={isText ? opening?.started?.view : undefined}
+			onActivity={store.talked}
+		/>
+	);
+}
+
 export function GoalLive({
 	store,
 	beat,
@@ -547,30 +618,19 @@ export function GoalLive({
 	const { good, runs } = state;
 	const { isTester, isEmpty, isTesting, hasTested } = useStill(beat);
 	const attachmentEnabled = picked !== undefined && tokenIsOn(state.agent, picked.id);
-	const { result, send, sending, failure } = useTest(
-		chat,
-		picked,
-		good?.source,
-		beat?.goal,
-		attachmentEnabled,
-	);
+	const test = useTest(chat, picked, good?.source, beat?.goal, attachmentEnabled);
 	const opening = useOpening(good?.payload, runs);
 	if (!good) return null;
-	const ask = isTester ? undefined : picked?.ask;
 	return (
 		<>
 			<div className="home-goal-prompt" aria-live="polite">
-				{picked && !isEmpty ? (
-					<Card variant="glass" padding={0} elevation="med" className="home-goal-prompt-card">
-						<GoalPrompt
-							prompt={failure ?? picked.prompt}
-							sending={sending}
-							sendLabel={attachmentEnabled && picked.attachment ? 'Send with PDF' : 'Send it'}
-							result={result}
-							onSend={ask ? send(picked, ask) : undefined}
-						/>
-					</Card>
-				) : null}
+				<GoalPromptSlot
+					picked={picked}
+					isShown={!isEmpty}
+					attachmentEnabled={attachmentEnabled}
+					isTester={isTester}
+					test={test}
+				/>
 			</div>
 			<Card
 				variant="glass"
@@ -580,22 +640,7 @@ export function GoalLive({
 				hidden={isEmpty}
 			>
 				<div className="home-goal-live-chat" hidden={isTester}>
-					{good.payload.profile.type !== 'text' || opening ? (
-						<StudioRunner
-							key={`${String(runs)}:${good.payload.profile.type}`}
-							payload={good.payload}
-							mode="demo"
-							runtime={null}
-							chatRef={chat}
-							conversation={
-								good.payload.profile.type === 'text' ? opening?.started?.conversation : undefined
-							}
-							conversationView={
-								good.payload.profile.type === 'text' ? opening?.started?.view : undefined
-							}
-							onActivity={store.talked}
-						/>
-					) : null}
+					<GoalRunner good={good} runs={runs} opening={opening} chat={chat} store={store} />
 				</div>
 				{hasTested ? (
 					<div className="home-goal-live-test" hidden={!isTesting}>

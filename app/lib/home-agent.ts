@@ -388,68 +388,84 @@ export async function exampleSeed(
 	return example && !tokenIsOn(agent, id) ? await example() : undefined;
 }
 
+/** The input examples: one shows at a time. */
+const INPUT_EXAMPLES: readonly GoalTokenId[] = ['trip-brief', 'file-types', 'file-limits'];
+
+/** The text agent with every field token off and no model picked: where an example or type starts. */
+function clearedText(agent: HomeAgent): StudioWorkspace {
+	let text = textOf(agent);
+	for (const [fieldId, field] of Object.entries(FIELD_EDITS)) {
+		if (tokenIsOn({ workspace: text }, fieldId as GoalTokenId)) text = edited(text, field.off);
+	}
+	return edited(text, (draft) => ({
+		...draft,
+		...modelsFor({ isOpen: false, isPicked: false }),
+	}));
+}
+
+/** The agent a token changes: a text token needs the text agent, a mode turning on a cleared one. */
+function preparedFor(agent: HomeAgent, id: GoalTokenId): HomeAgent {
+	const prepared =
+		(id in FIELD_EDITS || id === 'providers') && typeOf(agent.workspace) !== 'text'
+			? { workspace: textOf(agent) }
+			: agent;
+	const isMode = id in EXAMPLE_DRAFTS || id in TYPES;
+	return isMode && !tokenIsOn(prepared, id) ? { workspace: clearedText(prepared) } : prepared;
+}
+
+/** The agent with every input example but `id` off. */
+function withoutOtherInputs(agent: HomeAgent, id: GoalTokenId): HomeAgent {
+	let next = agent;
+	for (const other of INPUT_EXAMPLES) {
+		const edit = FIELD_EDITS[other];
+		if (other !== id && edit && tokenIsOn(next, other)) {
+			next = { workspace: edited(next.workspace, edit.off) };
+		}
+	}
+	return next;
+}
+
+/** The example `seed` in place of the text agent, keeping its agent id and its tools' keys. */
+function seededExample(text: StudioWorkspace, id: GoalTokenId, seed?: StudioDraft): HomeAgent {
+	const source = draftOf(text);
+	if (!seed) throw new Error(`The ${id} example was not made first.`);
+	if (!seed.identity.profileType) throw new Error('The example has no profile type.');
+	const draft =
+		seed.identity.profileType === 'host'
+			? seed
+			: setProfileType(seed, seed.identity.profileType, SITE_KEYS);
+	return {
+		workspace: edited(text, () => ({
+			...draft,
+			identity: { ...draft.identity, agentId: source.identity.agentId },
+			toolSpecs: draft.toolSpecs.map((tool) => ({
+				...tool,
+				key: source.toolSpecs.find((entry) => entry.toolName === tool.toolName)?.key ?? tool.key,
+			})),
+		})),
+		text,
+	};
+}
+
 /** The agent with a token turned on or off. An example token turning on takes its {@link exampleSeed}. */
 export function toggleToken(agent: HomeAgent, id: GoalTokenId, seed?: StudioDraft): HomeAgent {
-	if ((id in FIELD_EDITS || id === 'providers') && typeOf(agent.workspace) !== 'text') {
-		agent = { workspace: textOf(agent) };
-	}
-	const isMode = id in EXAMPLE_DRAFTS || id in TYPES;
-	if (isMode && !tokenIsOn(agent, id)) {
-		let text = textOf(agent);
-		for (const [fieldId, field] of Object.entries(FIELD_EDITS)) {
-			if (tokenIsOn({ workspace: text }, fieldId as GoalTokenId)) {
-				text = edited(text, field.off);
-			}
-		}
-		text = edited(text, (draft) => ({
-			...draft,
-			...modelsFor({ isOpen: false, isPicked: false }),
-		}));
-		agent = { workspace: text };
-	}
-	const isOn = tokenIsOn(agent, id);
-	const inputExamples: readonly GoalTokenId[] = ['trip-brief', 'file-types', 'file-limits'];
-	if (!isOn && inputExamples.includes(id)) {
-		for (const other of inputExamples) {
-			const edit = FIELD_EDITS[other];
-			if (other !== id && edit && tokenIsOn(agent, other)) {
-				agent = { workspace: edited(agent.workspace, edit.off) };
-			}
-		}
-	}
+	const prepared = preparedFor(agent, id);
+	const isOn = tokenIsOn(prepared, id);
+	const current =
+		!isOn && INPUT_EXAMPLES.includes(id) ? withoutOtherInputs(prepared, id) : prepared;
 	const field = FIELD_EDITS[id];
 	if (field) {
 		const edit = isOn ? field.off : field.on;
 		return {
-			workspace: edited(agent.workspace, edit),
-			text: agent.text && edited(agent.text, edit),
+			workspace: edited(current.workspace, edit),
+			text: current.text && edited(current.text, edit),
 		};
 	}
-	const text = textOf(agent);
-	if (id in EXAMPLE_DRAFTS) {
-		if (isOn) return { workspace: text };
-		const source = draftOf(text);
-		if (!seed) throw new Error(`The ${id} example was not made first.`);
-		if (!seed.identity.profileType) throw new Error('The example has no profile type.');
-		const draft =
-			seed.identity.profileType === 'host'
-				? seed
-				: setProfileType(seed, seed.identity.profileType, SITE_KEYS);
-		return {
-			workspace: edited(text, () => ({
-				...draft,
-				identity: { ...draft.identity, agentId: source.identity.agentId },
-				toolSpecs: draft.toolSpecs.map((tool) => ({
-					...tool,
-					key: source.toolSpecs.find((entry) => entry.toolName === tool.toolName)?.key ?? tool.key,
-				})),
-			})),
-			text,
-		};
-	}
+	const text = textOf(current);
+	if (id in EXAMPLE_DRAFTS) return isOn ? { workspace: text } : seededExample(text, id, seed);
 	const type = TYPES[id];
 	if (type) return isOn ? { workspace: text } : { workspace: typed(text, type), text };
-	if (id !== 'providers') return agent;
+	if (id !== 'providers') return current;
 	const next = edited(text, (draft) => ({
 		...draft,
 		...modelsFor({ isOpen: !isOn, isPicked: !isOn }),

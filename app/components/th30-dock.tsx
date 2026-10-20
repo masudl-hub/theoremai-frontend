@@ -920,7 +920,7 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 
 const captionsPanel = () => import('./th30-captions');
 const LiveCaptionsPanel = lazy(() =>
-	captionsPanel().then(({ LiveCaptionsPanel }) => ({ default: LiveCaptionsPanel })),
+	import('./th30-captions').then(({ LiveCaptionsPanel }) => ({ default: LiveCaptionsPanel })),
 );
 
 /** Messages beside the page: the live runner's captions, and the call's controls. */

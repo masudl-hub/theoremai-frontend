@@ -21,6 +21,34 @@ const SECTIONS: Record<GoalId, readonly { id: string; label: string }[]> = {
 	boundaries: [{ id: 'guardrails', label: 'Guardrails' }],
 };
 
+type Section = { id: string; label: string };
+
+/** A node per tool the draft has. */
+function toolSections(draft: StudioDraftOf): Section[] {
+	return draft.toolSpecs.map((tool) => ({ id: toolSpecNodeId(tool.key), label: tool.toolName }));
+}
+
+/** What experimenting shows beside type and models: each model, and the type's own section. */
+function experimentSections(draft: StudioDraftOf): Section[] {
+	const type = draft.identity.profileType;
+	return [
+		...draft.modelBindings.map((binding) => ({
+			id: modelBindingNodeId(binding.key),
+			label: binding.modelId,
+		})),
+		...(['live', 'speech', 'decision'].includes(type) ? [{ id: type, label: type }] : []),
+		...(type === 'embedding' ? [{ id: 'inputs', label: 'Inputs' }] : []),
+		...(type === 'host' ? [{ id: 'tools', label: 'Tools' }, ...toolSections(draft)] : []),
+	];
+}
+
+/** The sections a goal shows for this draft. */
+function goalSections(goal: GoalId, draft: StudioDraftOf): readonly Section[] {
+	if (goal === 'experience') return [...SECTIONS[goal], ...toolSections(draft)];
+	if (goal === 'experiment') return [...SECTIONS[goal], ...experimentSections(draft)];
+	return SECTIONS[goal];
+}
+
 /**
  * The studio's own editor for the sections a goal is about. Its edits go to the same agent as
  * the file's, so the file, the form and the tokens are one thing.
@@ -35,39 +63,7 @@ function GoalForm({
 	goal: GoalId;
 }) {
 	const draft = homeAgentDraft(state.agent);
-	const sections =
-		goal === 'experience'
-			? [
-					...SECTIONS[goal],
-					...draft.toolSpecs.map((tool) => ({
-						id: toolSpecNodeId(tool.key),
-						label: tool.toolName,
-					})),
-				]
-			: goal === 'experiment'
-				? [
-						...SECTIONS[goal],
-						...draft.modelBindings.map((binding) => ({
-							id: modelBindingNodeId(binding.key),
-							label: binding.modelId,
-						})),
-						...(['live', 'speech', 'decision'].includes(draft.identity.profileType)
-							? [{ id: draft.identity.profileType, label: draft.identity.profileType }]
-							: []),
-						...(draft.identity.profileType === 'embedding'
-							? [{ id: 'inputs', label: 'Inputs' }]
-							: []),
-						...(draft.identity.profileType === 'host'
-							? [
-									{ id: 'tools', label: 'Tools' },
-									...draft.toolSpecs.map((tool) => ({
-										id: toolSpecNodeId(tool.key),
-										label: tool.toolName,
-									})),
-								]
-							: []),
-					]
-				: SECTIONS[goal];
+	const sections = goalSections(goal, draft);
 	const [chosen, setChosen] = useState<string>();
 	const selected = (sections.find(({ id }) => id === chosen) ?? sections[0]).id;
 	const issues = state.compiled.ok ? [] : state.compiled.issues;
@@ -101,4 +97,4 @@ function GoalForm({
 
 type StudioDraftOf = ReturnType<typeof homeAgentDraft>;
 
-export default memo(GoalForm);
+export const MemoGoalForm = memo(GoalForm);

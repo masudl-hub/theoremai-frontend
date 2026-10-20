@@ -6,10 +6,8 @@
 
 export type Lines = { from: number; to: number };
 
-export function changedRanges(before: string, after: string): Lines[] {
-	if (before === after) return [];
-	const was = before.split('\n');
-	const now = after.split('\n');
+/** `lengths[i][j]`: the longest run of lines `was[i..]` and `now[j..]` share, in order. */
+function commonLengths(was: readonly string[], now: readonly string[]): Uint32Array[] {
 	const lengths = Array.from({ length: was.length + 1 }, () => new Uint32Array(now.length + 1));
 	for (let i = was.length - 1; i >= 0; i -= 1) {
 		for (let j = now.length - 1; j >= 0; j -= 1) {
@@ -19,25 +17,41 @@ export function changedRanges(before: string, after: string): Lines[] {
 					: Math.max(lengths[i + 1][j], lengths[i][j + 1]);
 		}
 	}
-	const ranges: Lines[] = [];
-	let i = 0;
-	let j = 0;
+	return lengths;
+}
+
+/** Where a change that starts at `was[i]` and `now[j]` ends: the next line both share, or the ends. */
+function changeEnd(
+	was: readonly string[],
+	now: readonly string[],
+	lengths: readonly Uint32Array[],
+	at: { i: number; j: number },
+): { i: number; j: number } {
+	let { i, j } = at;
 	while (i < was.length || j < now.length) {
-		if (i < was.length && j < now.length && was[i] === now[j]) {
-			i += 1;
-			j += 1;
+		if (i < was.length && j < now.length && was[i] === now[j]) break;
+		if (j < now.length && (i === was.length || lengths[i][j + 1] > lengths[i + 1][j])) j += 1;
+		else i += 1;
+	}
+	return { i, j };
+}
+
+export function changedRanges(before: string, after: string): Lines[] {
+	if (before === after) return [];
+	const was = before.split('\n');
+	const now = after.split('\n');
+	const lengths = commonLengths(was, now);
+	const ranges: Lines[] = [];
+	let at = { i: 0, j: 0 };
+	while (at.i < was.length || at.j < now.length) {
+		if (at.i < was.length && at.j < now.length && was[at.i] === now[at.j]) {
+			at = { i: at.i + 1, j: at.j + 1 };
 			continue;
 		}
-		const start = j;
-		while (i < was.length || j < now.length) {
-			if (i < was.length && j < now.length && was[i] === now[j]) break;
-			if (j < now.length && (i === was.length || lengths[i][j + 1] > lengths[i + 1][j])) j += 1;
-			else i += 1;
-		}
-		ranges.push({
-			from: Math.min(start + 1, now.length),
-			to: Math.max(Math.min(start + 1, now.length), j),
-		});
+		const start = at.j;
+		at = changeEnd(was, now, lengths, at);
+		const from = Math.min(start + 1, now.length);
+		ranges.push({ from, to: Math.max(from, at.j) });
 	}
 	return ranges;
 }

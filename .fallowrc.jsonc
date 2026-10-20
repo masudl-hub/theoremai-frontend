@@ -52,7 +52,9 @@
 		"app/lib/docs/chapter-markdown.ts",
 		"scripts/docs-probe-pairs.ts",
 		"scripts/docs-snippet-host.ts",
-		"evals/th30/suite.ts"
+		"evals/th30/suite.ts",
+		// Deno runs every test under tests/, the .mjs ones too (`npm test`).
+		"tests/**/*.test.mjs"
 	],
 	// Durable Objects are called by the runtime (`alarm`) and through a stub, a
 	// proxy fallow cannot follow (`studioSteerInbox` and `takeAllowance` call the RPC methods).

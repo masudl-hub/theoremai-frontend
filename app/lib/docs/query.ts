@@ -348,18 +348,29 @@ function rankHits(
 /** A search's hits, best first, and how many places matched in all. */
 export type DocSearchResults = { query: string; results: DocSearchHit[]; totalMatches: number };
 
+type Searchable = { term: string } & ReturnType<typeof searchIndex>;
+
+/** Runs `search` with the question trimmed and the index to search; a blank question finds nothing. */
+function searched(
+	index: DocIndex,
+	query: string,
+	search: (on: Searchable) => DocSearchResults,
+): DocSearchResults {
+	const term = query.trim();
+	return term ? search({ term, ...searchIndex(index) }) : { query, results: [], totalMatches: 0 };
+}
+
 /**
  * Full-text search over chapters, sections and glossary rows: stemmed, prefix-matched as you
  * type, and forgiving of typos in longer words. Places matching every word come first, then those
  * matching some.
  */
 export function searchDocs(index: DocIndex, query: string, limit = 5): DocSearchResults {
-	const term = query.trim();
-	if (!term) return { query, results: [], totalMatches: 0 };
-	const { db, entries } = searchIndex(index);
-	const { every, some } = lexicalMatches(db, term, entries.size);
-	const ranked = rankHits(index, entries, [...every, ...some], term);
-	return { query, results: ranked.slice(0, limit), totalMatches: ranked.length };
+	return searched(index, query, ({ term, db, entries }) => {
+		const { every, some } = lexicalMatches(db, term, entries.size);
+		const ranked = rankHits(index, entries, [...every, ...some], term);
+		return { query, results: ranked.slice(0, limit), totalMatches: ranked.length };
+	});
 }
 
 /** One vector per unit of the index, in index order: row `i` is `data[i * dims]` to the next row. */
@@ -403,32 +414,34 @@ export function searchDocsHybrid(
 	vectors: DocVectors,
 	limit = 5,
 ): DocSearchResults {
-	const term = query.trim();
-	if (!term) return { query, results: [], totalMatches: 0 };
-	const { db, entries } = searchIndex(index);
-	if (vectors.data.length !== entries.size * vectors.dims || queryVector.length !== vectors.dims) {
-		throw new Error(
-			`Docs vectors do not fit the index: ${String(vectors.data.length / vectors.dims)} rows for ${String(entries.size)} entries`,
+	return searched(index, query, ({ term, db, entries }) => {
+		if (
+			vectors.data.length !== entries.size * vectors.dims ||
+			queryVector.length !== vectors.dims
+		) {
+			throw new Error(
+				`Docs vectors do not fit the index: ${String(vectors.data.length / vectors.dims)} rows for ${String(entries.size)} entries`,
+			);
+		}
+		const matchesEvery = new Set(lexicalMatches(db, term, entries.size).every.map((hit) => hit.id));
+		const namesEvery = new Set(
+			lexicalMatches(db, term, entries.size, ['title', 'key']).every.map((hit) => hit.id),
 		);
-	}
-	const matchesEvery = new Set(lexicalMatches(db, term, entries.size).every.map((hit) => hit.id));
-	const namesEvery = new Set(
-		lexicalMatches(db, term, entries.size, ['title', 'key']).every.map((hit) => hit.id),
-	);
-	const scored: { id: string; score: number }[] = [];
-	for (const [id, entry] of entries) {
-		const closeness = rowDot(queryVector, vectors, Number(id));
-		const all = matchesEvery.has(id);
-		if (closeness < SIMILARITY_FLOOR && !all) continue;
-		const bonus = namesEvery.has(id) ? ALL_WORDS_BONUS : all ? BODY_WORDS_BONUS : 0;
-		const score = closeness + bonus - (entry.kind === 'symbol' ? REFERENCE_PENALTY : 0);
-		scored.push({ id, score });
-	}
-	scored.sort((a, b) => b.score - a.score);
-	const best = scored[0]?.score ?? 0;
-	const near = scored.filter((hit) => hit.score >= best - SCORE_WINDOW);
-	const ranked = rankHits(index, entries, near, term);
-	return { query, results: ranked.slice(0, limit), totalMatches: ranked.length };
+		const scored: { id: string; score: number }[] = [];
+		for (const [id, entry] of entries) {
+			const closeness = rowDot(queryVector, vectors, Number(id));
+			const all = matchesEvery.has(id);
+			if (closeness < SIMILARITY_FLOOR && !all) continue;
+			const bonus = namesEvery.has(id) ? ALL_WORDS_BONUS : all ? BODY_WORDS_BONUS : 0;
+			const score = closeness + bonus - (entry.kind === 'symbol' ? REFERENCE_PENALTY : 0);
+			scored.push({ id, score });
+		}
+		scored.sort((a, b) => b.score - a.score);
+		const best = scored[0]?.score ?? 0;
+		const near = scored.filter((hit) => hit.score >= best - SCORE_WINDOW);
+		const ranked = rankHits(index, entries, near, term);
+		return { query, results: ranked.slice(0, limit), totalMatches: ranked.length };
+	});
 }
 
 export function formatNavigableForPrompt(index: DocIndex): string {

@@ -69,7 +69,7 @@ function vectorsOf(index: DocIndex): Promise<DocVectors> {
 }
 
 /** Start loading the model and the vectors, so the first question does not wait for them. */
-export function warmDocsSearch(index: DocIndex): void {
+export function warmSemanticSearch(index: DocIndex): void {
 	embedder ??= startEmbedder();
 	void embedder.embed().catch(() => undefined);
 	void vectorsOf(index).catch(() => undefined);
