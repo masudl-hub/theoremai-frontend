@@ -1,7 +1,7 @@
 import type { StudioDraft } from '@theoremjs/studio';
 import { openStudio } from '@theoremjs/studio/ui/lib/studio-open.ts';
 import type { ProjectSession } from '@theoremjs/studio/ui/lib/studio-project.ts';
-import type { StudioOpened } from '@theoremjs/studio/ui/studio-host.ts';
+import type { StudioHost, StudioOpened } from '@theoremjs/studio/ui/studio-host.ts';
 import { StudioScreen } from '@theoremjs/studio/ui/studio-screen.tsx';
 import { useOutletContext } from 'react-router';
 import { PageJsonLd } from '../components/page-summary';
@@ -9,8 +9,11 @@ import { STUDIO_SEED_IDS, type StudioSeedId } from '../lib/docs/schema';
 import { docsSeedDraft, docsSeedQuestion } from '../lib/docs/seeds';
 import { takeHomeAgent } from '../lib/home-agent-handoff';
 import { SITE_NAME } from '../lib/home-content';
+import { KERNEL_PACKAGE_VERSION } from '../lib/kernel-version';
 import { STUDIO_TITLE, studioDescription } from '../lib/studio-content';
-import { SITE_STUDIO_HOST } from '../lib/studio-site-host';
+import { SITE_SUPPLIES } from '../lib/studio-supplies';
+import { reportTh30Studio } from '../lib/th30-studio-state';
+import { th30Surfaces } from '../lib/th30-surfaces';
 import type { Route } from './+types/studio';
 import type { ShellHandle, loader as shellLoader } from './shell';
 
@@ -66,6 +69,14 @@ function ShellJsonLd() {
 	return <PageJsonLd data={shell.studioJsonLd} />;
 }
 
+/** What the site gives the studio screen: its build's pieces, and th30 following along. */
+const HOST: StudioHost = {
+	kernelVersion: KERNEL_PACKAGE_VERSION,
+	mountSurface: (surface) => th30Surfaces.mount(surface),
+	onReport: reportTh30Studio,
+	...SITE_SUPPLIES,
+};
+
 /** The studio screen from `@theoremjs/studio`, on the site's page. */
 export default function Studio({
 	loaderData,
@@ -75,7 +86,7 @@ export default function Studio({
 	return (
 		<>
 			<ShellJsonLd />
-			<StudioScreen opened={loaderData} host={SITE_STUDIO_HOST} />
+			<StudioScreen opened={loaderData} host={HOST} />
 		</>
 	);
 }

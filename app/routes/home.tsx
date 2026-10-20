@@ -6,7 +6,7 @@ import { ExamplesBoard } from '../components/examples/board';
 import { HomePlatform } from '../components/home-platform';
 import { scrollTopOf } from '../components/home-scroll-stops';
 import { HomeStage } from '../components/home-stage';
-import { HomeStudio } from '../components/home-studio';
+import { HomeStudioStop } from '../components/home-studio-stop';
 import { PageJsonLd } from '../components/page-summary';
 import '../components/home-scroll.css';
 import { homeTerms } from '../lib/.server/home-terms';
@@ -68,14 +68,7 @@ function RetiredHashRedirect() {
 	return null;
 }
 
-type LandingScreen =
-	| 'landing'
-	| 'overview'
-	| GoalId
-	| PlatformId
-	| 'showcase'
-	| 'contribute'
-	| 'studio';
+type LandingScreen = 'landing' | 'overview' | GoalId | PlatformId | 'showcase' | 'contribute';
 
 /** `#examples` is the previous showcase id. An empty hash is landing. */
 function landingScreen(hash: string): LandingScreen | null {
@@ -87,7 +80,6 @@ function landingScreen(hash: string): LandingScreen | null {
 	if (isPlatformId(id)) return PLATFORM_SHOWN ? id : null;
 	if (id === 'showcase' || id === 'examples') return SHOWCASE_SHOWN ? 'showcase' : 'contribute';
 	if (id === 'contribute') return 'contribute';
-	if (id === 'studio') return 'studio';
 	return null;
 }
 
@@ -115,7 +107,6 @@ function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number
 	const overview = scroller.querySelector<HTMLElement>('#overview');
 	const showcase = scroller.querySelector<HTMLElement>('#showcase');
 	const contribute = scroller.querySelector<HTMLElement>('#contribute');
-	const studio = scroller.querySelector<HTMLElement>('#studio');
 	const overviewAt =
 		settle && getComputedStyle(settle).display !== 'none'
 			? settle.offsetTop
@@ -129,7 +120,6 @@ function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number
 		].map(({ screen, stop }) => ({ screen, at: scrollTopOf(scroller, stop) })),
 		...(showcase ? [{ screen: 'showcase' as const, at: showcase.offsetTop }] : []),
 		{ screen: 'contribute', at: contribute?.offsetTop ?? showcase?.offsetTop ?? overviewAt },
-		...(studio ? [{ screen: 'studio' as const, at: studio.offsetTop }] : []),
 	];
 }
 
@@ -192,8 +182,8 @@ function scrollToLandingScreen(scroller: HTMLElement, screen: LandingScreen) {
 }
 
 /**
- * Landing (/), then overview (/overview), the goals, showcase (/examples) while it is shown,
- * contribute (/contribute), and the studio (#studio; /studio is its own page).
+ * Landing (/), then overview (/overview), the goals, showcase (/examples) while it is shown, and
+ * contribute (/contribute). Scrolling on from contribute opens the studio (/studio).
  */
 export default function Home({ loaderData }: Route.ComponentProps) {
 	const scrollRef = useRef<HTMLDivElement>(null);
@@ -267,7 +257,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 					<ContributeBoard />
 				</section>
 			</div>
-			<HomeStudio scrollRoot={scrollRef} />
+			<HomeStudioStop scrollRoot={scrollRef} />
 		</div>
 	);
 }
