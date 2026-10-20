@@ -44,7 +44,12 @@ async function respond(request: Request, env: SiteEnv, ctx: ExecutionContext): P
 
 export default {
 	async fetch(request, env, ctx) {
-		return withSecurityHeaders(await respond(request, env, ctx));
+		const response = withSecurityHeaders(await respond(request, env, ctx));
+		// The workers.dev address serves the same pages as the site's own domain: only the domain is indexed.
+		if (response.status !== 101 && new URL(request.url).hostname.endsWith('.workers.dev')) {
+			response.headers.set('X-Robots-Tag', 'noindex');
+		}
+		return response;
 	},
 	// Once a day (`wrangler.jsonc` `triggers`): no kept probe outlives its days.
 	scheduled(_controller, env, ctx) {
