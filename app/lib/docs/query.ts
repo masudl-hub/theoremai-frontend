@@ -310,7 +310,7 @@ function focusExcerpt(body: string, term: string, title: string, opening: string
 		.replace(/```[\s\S]*?(```|$)/g, '\n')
 		.split(/\n+|(?<=[.!?])\s+/)
 		.map(plainMarkdown)
-		.filter((line) => line.length > 12 && line !== title);
+		.filter((line) => line.length > 12 && !title.includes(line));
 	sentences.forEach((line, at) => {
 		const shared = new Set(stems(line).filter((stem) => wanted.has(stem))).size;
 		if (shared > best.shared) best = { at, shared };

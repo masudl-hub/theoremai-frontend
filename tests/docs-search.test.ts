@@ -53,6 +53,13 @@ test('words like "a" do not let every place match a question', () => {
 	assert.equal(first('how do I resume a gate'), '5-resume-a-gate');
 });
 
+test('a hit shows the line that answers, not its own numbered heading', () => {
+	assert.equal(
+		searchDocs(index, 'resume a gate').results[0]?.excerpt,
+		'When a person answers a gate, send the answer and the turn goes on.',
+	);
+});
+
 test('a guide named by the words comes before glossary rows that also name them', () => {
 	assert.equal(first('gate'), '5-resume-a-gate');
 });
