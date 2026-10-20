@@ -93,8 +93,8 @@ export function robotsTxt(origin: string): string {
 		'User-agent: *',
 		'Allow: /',
 		'Disallow: /api/',
-		// Search, answers that quote the site, and training may all use it: the docs exist to be learned.
-		'Content-Signal: search=yes, ai-input=yes, ai-train=yes',
+		// Search and answers that quote the site may use it; training may not.
+		'Content-Signal: search=yes, ai-input=yes, ai-train=no',
 		'',
 		`Sitemap: ${origin}/sitemap.xml`,
 		`# For language models: ${origin}/llms.txt (index) and ${origin}/llms-full.txt (everything)`,
