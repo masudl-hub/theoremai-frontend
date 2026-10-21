@@ -143,10 +143,11 @@ function useArrival() {
 			delete frame.dataset.waiting;
 		};
 		const observer = new IntersectionObserver(
-			([entry]) => {
-				if (!entry) return;
-				if (entry.intersectionRatio >= ARRIVE_AT) arrive();
-				else if (!entry.isIntersecting) frame.dataset.waiting = '';
+			(entries) => {
+				for (const entry of entries) {
+					if (entry.intersectionRatio >= ARRIVE_AT) arrive();
+					else if (!entry.isIntersecting) frame.dataset.waiting = '';
+				}
 			},
 			{ root: frame.closest('.home-scroll'), threshold: [0, ARRIVE_AT] },
 		);
