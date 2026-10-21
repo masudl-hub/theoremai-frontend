@@ -53,7 +53,7 @@ export const INSTALL_COMMANDS = (
 export type PackageId = (typeof INSTALL_COMMANDS)[number]['id'];
 
 /**
- * The packages screen's tiles, in its order. Web and React share one, the headless interface: its
+ * The packages screen's tiles, in its order. Web and React share one, the interface: its
  * install command switches between them. `docs` is where the tile's docs link goes.
  */
 export const PACKAGE_TILES = [
@@ -75,9 +75,9 @@ export const PACKAGE_TILES = [
 	},
 	{
 		id: 'interface',
-		title: 'Headless interface',
+		title: 'Interface',
 		description:
-			'`Web` serves a `profile` and reads it in the browser, with no framework. `React` adds hooks, and ready-made UIs built on Astryx and StyleX.',
+			'Headless. `Web` serves a `profile` and reads it in the browser, with no framework. `React` adds hooks, and ready-made UIs built on Astryx and StyleX.',
 		packages: ['web', 'react'],
 		docs: '/docs/interface',
 	},

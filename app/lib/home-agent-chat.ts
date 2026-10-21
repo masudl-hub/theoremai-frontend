@@ -170,11 +170,13 @@ export const INTERFACE_EXCHANGE: readonly TranscriptBlock[] = [
 
 /** What the interface tile's composer holds, as if the visitor were about to answer: text, two photos, and two messages set aside. */
 export const INTERFACE_COMPOSER = {
-	text: 'Yes, 20:00. And can day two look like these?',
+	text: 'Yes, 20:00. Can we fit these in too?',
+	// why: Unsplash License; photos by Eduardo Goody (dGmyUHt-IfI) and Aleksandr Zaitsev (zEFfW3kXQR8).
 	photos: [
-		{ name: 'coast.webp', still: '/imagery/th30_peninsula.png' },
-		{ name: 'pools.webp', still: '/imagery/th30_tidalpools.png' },
+		{ name: 'tram-28.webp', src: '/home/lisbon-tram.webp', type: 'image/webp' },
+		{ name: 'graca-sunset.webp', src: '/home/lisbon-sunset.webp', type: 'image/webp' },
 	],
+	voice: { name: 'voice-note.m4a', src: '/home/lisbon-note.m4a', type: 'audio/mp4' },
 	queued: 'And a taxi back to Chiado after.',
 	stashed: 'Find a fado bar for Saturday.',
 } as const;
