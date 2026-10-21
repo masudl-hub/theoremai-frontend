@@ -4,14 +4,14 @@ import { StudioTreeMap } from '@theoremjs/studio/ui/tree-map.tsx';
 import { useState } from 'react';
 
 /**
- * The agents tile's map: the studio's tree of the code architect and the narrator it calls, every
- * row open, with the providers and the tool registry that feed it, drawn as the map draws.
+ * The agents tile's map: the studio's tree of the code architect, every row open, with its runner,
+ * providers and tool registry beside it, drawn as the map draws on a glass card sized to it.
  */
 export default function AgentsMap() {
 	const [workspace] = useState(createArchitectWorkspace);
 	return (
 		<Card variant="glass" padding={0} elevation="med" className="packages-map" inert aria-hidden>
-			<StudioTreeMap workspace={workspace} />
+			<StudioTreeMap workspace={workspace} agent={workspace.agents[0]?.key} />
 		</Card>
 	);
 }
