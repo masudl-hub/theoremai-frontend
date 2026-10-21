@@ -42,16 +42,16 @@
 }
 
 /*
- * The interface tile's chat, a little wider than the tile from just inside its left: the tile
- * crops its right side, and the shade sits over its foot.
+ * The interface tile's chat, taller and a little wider than the tile, set right of its middle: the
+ * tile crops its top and right, and the shade sits over its foot.
  */
 .packages-chat.packages-chat {
 	position: absolute;
 	z-index: -2;
-	top: 6%;
-	left: 8%;
+	top: -12%;
+	left: 14%;
 	width: 30rem;
-	height: 64%;
+	height: 80%;
 	display: grid;
 	grid-template-rows: minmax(0, 1fr);
 	grid-template-columns: minmax(0, 1fr);
