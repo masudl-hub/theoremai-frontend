@@ -6,8 +6,12 @@ import {
 	decisionExampleDraft,
 	type StudioWorkspace,
 } from '@theoremjs/studio';
-import { StudioTreeMap, type StudioTreeMapProps } from '@theoremjs/studio/ui/tree-map.tsx';
-import { useState } from 'react';
+import { StudioTreeMap } from '@theoremjs/studio/ui/tree-map.tsx';
+import { useState, useSyncExternalStore } from 'react';
+import type { PackagesPull } from './packages-pull';
+
+const still = () => 0;
+const unwatched = () => () => {};
 
 /** The architect's three models, renamed for the picture: one on Gemini, two through OpenRouter. */
 const MODELS = [
@@ -47,13 +51,15 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 /**
  * The agents tile's map: the studio's tree of the code architect, a decision agent, and a live agent, every row
  * open, with their runners, providers and tool registry beside them, drawn as the map draws on a
- * glass card the tile crops. Opened, it draws more: every tool, and the steps of a turn in each turn runner.
+ * glass card the tile crops. It grows with the run's pull: each section drifts to its own zone as
+ * every tool and the steps of a turn draw in.
  */
-export default function AgentsMap({ detail = false }: Pick<StudioTreeMapProps, 'detail'>) {
+export default function AgentsMap({ pull }: { pull?: PackagesPull }) {
 	const [{ workspace, agents }] = useState(pictureWorkspace);
+	const grow = useSyncExternalStore(pull?.subscribe ?? unwatched, pull?.get ?? still, still);
 	return (
 		<Card variant="glass" padding={0} elevation="med" className="packages-map" inert aria-hidden>
-			<StudioTreeMap workspace={workspace} agents={agents} detail={detail} />
+			<StudioTreeMap workspace={workspace} agents={agents} grow={grow} />
 		</Card>
 	);
 }
