@@ -1,32 +1,32 @@
-/* The packages screen: three tall stills in one row, named on the picture. The space at each side
-   and between the stills is one measure; the stills keep their shape and the spare width goes to it. */
+/* The packages screen: three tall stills in one row, named on the picture. The row keeps the goals'
+   sides: the frame's padding, then the same inset the goals' words and stills have. */
 .packages-frame {
-	--packages-gap: clamp(2rem, 5vw, 5rem);
-	container-type: size;
 	box-sizing: border-box;
 	height: 100%;
-	padding: var(--packages-gap);
+	padding: clamp(1.5rem, 3.2vw, 3.25rem);
 	overflow: hidden;
 }
 
 .packages-row {
-	display: flex;
-	justify-content: space-evenly;
-	gap: var(--packages-gap);
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: var(--spacing-6);
+	box-sizing: border-box;
 	height: 100%;
-	margin: 0;
-	padding: 0;
+	max-inline-size: 100rem;
+	margin: 0 auto;
+	padding: 0 clamp(2rem, 6vw, 5rem);
 	list-style: none;
 }
 
 .packages-tile {
 	position: relative;
-	flex: none;
-	/* why: As tall as the page allows at half as wide, unless three of them and their gaps would not fit. */
-	width: min(50cqh, (100cqw - 2 * var(--packages-gap)) / 3);
 	min-width: 0;
 	min-height: 0;
 	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
 	border-radius: var(--radius-container);
 	isolation: isolate;
 }
@@ -41,18 +41,13 @@
 	object-fit: cover;
 }
 
-/* why: White words over any picture. The shade is deepest under them and gone by the middle, so the still stays bright. */
+/* why: White words over any picture. The shade is deepest under them, at the foot, and light at the top, so the still stays bright. */
 .packages-tile::before {
 	content: "";
 	position: absolute;
 	z-index: -1;
 	inset: 0;
-	background: linear-gradient(
-		to bottom,
-		rgb(0 0 0 / 0.5),
-		rgb(0 0 0 / 0.18) 45%,
-		rgb(0 0 0 / 0.08)
-	);
+	background: linear-gradient(to top, rgb(0 0 0 / 0.62), rgb(0 0 0 / 0.24) 45%, rgb(0 0 0 / 0.06));
 }
 
 .packages-words {
@@ -82,12 +77,14 @@
 /* A phone has no room for three: the row scrolls sideways, a still at a time. */
 @media (width < 768px) {
 	.packages-frame {
-		--packages-gap: var(--spacing-4);
 		padding-inline: 0;
 	}
 
 	.packages-row {
-		justify-content: flex-start;
+		grid-template-columns: none;
+		grid-auto-flow: column;
+		grid-auto-columns: 78%;
+		gap: var(--spacing-4);
 		overflow-x: auto;
 		padding-inline: var(--spacing-4);
 		scroll-padding-inline: var(--spacing-4);
@@ -96,7 +93,6 @@
 	}
 
 	.packages-tile {
-		width: 78%;
 		scroll-snap-align: start;
 	}
 }
