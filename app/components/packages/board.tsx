@@ -7,9 +7,19 @@ import { IconCheck, IconTerminal2 } from '@tabler/icons-react';
 import { useBootHold } from '@theoremjs/studio/ui/boot-mark.tsx';
 import { SHELL_REVEAL } from '@theoremjs/studio/ui/shell-motion.ts';
 import { PAGE_ICONS } from '@theoremjs/studio/ui/studio-shell.tsx';
-import { lazy, type RefObject, Suspense, useEffect, useRef, useState } from 'react';
+import {
+	type ComponentProps,
+	lazy,
+	type RefObject,
+	Suspense,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from 'react';
 import { INSTALL_COMMANDS, PACKAGE_TILES, type PackageId } from '../../lib/home-content';
 import { stillRenditions } from '../../lib/stills';
+import { useScrollStops } from '../home-scroll-stops';
 import { openedOn, useDrawn } from '../opening-screen';
 import { Statement } from '../statement';
 import '../install-copy.css';
@@ -26,9 +36,11 @@ const STILLS: Record<TileId, { src: string; position: string }> = {
 
 const DocsIcon = PAGE_ICONS.Docs;
 
+const AgentsMap = lazy(() => import('./agents-map'));
+
 /** What a tile shows of its package, live, over its still. */
 const LIVE: Partial<Record<TileId, ReturnType<typeof lazy>>> = {
-	agents: lazy(() => import('./agents-map')),
+	agents: AgentsMap,
 	studio: lazy(() => import('./studio-editor')),
 	interface: lazy(() => import('./interface-chat')),
 };
@@ -36,13 +48,13 @@ const LIVE: Partial<Record<TileId, ReturnType<typeof lazy>>> = {
 /** How long the page is left alone before a tile's live piece is fetched, as the goals' agent is. */
 const LIVE_IDLE_MS = 1500;
 
-const opensOnPackages = () => openedOn((id) => id === 'packages');
+const opensOnPackages = () => openedOn((id) => id === 'packages' || id === 'agents');
 
 /**
  * A tile's live piece, fetched once the page has been left alone. When the page opens on this
  * screen it is fetched at once, and the loading mark waits until it has drawn.
  */
-function LateLive({ id }: { id: TileId }) {
+function LateLive({ id, props }: { id: TileId; props?: ComponentProps<typeof AgentsMap> }) {
 	const [isDue, setIsDue] = useState(false);
 	const box = useRef<HTMLDivElement>(null);
 	const [boxes] = useState(() => [box]);
@@ -64,7 +76,7 @@ function LateLive({ id }: { id: TileId }) {
 		<div className="packages-live" ref={box}>
 			{isDue && Live ? (
 				<Suspense fallback={null}>
-					<Live />
+					<Live {...props} />
 				</Suspense>
 			) : null}
 		</div>
@@ -205,51 +217,89 @@ function useArrival() {
 	return ref;
 }
 
+/**
+ * The packages and their run: one screen of travel after them. Scroll holds the screen, and the Agents
+ * still widens to the larger side of the golden ratio on the left as the others leave; once it
+ * rests there, its map draws what feeds the tree. The pull is 0 on the packages and 1 on agents.
+ */
+function usePackagesRun(scrollRoot: RefObject<HTMLElement | null>) {
+	const runRef = useRef<HTMLElement>(null);
+	const [isOpen, setIsOpen] = useState(false);
+	const onPull = useCallback((run: HTMLElement, pull: number) => {
+		run.style.setProperty('--packages-pull', String(pull));
+		setIsOpen(pull === 1);
+	}, []);
+	const onClear = useCallback((run: HTMLElement) => {
+		run.style.removeProperty('--packages-pull');
+		setIsOpen(false);
+	}, []);
+	const onRest = useCallback(() => {}, []);
+	useScrollStops({
+		scrollRoot,
+		runRef,
+		stop: 'packages-stop',
+		lead: true,
+		onPull,
+		onRest,
+		onClear,
+	});
+	return { runRef, isOpen };
+}
+
 /** The screen after the goals: the packages, one tall still each. Each names its package, says what it is, and installs it. */
-export function PackagesBoard() {
+export function PackagesBoard({ scrollRoot }: { scrollRoot: RefObject<HTMLElement | null> }) {
+	const { runRef, isOpen } = usePackagesRun(scrollRoot);
 	const frameRef = useArrival();
 	const rowRef = useRef<HTMLUListElement>(null);
 	useStillsHold(rowRef);
 	return (
-		<div className="packages-frame" ref={frameRef}>
-			<ul className="packages-row" ref={rowRef}>
-				{PACKAGE_TILES.map(({ id, title, description, packages, docs }) => {
-					const still = STILLS[id];
-					const isExternal = docs.startsWith('http');
-					return (
-						<li key={id} className="packages-tile">
-							<img
-								className="packages-still"
-								src={stillRenditions(still.src).full}
-								alt=""
-								decoding="async"
-								loading="lazy"
-								style={{ objectPosition: still.position }}
-							/>
-							<LateLive id={id} />
-							<div className="packages-words">
-								<div className="packages-head">
-									<Heading level={2} type="display-3" className="packages-name">
-										{title}
-									</Heading>
-									<InstallButton packages={packages} />
-									<IconButton
-										label={`${title} docs`}
-										tooltip="Docs"
-										variant="ghost"
-										href={docs}
-										{...(isExternal ? { target: '_blank', rel: 'noreferrer' } : {})}
-										icon={<DocsIcon aria-hidden />}
+		<section ref={runRef} className="packages-run" id="packages" aria-label="Packages">
+			<div className="packages-pin">
+				<div className="packages-frame" ref={frameRef}>
+					<ul className="packages-row" ref={rowRef}>
+						{PACKAGE_TILES.map(({ id, title, description, packages, docs }) => {
+							const still = STILLS[id];
+							const isExternal = docs.startsWith('http');
+							return (
+								<li key={id} className="packages-tile">
+									<img
+										className="packages-still"
+										src={stillRenditions(still.src).full}
+										alt=""
+										decoding="async"
+										loading="lazy"
+										style={{ objectPosition: still.position }}
 									/>
-								</div>
-								<Statement className="packages-description" name={packageNames(packages)}>
-									{description}
-								</Statement>
-							</div>
-						</li>
-					);
-				})}
-			</ul>
-		</div>
+									<LateLive
+										id={id}
+										{...(id === 'agents' ? { props: { feeds: isOpen ? 'shown' : 'hidden' } } : {})}
+									/>
+									<div className="packages-words">
+										<div className="packages-head">
+											<Heading level={2} type="display-3" className="packages-name">
+												{title}
+											</Heading>
+											<InstallButton packages={packages} />
+											<IconButton
+												label={`${title} docs`}
+												tooltip="Docs"
+												variant="ghost"
+												href={docs}
+												{...(isExternal ? { target: '_blank', rel: 'noreferrer' } : {})}
+												icon={<DocsIcon aria-hidden />}
+											/>
+										</div>
+										<Statement className="packages-description" name={packageNames(packages)}>
+											{description}
+										</Statement>
+									</div>
+								</li>
+							);
+						})}
+					</ul>
+				</div>
+			</div>
+			<div className="packages-stop" id="agents" data-home-stop="agents" aria-hidden />
+		</section>
 	);
 }

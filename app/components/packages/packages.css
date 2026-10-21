@@ -1,3 +1,20 @@
+/* The packages run: the screen, then one screen of travel to agents. The screen stays put while it
+   runs; `--packages-pull`, from 0 on the packages to 1 on agents, is set by the board. */
+.packages-run {
+	position: relative;
+	height: 200%;
+}
+
+.packages-pin {
+	position: sticky;
+	top: 0;
+	height: 50%;
+}
+
+.packages-stop {
+	height: 50%;
+}
+
 /* The packages screen: three tall stills in one row, named on the picture. The row keeps the goals'
    sides: the frame's padding, then the same inset the goals' words and stills have. */
 .packages-frame {
@@ -8,8 +25,19 @@
 }
 
 .packages-row {
+	/* A third of the row, and the larger side of the golden ratio, each net of the gaps. */
+	--packages-third: calc((100% - 2 * var(--spacing-6)) / 3);
+	--packages-golden: calc((100% - var(--spacing-6)) * 0.618034);
 	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
+	/* why: Agents widens from a third to the golden side as the run pulls; the other two keep their
+	   width and are pushed out to the right as they leave. */
+	grid-template-columns:
+		calc(
+			var(--packages-third) +
+			(var(--packages-golden) - var(--packages-third)) *
+			var(--packages-pull, 0)
+		)
+		var(--packages-third) var(--packages-third);
 	gap: var(--spacing-6);
 	box-sizing: border-box;
 	height: 100%;
@@ -69,9 +97,10 @@
 .packages-map.packages-map {
 	position: absolute;
 	z-index: -2;
-	top: 16%;
-	left: 18%;
-	width: 38rem;
+	/* Opened, the card comes in from the tile's crop to sit inside it, with room for what feeds the tree. */
+	top: calc(16% - 10% * var(--packages-pull, 0));
+	left: calc(18% - 13% * var(--packages-pull, 0));
+	width: calc(38rem + (90% - 38rem) * var(--packages-pull, 0));
 	height: 75%;
 	border-radius: var(--radius-container);
 	overflow: hidden;
@@ -146,6 +175,11 @@
 	margin-inline-end: var(--spacing-1);
 }
 
+/* As the run pulls, Studio and Interface leave upward, a screen's travel, past the frame's top. */
+.packages-tile:not(:first-child) {
+	transform: translateY(calc(var(--packages-pull, 0) * (-100% - 4rem)));
+}
+
 /* A tile's live piece is placed against the tile, as if the box around it were not there. */
 .packages-live {
 	display: contents;
@@ -173,6 +207,22 @@
 
 	.packages-tile:nth-child(3) {
 		transition-delay: 440ms;
+	}
+}
+
+/* Reduced motion and a phone have no screen of travel: the run is the packages screen alone. */
+@media (width < 768px), (prefers-reduced-motion: reduce) {
+	.packages-run {
+		height: 100%;
+	}
+
+	.packages-pin {
+		position: relative;
+		height: 100%;
+	}
+
+	.packages-stop {
+		display: none;
 	}
 }
 

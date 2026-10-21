@@ -11,6 +11,8 @@
 .home-goal-stop,
 .home-platform,
 .home-platform-stop,
+.packages-run,
+.packages-stop,
 .home-page {
 	scroll-snap-align: start;
 	scroll-snap-stop: always;

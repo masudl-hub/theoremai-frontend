@@ -6,7 +6,7 @@ import {
 	decisionExampleDraft,
 	type StudioWorkspace,
 } from '@theoremjs/studio';
-import { StudioTreeMap } from '@theoremjs/studio/ui/tree-map.tsx';
+import { StudioTreeMap, type StudioTreeMapProps } from '@theoremjs/studio/ui/tree-map.tsx';
 import { useState } from 'react';
 
 /** The architect's three models, renamed for the picture: one on Gemini, two through OpenRouter. */
@@ -47,13 +47,13 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 /**
  * The agents tile's map: the studio's tree of the code architect, a decision agent, and a live agent, every row
  * open, with their runners, providers and tool registry beside them, drawn as the map draws on a
- * glass card the tile crops.
+ * glass card the tile crops. What feeds the tree draws in once the tile has opened.
  */
-export default function AgentsMap() {
+export default function AgentsMap({ feeds = 'hidden' }: Pick<StudioTreeMapProps, 'feeds'>) {
 	const [{ workspace, agents }] = useState(pictureWorkspace);
 	return (
 		<Card variant="glass" padding={0} elevation="med" className="packages-map" inert aria-hidden>
-			<StudioTreeMap workspace={workspace} agents={agents} />
+			<StudioTreeMap workspace={workspace} agents={agents} feeds={feeds} />
 		</Card>
 	);
 }

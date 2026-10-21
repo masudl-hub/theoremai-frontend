@@ -75,6 +75,7 @@ type LandingScreen =
 	| GoalId
 	| PlatformId
 	| 'packages'
+	| 'agents'
 	| 'showcase'
 	| 'contribute'
 	| 'start';
@@ -88,6 +89,7 @@ function landingScreen(hash: string): LandingScreen | null {
 	if (isGoalId(id)) return id;
 	if (isPlatformId(id)) return PLATFORM_SHOWN ? id : null;
 	if (id === 'packages') return 'packages';
+	if (id === 'agents') return 'agents';
 	if (id === 'showcase' || id === 'examples') return SHOWCASE_SHOWN ? 'showcase' : 'contribute';
 	if (id === 'contribute') return 'contribute';
 	if (id === 'start') return 'start';
@@ -112,6 +114,8 @@ function stopsOf<S extends LandingScreen>(
 	return out;
 }
 
+const isAgents = (id: string): id is 'agents' => id === 'agents';
+
 /** Snap offsets for the screens. Overview uses the settle band, and a goal has a stop for each beat. */
 function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number }[] {
 	const settle = scroller.querySelector<HTMLElement>('.home-contract-settle');
@@ -132,6 +136,10 @@ function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number
 			...(PLATFORM_SHOWN ? stopsOf(scroller, isPlatformId) : []),
 		].map(({ screen, stop }) => ({ screen, at: scrollTopOf(scroller, stop) })),
 		...(packages ? [{ screen: 'packages' as const, at: packages.offsetTop }] : []),
+		...stopsOf(scroller, isAgents).map(({ screen, stop }) => ({
+			screen,
+			at: scrollTopOf(scroller, stop),
+		})),
 		...(showcase ? [{ screen: 'showcase' as const, at: showcase.offsetTop }] : []),
 		{ screen: 'contribute', at: contribute?.offsetTop ?? showcase?.offsetTop ?? overviewAt },
 		...(start ? [{ screen: 'start' as const, at: start.offsetTop }] : []),
@@ -193,7 +201,9 @@ function scrollToLandingScreen(scroller: HTMLElement, screen: LandingScreen) {
 			return;
 		}
 	}
-	scroller.querySelector<HTMLElement>(`#${screen}`)?.scrollIntoView({ block: 'start' });
+	// A phone and reduced motion have no agents stop; the packages screen is where it would be.
+	const target = screen === 'agents' && !stopsOf(scroller, isAgents).length ? 'packages' : screen;
+	scroller.querySelector<HTMLElement>(`#${target}`)?.scrollIntoView({ block: 'start' });
 }
 
 /** Landing (/), then overview (/overview), the goals, the packages (/packages), showcase (/examples) while it is shown, contribute (/contribute) and get started (/start). */
@@ -259,9 +269,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 				<HomeStage scrollRoot={scrollRef} />
 			</ChapterContext.Provider>
 			{PLATFORM_SHOWN ? <HomePlatform scrollRoot={scrollRef} /> : null}
-			<section className="home-page" id="packages" aria-label="Packages">
-				<PackagesBoard />
-			</section>
+			<PackagesBoard scrollRoot={scrollRef} />
 			<div className="home-dotted" data-pages={SHOWCASE_SHOWN ? 2 : 1}>
 				{SHOWCASE_SHOWN ? (
 					<section className="home-page" id="showcase" aria-label="Showcase">
