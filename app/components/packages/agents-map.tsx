@@ -7,7 +7,7 @@ import {
 	type StudioWorkspace,
 } from '@theoremjs/studio';
 import { StudioTreeMap } from '@theoremjs/studio/ui/tree-map.tsx';
-import { useState, useSyncExternalStore } from 'react';
+import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { PackagesPull } from './packages-pull';
 
 const still = () => 0;
@@ -57,9 +57,32 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 export default function AgentsMap({ pull }: { pull?: PackagesPull }) {
 	const [{ workspace, agents }] = useState(pictureWorkspace);
 	const grow = useSyncExternalStore(pull?.subscribe ?? unwatched, pull?.get ?? still, still);
+	const card = useRef<HTMLDivElement>(null);
+	const [fit, setFit] = useState<{ width: number; height: number }>();
+	const measure = () => {
+		const { clientWidth: width = 0, clientHeight: height = 0 } = card.current ?? {};
+		setFit((last) => (last?.width === width && last.height === height ? last : { width, height }));
+	};
+	// why: The card widens with the pull; the map fits the card as it stands, before it paints.
+	useLayoutEffect(measure, [grow]);
+	useLayoutEffect(() => {
+		const observer = new ResizeObserver(measure);
+		if (card.current) observer.observe(card.current);
+		return () => {
+			observer.disconnect();
+		};
+	}, []);
 	return (
-		<Card variant="glass" padding={0} elevation="med" className="packages-map" inert aria-hidden>
-			<StudioTreeMap workspace={workspace} agents={agents} grow={grow} />
+		<Card
+			ref={card}
+			variant="glass"
+			padding={0}
+			elevation="med"
+			className="packages-map"
+			inert
+			aria-hidden
+		>
+			<StudioTreeMap workspace={workspace} agents={agents} grow={grow} fit={fit} />
 		</Card>
 	);
 }

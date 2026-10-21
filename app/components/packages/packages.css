@@ -108,12 +108,6 @@
 	pointer-events: none;
 }
 
-/* why: Grown, the tree's zones hold more than the card; it eases a little smaller as it grows. */
-.packages-map .studio-tree-map {
-	transform-origin: 0 0;
-	scale: calc(1 - 0.15 * var(--packages-pull, 0));
-}
-
 /*
  * The studio tile's editor, the toolbar over a tool's inspector: its top, the heading and issue
  * count, shows whole; set past the tile's left edge by its padding and a letter or two, so the
