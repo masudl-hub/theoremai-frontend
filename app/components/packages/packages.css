@@ -1,15 +1,18 @@
-/* The packages screen: three tall stills in one row, as tall as the page allows, named on the picture. */
+/* The packages screen: three tall stills in one row, named on the picture. The space at each side
+   and between the stills is one measure; the stills keep their shape and the spare width goes to it. */
 .packages-frame {
+	--packages-gap: clamp(2rem, 5vw, 5rem);
+	container-type: size;
 	box-sizing: border-box;
 	height: 100%;
-	padding: var(--spacing-8) clamp(1.5rem, 3.2vw, 3.25rem);
+	padding: var(--packages-gap);
 	overflow: hidden;
 }
 
 .packages-row {
-	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: var(--spacing-4);
+	display: flex;
+	justify-content: space-evenly;
+	gap: var(--packages-gap);
 	height: 100%;
 	margin: 0;
 	padding: 0;
@@ -18,6 +21,9 @@
 
 .packages-tile {
 	position: relative;
+	flex: none;
+	/* why: As tall as the page allows at half as wide, unless three of them and their gaps would not fit. */
+	width: min(50cqh, (100cqw - 2 * var(--packages-gap)) / 3);
 	min-width: 0;
 	min-height: 0;
 	overflow: hidden;
@@ -76,13 +82,12 @@
 /* A phone has no room for three: the row scrolls sideways, a still at a time. */
 @media (width < 768px) {
 	.packages-frame {
+		--packages-gap: var(--spacing-4);
 		padding-inline: 0;
 	}
 
 	.packages-row {
-		grid-template-columns: none;
-		grid-auto-flow: column;
-		grid-auto-columns: 78%;
+		justify-content: flex-start;
 		overflow-x: auto;
 		padding-inline: var(--spacing-4);
 		scroll-padding-inline: var(--spacing-4);
@@ -91,6 +96,7 @@
 	}
 
 	.packages-tile {
+		width: 78%;
 		scroll-snap-align: start;
 	}
 }
