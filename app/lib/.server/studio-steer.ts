@@ -59,11 +59,11 @@ export class StudioSteerInbox extends DurableObject {
 	}
 
 	/** `false` when no run has the inbox open. */
-	async stop(): Promise<boolean> {
-		if (!this.queue()) return false;
+	stop(): Promise<boolean> {
+		if (!this.queue()) return Promise.resolve(false);
 		this.ctx.storage.kv.put(STOPPED_KEY, true);
 		this.settle(true);
-		return true;
+		return Promise.resolve(true);
 	}
 
 	/** `true` once the run is stopped, `false` once its inbox closes. */

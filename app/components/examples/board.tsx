@@ -30,7 +30,11 @@ function ExampleCardView({ example }: { example: ExampleCard }) {
 			<VStack gap={3}>
 				<Card padding={0}>
 					<AspectRatio ratio={5 / 2} fit="cover">
-						<img src={stillRenditions(example.image).full} alt={example.imageAlt} decoding="async" />
+						<img
+							src={stillRenditions(example.image).full}
+							alt={example.imageAlt}
+							decoding="async"
+						/>
 					</AspectRatio>
 				</Card>
 				<VStack gap={2}>
