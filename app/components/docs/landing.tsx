@@ -355,11 +355,11 @@ export function DocsLanding({ shell }: { shell: DocShell }) {
 	const [query, setQuery] = useState('');
 	const found = useDocsSearch(query, SEARCH_LIMIT);
 	const target = useMemo(
-		() => tilesFromShell(shell, query, found.results),
-		[shell, query, found.results],
+		() => tilesFromShell(shell, found.term, found.results),
+		[shell, found.term, found.results],
 	);
 	const { tiles, phase } = useEasedTiles(target);
-	const searching = query.trim().length > 0;
+	const searching = found.term.length > 0;
 	const [focused, setFocused] = useState(false);
 	const hint = useSearchHint(focused || query.length > 0);
 	const resultsLabel = searching ? 'Search results' : 'Featured reads';

@@ -337,8 +337,8 @@ function useChapterPane(
 	const [query, setQuery] = useState('');
 	const [opened, setOpened] = useState<ReadonlyMap<string, boolean>>(() => new Map());
 	const updated = docsUpdatedOn(latestModified(shell));
-	const searching = query.trim().length > 0;
 	const found = useDocsSearch(query, SEARCH_LIMIT);
+	const searching = found.term.length > 0;
 	const tree = useMemo(() => {
 		const matches = searching ? treeFromHits(shell.tree, found.results) : shell.tree;
 		return chapterNavigationTree(matches);
