@@ -8,6 +8,7 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { fieldStart, scrollOnce, usePan } from '@theoremjs/studio/ui/pan.ts';
 import { useLayoutEffect, useRef } from 'react';
 import { EXAMPLES, type ExampleAction } from '../../lib/home-content';
+import { stillRenditions } from '../../lib/stills';
 import { NewTabLink } from '../links';
 import './examples.css';
 
@@ -29,7 +30,7 @@ function ExampleCardView({ example }: { example: ExampleCard }) {
 			<VStack gap={3}>
 				<Card padding={0}>
 					<AspectRatio ratio={5 / 2} fit="cover">
-						<img src={example.image} alt={example.imageAlt} />
+						<img src={stillRenditions(example.image).full} alt={example.imageAlt} decoding="async" />
 					</AspectRatio>
 				</Card>
 				<VStack gap={2}>

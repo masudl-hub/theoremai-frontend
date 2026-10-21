@@ -18,6 +18,7 @@ import type { HomeAgentStore } from '../lib/home-agent-store';
 import { HEADLINE } from '../lib/home-content';
 import { EDITED_BEATS, GOAL_BEATS, type GoalToken } from '../lib/home-goals';
 import { ARGUMENT, GOALS } from '../lib/site-pitch';
+import { stillRenditions } from '../lib/stills';
 import { GoalBlock, goalStackVars, goalTileVars, type PickedTokens } from './home-goals';
 import { useGoalBeat, useGoalBeatInTransition } from './home-goals-beat';
 import { HomeIntro } from './home-intro';
@@ -48,7 +49,7 @@ function StillRow({ still, index }: { still: Still; index: number }) {
 					preventScrollReset
 					aria-label={`Go to: ${still.title}`}
 				>
-					<img src={still.src} alt={still.alt} decoding="async" fetchPriority="low" />
+					<img src={stillRenditions(still.src).full} alt={still.alt} decoding="async" fetchPriority="low" />
 					<span className="home-stage-still-icon" aria-hidden>
 						<Icon size={40} stroke={1.5} />
 					</span>

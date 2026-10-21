@@ -11,7 +11,7 @@ import { VStack } from '@astryxdesign/core/VStack';
 import type { CSSProperties } from 'react';
 import { CHAPTER_ICON } from '../../lib/docs/chapter-icons';
 import type { DocFigure, LanesFigure, SequenceFigure } from '../../lib/docs/figure';
-import { stillRenditions } from '../../lib/docs/stills';
+import { stillRenditions } from '../../lib/stills';
 
 type FigureStep = DocFigure['steps'][number];
 type FigurePart = NonNullable<FigureStep['parts']>[number];

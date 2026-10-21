@@ -5,6 +5,7 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { IconBrandDiscord, IconBug, IconCode, IconLock } from '@tabler/icons-react';
 import type { ComponentType } from 'react';
 import { CONTRIBUTE_INTRO, WAYS } from '../../lib/home-content';
+import { stillRenditions } from '../../lib/stills';
 import { NewTabLink } from '../links';
 import { StillText, StillTitle } from '../still-caption';
 import '../home-stage.css';
@@ -26,7 +27,7 @@ function WayTile({ way }: { way: Way }) {
 			<VStack gap={3}>
 				<span className="home-stage-still-media contribute-tile-media">
 					<img
-						src={way.src}
+						src={stillRenditions(way.src).tile}
 						alt=""
 						decoding="async"
 						loading="lazy"

@@ -15,7 +15,6 @@
 		"docs:search-check": "node scripts/docs-search-check.mjs",
 		"evals:th30": "node scripts/evals-th30.mjs",
 		"docs:ack": "node scripts/docs-covers.mjs ack",
-		"docs:stills": "node --experimental-strip-types scripts/docs-stills.mjs",
 		"lint:docs": "npm run docs:compose && node scripts/docs-lint-snippets.mjs && node scripts/docs-check-snippets.mjs && node scripts/docs-check-facts.mjs && node scripts/docs-covers.mjs check && node scripts/docs-lint-voice.mjs && node scripts/docs-lint-dates.mjs && npm run docs:vectors:check",
 		"build": "react-router build",
 		"preview": "npm run build && vite preview",
@@ -31,7 +30,8 @@
 		"lint:biome:fix": "biome check --write .",
 		"lint:fallow": "node --experimental-strip-types scripts/ensure-theoremai.mjs && fallow audit && fallow health && fallow dupes && fallow dead-code",
 		"lint:theme": "node scripts/theme.mjs --check",
-		"lint:stills": "node scripts/lint-stills.mjs",
+		"lint:stills": "node scripts/lint-stills.mjs && node --experimental-strip-types scripts/stills.mjs --check",
+		"stills": "node --experimental-strip-types scripts/stills.mjs",
 		"lint": "npm run lint:theme && npm run lint:stills && npm run lint:eslint && npm run lint:biome && npm run lint:fallow",
 		"theoremai:ensure": "node --experimental-strip-types scripts/ensure-theoremai.mjs",
 		"theoremai:pull": "git -C ../theoremai pull --ff-only origin main"

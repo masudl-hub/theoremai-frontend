@@ -17,6 +17,7 @@ import {
 	PROFILE_TYPES,
 	REQUEST_FIELDS,
 } from '@theoremjs/agents/schema';
+import { stillRenditions } from '../stills';
 import { CHAPTER_SOURCES, SITE_REDIRECTS } from './articles/chapters';
 import { symbolTerm } from './catalog-rows';
 import {
@@ -59,7 +60,6 @@ import {
 	type SymbolRow,
 } from './schema';
 import { compileSeedSource } from './seeds';
-import { stillRenditions } from './stills';
 import { ttrMinutesFromText } from './text-format';
 import { unionMembers } from './union-docs';
 
@@ -146,7 +146,7 @@ function assertStill(options: ComposeOptions, slug: string, src: string): string
 	const file = assertPublic(options, slug, src);
 	for (const rendition of Object.values(stillRenditions(src))) {
 		if (!existsSync(path.join(options.publicRoot, rendition))) {
-			throw new Error(`${slug} still ${src} has no ${rendition}: run npm run docs:stills`);
+			throw new Error(`${slug} still ${src} has no ${rendition}: run npm run stills`);
 		}
 	}
 	return file;

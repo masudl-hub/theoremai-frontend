@@ -36,7 +36,7 @@ import {
 import { projectArticleText } from '../../lib/docs/project-text';
 import { articleHref, chapterNeighbors, type DocSearchHit } from '../../lib/docs/query';
 import type { DocArticle, DocShell, DocTreeNode } from '../../lib/docs/schema';
-import { stillRenditions } from '../../lib/docs/stills';
+import { stillRenditions } from '../../lib/stills';
 import { useDocsSearch } from '../../lib/docs/use-docs-search';
 import { warmDocsSearch } from '../../lib/docs/warm-docs-search';
 import { NewTabLink } from '../links';

@@ -22,7 +22,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { articleHref, cardFor, type DocSearchHit } from '../../lib/docs/query';
 import type { DocArticleCard, DocShell } from '../../lib/docs/schema';
-import { stillRenditions, TILE_WIDTH } from '../../lib/docs/stills';
+import { stillRenditions, TILE_WIDTH } from '../../lib/stills';
 import { useDocsSearch } from '../../lib/docs/use-docs-search';
 import { warmDocsSearch } from '../../lib/docs/warm-docs-search';
 import 'virtual:docs/landing.css';
