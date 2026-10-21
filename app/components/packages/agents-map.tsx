@@ -2,7 +2,7 @@ import { Card } from '@astryxdesign/core/Card';
 import {
 	addAgent,
 	createArchitectWorkspace,
-	createExampleDraft,
+	createLiveExampleDraft,
 	decisionExampleDraft,
 	type StudioWorkspace,
 } from '@theoremjs/studio';
@@ -17,15 +17,14 @@ const MODELS = [
 ];
 
 /**
- * The code architect and the narrator it calls, with the concierge's first function tool in the
- * registry so it holds one tool of each type, and the decision example after them, so the map shows
- * both runners.
+ * The code architect, with the decision example and the travel concierge on a call after it, so the
+ * map shows three runners. The concierge's tools join the registry, so it holds one of each type.
+ * The narrator the architect calls stays in the workspace, for its tool, but off the map.
  */
 function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 	const base = createArchitectWorkspace();
 	const architect = base.agents[0];
-	const fn = createExampleDraft().toolSpecs.find((tool) => tool.toolType === 'function');
-	const withTools: StudioWorkspace = {
+	const renamed: StudioWorkspace = {
 		...base,
 		agents: base.agents.map((agent) =>
 			agent === architect
@@ -36,18 +35,17 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 							...MODELS[index],
 						})),
 						models: { ...agent.models, defaultModel: MODELS[1]?.modelId ?? '' },
-						tools: { ...agent.tools, allow: [...(fn ? [fn.key] : []), ...agent.tools.allow] },
 					}
 				: agent,
 		),
-		toolSpecs: fn ? [fn, ...base.toolSpecs] : base.toolSpecs,
 	};
-	const workspace = addAgent(withTools, decisionExampleDraft());
-	return { workspace, agents: workspace.agents.map((agent) => agent.key) };
+	const workspace = addAgent(addAgent(renamed, decisionExampleDraft()), createLiveExampleDraft());
+	const added = workspace.agents.slice(base.agents.length).map((agent) => agent.key);
+	return { workspace, agents: [architect.key, ...added] };
 }
 
 /**
- * The agents tile's map: the studio's tree of the code architect, its narrator, and a decision agent, every row
+ * The agents tile's map: the studio's tree of the code architect, a decision agent, and a live agent, every row
  * open, with their runners, providers and tool registry beside them, drawn as the map draws on a
  * glass card the tile crops.
  */
