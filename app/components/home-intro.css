@@ -36,6 +36,10 @@
 .home-contract-frame > .home-contract-next {
 	transform: translateY(calc(100% * (1 - var(--home-shell-pull, 0))));
 	pointer-events: none;
+	/* why: It is a page for its look, not a stop. Pinned in the sticky frame, Chrome puts its snap
+	   point at the frame's last position, the last goal's, and a jump down from landing stops there.
+	   The settle band is overview's stop. */
+	scroll-snap-align: none;
 }
 
 .home-contract-settle,
@@ -67,6 +71,7 @@ html[data-home-intro-done] .home-contract-next {
 	min-height: 100%;
 	transform: none;
 	pointer-events: auto;
+	scroll-snap-align: start;
 }
 
 .home-contract[data-reduced] .home-intro-install-row,

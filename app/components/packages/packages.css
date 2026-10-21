@@ -147,40 +147,41 @@
 }
 
 /*
- * why: The stills arrive as a waterfall: as the screen scrolls in, each tile trails the one before
- * by a little more, and all three land together as the screen comes to rest. It is the scroll's own
- * position, not a timer, so nothing waits on it and scrolling back runs it backwards.
- * invariant: The offsets end at 0 with the entry, so a resting screen is never moved.
+ * why: The stills arrive as a waterfall: as the screen scrolls in, Studio rises first, then Agents,
+ * then Interface, each on its own stretch of the scroll. It is the scroll's own position, not a timer,
+ * so nothing waits on it and scrolling back runs it backwards.
+ * invariant: Every stretch ends by the end of the entry, so a resting screen is never moved.
  */
 @supports (animation-timeline: view()) {
 	@media (prefers-reduced-motion: no-preference) {
-		.packages-frame {
+		/* why: The screen around the frame clips with overflow: hidden, which makes it the frame's
+		   scroll container, and it never scrolls. The timeline is the screen's, in the page's scroller. */
+		.home-page:has(> .packages-frame) {
 			view-timeline: --packages-arrive block;
 		}
 
 		.packages-tile {
-			animation: packages-waterfall linear both;
+			animation: packages-waterfall cubic-bezier(0.33, 1, 0.68, 1) both;
 			animation-timeline: --packages-arrive;
-			animation-range: entry 0% entry 100%;
-		}
-
-		.packages-tile:nth-child(1) {
-			--packages-trail: 8vh;
 		}
 
 		.packages-tile:nth-child(2) {
-			--packages-trail: 16vh;
+			animation-range: entry 0% entry 70%;
+		}
+
+		.packages-tile:nth-child(1) {
+			animation-range: entry 15% entry 85%;
 		}
 
 		.packages-tile:nth-child(3) {
-			--packages-trail: 24vh;
+			animation-range: entry 30% entry 100%;
 		}
 	}
 }
 
 @keyframes packages-waterfall {
 	from {
-		translate: 0 var(--packages-trail, 0);
+		translate: 0 48vh;
 	}
 
 	to {
