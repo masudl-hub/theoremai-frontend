@@ -1,25 +1,24 @@
 import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
-import { INSTALL_COMMANDS } from '../../lib/home-content';
+import { PACKAGE_TILES } from '../../lib/home-content';
 import { stillRenditions } from '../../lib/stills';
 import './packages.css';
 
-type PackageId = (typeof INSTALL_COMMANDS)[number]['id'];
+type TileId = (typeof PACKAGE_TILES)[number]['id'];
 
-/** Each package's still, and where its crop sits: the quiet part of the picture is under the words. */
-const STILLS: Record<PackageId, { src: string; position: string }> = {
+/** Each tile's still, and where its crop sits: the quiet part of the picture is under the words. */
+const STILLS: Record<TileId, { src: string; position: string }> = {
 	agents: { src: '/imagery/th30_ocean.png', position: '30% 50%' },
-	web: { src: '/imagery/th30_tropicalforest.png', position: '50% 50%' },
-	react: { src: '/imagery/th30_violetheather.png', position: '20% 50%' },
 	studio: { src: '/imagery/th30_maplecanopies.png', position: '40% 50%' },
+	interface: { src: '/imagery/th30_tropicalforest.png', position: '50% 50%' },
 };
 
-/** The screen after the goals: the four packages, one tall still each, named on the picture. */
+/** The screen after the goals: the packages, one tall still each, named on the picture. */
 export function PackagesBoard() {
 	return (
 		<div className="packages-frame">
 			<ul className="packages-row">
-				{INSTALL_COMMANDS.map(({ id, label, lead }) => {
+				{PACKAGE_TILES.map(({ id, title, packages }) => {
 					const still = STILLS[id];
 					return (
 						<li key={id} className="packages-tile">
@@ -33,9 +32,17 @@ export function PackagesBoard() {
 							/>
 							<div className="packages-words">
 								<Heading level={2} type="display-3" className="packages-name">
-									{label}
+									{title}
 								</Heading>
-								<Text className="packages-lead">{lead}</Text>
+								{packages.length === 1 ? (
+									<Text className="packages-lead">{packages[0].lead}</Text>
+								) : (
+									packages.map(({ id: pkg, label, lead }) => (
+										<Text key={pkg} className="packages-lead">
+											<strong className="packages-lead-name">{label}.</strong> {lead}
+										</Text>
+									))
+								)}
 							</div>
 						</li>
 					);

@@ -54,6 +54,19 @@ export const INSTALL_COMMANDS = (
 	command: envRecord('KERNEL_INSTALL')[pkg.id] ?? '',
 	lead: envRecord('KERNEL_LEAD')[pkg.id] ?? '',
 }));
+const packageOf = (id: (typeof INSTALL_COMMANDS)[number]['id']) =>
+	INSTALL_COMMANDS.filter((pkg) => pkg.id === id);
+
+/** The packages screen's tiles, in its order: Web and React share one, the headless interface. */
+export const PACKAGE_TILES = [
+	{ id: 'agents', title: 'Agents', packages: packageOf('agents') },
+	{ id: 'studio', title: 'Studio', packages: packageOf('studio') },
+	{
+		id: 'interface',
+		title: 'Headless interface',
+		packages: [...packageOf('web'), ...packageOf('react')],
+	},
+] as const;
 export const PACKAGE_LINKS = packageLinks(KERNEL_NAME, REPO_URL);
 
 export const HEADLINE = [
@@ -179,7 +192,10 @@ export function homeScreens(): readonly HomeScreen[] {
 		{
 			id: 'packages',
 			name: 'Packages',
-			text: INSTALL_COMMANDS.map(({ label, lead }) => `${label}: ${lead}`).join(' '),
+			text: PACKAGE_TILES.map(
+				({ title, packages }) =>
+					`${title}: ${packages.map(({ label, lead }) => (packages.length === 1 ? lead : `${label}. ${lead}`)).join(' ')}`,
+			).join(' '),
 		},
 		...(SHOWCASE_SHOWN
 			? [{ id: 'showcase', name: 'Showcase', text: `Built with theorem. ${examples}` }]

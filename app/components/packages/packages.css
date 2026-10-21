@@ -1,4 +1,4 @@
-/* The packages screen: four tall stills in one row, as tall as the page allows, named on the picture. */
+/* The packages screen: three tall stills in one row, as tall as the page allows, named on the picture. */
 .packages-frame {
 	box-sizing: border-box;
 	height: 100%;
@@ -8,7 +8,7 @@
 
 .packages-row {
 	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
+	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: var(--spacing-4);
 	height: 100%;
 	margin: 0;
@@ -63,11 +63,17 @@
 }
 
 .astryx-text.packages-lead {
+	max-width: 34ch;
 	color: rgb(255 255 255 / 0.86);
 	text-wrap: pretty;
 }
 
-/* A phone has no room for four: the row scrolls sideways, a still at a time. */
+.packages-lead-name {
+	font-weight: 600;
+	color: #fff;
+}
+
+/* A phone has no room for three: the row scrolls sideways, a still at a time. */
 @media (width < 768px) {
 	.packages-frame {
 		padding-inline: 0;
