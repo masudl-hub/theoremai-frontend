@@ -61,29 +61,23 @@
 }
 
 /*
- * The studio tile's editor, the tree beside the model's inspector, a little wider than the tile
- * and set right of its middle like the chat: the tile crops its top and right, and the shade sits
+ * The studio tile's editor, the toolbar over the model's inspector, taller than the tile and set
+ * left of its middle, against the chat's right: the tile crops its top and left, and the shade sits
  * over its foot.
  */
 .packages-editor.packages-editor {
 	position: absolute;
 	z-index: -2;
-	top: -12%;
-	left: 6%;
-	width: 44rem;
-	height: 80%;
+	top: -6%;
+	right: 12%;
+	width: 28rem;
+	height: 84%;
 	display: grid;
-	grid-template-columns: auto minmax(0, 1fr);
 	grid-template-rows: minmax(0, 1fr);
+	grid-template-columns: minmax(0, 1fr);
 	border-radius: var(--radius-container);
 	overflow: hidden;
 	pointer-events: none;
-}
-
-.packages-editor-inspector {
-	min-width: 0;
-	overflow: hidden;
-	padding-block: var(--spacing-4);
 }
 
 /* why: Words over any picture. The shade is deep under the words and gone by the top third, so the still stays bright above them.
