@@ -25,6 +25,7 @@ const DocsIcon = PAGE_ICONS.Docs;
 
 /** What a tile shows of its package, live, over its still. */
 const LIVE: Partial<Record<TileId, ReturnType<typeof lazy>>> = {
+	agents: lazy(() => import('./agents-map')),
 	studio: lazy(() => import('./studio-editor')),
 	interface: lazy(() => import('./interface-chat')),
 };

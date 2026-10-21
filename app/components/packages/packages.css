@@ -61,6 +61,25 @@
 }
 
 /*
+ * The agents tile's map, set in from the tile's top left and running past its right and bottom,
+ * which crop it; the shade sits over its foot.
+ */
+.packages-map.packages-map {
+	position: absolute;
+	z-index: -2;
+	top: 8%;
+	left: 10%;
+	width: 44rem;
+	height: 110%;
+	display: grid;
+	grid-template-rows: minmax(0, 1fr);
+	grid-template-columns: minmax(0, 1fr);
+	border-radius: var(--radius-container);
+	overflow: hidden;
+	pointer-events: none;
+}
+
+/*
  * The studio tile's editor, the toolbar over a tool's inspector: its top, the heading and issue
  * count, shows whole; set past the tile's left edge by its padding and a letter or two, so the
  * tile cuts the start of each row's title whatever the tile's width; the shade sits over its foot.
