@@ -77,7 +77,7 @@ export const PACKAGE_TILES = [
 		id: 'interface',
 		title: 'Headless interface',
 		description:
-			'Web serves a `profile` and reads it in the browser, with no framework. React adds hooks, and ready-made UIs built on Astryx and StyleX.',
+			'`Web` serves a `profile` and reads it in the browser, with no framework. `React` adds hooks, and ready-made UIs built on Astryx and StyleX.',
 		packages: ['web', 'react'],
 		docs: '/docs/interface',
 	},
