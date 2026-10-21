@@ -147,75 +147,27 @@
 }
 
 /*
- * why: The stills arrive as a waterfall: as the screen scrolls in, Studio rises first, then Agents,
- * then Interface, each on its own stretch of the scroll. It is the scroll's own position, not a timer,
- * so nothing waits on it and scrolling back runs it backwards.
- * invariant: Every stretch ends by the end of the entry, so a resting screen is never moved.
+ * why: The stills arrive as a waterfall: when the screen comes in, Studio rises, then Agents, then
+ * Interface, each a beat after the one before. A scroll-linked rise could last no longer than the snap,
+ * which read as a glitch, so it is timed, and starts once the screen is there.
+ * invariant: Without the board's script, or with reduced motion, the stills rest where they are.
  */
-@supports (animation-timeline: view()) {
-	@media (prefers-reduced-motion: no-preference) {
-		/* why: The screen around the frame clips with overflow: hidden, which makes it the frame's
-		   scroll container, and it never scrolls. The timeline is the screen's, in the page's scroller. */
-		.home-page:has(> .packages-frame) {
-			view-timeline: --packages-arrive block;
-		}
-
-		/* why: Each tile's wait is in its own keyframes. Chrome gave every tile the first one's
-		   animation-range, so ranges moved all three as one. */
-		.packages-tile {
-			animation: linear both;
-			animation-timeline: --packages-arrive;
-			animation-range: entry 0% entry 100%;
-		}
-
-		.packages-tile:nth-child(2) {
-			animation-name: packages-waterfall-first;
-		}
-
-		.packages-tile:nth-child(1) {
-			animation-name: packages-waterfall-second;
-		}
-
-		.packages-tile:nth-child(3) {
-			animation-name: packages-waterfall-third;
-		}
+@media (prefers-reduced-motion: no-preference) {
+	.packages-tile {
+		transition: translate var(--duration-slow-max) var(--ease-standard);
 	}
-}
 
-@keyframes packages-waterfall-first {
-	0% {
+	.packages-frame[data-waiting] .packages-tile {
 		translate: 0 48vh;
-		animation-timing-function: ease-in-out;
+		transition: none;
 	}
 
-	45%,
-	100% {
-		translate: 0 0;
-	}
-}
-
-@keyframes packages-waterfall-second {
-	0%,
-	30% {
-		translate: 0 48vh;
-		animation-timing-function: ease-in-out;
+	.packages-tile:nth-child(1) {
+		transition-delay: 220ms;
 	}
 
-	75%,
-	100% {
-		translate: 0 0;
-	}
-}
-
-@keyframes packages-waterfall-third {
-	0%,
-	55% {
-		translate: 0 48vh;
-		animation-timing-function: ease-in-out;
-	}
-
-	100% {
-		translate: 0 0;
+	.packages-tile:nth-child(3) {
+		transition-delay: 440ms;
 	}
 }
 

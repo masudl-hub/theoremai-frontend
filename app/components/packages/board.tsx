@@ -4,6 +4,7 @@ import { useClipboard } from '@astryxdesign/core/hooks';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { IconCheck, IconTerminal2 } from '@tabler/icons-react';
+import { SHELL_REVEAL } from '@theoremjs/studio/ui/shell-motion.ts';
 import { PAGE_ICONS } from '@theoremjs/studio/ui/studio-shell.tsx';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { INSTALL_COMMANDS, PACKAGE_TILES, type PackageId } from '../../lib/home-content';
@@ -124,10 +125,54 @@ function packageNames(packages: readonly PackageId[]) {
 	};
 }
 
+/** How much of the screen is in before the stills rise. */
+const ARRIVE_AT = 0.35;
+
+/**
+ * The stills wait below while the screen is away and rise once it comes in. Under the loading
+ * mark they wait until the mark gives way, so they rise as the page is shown.
+ */
+function useArrival() {
+	const ref = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		const frame = ref.current;
+		if (!frame) return;
+		const covered = () => document.documentElement.hasAttribute('data-boot-pending');
+		const arrive = () => {
+			if (covered()) return;
+			delete frame.dataset.waiting;
+		};
+		const observer = new IntersectionObserver(
+			([entry]) => {
+				if (!entry) return;
+				if (entry.intersectionRatio >= ARRIVE_AT) arrive();
+				else if (!entry.isIntersecting) frame.dataset.waiting = '';
+			},
+			{ root: frame.closest('.home-scroll'), threshold: [0, ARRIVE_AT] },
+		);
+		frame.dataset.waiting = '';
+		observer.observe(frame);
+		const onReveal = () => {
+			const box = frame.getBoundingClientRect();
+			if (box.top < window.innerHeight * (1 - ARRIVE_AT) && box.bottom > 0) {
+				delete frame.dataset.waiting;
+			}
+		};
+		window.addEventListener(SHELL_REVEAL, onReveal);
+		return () => {
+			observer.disconnect();
+			window.removeEventListener(SHELL_REVEAL, onReveal);
+			delete frame.dataset.waiting;
+		};
+	}, []);
+	return ref;
+}
+
 /** The screen after the goals: the packages, one tall still each. Each names its package, says what it is, and installs it. */
 export function PackagesBoard() {
+	const frameRef = useArrival();
 	return (
-		<div className="packages-frame">
+		<div className="packages-frame" ref={frameRef}>
 			<ul className="packages-row">
 				{PACKAGE_TILES.map(({ id, title, description, packages, docs }) => {
 					const still = STILLS[id];
