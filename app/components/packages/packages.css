@@ -60,8 +60,34 @@
 	pointer-events: none;
 }
 
+/*
+ * The studio tile's editor, the tree beside the model's inspector, a little wider than the tile
+ * and set right of its middle like the chat: the tile crops its top and right, and the shade sits
+ * over its foot.
+ */
+.packages-editor.packages-editor {
+	position: absolute;
+	z-index: -2;
+	top: -12%;
+	left: 6%;
+	width: 44rem;
+	height: 80%;
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	grid-template-rows: minmax(0, 1fr);
+	border-radius: var(--radius-container);
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.packages-editor-inspector {
+	min-width: 0;
+	overflow: hidden;
+	padding-block: var(--spacing-4);
+}
+
 /* why: Words over any picture. The shade is deep under the words and gone by the top third, so the still stays bright above them.
-   invariant: It sits over the still (-3) and the chat (-2), under the words. */
+   invariant: It sits over the still (-3) and the chat or editor (-2), under the words. */
 .packages-tile::before {
 	content: "";
 	position: absolute;

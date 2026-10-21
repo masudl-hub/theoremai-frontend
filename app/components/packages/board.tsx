@@ -23,25 +23,30 @@ const STILLS: Record<TileId, { src: string; position: string }> = {
 
 const DocsIcon = PAGE_ICONS.Docs;
 
-const InterfaceChat = lazy(() => import('./interface-chat'));
+/** What a tile shows of its package, live, over its still. */
+const LIVE: Partial<Record<TileId, ReturnType<typeof lazy>>> = {
+	studio: lazy(() => import('./studio-editor')),
+	interface: lazy(() => import('./interface-chat')),
+};
 
-/** How long the page is left alone before the interface tile's chat is fetched, as the goals' agent is. */
-const CHAT_IDLE_MS = 1500;
+/** How long the page is left alone before a tile's live piece is fetched, as the goals' agent is. */
+const LIVE_IDLE_MS = 1500;
 
-/** The interface tile's chat, fetched once the page has been left alone. */
-function LateInterfaceChat() {
+/** A tile's live piece, fetched once the page has been left alone. */
+function LateLive({ id }: { id: TileId }) {
 	const [isDue, setIsDue] = useState(false);
 	useEffect(() => {
 		const timer = setTimeout(() => {
 			setIsDue(true);
-		}, CHAT_IDLE_MS);
+		}, LIVE_IDLE_MS);
 		return () => {
 			clearTimeout(timer);
 		};
 	}, []);
-	return isDue ? (
+	const Live = LIVE[id];
+	return isDue && Live ? (
 		<Suspense fallback={null}>
-			<InterfaceChat />
+			<Live />
 		</Suspense>
 	) : null;
 }
@@ -136,7 +141,7 @@ export function PackagesBoard() {
 								loading="lazy"
 								style={{ objectPosition: still.position }}
 							/>
-							{id === 'interface' ? <LateInterfaceChat /> : null}
+							<LateLive id={id} />
 							<div className="packages-words">
 								<div className="packages-head">
 									<Heading level={2} type="display-3" className="packages-name">
