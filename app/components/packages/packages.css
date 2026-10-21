@@ -77,13 +77,15 @@
 	text-wrap: pretty;
 }
 
-.packages-install {
+.packages-head {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing-2);
-	margin-block-start: var(--spacing-2);
-	margin-inline-start: calc(-1 * var(--spacing-2));
+	gap: var(--spacing-1);
+}
+
+.packages-head .packages-name {
+	flex: 1 1 auto;
+	min-width: 0;
 }
 
 /* A phone has no room for three: the row scrolls sideways, a still at a time. */
