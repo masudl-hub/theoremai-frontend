@@ -62,13 +62,16 @@
 
 /*
  * The agents tile's map, the tree drawn as the map draws on the same glass card as the other
- * tiles, set in from the tile's top left and only as tall as the tree.
+ * tiles: as tall as the editor's, and wider than the tile from a little in from its left, so the
+ * tile crops its right as it crops the chat's; the shade sits over its foot.
  */
 .packages-map.packages-map {
 	position: absolute;
 	z-index: -2;
-	top: 8%;
-	left: 12%;
+	top: 7%;
+	left: 8%;
+	width: 38rem;
+	height: 84%;
 	border-radius: var(--radius-container);
 	overflow: hidden;
 	pointer-events: none;
