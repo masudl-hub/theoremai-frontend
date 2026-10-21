@@ -1,8 +1,11 @@
 import { Button } from '@astryxdesign/core/Button';
 import { Heading } from '@astryxdesign/core/Heading';
+import { Link } from '@astryxdesign/core/Link';
+import { Text } from '@astryxdesign/core/Text';
 import { TheoremMark } from '@theoremjs/studio/ui/theorem-mark.tsx';
 import { useEffect, useRef, useState } from 'react';
-import { SITE_SECTIONS } from '../../lib/site-nav';
+import { DISCORD_URL, KERNEL, SITE_NAME } from '../../lib/home-content';
+import { SITE_PACKAGES, SITE_SECTIONS } from '../../lib/site-nav';
 import { AgentPromptButton } from '../agent-prompt-button';
 import { InstallCopy } from '../install-copy';
 import './start.css';
@@ -26,6 +29,29 @@ function useFirstSeen<T extends HTMLElement>() {
 		};
 	}, [seen]);
 	return { ref, seen };
+}
+
+const FOOTER_LINKS = [
+	...SITE_PACKAGES.map(({ label, href }) => ({ label, href })),
+	{ label: 'Discord', href: DISCORD_URL },
+];
+
+/** The foot of the site: the package and its version and licence, and where it lives. */
+function StartFooter() {
+	return (
+		<footer className="start-footer">
+			<Text type="supporting" color="secondary">
+				{[`${SITE_NAME} ${KERNEL.version}`, KERNEL.license].filter(Boolean).join(' · ')}
+			</Text>
+			<nav className="start-footer-links" aria-label="Elsewhere">
+				{FOOTER_LINKS.map(({ label, href }) => (
+					<Link key={href} href={href} isExternalLink type="supporting" color="secondary">
+						{label}
+					</Link>
+				))}
+			</nav>
+		</footer>
+	);
 }
 
 /** The landing page's last screen: the mark, the question the headline opened with, the install command, and three ways to begin. */
@@ -53,6 +79,7 @@ export function StartBoard() {
 					<AgentPromptButton size="lg" />
 				</div>
 			</div>
+			<StartFooter />
 		</div>
 	);
 }

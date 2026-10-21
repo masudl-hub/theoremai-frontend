@@ -1,8 +1,8 @@
 /* The landing page's last screen, centred on the page panel. */
 .start-frame {
 	display: flex;
+	flex-direction: column;
 	align-items: center;
-	justify-content: center;
 	box-sizing: border-box;
 	height: 100%;
 	padding: var(--spacing-8) var(--spacing-6);
@@ -10,6 +10,8 @@
 }
 
 .start-content {
+	flex: 1 1 auto;
+	justify-content: center;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -34,7 +36,7 @@
 /* Poster scale: the answer to the headline the page opened with. */
 .start-title.start-title {
 	margin: 0;
-	font-size: clamp(3rem, 8.5vw, 8.5rem);
+	font-size: clamp(2.5rem, 6vw, 6rem);
 	line-height: 0.95;
 	letter-spacing: -0.03em;
 }
@@ -44,6 +46,24 @@
 	flex-wrap: wrap;
 	justify-content: center;
 	gap: var(--spacing-3);
+}
+
+/* A quiet line along the bottom of the last screen. */
+.start-footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing-2) var(--spacing-6);
+	width: 100%;
+	padding-block-start: var(--spacing-4);
+	border-block-start: 1px solid var(--color-border);
+}
+
+.start-footer-links {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing-4);
 }
 
 @media (width < 768px) {
