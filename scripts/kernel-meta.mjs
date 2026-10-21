@@ -87,28 +87,6 @@ function kernelInstallCommands(theoremaiRoot) {
 }
 
 /**
- * The line each package's README opens with: what the package is, in its own words. The kernel's
- * README centres it in an `<h3>`; the others put it first under the title.
- * @param {string} theoremaiRoot
- * @returns {Record<string, string>}
- */
-function kernelPackageLeads(theoremaiRoot) {
-	return Object.fromEntries(
-		INSTALL_READMES.map(([id, readme]) => {
-			const text = readFileSync(path.join(theoremaiRoot, readme), 'utf8');
-			const centred = text.match(/<h3[^>]*>\s*([\s\S]*?)\s*<\/h3>/)?.[1];
-			const first = text
-				.split('\n')
-				.map((row) => row.trim())
-				.find((row) => row !== '' && !row.startsWith('#') && !row.startsWith('[![') && !row.startsWith('<'));
-			const lead = (centred ?? first ?? '').replace(/\s+/g, ' ').trim();
-			if (!lead) throw new Error(`${readme} needs a line under its title that says what the package is.`);
-			return [id, lead];
-		}),
-	);
-}
-
-/**
  * Vite `define` entries for the kernel the site is built against.
  * @param {{ root: string, source: string }} theoremai
  * @returns {Record<string, string>}
@@ -120,7 +98,6 @@ export function kernelMetaDefine(theoremai) {
 		'import.meta.env.KERNEL_PROFILE_DOC': JSON.stringify(kernelTypeDoc(theoremai.root, 'src/kernel/types.ts', 'Profile')),
 		'import.meta.env.KERNEL_DETECTOR_DOC': JSON.stringify(kernelTypeDoc(theoremai.root, 'src/guardrails/detectors.ts', 'Detector')),
 		'import.meta.env.KERNEL_INSTALL': JSON.stringify(kernelInstallCommands(theoremai.root)),
-		'import.meta.env.KERNEL_LEAD': JSON.stringify(kernelPackageLeads(theoremai.root)),
 		'import.meta.env.KERNEL_LICENSE': JSON.stringify(facts.license),
 		'import.meta.env.KERNEL_REPOSITORY': JSON.stringify(facts.repository),
 		'import.meta.env.KERNEL_KEYWORDS': JSON.stringify(facts.keywords),

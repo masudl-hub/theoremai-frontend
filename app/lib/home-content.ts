@@ -49,24 +49,45 @@ export const INSTALL_COMMANDS = (
 		{ id: 'react', label: 'React' },
 		{ id: 'studio', label: 'Studio' },
 	] as const
-).map((pkg) => ({
-	...pkg,
-	command: envRecord('KERNEL_INSTALL')[pkg.id] ?? '',
-	lead: envRecord('KERNEL_LEAD')[pkg.id] ?? '',
-}));
-const packageOf = (id: (typeof INSTALL_COMMANDS)[number]['id']) =>
-	INSTALL_COMMANDS.filter((pkg) => pkg.id === id);
+).map((pkg) => ({ ...pkg, command: envRecord('KERNEL_INSTALL')[pkg.id] ?? '' }));
+export type PackageId = (typeof INSTALL_COMMANDS)[number]['id'];
 
-/** The packages screen's tiles, in its order: Web and React share one, the headless interface. */
+/**
+ * The packages screen's tiles, in its order. Web and React share one, the headless interface: its
+ * install command switches between them. `docs` is where the tile's docs link goes.
+ */
 export const PACKAGE_TILES = [
-	{ id: 'agents', title: 'Agents', packages: packageOf('agents') },
-	{ id: 'studio', title: 'Studio', packages: packageOf('studio') },
+	{
+		id: 'agents',
+		title: 'Agents',
+		description:
+			"Theorem's kernel. One profile is the contract: the models an agent may use, what it accepts and returns, its tools and its guardrails. The kernel runs every turn against it, refuses what it doesn't state, and records the trace.",
+		packages: ['agents'],
+		docs: '/docs/start',
+	},
+	{
+		id: 'studio',
+		title: 'Studio',
+		description:
+			"Build, test, demo and evaluate agents in your own dev environment, low-code. One command opens your project's agents: edit a profile as a form or as code, run it, probe its guardrails, and save back to its files.",
+		packages: ['studio'],
+		docs: `${REPO_URL}/blob/main/studio/README.md`,
+	},
 	{
 		id: 'interface',
 		title: 'Headless interface',
-		packages: [...packageOf('web'), ...packageOf('react')],
+		description:
+			'Serve a profile from your server and draw it in any UI. Web is the headless core, with no UI framework; React adds hooks and a ready-made chat. Either way, the interface shows only what the profile allows.',
+		packages: ['web', 'react'],
+		docs: '/docs/interface',
 	},
-] as const;
+] as const satisfies readonly {
+	id: string;
+	title: string;
+	description: string;
+	packages: readonly PackageId[];
+	docs: string;
+}[];
 export const PACKAGE_LINKS = packageLinks(KERNEL_NAME, REPO_URL);
 
 export const HEADLINE = [
@@ -192,10 +213,7 @@ export function homeScreens(): readonly HomeScreen[] {
 		{
 			id: 'packages',
 			name: 'Packages',
-			text: PACKAGE_TILES.map(
-				({ title, packages }) =>
-					`${title}: ${packages.map(({ label, lead }) => (packages.length === 1 ? lead : `${label}. ${lead}`)).join(' ')}`,
-			).join(' '),
+			text: PACKAGE_TILES.map(({ title, description }) => `${title}. ${description}`).join(' '),
 		},
 		...(SHOWCASE_SHOWN
 			? [{ id: 'showcase', name: 'Showcase', text: `Built with theorem. ${examples}` }]
