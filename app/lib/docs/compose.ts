@@ -59,6 +59,7 @@ import {
 	type SymbolRow,
 } from './schema';
 import { compileSeedSource } from './seeds';
+import { stillRenditions } from './stills';
 import { ttrMinutesFromText } from './text-format';
 import { unionMembers } from './union-docs';
 
@@ -140,6 +141,17 @@ function assertPublic(options: ComposeOptions, slug: string, src: string): strin
 	return file;
 }
 
+/** The still exists, and so do the renditions the pages draw. */
+function assertStill(options: ComposeOptions, slug: string, src: string): string {
+	const file = assertPublic(options, slug, src);
+	for (const rendition of Object.values(stillRenditions(src))) {
+		if (!existsSync(path.join(options.publicRoot, rendition))) {
+			throw new Error(`${slug} still ${src} has no ${rendition}: run npm run docs:stills`);
+		}
+	}
+	return file;
+}
+
 function assertChapters(options: ComposeOptions, chapters: readonly Chapter[]): void {
 	const covers = new Set<string>();
 	const ranks = new Set<number>();
@@ -167,7 +179,7 @@ function assertChapterFiles(options: ComposeOptions, chapter: Chapter): void {
 			throw new Error(`${chapter.slug} covers ${covered}, which is not in the package`);
 		}
 	}
-	const cover = assertPublic(options, chapter.slug, chapter.cover.src);
+	const cover = assertStill(options, chapter.slug, chapter.cover.src);
 	if (!cover.endsWith('.png') || pngRatio(cover) < COVER_MIN_RATIO) {
 		throw new Error(`${chapter.slug} cover ${chapter.cover.src} must be a PNG at least 16:9 wide`);
 	}
@@ -178,7 +190,7 @@ function assertChapterFiles(options: ComposeOptions, chapter: Chapter): void {
 
 /** The figure parses, and its still exists. */
 function assertFigure(options: ComposeOptions, slug: string, code: string): void {
-	assertPublic(options, slug, parseFigure(code).still.src);
+	assertStill(options, slug, parseFigure(code).still.src);
 }
 
 /** Adds `value` to `seen`; throws `message` if it was already there. */

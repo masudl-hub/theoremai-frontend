@@ -14,7 +14,7 @@ export type DocsSearch = {
 };
 
 /** How long the field must rest before a question is searched; clearing it applies at once. */
-const SETTLE_MS = 200;
+const SETTLE_MS = 400;
 
 /** One shared answer for an empty question, so callers that key effects on `results` see no change. */
 const NO_QUESTION: DocsSearch = { term: '', results: [], totalMatches: 0, ranking: 'words' };

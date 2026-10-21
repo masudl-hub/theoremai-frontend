@@ -36,6 +36,7 @@ import {
 import { projectArticleText } from '../../lib/docs/project-text';
 import { articleHref, chapterNeighbors, type DocSearchHit } from '../../lib/docs/query';
 import type { DocArticle, DocShell, DocTreeNode } from '../../lib/docs/schema';
+import { stillRenditions } from '../../lib/docs/stills';
 import { useDocsSearch } from '../../lib/docs/use-docs-search';
 import { warmDocsSearch } from '../../lib/docs/warm-docs-search';
 import { NewTabLink } from '../links';
@@ -468,7 +469,7 @@ function ArticleStill({ article }: { article: DocArticle }) {
 	const updated = formatDay(article.dateModified);
 	const source = `${KERNEL_GITHUB}/${article.entry}`;
 	const stillPaint = {
-		'--still-image': `url("${cover.src}")`,
+		'--still-image': `url("${stillRenditions(cover.src).full}")`,
 		'--still-position': cover.position,
 		'--still-filter': cover.filter,
 	} as CSSProperties;

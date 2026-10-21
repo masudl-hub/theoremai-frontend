@@ -11,6 +11,7 @@ import { VStack } from '@astryxdesign/core/VStack';
 import type { CSSProperties } from 'react';
 import { CHAPTER_ICON } from '../../lib/docs/chapter-icons';
 import type { DocFigure, LanesFigure, SequenceFigure } from '../../lib/docs/figure';
+import { stillRenditions } from '../../lib/docs/stills';
 
 type FigureStep = DocFigure['steps'][number];
 type FigurePart = NonNullable<FigureStep['parts']>[number];
@@ -166,7 +167,7 @@ function Lanes({ figure }: { figure: LanesFigure }) {
 /** A `figure` fence: its steps in order, each on its own card over the still. */
 export function DocsFigure({ figure }: { figure: DocFigure }) {
 	const still = {
-		'--figure-still': `url("${figure.still.src}")`,
+		'--figure-still': `url("${stillRenditions(figure.still.src).full}")`,
 		'--figure-position': figure.still.position,
 	} as CSSProperties;
 	return (

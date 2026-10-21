@@ -22,6 +22,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { articleHref, cardFor, type DocSearchHit } from '../../lib/docs/query';
 import type { DocArticleCard, DocShell } from '../../lib/docs/schema';
+import { stillRenditions, TILE_WIDTH } from '../../lib/docs/stills';
 import { useDocsSearch } from '../../lib/docs/use-docs-search';
 import { warmDocsSearch } from '../../lib/docs/warm-docs-search';
 import 'virtual:docs/landing.css';
@@ -224,6 +225,14 @@ function tilesFromShell(
 	});
 }
 
+// why: A tile crops its 21:9 still to 4:3, so the still is drawn about 1.75 times the tile's width.
+const TILE_SIZES = '(width < 768px) 175vw, 344px';
+
+function tileSrcSet(src: string): string {
+	const { full, tile } = stillRenditions(src);
+	return `${tile} ${String(TILE_WIDTH)}w, ${full} 1536w`;
+}
+
 /** The result cards for one layout: a carousel row, or the narrow-screen column. */
 function landingTileCards(tiles: LandingTile[], phase: TilePhase) {
 	return tiles.map(({ article, href, title, excerpt, showMeta }) => (
@@ -240,7 +249,14 @@ function landingTileCards(tiles: LandingTile[], phase: TilePhase) {
 			<VStack gap={3}>
 				<Card padding={0}>
 					<AspectRatio className="docs-landing-tile-still" ratio={4 / 3} fit="cover">
-						<img src={article.cover.src} alt={article.cover.alt} data-docs-cover={article.slug} />
+						<img
+							src={stillRenditions(article.cover.src).full}
+							srcSet={tileSrcSet(article.cover.src)}
+							sizes={TILE_SIZES}
+							alt={article.cover.alt}
+							decoding="async"
+							data-docs-cover={article.slug}
+						/>
 					</AspectRatio>
 				</Card>
 				<VStack gap={1}>
