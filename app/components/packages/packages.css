@@ -64,15 +64,11 @@
  * The agents tile's map, the tree drawn as the map draws, set in from the tile's top left and
  * running past its bottom, which crops it; the shade sits over its foot.
  */
-.packages-map.packages-map {
+.packages-map {
 	position: absolute;
 	z-index: -2;
 	top: 8%;
 	left: 12%;
-	width: 18rem;
-	height: 110%;
-	border-radius: var(--radius-container);
-	overflow: hidden;
 	pointer-events: none;
 }
 
