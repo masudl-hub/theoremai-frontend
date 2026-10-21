@@ -6,6 +6,7 @@ export default [
 		route('overview', 'routes/overview.tsx'),
 		route('examples', 'routes/examples.tsx'),
 		route('contribute', 'routes/contribute.tsx'),
+		route('packages', 'routes/packages.tsx'),
 		route('start', 'routes/start.tsx'),
 		route('studio', 'routes/studio.tsx'),
 		route('studio/run', 'routes/studio.run.tsx'),

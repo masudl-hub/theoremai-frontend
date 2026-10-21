@@ -6,6 +6,7 @@ import { ExamplesBoard } from '../components/examples/board';
 import { HomePlatform } from '../components/home-platform';
 import { scrollTopOf } from '../components/home-scroll-stops';
 import { HomeStage } from '../components/home-stage';
+import { PackagesBoard } from '../components/packages/board';
 import { PageJsonLd } from '../components/page-summary';
 import { StartBoard } from '../components/start/board';
 import '../components/home-scroll.css';
@@ -73,6 +74,7 @@ type LandingScreen =
 	| 'overview'
 	| GoalId
 	| PlatformId
+	| 'packages'
 	| 'showcase'
 	| 'contribute'
 	| 'start';
@@ -85,6 +87,7 @@ function landingScreen(hash: string): LandingScreen | null {
 	if (id === 'source-of-truth') return 'experience';
 	if (isGoalId(id)) return id;
 	if (isPlatformId(id)) return PLATFORM_SHOWN ? id : null;
+	if (id === 'packages') return 'packages';
 	if (id === 'showcase' || id === 'examples') return SHOWCASE_SHOWN ? 'showcase' : 'contribute';
 	if (id === 'contribute') return 'contribute';
 	if (id === 'start') return 'start';
@@ -113,6 +116,7 @@ function stopsOf<S extends LandingScreen>(
 function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number }[] {
 	const settle = scroller.querySelector<HTMLElement>('.home-contract-settle');
 	const overview = scroller.querySelector<HTMLElement>('#overview');
+	const packages = scroller.querySelector<HTMLElement>('#packages');
 	const showcase = scroller.querySelector<HTMLElement>('#showcase');
 	const contribute = scroller.querySelector<HTMLElement>('#contribute');
 	const start = scroller.querySelector<HTMLElement>('#start');
@@ -127,6 +131,7 @@ function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number
 			...stopsOf(scroller, isGoalId),
 			...(PLATFORM_SHOWN ? stopsOf(scroller, isPlatformId) : []),
 		].map(({ screen, stop }) => ({ screen, at: scrollTopOf(scroller, stop) })),
+		...(packages ? [{ screen: 'packages' as const, at: packages.offsetTop }] : []),
 		...(showcase ? [{ screen: 'showcase' as const, at: showcase.offsetTop }] : []),
 		{ screen: 'contribute', at: contribute?.offsetTop ?? showcase?.offsetTop ?? overviewAt },
 		...(start ? [{ screen: 'start' as const, at: start.offsetTop }] : []),
@@ -191,7 +196,7 @@ function scrollToLandingScreen(scroller: HTMLElement, screen: LandingScreen) {
 	scroller.querySelector<HTMLElement>(`#${screen}`)?.scrollIntoView({ block: 'start' });
 }
 
-/** Landing (/), then overview (/overview), the goals, showcase (/examples) while it is shown, contribute (/contribute) and get started (/start). */
+/** Landing (/), then overview (/overview), the goals, the packages (/packages), showcase (/examples) while it is shown, contribute (/contribute) and get started (/start). */
 export default function Home({ loaderData }: Route.ComponentProps) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const chapter = useMemo(
@@ -254,6 +259,9 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 				<HomeStage scrollRoot={scrollRef} />
 			</ChapterContext.Provider>
 			{PLATFORM_SHOWN ? <HomePlatform scrollRoot={scrollRef} /> : null}
+			<section className="home-page" id="packages" aria-label="Packages">
+				<PackagesBoard />
+			</section>
 			<div className="home-dotted" data-pages={SHOWCASE_SHOWN ? 2 : 1}>
 				{SHOWCASE_SHOWN ? (
 					<section className="home-page" id="showcase" aria-label="Showcase">

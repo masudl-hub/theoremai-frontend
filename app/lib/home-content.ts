@@ -49,7 +49,11 @@ export const INSTALL_COMMANDS = (
 		{ id: 'react', label: 'React' },
 		{ id: 'studio', label: 'Studio' },
 	] as const
-).map((pkg) => ({ ...pkg, command: envRecord('KERNEL_INSTALL')[pkg.id] ?? '' }));
+).map((pkg) => ({
+	...pkg,
+	command: envRecord('KERNEL_INSTALL')[pkg.id] ?? '',
+	lead: envRecord('KERNEL_LEAD')[pkg.id] ?? '',
+}));
 export const PACKAGE_LINKS = packageLinks(KERNEL_NAME, REPO_URL);
 
 export const HEADLINE = [
@@ -172,6 +176,11 @@ export function homeScreens(): readonly HomeScreen[] {
 			text: `${HEADLINE_TEXT} ${ARGUMENT} ${goals}`,
 		},
 		...GOALS.map(({ id, title }) => ({ id, name: title, text: goalText(id) })),
+		{
+			id: 'packages',
+			name: 'Packages',
+			text: INSTALL_COMMANDS.map(({ label, lead }) => `${label}: ${lead}`).join(' '),
+		},
 		...(SHOWCASE_SHOWN
 			? [{ id: 'showcase', name: 'Showcase', text: `Built with theorem. ${examples}` }]
 			: []),
