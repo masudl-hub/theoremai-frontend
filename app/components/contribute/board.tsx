@@ -2,7 +2,7 @@ import { Grid } from '@astryxdesign/core/Grid';
 import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
-import { IconBrandDiscord, IconBug, IconCode, IconLock } from '@tabler/icons-react';
+import { IconBug, IconCode, IconLock, IconMessages } from '@tabler/icons-react';
 import type { ComponentType } from 'react';
 import { CONTRIBUTE_INTRO, WAYS } from '../../lib/home-content';
 import { stillRenditions } from '../../lib/stills';
@@ -16,7 +16,7 @@ type Way = (typeof WAYS)[number];
 const WAY_ICONS: Record<Way['id'], ComponentType<{ size?: number; stroke?: number }>> = {
 	issue: IconBug,
 	code: IconCode,
-	discord: IconBrandDiscord,
+	discussions: IconMessages,
 	security: IconLock,
 };
 

@@ -4,10 +4,11 @@ import { Link } from '@astryxdesign/core/Link';
 import { Text } from '@astryxdesign/core/Text';
 import { TheoremMark } from '@theoremjs/studio/ui/theorem-mark.tsx';
 import { useEffect, useRef, useState } from 'react';
-import { DISCORD_URL, KERNEL, SITE_NAME } from '../../lib/home-content';
+import { COPYRIGHT } from '../../lib/home-content';
 import { SITE_PACKAGES, SITE_SECTIONS } from '../../lib/site-nav';
 import { AgentPromptButton } from '../agent-prompt-button';
 import { InstallCopy } from '../install-copy';
+import { NewTabLink } from '../links';
 import './start.css';
 
 /** The mark draws itself the first time the screen is half in view, not while it is off screen. */
@@ -31,21 +32,16 @@ function useFirstSeen<T extends HTMLElement>() {
 	return { ref, seen };
 }
 
-const FOOTER_LINKS = [
-	...SITE_PACKAGES.map(({ label, href }) => ({ label, href })),
-	{ label: 'Discord', href: DISCORD_URL },
-];
-
-/** The foot of the site: the package and its version and licence, and where it lives. */
+/** The foot of the site: who holds the copyright, and where the package lives. */
 function StartFooter() {
 	return (
 		<footer className="start-footer">
 			<Text type="supporting" color="secondary">
-				{[`${SITE_NAME} ${KERNEL.version}`, KERNEL.license].filter(Boolean).join(' · ')}
+				{COPYRIGHT}
 			</Text>
 			<nav className="start-footer-links" aria-label="Elsewhere">
-				{FOOTER_LINKS.map(({ label, href }) => (
-					<Link key={href} href={href} isExternalLink type="supporting" color="secondary">
+				{SITE_PACKAGES.map(({ label, href }) => (
+					<Link key={href} as={NewTabLink} href={href} type="supporting" color="secondary">
 						{label}
 					</Link>
 				))}

@@ -33,6 +33,8 @@ export const KERNEL = {
 } as const;
 
 export const REPO_URL = envString('KERNEL_REPOSITORY') || 'https://github.com/masudl-hub/theoremai';
+/** The holder the package's LICENSE names. */
+export const COPYRIGHT = '© 2026 Orchid AI LLC';
 export const DISCORD_URL = 'https://discord.gg/X6RQvSWQ58';
 /** What each package's README says to install, by the name the switcher shows. */
 export const INSTALL_COMMANDS = [
@@ -126,10 +128,10 @@ export const WAYS = [
 		position: '50% 50%',
 	},
 	{
-		id: 'discord',
-		title: 'Join the Discord',
+		id: 'discussions',
+		title: 'Join the discussions',
 		note: 'Ask questions, share what you build and meet other builders.',
-		href: DISCORD_URL,
+		href: `${REPO_URL}/discussions`,
 		src: '/imagery/th30_cherryblossoms.png',
 		position: '50% 50%',
 	},
