@@ -5,7 +5,7 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { IconCheck, IconTerminal2 } from '@tabler/icons-react';
 import { PAGE_ICONS } from '@theoremjs/studio/ui/studio-shell.tsx';
-import { useRef } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { INSTALL_COMMANDS, PACKAGE_TILES, type PackageId } from '../../lib/home-content';
 import { stillRenditions } from '../../lib/stills';
 import { Statement } from '../statement';
@@ -22,6 +22,29 @@ const STILLS: Record<TileId, { src: string; position: string }> = {
 };
 
 const DocsIcon = PAGE_ICONS.Docs;
+
+const InterfaceChat = lazy(() => import('./interface-chat'));
+
+/** How long the page is left alone before the interface tile's chat is fetched, as the goals' agent is. */
+const CHAT_IDLE_MS = 1500;
+
+/** The interface tile's chat, fetched once the page has been left alone. */
+function LateInterfaceChat() {
+	const [isDue, setIsDue] = useState(false);
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setIsDue(true);
+		}, CHAT_IDLE_MS);
+		return () => {
+			clearTimeout(timer);
+		};
+	}, []);
+	return isDue ? (
+		<Suspense fallback={null}>
+			<InterfaceChat />
+		</Suspense>
+	) : null;
+}
 
 /** Copies a tile's install command. With more than one package it asks which, and each choice shows its command. */
 function InstallButton({ packages }: { packages: readonly PackageId[] }) {
@@ -113,6 +136,7 @@ export function PackagesBoard() {
 								loading="lazy"
 								style={{ objectPosition: still.position }}
 							/>
+							{id === 'interface' ? <LateInterfaceChat /> : null}
 							<div className="packages-words">
 								<div className="packages-head">
 									<Heading level={2} type="display-3" className="packages-name">

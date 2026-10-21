@@ -9,9 +9,7 @@ import {
 	IconPlayerPlay,
 	IconRotateClockwise,
 } from '@tabler/icons-react';
-import type { ConversationView } from '@theoremjs/react';
 import type { TheoremChatHandle } from '@theoremjs/react/ui';
-import type { StudioRunPayload } from '@theoremjs/studio';
 import { StudioCode } from '@theoremjs/studio/ui/code/studio-code.tsx';
 import { GuardrailTester } from '@theoremjs/studio/ui/guardrail-tester.tsx';
 import type { CodeIssue } from '@theoremjs/studio/ui/studio-host.ts';
@@ -34,6 +32,7 @@ import { HOME_AGENT_STUDIO, keepHomeAgent } from '../lib/home-agent-handoff';
 import type { HomeAgentState, HomeAgentStore, HomeGood } from '../lib/home-agent-store';
 import { changedRanges, type Excerpt, excerptOf, type Lines } from '../lib/home-excerpt';
 import type { GoalBeat, GoalId, GoalToken } from '../lib/home-goals';
+import { useOpening } from '../lib/home-opening';
 import { setGoalFocus, setGoalMarked } from './home-goals-beat';
 import { GoalExcerpt } from './home-goals-excerpt';
 
@@ -487,57 +486,6 @@ function useStill(beat: GoalBeat | undefined) {
 		if (isTesting) setHasTested(true);
 	}, [isTesting]);
 	return { isTester, isEmpty, isTesting, hasTested };
-}
-
-type Opening = { conversation: string; view: ConversationView };
-
-/** Stores the opening exchange on `draft`: its ref and view, or null when it could not be stored. */
-async function startOpening(draft: StudioRunPayload, signal: AbortSignal): Promise<Opening | null> {
-	const { profile, customTools, structured, dependencies } = draft;
-	try {
-		const response = await fetch('/api/home/start', {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ profile, customTools, structured, dependencies }),
-			signal,
-		});
-		if (!response.ok) return null;
-		const body: Partial<Opening> = await response.json();
-		return typeof body.conversation === 'string' && body.view
-			? { conversation: body.conversation, view: body.view }
-			: null;
-	} catch {
-		return null;
-	}
-}
-
-/**
- * The conversation the chat opens on: the opening exchange, stored by the server for this visit
- * and read by the agent's guardrails, with the view the chat draws at once. Started again each
- * time the visitor starts over. Undefined while it is stored; null when it could not be, and the
- * chat opens empty.
- */
-function useOpening(payload: StudioRunPayload | undefined, runs: number) {
-	const [opening, setOpening] = useState<{ runs: number; started: Opening | null }>();
-	const latest = useRef(payload);
-	latest.current = payload;
-	const hasPayload = payload !== undefined;
-	useEffect(() => {
-		const draft = latest.current;
-		if (!hasPayload || !draft) return;
-		if (draft.profile.type !== 'text') {
-			setOpening({ runs, started: null });
-			return;
-		}
-		const controller = new AbortController();
-		void startOpening(draft, controller.signal).then((started) => {
-			if (!controller.signal.aborted) setOpening({ runs, started });
-		});
-		return () => {
-			controller.abort();
-		};
-	}, [hasPayload, runs]);
-	return opening?.runs === runs ? opening : undefined;
 }
 
 /**

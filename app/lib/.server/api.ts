@@ -3,7 +3,7 @@
  * and delegate here. The studio's own routes are the package's handler (`studio-server.ts`).
  */
 import type { SiteEnv } from '../../cloudflare';
-import { HOME_EXCHANGE } from '../home-agent-chat';
+import { HOME_EXCHANGE, INTERFACE_EXCHANGE } from '../home-agent-chat';
 import { studioServer } from './studio-server';
 import { getKernelPackageVersion, getSubmoduleHead } from './theoremai';
 
@@ -15,7 +15,14 @@ export function kernelInfo(): Response {
 	});
 }
 
-/** POST /api/home/start — the goals screen's opening exchange, as a conversation of this session's. */
+/**
+ * POST /api/home/start — a landing chat's opening exchange, as a conversation of this session's:
+ * the goals screen's, or with `?exchange=interface` the packages screen's.
+ */
 export function homeStart(request: Request, env: SiteEnv): Promise<Response> {
-	return studioServer(env).startConversation(request, HOME_EXCHANGE);
+	const isInterface = new URL(request.url).searchParams.get('exchange') === 'interface';
+	return studioServer(env).startConversation(
+		request,
+		isInterface ? INTERFACE_EXCHANGE : HOME_EXCHANGE,
+	);
 }

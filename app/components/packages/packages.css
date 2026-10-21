@@ -33,7 +33,7 @@
 
 .packages-still {
 	position: absolute;
-	z-index: -2;
+	z-index: -3;
 	inset: 0;
 	display: block;
 	width: 100%;
@@ -41,8 +41,27 @@
 	object-fit: cover;
 }
 
+/*
+ * The interface tile's chat, off-centre and larger than the tile, so only its middle shows: the
+ * calls, the reply and the composer. The tile crops it, and the shade sits over its foot.
+ */
+.packages-chat.packages-chat {
+	position: absolute;
+	z-index: -2;
+	top: -16%;
+	left: 14%;
+	width: 34rem;
+	height: 70%;
+	display: grid;
+	grid-template-rows: minmax(0, 1fr);
+	grid-template-columns: minmax(0, 1fr);
+	border-radius: var(--radius-container);
+	overflow: hidden;
+	pointer-events: none;
+}
+
 /* why: Words over any picture. The shade is deep under the words and gone by the top third, so the still stays bright above them.
-   invariant: It sits between the still (-2) and the words. */
+   invariant: It sits over the still (-3) and the chat (-2), under the words. */
 .packages-tile::before {
 	content: "";
 	position: absolute;

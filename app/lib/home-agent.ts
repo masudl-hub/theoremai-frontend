@@ -540,6 +540,12 @@ export function readHomeSource(
 	return { agent: { workspace: next }, errors: [], spans: read.spans };
 }
 
+/** The studio's travel concierge whole, every tool and input it has: what the interface tile runs. */
+export function conciergePayload(): StudioRunPayload | undefined {
+	const compiled = compileHomeAgent({ workspace: workspaceFromDraft(createExampleDraft()) });
+	return compiled.ok ? compiled.payload : undefined;
+}
+
 export function createHomeAgent(): HomeAgent {
 	return { workspace: workspaceFromDraft(createHomeDraft()) };
 }
