@@ -13,7 +13,7 @@ type TileId = (typeof PACKAGE_TILES)[number]['id'];
 const STILLS: Record<TileId, { src: string; position: string }> = {
 	agents: { src: '/imagery/th30_ocean.png', position: '30% 50%' },
 	studio: { src: '/imagery/th30_maplecanopies.png', position: '40% 50%' },
-	interface: { src: '/imagery/th30_tropicalforest.png', position: '92% 50%' },
+	interface: { src: '/imagery/th30_tropicalforest.png', position: '0% 50%' },
 };
 
 const DocsIcon = PAGE_ICONS.Docs;
@@ -37,10 +37,10 @@ export function PackagesBoard() {
 								style={{ objectPosition: still.position }}
 							/>
 							<div className="packages-words">
-								<Heading level={2} type="display-2" className="packages-name">
+								<Heading level={2} type="display-3" className="packages-name">
 									{title}
 								</Heading>
-								<Text type="large" className="packages-description">
+								<Text color="secondary" className="packages-description">
 									{description}
 								</Text>
 								<div className="packages-install">

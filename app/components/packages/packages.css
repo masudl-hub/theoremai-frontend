@@ -33,7 +33,7 @@
 
 .packages-still {
 	position: absolute;
-	z-index: -1;
+	z-index: -2;
 	inset: 0;
 	display: block;
 	width: 100%;
@@ -41,7 +41,8 @@
 	object-fit: cover;
 }
 
-/* why: Words over any picture. The shade is deep under the words and gone by the top third, so the still stays bright above them. */
+/* why: Words over any picture. The shade is deep under the words and gone by the top third, so the still stays bright above them.
+   invariant: It sits between the still (-2) and the words. */
 .packages-tile::before {
 	content: "";
 	position: absolute;
@@ -61,23 +62,18 @@
 	color-scheme: dark;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-3);
+	gap: var(--spacing-2);
 	padding: var(--spacing-6);
 	color: var(--color-text-primary);
 }
 
 .astryx-heading.packages-name {
 	color: inherit;
-	font-weight: 600;
-	line-height: 1.05;
-	letter-spacing: -0.03em;
 }
 
 /* why: Four lines each, so the three names sit on one line across the row. */
 .astryx-text.packages-description {
 	min-height: calc(4 * 1lh);
-	/* why: The secondary grey reads dim over a picture; the primary, a little lighter, holds. */
-	color: color-mix(in srgb, var(--color-text-primary) 86%, transparent);
 	text-wrap: pretty;
 }
 
@@ -87,10 +83,7 @@
 	justify-content: space-between;
 	gap: var(--spacing-2);
 	margin-block-start: var(--spacing-2);
-	padding: var(--spacing-1);
-	border-radius: var(--radius-container);
-	background: rgb(255 255 255 / 0.08);
-	backdrop-filter: blur(12px);
+	margin-inline-start: calc(-1 * var(--spacing-2));
 }
 
 /* A phone has no room for three: the row scrolls sideways, a still at a time. */
