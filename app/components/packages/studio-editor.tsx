@@ -1,36 +1,33 @@
 import { Card } from '@astryxdesign/core/Card';
-import {
-	createExampleDraft,
-	createLiveExampleDraft,
-	modelBindingNodeId,
-	workspaceFromDraft,
-} from '@theoremjs/studio';
+import { createExampleDraft, modelBindingNodeId, workspaceFromDraft } from '@theoremjs/studio';
 import { StudioEditorPreview } from '@theoremjs/studio/ui/studio-screen.tsx';
 import { useState } from 'react';
 import { ON_SITE } from '../../lib/studio-supplies';
 
 /**
- * The live concierge, given a second model that only writes text, and open on it: the studio says
- * which protocol a live agent runs on.
+ * The concierge, open on its smart model with three slips a builder makes: OpenAI's xhigh thinking
+ * level on Gemini, a default effort that was renamed, and an option with one letter in the wrong
+ * case. The studio says what would work for each.
  */
-function liveWithTextModel() {
-	const live = createLiveExampleDraft();
-	const text = createExampleDraft().modelBindings.find((binding) => binding.modelId === 'smart');
-	if (!text) return workspaceFromDraft(live);
-	const added = { ...text, key: 'model-smart' };
-	return workspaceFromDraft(
-		{
-			...live,
-			modelBindings: [...live.modelBindings, added],
-			models: { ...live.models, defaultModel: live.modelBindings[0]?.modelId ?? '' },
-		},
-		modelBindingNodeId(added.key),
+function smartWithSlips() {
+	const draft = createExampleDraft();
+	const smart = draft.modelBindings.find((binding) => binding.modelId === 'smart');
+	const modelBindings = draft.modelBindings.map((binding) =>
+		binding === smart
+			? {
+					...binding,
+					efforts: [...binding.efforts, { alias: 'max', level: 'xhigh' as const }],
+					defaultEffort: 'balanced',
+					options: { persistViaInteractionID: true },
+				}
+			: binding,
 	);
+	return workspaceFromDraft({ ...draft, modelBindings }, modelBindingNodeId(smart?.key ?? ''));
 }
 
 /** The studio tile's editor: the studio's own toolbar and inspector, shown and not used. */
 export default function StudioEditor() {
-	const [workspace] = useState(liveWithTextModel);
+	const [workspace] = useState(smartWithSlips);
 	return (
 		<Card variant="glass" padding={0} elevation="med" className="packages-editor" inert aria-hidden>
 			<StudioEditorPreview workspace={workspace} on={ON_SITE} />

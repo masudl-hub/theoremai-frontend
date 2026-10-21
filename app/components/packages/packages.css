@@ -61,14 +61,14 @@
 }
 
 /*
- * The studio tile's editor, the toolbar over the model's inspector, taller than the tile and set
- * left of its middle, against the chat's right: the tile crops its top and left, and the shade sits
- * over its foot.
+ * The studio tile's editor, the toolbar over the model's inspector, set left of its middle against
+ * the chat's right: its top, the heading and issue count, shows whole; the tile crops its left, and
+ * the shade sits over its foot.
  */
 .packages-editor.packages-editor {
 	position: absolute;
 	z-index: -2;
-	top: -6%;
+	top: 7%;
 	right: 12%;
 	width: 28rem;
 	height: 84%;
