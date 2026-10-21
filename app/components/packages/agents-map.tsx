@@ -17,8 +17,9 @@ const MODELS = [
 ];
 
 /**
- * The code architect, with the concierge's first function tool in its registry so the registry
- * holds one tool of each type, and the decision example beside it, so the map shows both runners.
+ * The code architect and the narrator it calls, with the concierge's first function tool in the
+ * registry so it holds one tool of each type, and the decision example after them, so the map shows
+ * both runners.
  */
 function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 	const base = createArchitectWorkspace();
@@ -42,15 +43,11 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 		toolSpecs: fn ? [fn, ...base.toolSpecs] : base.toolSpecs,
 	};
 	const workspace = addAgent(withTools, decisionExampleDraft());
-	const decision = workspace.agents.at(-1);
-	return {
-		workspace,
-		agents: [architect.key, ...(decision ? [decision.key] : [])],
-	};
+	return { workspace, agents: workspace.agents.map((agent) => agent.key) };
 }
 
 /**
- * The agents tile's map: the studio's tree of the code architect and a decision agent, every row
+ * The agents tile's map: the studio's tree of the code architect, its narrator, and a decision agent, every row
  * open, with their runners, providers and tool registry beside them, drawn as the map draws on a
  * glass card the tile crops.
  */

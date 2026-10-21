@@ -1,6 +1,6 @@
 /**
  * What the landing page says, as plain data. The screens render from it and the page's
- * structured data, meta tags and llms.txt are built from it, so none of them can drift.
+ * structured data, meta tags, and llms.txt are built from it, so none of them can drift.
  * Kernel facts (description, license, version, keywords) come from the package at build time.
  */
 import { packageLinks, SITE_PAGES } from '@theoremjs/studio/ui/studio-nav.ts';
@@ -61,7 +61,7 @@ export const PACKAGE_TILES = [
 		id: 'agents',
 		title: 'Agents',
 		description:
-			"The kernel. A `profile` states what an agent may use, accept and return. Every turn runs against it, and what it doesn't state is refused.",
+			"The kernel. A `profile` states what an agent may use, accept, and return. Every turn runs against it, and what it doesn't state is refused.",
 		packages: ['agents'],
 		docs: '/docs/start',
 	},
@@ -69,7 +69,7 @@ export const PACKAGE_TILES = [
 		id: 'studio',
 		title: 'Studio',
 		description:
-			'Build, test, demo and evaluate agents in your own project, low-code. Edit a `profile` as a form or as code, then run it beside the editor.',
+			'Build, test, demo, and evaluate agents in your own project, low-code. Edit a `profile` as a form or as code, then run it beside the editor.',
 		packages: ['studio'],
 		docs: `${REPO_URL}/blob/main/studio/README.md`,
 	},
@@ -102,7 +102,7 @@ export type ExampleAction =
 
 /**
  * Whether the showcase screen is on the home page. It is off until there are agents worth showing:
- * the screen, its stop and its mentions are held back, and `#showcase` lands on contribute.
+ * the screen, its stop, and its mentions are held back, and `#showcase` lands on contribute.
  */
 export const SHOWCASE_SHOWN: boolean = false;
 
@@ -119,7 +119,7 @@ export const EXAMPLES: readonly {
 		id: 'concierge',
 		title: 'Travel concierge',
 		description:
-			'Plans a trip from what you tell it and from tickets or notes you attach. It uses tools for weather, places and currency before it answers.',
+			'Plans a trip from what you tell it and from tickets or notes you attach. It uses tools for weather, places, and currency before it answers.',
 		image: '/imagery/th30_wildflowerroad.png',
 		imageAlt: 'A stone path splitting through a meadow of yellow and pink wildflowers',
 		action: { kind: 'studio', href: '/studio' },
@@ -145,7 +145,7 @@ export const EXAMPLES: readonly {
 ];
 
 export const CONTRIBUTE_INTRO =
-	'Theorem is open source. We welcome questions, bugs, ideas and code.';
+	'Theorem is open source. We welcome questions, bugs, ideas, and code.';
 
 /** Four ways in, each a link. */
 export const WAYS = [
@@ -160,7 +160,7 @@ export const WAYS = [
 	{
 		id: 'code',
 		title: 'Contribute code',
-		note: 'Set up the repo, run the checks and send a pull request.',
+		note: 'Set up the repo, run the checks, and send a pull request.',
 		href: `${REPO_URL}/blob/main/CONTRIBUTING.md`,
 		src: '/imagery/th30_farm.png',
 		position: '50% 50%',
@@ -168,7 +168,7 @@ export const WAYS = [
 	{
 		id: 'discussions',
 		title: 'Join the discussions',
-		note: 'Ask questions, share what you build and meet other builders.',
+		note: 'Ask questions, share what you build, and meet other builders.',
 		href: `${REPO_URL}/discussions`,
 		src: '/imagery/th30_cherryblossoms.png',
 		position: '50% 50%',

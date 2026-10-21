@@ -63,15 +63,16 @@
 /*
  * The agents tile's map, the tree drawn as the map draws on the same glass card as the other
  * tiles: wider than the tile from in from its left, so the tile crops its right as it crops the
- * chat's, and shorter than the map, so the card cuts the map's foot; the shade sits over it.
+ * chat's; its foot ends where the editor's does, short of the map's, so the card cuts the map and
+ * the shade sits over the cut.
  */
 .packages-map.packages-map {
 	position: absolute;
 	z-index: -2;
-	top: 12%;
-	left: 14%;
+	top: 16%;
+	left: 18%;
 	width: 38rem;
-	height: 66%;
+	height: 75%;
 	border-radius: var(--radius-container);
 	overflow: hidden;
 	pointer-events: none;
