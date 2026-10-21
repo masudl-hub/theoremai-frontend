@@ -2,7 +2,6 @@ import { Button } from '@astryxdesign/core/Button';
 import { Heading } from '@astryxdesign/core/Heading';
 import { TheoremMark } from '@theoremjs/studio/ui/theorem-mark.tsx';
 import { useEffect, useRef, useState } from 'react';
-import { SITE_NAME } from '../../lib/home-content';
 import { SITE_SECTIONS } from '../../lib/site-nav';
 import { AgentPromptButton } from '../agent-prompt-button';
 import { InstallCopy } from '../install-copy';
@@ -29,7 +28,7 @@ function useFirstSeen<T extends HTMLElement>() {
 	return { ref, seen };
 }
 
-/** The landing page's last screen: the mark, one line, the install command, and three ways to begin. */
+/** The landing page's last screen: the mark, the question the headline opened with, the install command, and three ways to begin. */
 export function StartBoard() {
 	const { ref, seen } = useFirstSeen<HTMLDivElement>();
 	return (
@@ -37,7 +36,7 @@ export function StartBoard() {
 			<div className="start-content">
 				<div className="start-mark">{seen ? <TheoremMark /> : null}</div>
 				<Heading level={1} type="display-1" textWrap="balance" className="start-title">
-					Get started with {SITE_NAME}.
+					Ready to keep your promises?
 				</Heading>
 				<InstallCopy size="lg" />
 				<div className="start-actions">
