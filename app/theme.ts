@@ -27,14 +27,6 @@ export const siteTheme = defineTheme({
 				backdropFilter: 'blur(28px) saturate(1.6)',
 			},
 		},
-		button: {
-			base: {
-				':where(.home-intro-install)': {
-					fontFamily: 'var(--font-family-mono)',
-					fontSize: 'clamp(1rem, 1.75vw, 1.3125rem)',
-				},
-			},
-		},
 		// The landing wordmark: Astryx's heading type, set at poster scale.
 		heading: {
 			'type:wordmark': {

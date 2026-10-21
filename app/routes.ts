@@ -6,6 +6,7 @@ export default [
 		route('overview', 'routes/overview.tsx'),
 		route('examples', 'routes/examples.tsx'),
 		route('contribute', 'routes/contribute.tsx'),
+		route('start', 'routes/start.tsx'),
 		route('studio', 'routes/studio.tsx'),
 		route('studio/run', 'routes/studio.run.tsx'),
 		// The studio opened on a local project. A deployed site has no project to open.

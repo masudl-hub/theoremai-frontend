@@ -1,11 +1,9 @@
 import { Button } from '@astryxdesign/core/Button';
 import { Heading } from '@astryxdesign/core/Heading';
-import { useClipboard } from '@astryxdesign/core/hooks';
 import { Icon } from '@astryxdesign/core/Icon';
-import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { Token } from '@astryxdesign/core/Token';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
-import { IconAlpha, IconCheck, IconCopy } from '@tabler/icons-react';
+import { IconAlpha } from '@tabler/icons-react';
 import {
 	type CSSProperties,
 	type ReactNode,
@@ -15,12 +13,12 @@ import {
 	useState,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { INSTALL_COMMANDS } from '../lib/home-content';
 import { SITE_PACKAGES, SITE_SECTIONS } from '../lib/site-nav';
 import { EARLY_DAYS, HOME_TAGLINE } from '../lib/site-pitch';
 import { useHomeGoalsScroll } from './home-goals-pull';
 import { useHomeIntroWordmarkFit } from './home-intro-wordmark-fit';
 import { useHomeIntroScroll } from './home-shell-pull';
+import { InstallCopy } from './install-copy';
 import { NewTabLink } from './links';
 import './home-intro.css';
 
@@ -57,32 +55,6 @@ function IntroNavItem({
 				data-home-intro-nav={href}
 			/>
 			<Tooltip content={label} placement="end" anchorRef={slotRef} />
-		</div>
-	);
-}
-
-/** A package's install command to copy, and the switch between packages; the switch stays put as the command changes length. */
-function InstallCopy() {
-	const { copy, isCopied } = useClipboard({ announce: 'Install command copied' });
-	const [chosen, setChosen] = useState<string>(INSTALL_COMMANDS[0].id);
-	const { command } = INSTALL_COMMANDS.find(({ id }) => id === chosen) ?? INSTALL_COMMANDS[0];
-	return (
-		<div className="home-intro-install">
-			<Button
-				className="home-intro-install-copy"
-				variant="ghost"
-				size="sm"
-				icon={isCopied ? <IconCheck aria-hidden /> : <IconCopy aria-hidden />}
-				label={isCopied ? 'Copied' : command}
-				onClick={() => {
-					void copy(command);
-				}}
-			/>
-			<SegmentedControl label="Package" size="sm" value={chosen} onChange={setChosen}>
-				{INSTALL_COMMANDS.map(({ id, label }) => (
-					<SegmentedControlItem key={id} value={id} label={label} />
-				))}
-			</SegmentedControl>
 		</div>
 	);
 }

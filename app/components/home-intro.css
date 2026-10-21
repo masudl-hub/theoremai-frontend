@@ -188,17 +188,6 @@ html[data-shell-move] .home-intro-flight {
 	pointer-events: auto;
 }
 
-.home-intro-install {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-2);
-	min-width: 0;
-}
-
-.home-intro-install-copy {
-	min-width: 0;
-}
-
 /* The early-days token sits on the tagline's left edge, over it. */
 .home-intro-status {
 	position: relative;
@@ -252,7 +241,7 @@ html[data-home-intro-done] .home-intro-pin {
 	}
 
 	/* A phone shows the switch, and the command shortens to fit beside it. */
-	.home-intro-install-copy {
+	.home-intro-install-row .install-copy-command {
 		flex: 1 1 auto;
 		overflow: hidden;
 	}

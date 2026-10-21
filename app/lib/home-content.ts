@@ -155,11 +155,14 @@ export function homeScreens(): readonly HomeScreen[] {
 		return `${title}: ${description} ${where}`;
 	}).join(' ');
 	const ways = WAYS.map(({ title, note }) => `${title}: ${note}`).join(' ');
+	const installText = INSTALL_COMMANDS.map(({ label, command }) => `${command} (${label})`).join(
+		', ',
+	);
 	return [
 		{
 			id: 'landing',
 			name: 'Landing',
-			text: `${HOME_TAGLINE} Install it with ${INSTALL_COMMANDS.map(({ label, command }) => `${command} (${label})`).join(', ')}. Open the ${SITE_PAGES.map(({ label }) => label).join(' or ')}, or find the package on ${PACKAGE_LINKS.map(({ label }) => label).join(', ')}.`,
+			text: `${HOME_TAGLINE} Install it with ${installText}. Open the ${SITE_PAGES.map(({ label }) => label).join(' or ')}, or find the package on ${PACKAGE_LINKS.map(({ label }) => label).join(', ')}.`,
 		},
 		{
 			id: 'overview',
@@ -174,6 +177,11 @@ export function homeScreens(): readonly HomeScreen[] {
 			id: 'contribute',
 			name: 'Contribute',
 			text: `Contribute to the theory. ${CONTRIBUTE_INTRO} ${ways}`,
+		},
+		{
+			id: 'start',
+			name: 'Get started',
+			text: `Get started with ${SITE_NAME}. Install it with ${installText}. Open the ${SITE_PAGES.map(({ label }) => label).join(' or ')}, or copy a prompt for your coding agent.`,
 		},
 	];
 }

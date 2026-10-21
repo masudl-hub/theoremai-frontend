@@ -1,0 +1,60 @@
+/* The landing page's last screen, centred on the page panel. */
+.start-frame {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	height: 100%;
+	padding: var(--spacing-8) var(--spacing-6);
+	overflow: hidden;
+}
+
+.start-content {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing-8);
+	max-width: 48rem;
+	min-width: 0;
+	text-align: center;
+}
+
+/* The space is held before the mark draws, so nothing moves when it does. */
+.start-mark {
+	--start-mark-size: clamp(4.5rem, 11vh, 7rem);
+	width: var(--start-mark-size);
+	height: var(--start-mark-size);
+}
+
+.start-mark .theorem-mark {
+	width: 100%;
+	height: 100%;
+}
+
+.start-title {
+	margin: 0;
+}
+
+.start-actions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: var(--spacing-3);
+}
+
+@media (width < 768px) {
+	.start-content {
+		gap: var(--spacing-6);
+		width: 100%;
+	}
+
+	/* A phone shows the switch, and the command shortens to fit beside it. */
+	.start-content .install-copy {
+		max-width: 100%;
+	}
+
+	.start-content .install-copy-command {
+		flex: 1 1 auto;
+		overflow: hidden;
+	}
+}

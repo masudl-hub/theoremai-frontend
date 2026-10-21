@@ -7,6 +7,7 @@ import { HomePlatform } from '../components/home-platform';
 import { scrollTopOf } from '../components/home-scroll-stops';
 import { HomeStage } from '../components/home-stage';
 import { PageJsonLd } from '../components/page-summary';
+import { StartBoard } from '../components/start/board';
 import '../components/home-scroll.css';
 import { homeTerms } from '../lib/.server/home-terms';
 import { SITE_REDIRECTS } from '../lib/docs/articles/chapters';
@@ -67,7 +68,14 @@ function RetiredHashRedirect() {
 	return null;
 }
 
-type LandingScreen = 'landing' | 'overview' | GoalId | PlatformId | 'showcase' | 'contribute';
+type LandingScreen =
+	| 'landing'
+	| 'overview'
+	| GoalId
+	| PlatformId
+	| 'showcase'
+	| 'contribute'
+	| 'start';
 
 /** `#examples` is the previous showcase id. An empty hash is landing. */
 function landingScreen(hash: string): LandingScreen | null {
@@ -79,6 +87,7 @@ function landingScreen(hash: string): LandingScreen | null {
 	if (isPlatformId(id)) return PLATFORM_SHOWN ? id : null;
 	if (id === 'showcase' || id === 'examples') return SHOWCASE_SHOWN ? 'showcase' : 'contribute';
 	if (id === 'contribute') return 'contribute';
+	if (id === 'start') return 'start';
 	return null;
 }
 
@@ -106,6 +115,7 @@ function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number
 	const overview = scroller.querySelector<HTMLElement>('#overview');
 	const showcase = scroller.querySelector<HTMLElement>('#showcase');
 	const contribute = scroller.querySelector<HTMLElement>('#contribute');
+	const start = scroller.querySelector<HTMLElement>('#start');
 	const overviewAt =
 		settle && getComputedStyle(settle).display !== 'none'
 			? settle.offsetTop
@@ -119,6 +129,7 @@ function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number
 		].map(({ screen, stop }) => ({ screen, at: scrollTopOf(scroller, stop) })),
 		...(showcase ? [{ screen: 'showcase' as const, at: showcase.offsetTop }] : []),
 		{ screen: 'contribute', at: contribute?.offsetTop ?? showcase?.offsetTop ?? overviewAt },
+		...(start ? [{ screen: 'start' as const, at: start.offsetTop }] : []),
 	];
 }
 
@@ -180,7 +191,7 @@ function scrollToLandingScreen(scroller: HTMLElement, screen: LandingScreen) {
 	scroller.querySelector<HTMLElement>(`#${screen}`)?.scrollIntoView({ block: 'start' });
 }
 
-/** Landing (/), then overview (/overview), the goals, showcase (/examples) while it is shown, and contribute (/contribute). */
+/** Landing (/), then overview (/overview), the goals, showcase (/examples) while it is shown, contribute (/contribute) and get started (/start). */
 export default function Home({ loaderData }: Route.ComponentProps) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const chapter = useMemo(
@@ -253,6 +264,9 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 					<ContributeBoard />
 				</section>
 			</div>
+			<section className="home-page" id="start" aria-label="Get started">
+				<StartBoard />
+			</section>
 		</div>
 	);
 }

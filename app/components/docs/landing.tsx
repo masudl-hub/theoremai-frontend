@@ -6,27 +6,20 @@ import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { Grid } from '@astryxdesign/core/Grid';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
-import { useClipboard } from '@astryxdesign/core/hooks';
 import { ScrollableArea } from '@astryxdesign/core/ScrollableArea';
 import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Token } from '@astryxdesign/core/Token';
 import { VStack } from '@astryxdesign/core/VStack';
-import {
-	IconBrandGithub,
-	IconCheck,
-	IconCopy,
-	IconPlayerPlay,
-	IconSearch,
-} from '@tabler/icons-react';
+import { IconBrandGithub, IconPlayerPlay, IconSearch } from '@tabler/icons-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { articleHref, cardFor, type DocSearchHit } from '../../lib/docs/query';
 import type { DocArticleCard, DocShell } from '../../lib/docs/schema';
-import { stillRenditions, TILE_WIDTH } from '../../lib/stills';
 import { useDocsSearch } from '../../lib/docs/use-docs-search';
 import { warmDocsSearch } from '../../lib/docs/warm-docs-search';
+import { stillRenditions, TILE_WIDTH } from '../../lib/stills';
 import 'virtual:docs/landing.css';
-import { starterPrompt } from '../../lib/docs/starter-prompt';
+import { AgentPromptButton } from '../agent-prompt-button';
 import { IconDeepWiki } from '../deepwiki-icon';
 import { NewTabLink } from '../links';
 import { StillText, StillTitle } from '../still-caption';
@@ -289,26 +282,10 @@ function LandingGreeting() {
 	);
 }
 
-/** Copies a prompt for the reader's coding agent: it reads these docs, asks, plans, then builds. */
-function StarterPromptButton() {
-	const { copy, isCopied } = useClipboard({ announce: 'Prompt copied' });
-	return (
-		<Button
-			variant="primary"
-			size="md"
-			label={isCopied ? 'Copied' : 'Agent prompt'}
-			icon={isCopied ? <IconCheck aria-hidden /> : <IconCopy aria-hidden />}
-			onClick={() => {
-				void copy(starterPrompt(window.location.origin));
-			}}
-		/>
-	);
-}
-
 function LandingResources() {
 	return (
 		<HStack className="docs-landing-resources" gap={2} wrap="wrap" aria-label="Resources">
-			<StarterPromptButton />
+			<AgentPromptButton />
 			{RESOURCES.map(({ label, href, icon: Icon }) => (
 				<Button
 					key={label}

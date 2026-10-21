@@ -1,0 +1,11 @@
+/* The switch stays put as the command changes length. */
+.install-copy {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-2);
+	min-width: 0;
+}
+
+.install-copy-command {
+	min-width: 0;
+}
