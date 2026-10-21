@@ -240,12 +240,6 @@ html[data-home-intro-done] .home-intro-pin {
 		min-width: 0;
 	}
 
-	/* A phone shows the switch, and the command shortens to fit beside it. */
-	.home-intro-install-row .install-copy-command {
-		flex: 1 1 auto;
-		overflow: hidden;
-	}
-
 	.home-intro-tagline.home-intro-tagline {
 		text-align: start;
 		font-size: 2rem;

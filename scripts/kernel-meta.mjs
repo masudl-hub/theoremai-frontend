@@ -61,6 +61,31 @@ function kernelTypeDoc(theoremaiRoot, file, name) {
 	return match[1].split('\n').map((line) => line.replace(/^\s*\* ?/, '').trim()).join(' ').trim();
 }
 
+/** Each package the install switch cycles through, in its order, and the README that says how to install it. */
+const INSTALL_READMES = [
+	['agents', 'README.md'],
+	['web', 'web/README.md'],
+	['react', 'react/README.md'],
+	['studio', 'studio/README.md'],
+];
+
+/**
+ * The first `npm install` line in each package's README that names the package, read at build
+ * time so the site's install switch says what the README says.
+ * @param {string} theoremaiRoot
+ * @returns {Record<string, string>}
+ */
+function kernelInstallCommands(theoremaiRoot) {
+	return Object.fromEntries(
+		INSTALL_READMES.map(([id, readme]) => {
+			const text = readFileSync(path.join(theoremaiRoot, readme), 'utf8');
+			const line = text.split('\n').find((row) => row.startsWith('npm install ') && row.includes(`@theoremjs/${id}`));
+			if (!line) throw new Error(`${readme} needs an npm install line that names @theoremjs/${id}.`);
+			return [id, line.trim()];
+		}),
+	);
+}
+
 /**
  * Vite `define` entries for the kernel the site is built against.
  * @param {{ root: string, source: string }} theoremai
@@ -72,6 +97,7 @@ export function kernelMetaDefine(theoremai) {
 		'import.meta.env.KERNEL_DESCRIPTION': JSON.stringify(facts.description),
 		'import.meta.env.KERNEL_PROFILE_DOC': JSON.stringify(kernelTypeDoc(theoremai.root, 'src/kernel/types.ts', 'Profile')),
 		'import.meta.env.KERNEL_DETECTOR_DOC': JSON.stringify(kernelTypeDoc(theoremai.root, 'src/guardrails/detectors.ts', 'Detector')),
+		'import.meta.env.KERNEL_INSTALL': JSON.stringify(kernelInstallCommands(theoremai.root)),
 		'import.meta.env.KERNEL_LICENSE': JSON.stringify(facts.license),
 		'import.meta.env.KERNEL_REPOSITORY': JSON.stringify(facts.repository),
 		'import.meta.env.KERNEL_KEYWORDS': JSON.stringify(facts.keywords),

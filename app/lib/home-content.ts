@@ -15,6 +15,11 @@ function envString(key: string): string {
 	return typeof value === 'string' ? value : '';
 }
 
+function envRecord(key: string): Readonly<Record<string, string>> {
+	const value = env[key];
+	return typeof value === 'object' && value !== null ? (value as Record<string, string>) : {};
+}
+
 function envList(key: string): readonly string[] {
 	const value = env[key];
 	return Array.isArray(value)
@@ -36,20 +41,15 @@ export const REPO_URL = envString('KERNEL_REPOSITORY') || 'https://github.com/ma
 /** The holder the package's LICENSE names. */
 export const COPYRIGHT = '© 2026 Orchid AI LLC';
 export const DISCORD_URL = 'https://discord.gg/X6RQvSWQ58';
-/** What each package's README says to install, by the name the switcher shows. */
-export const INSTALL_COMMANDS = [
-	{ id: 'agents', label: 'Agents', command: `npm install ${KERNEL_NAME} zod` },
-	{
-		id: 'react',
-		label: 'React',
-		command: `npm install @theoremjs/react ${KERNEL_NAME} zod react react-dom`,
-	},
-	{
-		id: 'studio',
-		label: 'Studio',
-		command: `npm install -D @theoremjs/studio ${KERNEL_NAME} @theoremjs/react`,
-	},
-] as const;
+/** What each package's README says to install (read at build time), in the order the switch cycles. */
+export const INSTALL_COMMANDS = (
+	[
+		{ id: 'agents', label: 'Agents' },
+		{ id: 'web', label: 'Web' },
+		{ id: 'react', label: 'React' },
+		{ id: 'studio', label: 'Studio' },
+	] as const
+).map((pkg) => ({ ...pkg, command: envRecord('KERNEL_INSTALL')[pkg.id] ?? '' }));
 export const PACKAGE_LINKS = packageLinks(KERNEL_NAME, REPO_URL);
 
 export const HEADLINE = [
