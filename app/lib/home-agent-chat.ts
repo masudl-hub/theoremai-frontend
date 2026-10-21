@@ -168,5 +168,10 @@ export const INTERFACE_EXCHANGE: readonly TranscriptBlock[] = [
 	},
 ];
 
-/** What the interface tile's composer holds, as if the visitor were about to answer. */
-export const INTERFACE_DRAFT = 'Yes, a table for two at 20:00.';
+/** What the interface tile's composer holds, as if the visitor were about to answer: text, a file, and two messages set aside. */
+export const INTERFACE_COMPOSER = {
+	text: 'Yes, a table for two at 20:00.',
+	files: [{ name: 'bairro-alto-menu.pdf', type: 'application/pdf', bytes: 96_256 }],
+	queued: 'And a taxi back to Chiado after.',
+	stashed: 'Find a fado bar for Saturday.',
+} as const;
