@@ -146,6 +146,11 @@
 	margin-inline-end: var(--spacing-1);
 }
 
+/* A tile's live piece is placed against the tile, as if the box around it were not there. */
+.packages-live {
+	display: contents;
+}
+
 /*
  * why: The stills arrive as a waterfall: when the screen comes in, Studio rises, then Agents, then
  * Interface, each a beat after the one before. A scroll-linked rise could last no longer than the snap,

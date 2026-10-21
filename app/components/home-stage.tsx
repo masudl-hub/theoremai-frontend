@@ -2,6 +2,7 @@ import { Heading } from '@astryxdesign/core/Heading';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
 import { IconBrush, IconCircleDot, IconShieldCheck } from '@tabler/icons-react';
+import { useBootHold } from '@theoremjs/studio/ui/boot-mark.tsx';
 import {
 	type CSSProperties,
 	type RefObject,
@@ -15,12 +16,13 @@ import {
 import { Link } from 'react-router';
 import type { HomeAgentStore } from '../lib/home-agent-store';
 import { HEADLINE } from '../lib/home-content';
-import { EDITED_BEATS, GOAL_BEATS, type GoalToken } from '../lib/home-goals';
+import { EDITED_BEATS, GOAL_BEATS, type GoalToken, isGoalId } from '../lib/home-goals';
 import { ARGUMENT, GOALS } from '../lib/site-pitch';
 import { stillRenditions } from '../lib/stills';
 import { GoalBlock, goalStackVars, goalTileVars, type PickedTokens } from './home-goals';
 import { useGoalBeat, useGoalBeatInTransition } from './home-goals-beat';
 import { HomeIntro } from './home-intro';
+import { openedOn, useDrawn } from './opening-screen';
 import { Statement } from './statement';
 import { StillTitle } from './still-caption';
 import './home-stage.css';
@@ -82,9 +84,12 @@ const LIVE_IDLE_MS = 1500;
 
 const noStore = () => () => {};
 
+const opensOnGoal = () => openedOn((id) => isGoalId(id) || id === 'source-of-truth');
+
 /**
  * The agent, its editor and its runner are the studio's, and they are fetched after the page is
- * up, and they come in with the screen's own motion.
+ * up, and they come in with the screen's own motion. When the page opens on a goal they are
+ * fetched at once, and the loading mark waits until they have drawn.
  */
 function useLiveAgent() {
 	const [loaded, setLoaded] = useState<Loaded>();
@@ -112,6 +117,10 @@ function useLiveAgent() {
 		return promise;
 	}, [catalog]);
 	useEffect(() => {
+		if (opensOnGoal()) {
+			void load();
+			return;
+		}
 		const timer = setTimeout(() => void load(), LIVE_IDLE_MS);
 		return () => {
 			clearTimeout(timer);
@@ -129,6 +138,10 @@ function StageCopy() {
 	const [picked, setPicked] = useState<PickedTokens>({});
 	const { loaded, state, load } = useLiveAgent();
 	const beat = useGoalBeatInTransition();
+	const editorRef = useRef<HTMLDivElement>(null);
+	const liveRef = useRef<HTMLDivElement>(null);
+	const [liveBoxes] = useState(() => [editorRef, liveRef]);
+	useBootHold(useDrawn(liveBoxes), opensOnGoal);
 	// Starting over takes the prompts with it.
 	const runs = state?.runs;
 	const ran = useRef(runs);
@@ -173,6 +186,7 @@ function StageCopy() {
 							/>
 						))}
 						<div
+							ref={editorRef}
 							className="home-goal-editor"
 							inert={beat < 1 || beat > EDITED_BEATS}
 							style={EDITED_VARS}
@@ -190,7 +204,7 @@ function StageCopy() {
 						{GOALS.map((still, index) => (
 							<StillRow key={still.title} still={still} index={index} />
 						))}
-						<div className="home-goal-live" inert={beat < 1}>
+						<div ref={liveRef} className="home-goal-live" inert={beat < 1}>
 							{loaded ? (
 								<loaded.GoalLive
 									store={loaded.store}

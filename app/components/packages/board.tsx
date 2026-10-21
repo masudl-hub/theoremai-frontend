@@ -4,11 +4,13 @@ import { useClipboard } from '@astryxdesign/core/hooks';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { IconCheck, IconTerminal2 } from '@tabler/icons-react';
+import { useBootHold } from '@theoremjs/studio/ui/boot-mark.tsx';
 import { SHELL_REVEAL } from '@theoremjs/studio/ui/shell-motion.ts';
 import { PAGE_ICONS } from '@theoremjs/studio/ui/studio-shell.tsx';
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, type RefObject, Suspense, useEffect, useRef, useState } from 'react';
 import { INSTALL_COMMANDS, PACKAGE_TILES, type PackageId } from '../../lib/home-content';
 import { stillRenditions } from '../../lib/stills';
+import { openedOn, useDrawn } from '../opening-screen';
 import { Statement } from '../statement';
 import '../install-copy.css';
 import './packages.css';
@@ -34,10 +36,22 @@ const LIVE: Partial<Record<TileId, ReturnType<typeof lazy>>> = {
 /** How long the page is left alone before a tile's live piece is fetched, as the goals' agent is. */
 const LIVE_IDLE_MS = 1500;
 
-/** A tile's live piece, fetched once the page has been left alone. */
+const opensOnPackages = () => openedOn((id) => id === 'packages');
+
+/**
+ * A tile's live piece, fetched once the page has been left alone. When the page opens on this
+ * screen it is fetched at once, and the loading mark waits until it has drawn.
+ */
 function LateLive({ id }: { id: TileId }) {
 	const [isDue, setIsDue] = useState(false);
+	const box = useRef<HTMLDivElement>(null);
+	const [boxes] = useState(() => [box]);
+	useBootHold(useDrawn(boxes), opensOnPackages);
 	useEffect(() => {
+		if (opensOnPackages()) {
+			setIsDue(true);
+			return;
+		}
 		const timer = setTimeout(() => {
 			setIsDue(true);
 		}, LIVE_IDLE_MS);
@@ -46,11 +60,33 @@ function LateLive({ id }: { id: TileId }) {
 		};
 	}, []);
 	const Live = LIVE[id];
-	return isDue && Live ? (
-		<Suspense fallback={null}>
-			<Live />
-		</Suspense>
-	) : null;
+	return (
+		<div className="packages-live" ref={box}>
+			{isDue && Live ? (
+				<Suspense fallback={null}>
+					<Live />
+				</Suspense>
+			) : null}
+		</div>
+	);
+}
+
+/** When the page opens on this screen, its stills load at once and the loading mark waits for them. */
+function useStillsHold(row: RefObject<HTMLUListElement | null>) {
+	const [isDecoded, setIsDecoded] = useState(false);
+	useBootHold(isDecoded, opensOnPackages);
+	useEffect(() => {
+		const stills = [...(row.current?.querySelectorAll('img') ?? [])];
+		if (!opensOnPackages()) return;
+		let live = true;
+		for (const still of stills) still.loading = 'eager';
+		void Promise.allSettled(stills.map((still) => still.decode())).then(() => {
+			if (live) setIsDecoded(true);
+		});
+		return () => {
+			live = false;
+		};
+	}, [row]);
 }
 
 /** Copies a tile's install command. With more than one package it asks which, and each choice shows its command. */
@@ -172,9 +208,11 @@ function useArrival() {
 /** The screen after the goals: the packages, one tall still each. Each names its package, says what it is, and installs it. */
 export function PackagesBoard() {
 	const frameRef = useArrival();
+	const rowRef = useRef<HTMLUListElement>(null);
+	useStillsHold(rowRef);
 	return (
 		<div className="packages-frame" ref={frameRef}>
-			<ul className="packages-row">
+			<ul className="packages-row" ref={rowRef}>
 				{PACKAGE_TILES.map(({ id, title, description, packages, docs }) => {
 					const still = STILLS[id];
 					const isExternal = docs.startsWith('http');
