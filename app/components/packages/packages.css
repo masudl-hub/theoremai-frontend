@@ -139,9 +139,53 @@
 	gap: var(--spacing-1);
 }
 
+/* The install and docs buttons follow the name, not the tile's far edge. */
 .packages-head .packages-name {
-	flex: 1 1 auto;
+	flex: 0 1 auto;
 	min-width: 0;
+	margin-inline-end: var(--spacing-1);
+}
+
+/*
+ * why: The stills arrive as a waterfall: as the screen scrolls in, each tile trails the one before
+ * by a little more, and all three land together as the screen comes to rest. It is the scroll's own
+ * position, not a timer, so nothing waits on it and scrolling back runs it backwards.
+ * invariant: The offsets end at 0 with the entry, so a resting screen is never moved.
+ */
+@supports (animation-timeline: view()) {
+	@media (prefers-reduced-motion: no-preference) {
+		.packages-frame {
+			view-timeline: --packages-arrive block;
+		}
+
+		.packages-tile {
+			animation: packages-waterfall linear both;
+			animation-timeline: --packages-arrive;
+			animation-range: entry 0% entry 100%;
+		}
+
+		.packages-tile:nth-child(1) {
+			--packages-trail: 8vh;
+		}
+
+		.packages-tile:nth-child(2) {
+			--packages-trail: 16vh;
+		}
+
+		.packages-tile:nth-child(3) {
+			--packages-trail: 24vh;
+		}
+	}
+}
+
+@keyframes packages-waterfall {
+	from {
+		translate: 0 var(--packages-trail, 0);
+	}
+
+	to {
+		translate: 0 0;
+	}
 }
 
 /* A phone has no room for three: the row scrolls sideways, a still at a time. */
