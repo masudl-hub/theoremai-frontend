@@ -64,7 +64,7 @@ const RESOURCES = [
 	{ label: 'Open an issue', href: `${REPO}/issues/new`, icon: IconBrandGithub },
 	{ label: 'Contribute', href: `${REPO}/blob/main/CONTRIBUTING.md`, icon: IconBrandGithub },
 	{
-		label: 'Query on DeepWiki',
+		label: 'Ask DeepWiki',
 		href: 'https://deepwiki.com/masudl-hub/theoremai',
 		icon: IconDeepWiki,
 	},
@@ -296,7 +296,7 @@ function StarterPromptButton() {
 		<Button
 			variant="primary"
 			size="md"
-			label={isCopied ? 'Copied. Paste it into your agent' : 'Starter prompt'}
+			label={isCopied ? 'Copied' : 'Agent prompt'}
 			icon={isCopied ? <IconCheck aria-hidden /> : <IconCopy aria-hidden />}
 			onClick={() => {
 				void copy(starterPrompt(window.location.origin));
@@ -324,7 +324,7 @@ function LandingResources() {
 				variant="secondary"
 				size="md"
 				href="/studio"
-				label="Try the studio"
+				label="Build in the studio"
 				icon={<IconPlayerPlay aria-hidden />}
 			/>
 		</HStack>
