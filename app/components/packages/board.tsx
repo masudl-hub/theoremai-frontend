@@ -219,8 +219,8 @@ function useArrival() {
 
 /**
  * The packages and their run: one screen of travel after them. Scroll holds the screen, and the Agents
- * still widens to the larger side of the golden ratio on the left as the others leave; once it
- * rests there, its map draws what feeds the tree. The pull is 0 on the packages and 1 on agents.
+ * still widens to the larger side of the golden ratio on the left as the others leave, its words
+ * and shade fading; once it rests there, its map draws more. The pull is 0 on the packages and 1 on agents.
  */
 function usePackagesRun(scrollRoot: RefObject<HTMLElement | null>) {
 	const runRef = useRef<HTMLElement>(null);
@@ -253,7 +253,13 @@ export function PackagesBoard({ scrollRoot }: { scrollRoot: RefObject<HTMLElemen
 	const rowRef = useRef<HTMLUListElement>(null);
 	useStillsHold(rowRef);
 	return (
-		<section ref={runRef} className="packages-run" id="packages" aria-label="Packages">
+		<section
+			ref={runRef}
+			className="packages-run"
+			id="packages"
+			aria-label="Packages"
+			data-open={isOpen ? '' : undefined}
+		>
 			<div className="packages-pin">
 				<div className="packages-frame" ref={frameRef}>
 					<ul className="packages-row" ref={rowRef}>
@@ -270,10 +276,7 @@ export function PackagesBoard({ scrollRoot }: { scrollRoot: RefObject<HTMLElemen
 										loading="lazy"
 										style={{ objectPosition: still.position }}
 									/>
-									<LateLive
-										id={id}
-										{...(id === 'agents' ? { props: { feeds: isOpen ? 'shown' : 'hidden' } } : {})}
-									/>
+									<LateLive id={id} {...(id === 'agents' ? { props: { detail: isOpen } } : {})} />
 									<div className="packages-words">
 										<div className="packages-head">
 											<Heading level={2} type="display-3" className="packages-name">

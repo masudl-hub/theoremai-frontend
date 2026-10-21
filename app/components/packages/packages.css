@@ -25,9 +25,11 @@
 }
 
 .packages-row {
-	/* A third of the row, and the larger side of the golden ratio, each net of the gaps. */
+	--packages-side: clamp(2rem, 6vw, 5rem);
+	/* A third of the row, net of the gaps; and the larger side of the golden ratio of what is seen
+	   from the row's left edge to the frame's right one, its side included. */
 	--packages-third: calc((100% - 2 * var(--spacing-6)) / 3);
-	--packages-golden: calc((100% - var(--spacing-6)) * 0.618034);
+	--packages-golden: calc((100% + var(--packages-side)) * 0.618034);
 	display: grid;
 	/* why: Agents widens from a third to the golden side as the run pulls; the other two keep their
 	   width and are pushed out to the right as they leave. */
@@ -43,7 +45,7 @@
 	height: 100%;
 	max-inline-size: 100rem;
 	margin: 0 auto;
-	padding: 0 clamp(2rem, 6vw, 5rem);
+	padding: 0 var(--packages-side);
 	list-style: none;
 }
 
@@ -97,11 +99,11 @@
 .packages-map.packages-map {
 	position: absolute;
 	z-index: -2;
-	/* Opened, the card comes in from the tile's crop to sit inside it, with room for what feeds the tree. */
-	top: calc(16% - 10% * var(--packages-pull, 0));
-	left: calc(18% - 13% * var(--packages-pull, 0));
-	width: calc(38rem + (90% - 38rem) * var(--packages-pull, 0));
-	height: 75%;
+	/* Opened, the card comes in from the tile's crop to fill it, where the words were too. */
+	top: calc(16% - 12% * var(--packages-pull, 0));
+	left: calc(18% - 15% * var(--packages-pull, 0));
+	width: calc(38rem + (94% - 38rem) * var(--packages-pull, 0));
+	height: calc(75% + 17% * var(--packages-pull, 0));
 	border-radius: var(--radius-container);
 	overflow: hidden;
 	pointer-events: none;
@@ -173,6 +175,19 @@
 	flex: 0 1 auto;
 	min-width: 0;
 	margin-inline-end: var(--spacing-1);
+}
+
+/* As the run pulls, the Agents words are gone by halfway, and the shade under them by the end. */
+.packages-tile:first-child::before {
+	opacity: calc(1 - var(--packages-pull, 0));
+}
+
+.packages-tile:first-child .packages-words {
+	opacity: calc(1 - 2 * var(--packages-pull, 0));
+}
+
+.packages-run[data-open] .packages-tile:first-child .packages-words {
+	visibility: hidden;
 }
 
 /* As the run pulls, Studio and Interface leave upward, a screen's travel, past the frame's top. */

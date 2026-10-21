@@ -47,13 +47,13 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 /**
  * The agents tile's map: the studio's tree of the code architect, a decision agent, and a live agent, every row
  * open, with their runners, providers and tool registry beside them, drawn as the map draws on a
- * glass card the tile crops. What feeds the tree draws in once the tile has opened.
+ * glass card the tile crops. Opened, it draws more: every tool, and the steps of a turn in each turn runner.
  */
-export default function AgentsMap({ feeds = 'hidden' }: Pick<StudioTreeMapProps, 'feeds'>) {
+export default function AgentsMap({ detail = false }: Pick<StudioTreeMapProps, 'detail'>) {
 	const [{ workspace, agents }] = useState(pictureWorkspace);
 	return (
 		<Card variant="glass" padding={0} elevation="med" className="packages-map" inert aria-hidden>
-			<StudioTreeMap workspace={workspace} agents={agents} feeds={feeds} />
+			<StudioTreeMap workspace={workspace} agents={agents} detail={detail} />
 		</Card>
 	);
 }
