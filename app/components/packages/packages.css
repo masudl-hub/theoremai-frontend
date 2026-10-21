@@ -71,10 +71,9 @@
 	color: inherit;
 }
 
-/* why: Four lines each, so the three names sit on one line across the row. */
+/* why: Three lines each, so the three names sit on one line across the row. */
 .astryx-text.packages-description {
-	min-height: calc(4 * 1lh);
-	text-wrap: pretty;
+	min-height: calc(3 * 1lh);
 }
 
 .packages-head {

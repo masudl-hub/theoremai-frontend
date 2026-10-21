@@ -61,7 +61,7 @@ export const PACKAGE_TILES = [
 		id: 'agents',
 		title: 'Agents',
 		description:
-			"Theorem's kernel. One profile is the contract: the models an agent may use, what it accepts and returns, its tools and its guardrails. The kernel runs every turn against it, refuses what it doesn't state, and records the trace.",
+			"The kernel. A `profile` states what an agent may use, accept and return. Every turn runs against it, and what it doesn't state is refused.",
 		packages: ['agents'],
 		docs: '/docs/start',
 	},
@@ -69,7 +69,7 @@ export const PACKAGE_TILES = [
 		id: 'studio',
 		title: 'Studio',
 		description:
-			"Build, test, demo and evaluate agents in your own dev environment, low-code. One command opens your project's agents: edit a profile as a form or as code, run it, probe its guardrails, and save back to its files.",
+			'Build, test, demo and evaluate agents in your own project, low-code. Edit a `profile` as a form or as code, then run it beside the editor.',
 		packages: ['studio'],
 		docs: `${REPO_URL}/blob/main/studio/README.md`,
 	},
@@ -77,7 +77,7 @@ export const PACKAGE_TILES = [
 		id: 'interface',
 		title: 'Headless interface',
 		description:
-			'Serve a profile from your server and draw it in any UI. Web is the headless core, with no UI framework; React adds hooks and a ready-made chat. Either way, the interface shows only what the profile allows.',
+			'Serve a `profile` and draw it in any UI. Web is the headless core; React adds hooks and a chat that shows only what the profile allows.',
 		packages: ['web', 'react'],
 		docs: '/docs/interface',
 	},
@@ -213,7 +213,9 @@ export function homeScreens(): readonly HomeScreen[] {
 		{
 			id: 'packages',
 			name: 'Packages',
-			text: PACKAGE_TILES.map(({ title, description }) => `${title}. ${description}`).join(' '),
+			text: PACKAGE_TILES.map(
+				({ title, description }) => `${title}. ${description.replaceAll('`', '')}`,
+			).join(' '),
 		},
 		...(SHOWCASE_SHOWN
 			? [{ id: 'showcase', name: 'Showcase', text: `Built with theorem. ${examples}` }]

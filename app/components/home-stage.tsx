@@ -1,5 +1,4 @@
 import { Heading } from '@astryxdesign/core/Heading';
-import { Text } from '@astryxdesign/core/Text';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
 import { IconBrush, IconCircleDot, IconShieldCheck } from '@tabler/icons-react';
@@ -22,6 +21,7 @@ import { stillRenditions } from '../lib/stills';
 import { GoalBlock, goalStackVars, goalTileVars, type PickedTokens } from './home-goals';
 import { useGoalBeat, useGoalBeatInTransition } from './home-goals-beat';
 import { HomeIntro } from './home-intro';
+import { Statement } from './statement';
 import { StillTitle } from './still-caption';
 import './home-stage.css';
 
@@ -161,7 +161,7 @@ function StageCopy() {
 									</span>
 								))}
 							</Heading>
-							<Text className="home-stage-statement">{ARGUMENT}</Text>
+							<Statement>{ARGUMENT}</Statement>
 						</div>
 						{GOAL_BEATS.map((goalBeat, index) => (
 							<GoalBlock

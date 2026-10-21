@@ -2,14 +2,13 @@ import { DropdownMenu, DropdownMenuItem } from '@astryxdesign/core/DropdownMenu'
 import { Heading } from '@astryxdesign/core/Heading';
 import { Icon } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
-import { Text } from '@astryxdesign/core/Text';
 import { Token } from '@astryxdesign/core/Token';
 import { IconListDetails } from '@tabler/icons-react';
 import { type CSSProperties, useState } from 'react';
 import { GOAL_BEATS, type GoalBeat, type GoalToken } from '../lib/home-goals';
 import { GOALS } from '../lib/site-pitch';
+import { Statement } from './statement';
 import './home-goals.css';
-import { InlineCode } from './docs/body';
 
 /** The picked token of each beat, by beat number. Overview is beat 0, so the first beat is 1. */
 export type PickedTokens = Readonly<Record<number, GoalToken | undefined>>;
@@ -54,12 +53,6 @@ export function goalTileVars(index: number): CSSProperties {
 }
 
 /** Names between backticks are set as docs sets them: a name the catalog defines shows its card. */
-function withCode(text: string) {
-	return text
-		.split('`')
-		.map((part, at) => (at % 2 ? <InlineCode key={part}>{part}</InlineCode> : part));
-}
-
 function GoalExamples({
 	tokens,
 	isOn,
@@ -144,7 +137,7 @@ export function GoalBlock({
 			<Heading className="home-stage-headline home-goal-lede" level={2}>
 				<span className="home-stage-line is-quiet">{beat.lede}</span>
 			</Heading>
-			<Text className="home-stage-statement">{withCode(beat.explainer)}</Text>
+			<Statement>{beat.explainer}</Statement>
 			{beat.controls.map(({ label, tokens }) => (
 				<div key={label} className="home-goal-controls" role="group" aria-label={label}>
 					<GoalExamples tokens={tokens} isOn={isOn} onPick={onPick} />

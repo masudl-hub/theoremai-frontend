@@ -2,11 +2,11 @@ import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { Heading } from '@astryxdesign/core/Heading';
 import { useClipboard } from '@astryxdesign/core/hooks';
 import { IconButton } from '@astryxdesign/core/IconButton';
-import { Text } from '@astryxdesign/core/Text';
 import { IconCheck, IconTerminal2 } from '@tabler/icons-react';
 import { PAGE_ICONS } from '@theoremjs/studio/ui/studio-shell.tsx';
 import { INSTALL_COMMANDS, PACKAGE_TILES, type PackageId } from '../../lib/home-content';
 import { stillRenditions } from '../../lib/stills';
+import { Statement } from '../statement';
 import './packages.css';
 
 type TileId = (typeof PACKAGE_TILES)[number]['id'];
@@ -95,7 +95,7 @@ export function PackagesBoard() {
 										icon={<DocsIcon aria-hidden />}
 									/>
 								</div>
-								<Text className="packages-description">{description}</Text>
+								<Statement className="packages-description">{description}</Statement>
 							</div>
 						</li>
 					);
