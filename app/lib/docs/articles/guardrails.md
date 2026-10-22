@@ -55,6 +55,7 @@ Theorem names each of these places a **boundary**. A **detector** is one thing t
 			"text": "The reply streams, and Theorem releases each piece only after it passes.",
 			"parts": [
 				{ "label": "The instruction", "text": "Theorem blocks a reply that repeats the instruction or its secret token." },
+				{ "label": "Credentials", "text": "A placeholder replaces each credential in the reply." },
 				{ "label": "Images", "text": "Theorem blocks a reply with an image from an address that the model was not given." }
 			]
 		}
@@ -116,17 +117,18 @@ Theorem reads the text again after a `redact`. If the text still has a match, it
 
 A boundary is where the text crosses:
 
-- On the way in: `user`, `attachment`, `voice`, `slots`, `history`, `injected`, `system`, `repair` and `live_user`.
+- On the way in: `user`, `attachment`, `voice`, `slots`, `context`, `history`, `injected`, `system`, `repair` and `live_user`.
 - On the way out: `reply`, `reply_structured`, `live_reply` and `thought`.
-- Around a tool: `tool_arguments_<kind>`, `tool_output_<kind>` and `tool_failure_<kind>`. `<kind>` is `function`, `http`, `mcp` or `agent`.
+- Around a tool: `tool_arguments_<kind>`, `tool_output_<kind>`, `tool_failure_<kind>` and `tool_shown_<kind>`. `<kind>` is `function`, `http`, `mcp` or `agent`. `tool_shown_<kind>` is what a call shows the person: its output, error, artifacts and trace.
 
 If you set nothing, these are the actions:
 
-Boundaries | `ids`, `financial`, `network`, `credentials` | `injection`
---- | --- | ---
-The way in, `tool_output_<kind>`, `tool_failure_<kind>` | `redact` | `redact`
-`tool_arguments_<kind>` | `flag` | `ignore`
-The way out | `ignore` | `ignore`
+Boundaries | `ids`, `financial`, `network` | `credentials` | `injection`
+--- | --- | --- | ---
+The way in, `tool_output_<kind>`, `tool_failure_<kind>` | `redact` | `redact` | `redact`
+`tool_arguments_<kind>` | `flag` | `flag` | `ignore`
+`tool_shown_<kind>`, `reply`, `reply_structured` | `ignore` | `redact` | `ignore`
+`live_reply`, `thought` | `ignore` | `ignore` | `ignore`
 
 A setting has three forms:
 
@@ -140,9 +142,10 @@ A setting has three forms:
 
 `block` stops more than the match. What it stops depends on the boundary.
 
-- On the way in, `runTurn` throws an `input` error before the model is called.
+- On the way in, `runTurn` throws an `input` error before the model is called. A text on the way in that is over 1,000,000 characters gets the same error, with the `input.too_long` line, whatever the actions.
 - At `tool_arguments_<kind>`, the tool does not run. The model reads why.
 - At `tool_output_<kind>`, the model does not read the output, and the call fails.
+- At `tool_shown_<kind>`, the person reads the `detect.shown_blocked` line in place of what the call shows.
 - At `reply`, the reply stops before the match. Step 5 says what happens next.
 - At `thought`, the rest of the thought is hidden, and the turn goes on.
 
@@ -150,15 +153,18 @@ Each match is reported under the rule `detect.<detector>`, and the `guardrail` e
 
 ### 3. Keep the instruction private
 
-The instruction of the desk holds Harbor's rules for holds and refunds. A person can ask the model to repeat it. Three detectors read what the model writes for that leak.
+The instruction of the desk holds Harbor's rules for holds and refunds. A person can ask the model to repeat it. Four detectors read what the model writes for that leak.
 
 Detector | Finds
 --- | ---
 `canary_leak` | The **canary**: a secret token that Theorem adds to the end of the instruction
 `prompt_leak` | 12 words in a row from the instruction
 `marker_leak` | The markers that Theorem puts around user data
+`tool_leak` | The names of the profile's tools and their parameters
 
-Without a setting, each one blocks a reply that leaks and redacts a thought that leaks. Two also read the arguments of a tool call:
+Without a setting, the first three block a reply that leaks and redact a thought that leaks. `tool_leak` only flags. Its `allow.names` lists names that are safe to say, such as a tool called `search`.
+
+Two also read the arguments of a tool call:
 
 - `canary_leak` blocks a call whose arguments carry the token.
 - `prompt_leak` flags a call whose arguments carry the words.
@@ -248,7 +254,7 @@ A remote result is the result of an HTTP tool, an MCP tool or another agent. The
 - `destructive` refuses tools with `access: 'destructive'`.
 - `write` also refuses tools with `access: 'read-write'`.
 
-A refused call fails with the code `tainted_turn`.
+A refused call fails with the code `tainted_turn`. A call that the setting does not refuse still runs, and a `guardrail` event reports it under the rule `tool_call.tainted-turn`. The rule is `tool_call.steered-turn` when `tool_instructions` matched a result that the turn read.
 
 ### 9. Limit turns per day
 
@@ -267,7 +273,7 @@ Theorem treats a remote result as data, never as an instruction. You set nothing
 
 - **Origin.** Each result records where it came from: `local`, `builtin`, `http`, `mcp` or `delegated`.
 - **Fence.** A remote result reaches the model inside `<tool_data tool="..." origin="...">`. Theorem first removes any forged `tool_data` marker from the text.
-- **Advisory.** Some results try to direct the agent and point at an outside address. Theorem adds a notice for the model to such a result, with your `advisory.guidance` line ([Describing statuses](/docs/statuses)). The notice does not block.
+- **Advisory.** The `tool_instructions` detector reads tool output and tool errors for text that gives the agent orders: it overrides the instructions, names one of the agent's tools, gives an order or claims authority. By default it flags a remote result and ignores a `function` result. A remote result that it matched gets a notice for the model inside its fence, with your `advisory.guidance` line ([Describing statuses](/docs/statuses)). The notice does not block.
 
 ## What streaming holds back
 
