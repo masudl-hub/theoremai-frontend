@@ -1,6 +1,6 @@
 ---
 title: Registering tools
-updated: 2026-10-16
+updated: 2026-10-22
 summary: Give an agent a tool that runs your code or calls a URL, MCP or agent.
 entry: src/kernel/tools/mod.ts
 covers: src/kernel/tools, src/kernel/auth
@@ -132,6 +132,8 @@ registerTool({
 	endpoint: 'https://api.open-meteo.com/v1/forecast?current_weather=true',
 	method: 'GET',
 	mapping: { queryParams: ['latitude', 'longitude'] },
+	limit: { requests: 60, windowMs: 60_000 },
+	timeoutMs: 10_000,
 	input: z.object({ latitude: z.number(), longitude: z.number() }),
 	output: z.object({
 		current_weather: z.object({ temperature: z.number(), windspeed: z.number() }),
@@ -146,6 +148,15 @@ registerTool({
 - With any method except `GET`, the other arguments go in a JSON body. `bodyParam` names one argument to send as the whole body.
 
 Theorem checks the URL against `guardrails.network` before each request ([Setting guardrails](/docs/guardrails)). It reads no more than 4 MiB of a response.
+
+The weather API takes a fixed number of requests per minute, and it is sometimes slow. Two fields in the example protect the desk:
+
+- `limit` is the limit of the service for one key, as `{ requests, windowMs }`. Theorem keeps the requests of this tool within it. A call waits up to 5 seconds for a place, then fails with `rate_limit_window`.
+- `timeoutMs` is how long the service may take to answer, including the body. After that, the call fails with `timeout`.
+
+A tool with `access: 'read-only'` sends a request again when the service is busy or briefly down. A tool that writes never sends a request twice.
+
+An `http` or `mcp` tool can show the model pictures that its result names by address. Set `images` to a function that returns the https addresses from the result, at most 4. Theorem fetches each picture through `guardrails.network`, without the credentials of the tool. A picture that it cannot fetch is an `images_unfetched` warning, and the call still succeeds.
 
 ### 3. Call an MCP server
 
@@ -308,7 +319,7 @@ registerTool({
 - `type` is `bearer`, `api_key` or `oauth2`.
 - `service` is the name that the user knows the service by. The sign-in request shows it.
 
-When the slot is empty, the call is a gate, as in step 6. The user signs in, and the call runs. If the agent can manage without the tool, set `onUnauthenticated: 'report_to_model'`. The model then reads that the user is not signed in, and the turn goes on.
+When the slot is empty, the call is a gate, as in step 6. The user signs in, and the call runs. If the agent can manage without the tool, set `onUnauthenticated: 'report_to_model'`. The model then reads that the user is not signed in, and the turn goes on. If the key belongs to your server and no user can sign in to replace it, set `onUnauthenticated: 'fail'`. The call then fails with `not_authorized`.
 
 Theorem never stores a credential, and a credential never belongs in the browser. `createTheoremHandler` keeps credentials in a store on your server ([Building the interface](/docs/interface)).
 
@@ -469,6 +480,8 @@ Code | Cause | Fix
 --- | --- | ---
 `network_blocked` | `guardrails.network` refuses the address | Change `guardrails.network`, or the address
 `network_error` | The request did not get a response | Check that the service is up
+`timeout` | The service did not answer within `timeoutMs` | Raise `timeoutMs`, or check the service
+`rate_limit_window` | The tool is at its `limit`, and no place opened within 5 seconds | Make fewer calls, or raise `limit` if the service allows more
 `http_<status>` | The URL answered with a status that is not a success | Read the status, and fix the request or the service
 `response_too_large` | The response is more than 4 MiB | Ask the service for less
 `mcp_http_<status>` | The MCP server answered with a status that is not a success | Read the status, and check `serverUrl`

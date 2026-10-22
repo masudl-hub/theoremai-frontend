@@ -1,6 +1,6 @@
 ---
 title: Setting guardrails
-updated: 2026-10-16
+updated: 2026-10-22
 summary: Check text in and out of the model. Limit tools, replies and turns per day.
 entry: src/guardrails/mod.ts
 covers: src/guardrails
@@ -257,7 +257,7 @@ The desk is public, so one visitor can run up a large bill. `quota.perDay` sets 
 `runTurn` does not count turns. Your server calls `takeSlot(profile, ip, now)` before a turn and `releaseSlot(profile, ip)` after it. `takeSlot` returns one of four answers:
 
 - `ok`: the turn can run.
-- `busy`: this client has a turn in progress on this profile.
+- `busy`: this client has a turn in progress on this profile. `quotaBusy(profile)` returns a `rate_limit` error with the `quota.busy` line.
 - `quota`: the turns of the day are used. `quotaExhausted(profile)` returns a `rate_limit` error with the `quota.exhausted` line.
 - `not_configured`: the profile sets no quota.
 

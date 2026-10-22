@@ -1,6 +1,6 @@
 ---
 title: Describing statuses
-updated: 2026-10-09
+updated: 2026-10-22
 summary: Replace the words Theorem shows people and the notes it sends to the model.
 entry: src/guardrails/labels.ts
 covers: src/kernel/turn-events.ts, src/kernel/stop.ts, src/guardrails/labels.ts, src/guardrails/error.ts
@@ -102,7 +102,7 @@ A replacement reaches the user by three paths. Know which one your code uses.
 
 - **Events.** Each `error` event that `runTurn` delivers carries its line in the `error` field.
 - **Your server.** If your server shows an error, call `publicError(err, profile.labels)`. Without the second argument, the wording of the profile is skipped. For a refused file, call `attachmentIssueText(issue, profile.labels)`.
-- **The browser.** The interface receives only the keys in `CLIENT_LABEL_KEYS`: errors, file and voice notices, session states, two tool lines and `detect.blocked`. The repair, canary, taint and egress lines stay on the server ([Building the interface](/docs/interface)).
+- **The browser.** The interface receives only the keys in `CLIENT_LABEL_KEYS`: errors, stop notices, file and voice notices, the notice for a message that is too long, session states, three tool lines, the two composer lines and `detect.blocked`. The repair, canary, taint and egress lines stay on the server ([Building the interface](/docs/interface)).
 
 ## Fix a refused replacement
 

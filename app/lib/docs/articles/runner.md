@@ -1,6 +1,6 @@
 ---
 title: Running a turn
-updated: 2026-10-16
+updated: 2026-10-22
 summary: Resolve a registered model, run the profile, save history, and resume a paused tool.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/engine/decision.ts, src/kernel/engine/session, src/kernel/tools/invoke.ts, src/kernel/stages.ts
@@ -168,6 +168,7 @@ Stage | Results that it allows
 - A `mutate` replaces the tool input or output. Theorem validates the new value again.
 - `labelFailed: true` on `post_tool` keeps the result and the phase, and shows the tool's failed activity label on the terminal `tool` event.
 - Set `injectId` to name an inject on the `stage` event.
+- With an inject at `post_tool` or `before_end`, set `released` to the number of characters of the reply that the user already has. Theorem removes the rest of the reply from the turn and its history, and the model answers again after that point. Without `released`, the user has the whole reply.
 
 ### 5. Resume a gate
 
@@ -204,6 +205,8 @@ A request can carry more than `profile` and `input`.
 ## Run a tool without a model
 
 The Harbor toolbox measures a road leg for a page that has no chat. Call `invokeTool` without `resume` and without a `callId` to run a registered tool directly. A `host` profile uses this function. `onStage` sees `pre_tool` and `post_tool` only.
+
+When the page needs only how the call ended, call `runTool` with the same request. It returns the last `tool` event of the call, with `phase` `complete`, `gate` or `error`. Its `events` field holds every event that the call sent. A call that never ended is an `error` with code `invoke_failed`.
 
 ## Run a live session
 

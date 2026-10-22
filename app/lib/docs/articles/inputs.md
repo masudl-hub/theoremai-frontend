@@ -1,6 +1,6 @@
 ---
 title: Declaring inputs
-updated: 2026-10-07
+updated: 2026-10-22
 summary: Declare what a turn may send. Theorem refuses a turn that sends more.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/ingress.ts, src/kernel/registry/attachments.ts, src/kernel/registry/catalog.ts, src/kernel/engine/live-ingress.ts
@@ -56,7 +56,7 @@ In Theorem, `inputs` is part of the profile. Theorem checks each turn against it
 }
 ```
 
-`inputs` belongs to `text` and `image` profiles. The other types state their input in a different field ([Other agent types](/docs/inputs#other-agent-types)).
+The steps below are for `text` and `image` profiles. An `embedding` profile takes part of them, and the other types state their input in a different way ([Other agent types](/docs/inputs#other-agent-types)).
 
 ## Declare what the Harbor desk accepts
 
@@ -167,12 +167,13 @@ The model reads each package in a fence that names its sender, your server's fir
 
 ## Other agent types
 
-The other four types do not use the fields above ([Choosing a modality](/docs/modalities)).
+The other five types do not use all the fields above ([Choosing a modality](/docs/modalities)).
 
 - A `speech` profile has no `inputs`. The text of the turn is the transcript.
 - A `host` profile runs tools and takes no turn, so it has no `inputs`.
 - A `live` profile sets its channels in `live.ingress`.
 - A `decision` profile reads JSON state. Its `inputs` holds `state` and `maxStateBytes` only.
+- An `embedding` profile takes `text`, `attachments`, the three caps and `limitsByMime`, with the same rules. It takes no voice, slots or context. Its model can narrow what it takes. A file must be in the `accept` list of the profile and of the model. `maxFiles` counts the files in one input, and the model can also cap the files of one kind, such as images, in one input.
 
 ## Open live channels
 
@@ -200,7 +201,7 @@ inputs: { state: 'json', maxStateBytes: 65_536 },
 
 ## Fix a refused turn
 
-`runTurn` throws a `TheoremError` when a turn breaks the profile. A file error lists one code for each problem.
+`runTurn` throws a `TheoremError` when a turn breaks the profile. `runEmbedding` throws the same file errors. A file error lists one code for each problem.
 
 Error | Cause | Fix
 --- | --- | ---
@@ -210,6 +211,7 @@ Kind `input`, `mime_not_allowed` | The file type is not in `accept` | Add the ty
 Kind `input`, `too_many_files` | The turn sent more than `maxFiles` | Send fewer files, or raise `maxFiles`
 Kind `input`, `file_too_large` | One inline file is over its cap | Send a smaller file, or raise `maxBytes` or `limitsByMime`
 Kind `input`, `turn_too_large` | The files together are over `maxTurnBytes` | Send fewer files, or raise `maxTurnBytes`
+Kind `input`, `too_many_of_kind` | One embedding input holds more files of one kind than its model takes | Put the files in more inputs
 Kind `request` | The turn sent text, and `inputs.text` is `false` | Remove the text, or set `inputs.text` to `true`
 Kind `request` | A slot is not declared, or its value is not in the list | Declare the slot, or send a listed value
 Kind `request` | The turn sent context from a sender `from` does not list | Add the sender to `from`, or remove its context

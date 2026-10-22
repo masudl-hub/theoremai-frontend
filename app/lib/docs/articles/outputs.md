@@ -1,6 +1,6 @@
 ---
 title: Declaring outputs
-updated: 2026-10-08
+updated: 2026-10-22
 summary: Make a text agent reply in a fixed JSON shape and choose how it streams.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/profile-outputs.ts, src/kernel/registry/schemas.ts, src/kernel/engine/repair.ts
@@ -190,10 +190,10 @@ The format decides which audio file your player receives. `speech.format` is `pc
 
 ## Skip outputs on other types
 
-Three types take no `outputs` ([Choosing a modality](/docs/modalities)).
+Four types take no `outputs` ([Choosing a modality](/docs/modalities)).
 
 - A `live` profile has none, because the session is the output.
-- A `decision` profile and a `host` profile make no turn output.
+- A `decision`, an `embedding` and a `host` profile make no turn output.
 
 ## Fix an output setting that fails
 

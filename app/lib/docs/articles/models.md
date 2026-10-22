@@ -1,6 +1,6 @@
 ---
 title: Binding models
-updated: 2026-10-16
+updated: 2026-10-22
 summary: Register a provider, bind a model to it, pick one per request, and fix failed bindings.
 entry: src/providers/mod.ts
 covers: src/providers, src/kernel/protocols, src/kernel/registry/vault.ts, src/kernel/registry/catalog.ts, src/kernel/registry/profiles.ts, src/kernel/schema.ts
@@ -138,6 +138,7 @@ A live session takes no `model`. It always runs `defaultModel`.
 Set `limits` in provider host options when your service needs tighter deadlines or response budgets.
 The defaults allow 120 seconds per operation and 30 seconds to open a live connection.
 Creation, credential resolution, and retries share the deadline. HTTP retries also share the byte budget.
+A request that gets no response, or the status 408, 429, 500, 502, 503, 504 or 529, is sent again, at most four times. Each wait is the `Retry-After` of the response when it gives one, else 1, 2, 4, then 8 seconds. The waits stay within 5 seconds in all and within the deadline. After the last try, the error goes back as it came.
 Normalized limits count media, tool arguments, and native state as well as text.
 Limits remain host code. They do not enter a model binding or profile.
 A protocol that you define gets these protections when it calls `send` or `connect` on its context.
@@ -153,7 +154,7 @@ A slot keeps a key out of the profile. These rules keep the slot names safe and 
 - After a quota refusal (HTTP 429), the kernel retries once with the fallback key. The vault must hold that slot.
 - After an `auth` refusal, the kernel signs the request again and retries once.
 
-Both retries happen before the reply starts.
+These two retries happen before the reply starts.
 
 ## Choose a protocol for the profile type
 

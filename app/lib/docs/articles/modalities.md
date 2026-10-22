@@ -1,6 +1,6 @@
 ---
 title: Choosing a modality
-updated: 2026-10-19
+updated: 2026-10-22
 summary: Pick the profile type: text, image, speech, live, decision, embedding or host.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/profiles.ts, src/kernel/schema.ts
@@ -230,7 +230,7 @@ Gemini Embedding 2 | PNG and JPEG images, up to 6 in an input; one PDF in an inp
 
 ## Host
 
-The toolbox measures a road leg for a page that has no chat. Use `host` to run registered tools with no model, for example from your own API route. Run it with `invokeTool` ([Running a turn](/docs/runner)).
+The toolbox measures a road leg for a page that has no chat. Use `host` to run registered tools with no model, for example from your own API route. Run it with `invokeTool`, or with `runTool` when you need only how the call ended ([Running a turn](/docs/runner)).
 
 - Must set: `tools`.
 - Cannot set: `identity`, `models`, `inputs` or `outputs`.
