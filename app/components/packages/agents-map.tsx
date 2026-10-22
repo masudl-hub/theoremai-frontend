@@ -14,11 +14,21 @@ import type { PackagesPull } from './packages-pull';
 const still = () => 0;
 const unwatched = () => () => {};
 
-/** The architect's three models, renamed for the picture: one on Gemini, two through OpenRouter. */
+/** The architect's three models, renamed for the picture: one on Gemini, two through OpenRouter, each in its provider's protocol. */
 const MODELS = [
-	{ modelId: 'Gemini 4', provider: 'gemini', apiId: 'gemini-4' },
-	{ modelId: 'Opus 5.5', provider: 'openrouter', apiId: 'anthropic/claude-opus-5.5' },
-	{ modelId: 'DeepSeek V4', provider: 'openrouter', apiId: 'deepseek/deepseek-v4' },
+	{ modelId: 'Gemini 4', provider: 'gemini', protocol: 'geminiInteractions', apiId: 'gemini-4' },
+	{
+		modelId: 'Opus 5.5',
+		provider: 'openrouter',
+		protocol: 'openRouterOpenAi',
+		apiId: 'anthropic/claude-opus-5.5',
+	},
+	{
+		modelId: 'DeepSeek V4',
+		provider: 'openrouter',
+		protocol: 'openRouterOpenAi',
+		apiId: 'deepseek/deepseek-v4',
+	},
 ];
 
 /**
@@ -51,7 +61,12 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 						}
 					: agent,
 			),
-		toolSpecs: base.toolSpecs.filter((tool) => tool !== narrate),
+		// why: The map draws the first allowed tool of each type; the repo's file reader, beside its docs.
+		toolSpecs: base.toolSpecs
+			.filter((tool) => tool !== narrate)
+			.sort(
+				(a, b) => Number(b.toolName === 'read_repo_file') - Number(a.toolName === 'read_repo_file'),
+			),
 	};
 	const jev = decisionExampleDraft();
 	const throughOpenRouter = {
