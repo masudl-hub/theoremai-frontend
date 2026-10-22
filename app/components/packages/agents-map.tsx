@@ -52,7 +52,7 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
  * The agents tile's map: the studio's tree of the code architect, a decision agent, and a live agent, every row
  * open, with their runners, providers and tool registry beside them, drawn as the map draws on a
  * glass card the tile crops. It grows with the run's pull: each section drifts to its own zone as
- * every tool and the steps of a turn draw in.
+ * every tool and the steps of a turn draw in. Its tokens drag where they are dropped, and the map with them.
  */
 export default function AgentsMap({ pull }: { pull?: PackagesPull }) {
 	const [{ workspace, agents }] = useState(pictureWorkspace);
@@ -79,10 +79,9 @@ export default function AgentsMap({ pull }: { pull?: PackagesPull }) {
 			padding={0}
 			elevation="med"
 			className="packages-map"
-			inert
 			aria-hidden
 		>
-			<StudioTreeMap workspace={workspace} agents={agents} grow={grow} fit={fit} />
+			<StudioTreeMap workspace={workspace} agents={agents} grow={grow} fit={fit} draggable />
 		</Card>
 	);
 }

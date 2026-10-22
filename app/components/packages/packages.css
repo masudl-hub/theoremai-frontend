@@ -105,7 +105,6 @@
 	height: calc(75% + 17% * var(--packages-pull, 0));
 	border-radius: var(--radius-container);
 	overflow: hidden;
-	pointer-events: none;
 }
 
 /*
@@ -135,6 +134,8 @@
 	position: absolute;
 	z-index: -1;
 	inset: 0;
+	/* why: The shade lies over the Agents map, which drags under it. */
+	pointer-events: none;
 	background: linear-gradient(
 		to top,
 		rgb(0 0 0 / 0.82),
