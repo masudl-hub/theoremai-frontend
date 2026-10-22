@@ -2,7 +2,7 @@ import { Card } from '@astryxdesign/core/Card';
 import {
 	addAgent,
 	createArchitectWorkspace,
-	createExampleDraft,
+	decisionExampleDraft,
 	defaultToolSpec,
 	type StudioWorkspace,
 } from '@theoremjs/studio';
@@ -11,6 +11,8 @@ import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { PackagesPull } from './packages-pull';
 
 const still = () => 0;
+/** The decision example's model, named for the picture as the architect's are. */
+const JEV = 'Jev 1.14';
 const unwatched = () => () => {};
 
 /** The architect's three models, renamed for the picture: one on Gemini, two through OpenRouter, each in its provider's protocol. */
@@ -32,7 +34,7 @@ const MODELS = [
 
 /**
  * The code architect, through OpenRouter, so the map shows a provider and a runner it shares. The
- * architect calls the travel concierge as an agent tool, make_decision, and allows its unit
+ * architect calls the decision agent as an agent tool, make_decision, and allows its unit
  * converter, so its tools hold one of each type. The narrator the architect starts with, and its
  * tool, are left out.
  */
@@ -67,13 +69,26 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 				(a, b) => Number(b.toolName === 'read_repo_file') - Number(a.toolName === 'read_repo_file'),
 			),
 	};
-	const all = addAgent(trimmed, createExampleDraft());
-	const [, concierge] = all.agents;
+	const jev = decisionExampleDraft();
+	const throughOpenRouter = {
+		...jev,
+		modelBindings: jev.modelBindings.map((binding) => ({
+			...binding,
+			modelId: JEV,
+			provider: 'openrouter',
+			protocol: 'openRouterDecisions',
+			apiId: 'typesafe/jev-1.14',
+			options: {},
+		})),
+		models: { ...jev.models, defaultModel: JEV },
+	};
+	const all = addAgent(trimmed, throughOpenRouter);
+	const [, decision] = all.agents;
 	const ask = defaultToolSpec({
 		toolName: 'make_decision',
 		toolType: 'agent',
-		agentKey: concierge.key,
-		description: 'Asks the travel concierge where to stay, eat and go.',
+		agentKey: decision.key,
+		description: 'Asks the decision agent to make a call.',
 		activity: 'Making a decision',
 		activityPast: 'Made a decision',
 		category: 'demo',
