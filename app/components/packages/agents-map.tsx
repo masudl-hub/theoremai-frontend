@@ -3,7 +3,6 @@ import {
 	addAgent,
 	createArchitectWorkspace,
 	createExampleDraft,
-	decisionExampleDraft,
 	defaultToolSpec,
 	type StudioWorkspace,
 } from '@theoremjs/studio';
@@ -12,8 +11,6 @@ import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { PackagesPull } from './packages-pull';
 
 const still = () => 0;
-/** The decision example's model, named for the picture as the architect's are. */
-const JEV = 'Jev 1.14';
 const unwatched = () => () => {};
 
 /** The architect's three models, renamed for the picture: one on Gemini, two through OpenRouter, each in its provider's protocol. */
@@ -34,10 +31,10 @@ const MODELS = [
 ];
 
 /**
- * The code architect and the decision example, both through OpenRouter, so the map shows a provider
- * and a runner they share. The architect calls the travel concierge as an agent tool and allows its
- * unit converter, so its tools hold one of each type. The narrator the architect starts with, and
- * its tool, are left out.
+ * The code architect, through OpenRouter, so the map shows a provider and a runner it shares. The
+ * architect calls the travel concierge as an agent tool, make_decision, and allows its unit
+ * converter, so its tools hold one of each type. The narrator the architect starts with, and its
+ * tool, are left out.
  */
 function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 	const base = createArchitectWorkspace();
@@ -70,28 +67,15 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 				(a, b) => Number(b.toolName === 'read_repo_file') - Number(a.toolName === 'read_repo_file'),
 			),
 	};
-	const jev = decisionExampleDraft();
-	const throughOpenRouter = {
-		...jev,
-		modelBindings: jev.modelBindings.map((binding) => ({
-			...binding,
-			modelId: JEV,
-			provider: 'openrouter',
-			protocol: 'openRouterDecisions',
-			apiId: 'typesafe/jev-1.14',
-			options: {},
-		})),
-		models: { ...jev.models, defaultModel: JEV },
-	};
-	const all = addAgent(addAgent(trimmed, throughOpenRouter), createExampleDraft());
-	const [, decision, concierge] = all.agents;
+	const all = addAgent(trimmed, createExampleDraft());
+	const [, concierge] = all.agents;
 	const ask = defaultToolSpec({
-		toolName: 'ask_concierge',
+		toolName: 'make_decision',
 		toolType: 'agent',
 		agentKey: concierge.key,
 		description: 'Asks the travel concierge where to stay, eat and go.',
-		activity: 'Asking the concierge',
-		activityPast: 'Asked the concierge',
+		activity: 'Making a decision',
+		activityPast: 'Made a decision',
 		category: 'demo',
 	});
 	const convert = all.toolSpecs.find((tool) => tool.toolName === 'convert_units');
@@ -110,7 +94,7 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 		),
 		toolSpecs: [...all.toolSpecs, ask],
 	};
-	return { workspace, agents: [architect.key, decision.key] };
+	return { workspace, agents: [architect.key] };
 }
 
 /**
