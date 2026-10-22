@@ -126,7 +126,7 @@ const desk = defineProfile({
 	identity: { handle: 'desk', system: 'You are the Harbor front desk. Answer in short sentences.' },
 	models: {
 		main: {
-			protocol: 'openRouter',
+			protocol: 'openRouterOpenAi',
 			provider: 'openrouter',
 			apiId: 'openrouter/free',
 			keySlot: 'openrouter',

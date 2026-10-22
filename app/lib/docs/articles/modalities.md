@@ -50,7 +50,7 @@ The Harbor front desk answers questions and looks up shipments. Use `text` for a
 
 - Must set: `identity`, `models`, `tools` and `inputs`.
 - Can set: `outputs` and `turnBehaviour`.
-- First-party protocols: `openRouter`, `geminiInteractions` or `openAi`.
+- First-party protocols: `openRouterOpenAi`, `geminiInteractions` or `openAi`.
 
 ```ts frame=statements
 const desk = defineProfile({
@@ -59,7 +59,7 @@ const desk = defineProfile({
 	identity: { handle: 'desk', system: 'You are the Harbor front desk.' },
 	models: {
 		main: {
-			protocol: 'openRouter',
+			protocol: 'openRouterOpenAi',
 			provider: 'openrouter',
 			apiId: 'openrouter/free',
 			keySlot: 'openrouter',
@@ -103,7 +103,7 @@ The dock announcer reads a notice to the dock. Use `speech` to read a transcript
 
 - Must set: `identity` with a `handle` only, `models` and `speech`.
 - Cannot set: `identity.system`, `tools` or `inputs`.
-- First-party protocols: `openRouter`, `geminiInteractions` or `openAi`.
+- First-party protocols: `openRouterOpenAi`, `geminiInteractions` or `openAi`.
 - Canary: Theorem adds no canary to a speech profile, because it has no system prompt.
 
 `speech.format` is `pcm` or `mp3`. `pcm` is delivered as WAV. `mp3` needs a model that can make it, such as an OpenRouter model.
@@ -165,7 +165,7 @@ The router decides which dock takes a shipment. Use `decision` to get typed answ
 
 - Must set: `identity` with a `handle` only, one model, `inputs.state: "json"` and `decision.contract`.
 - Cannot set: `identity.system`, `tools`, `outputs` or `turnBehaviour`.
-- First-party protocol: `systemOne`, served by the TypeSafe and OpenRouter providers.
+- First-party protocols: `systemOne` on TypeSafe, or `openRouterDecisions` on OpenRouter.
 
 The contract is your own id for the decision. Theorem records it on the trace and does not send it to the model. The questions and the state travel on the `runDecision` request ([Running a turn](/docs/runner)).
 

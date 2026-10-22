@@ -23,7 +23,7 @@ Register a provider one time in a scope. The registration sets its connection an
 
 | Field | Value |
 | --- | --- |
-| `protocol` | The protocol ID, such as `openRouter` |
+| `protocol` | The protocol ID, such as `openRouterOpenAi` |
 | `provider` | The registered provider ID |
 | `apiId` | The upstream model or deployment ID |
 | `keySlot` | Optional credential-slot override |
@@ -50,7 +50,7 @@ import { openRouterProvider, registerProvider } from '@theoremjs/agents';
 
 const router = registerProvider(openRouterProvider, { keySlot: 'openrouter' });
 
-export const binding = router.model('openRouter', 'openrouter/free');
+export const binding = router.model('openRouterOpenAi', 'openrouter/free');
 ```
 
 The second argument is the registration. Its fields are `id`, `connection`, `keySlot` and `fallbackKeySlot`, and each is optional.
@@ -68,7 +68,7 @@ You can use the helper result or write the equivalent data directly. Registratio
 type: 'text',
 models: {
 	main: {
-		protocol: 'openRouter',
+		protocol: 'openRouterOpenAi',
 		provider: 'openrouter',
 		apiId: 'openrouter/free',
 		keySlot: 'openrouter',
@@ -109,13 +109,13 @@ The desk uses one model for routine questions and another for shipment disputes.
 type: 'text',
 models: {
 	flash: {
-		protocol: 'openRouter',
+		protocol: 'openRouterOpenAi',
 		provider: 'openrouter',
 		apiId: 'openrouter/free',
 		keySlot: 'openrouter',
 	},
 	pro: {
-		protocol: 'openRouter',
+		protocol: 'openRouterOpenAi',
 		provider: 'openrouter',
 		apiId: 'example/other',
 		keySlot: 'openrouter',
@@ -162,7 +162,7 @@ Choose a protocol that has an endpoint for your profile type, and a provider tha
 
 Protocol | Profile types | Served by
 --- | --- | ---
-`openRouter` | `text`, `speech` | `openRouterProvider`
+`openRouterOpenAi` | `text`, `speech` | `openRouterProvider`
 `openRouterImages` | `image` | `openRouterProvider`
 `openRouterEmbedding` | `embedding` | `openRouterProvider`
 `geminiInteractions` | `text`, `image`, `speech` | `geminiProvider`
@@ -170,7 +170,8 @@ Protocol | Profile types | Served by
 `geminiEmbedding` | `embedding` | `geminiProvider`
 `openAi` | `text`, `speech` | `localProvider`
 `ollamaEmbedding` | `embedding` | `localProvider`
-`systemOne` | `decision` | `openRouterProvider`, `typesafeProvider`
+`systemOne` | `decision` | `typesafeProvider`
+`openRouterDecisions` | `decision` | `openRouterProvider`
 
 Each first-party provider has a default ID and a connection:
 
@@ -245,7 +246,7 @@ Put protocol-specific settings in `options`. Keep shared settings, such as `maxO
 The `.model()` helper and profile registration validate options with the protocol's schema.
 Unknown options fail validation.
 
-- `openRouter`: `cache` sets prompt caching, `{ mode: 'automatic' }` or `{ mode: 'system' }`, with an optional `ttl` of `5m` or `1h`.
+- `openRouterOpenAi`: `cache` sets prompt caching, `{ mode: 'automatic' }` or `{ mode: 'system' }`, with an optional `ttl` of `5m` or `1h`.
 - `geminiInteractions`: `store` and `persistViaInteractionId`.
 - `geminiEmbedding`: `outputDimensionality` of 768, 1536 or 3072, and `taskType`, such as `RETRIEVAL_QUERY`, for `gemini-embedding-001`. Gemini Embedding 2 refuses `taskType`; set the request's `task` instead.
 - `openRouterEmbedding`: `encodingFormat`, `float` or `base64`.
@@ -257,7 +258,7 @@ import { openRouterProvider, registerProvider } from '@theoremjs/agents';
 
 const router = registerProvider(openRouterProvider, { keySlot: 'openrouter' });
 
-export const binding = router.model('openRouter', 'openrouter/free', {
+export const binding = router.model('openRouterOpenAi', 'openrouter/free', {
 	maxOutputTokens: 1024,
 	options: { cache: { mode: 'system', ttl: '1h' } },
 });

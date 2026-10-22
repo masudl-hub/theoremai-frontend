@@ -60,7 +60,7 @@ export const base: {
 		id: 'snippet.text',
 		identity: { handle: 'snippet', system: 'You help.' },
 		models: {
-			main: { protocol: 'openRouter', provider: 'openrouter', apiId: 'openrouter/free', keySlot: 'openrouter' },
+			main: { protocol: 'openRouterOpenAi', provider: 'openrouter', apiId: 'openrouter/free', keySlot: 'openrouter' },
 		},
 		tools: { allow: [] },
 		inputs: {},
