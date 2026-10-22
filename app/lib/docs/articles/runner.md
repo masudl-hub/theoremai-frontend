@@ -259,6 +259,40 @@ const result = await runDecision(
 );
 ```
 
+Each question has a `type`. Each answer has the same `type` as its question.
+
+Type | Question | Answer
+--- | --- | ---
+`choice` | `instructions` and named `criteria` | `choice`, the name of the criterion, with `confidence` and `probabilities`
+`noul` | `instructions`, and optional named `criteria` | `noul`, one number
+`score` | `instructions` and a list of `criteria`, in order | `score`, with `confidence`, `legend` and `probabilities`
+`box` | `instructions` that name a thing in an image, and an optional `image` | `box`, with `top`, `bottom`, `left` and `right` as fractions of the image from its top-left corner, and `confidence`
+
+The kernel does not check that the model can answer a type. The provider refuses one that it cannot answer.
+
+### Send images
+
+Pass PNG or JPEG images in `assets`, as base64 by reference. Write the reference in a string where the image belongs: in `state`, in the instructions or in the criteria. The model reads the image in its place. The kernel sends only the images that a string references. Use a reference that cannot occur in your text by accident, such as `<shelf>`.
+
+A `box` question gives its image in `image`, as a reference or as the state field that holds one. On TypeSafe, the binding must set `options: { images: true }`, or the request fails before it leaves. A `box` question also fails on a `jev-1.13` model. On OpenRouter, the `openRouterDecisions` protocol takes no options.
+
+```ts frame=statements
+import { readFile } from 'node:fs/promises';
+
+const shelf = (await readFile('shelf.jpg')).toString('base64');
+const result = await runDecision(
+	{
+		profile: profile.id,
+		state: { photo: '<shelf>' },
+		questions: {
+			open: { type: 'box', instructions: 'Find the open jar.', image: 'photo' },
+		},
+		assets: { '<shelf>': { mimeType: 'image/jpeg', data: shelf } },
+	},
+	{ vault: { typesafe: process.env.TYPESAFE_API_KEY } },
+);
+```
+
 ## Fix a failed call
 
 A call can fail as a thrown error, as an `error` event or as a warning on a `stage` event. Each row is one failure and its fix.
