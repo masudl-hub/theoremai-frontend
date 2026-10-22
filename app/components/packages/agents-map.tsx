@@ -12,6 +12,8 @@ import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { PackagesPull } from './packages-pull';
 
 const still = () => 0;
+/** The decision example's model, named for the picture as the architect's are. */
+const JEV = 'Jev 1.14';
 const unwatched = () => () => {};
 
 /** The architect's three models, renamed for the picture: one on Gemini, two through OpenRouter, each in its provider's protocol. */
@@ -73,11 +75,13 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 		...jev,
 		modelBindings: jev.modelBindings.map((binding) => ({
 			...binding,
+			modelId: JEV,
 			provider: 'openrouter',
 			protocol: 'openRouterDecisions',
 			apiId: 'typesafe/jev-1.14',
 			options: {},
 		})),
+		models: { ...jev.models, defaultModel: JEV },
 	};
 	const all = addAgent(addAgent(trimmed, throughOpenRouter), createExampleDraft());
 	const [, decision, concierge] = all.agents;
