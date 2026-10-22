@@ -29,6 +29,10 @@
 	/* A third of the row, net of the gaps; and two thirds of it, net of the one gap left beside. */
 	--packages-third: calc((100% - 2 * var(--spacing-6)) / 3);
 	--packages-two-thirds: calc((100% - var(--spacing-6)) * 2 / 3);
+	/* The share of its tile the Agents map's card takes opened, a pull of 1; the map reads them to
+	   fill the card it will be. */
+	--packages-map-open-width: 0.94;
+	--packages-map-open-height: 0.92;
 	display: grid;
 	/* why: Agents widens from a third to two thirds as the run pulls, leaving the last third for
 	   words; the other two keep their width and are pushed out to the right as they leave. */
@@ -98,11 +102,12 @@
 .packages-map.packages-map {
 	position: absolute;
 	z-index: -2;
-	/* Opened, the card comes in from the tile's crop to fill it, where the words were too. */
-	top: calc(16% - 12% * var(--packages-pull, 0));
-	left: calc(18% - 15% * var(--packages-pull, 0));
-	width: calc(38rem + (94% - 38rem) * var(--packages-pull, 0));
-	height: calc(75% + 17% * var(--packages-pull, 0));
+	/* Opened, the card comes in from the tile's crop to fill it, where the words were too, in the
+	   middle of the tile. */
+	top: calc(16% + ((1 - var(--packages-map-open-height)) * 50% - 16%) * var(--packages-pull, 0));
+	left: calc(18% + ((1 - var(--packages-map-open-width)) * 50% - 18%) * var(--packages-pull, 0));
+	width: calc(38rem + (100% * var(--packages-map-open-width) - 38rem) * var(--packages-pull, 0));
+	height: calc(75% + (100% * var(--packages-map-open-height) - 75%) * var(--packages-pull, 0));
 	border-radius: var(--radius-container);
 	overflow: hidden;
 }
