@@ -30,6 +30,7 @@ export default [
 		id: 'well-known-mcp-server-card',
 	}),
 	route('.well-known/ai-catalog.json', 'routes/ai-catalog[.]json.ts'),
+	route('.well-known/appspecific/com.chrome.devtools.json', 'routes/chrome-devtools[.]json.ts'),
 	route('api/kernel', 'routes/api.kernel.ts'),
 	route('api/home/start', 'routes/api.home.start.ts'),
 	// Every request the studio screen makes: the package's handler (`studio-server.ts`).
