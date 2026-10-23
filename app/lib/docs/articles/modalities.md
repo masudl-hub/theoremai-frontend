@@ -1,6 +1,6 @@
 ---
 title: Choosing a modality
-updated: 2026-10-22
+updated: 2026-10-23
 summary: Pick the profile type: text, image, speech, live, decision, embedding or host.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/profiles.ts, src/kernel/schema.ts

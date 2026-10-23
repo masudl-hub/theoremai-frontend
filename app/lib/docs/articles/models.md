@@ -1,6 +1,6 @@
 ---
 title: Binding models
-updated: 2026-10-22
+updated: 2026-10-23
 summary: Register a provider, bind a model to it, pick one per request, and fix failed bindings.
 entry: src/providers/mod.ts
 covers: src/providers, src/kernel/protocols, src/kernel/registry/vault.ts, src/kernel/registry/catalog.ts, src/kernel/registry/profiles.ts, src/kernel/schema.ts
