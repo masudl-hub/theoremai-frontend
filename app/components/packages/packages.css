@@ -268,3 +268,29 @@
 		scroll-snap-align: start;
 	}
 }
+
+/*
+ * The agents card's code: the architect's profile, from the card's top left, under the map. Its
+ * lines are a token's height and a little, so the map's tokens stand in them.
+ */
+.packages-code {
+	position: absolute;
+	inset: 0;
+	padding: var(--spacing-5) var(--spacing-6);
+	pointer-events: none;
+}
+
+.packages-code .astryx-codeblock,
+.packages-code pre {
+	background: none;
+	border: none;
+	padding: 0;
+}
+
+.packages-code [data-line] {
+	line-height: 24px;
+}
+
+.packages-map:not([data-placed]) .studio-tree-map {
+	visibility: hidden;
+}
