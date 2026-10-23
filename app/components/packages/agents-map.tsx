@@ -14,6 +14,8 @@ import type { PackagesPull } from './packages-pull';
 const still = () => 0;
 /** The decision example's model, named for the picture as the architect's are. */
 const JEV = 'Jev 1.14';
+/** The narrator's speech model, named for the picture as the architect's are. */
+const VOICE = 'Gemini 4 TTS';
 const unwatched = () => () => {};
 
 /** The architect's three models, renamed for the picture: one on Gemini, two through OpenRouter, each in its provider's protocol. */
@@ -38,7 +40,7 @@ const MODELS = [
  * architect calls the decision agent as an agent tool, make_decision, and allows its unit
  * converter, so its tools hold one of each type. Its narrate tool is left out. Closed, the map
  * shows the architect, the narrator and the decision agent, each whole, with their models and
- * tools; grown, the architect alone.
+ * tools; grown, the architect alone, the decision agent under make_decision.
  */
 function pictureWorkspace(): {
 	workspace: StudioWorkspace;
@@ -64,7 +66,16 @@ function pictureWorkspace(): {
 							allow: agent.tools.allow.filter((key) => key !== narrate?.key),
 						},
 					}
-				: agent,
+				: agent.identity.profileType === 'speech'
+					? {
+							...agent,
+							modelBindings: agent.modelBindings.map((binding) => ({
+								...binding,
+								modelId: VOICE,
+							})),
+							models: { ...agent.models, defaultModel: VOICE },
+						}
+					: agent,
 		),
 		// why: The map draws the first allowed tool of each type; the repo's file reader, beside its docs.
 		toolSpecs: base.toolSpecs
@@ -86,7 +97,7 @@ function pictureWorkspace(): {
 		})),
 		models: { ...jev.models, defaultModel: JEV },
 	};
-	// why: The decision agent stands last, so as it sinks into place under make_decision it passes no agent.
+	// why: The decision agent stands last, so it rises into place under make_decision past the fewest rows.
 	const all = addAgent(trimmed, throughOpenRouter);
 	const decision = all.agents.at(-1) ?? architect;
 	const ask = defaultToolSpec({
@@ -120,6 +131,20 @@ function pictureWorkspace(): {
 		workspace,
 		agents: [architect.key],
 		still: workspace.agents.map((agent) => agent.key),
+	};
+}
+
+/**
+ * The part of the card its tile shows: closed, the tile crops the card's right and foot; opened,
+ * the card stands inside it.
+ */
+function shownBox(card: HTMLElement): { width: number; height: number } {
+	const tile = card.closest<HTMLElement>('.packages-tile');
+	const box = card.getBoundingClientRect();
+	const bounds = tile?.getBoundingClientRect() ?? box;
+	return {
+		width: Math.round(Math.min(box.right, bounds.right) - Math.max(box.left, bounds.left)),
+		height: Math.round(Math.min(box.bottom, bounds.bottom) - Math.max(box.top, bounds.top)),
 	};
 }
 
@@ -169,10 +194,10 @@ export default function AgentsMap({ pull }: { pull?: PackagesPull }) {
 		measure();
 		const observer = new ResizeObserver(measure);
 		if (row) observer.observe(row);
-		// why: The card grows with the pull; the map, grown, fits the card it stands in now.
+		// why: The card grows with the pull; the map fits the part of it the tile shows now.
 		const inCard = new ResizeObserver(() => {
 			const now = card.current;
-			if (now) setRoom({ width: now.clientWidth, height: now.clientHeight });
+			if (now) setRoom(shownBox(now));
 		});
 		if (card.current) inCard.observe(card.current);
 		return () => {
