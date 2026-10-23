@@ -7,7 +7,6 @@ import {
 	demoToolSpecs,
 	type StudioWorkspace,
 } from '@theoremjs/studio';
-import type { TreeMapStill } from '@theoremjs/studio/ui/lib/tree-map-layout.ts';
 import { StudioTreeMap } from '@theoremjs/studio/ui/tree-map.tsx';
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { PackagesPull } from './packages-pull';
@@ -38,13 +37,13 @@ const MODELS = [
  * The code architect, through OpenRouter, so the map shows a provider and a runner it shares. The
  * architect calls the decision agent as an agent tool, make_decision, and allows its unit
  * converter, so its tools hold one of each type. Its narrate tool is left out. Closed, the map
- * shows the architect, the narrator and the decision agent, each with its models and tools; grown,
- * the architect alone.
+ * shows the architect, the narrator and the decision agent, each whole, with their models and
+ * tools; grown, the architect alone.
  */
 function pictureWorkspace(): {
 	workspace: StudioWorkspace;
 	agents: string[];
-	still: TreeMapStill;
+	still: string[];
 } {
 	const base = createArchitectWorkspace();
 	const narrate = base.toolSpecs.find((tool) => tool.toolType === 'agent');
@@ -120,7 +119,7 @@ function pictureWorkspace(): {
 	return {
 		workspace,
 		agents: [architect.key],
-		still: { agents: workspace.agents.map((agent) => agent.key), facets: ['models', 'tools'] },
+		still: workspace.agents.map((agent) => agent.key),
 	};
 }
 
@@ -149,7 +148,7 @@ function openedBox(card: HTMLElement): { width: number; height: number } | undef
 /**
  * The agents tile's map: the studio's tree of the code architect and a decision agent, every row
  * open, with the providers, tools and runner they share beside them, drawn as the map draws on a
- * glass card the tile crops. It grows with the run's pull: each agent drifts to its own zone as the
+ * glass card the tile crops. It grows with the run's pull: each agent moves to its own zone as the
  * protocols, the runner's steps and the tool runner draw in, and grown it fills the card it stands in. Its
  * tokens drag where they are dropped, and the map with them.
  */
