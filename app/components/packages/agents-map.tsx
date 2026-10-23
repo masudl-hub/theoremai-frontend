@@ -38,7 +38,7 @@ const MODELS = [
  * The code architect, through OpenRouter, so the map shows a provider and a runner it shares. The
  * architect calls the decision agent as an agent tool, make_decision, and allows its unit
  * converter, so its tools hold one of each type. Its narrate tool is left out. Closed, the map
- * shows the architect, the decision agent and the narrator, each with its models and tools; grown,
+ * shows the architect, the narrator and the decision agent, each with its models and tools; grown,
  * the architect alone.
  */
 function pictureWorkspace(): {
@@ -87,15 +87,9 @@ function pictureWorkspace(): {
 		})),
 		models: { ...jev.models, defaultModel: JEV },
 	};
-	const added = addAgent(trimmed, throughOpenRouter);
-	const decision = added.agents.at(-1) ?? architect;
-	// The decision agent stands second, under the architect and above the narrator.
-	const all = {
-		...added,
-		agents: [decision, ...added.agents.filter((agent) => agent !== decision)].sort(
-			(a, b) => Number(b.key === architect.key) - Number(a.key === architect.key),
-		),
-	};
+	// why: The decision agent stands last, so as it sinks into place under make_decision it passes no agent.
+	const all = addAgent(trimmed, throughOpenRouter);
+	const decision = all.agents.at(-1) ?? architect;
 	const ask = defaultToolSpec({
 		toolName: 'make_decision',
 		toolType: 'agent',
@@ -156,7 +150,7 @@ function openedBox(card: HTMLElement): { width: number; height: number } | undef
  * The agents tile's map: the studio's tree of the code architect and a decision agent, every row
  * open, with the providers, tools and runner they share beside them, drawn as the map draws on a
  * glass card the tile crops. It grows with the run's pull: each agent drifts to its own zone as the
- * protocols, the runner's steps and the tool runner draw in, and grown it fills the card opened. Its
+ * protocols, the runner's steps and the tool runner draw in, and grown it fills the card it stands in. Its
  * tokens drag where they are dropped, and the map with them.
  */
 export default function AgentsMap({ pull }: { pull?: PackagesPull }) {
@@ -164,6 +158,7 @@ export default function AgentsMap({ pull }: { pull?: PackagesPull }) {
 	const grow = useSyncExternalStore(pull?.subscribe ?? unwatched, pull?.get ?? still, still);
 	const card = useRef<HTMLDivElement>(null);
 	const [fit, setFit] = useState<{ width: number; height: number }>();
+	const [room, setRoom] = useState<{ width: number; height: number }>();
 	// why: The map fills the card as it stands opened, which only the page's size changes; measured
 	// as it pulls, it would refit on every frame.
 	useLayoutEffect(() => {
@@ -175,8 +170,15 @@ export default function AgentsMap({ pull }: { pull?: PackagesPull }) {
 		measure();
 		const observer = new ResizeObserver(measure);
 		if (row) observer.observe(row);
+		// why: The card grows with the pull; the map, grown, fits the card it stands in now.
+		const inCard = new ResizeObserver(() => {
+			const now = card.current;
+			if (now) setRoom({ width: now.clientWidth, height: now.clientHeight });
+		});
+		if (card.current) inCard.observe(card.current);
 		return () => {
 			observer.disconnect();
+			inCard.disconnect();
 		};
 	}, []);
 	return (
@@ -194,6 +196,7 @@ export default function AgentsMap({ pull }: { pull?: PackagesPull }) {
 				still={closed}
 				grow={grow}
 				fit={fit}
+				room={room}
 				draggable
 			/>
 		</Card>
