@@ -7,7 +7,7 @@
 		}
 	},
 	"guardrails": {
-		"reviewed": "2026-10-22",
+		"reviewed": "2026-10-23",
 		"files": {
 			"src/guardrails/boundaries.ts": "908bd6465f18a8c434e88f56f621614860cef766",
 			"src/guardrails/canary-gate.ts": "68e9fd922d448f9781cb90e16a1e6f42550eff9f",
@@ -80,7 +80,7 @@
 		}
 	},
 	"inputs": {
-		"reviewed": "2026-10-22",
+		"reviewed": "2026-10-23",
 		"files": {
 			"src/kernel/engine/live-ingress.ts": "67803ecc60f6d07941f8c6e8726ed49832223274",
 			"src/kernel/registry/attachments.ts": "1042283cdfa08bf2d3b4a5932fb62f5939a43e58",

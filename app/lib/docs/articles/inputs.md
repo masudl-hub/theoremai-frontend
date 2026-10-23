@@ -212,7 +212,6 @@ Kind `input`, `too_many_files` | The turn sent more than `maxFiles` | Send fewer
 Kind `input`, `file_too_large` | One inline file is over its cap | Send a smaller file, or raise `maxBytes` or `limitsByMime`
 Kind `input`, `turn_too_large` | The files together are over `maxTurnBytes` | Send fewer files, or raise `maxTurnBytes`
 Kind `input`, `too_many_of_kind` | One embedding input holds more files of one kind than its model takes | Put the files in more inputs
-Kind `input`, line `input.too_long` | One text, such as the message or a text file, is over 1,000,000 characters | Send less text
 Kind `request` | The turn sent text, and `inputs.text` is `false` | Remove the text, or set `inputs.text` to `true`
 Kind `request` | A slot is not declared, or its value is not in the list | Declare the slot, or send a listed value
 Kind `request` | The turn sent context from a sender `from` does not list | Add the sender to `from`, or remove its context

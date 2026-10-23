@@ -142,7 +142,7 @@ A setting has three forms:
 
 `block` stops more than the match. What it stops depends on the boundary.
 
-- On the way in, `runTurn` throws an `input` error before the model is called. A text on the way in that is over 1,000,000 characters gets the same error, with the `input.too_long` line, whatever the actions.
+- On the way in, `runTurn` throws an `input` error before the model is called.
 - At `tool_arguments_<kind>`, the tool does not run. The model reads why.
 - At `tool_output_<kind>`, the model does not read the output, and the call fails.
 - At `tool_shown_<kind>`, the person reads the `detect.shown_blocked` line in place of what the call shows.
