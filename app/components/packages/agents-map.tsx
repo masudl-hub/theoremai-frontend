@@ -4,6 +4,7 @@ import {
 	createArchitectWorkspace,
 	decisionExampleDraft,
 	defaultToolSpec,
+	demoToolSpecs,
 	type StudioWorkspace,
 } from '@theoremjs/studio';
 import { StudioTreeMap } from '@theoremjs/studio/ui/tree-map.tsx';
@@ -93,7 +94,9 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 		activityPast: 'Made a decision',
 		category: 'demo',
 	});
-	const convert = all.toolSpecs.find((tool) => tool.toolName === 'convert_units');
+	// A function tool: the architect's own tools are http and mcp, so the converter is added here.
+	const convertSeed = demoToolSpecs().find((seed) => seed.data.toolName === 'convert_units');
+	const convert = convertSeed ? defaultToolSpec(convertSeed.data) : undefined;
 	const workspace: StudioWorkspace = {
 		...all,
 		agents: all.agents.map((agent) =>
@@ -107,7 +110,7 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 					}
 				: agent,
 		),
-		toolSpecs: [...all.toolSpecs, ask],
+		toolSpecs: [...all.toolSpecs, ...(convert ? [convert] : []), ask],
 	};
 	return { workspace, agents: [architect.key] };
 }
