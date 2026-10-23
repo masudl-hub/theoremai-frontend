@@ -188,7 +188,7 @@ Use `embedding` when your application needs vectors for text or media. Run it wi
 
 - Must set: `identity`, `models` and `inputs`.
 - Cannot set: `identity.system`, `tools`, `outputs` or `turnBehaviour`.
-- First-party protocols: `geminiEmbedding`, `openRouterEmbedding` or `ollamaEmbedding`.
+- First-party protocols: `geminiEmbeddings`, `openRouterEmbeddings` or `ollamaEmbeddings`.
 
 Vector size and other model settings go in the binding's `options`, and the protocol checks them. The kernel checks every reply: one vector per input, in input order, with finite values.
 
@@ -201,7 +201,7 @@ const searchIndex = defineProfile({
 	identity: { handle: 'search' },
 	models: {
 		main: {
-			protocol: 'geminiEmbedding',
+			protocol: 'geminiEmbeddings',
 			provider: 'gemini',
 			apiId: 'gemini-embedding-2-preview',
 			keySlot: 'gemini',
@@ -225,8 +225,8 @@ Model | Takes
 --- | ---
 Gemini Embedding 2 | PNG and JPEG images, up to 6 in an input; one PDF in an input; MP3 and WAV audio; MP4 and MOV video; up to 100 inputs in a request
 `gemini-embedding-001` | Text only, up to 100 inputs in a request
-`openRouterEmbedding` | Images
-`ollamaEmbedding` | Text only
+`openRouterEmbeddings` | Images
+`ollamaEmbeddings` | Text only
 
 ## Host
 

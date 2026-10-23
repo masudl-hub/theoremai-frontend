@@ -165,12 +165,12 @@ Protocol | Profile types | Served by
 --- | --- | ---
 `openRouterOpenAi` | `text`, `speech` | `openRouterProvider`
 `openRouterImages` | `image` | `openRouterProvider`
-`openRouterEmbedding` | `embedding` | `openRouterProvider`
+`openRouterEmbeddings` | `embedding` | `openRouterProvider`
 `geminiInteractions` | `text`, `image`, `speech` | `geminiProvider`
 `geminiLive` | `live` | `geminiProvider`
-`geminiEmbedding` | `embedding` | `geminiProvider`
+`geminiEmbeddings` | `embedding` | `geminiProvider`
 `openAi` | `text`, `speech` | `localProvider`
-`ollamaEmbedding` | `embedding` | `localProvider`
+`ollamaEmbeddings` | `embedding` | `localProvider`
 `systemOne` | `decision` | `typesafeProvider`
 `openRouterDecisions` | `decision` | `openRouterProvider`
 
@@ -249,9 +249,9 @@ Unknown options fail validation.
 
 - `openRouterOpenAi`: `cache` sets prompt caching, `{ mode: 'automatic' }` or `{ mode: 'system' }`, with an optional `ttl` of `5m` or `1h`.
 - `geminiInteractions`: `store` and `persistViaInteractionId`.
-- `geminiEmbedding`: `outputDimensionality` of 768, 1536 or 3072, and `taskType`, such as `RETRIEVAL_QUERY`, for `gemini-embedding-001`. Gemini Embedding 2 refuses `taskType`; set the request's `task` instead.
-- `openRouterEmbedding`: `encodingFormat`, `float` or `base64`.
-- `ollamaEmbedding`: `truncate` and `dimensions`.
+- `geminiEmbeddings`: `outputDimensionality` of 768, 1536 or 3072, and `taskType`, such as `RETRIEVAL_QUERY`, for `gemini-embedding-001`. Gemini Embedding 2 refuses `taskType`; set the request's `task` instead.
+- `openRouterEmbeddings`: `encodingFormat`, `float` or `base64`.
+- `ollamaEmbeddings`: `truncate` and `dimensions`.
 - Every other first-party protocol: none.
 
 ```ts
