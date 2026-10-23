@@ -7,6 +7,7 @@ import {
 	demoToolSpecs,
 	type StudioWorkspace,
 } from '@theoremjs/studio';
+import type { TreeMapStill } from '@theoremjs/studio/ui/lib/tree-map-layout.ts';
 import { StudioTreeMap } from '@theoremjs/studio/ui/tree-map.tsx';
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { PackagesPull } from './packages-pull';
@@ -36,33 +37,36 @@ const MODELS = [
 /**
  * The code architect, through OpenRouter, so the map shows a provider and a runner it shares. The
  * architect calls the decision agent as an agent tool, make_decision, and allows its unit
- * converter, so its tools hold one of each type. The narrator the architect starts with, and its
- * tool, are left out.
+ * converter, so its tools hold one of each type. Its narrate tool is left out. Closed, the map
+ * shows the architect, the decision agent and the narrator, each with its models and tools; grown,
+ * the architect alone.
  */
-function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
+function pictureWorkspace(): {
+	workspace: StudioWorkspace;
+	agents: string[];
+	still: TreeMapStill;
+} {
 	const base = createArchitectWorkspace();
 	const narrate = base.toolSpecs.find((tool) => tool.toolType === 'agent');
 	const architect = base.agents[0];
 	const trimmed: StudioWorkspace = {
 		...base,
-		agents: base.agents
-			.filter((agent) => agent.key !== narrate?.agentKey)
-			.map((agent) =>
-				agent === architect
-					? {
-							...agent,
-							modelBindings: agent.modelBindings.map((binding, index) => ({
-								...binding,
-								...MODELS[index],
-							})),
-							models: { ...agent.models, defaultModel: MODELS[1]?.modelId ?? '' },
-							tools: {
-								...agent.tools,
-								allow: agent.tools.allow.filter((key) => key !== narrate?.key),
-							},
-						}
-					: agent,
-			),
+		agents: base.agents.map((agent) =>
+			agent === architect
+				? {
+						...agent,
+						modelBindings: agent.modelBindings.map((binding, index) => ({
+							...binding,
+							...MODELS[index],
+						})),
+						models: { ...agent.models, defaultModel: MODELS[1]?.modelId ?? '' },
+						tools: {
+							...agent.tools,
+							allow: agent.tools.allow.filter((key) => key !== narrate?.key),
+						},
+					}
+				: agent,
+		),
 		// why: The map draws the first allowed tool of each type; the repo's file reader, beside its docs.
 		toolSpecs: base.toolSpecs
 			.filter((tool) => tool !== narrate)
@@ -83,8 +87,15 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 		})),
 		models: { ...jev.models, defaultModel: JEV },
 	};
-	const all = addAgent(trimmed, throughOpenRouter);
-	const [, decision] = all.agents;
+	const added = addAgent(trimmed, throughOpenRouter);
+	const decision = added.agents.at(-1) ?? architect;
+	// The decision agent stands second, under the architect and above the narrator.
+	const all = {
+		...added,
+		agents: [decision, ...added.agents.filter((agent) => agent !== decision)].sort(
+			(a, b) => Number(b.key === architect.key) - Number(a.key === architect.key),
+		),
+	};
 	const ask = defaultToolSpec({
 		toolName: 'make_decision',
 		toolType: 'agent',
@@ -112,7 +123,11 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 		),
 		toolSpecs: [...all.toolSpecs, ...(convert ? [convert] : []), ask],
 	};
-	return { workspace, agents: [architect.key] };
+	return {
+		workspace,
+		agents: [architect.key],
+		still: { agents: workspace.agents.map((agent) => agent.key), facets: ['models', 'tools'] },
+	};
 }
 
 /**
@@ -145,7 +160,7 @@ function openedBox(card: HTMLElement): { width: number; height: number } | undef
  * tokens drag where they are dropped, and the map with them.
  */
 export default function AgentsMap({ pull }: { pull?: PackagesPull }) {
-	const [{ workspace, agents }] = useState(pictureWorkspace);
+	const [{ workspace, agents, still: closed }] = useState(pictureWorkspace);
 	const grow = useSyncExternalStore(pull?.subscribe ?? unwatched, pull?.get ?? still, still);
 	const card = useRef<HTMLDivElement>(null);
 	const [fit, setFit] = useState<{ width: number; height: number }>();
@@ -173,7 +188,14 @@ export default function AgentsMap({ pull }: { pull?: PackagesPull }) {
 			className="packages-map"
 			aria-hidden
 		>
-			<StudioTreeMap workspace={workspace} agents={agents} grow={grow} fit={fit} draggable />
+			<StudioTreeMap
+				workspace={workspace}
+				agents={agents}
+				still={closed}
+				grow={grow}
+				fit={fit}
+				draggable
+			/>
 		</Card>
 	);
 }
