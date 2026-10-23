@@ -2,9 +2,10 @@ import { Card } from '@astryxdesign/core/Card';
 import {
 	addAgent,
 	createArchitectWorkspace,
+	createExampleDraft,
 	decisionExampleDraft,
 	defaultToolSpec,
-	demoToolSpecs,
+	type StudioDraft,
 	type StudioWorkspace,
 } from '@theoremjs/studio';
 import { StudioTreeMap } from '@theoremjs/studio/ui/tree-map.tsx';
@@ -14,11 +15,11 @@ import type { PackagesPull } from './packages-pull';
 const still = () => 0;
 /** The decision example's model, named for the picture as the architect's are. */
 const JEV = 'Jev 1.14';
-/** The narrator's speech model, named for the picture as the architect's are. */
-const VOICE = 'Gemini 4 TTS';
+/** The tools the architect and the travel concierge both allow, drawn first of their types. */
+const SHARED = ['wikipedia_summary', 'search_web', 'convert_units'];
 const unwatched = () => () => {};
 
-/** The architect's three models, renamed for the picture: one on Gemini, two through OpenRouter, each in its provider's protocol. */
+/** The examples' three models, renamed for the picture: one on Gemini, two through OpenRouter, each in its provider's protocol. */
 const MODELS = [
 	{ modelId: 'Gemini 4', provider: 'gemini', protocol: 'geminiInteractions', apiId: 'gemini-4' },
 	{
@@ -35,12 +36,22 @@ const MODELS = [
 	},
 ];
 
+/** An example text agent on the picture's models. */
+function renamed<T extends Pick<StudioDraft, 'modelBindings' | 'models'>>(agent: T): T {
+	return {
+		...agent,
+		modelBindings: agent.modelBindings.map((binding, index) => ({ ...binding, ...MODELS[index] })),
+		models: { ...agent.models, defaultModel: MODELS[1]?.modelId ?? '' },
+	};
+}
+
 /**
- * The code architect, through OpenRouter, so the map shows a provider and a runner it shares. The
- * architect calls the decision agent as an agent tool, make_decision, and allows its unit
- * converter, so its tools hold one of each type. Its narrate tool is left out. Closed, the map
- * shows the architect, the narrator and the decision agent, each whole, with their models and
- * tools; grown, the architect alone, the decision agent under make_decision.
+ * The code architect and the travel concierge, both through OpenRouter, so the map shows a provider
+ * and a runner they share. The architect calls the decision agent as an agent tool, make_decision,
+ * and allows the concierge's unit converter, so its tools hold one of each type; the narrator and
+ * its narrate tool are left out. The first of each type is one both allow. Closed, the map shows
+ * the architect, the concierge and the decision agent, each whole, with their models and tools;
+ * grown, the architect alone, the decision agent under make_decision.
  */
 function pictureWorkspace(): {
 	workspace: StudioWorkspace;
@@ -49,41 +60,25 @@ function pictureWorkspace(): {
 } {
 	const base = createArchitectWorkspace();
 	const narrate = base.toolSpecs.find((tool) => tool.toolType === 'agent');
-	const architect = base.agents[0];
 	const trimmed: StudioWorkspace = {
 		...base,
-		agents: base.agents.map((agent) =>
-			agent === architect
-				? {
-						...agent,
-						modelBindings: agent.modelBindings.map((binding, index) => ({
-							...binding,
-							...MODELS[index],
-						})),
-						models: { ...agent.models, defaultModel: MODELS[1]?.modelId ?? '' },
-						tools: {
-							...agent.tools,
-							allow: agent.tools.allow.filter((key) => key !== narrate?.key),
-						},
-					}
-				: agent.identity.profileType === 'speech'
-					? {
-							...agent,
-							modelBindings: agent.modelBindings.map((binding) => ({
-								...binding,
-								modelId: VOICE,
-							})),
-							models: { ...agent.models, defaultModel: VOICE },
-						}
-					: agent,
-		),
-		// why: The map draws the first allowed tool of each type; the repo's file reader, beside its docs.
+		agents: base.agents
+			.filter((agent) => agent.key !== narrate?.agentKey)
+			.map((agent) =>
+				renamed({
+					...agent,
+					tools: {
+						...agent.tools,
+						allow: agent.tools.allow.filter((key) => key !== narrate?.key),
+					},
+				}),
+			),
 		toolSpecs: base.toolSpecs
 			.filter((tool) => tool !== narrate)
-			.sort(
-				(a, b) => Number(b.toolName === 'read_repo_file') - Number(a.toolName === 'read_repo_file'),
-			),
+			.sort((a, b) => Number(SHARED.includes(b.toolName)) - Number(SHARED.includes(a.toolName))),
 	};
+	const architect = trimmed.agents[0];
+	const withConcierge = addAgent(trimmed, renamed(createExampleDraft()));
 	const jev = decisionExampleDraft();
 	const throughOpenRouter = {
 		...jev,
@@ -98,24 +93,23 @@ function pictureWorkspace(): {
 		models: { ...jev.models, defaultModel: JEV },
 	};
 	// why: The decision agent stands last, so it rises into place under make_decision past the fewest rows.
-	const all = addAgent(trimmed, throughOpenRouter);
-	const decision = all.agents.at(-1) ?? architect;
+	const all = addAgent(withConcierge, throughOpenRouter);
+	const decision = all.agents.at(-1);
 	const ask = defaultToolSpec({
 		toolName: 'make_decision',
 		toolType: 'agent',
-		agentKey: decision.key,
+		agentKey: decision?.key ?? '',
 		description: 'Asks the decision agent to make a call.',
 		activity: 'Making a decision',
 		activityPast: 'Made a decision',
 		category: 'demo',
 	});
-	// A function tool: the architect's own tools are http and mcp, so the converter is added here.
-	const convertSeed = demoToolSpecs().find((seed) => seed.data.toolName === 'convert_units');
-	const convert = convertSeed ? defaultToolSpec(convertSeed.data) : undefined;
+	// A function tool: the architect's own tools are http and mcp, so it allows the concierge's converter.
+	const convert = all.toolSpecs.find((tool) => tool.toolName === 'convert_units');
 	const workspace: StudioWorkspace = {
 		...all,
 		agents: all.agents.map((agent) =>
-			agent.key === architect.key
+			agent.key === architect?.key
 				? {
 						...agent,
 						tools: {
@@ -125,11 +119,11 @@ function pictureWorkspace(): {
 					}
 				: agent,
 		),
-		toolSpecs: [...all.toolSpecs, ...(convert ? [convert] : []), ask],
+		toolSpecs: [...all.toolSpecs, ask],
 	};
 	return {
 		workspace,
-		agents: [architect.key],
+		agents: [architect?.key ?? ''],
 		still: workspace.agents.map((agent) => agent.key),
 	};
 }
