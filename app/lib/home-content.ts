@@ -61,25 +61,25 @@ export const PACKAGE_TILES = [
 		id: 'agents',
 		title: 'Agents',
 		description:
-			"The kernel. A `profile` states what an agent may use, accept, and return. Every turn runs against it, and what it doesn't state is refused.",
+			"The kernel. An agent's `profile` states what it may use, take in, and return. Every turn is held to it, and anything it leaves out is refused.",
 		packages: ['agents'],
 		docs: '/docs/start',
-	},
-	{
-		id: 'studio',
-		title: 'Studio',
-		description:
-			'Build, test, demo, and evaluate agents in your own project, low-code. Edit a `profile` as a form or as code, then run it beside the editor.',
-		packages: ['studio'],
-		docs: `${REPO_URL}/blob/main/studio/README.md`,
 	},
 	{
 		id: 'interface',
 		title: 'Interface',
 		description:
-			'Headless. `Web` serves a `profile` and reads it in the browser, with no framework. `React` adds hooks, and ready-made UIs built on Astryx and StyleX.',
+			'Your agents, headless. `Web` serves them to any framework, or none. `React` builds on it with hooks, and with UIs on Astryx and StyleX.',
 		packages: ['web', 'react'],
 		docs: '/docs/interface',
+	},
+	{
+		id: 'studio',
+		title: 'Studio',
+		description:
+			'A low-code workspace for agents, in your own project. Build, test, and evaluate an agent and every change to it, as a form or as code.',
+		packages: ['studio'],
+		docs: `${REPO_URL}/blob/main/studio/README.md`,
 	},
 ] as const satisfies readonly {
 	id: string;

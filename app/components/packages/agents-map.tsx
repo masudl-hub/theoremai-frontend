@@ -1,5 +1,11 @@
 import { Card } from '@astryxdesign/core/Card';
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
+import type { IconType } from '@astryxdesign/core/Icon';
+import {
+	IconBroadcast,
+	IconFileTypePdf,
+	IconPhoto,
+} from '@tabler/icons-react';
 import {
 	addAgent,
 	createArchitectWorkspace,
@@ -7,10 +13,19 @@ import {
 	type StudioDraft,
 	type StudioWorkspace,
 } from '@theoremjs/studio';
-import { goneAt } from '@theoremjs/studio/ui/lib/tree-map-layout.ts';
+import { goneAt, settledAt } from '@theoremjs/studio/ui/lib/tree-map-layout.ts';
+import { AGENT_ICON, profileTypeIcon } from '@theoremjs/studio/ui/lib/type-icons.ts';
+import { MapToken } from '@theoremjs/studio/ui/map-token.tsx';
 import { StudioTreeMap } from '@theoremjs/studio/ui/tree-map.tsx';
-import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import type { PackagesPull } from './packages-pull';
+import {
+	type CSSProperties,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from 'react';
+import type { PackagesReveal } from './packages-pull';
 import { foldedProfile } from './profile-code';
 
 const still = () => 0;
@@ -44,19 +59,41 @@ const MODELS = [
 	},
 ];
 
-/** The architect on the picture's models. */
-function renamed<T extends Pick<StudioDraft, 'modelBindings' | 'models'>>(agent: T): T {
+/**
+ * The four tools the picture's architect allows, so the code shows what its profile holds under them.
+ * why: In the order the map draws them, by type, so none crosses another as they glide into it.
+ */
+const TOOLS = ['convert_units', 'wikipedia_summary', 'ask_repo_docs', 'narrate'];
+
+/**
+ * The architect on the picture's models, on its default one and to the kernel's step limit, taking
+ * images and PDFs and streaming its reply over SSE.
+ */
+function renamed<T extends Pick<StudioDraft, 'modelBindings' | 'models' | 'inputs' | 'outputs'>>(
+	agent: T,
+): T {
 	return {
 		...agent,
+		inputs: {
+			...agent.inputs,
+			attachmentsAccept: ['image/*', 'application/pdf'],
+			voiceAccept: [],
+		},
+		outputs: { ...agent.outputs, streamMode: 'sse' },
 		modelBindings: agent.modelBindings.map((binding, index) => ({ ...binding, ...MODELS[index] })),
-		models: { ...agent.models, defaultModel: MODELS[1]?.modelId ?? '' },
+		models: {
+			...agent.models,
+			defaultModel: MODELS[1]?.modelId ?? '',
+			allowModelSelect: false,
+			maxSteps: null,
+		},
 	};
 }
 
 /**
- * The code architect and its narrator, the architect on the picture's three models. It allows the
- * travel concierge's unit converter too, so its tools hold one of each type: http, mcp, function
- * and the agent tool narrate, under which the map draws the narrator grown.
+ * The code architect and its narrator, the architect on the picture's three models and four tools.
+ * It allows the travel concierge's unit converter too, so its tools hold one of each type: http,
+ * mcp, function and the agent tool narrate, under which the map draws the narrator grown.
  */
 function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 	const base = createArchitectWorkspace();
@@ -64,6 +101,7 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 	const convert = addAgent(base, createExampleDraft()).toolSpecs.find(
 		(tool) => tool.toolName === 'convert_units',
 	);
+	const toolSpecs = [...base.toolSpecs, ...(convert ? [convert] : [])];
 	const workspace: StudioWorkspace = {
 		...base,
 		agents: base.agents.map((agent) =>
@@ -72,18 +110,55 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 						...agent,
 						tools: {
 							...agent.tools,
-							allow: [...agent.tools.allow, ...(convert ? [convert.key] : [])],
+							allow: TOOLS.flatMap((name) =>
+								[...agent.tools.allow, ...(convert ? [convert.key] : [])].filter(
+									(key) => toolSpecs.find((spec) => spec.key === key)?.toolName === name,
+								),
+							),
 						},
 					})
 				: agent,
 		),
-		toolSpecs: [...base.toolSpecs, ...(convert ? [convert] : [])],
+		toolSpecs,
 	};
 	return { workspace, agents: [architect?.key ?? ''] };
 }
 
+/** The mark of each file type the picture's inputs take. */
+const MIME_ICONS: Record<string, IconType> = {
+	'image/*': IconPhoto,
+	'application/pdf': IconFileTypePdf,
+};
+
+/** A name the code shows as a token that the map does not draw. */
+interface CodeToken {
+	id: string;
+	label: string;
+	icon: IconType;
+}
+
 /**
- * The card's box opened, at a pull of 1: the share of the tile `.packages-map` takes then, of the
+ * The agent's own tokens in the code: its type, with the mark the map gives the agent, what its
+ * inputs take, and how its reply streams.
+ */
+function codeTokens(workspace: StudioWorkspace, agentKey: string): CodeToken[] {
+	const agent = workspace.agents.find((each) => each.key === agentKey);
+	if (!agent) return [];
+	const type = agent.identity.profileType;
+	const accepts = [...agent.inputs.attachmentsAccept, ...agent.inputs.voiceAccept];
+	const stream = agent.outputs.streamMode;
+	return [
+		...(type ? [{ label: type, icon: profileTypeIcon(type) ?? AGENT_ICON }] : []),
+		...accepts.flatMap((mime) => {
+			const icon = MIME_ICONS[mime];
+			return icon ? [{ label: mime, icon }] : [];
+		}),
+		...(stream ? [{ label: stream, icon: IconBroadcast }] : []),
+	].map((token) => ({ ...token, id: `code:${token.label}` }));
+}
+
+/**
+ * The card's box opened: the share of the tile `.packages-map` takes then, of the
  * tile at two thirds of the row.
  * invariant: Two thirds as `--packages-two-thirds` has it in packages.css, net of the one gap.
  */
@@ -181,23 +256,27 @@ function columnAt(line: HTMLElement, column: number): { x: number; y: number } {
 
 /**
  * The agents tile's card: the code architect's profile, the module the studio writes for it, folded
- * as an editor folds it, with the map's own tokens standing in for the names the map draws. As the
- * run pulls, the code goes and those tokens glide into the map, which grows round them: the
+ * as an editor folds it, with the map's own tokens standing in for the names the map draws. As it
+ * opens, the code goes and those tokens glide into the map, which grows round them: the
  * profile's rows out of its agent, and what feeds the tree into its columns. Grown, the map fills
  * the card it stands in. Its tokens drag where they are dropped, and the map with them.
  */
-export default function AgentsMap({ pull }: { pull?: PackagesPull }) {
+export default function AgentsMap({ reveal }: { reveal?: PackagesReveal }) {
 	const [{ workspace, agents }] = useState(pictureWorkspace);
 	const [lines] = useState(() => foldedProfile(workspace, agents[0] ?? ''));
-	const grow = useSyncExternalStore(pull?.subscribe ?? unwatched, pull?.get ?? still, still);
+	const grow = useSyncExternalStore(reveal?.subscribe ?? unwatched, reveal?.get ?? still, still);
 	const card = useRef<HTMLDivElement>(null);
 	const codeRef = useRef<HTMLDivElement>(null);
 	const [fit, setFit] = useState<{ width: number; height: number }>();
 	const [names, setNames] = useState<Name[]>([]);
 	const [closed, setClosed] = useState<ReadonlyMap<string, { x: number; y: number }>>();
+	const [tokens] = useState(() => codeTokens(workspace, agents[0] ?? ''));
+	const [tokenPlaces, setTokenPlaces] = useState<ReadonlyMap<string, { x: number; y: number }>>(
+		new Map(),
+	);
 	const { code, at } = useMemo(() => withRoom(lines, names), [lines, names]);
 	// why: The map fills the card as it stands opened, which only the page's size changes; measured
-	// as it pulls, it would refit on every frame.
+	// as it opens, it would refit on every frame.
 	useLayoutEffect(() => {
 		const row = card.current?.closest('.packages-row');
 		const measure = () => {
@@ -244,22 +323,24 @@ export default function AgentsMap({ pull }: { pull?: PackagesPull }) {
 		if (!root || !map || names.length === 0) return;
 		const origin = offsetIn(map, root);
 		const places = new Map<string, { x: number; y: number }>();
+		const inCode = new Map<string, { x: number; y: number }>();
 		for (const name of names) {
 			const line = codeRef.current?.querySelector<HTMLElement>(
 				`[data-line="${String(name.line + 1)}"]`,
 			);
 			const column = at.get(name);
 			if (!line || column === undefined) continue;
-			const { x, y } = offsetIn(line, root);
 			const glyph = columnAt(line, column);
-			places.set(name.id, {
-				x: x + glyph.x + (name.inset ?? 0) - origin.x,
-				y: y + glyph.y - origin.y,
-			});
+			const own = tokens.some((token) => token.id === name.id);
+			const { x, y } = offsetIn(line, own && codeRef.current ? codeRef.current : root);
+			const place = { x: x + glyph.x + (name.inset ?? 0), y: y + glyph.y };
+			if (own) inCode.set(name.id, place);
+			else places.set(name.id, { x: place.x - origin.x, y: place.y - origin.y });
 		}
 		setClosed(places);
-	}, [names, at]);
-	// why: The code is gone in half the pull what the map takes away takes, before the tokens are far from it.
+		setTokenPlaces(inCode);
+	}, [names, at, tokens]);
+	// why: The code is gone in half the time what the map takes away takes, before the tokens are far from it.
 	const gone = goneAt(grow * 2);
 	return (
 		<Card
@@ -270,6 +351,8 @@ export default function AgentsMap({ pull }: { pull?: PackagesPull }) {
 			className="packages-map"
 			// why: Until its tokens have their places in the code, the map would stand over it whole.
 			data-placed={closed ? '' : undefined}
+			// why: The card opens as the map's frame does, on one curve, so the map never outruns it.
+			style={{ '--packages-open': settledAt(grow) } as CSSProperties}
 			aria-hidden
 		>
 			<div
@@ -288,6 +371,21 @@ export default function AgentsMap({ pull }: { pull?: PackagesPull }) {
 					highlightMode="spans"
 					width="100%"
 				/>
+				{tokens.map(({ id, label, icon }) => {
+					const place = tokenPlaces.get(id);
+					return (
+						<MapToken
+							key={id}
+							id={id}
+							label={label}
+							icon={icon}
+							x={place?.x ?? 0}
+							y={place?.y ?? 0}
+							// why: Unplaced, it is only there to be measured.
+							style={place ? undefined : { visibility: 'hidden' }}
+						/>
+					);
+				})}
 			</div>
 			<StudioTreeMap
 				workspace={workspace}

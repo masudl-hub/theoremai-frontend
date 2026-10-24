@@ -22,7 +22,7 @@ import { stillRenditions } from '../../lib/stills';
 import { useScrollStops } from '../home-scroll-stops';
 import { openedOn, useDrawn } from '../opening-screen';
 import { Statement } from '../statement';
-import { createPackagesPull } from './packages-pull';
+import { createPackagesPull, createPackagesReveal } from './packages-pull';
 import '../install-copy.css';
 import './packages.css';
 
@@ -221,12 +221,14 @@ function useArrival() {
 /**
  * The packages and their run: one screen of travel after them. Scroll holds the screen, and the Agents
  * still widens to the larger side of the golden ratio on the left as the others leave, its words
- * and shade fading; once it rests there, its map draws more. The pull is 0 on the packages and 1 on agents.
+ * and shade fading; its map opens on a clock of its own as the scroll heads there. The pull is 0 on
+ * the packages and 1 on agents.
  */
 function usePackagesRun(scrollRoot: RefObject<HTMLElement | null>) {
 	const runRef = useRef<HTMLElement>(null);
 	const [isOpen, setIsOpen] = useState(false);
 	const [pull] = useState(createPackagesPull);
+	const [reveal] = useState(() => createPackagesReveal(pull));
 	const onPull = useCallback(
 		(run: HTMLElement, value: number) => {
 			run.style.setProperty('--packages-pull', String(value));
@@ -253,12 +255,12 @@ function usePackagesRun(scrollRoot: RefObject<HTMLElement | null>) {
 		onRest,
 		onClear,
 	});
-	return { runRef, isOpen, pull };
+	return { runRef, isOpen, reveal };
 }
 
 /** The screen after the goals: the packages, one tall still each. Each names its package, says what it is, and installs it. */
 export function PackagesBoard({ scrollRoot }: { scrollRoot: RefObject<HTMLElement | null> }) {
-	const { runRef, isOpen, pull } = usePackagesRun(scrollRoot);
+	const { runRef, isOpen, reveal } = usePackagesRun(scrollRoot);
 	const frameRef = useArrival();
 	const rowRef = useRef<HTMLUListElement>(null);
 	useStillsHold(rowRef);
@@ -286,7 +288,7 @@ export function PackagesBoard({ scrollRoot }: { scrollRoot: RefObject<HTMLElemen
 										loading="lazy"
 										style={{ objectPosition: still.position }}
 									/>
-									<LateLive id={id} {...(id === 'agents' ? { props: { pull } } : {})} />
+									<LateLive id={id} {...(id === 'agents' ? { props: { reveal } } : {})} />
 									<div className="packages-words">
 										<div className="packages-head">
 											<Heading level={2} type="display-3" className="packages-name">

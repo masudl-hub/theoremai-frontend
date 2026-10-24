@@ -103,11 +103,11 @@
 	position: absolute;
 	z-index: -2;
 	/* Opened, the card comes in from the tile's crop to fill it, where the words were too, in the
-	   middle of the tile. */
-	top: calc(16% + ((1 - var(--packages-map-open-height)) * 50% - 16%) * var(--packages-pull, 0));
-	left: calc(18% + ((1 - var(--packages-map-open-width)) * 50% - 18%) * var(--packages-pull, 0));
-	width: calc(38rem + (100% * var(--packages-map-open-width) - 38rem) * var(--packages-pull, 0));
-	height: calc(75% + (100% * var(--packages-map-open-height) - 75%) * var(--packages-pull, 0));
+	   middle of the tile. `--packages-open` is set by the map, as it opens. */
+	top: calc(16% + ((1 - var(--packages-map-open-height)) * 50% - 16%) * var(--packages-open, 0));
+	left: calc(18% + ((1 - var(--packages-map-open-width)) * 50% - 18%) * var(--packages-open, 0));
+	width: calc(38rem + (100% * var(--packages-map-open-width) - 38rem) * var(--packages-open, 0));
+	height: calc(88% + (100% * var(--packages-map-open-height) - 88%) * var(--packages-open, 0));
 	border-radius: var(--radius-container);
 	overflow: hidden;
 }
@@ -288,7 +288,7 @@
 }
 
 .packages-code [data-line] {
-	line-height: 24px;
+	line-height: 22px;
 }
 
 .packages-map:not([data-placed]) .studio-tree-map {
