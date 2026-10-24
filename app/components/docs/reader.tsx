@@ -1,4 +1,3 @@
-import { Card } from '@astryxdesign/core/Card';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
 import { IconButton } from '@astryxdesign/core/IconButton';
@@ -17,15 +16,7 @@ import { Token } from '@astryxdesign/core/Token';
 import { MediaTheme } from '@astryxdesign/core/theme';
 import { VStack } from '@astryxdesign/core/VStack';
 import { IconBrandGithub, IconMenu2, IconSearch } from '@tabler/icons-react';
-import {
-	type CSSProperties,
-	type ReactNode,
-	useEffect,
-	useLayoutEffect,
-	useMemo,
-	useRef,
-	useState,
-} from 'react';
+import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
 import { chapterIcon } from '../../lib/docs/chapter-icons';
 import {
@@ -38,13 +29,11 @@ import { articleHref, chapterNeighbors, type DocSearchHit } from '../../lib/docs
 import type { DocArticle, DocShell, DocTreeNode } from '../../lib/docs/schema';
 import { useDocsSearch } from '../../lib/docs/use-docs-search';
 import { warmDocsSearch } from '../../lib/docs/warm-docs-search';
-import { stillRenditions } from '../../lib/stills';
 import { NewTabLink } from '../links';
 import { holdDocsArticleTransition } from './article-transition';
 import { DocsBody } from './body';
 import { CopyIconButton } from './copy-button';
 import { Glossary } from './glossary';
-import '../hero-video.css';
 
 const SEARCH_LIMIT = 64;
 /** The kernel repo the site rail links; chapter `entry` paths are relative to it. */
@@ -464,52 +453,29 @@ function CopyMarkdownButton({ article }: { article: DocArticle }) {
 	);
 }
 
-function ArticleStill({ article }: { article: DocArticle }) {
-	const cover = article.cover;
+function ArticleHeader({ article }: { article: DocArticle }) {
 	const updated = formatDay(article.dateModified);
 	const source = `${KERNEL_GITHUB}/${article.entry}`;
-	const stillPaint = {
-		'--still-image': `url("${stillRenditions(cover.src).full}")`,
-		'--still-position': cover.position,
-		'--still-filter': cover.filter,
-	} as CSSProperties;
 
 	return (
-		<VStack className="docs-still">
-			<Card padding={0} height="100%">
-				<div className="hero-video-frame">
-					<div aria-hidden className="docs-still-paint" style={stillPaint} />
-					<div className="hero-scrim">
-						<VStack height="100%" justify="end" gap={2} padding={4}>
-							<MediaTheme mode="dark">
-								<Heading level={1} hasCapsize>
-									{article.title}
-								</Heading>
-							</MediaTheme>
-							<HStack gap={2} wrap="wrap" vAlign="center">
-								{updated ? <Token label={updated} /> : null}
-								{article.slug === 'glossary' ? null : (
-									<Token label={`${String(article.ttrMinutes)} min`} />
-								)}
-								<MediaTheme mode="dark">
-									<HStack gap={2} vAlign="center">
-										<CopyMarkdownButton article={article} />
-										<IconButton
-											label="Source on GitHub"
-											tooltip="Source on GitHub"
-											variant="ghost"
-											size="sm"
-											icon={<IconBrandGithub />}
-											href={source}
-											as={NewTabLink}
-										/>
-									</HStack>
-								</MediaTheme>
-							</HStack>
-						</VStack>
-					</div>
-				</div>
-			</Card>
+		<VStack gap={2}>
+			<Heading level={1}>{article.title}</Heading>
+			<HStack gap={2} wrap="wrap" vAlign="center">
+				{updated ? <Token label={updated} /> : null}
+				{article.slug === 'glossary' ? null : <Token label={`${String(article.ttrMinutes)} min`} />}
+				<HStack gap={2} vAlign="center">
+					<CopyMarkdownButton article={article} />
+					<IconButton
+						label="Source on GitHub"
+						tooltip="Source on GitHub"
+						variant="ghost"
+						size="sm"
+						icon={<IconBrandGithub />}
+						href={source}
+						as={NewTabLink}
+					/>
+				</HStack>
+			</HStack>
 		</VStack>
 	);
 }
@@ -615,10 +581,10 @@ export function DocsReader({ shell, article }: { shell: DocShell; article: DocAr
 	return (
 		<DocsFrame shell={shell} article={article} hashId={hashId} onSection={selectSection}>
 			<LayoutContent ref={contentRef} padding={0} className="docs-reader">
-				<ArticleStill article={article} />
-				<HStack className="docs-article" align="start">
+				<HStack className="docs-article" align="start" justify="center">
 					<StackItem size="fill">
 						<VStack gap={6} padding={8} className="docs-prose">
+							<ArticleHeader article={article} />
 							<DocsBody article={article} />
 							<Glossary symbols={article.symbols} />
 							<ChapterNeighbors prev={prev} next={next} />
