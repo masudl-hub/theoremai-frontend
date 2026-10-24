@@ -28,7 +28,7 @@ export function createPackagesPull(): PackagesPull {
 export type PackagesReveal = Pick<PackagesPull, 'get' | 'subscribe'>;
 
 /** How long the agents map takes to open whole: the card grows, then the map draws out from its agent. */
-const REVEAL_MS = 3800;
+const REVEAL_MS = 6400;
 /** How long it takes to close whole, faster: the way back is not something to watch. */
 const CLOSE_MS = 900;
 
