@@ -59,7 +59,7 @@ import {
 	type StudioSeedId,
 	type SymbolRow,
 } from './schema';
-import { compileSeedSource } from './seeds';
+import { compileSeedSource, compileSliceSource } from './seeds';
 import { ttrMinutesFromText } from './text-format';
 import { unionMembers } from './union-docs';
 
@@ -222,13 +222,16 @@ function fenceSeed(slug: string, name: string | undefined): StudioSeedId | undef
 	return name;
 }
 
-/** Throws on a fence language, meta, frame or seed the reader and the checks do not know. */
+/** Throws on a fence language, meta, frame, seed or slice the reader and the checks do not know. */
 function assertFence(slug: string, fence: Fence): void {
 	if (!isOneOf(FENCE_LANGUAGES, fence.lang)) {
 		throw new Error(`${slug} has a fence in "${fence.lang}"; use ${FENCE_LANGUAGES.join(', ')}`);
 	}
-	const { frame, seed, ...unknown } = fence.meta;
-	if (Object.keys(unknown).length > 0 || (fence.lang !== 'ts' && (frame ?? seed) !== undefined)) {
+	const { frame, seed, slice, ...unknown } = fence.meta;
+	if (
+		Object.keys(unknown).length > 0 ||
+		(fence.lang !== 'ts' && (frame ?? seed ?? slice) !== undefined)
+	) {
 		throw new Error(`${slug} has a ${fence.lang} fence with meta it cannot take`);
 	}
 	if (frame !== undefined && !isOneOf(SNIPPET_FRAMES, frame)) {
@@ -236,13 +239,20 @@ function assertFence(slug: string, fence: Fence): void {
 	}
 }
 
-/** The chapter's Markdown with each `ts seed=<id>` fence filled with that seed's program. */
+/** The chapter's Markdown with each `ts seed=<id>` or `ts slice=<spec>` fence filled from the cookbook store. */
 function resolveBody(chapter: Chapter): string {
 	const { slug, markdown } = chapter;
 	let body = markdown;
 	// Last fence first, so the earlier offsets stay true while the text grows.
 	for (const fence of markdownFences(markdown).reverse()) {
 		assertFence(slug, fence);
+		if (fence.meta.slice !== undefined) {
+			if (fence.code.trim() !== '') throw new Error(`${slug}: a slice fence must be empty`);
+			const meta = fence.meta.frame ? `ts frame=${fence.meta.frame}` : 'ts';
+			const program = fenceMarkdown(meta, compileSliceSource(fence.meta.slice).trim());
+			body = `${body.slice(0, fence.start)}${program}${body.slice(fence.end)}`;
+			continue;
+		}
 		const filled = fenceSeed(slug, fence.meta.seed);
 		if (filled === undefined) continue;
 		if (fence.code.trim() !== '') throw new Error(`${slug}: a seed fence must be empty`);

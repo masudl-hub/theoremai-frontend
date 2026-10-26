@@ -1,11 +1,7 @@
 import { Card } from '@astryxdesign/core/Card';
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
 import type { IconType } from '@astryxdesign/core/Icon';
-import {
-	IconBroadcast,
-	IconFileTypePdf,
-	IconPhoto,
-} from '@tabler/icons-react';
+import { IconBroadcast, IconFileTypePdf, IconPhoto } from '@tabler/icons-react';
 import {
 	addAgent,
 	createArchitectWorkspace,
@@ -97,7 +93,8 @@ function renamed<T extends Pick<StudioDraft, 'modelBindings' | 'models' | 'input
  */
 function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 	const base = createArchitectWorkspace();
-	const architect = base.agents[0];
+	const architect = base.agents.find((agent) => agent.identity.agentId === 'code.architect');
+	if (!architect) throw new Error('The picture has no architect.');
 	const convert = addAgent(base, createExampleDraft()).toolSpecs.find(
 		(tool) => tool.toolName === 'convert_units',
 	);
@@ -105,7 +102,7 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 	const workspace: StudioWorkspace = {
 		...base,
 		agents: base.agents.map((agent) =>
-			agent.key === architect?.key
+			agent.key === architect.key
 				? renamed({
 						...agent,
 						tools: {
@@ -121,11 +118,11 @@ function pictureWorkspace(): { workspace: StudioWorkspace; agents: string[] } {
 		),
 		toolSpecs,
 	};
-	return { workspace, agents: [architect?.key ?? ''] };
+	return { workspace, agents: [architect.key] };
 }
 
 /** The mark of each file type the picture's inputs take. */
-const MIME_ICONS: Record<string, IconType> = {
+const MIME_ICONS: Partial<Record<string, IconType>> = {
 	'image/*': IconPhoto,
 	'application/pdf': IconFileTypePdf,
 };
@@ -298,7 +295,7 @@ export default function AgentsMap({ reveal }: { reveal?: PackagesReveal }) {
 			if (!root || !sample) return;
 			const tokens = [...root.querySelectorAll<HTMLElement>('[data-map-token]')];
 			const labels = new Map(
-				tokens.map((token) => [token.textContent?.trim() ?? '', token.dataset.mapToken ?? '']),
+				tokens.map((token) => [token.textContent.trim(), token.dataset.mapToken ?? '']),
 			);
 			const context = document.createElement('canvas').getContext('2d');
 			if (!context) return;

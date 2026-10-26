@@ -116,22 +116,31 @@ export const EXAMPLES: readonly {
 	action: ExampleAction;
 }[] = [
 	{
+		id: 'research',
+		title: 'Research scout',
+		description:
+			'Searches papers, repositories, and model cards. Jev filters each page to the passages that bear on the question, and a check verifies every quote.',
+		image: '/imagery/th30_ceruleanshelf.png',
+		imageAlt: 'Shallow turquoise water meeting deep blue along a reef shelf',
+		action: { kind: 'studio', href: '/studio?cookbook=research' },
+	},
+	{
 		id: 'concierge',
 		title: 'Travel concierge',
 		description:
 			'Plans a trip from what you tell it and from tickets or notes you attach. It uses tools for weather, places, and currency before it answers.',
 		image: '/imagery/th30_wildflowerroad.png',
 		imageAlt: 'A stone path splitting through a meadow of yellow and pink wildflowers',
-		action: { kind: 'studio', href: '/studio' },
+		action: { kind: 'studio', href: '/studio?cookbook=concierge' },
 	},
 	{
-		id: 'harbor',
-		title: 'Harbor',
+		id: 'architect',
+		title: 'Code architect',
 		description:
-			'The front desk for a shipment on hold. It looks up why the shipment is on hold, and can check the weather and the news at the port. It gives one next step.',
-		image: '/imagery/th30_ceruleanshelf.png',
-		imageAlt: 'Shallow turquoise water meeting deep blue along a reef shelf',
-		action: { kind: 'studio', href: '/studio?seed=firstTurn' },
+			'Reads repositories, packages, and framework documentation before advising, and calls a Narrator agent to record spoken briefings.',
+		image: '/imagery/th30_maplecanopies.png',
+		imageAlt: 'Sunlit autumn maple canopies viewed from below',
+		action: { kind: 'studio', href: '/studio?cookbook=architect' },
 	},
 	{
 		id: 'bonsai',

@@ -1,157 +1,74 @@
 /**
- * Studio drafts compiled into docs snippets. Same omit-strip path as the
+ * Studio cookbooks and slices compiled into docs snippets. Same omit-strip path as the
  * studio — never hand-type defineProfile with materialised defaults.
  */
 
 import {
 	compileStudio,
-	createBlankDraft,
-	defaultModelBinding,
-	defaultToolSpec,
-	demoToolSpecs,
-	excludeFacet,
+	createConsoleExampleDraft,
+	createExampleDraft,
+	createGeminiEmbeddingExampleDraft,
+	createLiveExampleDraft,
+	createNarratorExampleDraft,
+	createResearchScoutDraft,
+	createSpanExampleDraft,
+	decisionExampleDraft,
 	ON_OWN_KEYS,
+	RESEARCH_FIRST_TURN_PROMPT,
+	resolveCookbookSlice,
 	type StudioDraft,
-	setProfileType,
 	studioSource,
 } from '@theoremjs/studio';
 import type { StudioSeedId } from './schema';
 
-const HARBOR_SYSTEM = [
-	'You are the Harbor front desk for shippers.',
-	'Use a calm voice and short sentences. Give one clear next step.',
-	'When a file is attached, say what you can use from it before you advise.',
-	'Call harbor_holdStatus when the person names a shipment id.',
-	'Call get_weather with the coordinates of a port when weather can delay a release.',
-	'Call search_web for news about a port, such as a strike or a closure.',
-	'If you cannot help, say so and offer a handoff to a person in operations.',
-].join('\n');
-
-const HARBOR_HOLD_INPUT = JSON.stringify({
-	type: 'object',
-	properties: { shipmentId: { type: 'string' } },
-	required: ['shipmentId'],
-});
-
-const HARBOR_HOLD_OUTPUT = JSON.stringify({
-	type: 'object',
-	properties: {
-		status: { type: 'string' },
-		reason: { type: 'string' },
-	},
-	required: ['status', 'reason'],
-});
-
-const HARBOR_HOLD_STUB = JSON.stringify({
-	status: 'hold',
-	reason: 'Customs needs the commercial invoice PDF.',
-});
-
-const FIRST_TURN_PROMPT = [
-	'Shipment H-1042 is on hold at Rotterdam (51.92, 4.48).',
-	'What is the hold, and can the weather or news at the port delay the release?',
-].join(' ');
-
-function demoSpecs(...names: string[]) {
-	const wanted = new Set(names);
-	return demoToolSpecs()
-		.filter((seed) => wanted.has(seed.data.toolName))
-		.map((seed) => defaultToolSpec(seed.data));
-}
-
-/** The Harbor hold lookup: a function tool, Harbor's own code. */
-function harborHoldToolSpec() {
-	return defaultToolSpec({
-		toolName: 'harbor_holdStatus',
-		description: 'Look up why a Harbor shipment is on hold.',
-		category: 'ops',
-		access: 'read-only',
-		permission: 'auto',
-		loadTier: 'T0',
-		paths: ['*'],
-		inputJson: HARBOR_HOLD_INPUT,
-		outputJson: HARBOR_HOLD_OUTPUT,
-		stubOutputJson: HARBOR_HOLD_STUB,
-	});
-}
-
-/** What the desk accepts in a turn: text, images and PDFs. */
-function harborDeskInputs(): StudioDraft['inputs'] {
-	return {
-		text: true,
-		attachmentsAccept: ['image/*', 'application/pdf'],
-		voiceAccept: [],
-		maxFiles: 4,
-		maxBytes: 5_000_000,
-		maxTurnBytes: 12_000_000,
-		limitsByMimeJson: '',
-		slotsJson: '',
-		contextFrom: [],
-		contextMaxChars: null,
-	};
-}
-
-/**
- * Harbor front desk — Getting started fence.
- * Guardrails stay omitted: resolve-on defaults. Authored `canary: true` would
- * materialise the omit path. Tool id is `harbor_holdStatus` (studio names
- * disallow dots).
- */
+/** The research scout pared to two tools for the `firstTurn` program. */
 function firstTurnDraft(): StudioDraft {
-	let draft = setProfileType(createBlankDraft(), 'text');
-	draft = excludeFacet(draft, 'observability');
+	const scout = createResearchScoutDraft();
 	return {
-		...draft,
-		identity: {
-			agentId: 'harbor.desk',
-			profileType: 'text',
-			handle: 'desk',
-			system: HARBOR_SYSTEM,
-			systemByRoleJson: '',
-		},
-		models: { ...draft.models, defaultModel: 'main', key: '' },
-		modelBindings: [
-			defaultModelBinding({
-				modelId: 'main',
-				provider: 'openrouter',
-				apiId: 'openrouter/free',
-				keySlot: 'openrouter',
-			}),
-		],
-		// One tool of each kind: a function, an HTTP endpoint and an MCP server.
-		toolSpecs: [harborHoldToolSpec(), ...demoSpecs('get_weather', 'search_web')],
-		inputs: harborDeskInputs(),
-		labels: {
-			'error.auth': 'Sign in to Harbor to continue at the desk.',
+		...scout,
+		tools: { ...scout.tools, parallel: false },
+		toolSpecs: scout.toolSpecs
+			.filter(({ toolName }) => toolName === 'search_github' || toolName === 'search_web')
+			.map(({ stageAgentKey: _stage, headersJson: _headers, ...tool }) => tool),
+		outputs: {
+			...scout.outputs,
+			mode: 'text',
+			schemaId: '',
+			schemaJson: '',
+			validationEnabled: false,
+			itemRules: {},
 		},
 	};
 }
 
-/** Getting started wraps the compiled profile with runTurn. */
-function withFirstTurnDoor(source: string, profileId: string): string {
-	const imports = source.replace(
-		/import \{\n((?: {2}\w+,\n)+)\} from '@theoremjs\/agents';/,
-		(_match, names: string) => {
-			const have = new Set([...names.matchAll(/ {2}(\w+),/g)].map((row) => row[1]).filter(Boolean));
-			for (const name of ['runTurn']) have.add(name);
-			const list = [...have].map((name) => `  ${name},`).join('\n');
-			return `import {\n${list}\n} from '@theoremjs/agents';`;
-		},
-	);
-	if (imports === source) {
-		throw new Error('DOCS_SEEDS.firstTurn: could not patch @theoremjs/agents imports');
-	}
-	return `${imports}
-export async function firstTurn(apiKey: string) {
+/** Wraps a compiled text profile with a `runTurn` entrypoint. */
+function withTurnDoor(exportName: string, prompt: string, keySlot = 'gemini') {
+	return (source: string, profileId: string): string => {
+		const imports = source.replace(
+			/import \{\n((?: {2}\w+,\n)+)\} from '@theoremjs\/agents';/,
+			(_match, names: string) => {
+				const have = new Set(
+					[...names.matchAll(/ {2}(\w+),/g)].map((row) => row[1]).filter(Boolean),
+				);
+				for (const name of ['runTurn']) have.add(name);
+				const list = [...have].map((name) => `  ${name},`).join('\n');
+				return `import {\n${list}\n} from '@theoremjs/agents';`;
+			},
+		);
+		if (imports === source) {
+			throw new Error(`DOCS_SEEDS.${exportName}: could not patch @theoremjs/agents imports`);
+		}
+		return `${imports}
+export async function ${exportName}(apiKey: string) {
   const hostOptions = {
-    vault: { openrouter: apiKey },
+    vault: { ${keySlot}: apiKey },
   };
 
   for await (const event of runTurn(
     {
       profile: ${JSON.stringify(profileId)},
       input: {
-        text: ${JSON.stringify(FIRST_TURN_PROMPT)},
+        text: ${JSON.stringify(prompt)},
       },
     },
     hostOptions,
@@ -160,7 +77,10 @@ export async function firstTurn(apiKey: string) {
   }
 }
 `;
+	};
 }
+
+const asIs = (source: string): string => source;
 
 /** Each seed's studio draft, the question its program asks, and how its compiled profile is wrapped for the docs fence. */
 const SEEDS: Record<
@@ -171,7 +91,56 @@ const SEEDS: Record<
 		wrap: (source: string, profileId: string) => string;
 	}
 > = {
-	firstTurn: { draft: firstTurnDraft, question: FIRST_TURN_PROMPT, wrap: withFirstTurnDoor },
+	firstTurn: {
+		draft: firstTurnDraft,
+		question: RESEARCH_FIRST_TURN_PROMPT,
+		wrap: withTurnDoor('firstTurn', RESEARCH_FIRST_TURN_PROMPT, 'gemini'),
+	},
+	research: {
+		draft: createResearchScoutDraft,
+		question: RESEARCH_FIRST_TURN_PROMPT,
+		wrap: withTurnDoor('runResearchScout', RESEARCH_FIRST_TURN_PROMPT, 'gemini'),
+	},
+	concierge: {
+		draft: createExampleDraft,
+		question: 'Plan two days in Lisbon in March.',
+		wrap: asIs,
+	},
+	architect: {
+		draft: createExampleDraft,
+		question: 'Compare Cloudflare Workers and AWS Lambda cold starts.',
+		wrap: asIs,
+	},
+	'live-concierge': {
+		draft: createLiveExampleDraft,
+		question: '',
+		wrap: asIs,
+	},
+	decision: {
+		draft: () => decisionExampleDraft(),
+		question: '',
+		wrap: asIs,
+	},
+	'span-decision': {
+		draft: createSpanExampleDraft,
+		question: '',
+		wrap: asIs,
+	},
+	'gemini-embedding-2': {
+		draft: createGeminiEmbeddingExampleDraft,
+		question: '',
+		wrap: asIs,
+	},
+	narrator: {
+		draft: createNarratorExampleDraft,
+		question: 'Welcome to the research briefing.',
+		wrap: asIs,
+	},
+	console: {
+		draft: createConsoleExampleDraft,
+		question: '',
+		wrap: asIs,
+	},
 };
 
 /** The question the seed's program asks, for the studio composer to start with. */
@@ -191,4 +160,9 @@ export function compileSeedSource(seed: StudioSeedId): string {
 	}
 	const { wrap } = SEEDS[seed];
 	return wrap(studioSource(compiled), compiled.agentId);
+}
+
+/** Resolves an atomic cookbook slice (`<cookbook>:profile:<agentId>#<fields>` or `<cookbook>:tool:<name>#<fields>`). */
+export function compileSliceSource(sliceSpec: string): string {
+	return resolveCookbookSlice(sliceSpec);
 }

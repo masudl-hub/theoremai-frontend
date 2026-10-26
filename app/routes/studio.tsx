@@ -1,4 +1,4 @@
-import type { StudioDraft } from '@theoremjs/studio';
+import { COOKBOOK_IDS, COOKBOOKS, type CookbookId, type StudioDraft } from '@theoremjs/studio';
 import { openStudio } from '@theoremjs/studio/ui/lib/studio-open.ts';
 import type { ProjectSession } from '@theoremjs/studio/ui/lib/studio-project.ts';
 import type { StudioHost, StudioOpened } from '@theoremjs/studio/ui/studio-host.ts';
@@ -45,12 +45,24 @@ function isStudioSeed(value: string | null): value is StudioSeedId {
 	return Boolean(value && (STUDIO_SEED_IDS as readonly string[]).includes(value));
 }
 
-/** The studio opens on this tab's kept draft, unless a docs seed or the home page asks for another. */
-export function clientLoader({ request }: Route.ClientLoaderArgs): StudioOpened {
+function isCookbookId(value: string | null): value is CookbookId {
+	return Boolean(value && (COOKBOOK_IDS as readonly string[]).includes(value));
+}
+
+/** The studio opens on this tab's kept draft, unless a cookbook, docs seed, or the home page asks for another. */
+export async function clientLoader({ request }: Route.ClientLoaderArgs): Promise<StudioOpened> {
 	const params = new URL(request.url).searchParams;
 	// The goals screen hands its agent over. The tab's kept draft waits behind Undo, as for a seed.
 	const handed = params.get('from') === 'home' ? takeHomeAgent() : undefined;
 	if (handed) return openStudio({ draft: handed as StudioDraft, question: undefined });
+	const cookbook = params.get('cookbook');
+	if (isCookbookId(cookbook)) {
+		const entry = COOKBOOKS[cookbook];
+		return openStudio({
+			workspace: await entry.createWorkspace(),
+			question: entry.question,
+		});
+	}
 	const seed = params.get('seed');
 	return openStudio(
 		isStudioSeed(seed)

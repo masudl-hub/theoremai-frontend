@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { defineProfile } from '@theoremjs/agents';
 import {
+	COOKBOOK_TOOL_HANDLERS as SITE_TOOL_HANDLERS,
 	compileStudio,
 	compileWorkspace,
 	createArchitectWorkspace,
@@ -11,6 +12,7 @@ import {
 	createLiveExampleDraft,
 	createNarratorExampleDraft,
 	createSpanExampleDraft,
+	firstServed,
 	modelBindingViolation,
 	modelRoute,
 	newDecisionQuestion,
@@ -23,7 +25,6 @@ import {
 import { decisionRequestSchema } from '@theoremjs/studio/server';
 import { SITE_KEYS } from '../app/lib/studio-keys.ts';
 import { ON_SITE as ON_SITE_KEYS } from '../app/lib/studio-supplies.ts';
-import { SITE_TOOL_HANDLERS } from '../app/lib/studio-tool-handlers.ts';
 
 
 /** The decide request the site's keys answer. */
@@ -97,7 +98,9 @@ test('decisions on the site run on TypeSafe or Span only', () => {
 	assert.deepEqual(
 		issues({
 			...draft,
-			modelBindings: [{ ...binding, provider: 'typesafe', apiId: 'jev-latest' }],
+			modelBindings: [
+				{ ...binding, ...firstServed('typesafe', 'decision'), apiId: 'jev-latest' },
+			],
 		}),
 		[],
 	);

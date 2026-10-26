@@ -4,9 +4,9 @@
  * each Gemini model's free quota allows is the Google preset's table.
  */
 import type { DecisionQuestion } from '@theoremjs/agents';
-import { googleFreeTierBuiltins } from '@theoremjs/agents/presets';
 import {
 	firstServed,
+	googleFreeTierBuiltins,
 	KNOWN_GEMINI_EMBEDDING_MODELS,
 	KNOWN_OPENROUTER_EMBEDDING_MODELS,
 	type LentBinding,

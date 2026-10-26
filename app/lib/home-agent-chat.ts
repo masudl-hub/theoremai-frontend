@@ -1,29 +1,12 @@
 /**
- * The exchanges the landing page's chats open on, written here and not run. The server stores one
- * as the visitor's conversation, so the next message is a follow-up.
+ * The exchanges the landing page's chats open on. The goals screen opens on the research
+ * cookbook's recorded `.trace.json` (see `cookbookOpening`); the interface tile still uses the
+ * written exchange below. The server stores one as the visitor's conversation, so the next
+ * message is a follow-up.
  */
 import type { TranscriptBlock } from '@theoremjs/agents/interface';
 
 type ToolCall = Extract<TranscriptBlock, { kind: 'tool' }>['tool'];
-
-/** The goals screen's: one turn with the pared concierge. */
-export const HOME_EXCHANGE: readonly TranscriptBlock[] = [
-	{ id: 'home-ask', kind: 'user-text', text: 'Two days in Lisbon in March. Where should I stay?' },
-	{
-		id: 'home-reply',
-		kind: 'text',
-		text: [
-			'Stay in Chiado.',
-			'',
-			'- You can walk to Baixa, Bairro Alto and the river.',
-			'- Tram 28 and the Baixa-Chiado metro are a few minutes away.',
-			'- It is quieter at night than Bairro Alto.',
-			'',
-			'Tell me your budget and I will name a hotel.',
-		].join('\n'),
-	},
-	{ id: 'home-done', kind: 'turn-done' },
-];
 
 /** When the interface tile's turn ran: a fixed time, so the page draws the same each visit. */
 const AT = Date.UTC(2027, 2, 14, 10, 2);

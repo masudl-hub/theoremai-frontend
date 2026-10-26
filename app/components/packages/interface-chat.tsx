@@ -26,7 +26,10 @@ function useStaged() {
 			const response = await fetch(src, { signal: controller.signal });
 			return new File([await response.blob()], name, { type });
 		};
-		void Promise.all([Promise.all(INTERFACE_COMPOSER.photos.map(read)), read(INTERFACE_COMPOSER.voice)])
+		void Promise.all([
+			Promise.all(INTERFACE_COMPOSER.photos.map(read)),
+			read(INTERFACE_COMPOSER.voice),
+		])
 			.then(([photos, voice]) => ({ photos, voice: [voice] }))
 			.catch(() => ({ photos: [], voice: [] }))
 			.then((files) => {

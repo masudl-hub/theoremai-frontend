@@ -1,9 +1,9 @@
 import { resolveGuardrailPolicy } from '@theoremjs/agents';
 import { DETECTORS } from '@theoremjs/agents/guardrails';
 /**
- * The one agent the goals screen edits and runs: the studio's travel concierge, pared to what a
- * first version has. Its draft, compiler, printer and reader are the studio's own. This file adds
- * the starting draft and what each token changes in it.
+ * The one agent the goals screen edits and runs: the studio's research cookbook (scout and page
+ * reader). Its draft, compiler, printer and reader are the studio's own. This file adds the
+ * starting workspace and what each token changes in it.
  */
 import {
 	agentDraft,
@@ -14,6 +14,10 @@ import {
 	createExampleDraft,
 	createGeminiEmbeddingExampleDraft,
 	createNarratorExampleDraft,
+	createResearchScoutDraft,
+	createResearchWorkspace,
+	defaultModelBinding,
+	firstServed,
 	readStudioSource,
 	type StudioDraft,
 	type StudioIssue,
@@ -31,64 +35,38 @@ import type { GoalTokenId } from './home-goals';
 import { SITE_KEYS } from './studio-keys';
 import { ON_SITE } from './studio-supplies';
 
-const SYSTEM = [
-	'You are a travel concierge.',
-	'Give the recommendation first, in a few short lines.',
-	'Call get_weather before you say anything about the weather.',
-	'When a file is attached, say what you can use from it.',
-].join('\n');
-
 const MEDIA = { attachmentsAccept: ['image/*', 'application/pdf'], voiceAccept: ['audio/*'] };
 const NO_MEDIA = { attachmentsAccept: [], voiceAccept: [] };
-const WEATHER_HOSTS = ['api.open-meteo.com'];
 
-const TRIP_STYLES = JSON.stringify({
-	style: ['budget', 'comfort', 'splurge'],
-	pace: ['relaxed', 'balanced', 'packed'],
+const BRIEF_SLOTS = JSON.stringify({
+	domain: ['memory', 'context', 'retrieval'],
+	depth: ['triage', 'deep'],
 });
 const MEDIA_LIMITS = JSON.stringify({
 	'image/*': 512_000,
 	'application/pdf': 2_000_000,
 	'audio/*': 2_000_000,
 });
-const ITINERARY = JSON.stringify({
+const FINDINGS_SCHEMA = JSON.stringify({
 	type: 'object',
 	properties: {
-		destination: { type: 'string' },
+		topic: { type: 'string' },
 		summary: { type: 'string' },
-		days: {
+		candidates: {
 			type: 'array',
 			items: {
 				type: 'object',
 				properties: {
-					day: { type: 'number' },
-					stops: { type: 'array', items: { type: 'string' } },
+					name: { type: 'string' },
+					url: { type: 'string' },
+					quote: { type: 'string' },
 				},
-				required: ['day', 'stops'],
+				required: ['name', 'url', 'quote'],
 			},
 		},
 	},
-	required: ['destination', 'summary', 'days'],
+	required: ['topic', 'summary', 'candidates'],
 });
-
-function createHomeDraft(): StudioDraft {
-	const concierge = createExampleDraft();
-	return {
-		...concierge,
-		identity: { ...concierge.identity, system: SYSTEM },
-		...modelsFor({ isOpen: false, isPicked: false }),
-		tools: { ...concierge.tools, t2Loader: '' },
-		toolSpecs: concierge.toolSpecs.filter(({ toolName }) => toolName === 'get_weather'),
-		inputs: {
-			...concierge.inputs,
-			...NO_MEDIA,
-			limitsByMimeJson: MEDIA_LIMITS,
-		},
-		// The kernel's own defaults, so each boundary token is a change the file shows.
-		outputs: { ...concierge.outputs, streamMode: 'buffered' },
-		guardrails: { ...createBlankDraft().guardrails, allowedHosts: WEATHER_HOSTS },
-	};
-}
 
 /** The workspace on screen. `text` is the text agent set aside while a picture or a call is on. */
 export type HomeAgent = { workspace: StudioWorkspace; text?: StudioWorkspace };
@@ -136,15 +114,15 @@ function detectEdit(
 const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
 	'trip-brief': {
 		isOn: (draft) =>
-			draft.inputs.slotsJson === TRIP_STYLES && draft.outputs.schemaId === 'itinerary',
+			draft.inputs.slotsJson === BRIEF_SLOTS && draft.outputs.schemaId === 'findings',
 		on: (draft) => ({
 			...draft,
-			inputs: { ...draft.inputs, ...MEDIA, slotsJson: TRIP_STYLES },
+			inputs: { ...draft.inputs, ...MEDIA, slotsJson: BRIEF_SLOTS },
 			outputs: {
 				...draft.outputs,
 				mode: 'structured',
-				schemaId: 'itinerary',
-				schemaJson: ITINERARY,
+				schemaId: 'findings',
+				schemaJson: FINDINGS_SCHEMA,
 			},
 		}),
 		off: (draft) => ({
@@ -156,7 +134,7 @@ const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
 	'approve-tools': {
 		isOn: (draft) =>
 			draft.toolSpecs.some(
-				(tool) => tool.toolName === 'get_weather' && tool.permission === 'always_confirm',
+				(tool) => tool.toolName === 'search_github' && tool.permission === 'always_confirm',
 			),
 		on: (draft) => ({
 			...draft,
@@ -169,12 +147,12 @@ const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
 				},
 			},
 			toolSpecs: draft.toolSpecs.map((tool) =>
-				tool.toolName === 'get_weather'
+				tool.toolName === 'search_github'
 					? {
 							...tool,
 							permission: 'always_confirm',
-							activity: 'Checking the weather',
-							activityPast: 'Weather checked',
+							activity: 'Searching GitHub for {q}',
+							activityPast: 'Searched GitHub for {q}',
 						}
 					: tool,
 			),
@@ -193,9 +171,9 @@ const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
 				},
 			},
 			toolSpecs: draft.toolSpecs.map((tool) => {
-				if (tool.toolName !== 'get_weather') return tool;
-				const original = createExampleDraft().toolSpecs.find(
-					(entry) => entry.toolName === 'get_weather',
+				if (tool.toolName !== 'search_github') return tool;
+				const original = createResearchScoutDraft().toolSpecs.find(
+					(entry) => entry.toolName === 'search_github',
 				);
 				return {
 					...tool,
@@ -237,9 +215,9 @@ const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
 			inputs: {
 				...draft.inputs,
 				attachmentsAccept: [],
-				maxFiles: createExampleDraft().inputs.maxFiles,
-				maxBytes: createExampleDraft().inputs.maxBytes,
-				maxTurnBytes: createExampleDraft().inputs.maxTurnBytes,
+				maxFiles: createResearchScoutDraft().inputs.maxFiles,
+				maxBytes: createResearchScoutDraft().inputs.maxBytes,
+				maxTurnBytes: createResearchScoutDraft().inputs.maxTurnBytes,
 				limitsByMimeJson: MEDIA_LIMITS,
 			},
 		}),
@@ -344,7 +322,8 @@ const typed = (text: StudioWorkspace, type: 'image' | 'live') =>
 						transcriptionInput: true,
 						transcriptionOutput: true,
 						vadActivityHandling: 'START_OF_ACTIVITY_INTERRUPTS',
-						greeting: 'Welcome the traveler to Lisbon and ask what they would like to explore.',
+						greeting:
+							'Greet the researcher and ask which paper, model, or repository they want to investigate.',
 					},
 				},
 	);
@@ -546,8 +525,47 @@ export function conciergePayload(): StudioRunPayload | undefined {
 	return compiled.ok ? compiled.payload : undefined;
 }
 
+/**
+ * Site lent keys allow Gemini `gemini-3.8-flash`, not the cookbook's paid OpenRouter slug
+ * `google/gemini-3.8-flash`. Keep the cookbook system/tools/outputs; swap only the binding.
+ */
+function siteResearchModels(): Pick<StudioDraft, 'models' | 'modelBindings'> {
+	return {
+		models: {
+			defaultModel: 'gemini',
+			allowModelSelect: false,
+			maxSteps: 32,
+			key: 'gemini',
+		},
+		modelBindings: [
+			defaultModelBinding({
+				modelId: 'gemini',
+				...firstServed('gemini', 'text'),
+				apiId: 'gemini-3.8-flash',
+				keySlot: 'gemini',
+				efforts: [
+					{ alias: 'normal', level: 'medium' },
+					{ alias: 'deep', level: 'high' },
+				],
+				defaultEffort: 'normal',
+				allowEffortSelect: true,
+				summaries: true,
+			}),
+		],
+	};
+}
+
 export function createHomeAgent(): HomeAgent {
-	return { workspace: workspaceFromDraft(createHomeDraft()) };
+	const workspace = createResearchWorkspace();
+	const draft = agentDraft(workspace, keyOf(workspace));
+	if (!draft) throw new Error('The goals screen has no agent.');
+	// why: tokens still swap models; start on a site-allowed 3.8 Flash binding.
+	return {
+		workspace: withAgentDraft(workspace, keyOf(workspace), {
+			...draft,
+			...siteResearchModels(),
+		}),
+	};
 }
 
 /** The draft changed by a form of the studio's. Like a file typed by hand, it has no text agent to return to. */

@@ -78,7 +78,7 @@ test('server studio runs a registered OpenRouter provider using the demo vault',
 						type: 'text',
 						identity: { handle: 'Smoke' },
 						models: {
-							main: { protocol: 'openRouter', provider: 'openrouter', apiId: 'openrouter/free', keySlot: 'router' },
+							main: { protocol: 'openRouterOpenAi', provider: 'openrouter', apiId: 'openrouter/free', keySlot: 'router' },
 						},
 						inputs: { text: true },
 						tools: { allow: [] },

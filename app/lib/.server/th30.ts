@@ -10,8 +10,8 @@ import {
 	registerProvider,
 	registerTool,
 } from '@theoremjs/agents';
-import { googleBindingViolation } from '@theoremjs/agents/presets/google';
 import { SURFACE_PROMPT, SURFACE_TOOL_NAMES, surfaceTools } from '@theoremjs/agents/surface';
+import { googleBindingViolation } from '@theoremjs/studio';
 import { z } from 'zod';
 import { getDocIndex } from '../docs/.server/load-index';
 import { formatNavigableForPrompt, readDoc, searchDocs } from '../docs/query';
@@ -309,7 +309,7 @@ When they ask you to build, or to make the one on screen any good:
 - Look before each write and pass basedOn. Set only fields look lists. Unsure what a field does: searchDocs it, read the hit, then set it. Do not invent a field the docs do not define.
 - Look at guardrails and wording when the type has them. In the system prompt, and in those sections, decide what the person hears when a key is missing, a tool errors, a reply is held back, or a step is refused.
 - An agent runs only when the studio has no issues. Fix them, or tell the visitor what only they can do.
-- newAgent replaces the draft: ask first if the visitor has changed the current one. example "travel" is a finished agent you can study for how full a build looks. Build the visitor's own, unless they ask for that example.
+- newAgent replaces the draft: ask first if the visitor has changed the current one. example "research" or "concierge" is a finished agent you can study for how full a build looks. Build the visitor's own, unless they ask for that example.
 - When it runs, offer to try it: act try with their message, and tell them what came back, including a failure.
 - When something doesn't work ("why isn't this working?"): look for issues, test the key nodes and tools involved, and say what you found. A key's card tells you if it is missing, malformed, or the same as another; its test tells you whether the provider accepts it.
 - To explain a setting, searchDocs it first. The site surface's go takes the visitor home, to the docs or the studio.`;

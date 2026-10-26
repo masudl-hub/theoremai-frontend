@@ -25,7 +25,18 @@ export const DOC_SECTIONS = [
 ] as const;
 export type DocSection = (typeof DOC_SECTIONS)[number];
 
-export const STUDIO_SEED_IDS = ['firstTurn'] as const;
+export const STUDIO_SEED_IDS = [
+	'firstTurn',
+	'research',
+	'concierge',
+	'architect',
+	'live-concierge',
+	'decision',
+	'span-decision',
+	'gemini-embedding-2',
+	'narrator',
+	'console',
+] as const;
 export type StudioSeedId = (typeof STUDIO_SEED_IDS)[number];
 
 /** Schema exports that are closed string arrays — derived, not a hand name list. */

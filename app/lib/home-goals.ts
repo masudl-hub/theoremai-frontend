@@ -60,18 +60,18 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 				tokens: [
 					{
 						id: 'trip-brief',
-						label: 'Turn a message into a trip brief',
-						prompt: 'Plan two days in Lisbon.',
-						ask: 'Plan two days in Lisbon using the attached trip brief.',
+						label: 'Turn a research brief into verified findings',
+						prompt: 'Find papers on episodic memory for language models.',
+						ask: 'Find papers on episodic memory for language models using the attached brief.',
 						attachment: '/examples/lisbon-trip-brief.pdf',
-						result: 'The same profile shapes the trip brief and validates the itinerary.',
+						result: 'The same profile shapes the research brief and validates the findings.',
 						line: 'inputs:',
 					},
 					{
 						id: 'approve-tools',
 						label: 'Require approval before a tool runs',
-						prompt: 'Ask about Lisbon’s weather.',
-						ask: 'What is the weather in Lisbon?',
+						prompt: 'Ask to search GitHub repositories.',
+						ask: 'Search GitHub for vector-space memory stores for language models.',
 						line: 'permission:',
 					},
 					{
@@ -106,22 +106,22 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 					{
 						id: 'providers',
 						label: 'Compare models across providers',
-						prompt: 'Choose a model and ask what to pack.',
-						ask: 'What should I pack for Lisbon in March?',
+						prompt: 'Choose a model and ask which benchmarks to check.',
+						ask: 'Which papers describe how language models recombine retrieved context?',
 						line: 'models:',
 					},
 					{
 						id: 'live-call',
-						label: 'Turn the concierge into a live guide',
-						prompt: 'Start a call with your Lisbon guide.',
+						label: 'Turn the scout into a live voice session',
+						prompt: 'Start a call with your research scout.',
 						line: 'live:',
 					},
 					{
 						id: 'decision',
 						label: 'Make a typed decision',
 						description:
-							'Evaluate a proposed tool call using structured state and declared decision criteria.',
-						prompt: 'Describe a proposed tool call and run the decision.',
+							'Ask Jev about a pantry photo using box detection, reference images, and choice criteria.',
+						prompt: 'Inspect the pantry state and run the decision.',
 						line: 'decision:',
 					},
 					{
@@ -144,7 +144,7 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 						label: 'Generate a spoken response',
 						description: 'Turn a written script into audio with a declared speaking style.',
 						prompt: 'Write a short script for the narrator.',
-						ask: 'Welcome to Lisbon. Take your time, explore the side streets, and enjoy the journey.',
+						ask: 'Working memory holds the current turn. Episodic memory stores earlier facts. Vector stores retrieve them by similarity.',
 						line: 'speech:',
 					},
 				],
