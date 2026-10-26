@@ -55,11 +55,55 @@ const lanes = z
 		error: 'a step names a lane the figure does not have',
 	});
 
-const figure = z.union([sequence, lanes]);
+const tokenKind = z.enum([
+	'profile',
+	'model',
+	'tool',
+	'ingress',
+	'egress',
+	'guardrail',
+	'stream',
+	'store',
+	'runner',
+]);
+
+const tokenColor = z.enum(['neutral', 'blue', 'green', 'amber', 'purple', 'red']);
+
+const switchbackStep = z.strictObject({
+	id: z.string().optional(),
+	label: z.string(),
+	token: z
+		.strictObject({
+			label: z.string(),
+			kind: tokenKind.optional(),
+			color: tokenColor.optional(),
+		})
+		.optional(),
+	text: z.string().optional(),
+	badge: z.string().optional(),
+	parts: z.array(part).min(1).optional(),
+});
+
+const switchbackRow = z.strictObject({
+	direction: z.enum(['ltr', 'rtl']).default('ltr'),
+	steps: z.array(switchbackStep).min(1),
+});
+
+const switchback = z.strictObject({
+	kind: z.literal('switchback'),
+	still: still.optional(),
+	caption: z.string(),
+	rows: z.array(switchbackRow).min(1),
+});
+
+const figure = z.union([sequence, lanes, switchback]);
 
 export type DocFigure = z.infer<typeof figure>;
 export type SequenceFigure = z.infer<typeof sequence>;
 export type LanesFigure = z.infer<typeof lanes>;
+export type SwitchbackFigure = z.infer<typeof switchback>;
+export type SwitchbackStep = z.infer<typeof switchbackStep>;
+export type SwitchbackRow = z.infer<typeof switchbackRow>;
 
 /** The figure a `figure` fence holds. Throws on JSON that is not a figure. */
 export function parseFigure(code: string): DocFigure {
@@ -68,6 +112,23 @@ export function parseFigure(code: string): DocFigure {
 
 /** A figure as Markdown a reader without vision can follow: the caption, then each step and its parts. */
 export function figureMarkdown(fig: DocFigure): string {
+	if (fig.kind === 'switchback') {
+		let stepCount = 0;
+		const steps = fig.rows.flatMap((row) =>
+			row.steps.map((each) => {
+				stepCount++;
+				const token = each.token ? ` [${each.token.label}]` : '';
+				const parts = (each.parts ?? []).map((one) => {
+					const text = one.text ? `: ${one.text}` : '';
+					const see = one.chapter ? ` (see /docs/${one.chapter})` : '';
+					return `   - ${one.label}${text}${see}`;
+				});
+				return [`${String(stepCount)}. **${each.label}**${token}: ${each.text ?? ''}`, ...parts].join('\n');
+			}),
+		);
+		return [`**Figure.** ${fig.caption}`, '', ...steps].join('\n');
+	}
+
 	const steps = fig.steps.map((each, at) => {
 		const who = 'lane' in each ? `[${each.lane}] ` : '';
 		const parts = (each.parts ?? []).map((one) => {

@@ -7,12 +7,11 @@ import {
 	compileStudio,
 	createConsoleExampleDraft,
 	createExampleDraft,
+	decisionExampleDraft,
 	createGeminiEmbeddingExampleDraft,
 	createLiveExampleDraft,
 	createNarratorExampleDraft,
 	createResearchScoutDraft,
-	createSpanExampleDraft,
-	decisionExampleDraft,
 	ON_OWN_KEYS,
 	RESEARCH_FIRST_TURN_PROMPT,
 	resolveCookbookSlice,
@@ -117,12 +116,8 @@ const SEEDS: Record<
 		wrap: asIs,
 	},
 	decision: {
+		// why: Docs only need the pantry decision's shape; pictures load when Studio opens the example.
 		draft: () => decisionExampleDraft(),
-		question: '',
-		wrap: asIs,
-	},
-	'span-decision': {
-		draft: createSpanExampleDraft,
 		question: '',
 		wrap: asIs,
 	},

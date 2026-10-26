@@ -35,18 +35,99 @@ import type { GoalTokenId } from './home-goals';
 import { SITE_KEYS } from './studio-keys';
 import { ON_SITE } from './studio-supplies';
 
-const MEDIA = { attachmentsAccept: ['image/*', 'application/pdf'], voiceAccept: ['audio/*'] };
-const NO_MEDIA = { attachmentsAccept: [], voiceAccept: [] };
+const NO_MEDIA = {
+	attachmentsAccept: [] as string[],
+	voiceAccept: [] as string[],
+	maxFiles: null as number | null,
+	maxBytes: null as number | null,
+	maxTurnBytes: null as number | null,
+	limitsByMime: {} as Record<string, number>,
+	slots: [] as StudioDraft['inputs']['slots'],
+};
 
-const BRIEF_SLOTS = JSON.stringify({
-	domain: ['memory', 'context', 'retrieval'],
-	depth: ['triage', 'deep'],
-});
-const MEDIA_LIMITS = JSON.stringify({
-	'image/*': 512_000,
-	'application/pdf': 2_000_000,
-	'audio/*': 2_000_000,
-});
+/** Limits required whenever Goals turns attachments or voice on (base scout leaves them unset). */
+const ATTACH_BUDGET = {
+	maxFiles: 5,
+	maxBytes: 10_485_760,
+	maxTurnBytes: 26_214_400,
+} as const;
+
+/** Images + PDF, no voice, tight size — one MIME demo for the composer. */
+const ATTACH_IMAGES = {
+	attachmentsAccept: ['application/pdf', 'image/png', 'image/jpeg'],
+	voiceAccept: [] as string[],
+	maxFiles: 2,
+	maxBytes: 512_000,
+	maxTurnBytes: 1_024_000,
+	limitsByMime: {
+		'application/pdf': 512_000,
+		'image/png': 256_000,
+		'image/jpeg': 256_000,
+	},
+	slots: [] as StudioDraft['inputs']['slots'],
+};
+
+function citeOrFailOn(draft: StudioDraft): boolean {
+	return (
+		draft.outputs.validationEnabled &&
+		draft.outputs.itemRules.candidates === 'fix' &&
+		draft.outputs.schemaId === 'findings'
+	);
+}
+
+function tripBriefInputsOn(draft: StudioDraft): boolean {
+	const [focus] = draft.inputs.slots;
+	return (
+		draft.inputs.attachmentsAccept.join(',') === 'application/pdf' &&
+		draft.inputs.voiceAccept.join(',') === 'audio/*' &&
+		focus?.name === 'focus' &&
+		focus.label === 'Source Bias'
+	);
+}
+
+/**
+ * Trip-brief inputs: PDF + voice, and one `focus` slot. Choice values are the words a
+ * visitor sees and the words `{focus}` substitutes into the system prompt. The group
+ * label and descriptions are composer-only.
+ */
+const BRIEF_SLOTS: StudioDraft['inputs']['slots'] = [
+	{
+		key: 'slot-focus',
+		name: 'focus',
+		label: 'Source Bias',
+		choices: [
+			{ key: 'choice-any', value: 'Any Source', description: 'Consider all sources.' },
+			{
+				key: 'choice-academic',
+				value: 'Academic Research',
+				description: 'Prefer arXiv and papers.',
+			},
+			{
+				key: 'choice-repos',
+				value: 'Public Repositories',
+				description: 'Prefer GitHub code and docs.',
+			},
+			{
+				key: 'choice-hf',
+				value: 'Hugging Face Open Research',
+				description: 'Prefer Hugging Face model and dataset cards.',
+			},
+		],
+	},
+];
+const BRIEF_FOCUS_LINE =
+	"\n\nSource focus for this turn: {focus}. When Any Source, follow the brief's preferred sources without picking one kind first. When Academic Research, prefer arXiv and papers. When Public Repositories, prefer GitHub READMEs. When Hugging Face Open Research, prefer Hugging Face model and dataset cards.";
+const BRIEF_INPUTS = {
+	attachmentsAccept: ['application/pdf'],
+	voiceAccept: ['audio/*'],
+	...ATTACH_BUDGET,
+	limitsByMime: {
+		'application/pdf': 2_000_000,
+		'audio/*': 2_000_000,
+	},
+	slots: BRIEF_SLOTS,
+};
+
 const FINDINGS_SCHEMA = JSON.stringify({
 	type: 'object',
 	properties: {
@@ -113,114 +194,94 @@ function detectEdit(
 
 const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
 	'trip-brief': {
+		isOn: (draft) => tripBriefInputsOn(draft) && draft.outputs.schemaId === 'findings',
+		on: (draft) => {
+			const baseSystem = createResearchScoutDraft().identity.system;
+			return {
+				...draft,
+				identity: {
+					...draft.identity,
+					system: draft.identity.system.includes('{focus}')
+						? draft.identity.system
+						: `${draft.identity.system || baseSystem}${BRIEF_FOCUS_LINE}`,
+				},
+				inputs: { ...draft.inputs, ...BRIEF_INPUTS },
+				outputs: {
+					...draft.outputs,
+					mode: 'structured',
+					schemaId: 'findings',
+					schemaJson: FINDINGS_SCHEMA,
+				},
+			};
+		},
+		off: (draft) => {
+			const keepFindings = citeOrFailOn(draft);
+			return {
+				...draft,
+				identity: {
+					...draft.identity,
+					system: createResearchScoutDraft().identity.system,
+				},
+				inputs: { ...draft.inputs, ...NO_MEDIA },
+				outputs: keepFindings
+					? draft.outputs
+					: { ...draft.outputs, mode: 'text', schemaId: '', schemaJson: '' },
+			};
+		},
+	},
+	'approve-tools': {
 		isOn: (draft) =>
-			draft.inputs.slotsJson === BRIEF_SLOTS && draft.outputs.schemaId === 'findings',
+			draft.toolSpecs.length > 0 &&
+			draft.toolSpecs.every((tool) => tool.permission === 'always_confirm'),
 		on: (draft) => ({
 			...draft,
-			inputs: { ...draft.inputs, ...MEDIA, slotsJson: BRIEF_SLOTS },
+			toolSpecs: draft.toolSpecs.map((tool) => ({ ...tool, permission: 'always_confirm' })),
+		}),
+		off: (draft) => ({
+			...draft,
+			toolSpecs: draft.toolSpecs.map((tool) => ({ ...tool, permission: 'auto' })),
+		}),
+	},
+	'cite-or-fail': {
+		isOn: citeOrFailOn,
+		on: (draft) => ({
+			...draft,
 			outputs: {
 				...draft.outputs,
 				mode: 'structured',
 				schemaId: 'findings',
 				schemaJson: FINDINGS_SCHEMA,
+				validationEnabled: true,
+				maxRetries: 2,
+				itemRules: { ...draft.outputs.itemRules, candidates: 'fix' },
 			},
 		}),
-		off: (draft) => ({
-			...draft,
-			inputs: { ...draft.inputs, ...NO_MEDIA, slotsJson: '' },
-			outputs: { ...draft.outputs, mode: 'text', schemaId: '', schemaJson: '' },
-		}),
-	},
-	'approve-tools': {
-		isOn: (draft) =>
-			draft.toolSpecs.some(
-				(tool) => tool.toolName === 'search_github' && tool.permission === 'always_confirm',
-			),
-		on: (draft) => ({
-			...draft,
-			outputs: { ...draft.outputs, streamMode: 'sse' },
-			guardrails: {
-				...draft.guardrails,
-				detect: {
-					...draft.guardrails.detect,
-					credentials: { ...draft.guardrails.detect.credentials, reply: 'block' },
+		off: (draft) => {
+			const { candidates: _dropped, ...restRules } = draft.outputs.itemRules;
+			const keepSchema = tripBriefInputsOn(draft) && draft.outputs.schemaId === 'findings';
+			return {
+				...draft,
+				outputs: {
+					...draft.outputs,
+					...(keepSchema ? {} : { mode: 'text' as const, schemaId: '', schemaJson: '' }),
+					validationEnabled: false,
+					maxRetries: null,
+					itemRules: restRules,
 				},
-			},
-			toolSpecs: draft.toolSpecs.map((tool) =>
-				tool.toolName === 'search_github'
-					? {
-							...tool,
-							permission: 'always_confirm',
-							activity: 'Searching GitHub for {q}',
-							activityPast: 'Searched GitHub for {q}',
-						}
-					: tool,
-			),
-		}),
-		off: (draft) => ({
-			...draft,
-			outputs: { ...draft.outputs, streamMode: 'buffered' },
-			guardrails: {
-				...draft.guardrails,
-				detect: {
-					...draft.guardrails.detect,
-					credentials: {
-						...draft.guardrails.detect.credentials,
-						reply: createBlankDraft().guardrails.detect.credentials.reply,
-					},
-				},
-			},
-			toolSpecs: draft.toolSpecs.map((tool) => {
-				if (tool.toolName !== 'search_github') return tool;
-				const original = createResearchScoutDraft().toolSpecs.find(
-					(entry) => entry.toolName === 'search_github',
-				);
-				return {
-					...tool,
-					permission: 'auto',
-					activity: original?.activity,
-					activityPast: original?.activityPast,
-				};
-			}),
-		}),
+			};
+		},
 	},
-	'file-types': {
+	'attach-images': {
 		isOn: (draft) =>
-			draft.inputs.attachmentsAccept.join(',') === 'application/pdf,image/png,image/jpeg',
+			draft.inputs.attachmentsAccept.join(',') === 'application/pdf,image/png,image/jpeg' &&
+			draft.inputs.voiceAccept.length === 0 &&
+			draft.inputs.maxFiles === ATTACH_IMAGES.maxFiles &&
+			draft.inputs.maxBytes === ATTACH_IMAGES.maxBytes,
 		on: (draft) => ({
 			...draft,
-			inputs: {
-				...draft.inputs,
-				attachmentsAccept: ['application/pdf', 'image/png', 'image/jpeg'],
-			},
+			inputs: { ...draft.inputs, ...ATTACH_IMAGES },
 		}),
-		off: (draft) => ({ ...draft, inputs: { ...draft.inputs, attachmentsAccept: [] } }),
-	},
-	'file-limits': {
-		isOn: (draft) => draft.inputs.maxFiles === 1 && draft.inputs.maxBytes === 250_000,
-		on: (draft) => ({
-			...draft,
-			inputs: {
-				...draft.inputs,
-				attachmentsAccept: ['application/pdf'],
-				voiceAccept: [],
-				maxFiles: 1,
-				maxBytes: 250_000,
-				maxTurnBytes: 250_000,
-				limitsByMimeJson: JSON.stringify({ 'application/pdf': 250_000 }),
-			},
-		}),
-		off: (draft) => ({
-			...draft,
-			inputs: {
-				...draft.inputs,
-				attachmentsAccept: [],
-				maxFiles: createResearchScoutDraft().inputs.maxFiles,
-				maxBytes: createResearchScoutDraft().inputs.maxBytes,
-				maxTurnBytes: createResearchScoutDraft().inputs.maxTurnBytes,
-				limitsByMimeJson: MEDIA_LIMITS,
-			},
-		}),
+		off: (draft) => ({ ...draft, inputs: { ...draft.inputs, ...NO_MEDIA } }),
 	},
 	'block-secret': detectEdit('credentials', 'reply'),
 	'block-injection': detectEdit('injection', 'tool_output_http'),
@@ -368,7 +429,7 @@ export async function exampleSeed(
 }
 
 /** The input examples: one shows at a time. */
-const INPUT_EXAMPLES: readonly GoalTokenId[] = ['trip-brief', 'file-types', 'file-limits'];
+const INPUT_EXAMPLES: readonly GoalTokenId[] = ['trip-brief', 'attach-images'];
 
 /** The text agent with every field token off and no model picked: where an example or type starts. */
 function clearedText(agent: HomeAgent): StudioWorkspace {
@@ -404,7 +465,11 @@ function withoutOtherInputs(agent: HomeAgent, id: GoalTokenId): HomeAgent {
 	return next;
 }
 
-/** The example `seed` in place of the text agent, keeping its agent id and its tools' keys. */
+/**
+ * The example `seed` in place of the text agent. Keeps the example's own identity (so pantry stays
+ * `pantry.jev` and gets its Decide-panel seed) and remaps tool keys that share a name with the text
+ * agent so library ids stay stable across the toggle.
+ */
 function seededExample(text: StudioWorkspace, id: GoalTokenId, seed?: StudioDraft): HomeAgent {
 	const source = draftOf(text);
 	if (!seed) throw new Error(`The ${id} example was not made first.`);
@@ -416,7 +481,6 @@ function seededExample(text: StudioWorkspace, id: GoalTokenId, seed?: StudioDraf
 	return {
 		workspace: edited(text, () => ({
 			...draft,
-			identity: { ...draft.identity, agentId: source.identity.agentId },
 			toolSpecs: draft.toolSpecs.map((tool) => ({
 				...tool,
 				key: source.toolSpecs.find((entry) => entry.toolName === tool.toolName)?.key ?? tool.key,
@@ -457,14 +521,66 @@ export type HomeCompile =
 	| { ok: true; payload: StudioRunPayload; source: string }
 	| { ok: false; issues: StudioIssue[] };
 
+type HomeProfile = StudioRunPayload['profile'];
+
+/**
+ * Studio compile only ships item `onFail`; Goals cite-or-fail needs a real check so
+ * candidates without a quote are repaired then dropped.
+ */
+function withCiteOrFailCheck(profile: HomeProfile): HomeProfile {
+	if (!('outputs' in profile) || !profile.outputs?.validation?.items?.candidates) return profile;
+	const items = profile.outputs.validation.items;
+	const onFail = items.candidates.onFail;
+	return {
+		...profile,
+		outputs: {
+			...profile.outputs,
+			validation: {
+				...profile.outputs.validation,
+				items: {
+					...items,
+					candidates: {
+						onFail,
+						check: (item) => {
+							if (!item || typeof item !== 'object' || Array.isArray(item)) {
+								return {
+									isValid: false,
+									error: 'Each candidate must be an object with a verbatim quote.',
+								};
+							}
+							const quote = (item as { quote?: unknown }).quote;
+							if (typeof quote !== 'string' || quote.trim() === '') {
+								return {
+									isValid: false,
+									error: 'Each candidate needs a verbatim quote from a source.',
+								};
+							}
+							return { isValid: true };
+						},
+					},
+				},
+			},
+		},
+	};
+}
+
 export function compileHomeAgent({ workspace }: HomeAgent): HomeCompile {
 	const compiled = compileWorkspace(workspace, ON_SITE);
 	if (!compiled.ok) return { ok: false, issues: compiled.issues };
 	const run = workspaceRunAgent(compiled, draftOf(workspace).identity.agentId.trim());
 	if (!run) return { ok: false, issues: [] };
-	const { agentId, profile, customTools, structured, questions, dependencies } = run;
-	const policy = resolveGuardrailPolicy(profile.guardrails);
-	const declared = profile.guardrails?.detect;
+	const {
+		agentId,
+		profile: compiledProfile,
+		customTools,
+		structured,
+		questions,
+		dependencies,
+	} = run;
+	// why: Check stays on the run profile only; the printed source keeps studio's onFail shape.
+	const profile = withCiteOrFailCheck(compiledProfile);
+	const policy = resolveGuardrailPolicy(compiledProfile.guardrails);
+	const declared = compiledProfile.guardrails?.detect;
 	const detect = Object.fromEntries(
 		DETECTORS.map((detector) => {
 			const rule = typeof declared === 'object' ? declared[detector] : undefined;
@@ -480,9 +596,9 @@ export function compileHomeAgent({ workspace }: HomeAgent): HomeCompile {
 	const printed = {
 		...run,
 		profile: {
-			...profile,
+			...compiledProfile,
 			guardrails: {
-				...profile.guardrails,
+				...compiledProfile.guardrails,
 				detect: { ...(typeof declared === 'object' ? declared : {}), ...detect },
 				blockedReply: policy.blockedReply,
 			},
@@ -548,7 +664,7 @@ function siteResearchModels(): Pick<StudioDraft, 'models' | 'modelBindings'> {
 					{ alias: 'deep', level: 'high' },
 				],
 				defaultEffort: 'normal',
-				allowEffortSelect: true,
+				allowEffortSelect: false,
 				summaries: true,
 			}),
 		],
@@ -573,7 +689,7 @@ export function editHomeDraft(agent: HomeAgent, edit: DraftEdit): HomeAgent {
 	return { workspace: edited(agent.workspace, edit) };
 }
 
-/** The agent as one draft, for the studio to open. */
+/** The chat agent as one draft (preview form, excerpts). Open Studio uses the full workspace. */
 export function homeAgentDraft(agent: HomeAgent): StudioDraft {
 	return draftOf(agent.workspace);
 }

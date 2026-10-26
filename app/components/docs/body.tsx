@@ -24,6 +24,7 @@ import { parseFigure } from '../../lib/docs/figure';
 import type { DocArticle, DocTerm } from '../../lib/docs/schema';
 import { CopyIconButton } from './copy-button';
 import { DocsFigure } from './figure';
+import { ElevatedCodeBlock } from './elevated-code-block';
 import { FieldCard } from './glossary';
 
 /** In-app links go through the router; the rest are plain anchors. */
@@ -133,45 +134,10 @@ function Commands({ code }: { code: string }) {
 	);
 }
 
-/** A `ts` or `text` fence. A seeded program also opens in the studio. Astryx CodeBlock wants `typescript`, not `ts`. */
+/** A `ts` or `text` fence. Seeded programs feature interactive view-switching and token overlays. */
 function CodeSample({ code, language }: { code: string; language: string | undefined }) {
 	const seed = useContext(ChapterContext).seeds.get(code);
-	const isTs = language === 'ts';
-	return (
-		<Card padding={0} width="100%">
-			<HStack justify="between" vAlign="center" paddingInline={3} paddingBlock={2}>
-				<Text type="supporting" color="secondary">
-					{isTs ? 'TypeScript' : ''}
-				</Text>
-				<HStack gap={1} vAlign="center">
-					{seed === undefined ? null : (
-						<IconButton
-							label="Open in the studio"
-							tooltip="Open in the studio"
-							variant="ghost"
-							size="sm"
-							icon={<IconPlayerPlay />}
-							href={`/studio?seed=${seed}`}
-							target="_blank"
-						/>
-					)}
-					<CopyIconButton label="Copy code" copiedLabel="Copied" text={code} />
-				</HStack>
-			</HStack>
-			<Divider />
-			<CodeBlock
-				language={isTs ? 'typescript' : 'text'}
-				code={code}
-				container="section"
-				hasLanguageLabel={false}
-				hasCopyButton={false}
-				hasLineNumbers={isTs}
-				highlightMode="spans"
-				isWrapped={isTs}
-				width="100%"
-			/>
-		</Card>
-	);
+	return <ElevatedCodeBlock code={code} language={language} seed={seed} />;
 }
 
 /**

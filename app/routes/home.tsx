@@ -13,10 +13,10 @@ import '../components/home-scroll.css';
 import { homeTerms } from '../lib/.server/home-terms';
 import { SITE_REDIRECTS } from '../lib/docs/articles/chapters';
 import {
+	COOKBOOK_SHOWN,
 	HOME_DESCRIPTION,
 	homeJsonLd,
 	KERNEL,
-	SHOWCASE_SHOWN,
 	SITE_NAME,
 } from '../lib/home-content';
 import { type GoalId, isGoalId } from '../lib/home-goals';
@@ -76,11 +76,11 @@ type LandingScreen =
 	| PlatformId
 	| 'packages'
 	| 'agents'
-	| 'showcase'
+	| 'cookbook'
 	| 'contribute'
 	| 'start';
 
-/** `#examples` is the previous showcase id. An empty hash is landing. */
+/** `#examples` / `#showcase` / `#cookbooks` land on cookbook. An empty hash is landing. */
 function landingScreen(hash: string): LandingScreen | null {
 	const id = decodeURIComponent(hash.replace(/^#/, ''));
 	if (id === '' || id === 'landing') return 'landing';
@@ -90,7 +90,9 @@ function landingScreen(hash: string): LandingScreen | null {
 	if (isPlatformId(id)) return PLATFORM_SHOWN ? id : null;
 	if (id === 'packages') return 'packages';
 	if (id === 'agents') return 'agents';
-	if (id === 'showcase' || id === 'examples') return SHOWCASE_SHOWN ? 'showcase' : 'contribute';
+	if (id === 'cookbook' || id === 'showcase' || id === 'examples' || id === 'cookbooks') {
+		return 'cookbook';
+	}
 	if (id === 'contribute') return 'contribute';
 	if (id === 'start') return 'start';
 	return null;
@@ -121,7 +123,7 @@ function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number
 	const settle = scroller.querySelector<HTMLElement>('.home-contract-settle');
 	const overview = scroller.querySelector<HTMLElement>('#overview');
 	const packages = scroller.querySelector<HTMLElement>('#packages');
-	const showcase = scroller.querySelector<HTMLElement>('#showcase');
+	const cookbook = scroller.querySelector<HTMLElement>('#cookbook');
 	const contribute = scroller.querySelector<HTMLElement>('#contribute');
 	const start = scroller.querySelector<HTMLElement>('#start');
 	const overviewAt =
@@ -140,8 +142,11 @@ function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number
 			screen,
 			at: scrollTopOf(scroller, stop),
 		})),
-		...(showcase ? [{ screen: 'showcase' as const, at: showcase.offsetTop }] : []),
-		{ screen: 'contribute', at: contribute?.offsetTop ?? showcase?.offsetTop ?? overviewAt },
+		...(cookbook ? [{ screen: 'cookbook' as const, at: cookbook.offsetTop }] : []),
+		{
+			screen: 'contribute',
+			at: contribute?.offsetTop ?? cookbook?.offsetTop ?? overviewAt,
+		},
 		...(start ? [{ screen: 'start' as const, at: start.offsetTop }] : []),
 	];
 }
@@ -203,10 +208,10 @@ function scrollToLandingScreen(scroller: HTMLElement, screen: LandingScreen) {
 	}
 	// A phone and reduced motion have no agents stop; the packages screen is where it would be.
 	const target = screen === 'agents' && !stopsOf(scroller, isAgents).length ? 'packages' : screen;
-	scroller.querySelector<HTMLElement>(`#${target}`)?.scrollIntoView({ block: 'start' });
+	scroller.querySelector<HTMLElement>(`#${CSS.escape(target)}`)?.scrollIntoView({ block: 'start' });
 }
 
-/** Landing (/), then overview (/overview), the goals, the packages (/packages), showcase (/examples) while it is shown, contribute (/contribute) and get started (/start). */
+/** Landing (/), then overview, goals, packages, cookbook, contribute and get started. */
 export default function Home({ loaderData }: Route.ComponentProps) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const chapter = useMemo(
@@ -270,9 +275,9 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 			</ChapterContext.Provider>
 			{PLATFORM_SHOWN ? <HomePlatform scrollRoot={scrollRef} /> : null}
 			<PackagesBoard scrollRoot={scrollRef} />
-			<div className="home-dotted" data-pages={SHOWCASE_SHOWN ? 2 : 1}>
-				{SHOWCASE_SHOWN ? (
-					<section className="home-page" id="showcase" aria-label="Showcase">
+			<div className="home-dotted" data-pages={COOKBOOK_SHOWN ? 2 : 1}>
+				{COOKBOOK_SHOWN ? (
+					<section className="home-page" id="cookbook" aria-label="Cookbook">
 						<ExamplesBoard />
 					</section>
 				) : null}

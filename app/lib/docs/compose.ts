@@ -188,9 +188,10 @@ function assertChapterFiles(options: ComposeOptions, chapter: Chapter): void {
 	}
 }
 
-/** The figure parses, and its still exists. */
+/** The figure parses, and its still exists if specified. */
 function assertFigure(options: ComposeOptions, slug: string, code: string): void {
-	assertStill(options, slug, parseFigure(code).still.src);
+	const fig = parseFigure(code);
+	if (fig.still) assertStill(options, slug, fig.still.src);
 }
 
 /** Adds `value` to `seen`; throws `message` if it was already there. */

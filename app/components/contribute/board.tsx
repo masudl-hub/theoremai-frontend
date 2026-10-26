@@ -48,7 +48,7 @@ function WayTile({ way }: { way: Way }) {
 
 /**
  * The last screen of the landing page: a heading and a line, then four ways in, one row.
- * The showcase's dotted field (`.home-dotted`, one layer under both screens) runs on behind it and fades out.
+ * The cookbook's dotted field (`.home-dotted`, one layer under both screens) runs on behind it and fades out.
  */
 export function ContributeBoard() {
 	return (

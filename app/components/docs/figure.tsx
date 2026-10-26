@@ -13,8 +13,10 @@ import { CHAPTER_ICON } from '../../lib/docs/chapter-icons';
 import type { DocFigure, LanesFigure, SequenceFigure } from '../../lib/docs/figure';
 import { stillRenditions } from '../../lib/stills';
 
-type FigureStep = DocFigure['steps'][number];
-type FigurePart = NonNullable<FigureStep['parts']>[number];
+import { SwitchbackFlow } from './switchback-flow';
+
+type FigureStep = SequenceFigure['steps'][number] | LanesFigure['steps'][number];
+type FigurePart = NonNullable<SequenceFigure['steps'][number]['parts']>[number];
 
 /** A part's name. With a chapter, it carries that chapter's icon and links to it. */
 function PartLabel({ part }: { part: FigurePart }) {
@@ -164,17 +166,35 @@ function Lanes({ figure }: { figure: LanesFigure }) {
 	);
 }
 
-/** A `figure` fence: its steps in order, each on its own card over the still. */
+/** A `figure` fence: its steps in order, rendered as a sequence, lanes, or switchback flow. */
 export function DocsFigure({ figure }: { figure: DocFigure }) {
-	const still = {
-		'--figure-still': `url("${stillRenditions(figure.still.src).full}")`,
-		'--figure-position': figure.still.position,
-	} as CSSProperties;
+	const still = figure.still
+		? ({
+				'--figure-still': `url("${stillRenditions(figure.still.src).full}")`,
+				'--figure-position': figure.still.position,
+			} as CSSProperties)
+		: undefined;
+
+	const content =
+		figure.kind === 'switchback' ? (
+			<SwitchbackFlow figure={figure} />
+		) : figure.kind === 'lanes' ? (
+			<Lanes figure={figure} />
+		) : (
+			<Sequence figure={figure} />
+		);
+
 	return (
 		<VStack gap={2} role="figure" aria-label={figure.caption}>
-			<Card variant="still" padding={6} style={still}>
-				{figure.kind === 'lanes' ? <Lanes figure={figure} /> : <Sequence figure={figure} />}
-			</Card>
+			{still ? (
+				<Card variant="still" padding={6} style={still}>
+					{content}
+				</Card>
+			) : (
+				<Card variant="glass" padding={4} elevation="low">
+					{content}
+				</Card>
+			)}
 			<Text type="supporting" color="secondary">
 				{figure.caption}
 			</Text>

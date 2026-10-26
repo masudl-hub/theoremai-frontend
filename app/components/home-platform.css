@@ -1,7 +1,7 @@
 /* The screen after the goals. The run is the frame and one screen of travel for each tab. The frame
    stays put; scroll changes the tab, and the text and the preview with it. The dots are on the frame,
    bottom-anchored, and fade out going up. At the end of the run the frame's bottom edge is the
-   showcase's top edge, and the showcase's dots are full there too, so they meet with no seam. */
+   cookbook's top edge, and the cookbook's dots are full there too, so they meet with no seam. */
 .home-platform {
 	/* One screen of the run: the frame, or a stop for each tab. */
 	--home-platform-step: calc(100% / (1 + var(--home-platform-stops, 0)));

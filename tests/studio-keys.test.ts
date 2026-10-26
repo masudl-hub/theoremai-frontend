@@ -6,12 +6,13 @@ import {
 	compileStudio,
 	compileWorkspace,
 	createArchitectWorkspace,
+	createBlankDraft,
 	createConsoleExampleDraft,
 	createDecisionExampleDraft,
 	createExampleDraft,
 	createLiveExampleDraft,
 	createNarratorExampleDraft,
-	createSpanExampleDraft,
+	draftKey,
 	firstServed,
 	modelBindingViolation,
 	modelRoute,
@@ -26,9 +27,47 @@ import { decisionRequestSchema } from '@theoremjs/studio/server';
 import { SITE_KEYS } from '../app/lib/studio-keys.ts';
 import { ON_SITE as ON_SITE_KEYS } from '../app/lib/studio-supplies.ts';
 
-
 /** The decide request the site's keys answer. */
 const studioDecisionRequestSchema = decisionRequestSchema(SITE_KEYS.decision);
+
+/** A Span decision draft for site-key policy tests (not a cookbook example). */
+function spanDecisionDraft(): StudioDraft {
+	const draft = setProfileType(createBlankDraft(), 'decision', SITE_KEYS);
+	return {
+		...draft,
+		identity: { ...draft.identity, agentId: 'guardrails.tool_call.span', handle: 'span' },
+		modelBindings: [
+			{
+				...draft.modelBindings[0],
+				...firstServed('openrouter', 'decision'),
+				apiId: 'respan/span-01-lite:free',
+			},
+		],
+		decision: {
+			...draft.decision,
+			questions: [
+				{
+					key: draftKey('question'),
+					id: 'verdict',
+					type: 'noul',
+					instructions: 'Is this tool call unsafe or beyond what the user asked for?',
+					criteria: [
+						{
+							key: draftKey('criterion'),
+							label: 'true',
+							text: 'The call is unsafe or beyond the user request.',
+						},
+						{
+							key: draftKey('criterion'),
+							label: 'false',
+							text: 'The call is safe and within the user request.',
+						},
+					],
+				},
+			],
+		},
+	};
+}
 
 function issues(draft: StudioDraft): StudioIssue[] {
 	const result = compileStudio(draft, ON_SITE_KEYS);
@@ -43,7 +82,7 @@ function withQuestions(
 }
 
 function spanRoute() {
-	const span = createSpanExampleDraft();
+	const span = spanDecisionDraft();
 	const [binding] = span.modelBindings;
 	assert(binding);
 	return modelRoute(span.providers, 'decision', binding);
@@ -88,7 +127,7 @@ test('the site policy handles embedding routes without an undefined model list',
 });
 
 test('decisions on the site run on TypeSafe or Span only', () => {
-	const draft = createSpanExampleDraft();
+	const draft = spanDecisionDraft();
 	const [binding] = draft.modelBindings;
 	assert(binding);
 	for (const apiId of ['jaredpalmer/kev-4b', '~typesafe/jev-latest', 'respan/span-01']) {
@@ -107,7 +146,7 @@ test('decisions on the site run on TypeSafe or Span only', () => {
 });
 
 test('Span asks Number questions with true and false described', () => {
-	const span = createSpanExampleDraft();
+	const span = spanDecisionDraft();
 	assert.deepEqual(issues(span), []);
 	const [question] = span.decision.questions;
 	assert(question);
@@ -146,7 +185,7 @@ test("Span's state is text, or input and output messages", () => {
 });
 
 test('a decision that compiles on the site passes the decide request; one over its limits does not compile', () => {
-	const span = createSpanExampleDraft();
+	const span = spanDecisionDraft();
 	const [binding] = span.modelBindings;
 	const [question] = span.decision.questions;
 	assert(binding && question);
@@ -215,7 +254,6 @@ test("every worked example the studio offers runs on the site's keys as it opens
 		narrator: createNarratorExampleDraft(),
 		console: createConsoleExampleDraft(),
 		decision: await createDecisionExampleDraft(),
-		span: createSpanExampleDraft(),
 	};
 	for (const [name, draft] of Object.entries(drafts)) {
 		assert.deepEqual(issues(draft), [], name);

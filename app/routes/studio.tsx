@@ -1,4 +1,4 @@
-import { COOKBOOK_IDS, COOKBOOKS, type CookbookId, type StudioDraft } from '@theoremjs/studio';
+import { COOKBOOK_IDS, COOKBOOKS, type CookbookId } from '@theoremjs/studio';
 import { openStudio } from '@theoremjs/studio/ui/lib/studio-open.ts';
 import type { ProjectSession } from '@theoremjs/studio/ui/lib/studio-project.ts';
 import type { StudioHost, StudioOpened } from '@theoremjs/studio/ui/studio-host.ts';
@@ -54,7 +54,7 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs): Promise
 	const params = new URL(request.url).searchParams;
 	// The goals screen hands its agent over. The tab's kept draft waits behind Undo, as for a seed.
 	const handed = params.get('from') === 'home' ? takeHomeAgent() : undefined;
-	if (handed) return openStudio({ draft: handed as StudioDraft, question: undefined });
+	if (handed) return openStudio({ workspace: handed, question: undefined });
 	const cookbook = params.get('cookbook');
 	if (isCookbookId(cookbook)) {
 		const entry = COOKBOOKS[cookbook];

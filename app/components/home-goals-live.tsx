@@ -1,5 +1,6 @@
 import { Button } from '@astryxdesign/core/Button';
 import { Card } from '@astryxdesign/core/Card';
+import { ChatSendButton } from '@astryxdesign/core/Chat';
 import { Icon } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Text } from '@astryxdesign/core/Text';
@@ -9,7 +10,9 @@ import {
 	IconPlayerPlay,
 	IconRotateClockwise,
 } from '@tabler/icons-react';
+import { recordedFeed } from '@theoremjs/react/client';
 import type { TheoremChatHandle } from '@theoremjs/react/ui';
+import { cookbookTraceRecords } from '@theoremjs/studio';
 import { StudioCode } from '@theoremjs/studio/ui/code/studio-code.tsx';
 import { GuardrailTester } from '@theoremjs/studio/ui/guardrail-tester.tsx';
 import type { CodeIssue } from '@theoremjs/studio/ui/studio-host.ts';
@@ -27,7 +30,7 @@ import {
 	useSyncExternalStore,
 } from 'react';
 import { useNavigate } from 'react-router';
-import { homeAgentDraft, tokenIsOn } from '../lib/home-agent';
+import { tokenIsOn } from '../lib/home-agent';
 import { HOME_AGENT_STUDIO, keepHomeAgent } from '../lib/home-agent-handoff';
 import type { HomeAgentState, HomeAgentStore, HomeGood } from '../lib/home-agent-store';
 import { changedRanges, type Excerpt, excerptOf, type Lines } from '../lib/home-excerpt';
@@ -192,7 +195,8 @@ function EditorFoot({ store, isFresh }: { store: HomeAgentStore; isFresh: boolea
 				label="Open Studio"
 				icon={<IconPlayerPlay aria-hidden />}
 				onClick={() => {
-					keepHomeAgent(homeAgentDraft(store.get().agent));
+					// why: Hand the full workspace so research.pagereader stays with stage-read tools.
+					keepHomeAgent(store.get().agent.workspace);
 					void navigate(HOME_AGENT_STUDIO);
 				}}
 			/>
@@ -386,28 +390,18 @@ function GoalPrompt({
 	result,
 	onSend,
 	sending,
-	sendLabel,
 }: {
 	prompt: string;
 	/** What the answered test showed. It takes the prompt's place. */
 	result: string | undefined;
 	onSend: (() => void) | undefined;
 	sending: boolean;
-	sendLabel: string;
 }) {
 	if (result) return <Text weight="medium">{result}</Text>;
 	return (
 		<>
 			<Text weight="medium">{prompt}</Text>
-			{onSend ? (
-				<Button
-					variant="secondary"
-					size="sm"
-					label={sending ? 'Sending…' : sendLabel}
-					isDisabled={sending}
-					onClick={onSend}
-				/>
-			) : null}
+			{onSend ? <ChatSendButton size="sm" isDisabled={sending} onSend={onSend} /> : null}
 		</>
 	);
 }
@@ -450,9 +444,8 @@ function useTest(
 				if (token.attachment && attachmentEnabled) {
 					const response = await fetch(token.attachment);
 					if (!response.ok) throw new Error('Attachment unavailable');
-					files.push(
-						new File([await response.blob()], 'lisbon-trip-brief.pdf', { type: 'application/pdf' }),
-					);
+					const name = token.attachment.split('/').pop() || 'attachment.pdf';
+					files.push(new File([await response.blob()], name, { type: 'application/pdf' }));
 				}
 				const turn = await chat.current?.send(
 					token.attachment && !attachmentEnabled ? token.prompt : ask,
@@ -496,13 +489,11 @@ function useStill(beat: GoalBeat | undefined) {
 function GoalPromptSlot({
 	picked,
 	isShown,
-	attachmentEnabled,
 	isTester,
 	test,
 }: {
 	picked: GoalToken | undefined;
 	isShown: boolean;
-	attachmentEnabled: boolean;
 	isTester: boolean;
 	test: ReturnType<typeof useTest>;
 }) {
@@ -514,7 +505,6 @@ function GoalPromptSlot({
 			<GoalPrompt
 				prompt={failure ?? picked.prompt}
 				sending={sending}
-				sendLabel={attachmentEnabled && picked.attachment ? 'Send with PDF' : 'Send it'}
 				result={result}
 				onSend={ask ? send(picked, ask) : undefined}
 			/>
@@ -539,12 +529,38 @@ function GoalRunner({
 	const isText = good.payload.profile.type === 'text';
 	if (isText && !opening) return null;
 	return (
-		<StudioRunner
+		<GoalRunnerMounted
 			key={`${String(runs)}:${good.payload.profile.type}`}
+			good={good}
+			opening={opening}
+			chat={chat}
+			store={store}
+			isText={isText}
+		/>
+	);
+}
+
+function GoalRunnerMounted({
+	good,
+	opening,
+	chat,
+	store,
+	isText,
+}: {
+	good: HomeGood;
+	opening: ReturnType<typeof useOpening>;
+	chat: RefObject<TheoremChatHandle | null>;
+	store: HomeAgentStore;
+	isText: boolean;
+}) {
+	const [traces] = useState(() => recordedFeed(cookbookTraceRecords('research') ?? []));
+	return (
+		<StudioRunner
 			payload={good.payload}
 			mode="demo"
 			runtime={null}
 			chatRef={chat}
+			traces={traces}
 			conversation={isText ? opening?.started?.conversation : undefined}
 			conversationView={isText ? opening?.started?.view : undefined}
 			onActivity={store.talked}
@@ -572,13 +588,7 @@ export function GoalLive({
 	return (
 		<>
 			<div className="home-goal-prompt" aria-live="polite">
-				<GoalPromptSlot
-					picked={picked}
-					isShown={!isEmpty}
-					attachmentEnabled={attachmentEnabled}
-					isTester={isTester}
-					test={test}
-				/>
+				<GoalPromptSlot picked={picked} isShown={!isEmpty} isTester={isTester} test={test} />
 			</div>
 			<Card
 				variant="glass"

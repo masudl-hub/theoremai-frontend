@@ -86,21 +86,21 @@ function GoalExamples({
 					renderTrigger={(props) => (
 						<IconButton
 							{...props}
-							label="Show all examples"
-							tooltip="Show all examples"
+							label="More examples"
+							tooltip="More examples"
 							variant="ghost"
 							size="sm"
 							icon={<Icon icon={IconListDetails} size="sm" />}
 						/>
 					)}
 				>
-					{tokens.map((token) => (
+					{extras.map((token) => (
 						<DropdownMenuItem
 							key={token.id}
 							label={token.label}
 							description={token.description ?? token.prompt}
 							onClick={() => {
-								if (extras.includes(token)) setSelected(token);
+								setSelected(token);
 								onPick(token);
 							}}
 						/>

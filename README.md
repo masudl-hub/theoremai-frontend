@@ -26,7 +26,7 @@ theoremai-frontend/
     routes.ts                   # route table
     cloudflare.ts               # Worker env type + per-request context
     routes/
-      home.tsx                  # landing (/), overview (/overview), showcase (/examples)
+      home.tsx                  # landing (/), overview (/overview), cookbook (/cookbooks)
       docs.tsx / docs.$slug.tsx # composed /docs landing + reader
       studio.run.tsx            # run host for a compiled studio draft (@theoremjs/react)
       api.studio.$.ts           # every /api/studio/* request → @theoremjs/studio/server's handler

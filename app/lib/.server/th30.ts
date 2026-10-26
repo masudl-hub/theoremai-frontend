@@ -16,7 +16,6 @@ import { z } from 'zod';
 import { getDocIndex } from '../docs/.server/load-index';
 import { formatNavigableForPrompt, readDoc, searchDocs } from '../docs/query';
 import { th30SearchOutput } from '../docs/th30-search';
-import { SHOWCASE_SHOWN } from '../home-content';
 import { resolveSitePath } from '../site-path';
 import { ARGUMENT, GOALS, HOME_TAGLINE } from '../site-pitch';
 import { TH30_PROFILE_ID } from '../th30-id';
@@ -25,7 +24,8 @@ import { TH30_PROFILE_ID } from '../th30-id';
 const SITE_PATHS = [
 	'/',
 	'/overview',
-	...(SHOWCASE_SHOWN ? ['/examples'] : []),
+	'/packages',
+	'/cookbooks',
 	'/studio',
 	'/studio/run',
 	'/docs',

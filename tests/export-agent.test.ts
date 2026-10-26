@@ -8,7 +8,7 @@ import {
 	compileWorkspace,
 	createBlankDraft,
 	createExampleDraft,
-	createSpanExampleDraft,
+	createPageReaderExampleDraft,
 	defaultToolSpec,
 	ON_OWN_KEYS,
 	setProfileType,
@@ -75,10 +75,10 @@ test('an export is every agent, then the route and chat for the one being chatte
 });
 
 test('a decision exports its questions with its profile, and a decision route', () => {
-	const workspace = compiled(workspaceFromDraft(createSpanExampleDraft()));
-	const [span] = workspace.agents;
-	assert(span);
-	const files = exportFiles(workspace, span);
+	const workspace = compiled(workspaceFromDraft(createPageReaderExampleDraft()));
+	const [reader] = workspace.agents;
+	assert(reader);
+	const files = exportFiles(workspace, reader);
 	assert.deepEqual(
 		files.map((file) => file.path).slice(-2),
 		['route.ts', 'AgentDecision.tsx'],

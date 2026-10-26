@@ -10,8 +10,8 @@ export type GoalId = (typeof GOALS)[number]['id'];
 export type GoalTokenId =
 	| 'trip-brief'
 	| 'approve-tools'
-	| 'file-types'
-	| 'file-limits'
+	| 'cite-or-fail'
+	| 'attach-images'
 	| 'decision'
 	| 'host'
 	| 'embedding'
@@ -60,12 +60,13 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 				tokens: [
 					{
 						id: 'trip-brief',
-						label: 'Turn a research brief into verified findings',
+						label: 'Verify findings from a brief',
 						prompt: 'Find papers on episodic memory for language models.',
-						ask: 'Find papers on episodic memory for language models using the attached brief.',
-						attachment: '/examples/lisbon-trip-brief.pdf',
-						result: 'The same profile shapes the research brief and validates the findings.',
-						line: 'inputs:',
+						ask: 'Using the attached research brief, find primary sources and return verified findings with verbatim quotes.',
+						attachment: '/examples/research-brief.pdf',
+						result:
+							'The profile takes the brief (and voice), fills a source-focus slot into the system prompt, and shapes findings.',
+						line: 'slots:',
 					},
 					{
 						id: 'approve-tools',
@@ -75,20 +76,22 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 						line: 'permission:',
 					},
 					{
-						id: 'file-types',
-						label: 'Choose exactly which files are accepted',
-						description:
-							'Accept PDFs, PNGs, and JPEGs. The picker and validation follow the same MIME rules.',
-						prompt: 'Attach a PDF, PNG, or JPEG.',
-						line: 'accept:',
+						id: 'cite-or-fail',
+						label: 'Require verbatim quotes',
+						description: 'Repair or drop candidates without source quotes.',
+						prompt: 'Ask for findings with verbatim quotes from the sources.',
+						ask: 'Find primary sources on episodic memory for language models and return findings with a verbatim quote for each candidate.',
+						result:
+							'Validation repairs or drops candidates without a quote — beyond the findings schema alone.',
+						line: 'validation:',
 					},
 					{
-						id: 'file-limits',
-						label: 'Set an upload budget',
-						description:
-							'Limit a message to one PDF under 250 KB, including its MIME-specific limit.',
-						prompt: 'Attach one PDF under 250 KB.',
-						line: 'maxBytes:',
+						id: 'attach-images',
+						label: 'Accept small images',
+						description: 'Accept only PDFs, PNGs, and JPEGs.',
+						prompt: 'Attach a small PNG, or try a file over the limit.',
+						result: 'The picker and limits follow the same accept list and size budget.',
+						line: 'accept:',
 					},
 				],
 			},
@@ -105,47 +108,56 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 				tokens: [
 					{
 						id: 'providers',
-						label: 'Compare models across providers',
-						prompt: 'Choose a model and ask which benchmarks to check.',
+						label: 'Compare Gemini and OpenRouter',
+						prompt: 'Pick a model, then ask which papers to read.',
 						ask: 'Which papers describe how language models recombine retrieved context?',
+						result:
+							'The scout keeps its tools; models now span Gemini and OpenRouter, and the visitor can pick one.',
 						line: 'models:',
 					},
 					{
 						id: 'live-call',
-						label: 'Turn the scout into a live voice session',
-						prompt: 'Start a call with your research scout.',
+						label: 'Talk to the scout live',
+						prompt: 'Start a call and ask which paper or repo to investigate.',
+						result:
+							'The same scout runs as live, with input and output transcription and barge-in.',
 						line: 'live:',
 					},
 					{
 						id: 'decision',
-						label: 'Make a typed decision',
+						label: 'Decide from a pantry photo',
 						description:
-							'Ask Jev about a pantry photo using box detection, reference images, and choice criteria.',
-						prompt: 'Inspect the pantry state and run the decision.',
+							'Jev answers box, yes/no, and brunch-choice questions on a shelf photo and reference images.',
+						prompt: 'Open Decide and run the pantry questions on the shelf photo.',
+						result: 'A decision profile asks typed questions over images — not a chat turn.',
 						line: 'decision:',
 					},
 					{
 						id: 'host',
-						label: 'Run tools without a model',
+						label: 'Run a tool with no model',
 						description:
-							'Open a tool console with typed arguments and guarded results. No model call is needed.',
-						prompt: 'Choose a tool and run it directly.',
+							'A tool console with typed arguments and guarded results. No model call runs.',
+						prompt: 'Pick a console tool, fill its arguments, and run it.',
+						result: 'A host profile invokes tools directly — no model round-trip.',
 						line: 'tools:',
 					},
 					{
-						id: 'embedding',
-						label: 'Generate embeddings',
-						description: 'Encode text or media as vectors with a declared output dimensionality.',
-						prompt: 'Add text or a file, then generate its embedding.',
-						line: 'outputDimensionality:',
+						id: 'speech',
+						label: 'Narrate a short script',
+						description: 'Turn a written script into audio with a declared speaking style.',
+						prompt: 'Send the memory script, or write a shorter one, then generate speech.',
+						ask: 'Working memory holds the current turn. Episodic memory stores earlier facts. Vector stores retrieve them by similarity.',
+						result: 'A speech profile reads the script aloud with the style you set.',
+						line: 'speech:',
 					},
 					{
-						id: 'speech',
-						label: 'Generate a spoken response',
-						description: 'Turn a written script into audio with a declared speaking style.',
-						prompt: 'Write a short script for the narrator.',
-						ask: 'Working memory holds the current turn. Episodic memory stores earlier facts. Vector stores retrieve them by similarity.',
-						line: 'speech:',
+						id: 'embedding',
+						label: 'Embed text at a set size',
+						description: 'Encode text or media as vectors with a declared output dimensionality.',
+						prompt: 'Paste a short memory sentence or attach a file, then generate the embedding.',
+						result:
+							'An embedding profile returns vectors at the dimensionality declared on the model.',
+						line: 'outputDimensionality:',
 					},
 				],
 			},
@@ -155,38 +167,46 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 		goal: 'boundaries',
 		lede: GOALS[2].title,
 		explainer:
-			'Keep sensitive data from escaping and untrusted content from taking control. Your `guardrails` control how each `detector` responds.',
+			'Decide how your agents safeguard sensitive data and untrusted content. Your `guardrails` control how each `detector` responds.',
 		controls: [
 			{
 				label: 'Guardrail examples',
 				tokens: [
 					{
 						id: 'block-secret',
-						label: 'Stop secrets from leaving the agent',
-						description: 'Credential detection catches secrets embedded in URLs, too.',
-						prompt: 'An API key hidden in a URL is blocked before the reply leaves.',
+						label: 'Block secrets in replies',
+						description: 'Set credentials on the reply boundary to block.',
+						prompt:
+							'Turn this on, then in the tester send “Credential in the reply”. Expect Blocked.',
+						result: 'Credentials on the reply boundary block — a real key never leaves.',
 						line: 'credentials:',
 					},
 					{
 						id: 'block-injection',
-						label: 'Stop outside content taking control',
-						description:
-							'Injection detection catches instructions disguised with lookalike letters.',
-						prompt: 'Disguised instructions in a remote tool result are blocked.',
+						label: 'Block injection from remote tools',
+						description: 'Set injection on remote HTTP tool output to block.',
+						prompt:
+							'Turn this on, then in the tester send “Instruction in an HTML comment”. Expect Blocked on the tool-result path.',
+						result: 'Injection on remote tool output blocks — a page cannot seize the turn.',
 						line: 'injection:',
 					},
 					{
 						id: 'refuse-after-read',
-						label: 'Restrict actions after a remote read',
-						description: 'Remote content cannot authorize a write on the user’s behalf.',
-						prompt: 'A remote read restricts subsequent writes, even when a page claims approval.',
+						label: 'Lock writes after a remote read',
+						description:
+							'After the agent reads a remote page, writes stay refused even if the page claims approval.',
+						prompt:
+							'Turn this on, then in the tester send “A page that claims the user already agreed”. Expect taint that locks writes.',
+						result: 'afterRemoteRead is write — remote content cannot authorize a write.',
 						line: 'afterRemoteRead:',
 					},
 					{
 						id: 'harmless',
-						label: 'Let harmless content through',
-						description: 'A documentation placeholder is distinguished from a real credential.',
-						prompt: 'A harmless placeholder key passes without blocking the interaction.',
+						label: 'Let a fake key through',
+						description: 'A documentation placeholder is not treated as a real credential.',
+						prompt:
+							'In the tester send “Harmless: a placeholder key from the docs”. Expect Passed.',
+						result: 'Detectors spare placeholder keys so docs and help stay usable.',
 					},
 				],
 			},

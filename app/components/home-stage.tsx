@@ -223,7 +223,7 @@ function StageCopy() {
 const EDITED_VARS = { '--home-goal-edited': EDITED_BEATS } as CSSProperties;
 const GOAL_STOPS = GOAL_BEATS.map(({ goal }) => goal);
 
-/** Landing, then overview, then the beats of the three goals. Showcase is the next screen. */
+/** Landing, then overview, then the beats of the three goals. Cookbook is the next screen. */
 export function HomeStage({ scrollRoot }: { scrollRoot: RefObject<HTMLDivElement | null> }) {
 	return <HomeIntro scrollRoot={scrollRoot} next={<StageCopy />} stops={GOAL_STOPS} />;
 }

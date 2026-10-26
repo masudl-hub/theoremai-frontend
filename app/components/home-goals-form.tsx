@@ -1,5 +1,4 @@
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
-import { modelBindingNodeId, toolSpecNodeId } from '@theoremjs/studio';
 import { ProfileEditor } from '@theoremjs/studio/ui/profile-editor.tsx';
 import { memo, type SetStateAction, useState } from 'react';
 import { homeAgentDraft } from '../lib/home-agent';
@@ -23,28 +22,22 @@ const SECTIONS: Record<GoalId, readonly { id: string; label: string }[]> = {
 
 type Section = { id: string; label: string };
 
-/** A node per tool the draft has. */
-function toolSections(draft: StudioDraftOf): Section[] {
-	return draft.toolSpecs.map((tool) => ({ id: toolSpecNodeId(tool.key), label: tool.toolName }));
-}
-
-/** What experimenting shows beside type and models: each model, and the type's own section. */
+/**
+ * Extra category tabs for experiment by profile type (not one tab per model/tool —
+ * those drill in from the Models / Tools lists, as guardrails do).
+ */
 function experimentSections(draft: StudioDraftOf): Section[] {
 	const type = draft.identity.profileType;
 	return [
-		...draft.modelBindings.map((binding) => ({
-			id: modelBindingNodeId(binding.key),
-			label: binding.modelId,
-		})),
 		...(['live', 'speech', 'decision'].includes(type) ? [{ id: type, label: type }] : []),
 		...(type === 'embedding' ? [{ id: 'inputs', label: 'Inputs' }] : []),
-		...(type === 'host' ? [{ id: 'tools', label: 'Tools' }, ...toolSections(draft)] : []),
+		...(type === 'host' ? [{ id: 'tools', label: 'Tools' }] : []),
 	];
 }
 
 /** The sections a goal shows for this draft. */
 function goalSections(goal: GoalId, draft: StudioDraftOf): readonly Section[] {
-	if (goal === 'experience') return [...SECTIONS[goal], ...toolSections(draft)];
+	if (goal === 'experience') return SECTIONS[goal];
 	if (goal === 'experiment') return [...SECTIONS[goal], ...experimentSections(draft)];
 	return SECTIONS[goal];
 }

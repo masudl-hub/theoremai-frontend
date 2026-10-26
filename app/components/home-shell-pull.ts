@@ -133,7 +133,7 @@ export function useHomeIntroScroll(
 				/* Fixed icons, sticky spacers: both rects are already viewport
 				   coordinates. Adding scrollTop parks the landing end one
 				   screen below the card whenever measure runs after a jump
-				   to overview or showcase. */
+				   to overview or cookbook. */
 				next.push({
 					node,
 					icon,

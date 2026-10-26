@@ -1,0 +1,323 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R] /Count 3 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 2949 >>
+stream
+BT
+/F1 10 Tf
+12 TL
+54 728 Td
+(# Research Brief: Episodic & Vector-Space Memory for Language Models) Tj
+T*
+() Tj
+T*
+(**Prepared for:** Goals demo ? research brief ? verified findings  ) Tj
+T*
+(**Date:** 2026-10-26  ) Tj
+T*
+(**Scope length:** ~1?2 printed pages  ) Tj
+T*
+(**Confidentiality:** Internal demo fixture \(no secrets\)) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(## Background) Tj
+T*
+() Tj
+T*
+(Long-context models still forget, contradict, and mix sessions. Practitioners therefore) Tj
+T*
+(bolt on **external memory**: write past turns or tool results into a store, retrieve) Tj
+T*
+(top?k chunks by embedding similarity, and recombine them into the next prompt.) Tj
+T*
+() Tj
+T*
+(Three ideas keep showing up under different names:) Tj
+T*
+() Tj
+T*
+(1. **Episodic memory** ? store discrete past events \(dialog turns, tool traces, ?what) Tj
+T*
+(happened?\) rather than only parametric weights.  ) Tj
+T*
+(2. **Vector-space memory** ? encode those events as dense vectors; retrieve by) Tj
+T*
+(nearest-neighbor search \(FAISS, HNSW, etc.\).  ) Tj
+T*
+(3. **Context recombination** ? stitch retrieved snippets \(and sometimes summaries\) back) Tj
+T*
+(into the model?s working context under a token budget.) Tj
+T*
+() Tj
+T*
+(This brief asks an agent to **locate primary sources**, extract **verbatim claims**, and) Tj
+T*
+(separate marketing from peer-reviewed or open-source evidence. Do **not** invent DOIs,) Tj
+T*
+(arXiv IDs, or GitHub stars. Prefer sources the agent can open and quote.) Tj
+T*
+() Tj
+T*
+(### Topic targets the agent must find and verify) Tj
+T*
+() Tj
+T*
+(Treat these as **search targets**, not as already-verified citations:) Tj
+T*
+() Tj
+T*
+(| Target \(search for\) | Why it matters |) Tj
+T*
+(| --- | --- |) Tj
+T*
+(| MemGPT / Letta ? LLM OS / virtual context management | Episodic-style paging of memory) Tj
+T*
+(in/out of context |) Tj
+T*
+(| Generative Agents \(Park et al.\) ? memory stream + retrieval | Classic episodic memory) Tj
+T*
+(for simulated agents |) Tj
+T*
+(| RETRO / RETRO++ \(DeepMind\) ? retrieval-augmented generation at scale | Vector retrieval) Tj
+T*
+(as part of generation |) Tj
+T*
+(| HippoRAG / HippoRAG 2 ? hippocampal-inspired RAG | Graph + embedding recombination) Tj
+T*
+(claims |) Tj
+T*
+(| LangChain / LlamaIndex memory modules; Hugging Face datasets tagged `retrieval` or) Tj
+T*
+(`memory` | Implementation reality vs paper claims |) Tj
+T*
+() Tj
+T*
+(Confirm each hit with a **primary URL** \(arXiv abs/pdf, HF model/dataset card, or GitHub) Tj
+T*
+(README\). Discard secondary blog posts that lack a link to a primary artifact.) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(## Research questions) Tj
+T*
+() Tj
+T*
+(Answer each with evidence. Prefer short answers plus **verbatim quotes** \(see Success) Tj
+T*
+(criteria\).) Tj
+T*
+() Tj
+T*
+(1. **Write path:** How do published systems decide *what* to write into episodic or) Tj
+T*
+(vector memory \(full turns, summaries, embeddings of both\)? Cite at least one paper and) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+6 0 obj
+<< /Length 3050 >>
+stream
+BT
+/F1 10 Tf
+12 TL
+54 728 Td
+(one open-source README.  ) Tj
+T*
+(2. **Retrieve path:** What similarity metric and index type do the most-cited open) Tj
+T*
+(implementations use by default \(cosine vs L2; FAISS Flat/IVF/HNSW; other\)? Quote the) Tj
+T*
+(README or paper method section.  ) Tj
+T*
+(3. **Recombination:** Under a fixed context window, what policies appear for merging) Tj
+T*
+(retrieved chunks with the live dialogue \(prepend, interleave, summarize-then-inject,) Tj
+T*
+(hierarchical\)? Name two distinct policies with sources.  ) Tj
+T*
+(4. **Failure modes:** Which documented failure modes are attributed to memory stores) Tj
+T*
+(rather than the base LM \(stale facts, cross-session leakage, embedding drift, ?lost in) Tj
+T*
+(the middle?\)? One quote per failure mode, max three modes.  ) Tj
+T*
+(5. **Eval:** What datasets or benchmarks are used to measure long-horizon memory \(not) Tj
+T*
+(just single-hop RAG\)? Prefer HF dataset cards or arXiv eval sections; list metric names) Tj
+T*
+(exactly as written.  ) Tj
+T*
+(6. **\(Optional stretch\)** Is there a public **model card** that claims built-in episodic) Tj
+T*
+(memory \(vs external RAG\)? If none found after a good-faith search, state that explicitly) Tj
+T*
+(with query terms used.) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(## Preferred source types) Tj
+T*
+() Tj
+T*
+(Use these in priority order:) Tj
+T*
+() Tj
+T*
+(1. **arXiv** abs pages and PDFs \(method + experiments sections\).  ) Tj
+T*
+(2. **Hugging Face** model cards and dataset cards \(limitations / evaluation blocks\).  ) Tj
+T*
+(3. **GitHub READMEs** and linked design docs in the same repo \(version or commit pinned) Tj
+T*
+(if possible\).  ) Tj
+T*
+(4. Peer-reviewed PDFs only when freely reachable; do not rely on paywalled abstracts) Tj
+T*
+(alone.) Tj
+T*
+() Tj
+T*
+(Avoid: anonymous Medium posts, SEO roundups, and ?10 best memory libraries? listicles) Tj
+T*
+(**unless** they deep-link to a primary source you then quote.) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(## Success criteria) Tj
+T*
+() Tj
+T*
+(A finding counts as **verified** only if all of the following hold:) Tj
+T*
+() Tj
+T*
+(- **Named artifact:** title + authors or org + stable URL.  ) Tj
+T*
+(- **Verbatim quote:** ?1 sentence copied exactly from the primary source, in quotation) Tj
+T*
+(marks, with section name or page if available.  ) Tj
+T*
+(- **Claim ? quote link:** each answer to a research question maps to at least one quote;) Tj
+T*
+(no unsupported paraphrase.  ) Tj
+T*
+(- **Contradiction check:** if two sources disagree \(e.g. default metric\), report both) Tj
+T*
+(quotes and label the conflict.  ) Tj
+T*
+(- **No fabricated identifiers:** never invent arXiv IDs, DOIs, commit hashes, or star) Tj
+T*
+(counts. If uncertain, write `UNVERIFIED` and the search query.) Tj
+T*
+() Tj
+T*
+(Deliverable shape for the Goals agent: a short findings memo with one subsection per) Tj
+T*
+(research question, each ending in `Quote:` / `Source:`.) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(## Out of scope) Tj
+T*
+() Tj
+T*
+(- Training new embedding models or fine-tuning LMs.  ) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 866 >>
+stream
+BT
+/F1 10 Tf
+12 TL
+54 728 Td
+(- Production architecture for Theorem / this repo?s guardrail stack.  ) Tj
+T*
+(- Commercial vendor whitepapers without a public technical artifact.  ) Tj
+T*
+(- Speculative neuroscience analogies unless the paper itself uses them and you quote that) Tj
+T*
+(usage.  ) Tj
+T*
+(- API keys, private Hub tokens, or scraping behind login.  ) Tj
+T*
+(- Claiming ?SOTA? without the paper?s own metric table quoted.) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(## Constraints for the demo agent) Tj
+T*
+() Tj
+T*
+(- Stay within publicly readable sources.  ) Tj
+T*
+(- Budget: enough depth for **four** of the six questions with full verification; mark the) Tj
+T*
+(rest `PARTIAL`.  ) Tj
+T*
+(- If attachment text is truncated, prioritize questions 1, 3, and 5.  ) Tj
+T*
+(- Do not modify files outside the findings output the host application designates.) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 8 0 R >>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000127 00000 n 
+0000000197 00000 n 
+0000003198 00000 n 
+0000003324 00000 n 
+0000006426 00000 n 
+0000006552 00000 n 
+0000007469 00000 n 
+trailer
+<< /Size 10 /Root 1 0 R >>
+startxref
+7595
+%%EOF

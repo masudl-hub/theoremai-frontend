@@ -206,9 +206,8 @@
 }
 
 /*
- * why: The stills arrive as a waterfall: when the screen comes in, Studio rises, then Agents, then
- * Interface, each a beat after the one before. A scroll-linked rise could last no longer than the snap,
- * which read as a glitch, so it is timed, and starts once the screen is there.
+ * why: The stills rise together when the screen comes in. A scroll-linked rise could last no longer
+ * than the snap, which read as a glitch, so it is timed, and starts once the screen is there.
  * invariant: Without the board's script, or with reduced motion, the stills rest where they are.
  */
 @media (prefers-reduced-motion: no-preference) {
@@ -219,14 +218,6 @@
 	.packages-frame[data-waiting] .packages-tile {
 		translate: 0 48vh;
 		transition: none;
-	}
-
-	.packages-tile:nth-child(1) {
-		transition-delay: 220ms;
-	}
-
-	.packages-tile:nth-child(3) {
-		transition-delay: 440ms;
 	}
 }
 

@@ -3,6 +3,12 @@
  * structured data, meta tags, and llms.txt are built from it, so none of them can drift.
  * Kernel facts (description, license, version, keywords) come from the package at build time.
  */
+import {
+	COOKBOOKS,
+	type CookbookId,
+	type CookbookIncludeTag,
+	type CookbookTags,
+} from '@theoremjs/studio';
 import { packageLinks, SITE_PAGES } from '@theoremjs/studio/ui/studio-nav.ts';
 import { goalText } from './home-goals';
 import { KERNEL_PACKAGE_VERSION } from './kernel-version';
@@ -96,62 +102,133 @@ export const HEADLINE = [
 	{ text: 'their promises?', claim: false },
 ] as const;
 
-export type ExampleAction =
-	| { kind: 'studio'; href: string }
+export type CookbookAction =
+	| { kind: 'studio'; cookbook: CookbookId; href: string }
 	| { kind: 'hosted'; href: string; label: string };
 
-/**
- * Whether the showcase screen is on the home page. It is off until there are agents worth showing:
- * the screen, its stop, and its mentions are held back, and `#showcase` lands on contribute.
- */
-export const SHOWCASE_SHOWN: boolean = false;
+/** Whether the cookbook screen is on the home page after packages. */
+export const COOKBOOK_SHOWN: boolean = true;
 
-/** The first cards on the showcase board. Positions live in examples.css. */
-export const EXAMPLES: readonly {
+/** @deprecated Prefer `COOKBOOK_SHOWN`. */
+export const SHOWCASE_SHOWN = COOKBOOK_SHOWN;
+
+/**
+ * A recipe on the cookbook screen: studio cookbooks project `verb` / `tags` /
+ * `label` / `description` from `COOKBOOKS`; Bonsai is hosted-only and carries
+ * the same shape locally.
+ */
+export type CookbookRecipe = {
 	id: string;
-	title: string;
+	verb: string;
+	kind: 'agent' | 'system';
+	label: string;
 	description: string;
+	tags: CookbookTags;
 	image: string;
 	imageAlt: string;
-	action: ExampleAction;
-}[] = [
-	{
-		id: 'research',
-		title: 'Research scout',
-		description:
-			'Searches papers, repositories, and model cards. Jev filters each page to the passages that bear on the question, and a check verifies every quote.',
-		image: '/imagery/th30_ceruleanshelf.png',
-		imageAlt: 'Shallow turquoise water meeting deep blue along a reef shelf',
-		action: { kind: 'studio', href: '/studio?cookbook=research' },
+	action: CookbookAction;
+};
+
+const STUDIO_RECIPE_STILLS: Readonly<
+	Record<'research' | 'concierge' | 'architect' | 'decision', { image: string; imageAlt: string }>
+> = {
+	research: {
+		image: '/imagery/th30_blueabyss.png',
+		imageAlt: 'A deep blue whirlpool seen from above, clouds at the rim',
 	},
-	{
-		id: 'concierge',
-		title: 'Travel concierge',
-		description:
-			'Plans a trip from what you tell it and from tickets or notes you attach. It uses tools for weather, places, and currency before it answers.',
-		image: '/imagery/th30_wildflowerroad.png',
-		imageAlt: 'A stone path splitting through a meadow of yellow and pink wildflowers',
-		action: { kind: 'studio', href: '/studio?cookbook=concierge' },
+	concierge: {
+		image: '/imagery/th30_siennadunes.png',
+		imageAlt: 'Sienna sand dunes under scattered white clouds',
 	},
-	{
-		id: 'architect',
-		title: 'Code architect',
-		description:
-			'Reads repositories, packages, and framework documentation before advising, and calls a Narrator agent to record spoken briefings.',
-		image: '/imagery/th30_maplecanopies.png',
-		imageAlt: 'Sunlit autumn maple canopies viewed from below',
-		action: { kind: 'studio', href: '/studio?cookbook=architect' },
+	architect: {
+		image: '/imagery/th30_basaltplanes.png',
+		imageAlt: 'Dark basalt planes under patchy snow and low clouds',
 	},
+	decision: {
+		image: '/imagery/th30_marigolds.png',
+		imageAlt: 'Golden marigold fields divided by pale paths, clouds overhead',
+	},
+};
+
+function studioRecipe(id: keyof typeof STUDIO_RECIPE_STILLS): CookbookRecipe {
+	const entry = COOKBOOKS[id];
+	const still = STUDIO_RECIPE_STILLS[id];
+	return {
+		id,
+		verb: entry.verb,
+		kind: entry.kind,
+		label: entry.label,
+		description: entry.description,
+		tags: entry.tags,
+		image: still.image,
+		imageAlt: still.imageAlt,
+		action: { kind: 'studio', cookbook: id, href: `/studio?cookbook=${id}` },
+	};
+}
+
+/**
+ * Paste for a coding agent: names the Theorem cookbook, what the recipe shows
+ * how to use (from `COOKBOOKS.teaches`), how to load it, and where to look it
+ * up over the docs MCP.
+ */
+export function cookbookMcpReference(recipe: CookbookRecipe, origin: string): string {
+	if (recipe.action.kind !== 'studio') {
+		throw new Error(`Cookbook '${recipe.id}' has no studio MCP reference.`);
+	}
+	const { cookbook } = recipe.action;
+	const entry = COOKBOOKS[cookbook];
+	const load = /^[A-Za-z_]\w*$/.test(cookbook)
+		? `COOKBOOKS.${cookbook}`
+		: `COOKBOOKS[${JSON.stringify(cookbook)}]`;
+	return [
+		`# Theorem cookbook · ${cookbook}`,
+		'',
+		`${recipe.verb} — ${recipe.label}`,
+		'',
+		recipe.description,
+		'',
+		'This recipe shows how to use:',
+		...entry.teaches.map((line) => `- ${line}`),
+		'',
+		'Theorem already has a recipe for this. Load it from `@theoremjs/studio`:',
+		'',
+		'```ts',
+		"import { COOKBOOKS } from '@theoremjs/studio'",
+		`const workspace = await ${load}.createWorkspace()`,
+		'```',
+		'',
+		`Studio: ${origin}/studio?cookbook=${cookbook}`,
+		`Docs MCP: ${origin}/mcp — search_docs for ${JSON.stringify(recipe.label)}, then read_docs the hits.`,
+	].join('\n');
+}
+
+/**
+ * Fan order is circular: blueabyss (research) and malachite (bonsai) must not sit
+ * next to each other when the active recipe peaks in the centre.
+ */
+export const COOKBOOK_RECIPES: readonly CookbookRecipe[] = [
+	studioRecipe('research'),
+	studioRecipe('concierge'),
+	studioRecipe('architect'),
 	{
 		id: 'bonsai',
-		title: 'Bonsai',
+		verb: 'care from a photo',
+		kind: 'agent',
+		label: 'Bonsai',
 		description:
-			'A plant care companion. It identifies a plant from a photo, finds what is wrong, and explains how to look after it.',
-		image: '/imagery/th30_terracedgarden.png',
-		imageAlt: 'Curved stone terraces of yellow grass set in a green forest',
+			'Snap a leaf or a pot. Bonsai names the plant, spots what is wrong, and tells you how to bring it back — a full Theorem agent out in the wild.',
+		tags: {
+			includes: ['text', 'http-tools', 'guardrails'] satisfies readonly CookbookIncludeTag[],
+		},
+		image: '/imagery/th30_malachite.png',
+		imageAlt: 'Turquoise terrace pools set in dense green forest',
 		action: { kind: 'hosted', href: 'https://askbonsai.xyz', label: 'Open Bonsai' },
 	},
+	studioRecipe('decision'),
 ];
+
+/** @deprecated Prefer `COOKBOOK_RECIPES`. */
+export const EXAMPLES = COOKBOOK_RECIPES;
 
 export const CONTRIBUTE_INTRO =
 	'Theorem is open source. We welcome questions, bugs, ideas, and code.';
@@ -199,9 +276,9 @@ const HEADLINE_TEXT = HEADLINE.map(({ text }) => text).join(' ');
 
 export function homeScreens(): readonly HomeScreen[] {
 	const goals = GOALS.map(({ title }) => title).join(' ');
-	const examples = EXAMPLES.map(({ title, description, action }) => {
-		const where = action.kind === 'hosted' ? 'Opens the hosted app.' : 'Opens in the studio.';
-		return `${title}: ${description} ${where}`;
+	const recipes = COOKBOOK_RECIPES.map(({ label, description, action }) => {
+		const open = action.kind === 'hosted' ? `Opens ${action.label}.` : 'Opens in the studio.';
+		return `${label}: ${description} ${open}`;
 	}).join(' ');
 	const ways = WAYS.map(({ title, note }) => `${title}: ${note}`).join(' ');
 	const installText = INSTALL_COMMANDS.map(({ label, command }) => `${command} (${label})`).join(
@@ -226,8 +303,14 @@ export function homeScreens(): readonly HomeScreen[] {
 				({ title, description }) => `${title}. ${description.replaceAll('`', '')}`,
 			).join(' '),
 		},
-		...(SHOWCASE_SHOWN
-			? [{ id: 'showcase', name: 'Showcase', text: `Built with theorem. ${examples}` }]
+		...(COOKBOOK_SHOWN
+			? [
+					{
+						id: 'cookbook',
+						name: 'Cookbook',
+						text: `Made in theorem. ${recipes}`,
+					},
+				]
 			: []),
 		{
 			id: 'contribute',

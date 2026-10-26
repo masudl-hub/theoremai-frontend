@@ -1,8 +1,8 @@
 import { redirect } from 'react-router';
 
-/** Showcase is a screen on the landing page. */
+/** Examples alias the cookbook screen on the landing page. */
 export function loader() {
-	return redirect('/#showcase');
+	return redirect('/#cookbook');
 }
 
 export default function ExamplesRedirect() {

@@ -1,85 +1,98 @@
-/* The board fills the elevated panel and clips to its corners.
-   The canvas is the field the cards sit on; ScrollableArea pans it. */
-.examples-frame {
+/* Fan geometry the astryx Carousel cannot express: centred peak, stepped sides,
+   clipped at the shell's left, right and bottom edges. Chrome stays astryx. */
+
+.cookbook-frame {
 	position: relative;
+	display: flex;
+	flex-direction: column;
 	height: 100%;
 	min-height: 0;
-	overflow: hidden;
+	/* Clip the sides for the Drops spill; keep the bottom open so stills
+	   stay in the scroll as the landing page moves. */
+	overflow-x: clip;
+	overflow-y: visible;
 	border-radius: inherit;
 }
 
-.examples-mark {
+.cookbook-mark {
 	position: absolute;
-	z-index: 1;
-	/* Clear of the panel corner, which clips anything inside --radius-page. */
+	z-index: 2;
 	inset-block-start: calc(var(--radius-page) + var(--spacing-4));
 	inset-inline-end: calc(var(--radius-page) + var(--spacing-4));
-	width: 22rem;
-	max-width: calc(100% - 2 * (var(--radius-page) + var(--spacing-4)));
 	pointer-events: none;
 }
 
-/* The scrollport is the query box, so the field is at least the panel
-   and only larger when the cards need room to pan. */
-.examples-scroll {
-	container-type: size;
-}
-
-/* A screen of room past the canvas on every side, so it pans as far as the pointer goes. */
-.examples-room {
-	width: max-content;
-	padding: 100vh 100vw;
-	cursor: grab;
-	user-select: none;
-}
-
-.examples-room[data-panning] {
-	cursor: grabbing;
-}
-
-.examples-room :is(a, button) {
-	cursor: pointer;
-}
-
-.examples-canvas {
+.cookbook-hero {
 	position: relative;
-	width: calc(var(--spacing-12) * 21);
-	height: calc(var(--spacing-12) * 19);
+	z-index: 1;
+	flex: 1 1 auto;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-height: 0;
+	/* Same horizontal gutters as contribute / home-stage. */
+	padding-block: var(--spacing-8);
+	padding-inline: calc(clamp(1.5rem, 3.2vw, 3.25rem) + clamp(2rem, 6vw, 5rem));
 }
 
-@supports (width: 1cqw) {
-	.examples-canvas {
-		width: max(100cqw, calc(var(--spacing-12) * 21));
-		height: max(100cqh, calc(var(--spacing-12) * 19));
+/* Phrase under the mark: a step above display-1, filled, quiet. */
+.cookbook-verb {
+	font-size: clamp(2.25rem, 4.5vw, 3.25rem);
+	line-height: 1.1;
+	letter-spacing: -0.02em;
+}
+
+.astryx-text.cookbook-description {
+	text-align: center;
+}
+
+.cookbook-fan {
+	/* Wide enough that the outer stills spill past the shell and clip. */
+	--cookbook-still-center: clamp(14rem, 30vw, 22rem);
+	--cookbook-still-near: clamp(10.5rem, 21vw, 16rem);
+	--cookbook-still-far: clamp(8rem, 16vw, 12rem);
+
+	display: flex;
+	flex: 0 0 auto;
+	align-items: flex-end;
+	justify-content: center;
+	gap: var(--spacing-3);
+	width: 100%;
+	height: 48%;
+	min-height: 16rem;
+	/* Hang past the shell so left, right and bottom edges clip the stills. */
+	padding-inline: 0;
+	transform: translateY(28%);
+	pointer-events: none;
+}
+
+.cookbook-still {
+	flex: 0 0 auto;
+	width: var(--cookbook-still-far);
+	pointer-events: auto;
+	will-change: transform, width;
+	transition:
+		width 420ms var(--th30-ease, var(--ease-standard)),
+		transform 420ms var(--th30-ease, var(--ease-standard));
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.cookbook-still {
+		will-change: auto;
+		transition: none;
 	}
 }
 
-.examples-card {
-	position: absolute;
-	width: 18rem;
+.cookbook-still[data-rank="1"] {
+	width: var(--cookbook-still-near);
 }
 
-.examples-card[data-place="research"] {
-	inset-inline-start: var(--spacing-10);
-	inset-block-start: var(--spacing-10);
+.cookbook-still[data-rank="0"] {
+	width: var(--cookbook-still-center);
 }
 
-.examples-card[data-place="concierge"] {
-	inset-inline-start: calc(18rem + var(--spacing-10) + var(--spacing-12) * 5);
-	inset-block-start: calc(var(--spacing-10) + var(--spacing-12) + var(--spacing-4));
-}
-
-.examples-card[data-place="architect"] {
-	inset-inline-start: var(--spacing-12);
-	inset-block-start: calc(var(--spacing-12) * 10);
-}
-
-.examples-card[data-place="bonsai"] {
-	inset-inline-start: calc(18rem + var(--spacing-12) * 5);
-	inset-block-start: calc(var(--spacing-12) * 11);
-}
-
-.examples-card img {
+.cookbook-still img {
 	display: block;
 	width: 100%;
 	height: 100%;

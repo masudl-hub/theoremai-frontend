@@ -32,7 +32,6 @@ export const STUDIO_SEED_IDS = [
 	'architect',
 	'live-concierge',
 	'decision',
-	'span-decision',
 	'gemini-embedding-2',
 	'narrator',
 	'console',
