@@ -56,7 +56,6 @@ export default function InterfaceChat() {
 		<Card variant="glass" padding={0} elevation="med" className="packages-chat" inert aria-hidden>
 			<StudioRunner
 				payload={payload}
-				mode="demo"
 				runtime={null}
 				conversation={opening.started.conversation}
 				conversationView={opening.started.view}

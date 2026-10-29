@@ -34,10 +34,7 @@ import { studioProviders, studioTraces } from './studio-turn';
 const liveSessionStore = createMemorySessionStore();
 
 export type LiveRelayOptions = Partial<
-	Pick<
-		SessionBoundaryOptions,
-		'session' | 'sessionStore' | 'gateTtlMs' | 'operationRetentionMs' | 'sessionLimits'
-	>
+	Pick<SessionBoundaryOptions, 'session' | 'sessionStore' | 'gateTtlMs' | 'operationRetentionMs'>
 > & {
 	/** Spends the call's allowance before it opens; throws the refusal the browser reads. */
 	admit?: () => Promise<void>;

@@ -557,7 +557,6 @@ function GoalRunnerMounted({
 	return (
 		<StudioRunner
 			payload={good.payload}
-			mode="demo"
 			runtime={null}
 			chatRef={chat}
 			traces={traces}
