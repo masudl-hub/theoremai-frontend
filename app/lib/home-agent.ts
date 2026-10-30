@@ -18,6 +18,8 @@ import {
 	createResearchWorkspace,
 	defaultModelBinding,
 	firstServed,
+	RESEARCH_REPLY_SCHEMA_ID,
+	RESEARCH_REPLY_SCHEMA_JSON,
 	readStudioSource,
 	type StudioDraft,
 	type StudioIssue,
@@ -71,7 +73,7 @@ function citeOrFailOn(draft: StudioDraft): boolean {
 	return (
 		draft.outputs.validationEnabled &&
 		draft.outputs.itemRules.candidates === 'fix' &&
-		draft.outputs.schemaId === 'findings'
+		draft.outputs.schemaId === RESEARCH_REPLY_SCHEMA_ID
 	);
 }
 
@@ -128,27 +130,6 @@ const BRIEF_INPUTS = {
 	slots: BRIEF_SLOTS,
 };
 
-const FINDINGS_SCHEMA = JSON.stringify({
-	type: 'object',
-	properties: {
-		topic: { type: 'string' },
-		summary: { type: 'string' },
-		candidates: {
-			type: 'array',
-			items: {
-				type: 'object',
-				properties: {
-					name: { type: 'string' },
-					url: { type: 'string' },
-					quote: { type: 'string' },
-				},
-				required: ['name', 'url', 'quote'],
-			},
-		},
-	},
-	required: ['topic', 'summary', 'candidates'],
-});
-
 /** The workspace on screen. `text` is the text agent set aside while a picture or a call is on. */
 export type HomeAgent = { workspace: StudioWorkspace; text?: StudioWorkspace };
 
@@ -194,7 +175,8 @@ function detectEdit(
 
 const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
 	'trip-brief': {
-		isOn: (draft) => tripBriefInputsOn(draft) && draft.outputs.schemaId === 'findings',
+		isOn: (draft) =>
+			tripBriefInputsOn(draft) && draft.outputs.schemaId === RESEARCH_REPLY_SCHEMA_ID,
 		on: (draft) => {
 			const baseSystem = createResearchScoutDraft().identity.system;
 			return {
@@ -209,8 +191,8 @@ const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
 				outputs: {
 					...draft.outputs,
 					mode: 'structured',
-					schemaId: 'findings',
-					schemaJson: FINDINGS_SCHEMA,
+					schemaId: RESEARCH_REPLY_SCHEMA_ID,
+					schemaJson: RESEARCH_REPLY_SCHEMA_JSON,
 				},
 			};
 		},
@@ -249,8 +231,8 @@ const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
 			outputs: {
 				...draft.outputs,
 				mode: 'structured',
-				schemaId: 'findings',
-				schemaJson: FINDINGS_SCHEMA,
+				schemaId: RESEARCH_REPLY_SCHEMA_ID,
+				schemaJson: RESEARCH_REPLY_SCHEMA_JSON,
 				validationEnabled: true,
 				maxRetries: 2,
 				itemRules: { ...draft.outputs.itemRules, candidates: 'fix' },
@@ -258,7 +240,8 @@ const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
 		}),
 		off: (draft) => {
 			const { candidates: _dropped, ...restRules } = draft.outputs.itemRules;
-			const keepSchema = tripBriefInputsOn(draft) && draft.outputs.schemaId === 'findings';
+			const keepSchema =
+				tripBriefInputsOn(draft) && draft.outputs.schemaId === RESEARCH_REPLY_SCHEMA_ID;
 			return {
 				...draft,
 				outputs: {
@@ -521,66 +504,14 @@ export type HomeCompile =
 	| { ok: true; payload: StudioRunPayload; source: string }
 	| { ok: false; issues: StudioIssue[] };
 
-type HomeProfile = StudioRunPayload['profile'];
-
-/**
- * Studio compile only ships item `onFail`; Goals cite-or-fail needs a real check so
- * candidates without a quote are repaired then dropped.
- */
-function withCiteOrFailCheck(profile: HomeProfile): HomeProfile {
-	if (!('outputs' in profile) || !profile.outputs?.validation?.items?.candidates) return profile;
-	const items = profile.outputs.validation.items;
-	const onFail = items.candidates.onFail;
-	return {
-		...profile,
-		outputs: {
-			...profile.outputs,
-			validation: {
-				...profile.outputs.validation,
-				items: {
-					...items,
-					candidates: {
-						onFail,
-						check: (item) => {
-							if (!item || typeof item !== 'object' || Array.isArray(item)) {
-								return {
-									isValid: false,
-									error: 'Each candidate must be an object with a verbatim quote.',
-								};
-							}
-							const quote = (item as { quote?: unknown }).quote;
-							if (typeof quote !== 'string' || quote.trim() === '') {
-								return {
-									isValid: false,
-									error: 'Each candidate needs a verbatim quote from a source.',
-								};
-							}
-							return { isValid: true };
-						},
-					},
-				},
-			},
-		},
-	};
-}
-
 export function compileHomeAgent({ workspace }: HomeAgent): HomeCompile {
 	const compiled = compileWorkspace(workspace, ON_SITE);
 	if (!compiled.ok) return { ok: false, issues: compiled.issues };
 	const run = workspaceRunAgent(compiled, draftOf(workspace).identity.agentId.trim());
 	if (!run) return { ok: false, issues: [] };
-	const {
-		agentId,
-		profile: compiledProfile,
-		customTools,
-		structured,
-		questions,
-		dependencies,
-	} = run;
-	// why: Check stays on the run profile only; the printed source keeps studio's onFail shape.
-	const profile = withCiteOrFailCheck(compiledProfile);
-	const policy = resolveGuardrailPolicy(compiledProfile.guardrails);
-	const declared = compiledProfile.guardrails?.detect;
+	const { agentId, profile, customTools, structured, questions, dependencies } = run;
+	const policy = resolveGuardrailPolicy(profile.guardrails);
+	const declared = profile.guardrails?.detect;
 	const detect = Object.fromEntries(
 		DETECTORS.map((detector) => {
 			const rule = typeof declared === 'object' ? declared[detector] : undefined;
@@ -596,9 +527,9 @@ export function compileHomeAgent({ workspace }: HomeAgent): HomeCompile {
 	const printed = {
 		...run,
 		profile: {
-			...compiledProfile,
+			...profile,
 			guardrails: {
-				...compiledProfile.guardrails,
+				...profile.guardrails,
 				detect: { ...(typeof declared === 'object' ? declared : {}), ...detect },
 				blockedReply: policy.blockedReply,
 			},

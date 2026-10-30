@@ -78,11 +78,11 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 					{
 						id: 'cite-or-fail',
 						label: 'Require verbatim quotes',
-						description: 'Repair or drop candidates without source quotes.',
+						description: 'Repair or drop candidates whose quote no tool returned.',
 						prompt: 'Ask for findings with verbatim quotes from the sources.',
 						ask: 'Find primary sources on episodic memory for language models and return findings with a verbatim quote for each candidate.',
 						result:
-							'Validation repairs or drops candidates without a quote — beyond the findings schema alone.',
+							'Validation checks each quote against what the tools returned, and repairs or drops the rest.',
 						line: 'validation:',
 					},
 					{
