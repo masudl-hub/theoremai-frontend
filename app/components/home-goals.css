@@ -229,7 +229,6 @@
 	height: var(--home-goal-large);
 	display: grid;
 	grid-template-rows: auto minmax(0, 1fr);
-	gap: var(--spacing-2);
 	padding: var(--spacing-4);
 	box-sizing: border-box;
 
@@ -239,21 +238,14 @@
 	will-change: opacity;
 }
 
-.home-goal-live:has(> .home-goal-prompt:empty) {
-	grid-template-rows: minmax(0, 1fr);
-	gap: 0;
-}
-
+/* why: An empty prompt takes no room: its row is auto, and the space under it goes with it. */
 .home-goal-prompt:empty {
 	display: none;
 }
 
-.home-goal-live:has(> .home-goal-prompt:empty) > .home-goal-live-pane {
-	grid-row: 1;
-}
-
 .home-goal-prompt {
 	justify-self: start;
+	margin-block-end: var(--spacing-2);
 	pointer-events: auto;
 }
 
