@@ -449,7 +449,7 @@ function useTest(
 				}
 				const turn = await chat.current?.send(
 					token.attachment && !attachmentEnabled ? token.prompt : ask,
-					files,
+					{ files },
 				);
 				if (turn && !turn.blocks.some(({ kind }) => kind === 'error')) setDone(token);
 			} catch {
