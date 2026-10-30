@@ -198,7 +198,8 @@
 	);
 }
 
-.home-stage-still-media {
+/* invariant: Scoped to the stack so it beats home-stage.css's radius whichever file loads first. */
+.home-stage-stills .home-stage-still-media {
 	transform: scale(var(--home-goal-size, 1));
 	transform-origin: 0 0;
 	border-radius: calc(var(--radius-container) / var(--home-goal-size, 1));
