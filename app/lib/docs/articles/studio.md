@@ -149,7 +149,7 @@ Your server answers `/api/studio` with one handler, `createStudioDraftHandler()`
 * **Without Lent Keys**: Drafts run in the browser, on the builder's own keys.
 * **Lent Keys**: You can lend your keys. A `LentKeys` says which models they run, which built-in tools each model may use, and how large a decision may be. A `spend` function counts each run for whoever sent it, and can refuse it.
 * **Network**: The tool connection test reaches public hosts only.
-* **Tab State**: Drafts and test conversations are kept in the browser's IndexedDB, under the tab. A reload keeps them. After the tab closes, a studio tab opened later clears them. Keys are never kept.
+* **Tab State**: Drafts and test conversations are kept in the browser's IndexedDB, under the tab. A reload keeps them. After the tab closes, another studio tab, open now or opened later, clears them a minute on. Keys are never kept.
 
 ## Related Guides
 
