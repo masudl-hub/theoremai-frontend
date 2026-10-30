@@ -13,7 +13,7 @@ const SCOPE = '@theoremjs';
  * A package's install command to copy. The package's name in the command is the switch: each
  * press moves it to the next package, and the rest of the command follows.
  */
-export function InstallCopy({ size = 'sm' }: { size?: 'sm' | 'lg' }) {
+export function InstallCopy() {
 	const { copy, isCopied } = useClipboard({ announce: 'Install command copied' });
 	const [at, setAt] = useState(0);
 	const switchRef = useRef<HTMLButtonElement>(null);
@@ -23,18 +23,18 @@ export function InstallCopy({ size = 'sm' }: { size?: 'sm' | 'lg' }) {
 	const cut = command.indexOf(name) + SCOPE.length;
 	const copyLabel = isCopied ? 'Copied' : 'Copy install command';
 	return (
-		<div className="install-copy" data-size={size}>
+		<div className="install-copy">
 			<IconButton
 				label={copyLabel}
 				tooltip={copyLabel}
 				variant="ghost"
-				size={size}
+				size="sm"
 				icon={isCopied ? <IconCheck aria-hidden /> : <IconCopy aria-hidden />}
 				onClick={() => {
 					void copy(command);
 				}}
 			/>
-			<Text type={size === 'lg' ? 'large' : 'body'} className="install-copy-command">
+			<Text type="body" className="install-copy-command">
 				{command.slice(0, cut)}
 				<button
 					ref={switchRef}

@@ -73,7 +73,7 @@ export function StartBoard() {
 					<Heading level={1} type="display-1" textWrap="balance" className="start-title">
 						Build something cool.
 					</Heading>
-					<InstallCopy size="lg" />
+					<InstallCopy />
 					<div className="start-actions">
 						{SITE_SECTIONS.map(({ label, href, icon: Icon }) => (
 							<Button
