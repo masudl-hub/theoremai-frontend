@@ -4,7 +4,7 @@
 		"files": {
 			"src/guardrails/labels.ts": "f50fb7aa56bb88a7b0ed7583d29030f5d4ea48c2",
 			"src/kernel/api-catalog.ts": "1266ff05b229cb15372688f4575eac621b321fea",
-			"src/kernel/schema.ts": "63c4bb2f98e3b6e359098dda8c98f5e73fdb4747",
+			"src/kernel/schema.ts": "5ff33aa8e05483193dec427a2004f5a1e2a37340",
 			"src/observability/trace-catalog.ts": "fecb75a52535a85338acc637aeb9aa836aad7405"
 		}
 	},
@@ -294,7 +294,7 @@
 		"reviewed": "2026-10-30",
 		"files": {
 			"src/kernel/registry/profiles.ts": "9afa5d29d3e79d969e128a1949151a7a621cbacd",
-			"src/kernel/schema.ts": "63c4bb2f98e3b6e359098dda8c98f5e73fdb4747"
+			"src/kernel/schema.ts": "5ff33aa8e05483193dec427a2004f5a1e2a37340"
 		}
 	},
 	"profiles/bindings": {
@@ -370,7 +370,7 @@
 		"reviewed": "2026-10-30",
 		"files": {
 			"src/kernel/registry/profiles.ts": "9afa5d29d3e79d969e128a1949151a7a621cbacd",
-			"src/kernel/schema.ts": "63c4bb2f98e3b6e359098dda8c98f5e73fdb4747"
+			"src/kernel/schema.ts": "5ff33aa8e05483193dec427a2004f5a1e2a37340"
 		}
 	},
 	"profiles/lifecycle": {
@@ -654,7 +654,7 @@
 		"reviewed": "2026-10-30",
 		"files": {
 			"studio/.npmrc": "521a9f7c0773588848ad5fa8a074ceca964a6b41",
-			"studio/README.md": "9f242ed73d24bf144956a06fdc787a4632b7dbd8",
+			"studio/README.md": "3e18aeaab8e28c95811721f608eb899cd113a65e",
 			"studio/agreement.ts": "dd44fcef6518ce2097ee1614b6e1eca55716c605",
 			"studio/app/index.html": "ad1119151d78406c53e3c448c8293df61ddee40a",
 			"studio/app/main.tsx": "3c7d3894eeda26bb93d13c853347c48408ea6c03",
@@ -670,7 +670,7 @@
 			"studio/compile-workspace.ts": "5a4ead4089ff62741125176a22ab146bb4631b33",
 			"studio/compile.ts": "bbf63db182a07a22a9a1a347e24930645df397d0",
 			"studio/conversation-key.ts": "57f138e63e4a2c0fa8b6944a498d88d38ebf2dd8",
-			"studio/cookbooks/catalog.ts": "6c17d92e381b9f62f10c01974cf9b7cff3b51452",
+			"studio/cookbooks/catalog.ts": "ac1c64eadf81fc7c1c5a8522ae12453afbc7a613",
 			"studio/cookbooks/checks.ts": "941a2b5ba61ad1b50d7dfbf72c84aab6ed5f7158",
 			"studio/cookbooks/exchanges.ts": "b259f41f9de77c8f7171ae58e12f32143d39c8c5",
 			"studio/cookbooks/fixtures/research.trace.json": "fedc1babc5a4ec04036cf410715e582704771012",
@@ -679,7 +679,7 @@
 			"studio/cookbooks/providers.ts": "cc18b591a8250cdca8c2f5e8f345e1c0664a377a",
 			"studio/cookbooks/research-opening.ts": "4e952fd48dbe6b9a46912dd5a9550e54d3254d5a",
 			"studio/cookbooks/sources.ts": "d7d28ac68c03ec5ba32282580550c6b9894ccb0c",
-			"studio/cookbooks/tools.ts": "43ad38c2ed44d290ea6aae1f68a8c2059451e5b2",
+			"studio/cookbooks/tools.ts": "7dae57660fcc8036e1c394b9c55f3d68138dc345",
 			"studio/decision-example-images.ts": "802ac837864ebc9d227932e4e789d1151f68a2b2",
 			"studio/deno.json": "fde86a1efb656ba70397b1e732514b035bcb002a",
 			"studio/draft.ts": "1d132006064cba89305a6c99d90195397b36e072",
@@ -760,7 +760,7 @@
 			"studio/tests/boot-sequence.test.ts": "8d5a96748fe68ccb87c7de6347bf9ba9523653a1",
 			"studio/tests/coverage.test.ts": "27467f13869aa33ebda0de1a2f360e8e3c28d896",
 			"studio/tests/export-agent.test.ts": "4e4d4861249198436343d9a82b7a12f4c6e0ae16",
-			"studio/tests/keep.test.ts": "d47d550fdbaae6cb7ca1fe7f3d2786ac9cdac8fd",
+			"studio/tests/keep.test.ts": "a4bbd23796791b8c275246f8b0a747c4d611c2a9",
 			"studio/tests/page.test.ts": "c82a67befa3138e2903226e9ecf521d1acf012f9",
 			"studio/tests/ports.test.ts": "3afec30d45f31cd9504da53d217778ea1b377a5b",
 			"studio/tests/prefs.test.ts": "9a6b8e411527848b9435fef885e2c534b192dd6c",
@@ -819,7 +819,7 @@
 			"studio/ui/lib/read-map.ts": "7e9cef9aebc77084ecd3e386b3778ef6ca559f1b",
 			"studio/ui/lib/read-progress.ts": "20b53a27624ad1546fea9e2f08d5d9f041781d7f",
 			"studio/ui/lib/refusal-lines.ts": "36f91d3ea8498b0f359c70549c0783c0b5b136d9",
-			"studio/ui/lib/run-keys.ts": "6c1799b24e830df6a1cab5b87036babe67511ac1",
+			"studio/ui/lib/run-keys.ts": "e9972725c79d0ea82694efc9e4d3caec62b01375",
 			"studio/ui/lib/send-when-ready.ts": "516feff899a1b438df2b24878ed18b8a3c43f348",
 			"studio/ui/lib/studio-activity.ts": "f81a66522b65d8dc70e9733edcd87d2ec7d97044",
 			"studio/ui/lib/studio-console.ts": "becd7b3921298cce99bbbcd205135f87c33ecf5b",
@@ -834,7 +834,7 @@
 			"studio/ui/lib/studio-project.ts": "ca1d5a39c906a1fbf8211850f5dbbb09a6ef5432",
 			"studio/ui/lib/studio-restore.ts": "00c5919d4695b50eb036fff1fe1e520c9155a3c7",
 			"studio/ui/lib/studio-run-open.ts": "79dc2db42b8a5b313920d908677c3c8efb041fc7",
-			"studio/ui/lib/studio-session.ts": "45675ca6a18d60b1e0374092359757acbd2a3400",
+			"studio/ui/lib/studio-session.ts": "e25e3fa722b128077a2d85e4b056cc7c9e2c181f",
 			"studio/ui/lib/studio-settings.ts": "2cb4d99c509be99a14e5e99ad01f24f439218e2e",
 			"studio/ui/lib/studio-store.ts": "cc11729b0ba1fbb8f9fadbe413fcc4561dd5b816",
 			"studio/ui/lib/studio-watch.ts": "5806d2419f90b2cbc70bf3f333f96ed2b904e962",
@@ -876,7 +876,7 @@
 			"studio/ui/studio-run.tsx": "0342f1fb3581ac2d09c2daaa61851514aa666a3a",
 			"studio/ui/studio-runner.tsx": "62f9002b111ec7be5565de7d48c9204907e3f8fc",
 			"studio/ui/studio-save.tsx": "08fbf56273437b7e486f4757a3fbc31199184e15",
-			"studio/ui/studio-screen.tsx": "c1aa423b2c7735f94b1d54a934a6925773833f0e",
+			"studio/ui/studio-screen.tsx": "bc7921877abc93b966e131929bde4cd40385f815",
 			"studio/ui/studio-settings.tsx": "162885ef4f678b1b69e108a614f5208e5ff30a88",
 			"studio/ui/studio-shell.css": "6c5da034b24cc545fcb5805c23174d6821d17f18",
 			"studio/ui/studio-shell.tsx": "362f47afe041cceaa4268a1757afa7dda3e891e4",
@@ -924,7 +924,7 @@
 			"src/kernel/auth/scope-refusal.ts": "32af737d1562a10600a03b0ddae0408f64d9dd55",
 			"src/kernel/auth/typed-secret.ts": "307a280cf1ba474928b3f7be8389d4d97df81dbf",
 			"src/kernel/auth/types.ts": "da6c05c7bb2c0177e1edfae7e3740f4477440a86",
-			"src/kernel/tools/activity-label.ts": "401fb19c7a97f174bd211941eca0d26423ab4078",
+			"src/kernel/tools/activity-label.ts": "a58adbca2db70ef9d5a898639779d2357ecf9e59",
 			"src/kernel/tools/agent.ts": "5f60d91d9a89acb1da4991bf11a55205d7d694fb",
 			"src/kernel/tools/coordinate.ts": "c77bcd4b15555d5c001d6294a62d1f1862495301",
 			"src/kernel/tools/events.ts": "b0d8afd3f93f06086f52a888ff50e12523bde1ff",
@@ -1000,7 +1000,7 @@
 	"tools/liquid-labels": {
 		"reviewed": "2026-10-30",
 		"files": {
-			"src/kernel/tools/activity-label.ts": "401fb19c7a97f174bd211941eca0d26423ab4078",
+			"src/kernel/tools/activity-label.ts": "a58adbca2db70ef9d5a898639779d2357ecf9e59",
 			"src/kernel/tools/types.ts": "bb4b91af9c1dff65e3d6c42bf56880f40d0903af"
 		}
 	},

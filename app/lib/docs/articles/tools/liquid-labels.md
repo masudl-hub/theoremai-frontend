@@ -1,6 +1,6 @@
 ---
 title: Liquid Tool Labels
-updated: 2026-10-29
+updated: 2026-10-30
 summary: Dynamic, typed status label templates for tool activity spinners, approval prompts, and transcripts.
 entry: src/kernel/tools/activity-label.ts
 covers: src/kernel/tools/activity-label.ts, src/kernel/tools/types.ts
@@ -74,6 +74,16 @@ activity: 'dispatching to {destinationPort|regional hub}',
 
 If a placeholder has no value and no fallback is specified, that template line does not fit and is discarded.
 
+### Counts
+
+To show a number with the right word, put the word for one and the word for any other number after the path:
+
+```text
+activityPast: 'found {output.results.length hit|hits} for {query}',
+```
+
+The label reads "found 1 hit" or "found 3 hits". English plural rules pick the word, so zero reads "0 hits". A third part is the fallback, used when the value is not a number: `{output.total hit|hits|some hits}`.
+
 ## Conditional Rules (`when`)
 
 Prefix lines with `when <field> is <value>:` to display specialized copy based on arguments:
@@ -128,6 +138,7 @@ Theorem evaluates all matching `+ ` lines in sequence and joins them naturally i
 Theorem validates label templates at registration time against your Zod `input` and `output` schemas:
 
 * A placeholder referencing `{destination}` will throw a `TheoremError('config')` at startup if `destination` is not declared in the Zod schema.
+* A count needs both words: `{total hit}` throws. Its path must be a number field or a list's `length`.
 * Output variables (e.g. `{output.status}`) are allowed only in `activityPast`. Referencing output variables in `activity` or `request` throws a build-time configuration error.
 
 ## Related Guides

@@ -1,5 +1,5 @@
 /**
- * Fail if authored /docs copy uses a banned AI-ism.
+ * Fail if authored /docs copy uses a banned AI-ism, or spells out a type signature in prose.
  * Kernel catalog strings are not scanned. Allow-list spans win over hits.
  */
 
@@ -83,6 +83,25 @@ function hitsIn(text, banned) {
 	return hits;
 }
 
+/** An inline code span that is a signature: an arrow, or a promise or stream type. */
+const SIGNATURE = /=>|\b(?:Promise|AsyncGenerator|AsyncIterable)</;
+
+/**
+ * The type signatures in a chapter's prose. Snippets and table rows (a reference table's
+ * Signature column) may hold them; prose names the type alone.
+ *
+ * @param {string} source
+ */
+function signaturesIn(source) {
+	const [, , body = ''] = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/.exec(source) ?? [];
+	const prose = body.replace(/^(`{3,})[^\n]*\n[\s\S]*?\n\1$/gm, '');
+	return prose
+		.split('\n')
+		.filter((line) => !/^\s*\|/.test(line))
+		.flatMap((line) => [...line.matchAll(/`([^`\n]+)`/g)].map((match) => match[1] ?? ''))
+		.filter((code) => SIGNATURE.test(code));
+}
+
 function articleFiles() {
 	return readdirSync(articlesDir, { recursive: true })
 		.map(String)
@@ -104,12 +123,15 @@ for (const file of articleFiles()) {
 			);
 		}
 	}
+	for (const code of signaturesIn(source)) {
+		failures.push(`${rel} body: type signature \`${code}\` in prose; name the type, or move it to a snippet or table`);
+	}
 }
 
 if (failures.length > 0) {
 	console.error(`docs-lint-voice: ${String(failures.length)} hit(s)\n`);
 	for (const line of failures) console.error(`  ${line}`);
-	console.error('\nBanned list: scripts/docs-banned-voice.json');
+	console.error('\nBanned list: scripts/docs-banned-voice.json. Signatures: docs/DOCS_CONTRACT.md#snippets');
 	process.exit(1);
 }
 

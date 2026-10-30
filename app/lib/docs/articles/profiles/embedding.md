@@ -1,6 +1,6 @@
 ---
 title: Embedding Profiles
-updated: 2026-10-26
+updated: 2026-10-30
 summary: Vector representations of text and documents for semantic search and retrieval.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -72,7 +72,7 @@ Only the Gemini embedding protocol uses it. For Gemini Embedding 2, Theorem writ
 
 ## Invoking Embeddings: `runEmbedding()`
 
-Embeddings are generated using `runEmbedding()`. The function accepts batch inputs (strings or multimodal parts) and returns a `Promise<EmbeddingResult>` containing ordered vector arrays.
+Embeddings are generated using `runEmbedding()`. The function accepts batch inputs (strings or multimodal parts) and resolves to an `EmbeddingResult` containing ordered vector arrays.
 
 ### Basic Invocation
 

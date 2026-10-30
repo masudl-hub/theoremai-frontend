@@ -1,6 +1,6 @@
 ---
 title: Tools & Execution Pipeline
-updated: 2026-10-29
+updated: 2026-10-30
 summary: Give an agent tools that run custom code, call REST APIs, query MCP servers, or delegate to sub-agents.
 entry: src/kernel/tools/mod.ts
 covers: src/kernel/tools, src/kernel/auth
@@ -87,8 +87,8 @@ Every custom tool registered with `registerTool` declares metadata that governs 
 
 Theorem exposes two programmatic entry points for executing registered tools outside an active model turn:
 
-* **`invokeTool(request)`**: Returns an async generator (`AsyncGenerator<TurnEvent>`) yielding incremental lifecycle events (start, progress, completion, citations) as the tool executes. Ideal for streaming progress to user interfaces or resuming held tool gates.
-* **`runTool(request)`**: A Promise-based alternative returning `Promise<ToolCallResult>` that settles only when the tool finishes, delivering its final validated output and status directly. Ideal for backend batch operations and headless integrations.
+* **`invokeTool(request)`**: Returns an async generator of `TurnEvent`s: the lifecycle events (start, progress, completion, citations) as the tool executes. Ideal for streaming progress to user interfaces or resuming held tool gates.
+* **`runTool(request)`**: A Promise-based alternative that resolves to a `ToolCallResult` only when the tool finishes, delivering its final validated output and status directly. Ideal for backend batch operations and headless integrations.
 
 ## Dynamic Tool Loading & Profile Binding
 

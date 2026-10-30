@@ -1,6 +1,6 @@
 ---
 title: Architecture & Contracts Map
-updated: 2026-10-29
+updated: 2026-10-30
 summary: The rule that keeps policy in your application, the parts a turn crosses, and the boundaries where Theorem reads text.
 entry: src/kernel/engine/runner/mod.ts
 covers: mod.ts, src/kernel/engine/runner, src/kernel/registry/profiles.ts, src/kernel/registry/vault.ts, src/kernel/protocols/runtime.ts, src/guardrails/boundaries.ts, src/guardrails/detectors.ts, src/guardrails/network.ts, web/src/server/handler.ts, react/src/index.ts, react/src/live.ts
@@ -25,7 +25,7 @@ Theorem acts only with what you give it:
 
 * Importing Theorem has no side effects.
 * Keys reach Theorem only in the `vault` (`KeyVault`) that you pass with a call. Theorem reads a slot only for the call that names it, and ignores entries that the vault inherits.
-* HTTP and MCP tools fetch through a network guard. It checks the URL scheme and refuses loopback, local and private addresses on every redirect hop, unless the profile's `guardrails.network` allows them. When you pass `resolveHost: (hostname: string, signal?: AbortSignal) => Promise<readonly string[]>` with the turn, it also refuses a host name that resolves to a private address.
+* HTTP and MCP tools fetch through a network guard. It checks the URL scheme and refuses loopback, local and private addresses on every redirect hop, unless the profile's `guardrails.network` allows them. When you pass [`resolveHost`](/docs/guardrails/network#host-name-lookups-resolvehost) with the turn, it also refuses a host name that resolves to a private address.
 
 ## The three parts of a turn
 

@@ -1,6 +1,6 @@
 ---
 title: Decision Profiles
-updated: 2026-10-26
+updated: 2026-10-30
 summary: Categorical evaluation of structured JSON state without conversational history.
 entry: src/kernel/engine/decision.ts
 covers: src/kernel/engine/decision.ts, src/kernel/registry/profiles.ts
@@ -109,7 +109,7 @@ flowchart LR
 
 ## Invoking Decisions: `runDecision()`
 
-Decisions are executed using `runDecision(request, options)`. The options carry the key vault and transport settings, as for any provider call. The function returns a `Promise<DecisionResult>` containing the model used, token consumption, and the resolved answer for every question.
+Decisions are executed using `runDecision(request, options)`. The options carry the key vault and transport settings, as for any provider call. The function resolves to a `DecisionResult` containing the model used, token consumption, and the resolved answer for every question.
 
 ### Basic Invocation
 
