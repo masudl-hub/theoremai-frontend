@@ -130,11 +130,14 @@ import '@astryxdesign/core/astryx.css';
 import '@theoremjs/studio/ui/built/theme.css';
 import '@theoremjs/studio/ui/motion.css';
 
+// In the browser, before the first render: it reads this tab's kept workspace.
+const opened = await openStudio();
+
 export function Studio() {
 	return (
 		<Theme theme={theoremStudioTheme} mode="dark">
 			<LayerProvider>
-				<StudioScreen opened={openStudio()} host={{ kernelVersion: '0.3.3' }} />
+				<StudioScreen opened={opened} host={{ kernelVersion: '0.3.3' }} />
 			</LayerProvider>
 		</Theme>
 	);
@@ -146,7 +149,7 @@ Your server answers `/api/studio` with one handler, `createStudioDraftHandler()`
 * **Without Lent Keys**: Drafts run in the browser, on the builder's own keys.
 * **Lent Keys**: You can lend your keys. A `LentKeys` says which models they run, which built-in tools each model may use, and how large a decision may be. A `spend` function counts each run for whoever sent it, and can refuse it.
 * **Network**: The tool connection test reaches public hosts only.
-* **Tab State**: Drafts and test conversations are kept in the tab's session storage. A reload keeps them. Closing the tab removes them.
+* **Tab State**: Drafts and test conversations are kept in the browser's IndexedDB, under the tab. A reload keeps them. After the tab closes, a studio tab opened later clears them. Keys are never kept.
 
 ## Related Guides
 

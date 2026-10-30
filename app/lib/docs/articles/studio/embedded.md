@@ -1,6 +1,6 @@
 ---
 title: Embedded Studio Screen
-updated: 2026-10-26
+updated: 2026-10-30
 summary: Embedding Theorem Studio into existing React applications with scoped project workspaces.
 entry: studio/server.ts
 covers: studio/server.ts, studio/browser.ts
@@ -86,12 +86,15 @@ import '@astryxdesign/core/astryx.css';
 import '@theoremjs/studio/ui/built/theme.css';
 import '@theoremjs/studio/ui/motion.css';
 
+// In the browser, before the first render: it reads this tab's kept workspace.
+const opened = await openStudio();
+
 export function AgentPlayground() {
 	return (
 		<Theme theme={theoremStudioTheme} mode="dark">
 			<LayerProvider>
 				<StudioScreen
-					opened={openStudio()}
+					opened={opened}
 					host={{
 						kernelVersion: '0.3.3',
 						lentKeys: harborLentKeys,
@@ -247,12 +250,13 @@ export default {
 > [!NOTE]
 > **Live Streaming & Realtime Sessions**: Unary requests (text chat, decisions, and embeddings) pass through `/api/studio`. Bidirectional realtime voice sessions on lent keys connect via WebSockets to `/api/live/relay` using `attachStudioLiveSession` from `@theoremjs/studio/browser`. See [Realtime Voice & Video](/docs/web/realtime) for relay setup.
 
-## 5. Ephemeral In-Memory Workspaces
+## 5. Where the Workspace Is Kept
 
 Embedded Studio screens do not write to disk. 
 
-* **Browser Session State**: Draft changes, prompt edits, and test conversations are kept in the tab's session storage. `openStudio()` reads them back, so a reload keeps them.
-* **Session Reset**: When the visitor closes the browser tab, the kept drafts and conversations are gone. Keys never go into this storage.
+* **Kept in the Browser**: Draft changes, prompt edits, and test conversations are kept in the browser's IndexedDB, under the tab. `openStudio()` reads them back, so a reload keeps them. A duplicated tab starts with a copy.
+* **Closed Tabs**: When the visitor closes the tab, a studio tab they open later clears what it kept, once it has seen the tab closed for a minute.
+* **No Keys**: Keys never go into this storage. They stay in the page's memory. A tool's credentials in its URL or headers are masked before they are kept.
 * **Download Trace**: If visitors want to preserve their test results, they can click **Download trace** in the trace inspector to export their session as a `.trace.json` file.
 
 ## Related Guides

@@ -15,11 +15,14 @@ export const handle = {
 } satisfies Th30PageHandle;
 
 /**
- * The compiled draft lives in this browser's storage, so it only loads client-side. A missing one
- * returns to the studio. A project's agent runs on the dev server only, where a project can be open.
+ * The studio tab hands the compiled draft over through this browser's IndexedDB, so it only
+ * loads client-side. A missing one returns to the studio. A project's agent runs on the dev
+ * server only, where a project can be open.
  */
-export function clientLoader({ request }: Route.ClientLoaderArgs) {
-	return openStudioRun(request.url, { project: import.meta.env.DEV }) ?? redirect('/studio');
+export async function clientLoader({ request }: Route.ClientLoaderArgs) {
+	return (
+		(await openStudioRun(request.url, { project: import.meta.env.DEV })) ?? redirect('/studio')
+	);
 }
 
 export function HydrateFallback() {
