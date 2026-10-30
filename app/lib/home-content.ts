@@ -107,10 +107,7 @@ export type CookbookAction =
 	| { kind: 'hosted'; href: string; label: string };
 
 /** Whether the cookbook screen is on the home page after packages. */
-export const COOKBOOK_SHOWN: boolean = true;
-
-/** @deprecated Prefer `COOKBOOK_SHOWN`. */
-export const SHOWCASE_SHOWN = COOKBOOK_SHOWN;
+export const COOKBOOK_SHOWN: boolean = false;
 
 /**
  * A recipe on the cookbook screen: studio cookbooks project `verb` / `tags` /

@@ -1,3 +1,5 @@
+import { COOKBOOK_SHOWN } from './home-content';
+
 /**
  * A path thirty may open. Pages of this site only: a leading slash, no other origin.
  */
@@ -6,8 +8,7 @@ const PAGES = new Set([
 	'/',
 	'/overview',
 	'/packages',
-	'/cookbooks',
-	'/examples',
+	...(COOKBOOK_SHOWN ? ['/cookbooks', '/examples'] : []),
 	'/studio',
 	'/studio/run',
 	'/docs',

@@ -91,7 +91,7 @@ function landingScreen(hash: string): LandingScreen | null {
 	if (id === 'packages') return 'packages';
 	if (id === 'agents') return 'agents';
 	if (id === 'cookbook' || id === 'showcase' || id === 'examples' || id === 'cookbooks') {
-		return 'cookbook';
+		return COOKBOOK_SHOWN ? 'cookbook' : null;
 	}
 	if (id === 'contribute') return 'contribute';
 	if (id === 'start') return 'start';
