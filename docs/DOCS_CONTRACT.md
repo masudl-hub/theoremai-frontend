@@ -29,6 +29,7 @@ Curious people, developers, designers, design engineers, builders, and AI system
 - A topic page shows only the code that page is about. Getting started carries the full program from the `firstTurn` seed. Do not repeat `defineProfile` / `runTurn` around every field. Modalities may show a full `defineProfile` for one type.
 - Getting started compiles from a playground seed (`app/lib/docs/seeds.ts`). Topic pages use literal slices of that shape. Do not hand-type a `defineProfile` that materialises omit defaults.
 - A type signature (`(ctx) => boolean`, `Promise<Result>`) goes only in a snippet or in a reference table's Signature column, where the reader writes code against it. Prose says what the thing does in plain words and names a type by its name alone: "resolves to a `DecisionResult`".
+- Every example tells one story: the research cookbook's `research.scout` and `research.pagereader`, with their real tools and names. Show what a goals beat writes, not a new shape. `npm run lint:docs` refuses off-story names. A chapter in `scripts/docs-story-gaps.json` may keep its count while its example waits on a design decision; the count only goes down.
 - There is no build-time composition of a shared profile plus an addition, and no `highlightLines`. `npm run lint:docs` type-checks every `ts` snippet against the kernel. A snippet with an `import` is a whole program. Any other names a frame on its fence line (` ```ts frame=statements `), which says how the check completes it.
 
 ## When stuck

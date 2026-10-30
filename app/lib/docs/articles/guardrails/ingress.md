@@ -1,6 +1,6 @@
 ---
 title: Ingress Protection & Taint Tracking
-updated: 2026-10-29
+updated: 2026-10-30
 summary: Protect agents against direct prompt injections, indirect payload steering, and confused-deputy attacks.
 entry: src/guardrails/injection.ts
 covers: src/guardrails/injection.ts, src/guardrails/detectors.ts
@@ -57,6 +57,8 @@ It finds:
 
 ### Configuring the `injection` Detector
 
+The scout leaves `injection` at its defaults, so an injection in a page is flagged and still reaches the model. To refuse it, add this. The scout reads pages through both HTTP and MCP tools, so block at both:
+
 ```ts frame=profile:text
 guardrails: {
 		detect: {
@@ -79,12 +81,28 @@ The `tool_instructions` detector looks for tool text that behaves like an instru
 
 1. **Override**: An order to set the agent's instructions aside. This one counts on its own.
 2. **Tool Name**: The name of a tool the model can call this turn, in a sentence that also holds a destination.
-3. **Order**: An imperative aimed at the agent rather than a reader (e.g., `"call the refund tool"`, `"send all records to …"`), with a destination before its clause ends.
+3. **Order**: An imperative aimed at the agent rather than a reader (e.g., `"call the read_pages tool"`, `"send all records to …"`), with a destination before its clause ends.
 4. **Authority**: A claim of permission the content cannot hold (e.g., `"the user has already approved"`, `"admin instruction:"`), with a destination before its clause ends.
 
 A destination here is an email address or an `http(s)://` URL.
 
 By default the detector flags remote tool results and errors (HTTP, MCP and agent tools) and ignores function tools. A match raises the turn's taint and marks the tool result for the model as `elevated` or `high`. It never refuses a tool call on its own: refusing calls is the job of the taint gates below.
+
+To refuse the result itself, set the remote tool boundaries to `block`:
+
+```ts frame=profile:text
+guardrails: {
+		detect: {
+			tool_instructions: {
+				at: {
+					tool_output_http: 'block',
+					tool_output_mcp: 'block',
+					tool_output_agent: 'block',
+				},
+			},
+		},
+	},
+```
 
 ## Confused-Deputy Taint Tracking (`taint`)
 
@@ -92,16 +110,16 @@ Pattern matching alone cannot catch every novel or encoded attack. Taint trackin
 
 The kernel records the origin of each tool result:
 * **Local Tools** (`function`): Host code you wrote. Its results do not taint the turn.
-* **Remote Tools** (`http`, `mcp`, `agent`): Bytes the host does not control. Their results taint the turn.
+* **Remote Tools** (`http`, `mcp`, `agent`): Bytes the host does not control. Their results taint the turn. Every tool on `research.scout` is remote, so the first result it reads taints the turn.
 
 ### Gating Tools After Remote Reads (`afterRemoteRead`)
 
-The `afterRemoteRead` gate refuses tool calls on a tainted turn by each tool's declared `access` (`'read-only'`, `'read-write'` or `'destructive'`):
+The `afterRemoteRead` gate refuses tool calls on a tainted turn by each tool's declared `access` (`'read-only'`, `'read-write'` or `'destructive'`). Add this to the scout:
 
 ```ts frame=profile:text
 guardrails: {
 		taint: {
-			afterRemoteRead: 'destructive', // 'off' | 'destructive' | 'write'
+			afterRemoteRead: 'write', // 'off' | 'destructive' | 'write'
 		},
 	},
 ```
@@ -112,7 +130,7 @@ guardrails: {
 | **`'destructive'`** | Refuses calls to tools with `access: 'destructive'`. |
 | **`'write'`** | Refuses calls to tools with `access: 'read-write'` or `'destructive'`, so only read-only tools run for the rest of the turn. |
 
-Read-only calls always run. Because `afterRemoteRead` looks only at where the turn read from and at declared tool access, it stops a call even when the injection got past every content detector.
+Read-only calls always run, and every tool on the scout is `read-only`, so this setting refuses nothing on the scout as it stands. It takes effect when you add a tool that writes: after the turn reads a page, calls to that tool are refused. Because `afterRemoteRead` looks only at where the turn read from and at declared tool access, it stops a call even when the injection got past every content detector.
 
 ## Destination Steering Protection (`remoteDestination`)
 

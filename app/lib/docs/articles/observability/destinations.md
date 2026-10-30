@@ -1,6 +1,6 @@
 ---
 title: Telemetry Destinations
-updated: 2026-10-26
+updated: 2026-10-30
 summary: Connect telemetry to OpenTelemetry OTLP collectors, Phoenix tracing, or streaming JSONL logs.
 entry: src/observability/destinations.ts
 covers: src/observability/destinations.ts, src/observability/otlp.ts, src/observability/jsonl.ts, src/observability/policy.ts, src/observability/openinference.ts, src/observability/phoenix.ts
@@ -22,7 +22,7 @@ observability: {
 	writeTo: 'production-collector', // A registered destination id, a TraceSink, or false
 	sampleRate: 0.25, // Keep 25% of traces (default: 1)
 	resource: {
-		'service.name': 'harbor-service',
+		'service.name': 'research-scout',
 		'deployment.environment': 'production',
 	},
 	include: {
@@ -130,7 +130,12 @@ import { recordRoot } from '@theoremjs/agents/observability';
 const records: TraceRecord[] = [];
 
 for await (const event of runTurn(
-	{ profile: 'harbor.desk', input: { text: 'Manifest verification' } },
+	{
+		profile: 'research.scout',
+		input: {
+			text: 'Find recent papers, models, or datasets on episodic memory for language models.',
+		},
+	},
 	{},
 	memorySink(records),
 )) {
@@ -138,7 +143,7 @@ for await (const event of runTurn(
 }
 
 const [record] = records;
-if (record) console.log(recordRoot(record)?.name); // 'invoke_agent harbor.desk'
+if (record) console.log(recordRoot(record)?.name); // 'invoke_agent research.scout'
 ```
 
 The record is written before the turn's event stream ends, so `records` holds it after the loop.

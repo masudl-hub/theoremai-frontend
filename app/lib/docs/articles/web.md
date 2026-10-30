@@ -1,6 +1,6 @@
 ---
 title: Headless Web & Transport
-updated: 2026-10-26
+updated: 2026-10-30
 summary: Headless client transport, Server-Sent Events stream decoding, and browser execution primitives.
 entry: src/interface/mod.ts
 covers: src/interface, react
@@ -29,7 +29,7 @@ flowchart TD
 		end
 		
 		subgraph Kernel["Theorem Engine (@theoremjs/agents)"]
-				Profile["harbor.desk Profile"]
+				Profile["research.scout Profile"]
 				Runner["runTurn() / Gate Coordinator"]
 		end
 		
@@ -60,7 +60,7 @@ Mount the handler under a catch-all route. It answers these sub-routes:
 
 ## Mounting on Web Frameworks
 
-`createTheoremHandler` takes the profile, the host options its model calls run on (`provider`), and a conversation store. In the samples, `harborDesk` is your profile, from your own module. Fill each key slot that its models name.
+`createTheoremHandler` takes the profile, the host options its model calls run on (`provider`), and a conversation store. In the samples, `researchScout` is your profile, `research.scout`, from your own module. Fill each key slot that its models name.
 
 ### Next.js App Router (`app/api/agent/[...path]/route.ts`)
 
@@ -68,12 +68,15 @@ Mount the handler under a catch-all route. It answers these sub-routes:
 import type { Profile } from '@theoremjs/agents';
 import { createMemoryConversationStore, createTheoremHandler } from '@theoremjs/web/server';
 
-declare const harborDesk: Profile;
+declare const researchScout: Profile;
 
 const handler = createTheoremHandler({
-	profile: harborDesk,
+	profile: researchScout,
 	provider: {
-		vault: { gemini: process.env.GEMINI_API_KEY ?? '' },
+		vault: {
+			openrouter: process.env.OPENROUTER_API_KEY ?? '',
+			gemini: process.env.GEMINI_API_KEY ?? '',
+		},
 	},
 	conversationStore: createMemoryConversationStore(),
 });
@@ -90,12 +93,15 @@ A Worker hands each `Request` to the handler. The sealed store keeps nothing on 
 import type { Profile } from '@theoremjs/agents';
 import { createSealedConversationStore, createTheoremHandler } from '@theoremjs/web/server';
 
-declare const harborDesk: Profile;
+declare const researchScout: Profile;
 
 const handler = createTheoremHandler({
-	profile: harborDesk,
+	profile: researchScout,
 	provider: {
-		vault: { gemini: process.env.GEMINI_API_KEY ?? '' },
+		vault: {
+			openrouter: process.env.OPENROUTER_API_KEY ?? '',
+			gemini: process.env.GEMINI_API_KEY ?? '',
+		},
 	},
 	conversationStore: createSealedConversationStore({
 		keys: { 1: process.env.CONVERSATION_SEAL_KEY ?? '' },
@@ -135,27 +141,29 @@ For profiles configured with `providerContinuation: { history: 'stateless' }`, n
 Beyond conversational agents, `@theoremjs/web/server` provides specialized handlers for other modalities:
 
 ### 1. Decision Handlers (`createTheoremDecisionHandler`)
-Serves a decision profile. `GET <base>` returns its interface, and `POST <base>/decide` returns the answers for the posted `{ state }`. The host owns the questions: the browser sends only the state, so a visitor cannot spend the host's key on questions of their own. `cargoSafetyDecision` is your decision profile:
+Serves a decision profile. `GET <base>` returns its interface, and `POST <base>/decide` returns the answers for the posted `{ state }`. The host owns the questions: the browser sends only the state, so a visitor cannot spend the host's key on questions of their own. `pageReader` is your decision profile, `research.pagereader`. Its model reads the key slot `typesafe`:
 
 ```ts
 import type { DecisionProfile } from '@theoremjs/agents';
 import { createTheoremDecisionHandler } from '@theoremjs/web/server';
 
-declare const cargoSafetyDecision: DecisionProfile;
+declare const pageReader: DecisionProfile;
 
 const handler = createTheoremDecisionHandler({
-	profile: cargoSafetyDecision,
+	profile: pageReader,
 	questions: {
-		clearanceVerdict: {
+		passage: {
 			type: 'choice',
-			instructions: 'Determine intake disposition based on container state.',
+			instructions:
+				'Does `passage` state a fact a careful researcher would want when answering `question`, including facts that do not settle it and anything contradictory?',
 			criteria: {
-				clear: 'Safe for immediate yard intake.',
-				hold: 'Hold for physical inspection.',
+				relevant: 'The passage states such a fact.',
+				not_relevant:
+					'The passage does not: it is about something else, or is only a heading, navigation, a reference or a list of links.',
 			},
 		},
 	},
-	vault: { gemini: process.env.GEMINI_API_KEY ?? '' },
+	vault: { typesafe: process.env.TYPESAFE_API_KEY ?? '' },
 });
 
 export const GET = handler;
@@ -191,7 +199,9 @@ if (iface.type !== 'live') {
 	});
 
 	// Sends the text, and resolves once the reply is done
-	await chat.sendText('Verify container MSKU9012345.');
+	await chat.sendText(
+		'Find recent papers, models, or datasets on episodic memory for language models.',
+	);
 }
 ```
 

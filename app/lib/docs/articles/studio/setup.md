@@ -1,6 +1,6 @@
 ---
 title: Studio Setup & Workspaces
-updated: 2026-10-26
+updated: 2026-10-30
 summary: Configuring Theorem Studio, launching local workspaces, and synchronizing project files.
 entry: studio/workspace.ts
 covers: studio/workspace.ts, studio/compile.ts
@@ -45,12 +45,13 @@ Your app's entry exports `theorem`, a `TurnWiring`. Your app's own server uses t
 import type { TurnWiring } from '@theoremjs/agents';
 
 // Your app's own registration: its registerProfile and registerTool calls
-declare function registerHarborSystem(): Promise<void>;
+declare function registerResearchAgents(): Promise<void>;
 
 export const theorem: TurnWiring = {
-	register: () => registerHarborSystem(),
+	register: () => registerResearchAgents(),
 	provider: {
 		vault: {
+			openrouter: Deno.env.get('OPENROUTER_API_KEY') ?? '',
 			gemini: Deno.env.get('GEMINI_API_KEY') ?? '',
 		},
 	},
@@ -141,13 +142,13 @@ Projects often maintain separate configurations for mock testing and staging int
 * `mock.studio.setup.ts` (Offline scripted models)
 * `stage.studio.setup.ts` (Staging database integrations)
 
-If multiple setup files exist, Studio asks which one to open when launched with `npx theorem-studio`. A `studio.setup.ts` file takes the name of the folder it is in. In this example, the project folder is `harbor`:
+If multiple setup files exist, Studio asks which one to open when launched with `npx theorem-studio`. A `studio.setup.ts` file takes the name of the folder it is in. In this example, the project folder is `research`:
 
 ```text
 Which setup?
-› harbor  studio.setup.ts
-  mock    mock.studio.setup.ts
-  stage   stage.studio.setup.ts
+› research  studio.setup.ts
+  mock      mock.studio.setup.ts
+  stage     stage.studio.setup.ts
 ↑ ↓ to move, enter to open
 ```
 

@@ -41,8 +41,8 @@ agents <command> [options]
 `--setup <file>` tests or runs a profile exactly as your app runs it. It takes the same setup file Studio reads:
 
 ```bash
-agents test --setup studio.setup.ts --profile harbor.desk --lite
-agents run --setup studio.setup.ts --profile harbor.desk --prompt "ping"
+agents test --setup studio.setup.ts --profile research.scout --lite
+agents run --setup studio.setup.ts --profile research.scout --prompt "ping"
 ```
 
 The CLI loads the setup file, then the entry it names, and reads the entry's `theorem` export. Then it:
@@ -64,7 +64,7 @@ The `eval` command evaluates an [`EvalSuite`](/docs/observability/evals) module 
 Run a test suite against live models with concurrency and cost guardrails:
 
 ```bash
-agents eval ./evals/harbor-clearance.eval.ts \
+agents eval ./evals/research-scout.eval.ts \
 	--trials 3 \
 	--concurrency 2 \
 	--threshold 0.95 \
@@ -83,8 +83,8 @@ agents eval ./evals/harbor-clearance.eval.ts \
 To grade earlier runs in CI without running the profile again, grade recorded traces:
 
 ```bash
-agents eval ./evals/harbor-clearance.eval.ts \
-	--recorded ./tests/cassettes/harbor/ \
+agents eval ./evals/research-scout.eval.ts \
+	--recorded ./tests/cassettes/research/ \
 	--threshold 1.0 \
 	--json
 ```
@@ -97,10 +97,10 @@ The `test` command runs test turns against a profile, so you can see that it ans
 
 ```bash
 # One ping turn
-agents test --setup studio.setup.ts --profile harbor.desk --lite
+agents test --setup studio.setup.ts --profile research.scout --lite
 
 # A ping turn and a stress turn
-agents test --setup studio.setup.ts --profile harbor.desk --matrix --trace
+agents test --setup studio.setup.ts --profile research.scout --matrix --trace
 
 # Every registered profile
 agents test --setup studio.setup.ts --all --lite
@@ -117,14 +117,14 @@ agents test --setup studio.setup.ts --all --lite
 - **Matrix (`--matrix`)**: Runs both the Lite and the Stress turn.
 - **`--search`, `--map`**: Fail the test unless the model has `googleSearch` or `googleMaps` in its `builtInTools`.
 
-Each turn prints its setup, its events, and a status line. A summary of every turn follows:
+Each turn prints its setup, its events, and a status line. A summary of every turn follows. The base `research.scout` has no `smart` model and takes no attachments or voice, so its stress turn runs on its last model, `gemini`, with the text prompt alone:
 
 ```text
-▶ [THEOREM TEST] harbor.desk [Stress Combo]
-  Profile:     harbor.desk (Model: smart)
-  Custom:      harbor_get_vessel, harbor_clear_quay
-  Builtins:    googleSearch
-  Attachments: 1 file(s) | Voice: yes
+▶ [THEOREM TEST] research.scout [Stress Combo]
+  Profile:     research.scout (Model: gemini)
+  Custom:      read_pages, list_arxiv, search_models, search_datasets, read_model_card, read_dataset_card, search_github, read_readme, ask_repo_docs, find_library, read_library_docs, search_web
+  Builtins:    none
+  Attachments: 0 file(s) | Voice: no
   ------------------------------------------------------------
 
   ✓ STATUS: PASSED (took 2.14s, 1420 tokens, includes estimates)
@@ -139,9 +139,9 @@ Execute a single prompt from the terminal with real-time streaming output and ev
 ```bash
 agents run \
 	--setup studio.setup.ts \
-	--profile harbor.desk \
-	--prompt "Vessel VSL-409 requesting clearance for Berth 4." \
-	--mode smart \
+	--profile research.scout \
+	--prompt "Find recent papers, models, or datasets on episodic memory for language models." \
+	--mode gemini \
 	--verbose \
 	--trace
 ```
@@ -163,17 +163,17 @@ Inspect the profiles registered in the default scope, to check their models, inp
 agents profile list --setup studio.setup.ts
 
 # Print one profile as JSON
-agents profile show harbor.desk --setup studio.setup.ts
+agents profile show research.scout --setup studio.setup.ts
 ```
 
 `list` prints a card for each profile: its handle and type, its model ids, its inputs, its tools and its structured output:
 
 ```text
- • Profile: harbor.desk      (handle: dispatch) [text]
-   - Models:     fast, smart
-   - Inputs:     text | attachments [image/png, application/pdf]
-   - Tools:      harbor_get_vessel, harbor_clear_quay
-   - Structured: none
+ • Profile: research.scout   (handle: scout) [text]
+   - Models:     open, gemini
+   - Inputs:     text
+   - Tools:      read_pages, list_arxiv, search_models, search_datasets, read_model_card, read_dataset_card, search_github, read_readme, ask_repo_docs, find_library, read_library_docs, search_web
+   - Structured: research.reply
 ----------------------------------------------------------------------
 ```
 

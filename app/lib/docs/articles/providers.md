@@ -1,6 +1,6 @@
 ---
 title: Model Bindings & Key Slots
-updated: 2026-10-29
+updated: 2026-10-30
 summary: Configure model bindings, credentials, and secondary failover slots across upstream AI providers.
 entry: src/providers/mod.ts
 covers: src/providers, src/kernel/protocols
@@ -21,16 +21,16 @@ Models are declared under `models` on the profile. A binding defines five core f
 | :--- | :--- | :--- |
 | **`provider`** | `string` | The ID of a registered provider (e.g., `'openrouter'`, `'gemini'`, `'local'`). |
 | **`protocol`** | `string` | The protocol ID served by that provider (e.g., `'openRouterOpenAi'`, `'geminiInteractions'`). |
-| **`apiId`** | `string` | Upstream model identifier recognized by the provider (e.g., `'anthropic/claude-sonnet-4.5'`). |
+| **`apiId`** | `string` | Upstream model identifier recognized by the provider (e.g., `'openrouter/free'`). |
 | **`keySlot`** | `string` *(optional)* | Vault credential slot name. Defaults to the provider's registered `keySlot`. |
 | **`fallbackKeySlot`** | `string` *(optional)* | Secondary vault slot tried when the primary key is out of quota or the model is busy. Defaults to the provider's registered `fallbackKeySlot`. |
 
 ```ts frame=profile:text
 models: {
-		primary: {
+		open: {
 			provider: 'openrouter',
 			protocol: 'openRouterOpenAi',
-			apiId: 'anthropic/claude-sonnet-4.5',
+			apiId: 'openrouter/free',
 			keySlot: 'openrouter_primary',
 			fallbackKeySlot: 'openrouter_secondary',
 		},
@@ -40,7 +40,8 @@ models: {
 Bindings can also be generated using a registered provider's helper:
 
 ```text
-const primary = router.model('openRouterOpenAi', 'anthropic/claude-sonnet-4.5', {
+const open = router.model('openRouterOpenAi', 'openrouter/free', {
+	keySlot: 'openrouter_primary',
 	fallbackKeySlot: 'openrouter_secondary',
 });
 ```
@@ -88,8 +89,11 @@ Vault credentials are provided to `runTurn()` via `options.vault`:
 ```ts
 import { runTurn } from '@theoremjs/agents';
 
-await runTurn(
-	{ profile: 'harbor.desk', input: { text: 'Summarize manifests.' } },
+const events = runTurn(
+	{
+		profile: 'research.scout',
+		input: { text: 'Find recent papers on episodic memory for language models.' },
+	},
 	{
 		vault: {
 			openrouter_primary: process.env.OPENROUTER_PRIMARY_KEY,
@@ -97,6 +101,7 @@ await runTurn(
 		},
 	},
 );
+for await (const event of events) onEvent(event);
 ```
 
 ### Dynamic Resolvers (`CredentialResolver`)
@@ -107,16 +112,20 @@ For rotating credentials, KMS lookups, or secrets fetched just-in-time, pass an 
 import { type CredentialContext, type KeyCredential, runTurn } from '@theoremjs/agents';
 
 const getSecretKey = async (ctx: CredentialContext): Promise<KeyCredential> => {
-	// ctx contains: providerId, apiId, keySlot, and signal
+	// ctx contains: providerId, keySlot, and, when present, apiId and signal
 	return await kmsClient.fetchSecret(ctx.keySlot, { signal: ctx.signal });
 };
 
-await runTurn(
-	{ profile: 'harbor.desk', input: { text: 'Summarize manifests.' } },
+const events = runTurn(
+	{
+		profile: 'research.scout',
+		input: { text: 'Find recent papers on episodic memory for language models.' },
+	},
 	{
 		vault: { openrouter_primary: getSecretKey },
 	},
 );
+for await (const event of events) onEvent(event);
 ```
 
 The kernel invokes the resolver only for the slot requested by the active model call.

@@ -150,26 +150,30 @@ export type DraftEdit = (draft: StudioDraft) => StudioDraft;
 type FieldEdit = { isOn: (draft: StudioDraft) => boolean; on: DraftEdit; off: DraftEdit };
 
 function detectEdit(
-	detector: 'credentials' | 'injection',
-	boundary: 'reply' | 'tool_output_http',
+	detector: 'credentials' | 'tool_instructions',
+	boundaries: readonly ('reply' | 'tool_output_http' | 'tool_output_mcp' | 'tool_output_agent')[],
 ): FieldEdit {
-	const rest = createBlankDraft().guardrails.detect[detector][boundary];
-	const set = (action: typeof rest): DraftEdit => {
+	const rest = createBlankDraft().guardrails.detect[detector];
+	const set = (action: (boundary: (typeof boundaries)[number]) => typeof rest.reply): DraftEdit => {
 		return (draft) => ({
 			...draft,
 			guardrails: {
 				...draft.guardrails,
 				detect: {
 					...draft.guardrails.detect,
-					[detector]: { ...draft.guardrails.detect[detector], [boundary]: action },
+					[detector]: {
+						...draft.guardrails.detect[detector],
+						...Object.fromEntries(boundaries.map((boundary) => [boundary, action(boundary)])),
+					},
 				},
 			},
 		});
 	};
 	return {
-		isOn: (draft) => draft.guardrails.detect[detector][boundary] === 'block',
-		on: set('block'),
-		off: set(rest),
+		isOn: (draft) =>
+			boundaries.every((boundary) => draft.guardrails.detect[detector][boundary] === 'block'),
+		on: set(() => 'block'),
+		off: set((boundary) => rest[boundary]),
 	};
 }
 
@@ -266,8 +270,12 @@ const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
 		}),
 		off: (draft) => ({ ...draft, inputs: { ...draft.inputs, ...NO_MEDIA } }),
 	},
-	'block-secret': detectEdit('credentials', 'reply'),
-	'block-injection': detectEdit('injection', 'tool_output_http'),
+	'block-secret': detectEdit('credentials', ['reply']),
+	'block-injection': detectEdit('tool_instructions', [
+		'tool_output_http',
+		'tool_output_mcp',
+		'tool_output_agent',
+	]),
 	'refuse-after-read': {
 		isOn: (draft) => draft.guardrails.taintAfterRemoteRead === 'write',
 		on: (draft) => ({
@@ -608,10 +616,12 @@ export function createHomeAgent(): HomeAgent {
 	const workspace = createResearchWorkspace();
 	const draft = agentDraft(workspace, keyOf(workspace));
 	if (!draft) throw new Error('The goals screen has no agent.');
-	// why: tokens still swap models; start on a site-allowed 3.8 Flash binding.
+	// why: tokens still swap models; start on a site-allowed 3.8 Flash binding. The quote check is
+	// a beat of its own, so it starts off.
+	const plain = FIELD_EDITS['cite-or-fail']?.off(draft) ?? draft;
 	return {
 		workspace: withAgentDraft(workspace, keyOf(workspace), {
-			...draft,
+			...plain,
 			...siteResearchModels(),
 		}),
 	};

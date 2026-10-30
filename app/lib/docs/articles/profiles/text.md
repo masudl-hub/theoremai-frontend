@@ -1,6 +1,6 @@
 ---
 title: Text Profiles
-updated: 2026-10-26
+updated: 2026-10-30
 summary: Multi-step conversational agents running tool loops, multi-turn reasoning, and streaming text.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -13,39 +13,40 @@ Text profiles (`type: 'text'`) configure conversational agents that reason acros
 
 ## Text Profile Configuration
 
-Base profile fields (`identity`, `models`, `tools`, `guardrails`, `observability`) apply across all modalities as documented in [Profiles](/docs/profiles). By default, text profiles generate conversational markdown and text streams. Text profiles can optionally configure structured output contracts (`outputs.structured`) and what the last step may do (`turnBehaviour.atStepLimit`). This slice shows only those two blocks:
+Base profile fields (`identity`, `models`, `tools`, `guardrails`, `observability`) apply across all modalities as documented in [Profiles](/docs/profiles). By default, text profiles generate conversational markdown and text streams. Text profiles can optionally configure structured output contracts (`outputs.structured`) and what the last step may do (`turnBehaviour.atStepLimit`). This slice shows only those two blocks. The research scout sets `atStepLimit: 'answer'` and answers in the `research.reply` shape. The cite-or-fail rule is the `candidates` entry, and you write its `check`. The `summary` check is an extra, there to show `fields`:
 
 ```ts frame=profile:text
-// Optional: enforce a validated JSON shape instead of freeform text
+// Answer in a validated JSON shape instead of freeform text
 outputs: {
-	structured: 'customs_declaration_v1',
+	structured: 'research.reply',
 	validation: {
+		maxRetries: 2,
 		fields: {
-			'declaration.trackingNumber': async (candidate) => {
-				const isValid = /^TRK-[A-Z0-9]{8}$/.test(String(candidate));
-				return isValid
+			// You write this check too: the reply must say what the search found
+			summary: (candidate) =>
+				String(candidate).trim()
 					? { isValid: true }
-					: { isValid: false, error: 'Tracking number must match TRK-XXXXXXXX' };
-			},
+					: { isValid: false, error: 'Say what the search found.' },
 		},
 		items: {
-			'declaration.manifestItems': {
-				check: async (item, turn) => {
-					// Corroborate item against data returned by tools earlier in this turn
-					const code = (item as { hsCode?: string }).hsCode;
-					const knownCodes = turn.toolResults.flatMap((r) =>
-						Array.isArray((r.output as { validCodes?: string[] })?.validCodes)
-							? (r.output as { validCodes: string[] }).validCodes
-							: [],
+			candidates: {
+				// You write this check: each quote must be in what the tools returned this turn
+				check: (item, turn) => {
+					const { evidence = [] } = item as { evidence?: { uri: string; quote: string }[] };
+					const read = turn.toolResults.map(({ output }) =>
+						typeof output === 'string' ? output : JSON.stringify(output),
 					);
-					return knownCodes.includes(code ?? '')
-						? { isValid: true }
-						: { isValid: false, error: `Unverified HS code: ${code}` };
+					const invented = evidence.find(({ quote }) => !read.some((text) => text.includes(quote)));
+					return invented
+						? {
+								isValid: false,
+								error: `These words are not in what the tools returned for ${invented.uri}. Quote them exactly.`,
+							}
+						: { isValid: true };
 				},
 				onFail: 'fix', // 'fix' asks the model to rewrite refused items; 'drop' removes them
 			},
 		},
-		maxRetries: 2,
 	},
 },
 turnBehaviour: {
@@ -58,17 +59,19 @@ turnBehaviour: {
 
 By default, text agents return conversational prose. When an application requires guaranteed data shapes, declare `outputs.structured`.
 
-Theorem enforces structured outputs across two distinct boundaries: upstream model decoding and host-side business validation.
+Theorem enforces structured outputs across two distinct boundaries: the schema the model answers to, and host-side validation of what it wrote.
 
 ```mermaid
 flowchart TD
-    Model["Model Completion"] --> Gram["Layer 1: Upstream Schema Enforcement<br/><i>registerStructured</i>"]
-    Gram -- Syntax or type invalid --> RetryGram["Provider Rejection"]
-    Gram -- Valid JSON shape --> Host["Layer 2: Host Domain Validation<br/><i>outputs.validation</i>"]
-    Host -- Corroborates toolResults & format --> Pass["Emit { type: 'structured' }"]
-    Host -- Business rule failed --> Policy{"onFail Policy"}
-    Policy -- onFail: 'fix' --> Rewrite["Re-prompt model for invalid items only (up to maxRetries)"]
-    Policy -- onFail: 'drop' --> Strip["Remove invalid items from array & emit remainder"]
+    Model["Model Reply"] --> Gram["Layer 1: The Schema<br/><i>registerStructured</i>"]
+    Gram --> Host["Layer 2: Host Validation<br/><i>outputs.validation</i>"]
+    Host -- All checks pass --> Pass["Emit { type: 'structured' }"]
+    Host -- Field or required key failed --> Retry["Rewrite the reply (up to maxRetries), then emit it with failed"]
+    Host -- Item refused --> Policy{"onFail Policy"}
+    Policy -- onFail: 'fix' --> Rewrite["Rewrite refused items once, while retries remain"]
+    Rewrite -- Now valid --> Pass
+    Rewrite -- Refused again --> Strip
+    Policy -- onFail: 'drop' --> Strip["Remove refused items & emit them in removed"]
 ```
 
 ### Schema Registration
@@ -78,50 +81,103 @@ Structured outputs reference registered JSON schemas. Define and register the sc
 ```ts
 import { registerStructured } from '@theoremjs/agents';
 
-registerStructured('customs_declaration_v1', {
+registerStructured('research.reply', {
 	jsonSchema: {
 		type: 'object',
 		properties: {
-			declaration: {
-				type: 'object',
-				properties: {
-					trackingNumber: { type: 'string' },
-					manifestItems: {
-						type: 'array',
-						items: {
-							type: 'object',
-							properties: {
-								hsCode: { type: 'string' },
-								description: { type: 'string' },
+			summary: {
+				type: 'string',
+				description: 'What the search found and how sure you are, in a few sentences.',
+			},
+			candidates: {
+				type: 'array',
+				items: {
+					type: 'object',
+					properties: {
+						kind: { type: 'string', enum: ['model', 'dataset', 'paper', 'repo', 'method'] },
+						name: {
+							type: 'string',
+							description:
+								'Its id as published: a Hub id, an arXiv id, owner/repo, or a short name.',
+						},
+						url: { type: 'string', description: 'Where it is published.' },
+						what: {
+							type: 'string',
+							description:
+								'What it is, in one sentence: architecture and size, or contents and size.',
+						},
+						why: {
+							type: 'string',
+							description:
+								'Why it could help a model keep, retrieve, or recombine context: working memory, episodic memory, or a vector store.',
+						},
+						basis: {
+							type: 'string',
+							enum: ['page', 'lead', 'memory'],
+							description:
+								'page: a source a tool returned this turn; cite it. lead: DeepWiki or a hint not yet confirmed. memory: your own recall.',
+						},
+						evidence: {
+							type: 'array',
+							items: {
+								type: 'object',
+								properties: {
+									uri: {
+										type: 'string',
+										description: 'URL of a page or paper a tool returned this turn.',
+									},
+									quote: {
+										type: 'string',
+										description:
+											'The exact words in what the tool returned that this candidate rests on.',
+									},
+								},
+								required: ['uri', 'quote'],
 							},
-							required: ['hsCode', 'description'],
 						},
 					},
+					required: ['kind', 'name', 'url', 'what', 'why', 'basis', 'evidence'],
 				},
-				required: ['trackingNumber', 'manifestItems'],
+			},
+			searched: {
+				type: 'array',
+				items: { type: 'string' },
+				description: 'The queries and sources you tried, including the empty ones.',
+			},
+			open: {
+				type: 'array',
+				items: { type: 'string' },
+				description: 'Leads you could not follow, and what would settle them.',
 			},
 		},
-		required: ['declaration'],
+		required: ['summary', 'candidates', 'searched', 'open'],
 	},
 });
 ```
 
 ### Upstream Schema Enforcement
 
-When `outputs.structured` names a registered schema, Theorem sends its JSON Schema to the provider with the call. OpenAI-compatible chat gets `response_format` with `type: 'json_schema'` and `strict: true`. Gemini Interactions gets `responseFormat` as JSON text with that schema. There is no tool-call fallback.
+When `outputs.structured` names a registered schema, Theorem gives the model that JSON Schema with the call. How it does that depends on whether the turn has tools:
 
-This guarantees **grammar and types**: `trackingNumber` will always be a string, and `manifestItems` will always be an array. However, the model provider cannot execute application code, inspect external databases, or cross-reference facts against tool responses. A model can return syntactically valid JSON containing invented tracking numbers or fictitious manifest items.
+* **With tools**, as the scout has: the model answers by calling a tool named `final_answer`, whose parameters are the schema, and the reply is the arguments of that call. Many endpoints refuse a response format beside tools, so this tool takes its place. It stays on the last step under `atStepLimit: 'answer'`, when your tools are gone. If the model ends without calling it, the turn asks again while `validation` has a retry left, and otherwise fails with a `bad_response` error. No tool of your own may use the name `final_answer`.
+* **Without tools**: OpenAI-compatible chat gets `response_format` with `type: 'json_schema'` and `strict: true`. Gemini Interactions gets `responseFormat` as JSON text with that schema.
+
+The schema sets the **shape**: `summary` is a string and `candidates` is a list. It cannot check the facts. The model provider cannot execute application code, inspect external databases, or cross-reference facts against tool responses. A model can return well-formed JSON with a quote no source ever said.
 
 ### Host Validation & Targeted Repair
 
 The `validation` block provides deterministic enforcement in your application process after the JSON is produced:
 
-* **`fields` (Format & Domain Constraints)**: Dotted paths to specific scalar properties. Use this to verify checksums, test regex formats, or query databases.
-* **`items` (Tool Corroboration)**: Dotted paths to array properties. The validator receives the individual array item and the `turn` context, including `turn.toolResults`. Use this to verify that items listed in the model's structured answer match the data returned by tools executed earlier in the turn.
+* **`fields` (Format & Domain Constraints)**: Dotted paths to specific properties, each with your check on that value. Use this to verify checksums, test regex formats, or query databases. A failure sends its error back to the model, which rewrites the reply while retries remain.
+* **`items` (Tool Corroboration)**: Dotted paths to array properties. The check receives one array item and the `turn` context, including `turn.toolResults`: every tool call the turn completed, each with its `tool` and `output`. Use this to verify that items in the model's structured answer match the data returned by tools earlier in the turn. A refused item never fails the reply, and the rest of the reply is kept.
 * **`onFail` (Surgical Remediation)**: When a list item fails its check:
-  * `'fix'`: Theorem asks the model to rewrite *only the defective items*, preserving all valid items and avoiding full completion regenerations.
-  * `'drop'`: Theorem strips invalid items from the array and continues.
-* **`maxRetries`**: Limits the number of repair round-trips before the turn emits whatever valid elements settled.
+  * `'fix'`: Theorem asks the model to rewrite *only the refused items*, keeping the valid ones and avoiding a full regeneration. It does this once, while retries remain. Any item refused again is removed.
+  * `'drop'`: Theorem removes refused items from the array and continues.
+* **`maxRetries`**: How many times the model may rewrite a reply that fails your checks or the schema's required keys. Left out, there are no rewrites, so `'fix'` removes refused items at once. Once retries run out, the reply goes out as it is. Under `streaming.mode: 'sse'`, an attempt that gets rewritten has already streamed.
+
+The `structured` event says what happened. `removed` lists each item taken out, with its list's path and the reason. `failed` lists the fields still invalid when retries ran out.
+
+The scout's check above is the plain idea, and it is yours to write. It compares exact text, and a candidate with empty `evidence` passes. Yours can be stricter: compare text with case and spacing evened out, refuse a candidate whose `basis` is `page` when it has no evidence, or match each quote to the tool result for its `uri`.
 
 ### Dynamic Schema Selection by Turn Slot
 
@@ -149,9 +205,9 @@ When an agent calls tools, each round of model generation and tool execution con
 | Mode | Behavior | Use Case |
 | :--- | :--- | :--- |
 | **`'stop'`** *(default)* | The last model call may still call tools. If it does, the turn ends with stop kind `'step_limit'` and has no answer. | Strict execution budgets or automated pipelines requiring deterministic step ceilings. |
-| **`'answer'`** | On the final permitted step, Theorem suppresses all tool definitions from the model prompt. The model cannot call additional tools and must write a textual response synthesizing accumulated evidence. | User-facing assistants that must deliver a partial answer rather than a blank halt when research takes too many steps. |
+| **`'answer'`** | On the final permitted step, Theorem suppresses your tool definitions from the model prompt. The model cannot call additional tools and must write a textual response synthesizing accumulated evidence. | User-facing assistants that must deliver a partial answer rather than a blank halt when research takes too many steps. |
 
-When using `atStepLimit: 'answer'`, `profile.maxSteps` must be set to `2` or higher during registration to allow at least one step for tool calling before the answer step.
+When using `atStepLimit: 'answer'`, `profile.maxSteps` must be set to `2` or higher during registration to allow at least one step for tool calling before the answer step. The scout sets `maxSteps: 32` and `atStepLimit: 'answer'`, so a long search still ends in an answer.
 
 ## Invoking Text Profiles: `runTurn()`
 
@@ -165,13 +221,11 @@ You only need to handle the events your application requires. For example, strea
 import { runTurn } from '@theoremjs/agents';
 
 const events = runTurn({
-	profile: 'harbor.customs_auditor',
+	profile: 'research.scout',
 	input: {
-		text: 'Audit declaration #TRK-88294100 against manifest rules.',
-		slots: { declarationType: 'freight' },
+		text: 'Find primary sources on episodic memory for language models and return findings with a verbatim quote for each candidate.',
 	},
-	system: 'Treat declaration flags with high scrutiny for port authority compliance.', // One-off instruction for this turn
-	path: 'customs', // Offer only tools whose paths include 'customs' or '*'
+	system: 'Treat a blog or a list as a lead to its primary source.', // One-off instruction for this turn
 });
 
 for await (const event of events) {
@@ -179,13 +233,13 @@ for await (const event of events) {
 		process.stdout.write(event.text);
 	}
 	if (event.type === 'structured') {
-		console.log('\nValidated Declaration:', event.structured);
+		console.log('\nResearch reply:', event.structured);
 	}
 }
 ```
 
 * **`system`**: Appends dynamic, one-off instructions to this turn alone without mutating the profile's permanent `identity.system`.
-* **`path`**: Selects the execution channel, exposing only registered tools declaring this path or wildcard (`paths: ['*']`).
+* **`path`**: Selects the execution channel, exposing only registered tools declaring this path or wildcard (`paths: ['*']`). Every scout tool declares the wildcard, so a `path` changes nothing for it.
 
 Because `runTurn()` returns an async generator, execution begins when the caller pulls the first event.
 
@@ -198,7 +252,7 @@ For full-featured conversational interfaces, `runTurn()` emits granular lifecycl
 | **`text`** | `text: string` | Incremental completion text token delta. |
 | **`thought`** | `text: string` | Incremental internal reasoning token delta (when `streaming.streamThoughts` is enabled). |
 | **`tool`** | `tool: ToolCallEvent` | Tool execution updates: emitted when a tool call starts (`input`) and when it finishes (`output`). |
-| **`structured`** | `structured: unknown` | Verified JSON object matching the registered schema and passing all host checks. |
+| **`structured`** | `structured: unknown`, `removed?: RemovedItem[]`, `failed?: InvalidField[]` | The reply as JSON. `removed` lists items your item rules took out. `failed` lists fields still invalid when retries ran out. |
 | **`stage`** | `stage: TurnStage` | Lifecycle transitions: `'pre_turn'`, `'pre_tool'`, `'post_tool'`, `'before_end'`, `'post_turn'`. |
 | **`done`** | `stop: TurnStop`, `tokens?: TurnTokens` | Terminal event emitted when the turn concludes, reporting stop reasons and token counts. |
 | **`error`** | `errorKind: ErrorKind`, `error?: string`, `errorCopy?`, `errorInternal?` | The turn failed. `error` is the safe wording for users. `errorCopy` is the label key behind it. `errorInternal` is detail for traces and logs: never show it to users. |

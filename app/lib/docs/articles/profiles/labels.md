@@ -1,6 +1,6 @@
 ---
 title: Kernel Labels & Errors
-updated: 2026-10-26
+updated: 2026-10-30
 summary: Customizing system error strings, tool activity messages, and localized copy.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/profiles.ts, src/kernel/schema.ts
@@ -21,12 +21,13 @@ When the kernel needs a user-facing string or prompt note, it resolves the text 
 2. **`overrideLabels()`**: Process-wide overrides applied across all profiles in the application.
 3. **Built-in Defaults**: Fallback strings shipped directly with the kernel.
 
-Templates use `{param}` placeholders replaced at runtime. This slice shows the `labels` block of a text profile:
+Templates use `{param}` placeholders replaced at runtime. This slice shows the `labels` block of a text profile. The research scout rewords `continue.instruction`. The two error lines are an addition:
 
 ```ts frame=profile:text
 labels: {
-	'error.timeout': 'The logistics database took too long to answer. Try again in a moment.',
-	'error.rate_limit': 'Too many tracking requests. Pausing queries.',
+	'continue.instruction': 'Your last reply was cut off before it finished. Continue from exactly where it stopped.',
+	'error.timeout': 'The model took too long to answer. Try again in a moment.',
+	'error.rate_limit': 'Too many research requests. Try again in a moment.',
 },
 ```
 
@@ -36,8 +37,8 @@ To replace wording process-wide across all profiles, invoke `overrideLabels()` d
 import { overrideLabels } from '@theoremjs/agents';
 
 overrideLabels({
-	'error.auth': 'Please re-authenticate your terminal session.',
-	'error.safety': 'This instruction violates organizational transport safety policies.',
+	'error.auth': 'Please sign in again to keep researching.',
+	'error.safety': 'This reply was held back by your research policy.',
 });
 ```
 
@@ -53,7 +54,10 @@ All kernel exceptions surface as `TheoremError`. This class extends native `Erro
 import { runTurn, TheoremError } from '@theoremjs/agents';
 
 try {
-	const events = runTurn({ profile: 'freight.assistant', input: { text: 'Dispatch' } });
+	const events = runTurn({
+		profile: 'research.scout',
+		input: { text: 'Find papers on episodic memory for language models.' },
+	});
 	for await (const _event of events) {
 		// ...
 	}

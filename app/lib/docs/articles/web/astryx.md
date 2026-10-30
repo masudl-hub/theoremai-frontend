@@ -1,6 +1,6 @@
 ---
 title: Astryx UI Components
-updated: 2026-10-26
+updated: 2026-10-30
 summary: Ready-made Astryx components for chat, live, decision, embedding and host profiles.
 entry: react/src/index.ts
 covers: react
@@ -32,7 +32,7 @@ Theorem provides a ready-made UI layer built on [Astryx](https://www.npmjs.com/p
 ```tsx
 import { TheoremChat } from '@theoremjs/react/ui';
 
-export function VesselDispatchChat() {
+export function ResearchChat() {
 	return <TheoremChat endpoint="/api/theorem" />;
 }
 ```
@@ -108,12 +108,17 @@ export function HarborCallView() {
 ```tsx
 import { TheoremDecision } from '@theoremjs/react/ui';
 
-export function CargoSafetyConsole() {
+export function PageReaderConsole() {
 	return (
 		<TheoremDecision
 			endpoint="/api/decision"
 			defaultState={JSON.stringify(
-				{ vesselId: 'VSL-409', grossTonnage: 32000, hazardousCargo: true },
+				{
+					question:
+						'What write path do recent systems use to store episodic memory for language-model agents?',
+					passage:
+						'MemGPT (Packer et al.) pages conversational history into an external store and reloads relevant spans on later turns, treating context as a virtual memory hierarchy rather than a single prompt window.',
+				},
 				null,
 				2,
 			)}
@@ -188,8 +193,8 @@ The `theme` prop takes any `defineTheme` result. Extend `theoremTheme` like any 
 import { defineTheme } from '@astryxdesign/core/theme';
 import { theoremTheme } from '@theoremjs/react/ui/theme';
 
-export const maritimeTheme = defineTheme({
-	name: 'maritime',
+export const researchTheme = defineTheme({
+	name: 'research',
 	extends: theoremTheme,
 	tokens: {
 		'--color-accent': '#0066cc',
@@ -201,7 +206,7 @@ export const maritimeTheme = defineTheme({
 Pass the customized theme and mode directly to components:
 
 ```tsx
-<TheoremChat endpoint="/api/theorem" theme={maritimeTheme} mode="dark" />
+<TheoremChat endpoint="/api/theorem" theme={researchTheme} mode="dark" />
 ```
 
 ### Layout Variables
@@ -221,12 +226,12 @@ Override messages per locale using the `labels` prop:
 	endpoint="/api/theorem"
 	labels={{
 		en: {
-			'@theorem.chat.greeting': 'Harbor Dispatch Console',
+			'@theorem.chat.greeting': 'Research Scout',
 			'@theorem.composer.placeholder': 'Send instruction to @{handle}...',
-			'@astryx.chatSendButton.send': 'Dispatch',
+			'@astryx.chatSendButton.send': 'Ask',
 		},
 		fr: {
-			'@theorem.chat.greeting': 'Console de régulation portuaire',
+			'@theorem.chat.greeting': 'Éclaireur de recherche',
 			'@theorem.composer.placeholder': 'Envoyer un message à @{handle}...',
 			'@astryx.chatSendButton.send': 'Envoyer',
 		},

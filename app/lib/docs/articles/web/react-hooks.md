@@ -1,6 +1,6 @@
 ---
 title: React Hooks
-updated: 2026-10-26
+updated: 2026-10-30
 summary: Headless React hooks for chat, decision, embedding and host profiles.
 entry: react/src/index.ts
 covers: react, src/interface
@@ -33,7 +33,7 @@ import { createHttpTransport, useTheoremInterface } from '@theoremjs/react';
 
 const transport = createHttpTransport({ endpoint: '/api/theorem' });
 
-export function HarborApp() {
+export function ResearchApp() {
 	const described = useTheoremInterface(transport);
 
 	if (described.status === 'loading') return <div>Loading interface...</div>;
@@ -65,7 +65,7 @@ import { createHttpTransport, useTheoremChat, useTheoremInterface } from '@theor
 
 const transport = createHttpTransport({ endpoint: '/api/theorem' });
 
-export function HarborChat() {
+export function ResearchChat() {
 	const described = useTheoremInterface(transport);
 	const chat = useTheoremChat({
 		transport,
@@ -143,14 +143,15 @@ import { createDecisionTransport, useTheoremDecision } from '@theoremjs/react';
 
 const transport = createDecisionTransport({ endpoint: '/api/decision' });
 
-export function CargoSafetyEvaluator() {
+export function PageReaderEvaluator() {
 	const { decide, status, result, failure, cancel } = useTheoremDecision(transport);
 
 	const handleEvaluate = () => {
 		decide({
-			vesselId: 'VSL-802',
-			grossTonnage: 45000,
-			hazardousCargo: true,
+			question:
+				'What write path do recent systems use to store episodic memory for language-model agents?',
+			passage:
+				'MemGPT (Packer et al.) pages conversational history into an external store and reloads relevant spans on later turns, treating context as a virtual memory hierarchy rather than a single prompt window.',
 		});
 	};
 
@@ -158,7 +159,7 @@ export function CargoSafetyEvaluator() {
 
 	return (
 		<div>
-			<button onClick={handleEvaluate} disabled={isDeciding}>Evaluate Cargo</button>
+			<button onClick={handleEvaluate} disabled={isDeciding}>Read Passage</button>
 			{isDeciding && <button onClick={cancel}>Cancel</button>}
 			{result && <pre>{JSON.stringify(result.answers, null, 2)}</pre>}
 			{failure && <p>Evaluation failed: {failure.error}</p>}

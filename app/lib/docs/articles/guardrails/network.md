@@ -1,6 +1,6 @@
 ---
 title: Network Safety & SSRF
-updated: 2026-10-29
+updated: 2026-10-30
 summary: Address, scheme and redirect checks that keep tool requests away from private networks.
 entry: src/guardrails/network.ts
 covers: src/guardrails/network.ts, src/guardrails/destinations.ts
@@ -57,7 +57,7 @@ The address checks read the URL as written. A public name whose DNS points to a 
 Give `runTurn` a `resolveHost` function to check names too:
 
 ```ts frame=request
-input: { text: 'Look up the latest release.' },
+input: { text: 'Find recent papers, models, or datasets on episodic memory, vector-space memory stores, and context recombination for language models, and quote the exact claims from their cards or abstracts.' },
 	resolveHost: dnsOverHttpsResolver({ endpoint: 'https://cloudflare-dns.com/dns-query' }),
 ```
 
@@ -69,20 +69,28 @@ This lookup is separate from the one the connection makes. It stops names that p
 
 ## Configuring Network Guardrails
 
-Set the policy on the profile in `guardrails.network`:
+Set the policy on the profile in `guardrails.network`. `research.scout` sets `allowedHosts`. The other two lines show the defaults:
 
 ```ts frame=profile:text
 guardrails: {
 		network: {
 			allowPrivateNetworks: false, // Set to true only in local development or CI
-			allowedHosts: ['gateway.internal'], // A private host tools may reach
+			allowedHosts: [
+				'mcp.exa.ai',
+				'export.arxiv.org',
+				'huggingface.co',
+				'api.github.com',
+				'raw.githubusercontent.com',
+				'mcp.context7.com',
+				'mcp.deepwiki.com',
+			],
 			allowedSchemes: ['https'],
 		},
 	},
 ```
 
 * **`allowPrivateNetworks`**: Lets requests reach local names and private addresses, and allows `http:` by default. Defaults to `false`.
-* **`allowedHosts`**: Host names that tools may reach even when they are local names or resolve to a private address. Public hosts don't need listing. A listed host still has to pass the scheme check.
+* **`allowedHosts`**: Host names that tools may reach even when they are local names or resolve to a private address, such as a gateway on your own network. Public hosts don't need listing. This is not an allow list: tools can still reach a public host that is not on it. All seven hosts on the scout are public, so its list refuses nothing, and `resolveHost` does not look those names up. A listed host still has to pass the scheme check.
 * **`allowedSchemes`**: The URL schemes allowed. Defaults to `['https']`, or `['http', 'https']` when `allowPrivateNetworks` is `true`.
 
 ## Related Guides

@@ -1,6 +1,6 @@
 ---
 title: Model Bindings
-updated: 2026-10-29
+updated: 2026-10-30
 summary: Binding a provider, a protocol and a model to a profile, with its keys, efforts, limits and built-in tools.
 entry: src/kernel/protocols/binding.ts
 covers: src/kernel/protocols/binding.ts, src/kernel/registry/profiles.ts
@@ -31,30 +31,29 @@ graph LR
         Live["geminiLive"]
     end
 
-    subgraph Profile["Profile models"]
-        Primary["primary"]
-        Fast["fast"]
+    subgraph Profile["research.scout models"]
+        Gemini["gemini"]
     end
 
-    Primary --> Chat
-    Fast --> Chat
+    Gemini --> Chat
 ```
 
 ## Declaring a Model Binding
 
-Bindings are declared under `models` on the profile:
+Bindings are declared under `models` on the profile. This is the research scout's `open` model:
 
 ```ts frame=profile:text
 models: {
-	primary: {
+	open: {
 		protocol: 'openRouterOpenAi',
 		provider: 'openrouter',
-		apiId: 'anthropic/claude-5.5-opus',
+		apiId: 'openrouter/free',
 		keySlot: 'openrouter',
-		maxOutputTokens: 4096,
 	},
 }
 ```
+
+Add `maxOutputTokens` to a binding to set the token limit for one reply.
 
 Bindings can also be generated using a registered provider's helper:
 
@@ -63,8 +62,10 @@ import { openRouterProvider, registerProvider } from '@theoremjs/agents';
 
 const router = registerProvider(openRouterProvider, { keySlot: 'openrouter' });
 
-export const primaryModel = router.model('openRouterOpenAi', 'anthropic/claude-5.5-opus', {
-	maxOutputTokens: 4096,
+export const open = router.model('openRouterOpenAi', 'openrouter/free', {
+	efforts: { normal: 'medium', deep: 'high' },
+	defaultEffort: 'normal',
+	summaries: true,
 });
 ```
 
@@ -84,8 +85,8 @@ At runtime, keys come from a **vault** passed to `runTurn()` in its second argum
 ```ts frame=statements
 const events = runTurn(
 	{
-		profile: 'harbor.desk',
-		input: { text: 'Check container status.' },
+		profile: 'research.scout',
+		input: { text: 'Find papers on episodic memory for language models.' },
 	},
 	{
 		vault: {
@@ -102,44 +103,47 @@ A vault entry is a string, an object for a provider that signs in with several f
 
 ## Multi-Model Routing & Selection
 
-A profile can bind more than one model, for example a large model and a fast one. Each turn runs on one of them:
+A profile can bind more than one model. The scout binds a free OpenRouter model and a Gemini one. Each turn runs on one of them:
 
 ```ts frame=profile:text
 models: {
-	primary: {
+	open: {
 		protocol: 'openRouterOpenAi',
 		provider: 'openrouter',
-		apiId: 'anthropic/claude-5.5-opus',
+		apiId: 'openrouter/free',
+		keySlot: 'openrouter',
 	},
-	fast: {
-		protocol: 'openRouterOpenAi',
-		provider: 'openrouter',
-		apiId: 'anthropic/claude-5.5-haiku',
+	gemini: {
+		protocol: 'geminiInteractions',
+		provider: 'gemini',
+		apiId: 'gemini-3.8-flash',
+		keySlot: 'gemini',
 	},
 },
-defaultModel: 'primary',
+defaultModel: 'open',
 allowModelSelect: true,
 ```
 
 * **`defaultModel`**: The model a turn gets when it does not pick one. Required when more than one model is bound. With one model, it is that model.
-* **`allowModelSelect`**: When `true`, a turn can pick a model by its key (`runTurn({ profile: 'harbor.desk', model: 'fast', input: { ... } })`). A key the profile does not declare is refused. When it is left out or `false`, a turn that names a model is refused with a `TheoremError`.
+* **`allowModelSelect`**: When `true`, a turn can pick a model by its key (`runTurn({ profile: 'research.scout', model: 'gemini', input: { ... } })`). A key the profile does not declare is refused. When it is left out or `false`, a turn that names a model is refused with a `TheoremError`.
 
 ## Reasoning Efforts & Thinking
 
-For reasoning models, a binding names its own efforts, and each maps to one of Theorem's thinking levels:
+For reasoning models, a binding names its own efforts, and each maps to one of Theorem's thinking levels. These are the scout's efforts. To let a turn pick one, add `allowEffortSelect`:
 
 ```ts frame=profile:text
 models: {
-	reasoning: {
-		protocol: 'openRouterOpenAi',
-		provider: 'openrouter',
-		apiId: 'anthropic/claude-5.5-opus',
+	gemini: {
+		protocol: 'geminiInteractions',
+		provider: 'gemini',
+		apiId: 'gemini-3.8-flash',
+		keySlot: 'gemini',
 		efforts: {
-			low: 'low',
-			thorough: 'high',
+			normal: 'medium',
+			deep: 'high',
 		},
-		defaultEffort: 'low',
-		allowEffortSelect: true,
+		defaultEffort: 'normal',
+		allowEffortSelect: true, // Add this
 		summaries: true,
 	},
 }
@@ -147,21 +151,21 @@ models: {
 
 * **`efforts`**: Maps your effort names to thinking levels: `'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'`. A provider refuses a level its model does not take.
 * **`defaultEffort`**: The effort a turn gets when it does not pick one. Required when more than one effort is declared. With one effort, it is that effort.
-* **`allowEffortSelect`**: Lets a turn pick an effort by name (`runTurn({ profile: 'harbor.desk', effort: 'thorough', input: { ... } })`). It needs two or more efforts.
+* **`allowEffortSelect`**: Lets a turn pick an effort by name (`runTurn({ profile: 'research.scout', effort: 'deep', input: { ... } })`). It needs two or more efforts.
 * **`summaries`**: Asks the model for summaries of its thinking. Not every model sends them. With some providers, `false` only hides thoughts, and others ignore it.
 
 `defaultEffort` and `allowEffortSelect` need `efforts`.
 
 ## Execution Budgets (`limits`)
 
-A binding can set the points at which Theorem stops its model's calls under `limits`:
+A binding can set the points at which Theorem stops its model's calls under `limits`. The scout sets none. To set them, add this:
 
 ```ts frame=profile:text
 models: {
-	primary: {
+	open: {
 		protocol: 'openRouterOpenAi',
 		provider: 'openrouter',
-		apiId: 'anthropic/claude-5.5-opus',
+		apiId: 'openrouter/free',
 		limits: {
 			operationTimeoutMs: 30_000, // one call, retries included
 			maxWireResponseBytes: 1_000_000, // bytes the provider sends for one step
@@ -189,14 +193,14 @@ There are nine limits. Each one left out is no limit, so the provider's own limi
 
 ## Provider Built-in Tools (`builtInTools`)
 
-Tools the provider runs itself, such as OpenRouter's `webSearch` or Gemini's `googleSearch`, are declared on the binding under `builtInTools`. Each id must be registered as a builtin tool and declared by the provider's adapter:
+Tools the provider runs itself, such as OpenRouter's `webSearch` or Gemini's `googleSearch`, are declared on the binding under `builtInTools`. Each id must be registered as a builtin tool and declared by the provider's adapter. The scout uses none. To add one:
 
 ```ts frame=profile:text
 models: {
-	primary: {
+	open: {
 		protocol: 'openRouterOpenAi',
 		provider: 'openrouter',
-		apiId: 'anthropic/claude-5.5-opus',
+		apiId: 'openrouter/free',
 		builtInTools: ['webSearch'],
 	},
 }

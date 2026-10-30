@@ -1,6 +1,6 @@
 ---
 title: Trace Spans Catalog
-updated: 2026-10-29
+updated: 2026-10-30
 summary: Query and export trace spans, distributed execution trees, and telemetry attributes in Theorem.
 entry: src/observability/mod.ts
 covers: src/observability, src/kernel/engine/call-trace.ts
@@ -26,7 +26,7 @@ flowchart TD
 		
 		Model1["chat &lt;apiId&gt; (CLIENT)<br/>gen_ai.operation.name: chat"]
 		Http1["POST (CLIENT)<br/>http.request.method: POST"]
-		Tool1["execute_tool verify_manifest (INTERNAL)<br/>gen_ai.tool.name: verify_manifest"]
+		Tool1["execute_tool read_pages (INTERNAL)<br/>gen_ai.tool.name: read_pages"]
 		Model2["chat &lt;apiId&gt; (CLIENT)<br/>gen_ai.operation.name: chat"]
 		
 		Root --> Model1
@@ -131,7 +131,7 @@ export interface TraceRecord {
 flowchart LR
 		Span1["Span: invoke_agent<br/>gen_ai.input.messages: { content_sha256: 'a1b2...' }"]
 		Span2["Span: chat<br/>gen_ai.input.messages: { content_sha256: 'a1b2...' }"]
-		Dict["Record content map<br/>'a1b2...': 'You are a customs officer...'"]
+		Dict["Record content map<br/>'a1b2...': 'Role: Advanced reasoning engine...'"]
 
 		Span1 -.->|References Hash| Dict
 		Span2 -.->|References Hash| Dict
@@ -152,7 +152,7 @@ To join a turn to a distributed trace, set the W3C `traceparent` of the host's s
 
 ```ts frame=request
 traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
-input: { text: 'Verify manifest for vessel Northern Star.' },
+input: { text: 'Find recent papers, models, or datasets on episodic memory for language models.' },
 ```
 
 * The root `invoke_agent` span becomes a child of that span. Without a `traceparent`, the turn starts a new trace.

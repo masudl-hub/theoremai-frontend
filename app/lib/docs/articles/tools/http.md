@@ -1,6 +1,6 @@
 ---
 title: HTTP Tools
-updated: 2026-10-29
+updated: 2026-10-30
 summary: Declarative REST API tools with URL argument mapping, request limits, timeouts, and image fetching.
 entry: src/kernel/tools/remote.ts
 covers: src/kernel/tools/remote.ts, src/kernel/tools/http-limit.ts, src/kernel/tools/image-fetch.ts
@@ -13,43 +13,52 @@ An `http` tool sends an HTTP request to an external REST endpoint with no handle
 
 ## Registering an HTTP Tool
 
-Register HTTP tools using `registerTool()` with `type: 'http'`:
+Register HTTP tools using `registerTool()` with `type: 'http'`. This is the tool `research.scout` uses to find papers:
 
 ```ts
 import { registerTool } from '@theoremjs/agents';
 import { z } from 'zod';
 
-export const marineWeatherTool = registerTool({
+export const listArxivTool = registerTool({
 	type: 'http',
-	name: 'get_marine_weather',
-	description: 'Retrieve current wave height, wind speed, and water temperature for a port.',
-	category: 'maritime',
+	name: 'list_arxiv',
+	description:
+		'Fetch the newest arXiv submissions matching an arXiv query (e.g. all:"episodic memory" AND all:"language model").',
+	category: 'research',
 	access: 'read-only',
 	paths: ['*'],
 	loadTier: 'T0',
 	permission: 'auto',
 
-	endpoint: 'https://api.oceanweather.example/v1/ports/{portCode}/conditions',
+	endpoint:
+		'https://export.arxiv.org/api/query?sortBy=submittedDate&sortOrder=descending&max_results=10',
 	method: 'GET',
 
 	mapping: {
-		pathParams: ['portCode'],
-		queryParams: ['units'],
+		queryParams: ['search_query'],
 	},
 
+	// The scout's tools set no bounds. Add these to fit the service:
 	limit: { requests: 60, windowMs: 60_000 },
 	timeoutMs: 8000,
 	maxResponseBytes: 1024 * 1024,
 
-	input: z.object({
-		portCode: z.string().describe('Three-letter port identifier'),
-		units: z.enum(['metric', 'imperial']).default('metric'),
+	input: z.fromJSONSchema({
+		type: 'object',
+		properties: {
+			search_query: {
+				type: 'string',
+				minLength: 1,
+				description: 'arXiv query expression',
+				examples: ['all:"episodic memory" AND all:"language model"'],
+			},
+		},
+		required: ['search_query'],
 	}),
 
-	output: z.object({
-		waveHeightMeters: z.number(),
-		windSpeedKnots: z.number(),
-		waterTempCelsius: z.number(),
+	output: z.fromJSONSchema({
+		type: 'string',
+		description: 'Atom XML feed of matching arXiv preprints',
 	}),
 });
 ```
@@ -58,8 +67,8 @@ export const marineWeatherTool = registerTool({
 
 The `mapping` configuration defines where model-generated arguments are placed in the outgoing HTTP request:
 
-* **`pathParams`**: Names arguments that replace `{name}` placeholders in `endpoint`. A placeholder left unfilled fails the call.
-* **`queryParams`**: Names arguments appended to the URL query string (e.g., `?units=metric`).
+* **`pathParams`**: Names arguments that replace `{name}` placeholders in `endpoint`. A placeholder left unfilled fails the call. The scout's `read_model_card` sets `pathParams: ['owner', 'name']` for `https://huggingface.co/{owner}/{name}/raw/main/README.md`.
+* **`queryParams`**: Names arguments appended to the URL query string, after any query already in `endpoint` (e.g., `&search_query=all%3Aepisodic`).
 * **`bodyParam`**: For methods other than `GET`, names a single input field sent as the whole JSON body. If omitted, all arguments not consumed by `pathParams` or `queryParams` are sent as a JSON object.
 
 ## Upstream Protection & Bounds

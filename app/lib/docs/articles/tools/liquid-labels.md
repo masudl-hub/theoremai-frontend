@@ -21,26 +21,61 @@ A tool's `labels` block provides templates for four distinct lifecycle states:
 import { registerTool } from '@theoremjs/agents';
 import { z } from 'zod';
 
-export const holdStatusTool = registerTool({
-	type: 'function',
-	name: 'check_hold_status',
-	description: 'Look up why a freight shipment is currently on hold.',
-	category: 'logistics',
+export const readPagesTool = registerTool({
+	type: 'mcp',
+	name: 'read_pages',
+	description:
+		'Read up to three web pages by URL via Exa. Pass the specific question you are reading them for.',
+	category: 'research',
 	access: 'read-only',
 	paths: ['*'],
 	loadTier: 'T0',
 	permission: 'auto',
-	handler: async () => ({ status: 'hold', destination: 'Port of Seattle' }),
+	serverUrl: 'https://mcp.exa.ai/mcp',
+	mcpToolName: 'web_fetch_exa',
 
 	labels: {
-		activity: 'checking status of shipment {shipmentId}',
-		activityPast: 'found {status} record for {shipmentId}',
-		activityFailed: 'could not check shipment {shipmentId}',
-		request: 'check status of shipment {shipmentId}',
+		activity: 'Reading {urls.0}',
+		activityPast: [
+			'when urls.length is 1: Read {urls.0}',
+			'Read {urls.length} pages',
+			'Read pages',
+		],
+		activityFailed: 'Could not read {urls.0|that page}',
+		request: 'read {urls.0}',
 	},
 
-	input: z.object({ shipmentId: z.string() }),
-	output: z.object({ status: z.string(), destination: z.string() }),
+	input: z.fromJSONSchema({
+		type: 'object',
+		properties: {
+			urls: {
+				type: 'array',
+				items: { type: 'string', format: 'uri' },
+				minItems: 1,
+				maxItems: 3,
+				description: 'Web page URLs to read',
+				examples: [['https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2']],
+			},
+			maxCharacters: {
+				type: 'integer',
+				maximum: 8000,
+				description: 'Max characters per page',
+				examples: [8000],
+			},
+			question: {
+				type: 'string',
+				minLength: 1,
+				description: 'What you need from this source, as one specific question.',
+				examples: ['What datasets are evaluated?'],
+			},
+		},
+		required: ['urls', 'question'],
+	}),
+
+	output: z.fromJSONSchema({
+		type: 'string',
+		description: 'Extracted passages from the requested pages',
+	}),
 });
 ```
 
@@ -51,14 +86,14 @@ export const holdStatusTool = registerTool({
 | **`activityFailed`** | Displayed when the tool throws an unhandled error or fails. | `input` |
 | **`request`** | Displayed on human confirmation cards when the tool hits an approval gate. | `input` |
 
-If a label is omitted, Theorem falls back to formatting the tool's name in natural words (e.g., `check_hold_status` becomes `"check hold status"`).
+If a label is omitted, Theorem falls back to formatting the tool's name in natural words (e.g., `read_pages` becomes `"read pages"`).
 
 ## Value Placeholders & Formatting
 
-Wrap field names in curly braces `{path}` to insert values from the call:
+Wrap field names in curly braces `{path}` to insert values from the call. A bare path reads the input, then the output where there is one. `{input.path}` and `{output.path}` read one side:
 
-* **Object Paths**: `{shipmentId}`, `{recipient.address.city}`
-* **Array Indexing**: `{items.0.title}`, `{containers.-1.id}`
+* **Object Paths**: `{query}`, `{output.result}`
+* **Array Indexing**: `{urls.0}`, `{urls.-1}`
 * **Automatic Formatting**:
   * Numbers are formatted with locale separators (`14500` $\rightarrow$ `"14,500"`).
   * ISO timestamps are formatted into readable dates (`"2026-10-25T14:00:00Z"` $\rightarrow$ `"Oct 25, 2026, 2:00 PM"`).
@@ -69,7 +104,7 @@ Wrap field names in curly braces `{path}` to insert values from the call:
 If an argument is optional, provide a fallback using the pipe syntax `{path|fallback}`:
 
 ```text
-activity: 'dispatching to {destinationPort|regional hub}',
+activityFailed: 'Could not read {urls.0|that page}',
 ```
 
 If a placeholder has no value and no fallback is specified, that template line does not fit and is discarded.
@@ -79,32 +114,32 @@ If a placeholder has no value and no fallback is specified, that template line d
 To show a number with the right word, put the word for one and the word for any other number after the path:
 
 ```text
-activityPast: 'found {output.results.length hit|hits} for {query}',
+activityPast: 'Found {length hit|hits} for {search}',
 ```
 
-The label reads "found 1 hit" or "found 3 hits". English plural rules pick the word, so zero reads "0 hits". A third part is the fallback, used when the value is not a number: `{output.total hit|hits|some hits}`.
+This is the first line of the label on the scout's `search_models`. That tool returns a list, so `length` is the length of the output. The label reads "Found 1 hit" or "Found 3 hits". English plural rules pick the word, so zero reads "0 hits". A third part is the fallback, used when the value is not a number: `{output.total_count hit|hits|some hits}`.
 
 ## Conditional Rules (`when`)
 
-Prefix lines with `when <field> is <value>:` to display specialized copy based on arguments:
+Prefix lines with `when <field> is <value>:` to display specialized copy based on arguments. A `when` reads the input only:
 
 ```text
 labels: {
-	activity: [
-		'when priority is urgent: expediting urgent release for {shipmentId}',
-		'when priority is standard: releasing container {shipmentId}',
-		'processing shipment {shipmentId}', // Fallback line
+	activityPast: [
+		'when urls.length is 1: Read {urls.0}',
+		'Read {urls.length} pages',
+		'Read pages', // Fallback line
 	],
 }
 ```
 
 ### Supported Condition Syntax
 
-* **Equality**: `when status is archived: ...`
-* **Negation**: `when status is not archived: ...`
-* **Null Checks**: `when holdReason is null: ...`
+* **Equality**: `when urls.length is 1: ...`
+* **Negation**: `when urls.length is not 1: ...`
+* **Null Checks**: `when <field> is null: ...`, for a field whose schema allows null. A field that the model left out is not null. On a field that can never be null, this throws at registration.
 * **Compound Logic**: Join multiple checks with `and`:
-  `when priority is urgent and coldChain is true: expediting refrigerated container {containerId}`
+  `when urls.length is 1 and maxCharacters is 8000: reading {urls.0} in full`
 
 ## Multi-Line Evaluation Order
 
@@ -117,29 +152,30 @@ When an array of template lines is provided, Theorem evaluates them from top to 
 
 ## Compound Joined Lines (`+ `)
 
-To assemble sentences from multiple independent flags without writing every combination, prefix lines with `+ `:
+To assemble sentences from multiple independent conditions without writing every combination, prefix lines with `+ `:
 
 ```text
 labels: {
 	activity: [
-		'+ when expedited is true: expedited transport',
-		'+ when temperatureControlled is true: cold-chain monitoring',
-		'+ delivering container {containerId}',
+		'+ when urls.length is 1: reading {urls.0}',
+		'+ when maxCharacters is 8000: up to 8,000 characters',
+		'+ answering {question|your question}',
 	],
 }
 ```
 
 Theorem evaluates all matching `+ ` lines in sequence and joins them naturally in words:
-* If both flags are true: `"expedited transport, cold-chain monitoring, and delivering container CONT-9941"`
-* If only expedited is true: `"expedited transport and delivering container CONT-9941"`
+* If both checks hold: `"reading https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2, up to 8,000 characters, and answering What datasets are evaluated?"`
+* If only the first holds: `"reading https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2 and answering What datasets are evaluated?"`
 
 ## Build-Time Schema Validation
 
 Theorem validates label templates at registration time against your Zod `input` and `output` schemas:
 
-* A placeholder referencing `{destination}` will throw a `TheoremError('config')` at startup if `destination` is not declared in the Zod schema.
-* A count needs both words: `{total hit}` throws. Its path must be a number field or a list's `length`.
-* Output variables (e.g. `{output.status}`) are allowed only in `activityPast`. Referencing output variables in `activity` or `request` throws a build-time configuration error.
+* A placeholder referencing `{url}` will throw a `TheoremError('config')` at startup if `url` is not declared in the Zod schema. `read_pages` declares `urls`, so `{url}` throws there.
+* A count needs both words: `{total_count hit}` throws. Its path must be a number field or a list's `length`.
+* Output variables (e.g. `{output.total_count}`) are allowed only in `activityPast`. Referencing output variables in `activity`, `activityFailed` or `request` throws a build-time configuration error.
+* A list whose last line can fail to fit throws too: that line needs no `when`, and a fallback on every placeholder.
 
 ## Related Guides
 

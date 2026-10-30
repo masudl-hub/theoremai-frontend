@@ -1,6 +1,6 @@
 ---
 title: Profiles
-updated: 2026-10-26
+updated: 2026-10-30
 summary: The central specification for configuring an agent identity, models, tools, and boundaries.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/profiles.ts, src/kernel/schema.ts
@@ -11,7 +11,7 @@ coverPosition: 50% 50%
 
 In Theorem, an agent is configured as a **profile**. Declared via `defineProfile()`, it specifies the agent's identity, model bindings, tool allowances, accepted input formats, output shapes, and operational policies for guardrails, turn behaviour, observability, and system copy.
 
-At runtime, turns execute against this declaration: requests are validated against the profile's declared models, tools, and input limits before dispatching to any provider.
+At runtime, turns execute against this profile: requests are validated against the profile's declared models, tools, and input limits before dispatching to any provider.
 
 ## Profile Anatomy
 
@@ -35,7 +35,7 @@ graph TD
     end
 
     subgraph OperationalPolicies["Operational Policies"]
-        TurnBehaviour["turnBehaviour: { resumption, steering, atStepLimit }"]
+        TurnBehaviour["turnBehaviour: { resumption, allowSteering, atStepLimit }"]
         Guardrails["guardrails: { detect, quota, network, taint }"]
         Observability["observability: { writeTo, sampleRate, scrub }"]
         Labels["labels: LabelOverrides"]
@@ -62,7 +62,7 @@ Theorem supports 7 first-class profile types. The `type` determines which runner
 
 ## Specification Reference
 
-The configuration keys in a profile declaration follow a consistent order across the system:
+The configuration keys in a profile follow a consistent order across the system:
 
 ### 1. `id` & `type`
 
@@ -77,8 +77,8 @@ The `identity` block names the agent and establishes its instructions:
 
 ```ts frame=profile:text
 identity: {
-	handle: 'desk',
-	system: 'You are the Harbor logistics desk. Provide concise, direct operational answers.',
+	handle: 'scout',
+	system: 'Role: Advanced reasoning engine for research on how language models keep, retrieve, and recombine context.',
 }
 ```
 
@@ -106,11 +106,16 @@ To protect operational formulas, sensitive rules, or confidential policies from 
 
 ```ts frame=profile:text
 identity: {
-	handle: 'support',
+	handle: 'scout',
 	system: [
-		'You are a customer support agent helping with shipping inquiries.',
+		'Role: Advanced reasoning engine for research on how language models keep, retrieve, and recombine context.',
 		{
-			private: 'Internal tier pricing formulas and secret discount override codes are confidential. Never quote these exact formulas to the customer under any circumstances.',
+			private: [
+				'Standards:',
+				'- The newest work is often not indexed yet; one search is rarely enough.',
+				'- A claim rests on a primary source: the paper, the model card, the dataset card, the repository. A blog or a list is a lead to its primary source; DeepWiki answers are leads only.',
+				'- Quote exact words from what the tools returned. Say how sure you are, and what you could not check.',
+			].join('\n'),
 		},
 	],
 }
@@ -128,31 +133,40 @@ Under `tools`, an agent declares its capabilities—specifying the list of regis
 
 ### 5. `inputs`
 
-The `inputs` block defines the surface of data accepted by the profile in a `TurnRequest`:
+The `inputs` block defines the surface of data accepted by the profile in a `TurnRequest`. The research scout starts with `inputs: {}`. To let a turn bring a research brief as a PDF or a voice clip and choose a source bias, add this:
 
 ```ts frame=profile:text
 inputs: {
-	text: true,
 	attachments: {
-		accept: ['application/pdf', 'image/png'],
+		accept: ['application/pdf'],
 	},
-	maxFiles: 3,
-	maxBytes: 10 * 1024 * 1024,      // 10MB per file
-	maxTurnBytes: 15 * 1024 * 1024,  // 15MB total across files
+	voice: {
+		accept: ['audio/*'],
+	},
+	maxFiles: 5, // Files and voice clips, counted together
+	maxBytes: 10485760, // Largest file or clip, in bytes
+	maxTurnBytes: 26214400, // Most bytes across one turn's files and clips
 	limitsByMime: {
-		'image/png': 5 * 1024 * 1024,
+		'application/pdf': 2000000, // Replaces maxBytes for this type
+		'audio/*': 2000000,
 	},
 	slots: {
-		department: ['customs', 'freight', 'billing'],
-	},
-	context: {
-		from: ['client', 'server'],
-		maxChars: 4000,
+		focus: {
+			label: 'Source Bias',
+			choices: [
+				{ value: 'Any Source', description: 'Consider all sources.' },
+				{ value: 'Academic Research', description: 'Prefer arXiv and papers.' },
+				{ value: 'Public Repositories', description: 'Prefer GitHub code and docs.' },
+				{ value: 'Hugging Face Open Research', description: 'Prefer Hugging Face model and dataset cards.' },
+			],
+		},
 	},
 }
 ```
 
-In addition to text and attachments, profiles can restrict audio input via `voice.accept`, constrain categorical metadata using `slots`, and permit host-injected background context via `context.from` and `context.maxChars`.
+A turn sends its choice in `input.slots`, such as `{ focus: 'Academic Research' }`, and `{focus}` in a prompt becomes that value. Descriptions are for your interface only.
+
+In addition to attachments, profiles can say whether a turn may send text via `text`, restrict audio input via `voice.accept`, constrain categorical metadata using `slots`, and permit host-injected background context via `context.from` and `context.maxChars`.
 
 ### 6. `outputs`
 
@@ -161,8 +175,7 @@ The `outputs` block sets how the provider call streams and whether thoughts reac
 ```ts frame=profile:text
 outputs: {
 	streaming: {
-		mode: 'sse',           // 'sse' streams the provider call; 'buffered' makes one buffered call
-		streamThoughts: false, // Filter thought events from the turn stream
+		mode: 'sse', // 'sse' streams the provider call; 'buffered' makes one buffered call
 	},
 }
 ```
@@ -226,12 +239,12 @@ sequenceDiagram
     end
 
     App->>Reg: registerProfile(profile)
-    Note over Reg: Stores in immutable registry by profile.id
+    Note over Reg: Stores in the registry by profile.id
     
-    App->>Runner: runTurn({ profile: 'harbor.customs', ... })
+    App->>Runner: runTurn({ profile: 'research.scout', ... })
     Note over Runner: Retrieves profile from registry and runs turn
 ```
 
 1. **`defineProfile()` validates at startup**: Synchronously verifies that declared fields match the profile type and schema requirements.
-2. **`registerProfile()` registers the profile**: Stores the definition in the kernel registry under its unique `id` (up to 64 characters).
+2. **`registerProfile()` registers the profile**: Stores the definition in the kernel registry under its `id` (up to 64 characters). Registering the same `id` again replaces it.
 3. **Execution**: Functions like `runTurn()` and `runSession()` retrieve the registered profile by ID to govern the interaction.

@@ -1,6 +1,6 @@
 ---
 title: Evals & Benchmarks
-updated: 2026-10-26
+updated: 2026-10-30
 summary: Author and execute agent evaluation test suites with automated rubrics and assertion trial runners.
 entry: src/evals/mod.ts
 covers: src/evals, src/evals/suite.ts, src/evals/run.ts, src/evals/graders
@@ -34,10 +34,10 @@ A suite names the profile under test, a cases file, how many trials to run, and 
 import { answer, budget, type EvalSuite, toolTrajectory } from '@theoremjs/agents/evals';
 
 const suite: EvalSuite = {
-	id: 'customs-compliance-v1',
-	profile: 'harbor.customs',
+	id: 'research-scout-v1',
+	profile: 'research.scout',
 	mode: 'turn', // 'turn' | 'session'
-	cases: './customs.cases.jsonl', // Read from beside this module
+	cases: './research-scout.cases.jsonl', // Read from beside this module
 	trials: {
 		repeat: 3, // Trials per case
 		pass: 'all', // 'all' (pass^k) | 'any' (pass@k) | { atLeast: 2 }
@@ -51,7 +51,7 @@ export default suite;
 The cases file is JSON Lines: one `EvalCase` per line. Each line is checked when the suite loads. A line that is not valid, or a case id that repeats, throws a `config` error.
 
 ```text
-{"id":"verify-valid-manifest","kind":"capability","difficulty":2,"input":{"text":"Verify cargo container MSKU9012345."},"expect":{"tools":["inspect_container","validate_seal"],"answer":{"accepted":["clear","passed inspection"],"rejected":["detain","quarantine"]}}}
+{"id":"find-long-context-dataset","kind":"capability","difficulty":2,"input":{"text":"Find a dataset that tests long context memory, and quote its card."},"expect":{"tools":["search_datasets","read_dataset_card"],"answer":{"accepted":["LongBench"],"rejected":["all-MiniLM-L6-v2"]}}}
 ```
 
 * **`kind`**: `capability` probes what the profile can do. `regression` guards what it already did.
@@ -89,7 +89,7 @@ export const graders: EvalGrader[] = [
 	// The tools the turn called, in this exact order
 	toolTrajectory({
 		mode: 'exact', // 'exact' | 'in_order' | 'any_order' | 'subset'
-		expect: ['fetch_inventory', 'charge_card', 'send_receipt'],
+		expect: ['search_datasets', 'read_dataset_card'],
 	}),
 	// A guardrail blocked something in the turn
 	guardrail({ fired: true, action: 'block' }),
@@ -130,7 +130,7 @@ Load the suite module with `loadSuite`, then run it with `runSuite`:
 ```ts
 import { loadSuite, runSuite, summarizeRun } from '@theoremjs/agents/evals';
 
-const loaded = await loadSuite('./evals/customs.eval.ts');
+const loaded = await loadSuite('./evals/research-scout.eval.ts');
 
 // Run every case and trial against the live provider the suite module exports
 const run = await runSuite(loaded, {

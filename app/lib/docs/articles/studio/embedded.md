@@ -33,7 +33,7 @@ Embedding the Studio screen creates an interactive workbench where visitors can 
 │ YOUR BACKEND SERVER                                         │
 │                                                             │
 │ createStudioDraftHandler({                                  │
-│   lent: { keys: myLentKeys, hostOptions: ... },             │
+│   lent: { keys: lentKeys, hostOptions: ... },               │
 │   spend: (kind, request) => { enforceUserQuota(...) },      │
 │ })                                                          │
 │ • Signs model requests using your server credentials        │
@@ -77,7 +77,7 @@ import { Theme } from '@astryxdesign/core/theme';
 import { theoremStudioTheme } from '@theoremjs/studio/ui/built/theorem-studio.ts';
 import { openStudio } from '@theoremjs/studio/ui/lib/studio-open.ts';
 import { StudioScreen } from '@theoremjs/studio/ui/studio-screen.tsx';
-import { harborLentKeys } from '../shared/harbor-lent-keys.ts';
+import { lentKeys } from '../shared/lent-keys.ts';
 
 // Stylesheets required by Studio and Astryx
 import '@theoremjs/studio/ui/figtree.css';
@@ -97,7 +97,7 @@ export function AgentPlayground() {
 					opened={opened}
 					host={{
 						kernelVersion: '0.3.3',
-						lentKeys: harborLentKeys,
+						lentKeys,
 					}}
 				/>
 			</LayerProvider>
@@ -116,16 +116,16 @@ The `host` property configures the workbench:
 When visitors test agents in an embedded studio, your backend pays for the model calls. You protect your API credits and infrastructure by declaring a `LentKeys` configuration:
 
 ```ts
-// shared/harbor-lent-keys.ts
+// shared/lent-keys.ts
 import type { LentKeys } from '@theoremjs/studio';
 
-export const harborLentKeys: LentKeys = {
+export const lentKeys: LentKeys = {
 	// Allowlist the exact models visitors can select
 	models(type, _definition) {
 		if (type === 'text') {
 			return [
-				{ id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite (Fast)' },
-				{ id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
+				{ id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite (Fast)' },
+				{ id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash' },
 			];
 		}
 		return [];
@@ -138,16 +138,16 @@ export const harborLentKeys: LentKeys = {
 
 	// Default model for newly created agent drafts
 	start(_type) {
-		return { protocol: 'geminiInteractions', provider: 'gemini', apiId: 'gemini-3.5-flash-lite' };
+		return { protocol: 'geminiInteractions', provider: 'gemini', apiId: 'gemini-3.1-flash-lite' };
 	},
 
 	// Reject unauthorized models or expensive frontier bindings
 	violation(binding) {
-		if (binding.apiId !== 'gemini-3.5-flash-lite' && binding.apiId !== 'gemini-3.5-flash') {
+		if (binding.apiId !== 'gemini-3.1-flash-lite' && binding.apiId !== 'gemini-3.8-flash') {
 			return {
 				field: 'apiId',
 				message:
-					'Only standard demo models (Gemini 3.5 Flash Lite and Gemini 3.5 Flash) are permitted in this playground.',
+					'Only standard demo models (Gemini 3.1 Flash Lite and Gemini 3.8 Flash) are permitted in this playground.',
 			};
 		}
 		return null;
@@ -202,15 +202,15 @@ import { TheoremError } from '@theoremjs/agents';
 import type { LentKeys } from '@theoremjs/studio';
 import { createStudioDraftHandler, STUDIO_BASE } from '@theoremjs/studio/server';
 
-// The lent keys from step 3, in shared/harbor-lent-keys.ts
-declare const harborLentKeys: LentKeys;
+// The lent keys from step 3, in shared/lent-keys.ts
+declare const lentKeys: LentKeys;
 declare function getVisitorUsage(clientIp: string): Promise<number>;
 declare function incrementVisitorUsage(clientIp: string): Promise<void>;
 
 const studioHandler = createStudioDraftHandler({
 	lent: {
 		mode: 'demo',
-		keys: harborLentKeys,
+		keys: lentKeys,
 		// Fill each key slot the draft's model requests
 		hostOptions: (_profile) => ({
 			vault: {

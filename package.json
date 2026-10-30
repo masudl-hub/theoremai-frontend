@@ -15,7 +15,7 @@
 		"docs:search-check": "node scripts/docs-search-check.mjs",
 		"evals:th30": "node scripts/evals-th30.mjs",
 		"docs:ack": "node scripts/docs-covers.mjs ack",
-		"lint:docs": "npm run docs:compose && node scripts/docs-lint-snippets.mjs && node scripts/docs-check-snippets.mjs && node scripts/docs-check-facts.mjs && node scripts/docs-covers.mjs check && node scripts/docs-lint-voice.mjs && node scripts/docs-lint-dates.mjs && npm run docs:vectors:check",
+		"lint:docs": "npm run docs:compose && node scripts/docs-lint-snippets.mjs && node scripts/docs-check-snippets.mjs && node scripts/docs-check-facts.mjs && node scripts/docs-covers.mjs check && node scripts/docs-lint-voice.mjs && node scripts/docs-lint-story.mjs && node scripts/docs-lint-dates.mjs && npm run docs:vectors:check",
 		"build": "react-router build",
 		"preview": "npm run build && vite preview",
 		"deploy": "node scripts/deploy.mjs",

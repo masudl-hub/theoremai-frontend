@@ -184,11 +184,11 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 					{
 						id: 'block-injection',
 						label: 'Block injection from remote tools',
-						description: 'Set injection on remote HTTP tool output to block.',
+						description: 'Refuse a tool result that tells the agent what to do next.',
 						prompt:
-							'Turn this on, then in the tester send “Instruction in an HTML comment”. Expect Blocked on the tool-result path.',
-						result: 'Injection on remote tool output blocks — a page cannot seize the turn.',
-						line: 'injection:',
+							'Turn this on, then in the tester send “An attack shaped like a task update”. Expect Blocked on the tool-result path.',
+						result: 'Instructions in remote tool output block — a page cannot seize the turn.',
+						line: 'tool_instructions:',
 					},
 					{
 						id: 'refuse-after-read',

@@ -1,6 +1,6 @@
 ---
 title: Lifecycle Hooks
-updated: 2026-10-26
+updated: 2026-10-30
 summary: Observing and intercepting turn stages, gate approvals, and sub-agent invocations.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -23,11 +23,11 @@ Pass an `onStage` callback to `runTurn()` or `runSession()` to intercept executi
 import { runTurn, type StageContext, type StageResult } from '@theoremjs/agents';
 
 const _events = runTurn({
-	profile: 'harbor.desk',
-	input: { text: 'Audit container CONT-9941' },
+	profile: 'research.scout',
+	input: { text: 'Find papers on episodic memory for language models.' },
 	onStage: async (ctx: StageContext): Promise<StageResult | undefined> => {
-		if (ctx.stage === 'pre_tool' && ctx.tool === 'delete_record') {
-			return { deny: { code: 'FORBIDDEN', message: 'Destructive actions are prohibited.' } };
+		if (ctx.stage === 'pre_tool' && ctx.tool === 'ask_repo_docs') {
+			return { deny: { code: 'FORBIDDEN', message: 'Read the primary source, not DeepWiki.' } };
 		}
 	},
 });

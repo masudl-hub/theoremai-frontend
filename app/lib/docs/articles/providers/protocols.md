@@ -1,6 +1,6 @@
 ---
 title: Supported Protocols
-updated: 2026-10-29
+updated: 2026-10-30
 summary: Wire formats, SSE stream parsers, multimodal input mapping, and provider-specific cache options.
 entry: src/kernel/protocols/protocol.ts
 covers: src/kernel/protocols/protocol.ts, src/kernel/protocols/mod.ts
@@ -62,10 +62,10 @@ The only builder-facing surface on a protocol is its optional `options` schema, 
 
 ```ts frame=profile:text
 models: {
-	main: {
+	open: {
 		protocol: 'openRouterOpenAi',
 		provider: 'openrouter',
-		apiId: 'anthropic/claude-sonnet-4.5',
+		apiId: 'openrouter/free',
 		options: {
 			cache: { mode: 'automatic', ttl: '5m' }, // Protocol-specific setting
 		},

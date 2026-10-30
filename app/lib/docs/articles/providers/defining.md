@@ -1,6 +1,6 @@
 ---
 title: Defining a Provider
-updated: 2026-10-29
+updated: 2026-10-30
 summary: Register cloud aggregators, local endpoints, or custom enterprise gateway providers in Theorem.
 entry: src/providers/mod.ts
 covers: src/providers, src/kernel/protocols/provider.ts
@@ -81,10 +81,6 @@ Configure default vault slots for all models using this provider:
 
 ```text
 registerProvider(openRouterProvider, {
-	connection: {
-		siteUrl: 'https://harbor.example.com',
-		siteName: 'Harbor Logistics Desk',
-	},
 	keySlot: 'openrouter_primary',
 	fallbackKeySlot: 'openrouter_secondary',
 });

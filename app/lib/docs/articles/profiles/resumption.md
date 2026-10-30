@@ -1,6 +1,6 @@
 ---
 title: Turn Resumption & Steering
-updated: 2026-10-26
+updated: 2026-10-30
 summary: Continuing turns across token limits, resuming after gates, and steering mid-flight.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -15,22 +15,21 @@ The `turnBehaviour` configuration governs how Theorem manages these pauses—ena
 
 ## Turn Behavior Configuration
 
-Base profile fields (`identity`, `models`, `tools`, `guardrails`, `observability`) apply across all modalities as documented in [Profiles](/docs/profiles). Text profiles declare a `turnBehaviour` block to configure continuation rules, steering affordances, and step limits. This slice shows only that block:
+Base profile fields (`identity`, `models`, `tools`, `guardrails`, `observability`) apply across all modalities as documented in [Profiles](/docs/profiles). Text profiles declare a `turnBehaviour` block to configure continuation rules, steering affordances, and step limits. This slice shows only that block, as the research scout sets it:
 
 ```ts frame=profile:text
 turnBehaviour: {
 	resumption: {
-		allowContinue: ['length'], // Offer Continue only for a reply cut off at its token limit
-		autoContinue: ['stream_incomplete'], // Continue a dropped stream without asking the user
+		allowContinue: [], // Offer no Continue button
+		autoContinue: ['length', 'stream_incomplete', 'provider_error'], // Continue all three without asking the user
 		maxContinues: 3,
 	},
-	allowSteering: false, // Refuse injects into a running turn (default: true)
 	atStepLimit: 'answer',
 },
 ```
 
 * **`resumption`**: Governs how truncated or failed model completions are continued.
-* **`allowSteering`**: Allows injects into a running turn (default: `true`). Stage events still emit when it is off.
+* **`allowSteering`**: Allows injects into a running turn (default: `true`). The scout leaves it on. Set it to `false` to refuse them. Stage events still emit when it is off.
 * **`atStepLimit`**: Sets what the last model call under `maxSteps` may do.
 
 ## Continuing Incomplete Replies
@@ -57,7 +56,7 @@ To continue a truncated text turn, call `runTurn()` with `continueFrom` set to t
 import { runTurn } from '@theoremjs/agents';
 
 const continuedEvents = runTurn({
-	profile: 'harbor.desk',
+	profile: 'research.scout',
 	continueFrom: { stop: { kind: 'length' } },
 	continuation: 1,
 	input: {
@@ -72,7 +71,7 @@ for await (const event of continuedEvents) {
 }
 ```
 
-The model reads the partial reply from history. In place of the user's text, it gets the continue instruction (label `continue.instruction`), which you can reword like any label.
+The model reads the partial reply from history. In place of the user's text, it gets the continue instruction (label `continue.instruction`), which you can reword like any label. The scout does, in its `labels`.
 
 ## Tool Action Gates
 

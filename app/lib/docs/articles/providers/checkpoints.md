@@ -1,6 +1,6 @@
 ---
 title: Provider Checkpoints & State
-updated: 2026-10-29
+updated: 2026-10-30
 summary: Dual-layer state architecture, native provider checkpoints, history hashing, and drift recovery.
 entry: src/kernel/checkpoint.ts
 covers: src/kernel/checkpoint.ts, src/kernel/protocols/provider.ts
@@ -147,18 +147,18 @@ async function ask(request: TurnRequest) {
 	return { reply, providerState };
 }
 
-const question = 'Verify cargo container MSKU9012345.';
-const first = await ask({ profile: 'harbor.desk', input: { text: question } });
+const question = 'Find recent papers on episodic memory for language models.';
+const first = await ask({ profile: 'research.scout', input: { text: question } });
 
 await ask({
-	profile: 'harbor.desk',
+	profile: 'research.scout',
 	providerState: first.providerState,
 	input: {
 		history: [
 			{ role: 'user', content: question },
 			{ role: 'assistant', content: first.reply },
 		],
-		text: 'Inspect customs seal for container MSKU9012345.',
+		text: 'Quote the exact claims from their abstracts.',
 	},
 });
 ```
