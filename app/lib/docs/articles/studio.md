@@ -82,7 +82,7 @@ The chat sits beside the editor, so you can test a change at once:
 
 * **Streaming**: Thoughts, text and tool calls show as they arrive.
 * **Tool Gates**: A gated tool call shows a card with its arguments. You allow it or deny it.
-* **Unsaved Edits**: While a project has edits you have not saved, your files and your edits run side by side under one composer. What you send goes to both, and each side treats it as its own chat would. An idle side sends it, and a busy side queues it. A steer goes to each side whose running turn takes one. If you pick a model or attach a file that a side's profile does not take, that side refuses the turn in its own pane. If you pick no model, each side runs its own default.
+* **Unsaved Edits**: While a project has edits you have not saved, your files and your edits run side by side under one composer. What you send goes to both, and each side treats it as its own chat would. An idle side sends it, and a busy side queues it. A steer goes to each side whose running turn takes one. The composer's model control shows each side's models in two columns, so you can run a different model on each side and compare them. Each column offers only what that side's profile offers. If you attach a file that a side's profile does not take, that side refuses the turn in its own pane. If you pick no model, each side runs its own default.
 * **Who a Run Acts As**: A setup file can export `people` and `host`. You then pick a place and a person in Settings, under People, and each run acts for that person. Each person keeps their own chat and session.
 
 ### 5. Trace Replay
