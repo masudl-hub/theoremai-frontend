@@ -312,7 +312,7 @@ export function homeScreens(): readonly HomeScreen[] {
 		{
 			id: 'start',
 			name: 'Get started',
-			text: `Ready to keep your promises? Install it with ${installText}. Open the ${SITE_PAGES.map(({ label }) => label).join(' or ')}, or copy a prompt for your coding agent. Contribute to the theory. ${CONTRIBUTE_INTRO} ${ways}`,
+			text: `Build something cool. Install it with ${installText}. Open the ${SITE_PAGES.map(({ label }) => label).join(' or ')}, or copy a prompt for your coding agent. Contribute to the theory. ${CONTRIBUTE_INTRO} ${ways}`,
 		},
 	];
 }

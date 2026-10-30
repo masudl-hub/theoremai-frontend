@@ -43,7 +43,7 @@
 	height: 100%;
 }
 
-/* Poster scale: the answer to the headline the page opened with. */
+/* Poster scale: the page's send-off. */
 .start-title.start-title {
 	margin: 0;
 	font-size: clamp(2.5rem, 5.2vw, 5.5rem);

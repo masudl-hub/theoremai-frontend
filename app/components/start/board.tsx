@@ -84,8 +84,8 @@ function StartFooter() {
 }
 
 /**
- * The landing page's last screen, in two columns. The first asks the headline's question again
- * and gives the install command and three ways to begin; the second lists the ways to contribute.
+ * The landing page's last screen, in two columns. The first sends the reader off to build, with the
+ * install command and three ways to begin; the second lists the ways to contribute.
  */
 export function StartBoard() {
 	const { ref, seen } = useFirstSeen<HTMLDivElement>();
@@ -95,7 +95,7 @@ export function StartBoard() {
 				<div className="start-begin">
 					<div className="start-mark">{seen ? <TheoremMark /> : null}</div>
 					<Heading level={1} type="display-1" textWrap="balance" className="start-title">
-						Ready to keep your promises?
+						Build something cool.
 					</Heading>
 					<InstallCopy size="lg" />
 					<div className="start-actions">
