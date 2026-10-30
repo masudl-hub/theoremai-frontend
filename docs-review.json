@@ -234,13 +234,14 @@
 			"src/cli/commands/fuzz-canary.ts": "992b23f03b1b9845e5115b5ff63326a26a1fd6bb",
 			"src/cli/commands/fuzz-guardrails.ts": "2aeaf2ecc6e86722ea03158453c54fc7afb39667",
 			"src/cli/commands/profile.ts": "1f69f0b4dab768c2a738254ca84979b897414371",
-			"src/cli/commands/run.ts": "58982d6b42b115dfc60bcba4d1d28537afdc5ca7",
+			"src/cli/commands/run.ts": "c5bd77a48792b3701178651cb4a7e253f5a89ca7",
 			"src/cli/commands/studio.ts": "0c26d519428ad2e86defe518a6bb958b508f0f15",
-			"src/cli/commands/test.ts": "465265788e18e27e2e1447b8d6b664dccf6e33c6",
+			"src/cli/commands/test.ts": "04b8298b25c9fcb0a34277bae0b27c600e5f6e5f",
 			"src/cli/event-log.ts": "ab9b98de33c6e4c6dfb1add7554fb5941a001b3e",
-			"src/cli/index.ts": "049d77c619dd2f77562624c43ec4a14bfed14a09",
+			"src/cli/index.ts": "64523dd6413fc97fb7f507b88c11554ef8d3217c",
 			"src/cli/matrix/fixtures.ts": "478d52e4969d8f8510e3ebe8dddbe4f5612e5a07",
-			"src/cli/matrix/synthesizer.ts": "3ddca8fea452385feed0d90abec9d0ff57aa1292"
+			"src/cli/matrix/synthesizer.ts": "3ddca8fea452385feed0d90abec9d0ff57aa1292",
+			"src/cli/setup.ts": "70d4ec5e12c70a694895504ba1ca67924c67000c"
 		}
 	},
 	"observability/destinations": {
@@ -735,7 +736,7 @@
 			"studio/server/open-editor.ts": "c69c7768772f42a27dfbbd2912251334f11e6bc7",
 			"studio/server/origins.ts": "28af25af87df85f31620c3c833daa1d371175009",
 			"studio/server/project-source.ts": "70f110a5c55abf588e9999bf7793a7d581f263e0",
-			"studio/server/project.ts": "90d14b8e9ff67ed8dc89c316fa4167c324212873",
+			"studio/server/project.ts": "b73e150a8e3c837f7b48437baa1a6c75cce0e50f",
 			"studio/server/run-traces.ts": "9257992cfb99c82e7def4e3734488a7773d95b09",
 			"studio/server/save-new.ts": "42d574d4f262a9a2de43e2d8eefc4b4680cbafd5",
 			"studio/server/save-plan.ts": "962590dd53cc76685665476864adadca4b49d4f2",

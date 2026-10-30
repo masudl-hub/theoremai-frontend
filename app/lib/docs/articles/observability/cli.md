@@ -1,6 +1,6 @@
 ---
 title: Command-Line Evals & Testing
-updated: 2026-10-26
+updated: 2026-10-30
 summary: Command line test runner for batch evals, prompt regression matrix testing, and trace replays.
 entry: src/cli/index.ts
 covers: src/cli, src/cli/commands
@@ -11,16 +11,16 @@ coverPosition: 50% 50%
 
 Automated evaluation and regression testing must integrate into continuous integration (CI) workflows, pre-push git hooks, and headless test runners. Spinning up web browsers or HTTP servers to verify model behavior introduces flakiness, latency, and unnecessary architectural complexity.
 
-Theorem includes a command-line interface, `@theoremjs/agents/cli`. The `agents` binary runs eval suites against live models or recorded traces, runs test turns against a profile, inspects registered profiles, and runs adversarial guardrail fuzzers. It reads the profiles the host registered; it does not supply application profiles. Run `agents help` for the full list.
+Theorem includes a command-line interface, `@theoremjs/agents/cli`. The `agents` binary runs eval suites against live models or recorded traces, runs test turns against a profile, inspects registered profiles, and runs adversarial guardrail fuzzers. It does not embed your app's profiles. Give `test`, `run` or `profile` your [setup file](/docs/studio/setup#the-setup-file) with `--setup`, and they use your app's own wiring. Run `agents help` for the full list.
 
 ## Command Inventory
 
 | Command | Purpose | Key Flags |
 | :--- | :--- | :--- |
 | [`agents eval`](#1-eval-suite-execution-agents-eval) | Evaluates a test suite module against live models or recorded trace cassettes | `--recorded`, `--trials`, `--threshold`, `--concurrency`, `--max-cost-usd`, `--json` |
-| [`agents test`](#2-stress-testing-matrix-agents-test) | Runs a ping or a stress turn against one profile, or all of them | `--profile`, `--all`, `--lite`, `--matrix`, `--mode`, `--search`, `--map`, `--trace`, `--trace-dir`, `--verbose` |
-| [`agents run`](#3-interactive-turn-execution-agents-run) | Executes a single turn against a registered profile with live streaming output | `--profile`, `--prompt`, `--mode`, `--search`, `--map`, `--trace`, `--trace-dir`, `--verbose` |
-| [`agents profile`](#4-profile-introspection-agents-profile) | Lists registered profiles, or prints one as JSON | `list`, `show <id>` |
+| [`agents test`](#2-stress-testing-matrix-agents-test) | Runs a ping or a stress turn against one profile, or all of them | `--setup`, `--profile`, `--all`, `--lite`, `--matrix`, `--mode`, `--search`, `--map`, `--trace`, `--trace-dir`, `--verbose` |
+| [`agents run`](#3-interactive-turn-execution-agents-run) | Executes a single turn against a registered profile with live streaming output | `--setup`, `--profile`, `--prompt`, `--mode`, `--search`, `--map`, `--trace`, `--trace-dir`, `--verbose` |
+| [`agents profile`](#4-profile-introspection-agents-profile) | Lists registered profiles, or prints one as JSON | `--setup`, `list`, `show <id>` |
 | [`agents fuzz`, `agents fuzz-canary`](#5-adversarial-red-teaming--fuzzing) | Fuzzes inbound sanitization and canary egress gates | none |
 | [`agents bench`](#6-synthetic-kernel-benchmarks-agents-bench) | Measures the kernel's own overhead against a mock provider | `--chunks`, `--iterations`, `--warmup` |
 | `agents studio` | Runs the studio this project installed (`@theoremjs/studio`), with its own arguments | `status`, `errors` |
@@ -34,7 +34,26 @@ agents <command> [options]
 ```
 
 > [!NOTE]
-> The CLI operates on `defaultKernelScope`. Theorem's CLI does not manage API keys or embed application profiles directly. For `agents eval`, export `provider` from the suite module, or pass `--recorded <traces>`.
+> The CLI operates on `defaultKernelScope` and reads no API key. `test` and `run` use the keys your `--setup` wiring's provider holds. For `agents eval`, export `provider` from the suite module, or pass `--recorded <traces>`.
+
+## Run on Your App's Wiring (`--setup`)
+
+`--setup <file>` tests or runs a profile exactly as your app runs it. It takes the same setup file Studio reads:
+
+```bash
+agents test --setup studio.setup.ts --profile harbor.desk --lite
+agents run --setup studio.setup.ts --profile harbor.desk --prompt "ping"
+```
+
+The CLI loads the setup file, then the entry it names, and reads the entry's `theorem` export. Then it:
+
+1. Calls `theorem.register` once.
+2. Sends each turn through `theorem.prepare`. The profile stays the one `--profile` names.
+3. Runs each turn on `theorem.provider`.
+
+`agents profile --setup <file>` registers your profiles the same way before it lists or shows them.
+
+Without `--setup`, `test` and `run` have no provider, so they fail and exit `1`. A setup file with no `entry`, an entry with no `theorem`, or a setup file that still exports `default` or `provider` stops the command with the same message Studio gives. Under Node, the setup file and the entry must be files Node can import.
 
 ## 1. Eval Suite Execution (`agents eval`)
 
@@ -78,13 +97,13 @@ The `test` command runs test turns against a profile, so you can see that it ans
 
 ```bash
 # One ping turn
-agents test --profile harbor.desk --lite
+agents test --setup studio.setup.ts --profile harbor.desk --lite
 
 # A ping turn and a stress turn
-agents test --profile harbor.desk --matrix --trace
+agents test --setup studio.setup.ts --profile harbor.desk --matrix --trace
 
 # Every registered profile
-agents test --all --lite
+agents test --setup studio.setup.ts --all --lite
 ```
 
 ### Lite, Stress and Matrix
@@ -119,12 +138,15 @@ Execute a single prompt from the terminal with real-time streaming output and ev
 
 ```bash
 agents run \
+	--setup studio.setup.ts \
 	--profile harbor.desk \
 	--prompt "Vessel VSL-409 requesting clearance for Berth 4." \
 	--mode smart \
 	--verbose \
 	--trace
 ```
+
+The command exits `1` when the turn cannot run or ends in an error.
 
 ### Diagnostic Flags
 
@@ -138,10 +160,10 @@ Inspect the profiles registered in the default scope, to check their models, inp
 
 ```bash
 # List all registered profiles
-agents profile list
+agents profile list --setup studio.setup.ts
 
 # Print one profile as JSON
-agents profile show harbor.desk
+agents profile show harbor.desk --setup studio.setup.ts
 ```
 
 `list` prints a card for each profile: its handle and type, its model ids, its inputs, its tools and its structured output:
