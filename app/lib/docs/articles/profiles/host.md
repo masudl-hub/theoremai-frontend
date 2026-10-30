@@ -1,6 +1,6 @@
 ---
 title: Host Profiles
-updated: 2026-10-29
+updated: 2026-10-30
 summary: A profile with no model that runs your registered tools through invokeTool, under the same tool checks and traces as an agent.
 entry: src/kernel/tools/invoke.ts
 covers: src/kernel/tools/invoke.ts, src/kernel/registry/profiles.ts
@@ -96,7 +96,7 @@ To run several calls as one step, use `invokeToolStep({ profile, calls })`. Each
 | **`done`** | `event.stop: TurnStop` | Always last. `stop.kind` is `completed`, or `gate` when a gate held the call. |
 | **`error`** | `event.errorKind: ErrorKind`, `event.error?: string` | The invoke threw outside the call itself. A tool that fails reports it as a `tool` event with phase `error`, not here. |
 
-## Related guides
+## Related Guides
 
 * **[Profiles](/docs/profiles)**: Profile identity, inputs and the registry.
 * **[Defining Tools](/docs/tools)**: Input schemas, credentials and handlers for tools.

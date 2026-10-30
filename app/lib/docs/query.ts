@@ -137,6 +137,9 @@ function idWords(id: string): string {
 	return id.replace(/[.:_-]+/g, ' ');
 }
 
+/** A chapter's closing list of links to other chapters: a way on, not a place to find. */
+const RELATED_GUIDES = 'related-guides';
+
 /** The units of the index in a fixed order: chapters, then each one's sections, then its entries. */
 const searchUnits = new WeakMap<DocIndex, SearchUnit[]>();
 function searchUnitsOf(index: DocIndex): SearchUnit[] {
@@ -156,6 +159,7 @@ function searchUnitsOf(index: DocIndex): SearchUnit[] {
 			body: `${article.summary}\n${introText(article)}`,
 		});
 		for (const section of article.sections) {
+			if (section.id === RELATED_GUIDES) continue;
 			const text = article.body.slice(section.start, section.end);
 			// The excerpt starts under the heading line; the title already shows it.
 			const under = text.slice(text.indexOf('\n') + 1);
