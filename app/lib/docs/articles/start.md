@@ -1,7 +1,7 @@
 ---
 title: Getting started
-updated: 2026-10-16
-summary: Write a profile, run a turn, and see Theorem refuse what it doesn't state.
+updated: 2026-10-29
+summary: Define an agent once as a typed profile, run a turn, and enforce hard runtime boundaries.
 entry: src/kernel/engine/runner/mod.ts
 covers: mod.ts, src/kernel/engine/runner, src/kernel/registry/profiles.ts
 cover: /imagery/th30_emeraldriver.png
@@ -10,105 +10,144 @@ coverPosition: 100% 100%
 suggest: 1
 ---
 
-Define an agent once, as a **profile**. Theorem checks the profile, then runs every request from it.
+```prompt
+Theorem is a TypeScript agent kernel. An agent is defined once as a typed profile that holds its identity, model bindings, allowed tools, inputs, outputs, and guardrails.
 
-## The idea
+Core capabilities:
+- Profile types: text, image, speech, live (real-time voice and video), decision (judgements about a JSON state), embedding (vectors), and host (your tools with no model).
+- Hard boundaries: A turn cannot exceed its profile. A request can pick a model only when the profile allows it, and the model sees only the tools the profile allows. Tool arguments and results are checked against the tool's schemas. A canary token planted in the instruction is looked for in what leaves. A refused request fails before any model call.
+- Packages: `@theoremjs/agents` (the kernel), `@theoremjs/web` (Web-standard server handlers and a browser client, no UI framework), `@theoremjs/react` (headless hooks and an Astryx UI), `@theoremjs/studio` (a studio to edit, run, and test agents).
 
-An agent is more than a prompt. It is also a model, a list of tools, the input that it accepts, the shape of its reply and the checks around it.
+Discovery & Rules:
+- Before building functionality, check whether Theorem provides it (such as turn resumption, history compaction, a fallback key slot, egress canaries, or output validation).
+- Connect to Theorem's Docs MCP server at /mcp using search_docs and read_docs, or read /llms.txt.
+- Never invent profile fields or materialise omitted defaults. Always verify contracts against the documentation.
+```
 
-In most applications, these parts are in different files. The prompt is in one file. The tool list is in a second file. The input checks are in a route. Each part changes alone, and after some time the parts do not agree. This is **drift**.
+Define an agent once, as a **profile**. Theorem checks the profile when you define it, then runs every request from it.
 
-In Theorem, all the parts are in one object, the profile.
+## The request lifecycle
+
+A request cannot call a model or a tool that the profile does not allow. Each turn takes the same path, from the request to the events your code reads:
 
 ```figure
 {
-	"kind": "sequence",
-	"still": { "src": "/imagery/th30_emeraldriver.png", "position": "18% 50%" },
-	"caption": "You write the agent once. Theorem checks it once, then runs every request from it.",
-	"steps": [
-		{
-			"label": "You write the profile",
-			"text": "One object states every part of the agent.",
-			"parts": [
-				{ "label": "Identity", "chapter": "identity", "text": "Who the agent is: its type, its name and its instruction." },
-				{ "label": "Models", "chapter": "models", "text": "Which models it can use, and which key each model takes." },
-				{ "label": "Tools", "chapter": "tools", "text": "Which tools it can call." },
-				{ "label": "Inputs", "chapter": "inputs", "text": "What it accepts: text, files, voice or fixed choices." },
-				{ "label": "Outputs", "chapter": "outputs", "text": "What it returns: text, JSON that a schema checks, an image or speech." },
-				{ "label": "Turn behaviour", "chapter": "turn-behaviour", "text": "If a reply that stopped early can continue, and if a running turn can be steered." },
-				{ "label": "Guardrails", "chapter": "guardrails", "text": "How Theorem guards each input and each output." },
-				{ "label": "Labels", "chapter": "statuses", "text": "Its own labels for the error lines and notices that a person sees." },
-				{ "label": "Observability", "chapter": "traces", "text": "Where the record of each turn goes, and what the record keeps." }
-			]
-		},
-		{
-			"label": "defineProfile checks it",
-			"text": "This happens once, when your application starts. It throws if a field is missing, or if a field does not belong to the type of agent."
-		},
-		{
-			"label": "runTurn runs every request from it",
-			"text": "This happens on every turn. The request supplies the input. It cannot add a tool, and it can choose a model only if the profile allows that."
-		}
-	]
+  "kind": "switchback",
+  "still": { "src": "/imagery/th30_emeraldriver.png", "position": "18% 50%" },
+  "caption": "Every turn runs from a registered profile. Theorem reads the text at each boundary it crosses, around the model and tool calls.",
+  "rows": [
+    {
+      "direction": "ltr",
+      "steps": [
+        {
+          "label": "Host Request",
+          "token": { "label": "Host Request", "kind": "ingress" },
+          "text": "Your code calls runTurn with the profile id, the input text, and any attachments, voice clips, context or history the profile accepts."
+        },
+        {
+          "label": "Input Boundary",
+          "token": { "label": "Input Boundary", "kind": "guardrail" },
+          "text": "Detectors read the inbound text. By default a match is flagged; the profile can set redact or block instead."
+        },
+        {
+          "label": "Profile Check",
+          "token": { "label": "Profile Check", "kind": "profile" },
+          "text": "Theorem checks the request against the profile and refuses a model choice, slot, context sender or file type that the profile does not allow."
+        },
+        {
+          "label": "Turn Runner",
+          "token": { "label": "Turn Runner", "kind": "runner" },
+          "text": "The runner plants a canary token in the instruction and runs the steps of the turn, up to the profile's step limit."
+        }
+      ]
+    },
+    {
+      "direction": "rtl",
+      "steps": [
+        {
+          "label": "Model Dispatch",
+          "token": { "label": "Model Dispatch", "kind": "model" },
+          "text": "The model's protocol turns the request into the provider's wire format. The call is signed with the key from your vault."
+        },
+        {
+          "label": "Tool Gate",
+          "token": { "label": "Tool Gate", "kind": "tool" },
+          "text": "When the model asks for a tool, Theorem checks its permission and its arguments against the tool's input schema, runs it, and checks the result against the output schema."
+        },
+        {
+          "label": "Outbound Boundary",
+          "token": { "label": "Outbound Boundary", "kind": "guardrail" },
+          "text": "Detectors read tool arguments and the reply. By default a canary or private-prompt leak is flagged; the profile can set redact or block instead."
+        },
+        {
+          "label": "Event Stream",
+          "token": { "label": "Event Stream", "kind": "stream" },
+          "text": "runTurn yields text, tool and lifecycle events to your code. @theoremjs/web sends them to a browser as lines of JSON."
+        }
+      ]
+    }
+  ]
 }
 ```
 
-Change the profile, and every turn changes. No other code describes the agent.
+## Installation
 
-## The profile is the limit
+Theorem is four packages. Install the core runtime and Zod, then add the packages your app needs.
 
-A request cannot ask for more than the profile states:
+| Package | What it delivers | Install |
+| :--- | :--- | :--- |
+| **`@theoremjs/agents`** | **Core runtime.** Typed profiles, the turn runner, guardrails, and tools. | `npm install @theoremjs/agents zod` |
+| **`@theoremjs/web`** | **Web platform.** Server handlers and a browser client, with no UI framework. | `npm install @theoremjs/web @theoremjs/agents zod` |
+| **`@theoremjs/react`** | **React.** Hooks for your own UI, and a ready-made chat and voice call built on Astryx. | `npm install @theoremjs/react @theoremjs/web @theoremjs/agents zod react react-dom` |
+| **`@theoremjs/studio`** | **Studio.** A visual workbench for authoring profiles and testing turns. Needs [Deno](https://deno.com). | `npm install -D @theoremjs/studio @theoremjs/agents @theoremjs/web` |
 
-- Theorem refuses a request that sets `model`, unless the profile sets `allowModelSelect`.
-- Theorem refuses a request that sends `input.slots`, unless the profile declares those slots.
-- The model sees only the tools that `tools.allow` names.
+On Deno, add the core runtime with `deno add jsr:@theoremjs/agents`. For React's ready-made UI, also install `@astryxdesign/core @stylexjs/stylex`.
 
-To allow more, change the profile. No request and no other file can allow it. This is why the profile and the agent cannot drift apart.
+## Quick start: the first turn
 
-## Install
-
-```bash
-# npm
-npm install @theoremjs/agents zod
-# deno
-deno add jsr:@theoremjs/agents
-```
-
-## Quick start
-
-These steps build one agent and ask it one question. The agent is the front desk of Harbor, a company that moves freight.
+These steps build a research scout that searches GitHub for repositories. The full program at the end of this page adds a web search tool.
 
 ### 1. Register a tool
 
-The desk needs one fact that the model does not have: why a shipment is on hold. A **tool** gives the model that fact. `registerTool` stores the tool under its `name`.
+`registerTool` registers or replaces a tool in the default scope:
 
 ```ts
 import { registerTool } from '@theoremjs/agents';
 import { z } from 'zod';
 
 registerTool({
-	type: 'function',
-	name: 'harbor_holdStatus',
-	description: 'Look up why a Harbor shipment is on hold.',
-	category: 'ops',
+	type: 'http',
+	name: 'search_github',
+	description: 'Search public GitHub repositories, most recently updated first.',
+	category: 'research',
 	access: 'read-only',
-	paths: ['*'],
-	loadTier: 'T0',
 	permission: 'auto',
-	input: z.object({ shipmentId: z.string() }),
-	output: z.object({ status: z.string(), reason: z.string() }),
-	handler: () => ({ status: 'hold', reason: 'Customs needs the commercial invoice PDF.' }),
+	loadTier: 'T0',
+	paths: ['*'],
+	endpoint: 'https://api.github.com/search/repositories?sort=updated&per_page=6',
+	method: 'GET',
+	mapping: {
+		queryParams: ['q'],
+	},
+	labels: {
+		activity: 'Searching GitHub for {q}',
+		activityPast: 'Found hits for {q}',
+		activityFailed: 'Could not search GitHub for {q}',
+		request: 'search GitHub for {q}',
+	},
+	input: z.object({
+		q: z.string().min(1),
+	}),
+	output: z.object({
+		total_count: z.number(),
+		items: z.array(z.record(z.string(), z.unknown())),
+	}),
 });
 ```
 
-The five fields from `category` to `permission` describe the tool to Theorem. [Registering tools](/docs/tools) explains each one.
-
 ### 2. Define the profile
 
-This profile is a text agent with one model. `tools.allow` names the one tool that the model can call.
-
-`registerProvider` tells Theorem how to reach OpenRouter, the service that runs the model. `defineProfile` checks the profile. `registerProfile` stores it under its `id`, so that a request can name it. An `id` can have at most 64 characters. Register the provider first, because the profile names it.
-The binding under `models` names the protocol, the provider and the model ([Binding models](/docs/models)).
+`defineProfile` validates a definition and returns the profile, throwing on a malformed definition. `registerProfile` defines, validates, and registers a profile in the default scope:
 
 ```ts
 import {
@@ -118,228 +157,124 @@ import {
 	registerProvider,
 } from '@theoremjs/agents';
 
-registerProvider(openRouterProvider);
+registerProvider(openRouterProvider, { id: 'openrouter' });
 
-const desk = defineProfile({
+const scoutProfile = defineProfile({
 	type: 'text',
-	id: 'harbor.desk',
-	identity: { handle: 'desk', system: 'You are the Harbor front desk. Answer in short sentences.' },
+	id: 'research.scout',
+	identity: {
+		handle: 'scout',
+		system:
+			'Role: Advanced reasoning engine for research on how language models keep, retrieve, and recombine context.',
+	},
 	models: {
-		main: {
+		gemini: {
 			protocol: 'openRouterOpenAi',
 			provider: 'openrouter',
-			apiId: 'openrouter/free',
+			apiId: 'google/gemini-3.8-flash',
 			keySlot: 'openrouter',
+			efforts: { normal: 'medium', deep: 'high' },
+			defaultEffort: 'normal',
 		},
 	},
-	tools: { allow: ['harbor_holdStatus'] },
-	inputs: { text: true },
+	defaultModel: 'gemini',
+	tools: {
+		allow: ['search_github'],
+	},
+	inputs: {},
+	outputs: {
+		streaming: {
+			mode: 'sse',
+		},
+	},
 });
 
-registerProfile(desk);
+registerProfile(scoutProfile);
 ```
 
-### 3. Supply the vault
+#### Model bindings
+Each entry under `models` binds a local name to an upstream model and its call settings:
+* **`protocol`** *(required)*: The API shape this model is spoken to in (e.g. `'openRouterOpenAi'`, `'geminiInteractions'`).
+* **`provider`** *(required)*: The service that runs the model or routes requests to one, such as Gemini or OpenRouter. Its registration supplies the endpoint and authentication.
+* **`apiId`** *(required)*: The model's id as the provider lists it, such as `'google/gemini-3.8-flash'`; sent on every call.
+* **`keySlot`** *(optional)*: The key slot this model's calls are signed with, instead of the provider's. Use it to bill one model to a different key. Absent: the provider's primary slot.
+* **`fallbackKeySlot`** *(optional)*: The key slot tried once after a rate limit or a busy model on the primary slot, instead of the provider's fallback. Must differ from the primary slot. Absent: the provider's fallback slot, if it has one.
 
-Keep credentials outside the profile. Its model names a **key slot**, here `openrouter`.
-Fill this slot in a **vault**, an object that maps slot names to credential values or resolver functions.
-Supply each slot as an own property. Theorem ignores inherited credentials and resolvers.
+### 3. Supply the vault and run the turn
 
-You pass the vault when you run a turn. The profile can then stay in your repository, and the key stays in your environment.
+`runTurn` runs one turn of a profile in the default scope, streaming its events. `vault` (`KeyVault`) holds the host's keys by slot; the kernel reads a slot only for the call that names it:
 
-```ts frame=statements
-const hostOptions = {
-	vault: { openrouter: process.env.OPENROUTER_API_KEY },
-};
-```
-
-### 4. Run a turn
-
-A **turn** is one request to the agent and its reply. `runTurn` runs the turn and returns a stream of events. Each `text` event carries a piece of the reply.
-
-```ts frame=statements
+```ts
 import { runTurn } from '@theoremjs/agents';
 
-for await (const event of runTurn(
-	{ profile: 'harbor.desk', input: { text: 'Why is shipment H-1042 on hold?' } },
-	hostOptions,
-)) {
-	if (event.type === 'text') process.stdout.write(event.text);
+const hostOptions = {
+	vault: {
+		openrouter: process.env.OPENROUTER_API_KEY ?? '',
+	},
+};
+
+const turnRequest = {
+	profile: 'research.scout',
+	input: {
+		text: 'Find recent papers on episodic memory in language models.',
+	},
+};
+
+for await (const event of runTurn(turnRequest, hostOptions)) {
+	if (event.type === 'text') {
+		process.stdout.write(event.text);
+	}
 }
 ```
 
-### 5. Ask for more than the profile states
+## The full program
 
-A request can come from a browser, so it can contain anything. This request asks for a model that the profile does not name.
+The program below is the scout as the studio builds it. It adds a second tool, an MCP tool that searches the web, and sets the profile's step limit, turn behaviour, network guardrail and observability. The play button opens it in the studio.
 
-```ts frame=statements
+```ts seed=firstTurn
+```
+
+## The profile is the limit
+
+A request can never ask for more than the profile declares:
+
+1. **Model selection**: Theorem refuses a request that sets `model`, unless the profile sets `allowModelSelect`. Even then, the request must name one of the profile's `models`.
+2. **Tool scope**: The model can only call the tools that `tools.allow` names.
+3. **Inputs**: Theorem refuses slots the profile does not declare, context from a sender that `inputs.context` does not list, and files or voice clips of a type that the profile does not accept.
+
+### What happens when a request overreaches?
+
+```ts
 import { runTurn, TheoremError } from '@theoremjs/agents';
+
+const hostOptions = {
+	vault: {
+		openrouter: process.env.OPENROUTER_API_KEY ?? '',
+	},
+};
 
 try {
 	for await (const event of runTurn(
 		{
-			profile: 'harbor.desk',
+			profile: 'research.scout',
 			model: 'bigger',
-			input: { text: 'Why is shipment H-1042 on hold?' },
+			input: { text: 'Hello' },
 		},
 		hostOptions,
 	)) {
 		if (event.type === 'text') process.stdout.write(event.text);
 	}
 } catch (error) {
-	if (error instanceof TheoremError) console.log(error.kind, error.message);
+	if (error instanceof TheoremError) {
+		console.error(`Refused [${error.kind}]: ${error.message}`);
+	}
 }
 ```
 
-`runTurn` throws before it calls the model:
+The turn throws a `TheoremError` before it calls the model:
 
 ```text
-request Profile harbor.desk does not allow model selection
+Refused [request]: Profile research.scout does not allow model selection
 ```
 
-No change to the request can allow the choice. To allow it, change the profile: bind a second model and set `allowModelSelect` ([Binding models](/docs/models)).
-
-## What the turn did
-
-Theorem did more than call the model. The figure shows each step of the request in step 4, and each check that ran. The profile sets no `guardrails`, so these are the checks that run by default.
-
-```figure
-{
-	"kind": "lanes",
-	"still": { "src": "/imagery/th30_emeraldriver.png", "position": "60% 30%" },
-	"caption": "One turn of the Harbor desk. Theorem stands between your code and the model, and checks the text each time it crosses.",
-	"lanes": ["Your code", "Theorem", "The model"],
-	"steps": [
-		{
-			"lane": "Your code",
-			"label": "Your code sent the request",
-			"text": "The request named harbor.desk and carried the question."
-		},
-		{
-			"lane": "Theorem",
-			"label": "Theorem checked the input",
-			"text": "The profile selected the model and tool. The host vault supplied the credential. Then Theorem checked the question.",
-			"parts": [
-				{ "label": "Sensitive data", "chapter": "guardrails", "text": "The question had no ID numbers, card numbers, IP addresses or credentials. Theorem redacts each one that it finds." },
-				{ "label": "Injection", "chapter": "guardrails", "text": "The question had no text written to steer the model. Theorem redacts that text too." },
-				{ "label": "Canary", "chapter": "guardrails", "text": "Theorem ended the instruction with a secret token. A reply that contains the token leaked the instruction." }
-			]
-		},
-		{
-			"lane": "The model",
-			"label": "The model asked for the tool",
-			"text": "The model saw the question and one tool, because tools.allow names one."
-		},
-		{
-			"lane": "Theorem",
-			"label": "Theorem checked the call",
-			"text": "The model cannot run code. It can only ask.",
-			"parts": [
-				{ "label": "Leak", "chapter": "guardrails", "text": "The call did not contain the canary, or 12 words in a row from the instruction." },
-				{ "label": "Arguments", "chapter": "tools", "text": "The arguments matched the input schema of the tool." },
-				{ "label": "Sensitive data", "chapter": "guardrails", "text": "The arguments had no sensitive data. Theorem reports each match, because a tool call can carry data out." }
-			]
-		},
-		{
-			"lane": "Your code",
-			"label": "Your handler ran",
-			"text": "The handler returned the hold and its reason."
-		},
-		{
-			"lane": "Theorem",
-			"label": "Theorem checked the result",
-			"text": "The model reads the result, so the result is input too.",
-			"parts": [
-				{ "label": "Shape", "chapter": "tools", "text": "The result matched the output schema of the tool." },
-				{ "label": "Sensitive data and injection", "chapter": "guardrails", "text": "The result had neither. Theorem redacts each match before the model reads the result." }
-			]
-		},
-		{
-			"lane": "The model",
-			"label": "The model wrote the reply",
-			"text": "Theorem called the model again, with the result of the tool."
-		},
-		{
-			"lane": "Theorem",
-			"label": "Theorem checked the reply",
-			"text": "Theorem released each piece of text only after it passed.",
-			"parts": [
-				{ "label": "Canary", "chapter": "guardrails", "text": "No piece of the reply contained the secret token." },
-				{ "label": "Prompt leak", "chapter": "guardrails", "text": "No piece repeated 12 words in a row from the instruction." }
-			]
-		},
-		{
-			"lane": "Your code",
-			"label": "Your code received events",
-			"text": "Each text event carried a piece of the reply."
-		}
-	]
-}
-```
-
-A profile can add checks, such as a check of each reply for sensitive data or for links ([Setting guardrails](/docs/guardrails)).
-
-## The full Harbor desk
-
-The quick start used a small part of a profile. The program below is the same desk with more of its parts:
-
-- It has two more tools. An HTTP tool reads the weather at a port from a public API. An MCP tool searches the web for news about a port ([Registering tools](/docs/tools)).
-- It reads a photo or a PDF ([Declaring inputs](/docs/inputs)).
-
-The play button on the program opens it in the studio.
-
-```ts seed=firstTurn
-```
-
-```prompt
-Install `@theoremjs/agents` and `zod`.
-
-Copy the Harbor desk program from the docs fence in full (tools, profile, `firstTurn`).
-
-Run it with an OpenRouter key. Do not invent extra profile fields.
-```
-
-## How the guide is ordered
-
-The chapters follow the order in which you build an agent.
-
-```figure
-{
-	"kind": "sequence",
-	"layout": "row",
-	"still": { "src": "/imagery/th30_emeraldriver.png", "position": "82% 50%" },
-	"caption": "First you define the profile. Then you run it. Then you show it to people and watch what it does.",
-	"steps": [
-		{
-			"label": "Define",
-			"text": "One chapter for each part of the profile.",
-			"parts": [
-				{ "label": "Choosing a modality", "chapter": "modalities" },
-				{ "label": "Setting the identity", "chapter": "identity" },
-				{ "label": "Binding models", "chapter": "models" },
-				{ "label": "Registering tools", "chapter": "tools" },
-				{ "label": "Declaring inputs", "chapter": "inputs" },
-				{ "label": "Declaring outputs", "chapter": "outputs" },
-				{ "label": "Setting turn behaviour", "chapter": "turn-behaviour" },
-				{ "label": "Setting guardrails", "chapter": "guardrails" }
-			]
-		},
-		{
-			"label": "Run",
-			"text": "Your server runs requests from the profile.",
-			"parts": [
-				{ "label": "Running a turn", "chapter": "runner", "text": "The function for each type of agent, and the events it returns." }
-			]
-		},
-		{
-			"label": "Show and watch",
-			"text": "People use the agent, and you see what it did.",
-			"parts": [
-				{ "label": "Building the interface", "chapter": "interface", "text": "A chat in the browser that reads the profile." },
-				{ "label": "Describing statuses", "chapter": "statuses", "text": "The words that a person sees when a turn fails or waits." },
-				{ "label": "Recording traces", "chapter": "traces", "text": "The record of each turn." }
-			]
-		}
-	]
-}
-```
+A `TheoremError` carries a typed `kind` (`ErrorKind`), from which hosts choose an HTTP status and the user's wording. To allow the choice, change the profile: bind a second model and set `allowModelSelect`.

@@ -14,54 +14,54 @@ import {
 import { AREA_LABEL, type ArrayUnionName, type DocSection, type GlossaryArea } from './schema';
 
 export const FACET_SECTION = {
-	identity: 'identity',
-	decision: 'modalities',
-	models: 'models',
-	modelBinding: 'models',
-	image: 'modalities',
-	speech: 'modalities',
-	live: 'modalities',
+	identity: 'profiles/text',
+	decision: 'profiles/decision',
+	models: 'providers',
+	modelBinding: 'providers',
+	image: 'profiles/image',
+	speech: 'profiles/speech',
+	live: 'profiles/live',
 	tools: 'tools',
 	toolSpec: 'tools',
-	inputs: 'inputs',
-	outputs: 'outputs',
-	turnBehaviour: 'turn-behaviour',
+	inputs: 'profiles/text',
+	outputs: 'profiles/text',
+	turnBehaviour: 'profiles/resumption',
 	guardrails: 'guardrails',
-	observability: 'traces',
-	labels: 'statuses',
+	observability: 'observability',
+	labels: 'profiles/labels',
 } as const satisfies Record<ProfileGraphFacetId, DocSection>;
 
 /** The chapter that explains the fields of a `runTurn` request. */
-export const REQUEST_SECTION = 'runner' satisfies DocSection;
+export const REQUEST_SECTION = 'profiles/host' satisfies DocSection;
 
 /** The chapter that explains each export a builder calls by name. */
 export const EXPORT_SECTION = {
-	defineProfile: 'modalities',
-	registerProfile: 'runner',
+	defineProfile: 'profiles',
+	registerProfile: 'profiles/host',
 	registerTool: 'tools',
-	registerStructured: 'outputs',
-	registerTraceDestination: 'traces',
-	defineProvider: 'models',
-	registerProvider: 'models',
-	runTurn: 'runner',
-	runSession: 'runner',
-	runDecision: 'runner',
-	invokeTool: 'runner',
-	runTool: 'runner',
-	compactHistory: 'runner',
+	registerStructured: 'profiles/text',
+	registerTraceDestination: 'observability/destinations',
+	defineProvider: 'providers/defining',
+	registerProvider: 'providers/defining',
+	runTurn: 'profiles/host',
+	runSession: 'profiles/host',
+	runDecision: 'profiles/decision',
+	invokeTool: 'tools',
+	runTool: 'tools',
+	compactHistory: 'profiles/compaction',
 	takeSlot: 'guardrails',
 	releaseSlot: 'guardrails',
-	overrideLabels: 'statuses',
-	resetLabels: 'statuses',
-	TheoremError: 'runner',
+	overrideLabels: 'profiles/labels',
+	resetLabels: 'profiles/labels',
+	TheoremError: 'profiles/host',
 } as const satisfies Record<keyof typeof API_EXPORTS, DocSection>;
 
 /** Unions the docs list member by member. Compose throws if a member has no catalog doc. */
 export const UNION_SECTION = {
-	PROFILE_TYPES: { section: 'modalities', values: PROFILE_TYPES },
+	PROFILE_TYPES: { section: 'profiles', values: PROFILE_TYPES },
 	TOOL_LOAD_TIERS: { section: 'tools', values: TOOL_LOAD_TIERS },
-	STREAM_MODES: { section: 'outputs', values: STREAM_MODES },
-	TURN_STOP_KINDS: { section: 'runner', values: TURN_STOP_KINDS },
+	STREAM_MODES: { section: 'profiles/text', values: STREAM_MODES },
+	TURN_STOP_KINDS: { section: 'profiles/resumption', values: TURN_STOP_KINDS },
 } as const satisfies Partial<
 	Record<ArrayUnionName, { section: DocSection; values: readonly string[] }>
 >;
@@ -71,9 +71,9 @@ export type DocWorthyUnion = keyof typeof UNION_SECTION;
 /** The chapter that explains each group of fields the catalog holds outside the profile. */
 export const EXTRA_FIELD_SECTION = {
 	registerTool: 'tools',
-	registerStructured: 'outputs',
-	decision: 'modalities',
-	done: 'runner',
+	registerStructured: 'profiles/text',
+	decision: 'profiles/decision',
+	done: 'profiles/host',
 } as const satisfies Record<string, DocSection>;
 
 /** The area of each export: the domain it acts on. */

@@ -9,21 +9,166 @@ import type { ApiExportMeta, FieldMeta } from '@theoremjs/agents/schema';
 /** One chapter per section, in this order. The slug is the section id. */
 export const DOC_SECTIONS = [
 	'start',
-	'modalities',
-	'identity',
-	'models',
+	'start/architecture',
+	'profiles',
+	'profiles/text',
+	'profiles/live',
+	'profiles/decision',
+	'profiles/image',
+	'profiles/speech',
+	'profiles/embedding',
+	'profiles/host',
+	'profiles/bindings',
+	'profiles/compaction',
+	'profiles/resumption',
+	'profiles/lifecycle',
+	'profiles/labels',
 	'tools',
-	'inputs',
-	'outputs',
-	'turn-behaviour',
+	'tools/function',
+	'tools/http',
+	'tools/mcp',
+	'tools/agent',
+	'tools/gates',
+	'tools/auth',
+	'tools/oauth',
+	'tools/liquid-labels',
 	'guardrails',
-	'runner',
-	'interface',
-	'statuses',
-	'traces',
+	'guardrails/ingress',
+	'guardrails/egress',
+	'guardrails/network',
+	'providers',
+	'providers/defining',
+	'providers/protocols',
+	'providers/checkpoints',
+	'observability',
+	'observability/destinations',
+	'observability/evals',
+	'observability/cli',
+	'web',
+	'web/react-hooks',
+	'web/realtime',
+	'web/astryx',
+	'studio',
+	'studio/setup',
+	'studio/compiler',
+	'studio/embedded',
 	'glossary',
 ] as const;
 export type DocSection = (typeof DOC_SECTIONS)[number];
+
+export type DocNavSubgroup = {
+	slug: DocSection;
+	label?: string;
+	children?: readonly DocSection[];
+};
+
+export type DocNavGroupItem = DocSection | DocNavSubgroup;
+
+export type DocNavGroup = {
+	id: string;
+	label: string;
+	overview?: DocSection;
+	items: readonly DocNavGroupItem[];
+};
+
+export const DOC_GROUPS: readonly DocNavGroup[] = [
+	{
+		id: 'group:start',
+		label: 'Getting Started',
+		overview: 'start',
+		items: ['start', 'start/architecture'],
+	},
+	{
+		id: 'group:profiles',
+		label: 'Profiles & Modalities',
+		overview: 'profiles',
+		items: [
+			{
+				slug: 'profiles',
+				label: 'Overview',
+				children: [
+					'profiles/text',
+					'profiles/live',
+					'profiles/decision',
+					'profiles/image',
+					'profiles/speech',
+					'profiles/embedding',
+					'profiles/host',
+				],
+			},
+			'profiles/bindings',
+			'profiles/compaction',
+			'profiles/resumption',
+			'profiles/lifecycle',
+			'profiles/labels',
+		],
+	},
+	{
+		id: 'group:tools',
+		label: 'Tools & Execution',
+		overview: 'tools',
+		items: [
+			{
+				slug: 'tools',
+				label: 'Overview',
+				children: ['tools/function', 'tools/http', 'tools/mcp', 'tools/agent'],
+			},
+			'tools/gates',
+			{
+				slug: 'tools/auth',
+				children: ['tools/oauth'],
+			},
+			'tools/liquid-labels',
+		],
+	},
+	{
+		id: 'group:guardrails',
+		label: 'Guardrails & Boundaries',
+		overview: 'guardrails',
+		items: ['guardrails', 'guardrails/ingress', 'guardrails/egress', 'guardrails/network'],
+	},
+	{
+		id: 'group:providers',
+		label: 'Providers & Protocols',
+		overview: 'providers',
+		items: ['providers', 'providers/defining', 'providers/protocols', 'providers/checkpoints'],
+	},
+	{
+		id: 'group:observability',
+		label: 'Observability & Evals',
+		overview: 'observability',
+		items: [
+			'observability',
+			'observability/destinations',
+			'observability/evals',
+			'observability/cli',
+		],
+	},
+	{
+		id: 'group:web',
+		label: 'Headless Web & UI',
+		overview: 'web',
+		items: ['web', 'web/react-hooks', 'web/realtime', 'web/astryx'],
+	},
+	{
+		id: 'group:studio',
+		label: 'Theorem Studio',
+		overview: 'studio',
+		items: [
+			{
+				slug: 'studio',
+				label: 'Overview',
+				children: ['studio/setup', 'studio/compiler', 'studio/embedded'],
+			},
+		],
+	},
+	{
+		id: 'group:reference',
+		label: 'Reference',
+		overview: 'glossary',
+		items: ['glossary'],
+	},
+] as const;
 
 export const STUDIO_SEED_IDS = [
 	'firstTurn',
@@ -72,12 +217,14 @@ export const SNIPPET_FRAMES = [
  */
 export const FENCE_LANGUAGES = [
 	'ts',
+	'tsx',
 	'bash',
 	'text',
 	'note',
 	'warning',
 	'prompt',
 	'figure',
+	'mermaid',
 ] as const;
 
 /** What an authored chapter and its composed article share. */

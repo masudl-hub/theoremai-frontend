@@ -3,19 +3,27 @@ import { DocsNotFound } from '../components/docs/not-found';
 import { DocsReader } from '../components/docs/reader';
 import { PageJsonLd } from '../components/page-summary';
 import { getDocIndex, getDocShell } from '../lib/docs/.server/load-index';
+import { markdownTwinOrNotFound } from '../lib/docs/.server/markdown-twin';
 import { articleJsonLd } from '../lib/docs/machine';
 import { SITE_NAME } from '../lib/home-content';
 import type { Route } from './+types/docs.$slug';
 
 export function loader({ params, request }: Route.LoaderArgs) {
+	const paramsRecord = params as Record<string, string | undefined>;
+	const rawSlug = paramsRecord['*'] ?? paramsRecord.slug ?? '';
+	const isMd = rawSlug.endsWith('.md') || request.headers.get('Accept')?.includes('text/markdown');
+	const slug = rawSlug.endsWith('.md') ? rawSlug.slice(0, -3) : rawSlug;
 	const index = getDocIndex();
-	const article = index.bySlug[params.slug];
-	if (article === undefined) {
-		const retired = index.redirects.find((item) => item.from === `/docs/${params.slug}`);
-		if (retired) return redirect(retired.to);
-		return data({ ok: false as const, shell: getDocShell(), slug: params.slug }, { status: 404 });
-	}
 	const origin = new URL(request.url).origin;
+
+	if (isMd) return markdownTwinOrNotFound(new URL(request.url));
+
+	const article = index.bySlug[slug];
+	if (article === undefined) {
+		const retired = index.redirects.find((item) => item.from === `/docs/${slug}`);
+		if (retired) return redirect(retired.to);
+		return data({ ok: false as const, shell: getDocShell(), slug }, { status: 404 });
+	}
 	return {
 		ok: true as const,
 		shell: getDocShell(),

@@ -23,25 +23,43 @@
 	overflow: hidden;
 }
 
-/* Cookbook stills hang past the page bottom; keep them in the scroll paint. */
-.home-page#cookbook {
-	overflow: visible;
-}
-
 .home-page > * {
 	height: 100%;
 }
 
-/* Cookbook and contribute share one surface so there is no seam between them. */
+/* One field of dots under the cookbook and the contribute screen, so there is
+   no seam between them. Lowest at the top of the screen, strongest through the
+   lower cookbook, then clears over most of contribute. Alone, it clears over
+   contribute the same way. */
 .home-dotted {
 	display: flex;
 	flex-direction: column;
 	height: 200%;
 	background-color: var(--color-background-surface);
+	background-image:
+		linear-gradient(
+			to bottom,
+			var(--color-background-surface) 0%,
+			transparent 32%,
+			transparent 48%,
+			var(--color-background-surface) 100%
+		),
+		radial-gradient(circle, var(--color-border) 1px, transparent 1px);
+	background-size:
+		100% 100%,
+		var(--spacing-6) var(--spacing-6);
 }
 
 .home-dotted[data-pages="1"] {
 	height: 100%;
+	background-image:
+		linear-gradient(
+			to bottom,
+			var(--color-background-surface) 0%,
+			transparent 40%,
+			var(--color-background-surface) 100%
+		),
+		radial-gradient(circle, var(--color-border) 1px, transparent 1px);
 }
 
 .home-dotted > .home-page {

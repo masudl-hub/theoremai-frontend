@@ -18,7 +18,6 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { IconBrandGithub, IconMenu2, IconSearch } from '@tabler/icons-react';
 import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
-import { chapterIcon } from '../../lib/docs/chapter-icons';
 import {
 	chapterIsOpen,
 	chapterNavigationTree,
@@ -26,7 +25,7 @@ import {
 } from '../../lib/docs/chapter-navigation';
 import { projectArticleText } from '../../lib/docs/project-text';
 import { articleHref, chapterNeighbors, type DocSearchHit } from '../../lib/docs/query';
-import type { DocArticle, DocShell, DocTreeNode } from '../../lib/docs/schema';
+import type { DocArticle, DocSectionEntry, DocShell, DocTreeNode } from '../../lib/docs/schema';
 import { useDocsSearch } from '../../lib/docs/use-docs-search';
 import { warmDocsSearch } from '../../lib/docs/warm-docs-search';
 import { NewTabLink } from '../links';
@@ -95,6 +94,7 @@ type DocsNavItemProps = {
 	opened: ReadonlyMap<string, boolean>;
 	onOpenChange: (id: string, collapsed: boolean) => void;
 	onSection: (blockId: string) => void;
+	depth?: number;
 };
 
 /** A plain click on a section of the open chapter scrolls there; modified clicks keep the link. */
@@ -127,6 +127,12 @@ function navCollapsible(
 		: false;
 }
 
+function hasActiveDescendant(node: DocTreeNode, activeSlug: string | undefined): boolean {
+	if (!activeSlug) return false;
+	if (node.slug === activeSlug) return true;
+	return node.children.some((child) => hasActiveDescendant(child, activeSlug));
+}
+
 function DocsNavItem({
 	node,
 	article,
@@ -135,22 +141,30 @@ function DocsNavItem({
 	opened,
 	onOpenChange,
 	onSection,
+	depth = 0,
 }: DocsNavItemProps) {
 	const onArticle = article !== undefined && node.slug === article.slug;
 	const selected = onArticle && (node.blockId ? node.blockId === hashId : hashId === undefined);
-	const open = chapterIsOpen(
-		node.id,
-		expandAll || onArticle || (article !== undefined && node.id === article.slug),
-		opened,
-	);
+	const hasActiveChild = hasActiveDescendant(node, article?.slug);
+
+	// Groups (depth 0) auto-expand. Subgroups (depth > 0) default to collapsed unless active.
+	const isGroup = depth === 0;
+	const defaultOpen = isGroup || hasActiveChild;
+	const open = chapterIsOpen(node.id, expandAll || defaultOpen, opened);
+
 	const href = nodeHref(node);
 	const sectionId = onArticle ? node.blockId : undefined;
 	return (
 		<SideNavItem
 			label={node.label}
 			href={href}
-			icon={node.blockId === undefined ? chapterIcon(node.id) : undefined}
 			isSelected={selected}
+			size={depth === 0 ? 'md' : 'sm'}
+			className={
+				selected
+					? `docs-nav-depth-${String(depth)}`
+					: `docs-nav-depth-${String(depth)} docs-nav-quiet`
+			}
 			onClick={sectionClick(sectionId, onSection)}
 			collapsible={navCollapsible(node, open, onOpenChange)}
 		>
@@ -165,6 +179,7 @@ function DocsNavItem({
 							opened={opened}
 							onOpenChange={onOpenChange}
 							onSection={onSection}
+							depth={depth + 1}
 						/>
 					))
 				: undefined}
@@ -172,15 +187,12 @@ function DocsNavItem({
 	);
 }
 
-function outlineItems(nodes: readonly DocTreeNode[], level = 2): OutlineItem[] {
-	return nodes.flatMap((node) => [
-		{ id: node.blockId ?? node.id, label: node.label, level },
-		...outlineItems(node.children, Math.min(level + 1, 6)),
-	]);
-}
-
-function outlineNodes(shell: DocShell, article: DocArticle): readonly DocTreeNode[] {
-	return shell.tree.find((node) => node.id === article.slug)?.children ?? [];
+function outlineItems(sections: readonly DocSectionEntry[]): OutlineItem[] {
+	return sections.map((section) => ({
+		id: section.id,
+		label: section.title,
+		level: section.level,
+	}));
 }
 
 type ChapterPaneProps = {
@@ -561,7 +573,7 @@ function useArticleScroll(slug: string, hashId: string | undefined) {
 
 export function DocsReader({ shell, article }: { shell: DocShell; article: DocArticle }) {
 	const { hashId, pick } = useSectionId(article.slug);
-	const outline = outlineItems(outlineNodes(shell, article));
+	const outline = outlineItems(article.sections);
 	const { prev, next } = chapterNeighbors(shell, article.slug);
 	const contentRef = useArticleScroll(article.slug, hashId);
 

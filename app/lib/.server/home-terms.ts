@@ -21,7 +21,7 @@ export function homeTerms(): Record<string, DocTerm> {
 		profile: {
 			name: 'Profile',
 			doc: import.meta.env.KERNEL_PROFILE_DOC,
-			chapter: 'modalities',
+			chapter: 'profiles',
 			area: 'profile',
 		},
 		detector: {

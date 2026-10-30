@@ -1,0 +1,263 @@
+---
+title: Embedded Studio Screen
+updated: 2026-10-26
+summary: Embedding Theorem Studio into existing React applications with scoped project workspaces.
+entry: studio/server.ts
+covers: studio/server.ts, studio/browser.ts
+cover: /imagery/th30_larchmountain.png
+coverAlt: Golden autumn larch trees climbing steep rocky mountain slopes
+coverPosition: 50% 50%
+---
+
+While Theorem Studio runs locally from the command line (`npx theorem-studio`), you can also embed the complete visual workbench directly into your own React web applications.
+
+Embedding Studio allows you to provide self-contained agent playgrounds for customers, integration benches for partners, or internal authoring consoles for team members who do not work in terminal environments or clone git repositories.
+
+## Why Embed Studio?
+
+Embedding the Studio screen creates an interactive workbench where visitors can design, configure, and test agent profiles within the boundaries of your web platform:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ VISITOR'S BROWSER                                           │
+│                                                             │
+│ <StudioScreen />                                            │
+│ • Edits profile in visual forms or Monaco                   │
+│ • Runs interactive test turns against lent models           │
+│ • Keeps its draft in the tab (no server disk writes)        │
+└──────────────────────────────┬──────────────────────────────┘
+															 │ POST /api/studio/*
+															 │ (profile draft rides along)
+															 ▼
+┌─────────────────────────────────────────────────────────────┐
+│ YOUR BACKEND SERVER                                         │
+│                                                             │
+│ createStudioDraftHandler({                                  │
+│   lent: { keys: myLentKeys, hostOptions: ... },             │
+│   spend: (kind, request) => { enforceUserQuota(...) },      │
+│ })                                                          │
+│ • Signs model requests using your server credentials        │
+│ • Enforces model allowlists and spending quotas             │
+│ • Sandboxes network requests to public hosts only           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+* **No Visitor API Keys Required**: Your server provides the underlying model credentials using **Lent Keys**, allowing visitors to test agents immediately.
+* **Strict Quota & Model Boundaries**: Visitors can only use the model families and token budgets you explicitly permit.
+* **Zero Persistence Risk**: All edits and test conversations stay in the visitor's browser tab. Visitors cannot write files to your server or access private infrastructure.
+
+## 1. Vite & Dependency Setup
+
+Install `@theoremjs/studio` with `@theoremjs/agents` and `@theoremjs/web` at the same version. To show the screen, also install `@theoremjs/react` at that version, React 19, and the design packages at the versions `@theoremjs/react` lists in `peerDependencies`:
+
+```bash
+npm install @theoremjs/studio @theoremjs/agents @theoremjs/web @theoremjs/react react react-dom @astryxdesign/core@0.7.4 @astryxdesign/theme-neutral@0.7.4 @stylexjs/stylex@0.19.0
+```
+
+Add the `studioVite` plugin to the plugins in your `vite.config.ts`, beside the ones your app has. It resolves the screen's packages to your install, so the page has one copy of React and Astryx. It also serves the code editor's icons and the type declarations it checks a profile's code against. `hostRoot` is the folder of the app that shows the screen:
+
+```ts
+// vite.config.ts
+import { studioVite } from '@theoremjs/studio/vite';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+	plugins: [studioVite({ hostRoot: import.meta.dirname })],
+});
+```
+
+## 2. Rendering `<StudioScreen />`
+
+Render the `<StudioScreen />` component inside your application, wrapped with Astryx `<Theme>` and `<LayerProvider>`:
+
+```tsx
+// app/agent-playground.tsx
+import { LayerProvider } from '@astryxdesign/core/Layer';
+import { Theme } from '@astryxdesign/core/theme';
+import { theoremStudioTheme } from '@theoremjs/studio/ui/built/theorem-studio.ts';
+import { openStudio } from '@theoremjs/studio/ui/lib/studio-open.ts';
+import { StudioScreen } from '@theoremjs/studio/ui/studio-screen.tsx';
+import { harborLentKeys } from '../shared/harbor-lent-keys.ts';
+
+// Stylesheets required by Studio and Astryx
+import '@theoremjs/studio/ui/figtree.css';
+import '@astryxdesign/core/reset.css';
+import '@astryxdesign/core/astryx.css';
+import '@theoremjs/studio/ui/built/theme.css';
+import '@theoremjs/studio/ui/motion.css';
+
+export function AgentPlayground() {
+	return (
+		<Theme theme={theoremStudioTheme} mode="dark">
+			<LayerProvider>
+				<StudioScreen
+					opened={openStudio()}
+					host={{
+						kernelVersion: '0.3.3',
+						lentKeys: harborLentKeys,
+					}}
+				/>
+			</LayerProvider>
+		</Theme>
+	);
+}
+```
+
+The `host` property configures the workbench:
+* `kernelVersion`: The current `@theoremjs/agents` version, displayed in the Studio header.
+* `lentKeys`: The policy object defining which models, tools, and token limits visitors may access.
+* `toolHandlers`: Optional mock or client-side handlers for custom function tools.
+
+## 3. Configuring Lent Keys
+
+When visitors test agents in an embedded studio, your backend pays for the model calls. You protect your API credits and infrastructure by declaring a `LentKeys` configuration:
+
+```ts
+// shared/harbor-lent-keys.ts
+import type { LentKeys } from '@theoremjs/studio';
+
+export const harborLentKeys: LentKeys = {
+	// Allowlist the exact models visitors can select
+	models(type, _definition) {
+		if (type === 'text') {
+			return [
+				{ id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite (Fast)' },
+				{ id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
+			];
+		}
+		return [];
+	},
+
+	// Confirm provider support
+	runs(type, _definition) {
+		return type === 'text';
+	},
+
+	// Default model for newly created agent drafts
+	start(_type) {
+		return { protocol: 'geminiInteractions', provider: 'gemini', apiId: 'gemini-3.5-flash-lite' };
+	},
+
+	// Reject unauthorized models or expensive frontier bindings
+	violation(binding) {
+		if (binding.apiId !== 'gemini-3.5-flash-lite' && binding.apiId !== 'gemini-3.5-flash') {
+			return {
+				field: 'apiId',
+				message:
+					'Only standard demo models (Gemini 3.5 Flash Lite and Gemini 3.5 Flash) are permitted in this playground.',
+			};
+		}
+		return null;
+	},
+
+	// Restrict provider built-in tools (e.g., disable arbitrary code execution)
+	builtins(_apiId) {
+		return [];
+	},
+
+	// Cap decision profile limits
+	decision: {
+		questions: 3,
+		criteria: 4,
+		instructionsChars: 1000,
+		criterionChars: 200,
+		nameChars: 50,
+		idChars: 50,
+		stateBytes: 16384,
+		images: 1,
+		imageBytes: 524288,
+		timeoutMs: 15000,
+	},
+
+	questionViolation: () => null,
+	stateViolation: () => null,
+	liveInputTokens: 8192,
+
+	// Enforce security boundaries
+	holds: {
+		publicHostsOnly: true, // Prevents SSRF to internal private networks
+		afterRemoteRead: 'write', // Refuses writes after a turn reads a remote result
+	},
+};
+```
+
+### Enforced Protections
+* **Model Allowlisting**: If a visitor attempts to configure an unpermitted model (such as an expensive reasoning model), Studio surfaces an inline validation badge and blocks execution.
+* **Network Sandboxing**: Setting `holds.publicHostsOnly: true` forces all outbound network calls through Theorem's private IP detector, preventing SSRF attacks against internal services.
+* **Remote-Read Gate**: `holds.afterRemoteRead` sets the calls a turn refuses once it has read a remote result: `'off'`, `'destructive'`, or `'write'`. A profile that refuses more keeps its own setting.
+* **Payload Caps**: Decision profile questions, state byte sizes, and image attachments are capped to prevent memory exhaustion.
+
+## 4. Answering at `/api/studio`
+
+The embedded `<StudioScreen />` sends draft execution requests to your server under the `/api/studio` base path.
+
+Mount `createStudioDraftHandler` on your backend server (Node.js, Deno, Bun, or Cloudflare Workers):
+
+```ts
+// server/studio-route.ts
+import { TheoremError } from '@theoremjs/agents';
+import type { LentKeys } from '@theoremjs/studio';
+import { createStudioDraftHandler, STUDIO_BASE } from '@theoremjs/studio/server';
+
+// The lent keys from step 3, in shared/harbor-lent-keys.ts
+declare const harborLentKeys: LentKeys;
+declare function getVisitorUsage(clientIp: string): Promise<number>;
+declare function incrementVisitorUsage(clientIp: string): Promise<void>;
+
+const studioHandler = createStudioDraftHandler({
+	lent: {
+		mode: 'demo',
+		keys: harborLentKeys,
+		// Fill each key slot the draft's model requests
+		hostOptions: (_profile) => ({
+			vault: {
+				gemini: process.env.GEMINI_API_KEY ?? '',
+			},
+		}),
+	},
+
+	// Enforce rate limits and spending quotas per user or IP
+	spend: async (_kind, request) => {
+		const clientIp = request.headers.get('x-forwarded-for') ?? 'unknown';
+		const usageCount = await getVisitorUsage(clientIp);
+
+		if (usageCount > 25) {
+			throw new TheoremError('rate_limit', 'Demo quota exceeded.');
+		}
+
+		await incrementVisitorUsage(clientIp);
+	},
+});
+
+export default {
+	fetch(request: Request): Promise<Response> | Response {
+		if (new URL(request.url).pathname.startsWith(`${STUDIO_BASE}/`)) {
+			return studioHandler(request);
+		}
+		return new Response('Not found', { status: 404 });
+	},
+};
+```
+
+### How Server Execution Works
+1. **The Draft Rides Along**: The client sends the visitor's modified profile draft in the request body. The server does not look up stored files or load a project setup.
+2. **Credential Injection**: `hostOptions` receives each draft's profile and returns the vault its model calls sign with. The draft names its own key slots (e.g., `gemini`), so fill the slots its models name. The browser never sees your API keys.
+3. **Quota Rejection**: The handler calls `spend` before each decision, host tool call, and agent tool turn on the lent keys. A chat turn does not pass through it. If `spend` throws a `TheoremError`, the handler refuses that request and the screen shows the error's wording. For an agent tool turn, the calling model reads the refusal as the tool's result.
+
+> [!NOTE]
+> **Live Streaming & Realtime Sessions**: Unary requests (text chat, decisions, and embeddings) pass through `/api/studio`. Bidirectional realtime voice sessions on lent keys connect via WebSockets to `/api/live/relay` using `attachStudioLiveSession` from `@theoremjs/studio/browser`. See [Realtime Voice & Video](/docs/web/realtime) for relay setup.
+
+## 5. Ephemeral In-Memory Workspaces
+
+Embedded Studio screens do not write to disk. 
+
+* **Browser Session State**: Draft changes, prompt edits, and test conversations are kept in the tab's session storage. `openStudio()` reads them back, so a reload keeps them.
+* **Session Reset**: When the visitor closes the browser tab, the kept drafts and conversations are gone. Keys never go into this storage.
+* **Download Trace**: If visitors want to preserve their test results, they can click **Download trace** in the trace inspector to export their session as a `.trace.json` file.
+
+## Related Guides
+
+* **[Theorem Studio Overview](/docs/studio)**: Mental model, visual workbench capabilities, and execution environments.
+* **[Project Setup & Workspaces](/docs/studio/setup)**: Local development setup, credentials, and desktop editor integration.
+* **[Draft Compiler & Code Synchronization](/docs/studio/compiler)**: Form-to-code synchronization, background diagnostics, and file saving.
+* **[React Hooks & Transports](/docs/web/react-hooks)**: Headless React hooks for building custom conversational interfaces.

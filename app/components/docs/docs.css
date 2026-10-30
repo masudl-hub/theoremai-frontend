@@ -13,10 +13,11 @@
 	scroll-margin-top: 80px;
 }
 
+/* The article fills the reader up to the home screens' frame, then centres on a wide screen. */
 .docs-article {
 	box-sizing: border-box;
 	width: 100%;
-	max-width: calc(46rem + 240px + var(--spacing-8));
+	max-width: 100rem;
 	margin-inline: auto;
 }
 
@@ -24,7 +25,6 @@
 	--text-body-leading: 1.625;
 	box-sizing: border-box;
 	width: 100%;
-	max-width: 46rem;
 	min-width: 0;
 }
 
@@ -32,6 +32,19 @@
 	min-width: 0;
 	max-width: 100%;
 	overflow-wrap: anywhere;
+}
+
+.docs-inline-command {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.375rem;
+	white-space: nowrap;
+	vertical-align: middle;
+}
+
+td:first-child .docs-inline-command {
+	display: flex;
+	margin-top: 0.375rem;
 }
 
 .docs-agent-prompt {
@@ -102,6 +115,11 @@
 	overflow: visible;
 }
 
+/* A featured read is its still, so the card clips to the still's corners. */
+.docs-landing .docs-landing-tile[data-featured] {
+	overflow: hidden;
+}
+
 .docs-landing .docs-landing-body {
 	width: 100%;
 	max-width: calc(4 * var(--docs-tile-size) + 3 * var(--spacing-4));
@@ -120,10 +138,42 @@
 .docs-landing .docs-landing-results {
 	min-width: 0;
 	width: 100%;
+	margin-block-start: var(--spacing-4);
 }
 
 .docs-chapters-launch {
 	display: none;
+}
+
+.docs-landing .docs-landing-tile-still {
+	position: relative;
+	overflow: hidden;
+}
+
+/* A featured read names itself on its still, over a shade at the foot, as the packages do. */
+.docs-landing-tile-shaded::before {
+	content: "";
+	position: absolute;
+	z-index: 1;
+	inset: 0;
+	pointer-events: none;
+	background: var(--still-shade);
+}
+
+.docs-landing .docs-landing-tile-name {
+	color-scheme: dark;
+	position: absolute;
+	z-index: 2;
+	inset-inline: 0;
+	inset-block-end: 0;
+	padding: var(--spacing-4);
+	padding-block-end: var(--spacing-2);
+	color: var(--color-text-primary);
+	pointer-events: none;
+}
+
+.docs-landing-tile-name .still-title {
+	color: inherit;
 }
 
 .docs-frame {
@@ -202,4 +252,18 @@
 .docs-paste-card > * {
 	min-width: 0;
 	max-width: 100%;
+}
+
+/* Navigation visual hierarchy: X (depth 0), Y (depth 1), Z (depth 2) */
+.docs-nav-depth-1 span,
+.docs-nav-depth-2 span {
+	font-size: 0.875rem;
+}
+
+.docs-nav-quiet span {
+	color: var(--color-text-secondary);
+}
+
+.docs-nav-quiet:hover span {
+	color: var(--color-text-primary);
 }

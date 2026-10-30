@@ -29,6 +29,7 @@ import { openedOn, useDrawn } from '../opening-screen';
 import { Statement } from '../statement';
 import { createPackagesPull, createPackagesReveal } from './packages-pull';
 import '../install-copy.css';
+import '../still-caption.css';
 import './packages.css';
 
 type TileId = (typeof PACKAGE_TILES)[number]['id'];
@@ -296,7 +297,10 @@ export function PackagesBoard({ scrollRoot }: { scrollRoot: RefObject<HTMLElemen
 										style={{ objectPosition: still.position }}
 									/>
 									<LateLive id={id} {...(id === 'agents' ? { props: { reveal } } : {})} />
-									<div className="packages-words">
+									<div
+										className="packages-words"
+										data-under-map={isOpen && id === 'agents' ? '' : undefined}
+									>
 										<div className="packages-head">
 											<Heading level={2} type="display-3" className="packages-name">
 												{title}

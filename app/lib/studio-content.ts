@@ -6,28 +6,14 @@
  */
 import { PROFILE_GRAPH, PROFILE_TYPES } from '@theoremjs/agents/schema';
 import { STUDIO_EXAMPLES } from '@theoremjs/studio/ui/lib/studio-examples.ts';
+import { FACET_SECTION } from './docs/placement';
 import type { DocIndex, DocSection, PageSymbol } from './docs/schema';
 import { KERNEL, KERNEL_NAME, SITE_NAME } from './home-content';
 
 export const STUDIO_TITLE = 'Studio';
 
 /** The docs chapter that explains each profile section. A section with none is not linked. */
-const FACET_CHAPTER: Partial<Record<string, DocSection>> = {
-	identity: 'identity',
-	models: 'models',
-	modelBinding: 'models',
-	tools: 'tools',
-	inputs: 'inputs',
-	outputs: 'outputs',
-	turnBehaviour: 'turn-behaviour',
-	guardrails: 'guardrails',
-	observability: 'traces',
-	labels: 'statuses',
-	image: 'modalities',
-	speech: 'modalities',
-	live: 'modalities',
-	decision: 'modalities',
-};
+const FACET_CHAPTER: Partial<Record<string, DocSection>> = FACET_SECTION;
 
 /** How the studio's screen works, in the order a visitor meets it. */
 const PARTS = [
@@ -157,7 +143,7 @@ export function studioParts(index: DocIndex): StudioPart[] {
 		{
 			id: 'profile-types',
 			name: 'Profile types',
-			text: `An agent has one profile type: ${PROFILE_TYPES.map(typeLabel).join(', ')}. The profile type sets which sections the agent has. /docs/modalities describes each type.`,
+			text: `An agent has one profile type: ${PROFILE_TYPES.map(typeLabel).join(', ')}. The profile type sets which sections the agent has. /docs/profiles describes each type.`,
 		},
 		...sections().map((section) => ({
 			id: `section-${section.id}`,

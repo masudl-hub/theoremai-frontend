@@ -1,9 +1,12 @@
 import type { DocTreeNode } from './schema';
 
 export function chapterNavigationTree(nodes: readonly DocTreeNode[]): DocTreeNode[] {
-	return nodes.map((chapter) => ({
-		...chapter,
-		children: chapter.children.map((section) => ({ ...section, children: [] })),
+	return nodes.map((group) => ({
+		...group,
+		children: group.children.map((subgroup) => ({
+			...subgroup,
+			children: subgroup.children.map((leaf) => ({ ...leaf, children: [] })),
+		})),
 	}));
 }
 

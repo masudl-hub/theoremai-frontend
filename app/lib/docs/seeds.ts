@@ -7,11 +7,11 @@ import {
 	compileStudio,
 	createConsoleExampleDraft,
 	createExampleDraft,
-	decisionExampleDraft,
 	createGeminiEmbeddingExampleDraft,
 	createLiveExampleDraft,
 	createNarratorExampleDraft,
 	createResearchScoutDraft,
+	decisionExampleDraft,
 	ON_OWN_KEYS,
 	RESEARCH_FIRST_TURN_PROMPT,
 	resolveCookbookSlice,
@@ -41,7 +41,7 @@ function firstTurnDraft(): StudioDraft {
 }
 
 /** Wraps a compiled text profile with a `runTurn` entrypoint. */
-function withTurnDoor(exportName: string, prompt: string, keySlot = 'gemini') {
+function withTurnDoor(exportName: string, prompt: string, keySlot: string) {
 	return (source: string, profileId: string): string => {
 		const imports = source.replace(
 			/import \{\n((?: {2}\w+,\n)+)\} from '@theoremjs\/agents';/,
@@ -93,12 +93,12 @@ const SEEDS: Record<
 	firstTurn: {
 		draft: firstTurnDraft,
 		question: RESEARCH_FIRST_TURN_PROMPT,
-		wrap: withTurnDoor('firstTurn', RESEARCH_FIRST_TURN_PROMPT, 'gemini'),
+		wrap: withTurnDoor('firstTurn', RESEARCH_FIRST_TURN_PROMPT, 'openrouter'),
 	},
 	research: {
 		draft: createResearchScoutDraft,
 		question: RESEARCH_FIRST_TURN_PROMPT,
-		wrap: withTurnDoor('runResearchScout', RESEARCH_FIRST_TURN_PROMPT, 'gemini'),
+		wrap: withTurnDoor('runResearchScout', RESEARCH_FIRST_TURN_PROMPT, 'openrouter'),
 	},
 	concierge: {
 		draft: createExampleDraft,

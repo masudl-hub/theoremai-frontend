@@ -1,6 +1,18 @@
-/* The one treatment for a still's title. Pages place it; they do not restyle it. */
+/* The one treatment for a still's title and the shade under it. Pages place them; they do not restyle them. */
+/* fallow-ignore-next-line css-dead-surface -- Astryx renders this class, not our markup. */
 .astryx-heading.still-title {
 	font-weight: 600;
 	line-height: 1.2;
 	letter-spacing: -0.015em;
+}
+
+/* The one shade under words set on a still: deep at the foot, gone by the top third. */
+:root {
+	--still-shade: linear-gradient(
+		to top,
+		rgb(0 0 0 / 0.82),
+		rgb(0 0 0 / 0.62) 30%,
+		rgb(0 0 0 / 0.2) 58%,
+		rgb(0 0 0 / 0)
+	);
 }

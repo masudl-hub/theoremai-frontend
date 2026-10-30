@@ -9,7 +9,7 @@ import { Text } from '@astryxdesign/core/Text';
 import { MediaTheme } from '@astryxdesign/core/theme';
 import { VStack } from '@astryxdesign/core/VStack';
 import type { CSSProperties } from 'react';
-import { CHAPTER_ICON } from '../../lib/docs/chapter-icons';
+import { chapterIcon } from '../../lib/docs/chapter-icons';
 import type { DocFigure, LanesFigure, SequenceFigure } from '../../lib/docs/figure';
 import { stillRenditions } from '../../lib/stills';
 
@@ -29,7 +29,7 @@ function PartLabel({ part }: { part: FigurePart }) {
 	}
 	return (
 		<HStack gap={1.5} vAlign="center">
-			<Icon icon={CHAPTER_ICON[part.chapter]} size="sm" color="secondary" />
+			<Icon icon={chapterIcon(part.chapter)} size="sm" color="secondary" />
 			<Link href={`/docs/${part.chapter}`} type="label" weight="medium" color="primary">
 				{part.label}
 			</Link>
@@ -188,7 +188,13 @@ export function DocsFigure({ figure }: { figure: DocFigure }) {
 		<VStack gap={2} role="figure" aria-label={figure.caption}>
 			{still ? (
 				<Card variant="still" padding={6} style={still}>
-					{content}
+					{figure.kind === 'switchback' ? (
+						<Card variant="glass" padding={0} elevation="med" width="100%">
+							{content}
+						</Card>
+					) : (
+						content
+					)}
 				</Card>
 			) : (
 				<Card variant="glass" padding={4} elevation="low">

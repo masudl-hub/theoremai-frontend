@@ -1,9 +1,7 @@
-import { Badge } from '@astryxdesign/core/Badge';
-import { Card } from '@astryxdesign/core/Card';
 import { HStack } from '@astryxdesign/core/HStack';
-import { Icon } from '@astryxdesign/core/Icon';
-import { Text } from '@astryxdesign/core/Text';
-import { Token, type TokenColor } from '@astryxdesign/core/Token';
+import { Icon, type IconType } from '@astryxdesign/core/Icon';
+import { Token } from '@astryxdesign/core/Token';
+import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
 import {
 	IconActivity,
@@ -11,67 +9,127 @@ import {
 	IconArrowRight,
 	IconCpu,
 	IconDatabase,
+	IconFileSmile,
 	IconPlayerPlay,
-	IconRobot,
 	IconShieldCheck,
-	IconTool,
+	IconWorld,
 } from '@tabler/icons-react';
-import {
-	type CSSProperties,
-	type ReactNode,
-	useLayoutEffect,
-	useRef,
-	useState,
-} from 'react';
-import type { SwitchbackFigure, SwitchbackStep } from '../../lib/docs/figure';
-import { type MapCurve, mapRail } from './map-line';
+import { useLayoutEffect, useRef, useState } from 'react';
+import type { SwitchbackFigure } from '../../lib/docs/figure';
+import { mapPolyline } from './map-line';
 
-function tokenIcon(kind?: string): ReactNode {
+/** Exact icon mapping from `@theoremjs/studio/ui/lib/type-icons.ts` */
+function stepIcon(kind?: string): IconType | undefined {
 	switch (kind) {
 		case 'profile':
-			return <Icon icon={IconRobot} size="sm" />;
+			return IconFileSmile;
 		case 'model':
-			return <Icon icon={IconCpu} size="sm" />;
+			return IconCpu;
 		case 'tool':
-			return <Icon icon={IconTool} size="sm" />;
+			return IconWorld;
 		case 'ingress':
-			return <Icon icon={IconArrowRight} size="sm" />;
+			return IconArrowRight;
 		case 'egress':
-			return <Icon icon={IconArrowLeft} size="sm" />;
+			return IconArrowLeft;
 		case 'guardrail':
-			return <Icon icon={IconShieldCheck} size="sm" />;
+			return IconShieldCheck;
 		case 'stream':
-			return <Icon icon={IconActivity} size="sm" />;
+			return IconActivity;
 		case 'store':
-			return <Icon icon={IconDatabase} size="sm" />;
+			return IconDatabase;
 		case 'runner':
-			return <Icon icon={IconPlayerPlay} size="sm" />;
+			return IconPlayerPlay;
 		default:
 			return undefined;
 	}
 }
 
-interface StepBox {
-	row: number;
-	col: number;
+/** A step's left and right edges and middle height, in the figure's own coordinates. */
+interface TokenBox {
 	left: number;
 	right: number;
-	top: number;
-	bottom: number;
 	midY: number;
-	midX: number;
 }
 
 interface ConnectionLine {
 	d: string;
 	key: string;
-	isHairpin: boolean;
+}
+
+type SwitchbackRow = SwitchbackFigure['rows'][number];
+
+const HAIRPIN_RADIUS = 14;
+/** How far a hairpin's rail stands off the row's outer step. */
+const HAIRPIN_OFFSET = 24;
+
+/** Each step's box in `root`, keyed `row-step`. */
+function stepBoxes(root: HTMLElement, rootBox: DOMRect): Map<string, TokenBox> {
+	const boxes = new Map<string, TokenBox>();
+	for (const el of root.querySelectorAll<HTMLElement>('[data-map-step]')) {
+		const id = el.dataset.mapStep;
+		if (!id) continue;
+		const box = el.getBoundingClientRect();
+		boxes.set(id, {
+			left: box.left - rootBox.left,
+			right: box.right - rootBox.left,
+			midY: box.top - rootBox.top + box.height / 2,
+		});
+	}
+	return boxes;
+}
+
+/** The straight lines between a row's steps, in its reading direction. */
+function rowLines(boxes: Map<string, TokenBox>, r: number, row: SwitchbackRow): ConnectionLine[] {
+	const ltr = row.direction !== 'rtl';
+	const lines: ConnectionLine[] = [];
+	for (let c = 0; c < row.steps.length - 1; c++) {
+		const from = boxes.get(`${String(r)}-${String(c)}`);
+		const to = boxes.get(`${String(r)}-${String(c + 1)}`);
+		if (!from || !to) continue;
+		const fromX = ltr ? from.right : from.left;
+		const toX = ltr ? to.left : to.right;
+		lines.push({
+			d: `M ${String(fromX)} ${String(from.midY)} L ${String(toX)} ${String(to.midY)}`,
+			key: `line-${String(r)}-${String(c)}`,
+		});
+	}
+	return lines;
+}
+
+/** The hairpin from a row's last step to the next row's first, on the side the row ends. */
+function hairpin(
+	boxes: Map<string, TokenBox>,
+	r: number,
+	row: SwitchbackRow,
+): ConnectionLine | undefined {
+	const from = boxes.get(`${String(r)}-${String(row.steps.length - 1)}`);
+	const to = boxes.get(`${String(r + 1)}-0`);
+	if (!from || !to) return undefined;
+	const ltr = row.direction !== 'rtl';
+	const fromX = ltr ? from.right : from.left;
+	const toX = ltr ? to.right : to.left;
+	const railX = ltr
+		? Math.max(from.right, to.right) + HAIRPIN_OFFSET
+		: Math.min(from.left, to.left) - HAIRPIN_OFFSET;
+	const d = mapPolyline(
+		[
+			{ x: fromX, y: from.midY },
+			{ x: railX, y: from.midY },
+			{ x: railX, y: to.midY },
+			{ x: toX, y: to.midY },
+		],
+		HAIRPIN_RADIUS,
+	);
+	return { d, key: `hairpin-${String(r)}` };
 }
 
 export function SwitchbackFlow({ figure }: { figure: SwitchbackFigure }) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [lines, setLines] = useState<ConnectionLine[]>([]);
-	const [svgSize, setSvgSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+	const [svgSize, setSvgSize] = useState<{ width: number; height: number }>({
+		width: 0,
+		height: 0,
+	});
 
 	useLayoutEffect(() => {
 		const root = containerRef.current;
@@ -79,91 +137,12 @@ export function SwitchbackFlow({ figure }: { figure: SwitchbackFigure }) {
 
 		const updateLines = () => {
 			const rootBox = root.getBoundingClientRect();
-			const elements = root.querySelectorAll<HTMLElement>('[data-switchback-step]');
-			const stepBoxes = new Map<string, StepBox>();
-
-			for (const el of elements) {
-				const id = el.dataset.switchbackStep;
-				if (!id) continue;
-				const [rStr, cStr] = id.split('-');
-				const row = Number.parseInt(rStr ?? '0', 10);
-				const col = Number.parseInt(cStr ?? '0', 10);
-				const box = el.getBoundingClientRect();
-				const left = box.left - rootBox.left;
-				const right = box.right - rootBox.left;
-				const top = box.top - rootBox.top;
-				const bottom = box.bottom - rootBox.top;
-				stepBoxes.set(id, {
-					row,
-					col,
-					left,
-					right,
-					top,
-					bottom,
-					midY: top + box.height / 2,
-					midX: left + box.width / 2,
-				});
-			}
-
-			const newLines: ConnectionLine[] = [];
-			const radius = 16;
-			const loopOffset = 24;
-
-			for (let r = 0; r < figure.rows.length; r++) {
-				const rowDef = figure.rows[r];
-				if (!rowDef) continue;
-				const isLtr = rowDef.direction !== 'rtl';
-				const count = rowDef.steps.length;
-
-				// 1. In-row connections
-				for (let c = 0; c < count - 1; c++) {
-					const fromBox = stepBoxes.get(`${r}-${c}`);
-					const toBox = stepBoxes.get(`${r}-${c + 1}`);
-					if (!fromBox || !toBox) continue;
-
-					if (isLtr) {
-						// Left to Right: from right of C to left of C+1
-						const from = { x: fromBox.right, y: fromBox.midY };
-						const to = { x: toBox.left, y: toBox.midY };
-						const d = `M ${from.x} ${from.y} L ${to.x} ${to.y}`;
-						newLines.push({ d, key: `row-${r}-step-${c}`, isHairpin: false });
-					} else {
-						// Right to Left: from left of C to right of C+1
-						const from = { x: fromBox.left, y: fromBox.midY };
-						const to = { x: toBox.right, y: toBox.midY };
-						const d = `M ${from.x} ${from.y} L ${to.x} ${to.y}`;
-						newLines.push({ d, key: `row-${r}-step-${c}`, isHairpin: false });
-					}
-				}
-
-				// 2. Inter-row switchback hairpin loop (connecting row r to row r+1)
-				if (r < figure.rows.length - 1) {
-					const nextRowDef = figure.rows[r + 1];
-					if (!nextRowDef) continue;
-					const lastStepIdx = count - 1;
-					const fromBox = stepBoxes.get(`${r}-${lastStepIdx}`);
-					const toBox = stepBoxes.get(`${r + 1}-0`);
-
-					if (fromBox && toBox) {
-						if (isLtr) {
-							// Exiting on the right side
-							const railX = Math.max(fromBox.right, toBox.right) + loopOffset;
-							const from = { x: fromBox.right, y: fromBox.midY };
-							const to = { x: toBox.right, y: toBox.midY };
-							const curve = mapRail(from, to, railX, radius);
-							newLines.push({ d: curve.d, key: `hairpin-${r}`, isHairpin: true });
-						} else {
-							// Exiting on the left side
-							const railX = Math.min(fromBox.left, toBox.left) - loopOffset;
-							const from = { x: fromBox.left, y: fromBox.midY };
-							const to = { x: toBox.left, y: toBox.midY };
-							const curve = mapRail(from, to, railX, radius);
-							newLines.push({ d: curve.d, key: `hairpin-${r}`, isHairpin: true });
-						}
-					}
-				}
-			}
-
+			const boxes = stepBoxes(root, rootBox);
+			const last = figure.rows.length - 1;
+			const newLines = figure.rows.flatMap((row, r) => {
+				const turn = r < last ? hairpin(boxes, r, row) : undefined;
+				return turn ? [...rowLines(boxes, r, row), turn] : rowLines(boxes, r, row);
+			});
 			setSvgSize({ width: rootBox.width, height: rootBox.height });
 			setLines(newLines);
 		};
@@ -171,19 +150,23 @@ export function SwitchbackFlow({ figure }: { figure: SwitchbackFigure }) {
 		updateLines();
 		const observer = new ResizeObserver(updateLines);
 		observer.observe(root);
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+		};
 	}, [figure]);
-
-	let stepCounter = 0;
 
 	return (
 		<div
 			ref={containerRef}
-			className="docs-switchback-container"
-			style={{ position: 'relative', width: '100%', padding: '16px 36px' }}
+			className="studio-tree-map-frame"
+			style={{
+				position: 'relative',
+				width: '100%',
+				padding: '24px 36px',
+			}}
 		>
 			<svg
-				className="docs-switchback-svg"
+				className="studio-tree-map-lines"
 				width={svgSize.width}
 				height={svgSize.height}
 				style={{
@@ -195,98 +178,70 @@ export function SwitchbackFlow({ figure }: { figure: SwitchbackFigure }) {
 				}}
 				aria-hidden="true"
 			>
-				<defs>
-					<marker
-						id="switchback-arrow"
-						viewBox="0 0 8 8"
-						refX="6"
-						refY="4"
-						markerWidth="7"
-						markerHeight="7"
-						orient="auto"
-					>
-						<path d="M 0 1 L 7 4 L 0 7 z" fill="color-mix(in srgb, var(--color-border-emphasized) 75%, transparent)" />
-					</marker>
-				</defs>
 				{lines.map((line) => (
 					<path
 						key={line.key}
+						className="map-line"
 						d={line.d}
 						fill="none"
-						stroke="color-mix(in srgb, var(--color-border-emphasized) 60%, transparent)"
-						strokeWidth={2}
+						stroke="var(--color-border-emphasized, #64748b)"
+						strokeWidth={1.5}
 						strokeLinecap="round"
 						strokeLinejoin="round"
-						markerEnd="url(#switchback-arrow)"
 					/>
 				))}
 			</svg>
 
-			<VStack gap={8} width="100%">
+			<VStack gap={6} width="100%">
 				{figure.rows.map((row, rIdx) => {
 					const isRtl = row.direction === 'rtl';
 					return (
 						<HStack
 							key={`row-${String(rIdx)}`}
-							gap={6}
-							hAlign={isRtl ? 'end' : 'start'}
-							vAlign="stretch"
+							justify="between"
+							vAlign="center"
 							width="100%"
-							style={{ flexDirection: isRtl ? 'row-reverse' : 'row', position: 'relative', zIndex: 1 }}
+							style={{
+								flexDirection: isRtl ? 'row-reverse' : 'row',
+								position: 'relative',
+								zIndex: 1,
+							}}
 						>
 							{row.steps.map((step, sIdx) => {
-								stepCounter++;
-								const num = stepCounter;
-								const icon = tokenIcon(step.token?.kind);
+								const label = step.token?.label ?? step.label;
+								const kind = step.token?.kind;
+								const icon = stepIcon(kind);
+
+								const tooltipText =
+									step.text ?? step.parts?.map((p) => p.text ?? p.label).join(' · ');
+
 								return (
 									<div
-										key={step.label}
-										data-switchback-step={`${rIdx}-${sIdx}`}
-										style={{ flex: '1 1 0px', minWidth: 200, maxWidth: 360 }}
+										key={label}
+										data-map-step={`${String(rIdx)}-${String(sIdx)}`}
+										style={{ display: 'inline-flex', flexShrink: 0 }}
 									>
-										<Card
-											variant="glass"
-											padding={3}
-											elevation="med"
-											width="100%"
-											height="100%"
-											style={{
-												border: '1px solid color-mix(in srgb, var(--color-border-subtle) 80%, transparent)',
-												backdropFilter: 'blur(8px)',
-											}}
-										>
-											<VStack gap={2} height="100%" justify="between">
-												<VStack gap={1.5}>
-													<HStack justify="between" vAlign="center">
-														<Badge label={String(num)} />
-														{step.badge && (
-															<Text type="supporting" color="secondary">
-																{step.badge}
-															</Text>
-														)}
-													</HStack>
-													<Text type="large" weight="medium">
-														{step.label}
-													</Text>
-													{step.text && (
-														<Text type="supporting" color="secondary">
-															{step.text}
-														</Text>
-													)}
-												</VStack>
-
-												{step.token && (
-													<HStack vAlign="center" paddingBlockStart={1}>
-														<Token
-															size="sm"
-															label={step.token.label}
-															icon={icon}
-															color={step.token.color as TokenColor | undefined}
-														/>
-													</HStack>
-												)}
-											</VStack>
-										</Card>
+										{tooltipText ? (
+											<Tooltip
+												content={tooltipText}
+												placement={rIdx === 0 ? 'above' : 'below'}
+												hasHoverIndication={false}
+												delay={120}
+											>
+												<Token
+													size="sm"
+													label={label}
+													icon={icon && <Icon icon={icon} size="sm" />}
+													description={tooltipText}
+												/>
+											</Tooltip>
+										) : (
+											<Token
+												size="sm"
+												label={label}
+												icon={icon && <Icon icon={icon} size="sm" />}
+											/>
+										)}
 									</div>
 								);
 							})}

@@ -7,25 +7,30 @@ import {
 } from '../app/lib/docs/chapter-navigation.ts';
 import type { DocTreeNode } from '../app/lib/docs/schema.ts';
 
-test('chapter navigation keeps chapter and section links while hiding deeper headings', () => {
+test('chapter navigation keeps groups and sub-group links while hiding deeper levels', () => {
 	const tree: DocTreeNode[] = [
 		{
-			id: 'start',
-			label: 'Getting started',
-			slug: 'start',
+			id: 'profiles',
+			label: 'Profiles & Modalities',
 			children: [
 				{
-					id: 'start:profile',
-					label: 'The profile',
-					slug: 'start',
-					blockId: 'profile',
+					id: 'profiles',
+					label: 'Overview',
+					slug: 'profiles',
 					children: [
 						{
-							id: 'start:models',
-							label: 'Models',
-							slug: 'start',
-							blockId: 'models',
-							children: [],
+							id: 'profiles/text',
+							label: 'Text Profiles',
+							slug: 'profiles/text',
+							children: [
+								{
+									id: 'profiles/text:heading',
+									label: 'Heading',
+									slug: 'profiles/text',
+									blockId: 'heading',
+									children: [],
+								},
+							],
 						},
 					],
 				},
@@ -33,15 +38,13 @@ test('chapter navigation keeps chapter and section links while hiding deeper hea
 		},
 	];
 	const visible = chapterNavigationTree(tree);
-	assert.deepEqual(visible[0]?.children[0], {
-		id: 'start:profile',
-		label: 'The profile',
-		slug: 'start',
-		blockId: 'profile',
+	assert.deepEqual(visible[0]?.children[0]?.children[0], {
+		id: 'profiles/text',
+		label: 'Text Profiles',
+		slug: 'profiles/text',
 		children: [],
 	});
-	assert.equal(visible[0]?.slug, 'start');
-	assert.equal(tree[0]?.children[0]?.children[0]?.blockId, 'models');
+	assert.equal(visible[0]?.id, 'profiles');
 });
 
 test('the current chapter can collapse and reopen despite its automatic expansion', () => {
@@ -60,4 +63,11 @@ test('manual toggles override search expansion without opening unrelated chapter
 	const opened = setChapterCollapsed(collapsed, 'tools', false);
 	assert.equal(chapterIsOpen('tools', false, opened), true);
 	assert.equal(chapterIsOpen('start', false, opened), false);
+});
+
+test('subgroup collapse does not collapse parent group', () => {
+	const initial = new Map<string, boolean>();
+	const collapsed = setChapterCollapsed(initial, 'profiles', true);
+	assert.equal(chapterIsOpen('group:profiles', true, collapsed), true);
+	assert.equal(chapterIsOpen('profiles', true, collapsed), false);
 });

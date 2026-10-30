@@ -77,7 +77,7 @@ export const PACKAGE_TILES = [
 		description:
 			'Your agents, headless. `Web` serves them to any framework, or none. `React` builds on it with hooks, and with UIs on Astryx and StyleX.',
 		packages: ['web', 'react'],
-		docs: '/docs/interface',
+		docs: '/docs/web',
 	},
 	{
 		id: 'studio',
@@ -126,27 +126,36 @@ export type CookbookRecipe = {
 	tags: CookbookTags;
 	image: string;
 	imageAlt: string;
+	/** `object-position` so the crop keeps the still's clouds in frame. */
+	imagePosition: string;
 	action: CookbookAction;
 };
 
 const STUDIO_RECIPE_STILLS: Readonly<
-	Record<'research' | 'concierge' | 'architect' | 'decision', { image: string; imageAlt: string }>
+	Record<
+		'research' | 'concierge' | 'architect' | 'decision',
+		{ image: string; imageAlt: string; imagePosition: string }
+	>
 > = {
 	research: {
 		image: '/imagery/th30_blueabyss.png',
 		imageAlt: 'A deep blue whirlpool seen from above, clouds at the rim',
+		imagePosition: '32% 28%',
 	},
 	concierge: {
 		image: '/imagery/th30_siennadunes.png',
 		imageAlt: 'Sienna sand dunes under scattered white clouds',
+		imagePosition: '28% 22%',
 	},
 	architect: {
 		image: '/imagery/th30_basaltplanes.png',
 		imageAlt: 'Dark basalt planes under patchy snow and low clouds',
+		imagePosition: '26% 30%',
 	},
 	decision: {
 		image: '/imagery/th30_marigolds.png',
 		imageAlt: 'Golden marigold fields divided by pale paths, clouds overhead',
+		imagePosition: '30% 35%',
 	},
 };
 
@@ -162,6 +171,7 @@ function studioRecipe(id: keyof typeof STUDIO_RECIPE_STILLS): CookbookRecipe {
 		tags: entry.tags,
 		image: still.image,
 		imageAlt: still.imageAlt,
+		imagePosition: still.imagePosition,
 		action: { kind: 'studio', cookbook: id, href: `/studio?cookbook=${id}` },
 	};
 }
@@ -202,10 +212,7 @@ export function cookbookMcpReference(recipe: CookbookRecipe, origin: string): st
 	].join('\n');
 }
 
-/**
- * Fan order is circular: blueabyss (research) and malachite (bonsai) must not sit
- * next to each other when the active recipe peaks in the centre.
- */
+/** Featured recipes; still place index follows this order on the cookbook screen. */
 export const COOKBOOK_RECIPES: readonly CookbookRecipe[] = [
 	studioRecipe('research'),
 	studioRecipe('concierge'),
@@ -222,13 +229,11 @@ export const COOKBOOK_RECIPES: readonly CookbookRecipe[] = [
 		},
 		image: '/imagery/th30_malachite.png',
 		imageAlt: 'Turquoise terrace pools set in dense green forest',
+		imagePosition: '22% 38%',
 		action: { kind: 'hosted', href: 'https://askbonsai.xyz', label: 'Open Bonsai' },
 	},
 	studioRecipe('decision'),
 ];
-
-/** @deprecated Prefer `COOKBOOK_RECIPES`. */
-export const EXAMPLES = COOKBOOK_RECIPES;
 
 export const CONTRIBUTE_INTRO =
 	'Theorem is open source. We welcome questions, bugs, ideas, and code.';

@@ -76,7 +76,7 @@ function citeOrFailOn(draft: StudioDraft): boolean {
 }
 
 function tripBriefInputsOn(draft: StudioDraft): boolean {
-	const [focus] = draft.inputs.slots;
+	const focus = draft.inputs.slots.at(0);
 	return (
 		draft.inputs.attachmentsAccept.join(',') === 'application/pdf' &&
 		draft.inputs.voiceAccept.join(',') === 'audio/*' &&

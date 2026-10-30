@@ -14,7 +14,6 @@ import {
 	EXTRA_FIELDS,
 	fieldMeta,
 	PROFILE_GRAPH,
-	PROFILE_TYPES,
 	REQUEST_FIELDS,
 } from '@theoremjs/agents/schema';
 import { stillRenditions } from '../stills';
@@ -43,6 +42,7 @@ import {
 import { readableText } from './project-text';
 import {
 	type ComposeOptions,
+	DOC_GROUPS,
 	DOC_SECTIONS,
 	type DocArticle,
 	type DocArticleHead,
@@ -263,19 +263,12 @@ function resolveBody(chapter: Chapter): string {
 	return body;
 }
 
-/** The chapter's sections. Modalities must have one per profile type, for `/docs/modalities#host`. */
+/** The chapter's sections. */
 function chapterSections(slug: DocSection, body: string): DocSectionEntry[] {
 	const sections = markdownSections(body);
 	const shallow = sections.find((section) => section.level < 2);
 	if (shallow)
 		throw new Error(`${slug} "${shallow.title}": headings start at ##; the title is the #`);
-	if (slug === 'modalities') {
-		for (const type of PROFILE_TYPES) {
-			if (!sections.some((section) => section.id === type)) {
-				throw new Error(`modalities is missing the #${type} section`);
-			}
-		}
-	}
 	return sections;
 }
 
@@ -336,7 +329,7 @@ function catalogSymbols(section: DocSection, byFacet: Map<string, string[]>): Pl
 			});
 		}
 	}
-	if (section === 'traces') {
+	if (section === 'observability') {
 		symbols.push(
 			...traceCatalogRows().map((row) => ({
 				kind: 'trace' as const,
@@ -346,7 +339,7 @@ function catalogSymbols(section: DocSection, byFacet: Map<string, string[]>): Pl
 			})),
 		);
 	}
-	if (section === 'statuses') {
+	if (section === 'profiles/labels') {
 		symbols.push(
 			...labelCatalogRows().map((row) => ({
 				kind: 'label' as const,
@@ -416,32 +409,51 @@ function chapterTerms(body: string, index: Map<string, DocTerm>): Record<string,
 	return terms;
 }
 
-/** A chapter's sections as nav nodes: each heading nests under the last shallower one. */
-function sectionNodes(slug: string, sections: readonly DocSectionEntry[]): DocTreeNode[] {
-	const roots: DocTreeNode[] = [];
-	const open: { level: number; children: DocTreeNode[] }[] = [];
-	for (const section of sections) {
-		while (open.length > 0 && (open.at(-1)?.level ?? 0) >= section.level) open.pop();
-		const children: DocTreeNode[] = [];
-		const node = {
-			id: `${slug}#${section.id}`,
-			label: section.title,
-			slug,
-			blockId: section.id,
-			children,
-		};
-		(open.at(-1)?.children ?? roots).push(node);
-		open.push({ level: section.level, children });
-	}
-	return roots;
-}
-
 function buildTree(articles: readonly DocArticle[]): DocTreeNode[] {
-	return articles.map((article) => ({
-		id: article.slug,
-		label: article.title,
-		slug: article.slug,
-		children: sectionNodes(article.slug, article.sections),
+	const bySlug = new Map(articles.map((a) => [a.slug, a]));
+
+	return DOC_GROUPS.map((group) => ({
+		id: group.id,
+		label: group.label,
+		children: group.items.flatMap((item) => {
+			if (typeof item === 'string') {
+				const article = bySlug.get(item);
+				if (!article) return [];
+				const isOverview = item === group.overview;
+				return [
+					{
+						id: article.slug,
+						label: isOverview ? 'Overview' : article.title,
+						slug: article.slug,
+						children: [],
+					},
+				];
+			}
+
+			const article = bySlug.get(item.slug);
+			if (!article) return [];
+			const subChildren = (item.children ?? []).flatMap((childSlug) => {
+				const childArticle = bySlug.get(childSlug);
+				if (!childArticle) return [];
+				return [
+					{
+						id: childArticle.slug,
+						label: childArticle.title,
+						slug: childArticle.slug,
+						children: [],
+					},
+				];
+			});
+
+			return [
+				{
+					id: article.slug,
+					label: item.label ?? (item.slug === group.overview ? 'Overview' : article.title),
+					slug: article.slug,
+					children: subChildren,
+				},
+			];
+		}),
 	}));
 }
 

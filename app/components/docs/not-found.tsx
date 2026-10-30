@@ -10,8 +10,8 @@ import { useDocsSearch } from '../../lib/docs/use-docs-search';
 import { warmDocsSearch } from '../../lib/docs/warm-docs-search';
 import { DocsFrame } from './reader';
 
-export function DocsNotFound({ shell, slug }: { shell: DocShell; slug: string }) {
-	const [query, setQuery] = useState(slug.replace(/-/g, ' '));
+export function DocsNotFound({ shell, slug }: { shell: DocShell; slug?: string }) {
+	const [query, setQuery] = useState(slug?.replace(/-/g, ' ') ?? '');
 	const hits = useDocsSearch(query, 6).results;
 
 	return (

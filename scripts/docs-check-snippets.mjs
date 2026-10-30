@@ -6,7 +6,7 @@
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadDocs } from './docs-index-plugin.mjs';
@@ -48,6 +48,10 @@ function wrap(code, frame) {
 
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
+// The site installs no `@theoremjs/web`, so samples that import it resolve it here, beside them,
+// as `@theoremjs/agents` resolves from the site's own install: a link to the package in the kernel.
+mkdirSync(path.join(outDir, 'node_modules/@theoremjs'), { recursive: true });
+symlinkSync(path.join(theoremaiRoot, 'web'), path.join(outDir, 'node_modules/@theoremjs/web'), 'dir');
 
 const problems = [];
 let count = 0;
@@ -87,7 +91,7 @@ for (const article of index.articles) {
 		if (heads.length === 0 && !/^\s*(?:import|export)\s/m.test(body)) heads.push('export {};');
 		body = `${heads.join('\n')}\n${body}`;
 		count += 1;
-		writeFileSync(path.join(outDir, `${article.slug}--${block.id}.ts`), `${body}\n`);
+		writeFileSync(path.join(outDir, `${article.slug.replace(/\//g, '--')}--${block.id}.ts`), `${body}\n`);
 	}
 }
 failOn(problems);
@@ -95,7 +99,9 @@ failOn(problems);
 const tsconfig = {
 	extends: '../../tsconfig.json',
 	include: ['./*.ts', '../../theoremai-deno-shim.d.ts'],
-	compilerOptions: { rootDirs: ['.', '../..'], noEmit: true, types: ['node'] },
+	// `allowJs`: `@theoremjs/studio/vite` is a `.mjs` whose types come from its JSDoc, as the
+	// declarations the published package ships are emitted from it.
+	compilerOptions: { rootDirs: ['.', '../..'], noEmit: true, types: ['node'], allowJs: true },
 };
 writeFileSync(path.join(outDir, 'tsconfig.json'), JSON.stringify(tsconfig, null, 2));
 const result = spawnSync('npx', ['tsc', '-p', path.join(outDir, 'tsconfig.json')], {

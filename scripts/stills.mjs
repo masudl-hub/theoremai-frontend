@@ -7,32 +7,23 @@
  *   npm run stills -- --check      fail when one is missing
  */
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { stillRenditions, TILE_WIDTH } from '../app/lib/stills.ts';
+import { appSources } from './app-sources.mjs';
 
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const publicRoot = path.join(repoRoot, 'public');
 const STILL = /\/imagery\/[A-Za-z0-9_.-]+\.png/g;
-const SKIP_DIRS = new Set(['built', 'node_modules']);
 // Not shown to anyone: the still the exposure match measures the others against.
 const SKIP_FILES = new Set(['app/lib/docs/exposure.ts']);
 const all = process.argv.includes('--all');
 const check = process.argv.includes('--check');
 
-function* sources(dir) {
-	for (const entry of readdirSync(dir, { withFileTypes: true })) {
-		if (SKIP_DIRS.has(entry.name)) continue;
-		const file = path.join(dir, entry.name);
-		if (entry.isDirectory()) yield* sources(file);
-		else if (/\.(tsx?|md)$/.test(entry.name)) yield file;
-	}
-}
-
 const stills = new Set();
-for (const file of sources(path.join(repoRoot, 'app'))) {
+for (const file of appSources(path.join(repoRoot, 'app'))) {
 	if (SKIP_FILES.has(path.relative(repoRoot, file))) continue;
 	for (const [src] of readFileSync(file, 'utf8').matchAll(STILL)) stills.add(src);
 }

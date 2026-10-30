@@ -36,28 +36,34 @@ export function foldedProfile(workspace: StudioWorkspace, agentKey: string): str
 	const lines = profileModule(workspace, agentKey);
 	const folded: string[] = [];
 	for (let index = 0; index < lines.length; index += 1) {
-		const line = lines[index] ?? '';
-		const [, indent = '', key = '', bracket] = OPENER.exec(line) ?? [];
-		if (bracket !== '{' && bracket !== '[') {
-			folded.push(line);
+		const fold = foldAt(lines, index);
+		if (!fold) {
+			folded.push(lines[index] ?? '');
 			continue;
 		}
-		const close = `${indent}${CLOSES[bracket]}`;
-		const end = lines.findIndex((each, at) => at > index && each.startsWith(close));
-		const after = lines[end]?.slice(close.length) ?? '';
-		// why: What holds one line shows it on its own, as a short object prints.
-		const only = end === index + 2 ? lines[index + 1]?.trim().replace(/,$/, '') : undefined;
-		if (!OPEN.has(key) && only !== undefined && !OPENER.test(lines[index + 1] ?? '')) {
-			folded.push(`${indent}${key}: ${bracket} ${only} ${CLOSES[bracket]}${after}`);
-			index = end;
-			continue;
-		}
-		if (OPEN.has(key)) {
-			folded.push(line);
-			continue;
-		}
-		folded.push(`${indent}${key}: ${bracket} … ${CLOSES[bracket]}${after}`);
-		index = end < 0 ? lines.length : end;
+		folded.push(fold.text);
+		index = fold.end;
 	}
 	return folded;
+}
+
+/** The fold of the object or list a line opens, through the line it ends on; none when it stays open. */
+function foldAt(lines: string[], index: number): { text: string; end: number } | undefined {
+	const [, indent = '', key = '', bracket] = OPENER.exec(lines[index] ?? '') ?? [];
+	if ((bracket !== '{' && bracket !== '[') || OPEN.has(key)) return undefined;
+	const close = `${indent}${CLOSES[bracket]}`;
+	const end = lines.findIndex((each, at) => at > index && each.startsWith(close));
+	const after = lines[end]?.slice(close.length) ?? '';
+	const next = lines[index + 1] ?? '';
+	// why: What holds one line shows it on its own, as a short object prints.
+	if (end === index + 2 && !OPENER.test(next)) {
+		return {
+			text: `${indent}${key}: ${bracket} ${next.trim().replace(/,$/, '')} ${CLOSES[bracket]}${after}`,
+			end,
+		};
+	}
+	return {
+		text: `${indent}${key}: ${bracket} … ${CLOSES[bracket]}${after}`,
+		end: end < 0 ? lines.length : end,
+	};
 }

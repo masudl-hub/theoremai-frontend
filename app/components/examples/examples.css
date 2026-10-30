@@ -1,99 +1,211 @@
-/* Fan geometry the astryx Carousel cannot express: centred peak, stepped sides,
-   clipped at the shell's left, right and bottom edges. Chrome stays astryx. */
+/* Centred copy with stills scattered among it at mixed ratios.
+   Drag offset is `--cookbook-drag-x/y` (studio pan helpers). */
 
 .cookbook-frame {
 	position: relative;
-	display: flex;
-	flex-direction: column;
+	display: grid;
 	height: 100%;
 	min-height: 0;
-	/* Clip the sides for the Drops spill; keep the bottom open so stills
-	   stay in the scroll as the landing page moves. */
-	overflow-x: clip;
-	overflow-y: visible;
+	overflow: clip;
 	border-radius: inherit;
+}
+
+/*
+ * Stills + copy in one stage. No z-index / isolation / translate on the copy
+ * ancestors — those open a stacking context and difference goes blind.
+ */
+.cookbook-stage {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
 }
 
 .cookbook-mark {
 	position: absolute;
-	z-index: 2;
 	inset-block-start: calc(var(--radius-page) + var(--spacing-4));
 	inset-inline-end: calc(var(--radius-page) + var(--spacing-4));
 	pointer-events: none;
 }
 
 .cookbook-hero {
-	position: relative;
-	z-index: 1;
-	flex: 1 1 auto;
+	position: absolute;
+	inset: 0;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
 	min-height: 0;
-	/* Same horizontal gutters as contribute / home-stage. */
 	padding-block: var(--spacing-8);
 	padding-inline: calc(clamp(1.5rem, 3.2vw, 3.25rem) + clamp(2rem, 6vw, 5rem));
-}
-
-/* Phrase under the mark: a step above display-1, filled, quiet. */
-.cookbook-verb {
-	font-size: clamp(2.25rem, 4.5vw, 3.25rem);
-	line-height: 1.1;
-	letter-spacing: -0.02em;
-}
-
-.astryx-text.cookbook-description {
-	text-align: center;
-}
-
-.cookbook-fan {
-	/* Wide enough that the outer stills spill past the shell and clip. */
-	--cookbook-still-center: clamp(14rem, 30vw, 22rem);
-	--cookbook-still-near: clamp(10.5rem, 21vw, 16rem);
-	--cookbook-still-far: clamp(8rem, 16vw, 12rem);
-
-	display: flex;
-	flex: 0 0 auto;
-	align-items: flex-end;
-	justify-content: center;
-	gap: var(--spacing-3);
-	width: 100%;
-	height: 48%;
-	min-height: 16rem;
-	/* Hang past the shell so left, right and bottom edges clip the stills. */
-	padding-inline: 0;
-	transform: translateY(28%);
 	pointer-events: none;
 }
 
-.cookbook-still {
-	flex: 0 0 auto;
-	width: var(--cookbook-still-far);
+.cookbook-copy {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing-4);
+	width: 100%;
+	max-width: min(36rem, 100%);
+	pointer-events: none;
+}
+
+.cookbook-controls {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing-3);
+	align-items: center;
+	justify-content: center;
 	pointer-events: auto;
-	will-change: transform, width;
+}
+
+.cookbook-blend {
+	margin: 0;
+	font: inherit;
+	color: #fff;
+	mix-blend-mode: difference;
+}
+
+.cookbook-controls .cookbook-blend {
+	display: inline-flex;
+}
+
+.cookbook-mark .cookbook-blend {
+	display: block;
+	color: #fff;
+}
+
+.cookbook-verb {
+	font-size: clamp(2.25rem, 4.5vw, 3.25rem);
+	font-weight: 500;
+	line-height: 1.1;
+	letter-spacing: -0.02em;
+	text-align: center;
+}
+
+.cookbook-description {
+	max-width: 32rem;
+	font-size: 1.0625rem;
+	font-weight: 400;
+	line-height: 1.5;
+	text-align: center;
+	text-wrap: pretty;
+}
+
+.cookbook-still {
+	--cookbook-drag-x: 0px;
+	--cookbook-drag-y: 0px;
+
+	position: absolute;
+	margin: 0;
+	padding: 0;
+	border: none;
+	border-radius: var(--radius-container);
+	overflow: hidden;
+	background: none;
+	color: inherit;
+	cursor: grab;
+	appearance: none;
+	pointer-events: auto;
+	touch-action: none;
+	opacity: 0.82;
+	translate: var(--cookbook-drag-x) var(--cookbook-drag-y);
+	scale: 1;
+	transform-origin: center center;
 	transition:
-		width 420ms var(--th30-ease, var(--ease-standard)),
-		transform 420ms var(--th30-ease, var(--ease-standard));
+		opacity 420ms var(--th30-ease, var(--ease-standard)),
+		scale 420ms var(--th30-ease, var(--ease-standard)),
+		box-shadow 420ms var(--th30-ease, var(--ease-standard));
+}
+
+.cookbook-still[data-active] {
+	opacity: 1;
+	scale: 1.06;
+	box-shadow: 0 1.25rem 2.5rem rgb(0 0 0 / 0.18);
+}
+
+.cookbook-still[data-dragging] {
+	opacity: 1;
+	cursor: grabbing;
+	box-shadow: 0 1.5rem 3rem rgb(0 0 0 / 0.22);
 }
 
 @media (prefers-reduced-motion: reduce) {
 	.cookbook-still {
-		will-change: auto;
 		transition: none;
+	}
+
+	.cookbook-still[data-active]:not([data-dragging]) {
+		scale: 1;
 	}
 }
 
-.cookbook-still[data-rank="1"] {
-	width: var(--cookbook-still-near);
+.cookbook-still[data-place="0"] {
+	top: 16%;
+	left: 12%;
+	width: clamp(9.5rem, 22vw, 16rem);
 }
 
-.cookbook-still[data-rank="0"] {
-	width: var(--cookbook-still-center);
+.cookbook-still[data-place="1"] {
+	top: 36%;
+	left: 18%;
+	width: clamp(7rem, 14vw, 11rem);
+}
+
+.cookbook-still[data-place="2"] {
+	top: 18%;
+	right: 14%;
+	width: clamp(8rem, 16vw, 12.5rem);
+}
+
+.cookbook-still[data-place="3"] {
+	bottom: 16%;
+	right: 14%;
+	width: clamp(9rem, 18vw, 14rem);
+}
+
+.cookbook-still[data-place="4"] {
+	bottom: 18%;
+	left: 34%;
+	width: clamp(10rem, 20vw, 15rem);
 }
 
 .cookbook-still img {
 	display: block;
 	width: 100%;
 	height: 100%;
+	object-fit: cover;
+	pointer-events: none;
+}
+
+@media (max-width: 52rem) {
+	.cookbook-still[data-place="0"] {
+		top: 14%;
+		left: 6%;
+		width: clamp(7.5rem, 28vw, 11rem);
+	}
+
+	.cookbook-still[data-place="1"] {
+		top: 42%;
+		left: 8%;
+		width: clamp(5.5rem, 18vw, 8rem);
+	}
+
+	.cookbook-still[data-place="2"] {
+		top: 20%;
+		right: 6%;
+		width: clamp(6.5rem, 22vw, 9.5rem);
+	}
+
+	.cookbook-still[data-place="3"] {
+		bottom: 12%;
+		right: 6%;
+		width: clamp(7rem, 24vw, 10rem);
+	}
+
+	.cookbook-still[data-place="4"] {
+		bottom: 14%;
+		left: 22%;
+		width: clamp(8rem, 30vw, 12rem);
+	}
 }

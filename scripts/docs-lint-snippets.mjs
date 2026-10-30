@@ -26,7 +26,8 @@ const written = [];
 for (const article of index.articles) {
 	for (const block of authoredSamples(article)) {
 		if (block.frame || !/^\s*import\s/m.test(block.code)) continue;
-		const dest = path.join(outDir, `${article.slug}--${block.id}.ts`);
+		const safeSlug = article.slug.replace(/\//g, '--');
+		const dest = path.join(outDir, `${safeSlug}--${block.id}.ts`);
 		writeFileSync(dest, block.code.endsWith('\n') ? block.code : `${block.code}\n`);
 		written.push(path.relative(repoRoot, dest));
 	}

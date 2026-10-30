@@ -3,35 +3,23 @@
  * a single chrome icon. Headings stay bare.
  */
 
-import {
-	IconBook,
-	IconCode,
-	IconGitBranch,
-	IconListSearch,
-	IconPlayerPlay,
-} from '@tabler/icons-react';
+import { IconBook, IconCode, IconListSearch, IconPlayerPlay } from '@tabler/icons-react';
 import { FACET_ICON } from '@theoremjs/studio/ui/lib/facet-icons.ts';
-import { DOC_SECTIONS, type DocSection } from './schema';
 
-export const CHAPTER_ICON = {
+/** Keyed by top-level chapter; a sub-chapter takes its chapter's icon. */
+const CHAPTER_ICON: Partial<Record<string, typeof IconBook>> = {
 	start: IconBook,
-	modalities: IconGitBranch,
-	identity: FACET_ICON.identity,
-	models: FACET_ICON.models,
+	profiles: FACET_ICON.identity,
 	tools: FACET_ICON.tools,
-	inputs: FACET_ICON.inputs,
-	outputs: FACET_ICON.outputs,
-	'turn-behaviour': FACET_ICON.turnBehaviour,
 	guardrails: FACET_ICON.guardrails,
-	traces: FACET_ICON.observability,
-	statuses: FACET_ICON.labels,
-	runner: IconPlayerPlay,
-	interface: IconCode,
+	providers: FACET_ICON.models,
+	observability: FACET_ICON.observability,
+	web: IconCode,
+	studio: IconPlayerPlay,
 	glossary: IconListSearch,
-} satisfies Record<DocSection, typeof IconBook>;
+};
 
 export function chapterIcon(id: string) {
-	return (DOC_SECTIONS as readonly string[]).includes(id)
-		? CHAPTER_ICON[id as DocSection]
-		: undefined;
+	const group = id.replace(/^group:/, '').split('/')[0];
+	return CHAPTER_ICON[id] ?? CHAPTER_ICON[group] ?? IconBook;
 }

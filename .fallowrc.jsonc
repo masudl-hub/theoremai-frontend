@@ -61,7 +61,7 @@
 	"usedClassMembers": [
 		{
 			"extends": "DurableObject",
-			"members": ["alarm", "open", "enqueue", "consume", "close", "take"]
+			"members": ["alarm", "open", "enqueue", "consume", "stop", "stopped", "close", "take"]
 		}
 	],
 	"rules": {

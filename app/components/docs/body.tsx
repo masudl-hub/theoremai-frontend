@@ -2,29 +2,27 @@ import { Banner } from '@astryxdesign/core/Banner';
 import { Card } from '@astryxdesign/core/Card';
 import { Code } from '@astryxdesign/core/Code';
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
-import { Divider } from '@astryxdesign/core/Divider';
 import { HoverCard } from '@astryxdesign/core/HoverCard';
 import { HStack } from '@astryxdesign/core/HStack';
 import { Icon } from '@astryxdesign/core/Icon';
-import { IconButton } from '@astryxdesign/core/IconButton';
 import { Link as AstryxLink } from '@astryxdesign/core/Link';
 import { Markdown } from '@astryxdesign/core/Markdown';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { StackItem } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
-import { IconPlayerPlay } from '@tabler/icons-react';
+import { IconChevronDown, IconChevronRight } from '@tabler/icons-react';
 import { createContext, type ReactNode, useContext, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { symbolTerm } from '../../lib/docs/catalog-rows';
-import { CHAPTER_ICON } from '../../lib/docs/chapter-icons';
+import { chapterIcon } from '../../lib/docs/chapter-icons';
 import { CHAPTER_PLUGINS, markdownFences } from '../../lib/docs/chapter-markdown';
 import { commandChoices } from '../../lib/docs/commands';
 import { parseFigure } from '../../lib/docs/figure';
 import type { DocArticle, DocTerm } from '../../lib/docs/schema';
 import { CopyIconButton } from './copy-button';
+import { EnhancedCodeView } from './enhanced-code-view';
 import { DocsFigure } from './figure';
-import { ElevatedCodeBlock } from './elevated-code-block';
 import { FieldCard } from './glossary';
 
 /** In-app links go through the router; the rest are plain anchors. */
@@ -53,7 +51,7 @@ function TermCard({ term }: { term: DocTerm }) {
 				<Text>{symbolTerm(symbol).text}</Text>
 			)}
 			<HStack gap={1.5} vAlign="center">
-				<Icon icon={CHAPTER_ICON[term.slug]} size="sm" color="secondary" />
+				<Icon icon={chapterIcon(term.slug)} size="sm" color="secondary" />
 				<AstryxLink href={term.href}>{term.chapter}</AstryxLink>
 			</HStack>
 		</VStack>
@@ -62,18 +60,32 @@ function TermCard({ term }: { term: DocTerm }) {
 
 /**
  * A name from the code. One the catalog defines is set as code, and shows its card on hover and on
- * focus. Any other name reads as plain text.
+ * focus. CLI commands carry code styling and a copy button. Other backticked code renders with Code.
  */
+function isCliCommand(text: string): boolean {
+	return /^(npm|pnpm|yarn|bun|deno|npx)\s+/.test(text.trim());
+}
+
 export function InlineCode({ children }: { children: string }) {
 	const term = useContext(ChapterContext).terms[children];
-	if (!term) return children;
-	return (
-		<Code className="docs-code-wrap" size="inherit">
-			<HoverCard label={children} hasHoverIndication={false} content={<TermCard term={term} />}>
-				{children}
-			</HoverCard>
-		</Code>
-	);
+	if (term) {
+		return (
+			<Code className="docs-code-wrap" size="inherit">
+				<HoverCard label={children} hasHoverIndication={false} content={<TermCard term={term} />}>
+					{children}
+				</HoverCard>
+			</Code>
+		);
+	}
+	if (isCliCommand(children)) {
+		return (
+			<span className="docs-inline-command">
+				<Code size="inherit">{children}</Code>
+				<CopyIconButton label="Copy command" copiedLabel="Copied" text={children.trim()} />
+			</span>
+		);
+	}
+	return <Code size="inherit">{children}</Code>;
 }
 
 const PROSE_COMPONENTS = { link: ProseLink, inlineCode: InlineCode };
@@ -87,16 +99,42 @@ function InlineProse({ text }: { text: string }) {
 }
 
 function AgentPasteCard({ prompt }: { prompt: string }) {
+	const [expanded, setExpanded] = useState(false);
 	return (
-		<Card padding={3} className="docs-paste-card">
-			<VStack gap={2}>
-				<HStack justify="between" align="center">
-					<Text type="label" color="secondary">
-						Paste into your coding agent
-					</Text>
+		<Card padding={2} className="docs-paste-card">
+			<VStack gap={expanded ? 2 : 0}>
+				<HStack justify="between" vAlign="center">
+					<button
+						type="button"
+						onClick={() => {
+							setExpanded((open) => !open);
+						}}
+						style={{
+							background: 'none',
+							border: 'none',
+							padding: 0,
+							margin: 0,
+							cursor: 'pointer',
+							display: 'flex',
+							alignItems: 'center',
+							gap: '0.5rem',
+							color: 'inherit',
+							font: 'inherit',
+						}}
+						aria-expanded={expanded}
+					>
+						<Icon
+							icon={expanded ? IconChevronDown : IconChevronRight}
+							size="sm"
+							color="secondary"
+						/>
+						<Text type="label" color="secondary">
+							Paste into your coding agent
+						</Text>
+					</button>
 					<CopyIconButton label="Copy prompt" copiedLabel="Copied" text={prompt} />
 				</HStack>
-				<p className="docs-agent-prompt">{prompt}</p>
+				{expanded && <p className="docs-agent-prompt">{prompt}</p>}
 			</VStack>
 		</Card>
 	);
@@ -137,7 +175,7 @@ function Commands({ code }: { code: string }) {
 /** A `ts` or `text` fence. Seeded programs feature interactive view-switching and token overlays. */
 function CodeSample({ code, language }: { code: string; language: string | undefined }) {
 	const seed = useContext(ChapterContext).seeds.get(code);
-	return <ElevatedCodeBlock code={code} language={language} seed={seed} />;
+	return <EnhancedCodeView code={code} language={language} seed={seed} />;
 }
 
 /**

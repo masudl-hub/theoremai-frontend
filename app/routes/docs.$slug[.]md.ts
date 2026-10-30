@@ -1,17 +1,6 @@
-import { getDocIndex } from '../lib/docs/.server/load-index';
-import { pageMarkdown } from '../lib/docs/machine';
+import { markdownTwinOrNotFound } from '../lib/docs/.server/markdown-twin';
 import type { Route } from './+types/docs.$slug[.]md';
 
-export function loader({ params, request }: Route.LoaderArgs) {
-	const markdown = pageMarkdown(getDocIndex(), `/docs/${params.slug}`, new URL(request.url).origin);
-	if (!markdown) {
-		return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
-	}
-	return new Response(markdown, {
-		headers: {
-			'content-type': 'text/markdown; charset=utf-8',
-			'x-robots-tag': 'noindex',
-			link: `</docs/${params.slug}>; rel="canonical"`,
-		},
-	});
+export function loader({ request }: Route.LoaderArgs) {
+	return markdownTwinOrNotFound(new URL(request.url));
 }

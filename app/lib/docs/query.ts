@@ -6,7 +6,7 @@ import { create, insert, type Orama, search } from '@orama/orama';
 import { symbolTerm } from './catalog-rows';
 import { introText, sectionText } from './chapter-markdown';
 import { projectArticleText } from './project-text';
-import type { DocArticle, DocArticleCard, DocIndex, DocShell } from './schema';
+import type { DocArticle, DocArticleCard, DocIndex, DocShell, DocTreeNode } from './schema';
 import { formatWithLineNumbers, plainMarkdown } from './text-format';
 
 export function articleHref(article: Pick<DocArticle, 'canonicalPath'>, blockId?: string): string {
@@ -18,11 +18,18 @@ export function cardFor(shell: DocShell, slug: string): DocArticleCard | undefin
 	return shell.articles.find((article) => article.slug === slug);
 }
 
+function treeSlugs(nodes: readonly DocTreeNode[]): string[] {
+	return nodes.flatMap((node) => [
+		...(node.slug !== undefined ? [node.slug] : []),
+		...treeSlugs(node.children),
+	]);
+}
+
 export function chapterNeighbors(
 	shell: DocShell,
 	slug: string,
 ): { prev?: DocArticleCard; next?: DocArticleCard } {
-	const slugs = shell.tree.flatMap((node) => (node.slug === undefined ? [] : [node.slug]));
+	const slugs = treeSlugs(shell.tree);
 	const at = slugs.indexOf(slug);
 	if (at < 0) return {};
 	const prevSlug = at > 0 ? slugs[at - 1] : undefined;

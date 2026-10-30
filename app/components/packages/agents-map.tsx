@@ -251,6 +251,23 @@ function columnAt(line: HTMLElement, column: number): { x: number; y: number } {
 	return { x: 0, y: line.offsetHeight / 2 };
 }
 
+/** The run's reveal of the card; still without a run. */
+function useReveal(reveal: PackagesReveal | undefined): number {
+	return useSyncExternalStore(reveal?.subscribe ?? unwatched, reveal?.get ?? still, still);
+}
+
+/** The picture's workspace, and its first agent's profile folded, with the map's tokens in it. */
+function pictureProfile() {
+	const { workspace, agents } = pictureWorkspace();
+	const agent = agents[0] ?? '';
+	return {
+		workspace,
+		agents,
+		lines: foldedProfile(workspace, agent),
+		tokens: codeTokens(workspace, agent),
+	};
+}
+
 /**
  * The agents tile's card: the code architect's profile, the module the studio writes for it, folded
  * as an editor folds it, with the map's own tokens standing in for the names the map draws. As it
@@ -259,15 +276,13 @@ function columnAt(line: HTMLElement, column: number): { x: number; y: number } {
  * the card it stands in. Its tokens drag where they are dropped, and the map with them.
  */
 export default function AgentsMap({ reveal }: { reveal?: PackagesReveal }) {
-	const [{ workspace, agents }] = useState(pictureWorkspace);
-	const [lines] = useState(() => foldedProfile(workspace, agents[0] ?? ''));
-	const grow = useSyncExternalStore(reveal?.subscribe ?? unwatched, reveal?.get ?? still, still);
+	const [{ workspace, agents, lines, tokens }] = useState(pictureProfile);
+	const grow = useReveal(reveal);
 	const card = useRef<HTMLDivElement>(null);
 	const codeRef = useRef<HTMLDivElement>(null);
 	const [fit, setFit] = useState<{ width: number; height: number }>();
 	const [names, setNames] = useState<Name[]>([]);
 	const [closed, setClosed] = useState<ReadonlyMap<string, { x: number; y: number }>>();
-	const [tokens] = useState(() => codeTokens(workspace, agents[0] ?? ''));
 	const [tokenPlaces, setTokenPlaces] = useState<ReadonlyMap<string, { x: number; y: number }>>(
 		new Map(),
 	);

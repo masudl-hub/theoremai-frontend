@@ -28,9 +28,10 @@ function wantsMarkdown(request: Request): boolean {
 }
 
 async function respond(request: Request, env: SiteEnv, ctx: ExecutionContext): Promise<Response> {
-	if (wantsMarkdown(request)) {
+	const url = new URL(request.url);
+	if (wantsMarkdown(request) || url.pathname.endsWith('.md')) {
 		const { markdownTwin } = await import('../app/lib/docs/.server/markdown-twin');
-		const twin = markdownTwin(new URL(request.url));
+		const twin = markdownTwin(url);
 		if (twin) return twin;
 	}
 	// The WebSocket upgrade answers with a 101 + socket pair, which only the

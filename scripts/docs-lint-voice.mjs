@@ -84,7 +84,8 @@ function hitsIn(text, banned) {
 }
 
 function articleFiles() {
-	return readdirSync(articlesDir)
+	return readdirSync(articlesDir, { recursive: true })
+		.map(String)
 		.filter((name) => name.endsWith('.md'))
 		.map((name) => path.join(articlesDir, name));
 }

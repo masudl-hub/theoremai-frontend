@@ -11,6 +11,7 @@ import type {
 	Profile,
 	SpeechProfileDefinition,
 	TextProfileDefinition,
+	TurnEvent,
 	TurnHistoryMessage,
 	TurnRequest,
 } from '@theoremjs/agents';
@@ -44,6 +45,38 @@ export declare const gated: {
 	name: string;
 	arguments: Record<string, unknown>;
 	snapshot: NonNullable<Parameters<typeof invokeTool>[0]['snapshot']>;
+};
+export declare const base64JpegBytes: string;
+export declare const base64PcmChunk: string;
+export declare const partialReplyText: string;
+export declare const sessionId: string;
+export declare const currentHistory: TurnHistoryMessage[];
+export declare const previousMessages: TurnHistoryMessage[];
+export declare const previousDoneEvent: { stop: string };
+export declare const doneEvent: Extract<TurnEvent, { type: 'done' }>;
+export declare function saveImage(data: string, path: string): void;
+export declare function playAudio(mimeType: string, data: string): void;
+export declare function playSpeakerAudio(chunk: string): void;
+export declare function saveSessionHistory(id: string, history: unknown): Promise<void>;
+export declare function fetchShipment(
+	id: string,
+	opts?: { signal?: AbortSignal },
+): Promise<{ status: 'hold' | 'cleared' | 'in_transit'; holdReason?: string }>;
+export declare const db: { query(q: string): Promise<{ rows: unknown[] }> };
+export declare function computeTrajectory(routeId: string, opts?: { signal?: AbortSignal }): Promise<unknown>;
+export declare const remoteClient: { fetchBlob(): Promise<unknown> };
+export declare const userSessionId: string;
+export declare const currentUserId: string;
+export declare const userSecretInput: string;
+export declare const userCredentials: import('@theoremjs/agents/kernel').ToolCredentialSource;
+export declare const callbackParams: URLSearchParams;
+export declare const ctx: { stage: string; tool: string };
+export declare const kmsClient: {
+	fetchSecret(slot: string, opts?: { signal?: AbortSignal }): Promise<import('@theoremjs/agents').KeyCredential>;
+};
+export declare const secureVault: {
+	load(userId: string, slot: string): Promise<import('@theoremjs/agents/kernel').ToolCredential | undefined>;
+	save(userId: string, slot: string, cred: import('@theoremjs/agents/kernel').ToolCredential): Promise<void>;
 };
 
 /** A valid profile of each type: `profile:<type>` samples spread it, then add their own members. */

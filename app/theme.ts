@@ -13,11 +13,12 @@ export const siteTheme = defineTheme({
 	// Restated so the built module carries the registry; a build keeps only the icons its source imports.
 	icons: tablerIcons,
 	components: {
-		// A docs figure's backdrop: the still its `figure` fence names, under the cards drawn on it.
+		// A docs figure's backdrop: the still its `figure` fence names, shaded like the package tiles.
 		card: {
 			'variant:still': {
-				backgroundImage: 'var(--figure-still)',
-				backgroundPosition: 'var(--figure-position)',
+				backgroundImage:
+					'linear-gradient(to top, rgb(0 0 0 / 0.82), rgb(0 0 0 / 0.62) 30%, rgb(0 0 0 / 0.2) 58%, rgb(0 0 0 / 0)), var(--figure-still)',
+				backgroundPosition: 'center, var(--figure-position)',
 				backgroundRepeat: 'no-repeat',
 				backgroundSize: 'cover',
 			},

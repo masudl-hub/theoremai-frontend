@@ -37,6 +37,12 @@ const paths = [...catalog.fields, ...catalog.extra].map((p) => p.split('.'));
 // The tool-spec fields share the catalog; `input`, `output` and `profile` there are not profile paths.
 const heads = new Set([...catalog.fields.map((p) => p.split('.')[0]), 'mapping', 'auth', 'studio', 'labels']);
 const labels = new Set(catalog.labels);
+// A span that ends in a source-file extension (`studio.setup.ts`) names a file, not a field.
+const FILE_EXTENSION = /\.(?:[cm]?[jt]sx?|json|md|ya?ml)$/;
+// A catalog path that ends in one of those words would be skipped too, so none may.
+for (const p of [...catalog.fields, ...catalog.extra, ...catalog.labels]) {
+	if (FILE_EXTENSION.test(p)) throw new Error(`docs-check-facts: catalog key \`${p}\` looks like a file name`);
+}
 
 /** A segment pattern matches when each segment is equal or either side is a wildcard. */
 const matches = (claim) =>
@@ -52,6 +58,7 @@ for (const article of index.articles) {
 	for (const code of new Set(markdownInlineCode(article.body))) {
 		const span = code.trim().replace(/\(\)$/, '').replace(/<[^>]*>/g, '*');
 		if (!/^[A-Za-z][\w]*(\.[\w*-]+)+$/.test(span)) continue;
+		if (FILE_EXTENSION.test(span)) continue;
 		const claim = span.split('.');
 		if (claim[0] === 'labels') {
 			read += 1;
@@ -85,11 +92,11 @@ const sameSet = (what, docSet, kernelSet) => {
 	if (extra.length > 0) problems.push(`${what}: the chapter has ${extra.join(', ')}, the kernel does not`);
 };
 
-// models#choose-a-protocol-for-the-profile-type: the protocol / type pairs `registerProfile` accepts from a
-// first-party provider, found by trying each one. The section's second table is the providers.
+// providers/protocols#choose-a-protocol-for-the-profile-type: the protocol / type pairs `registerProfile` accepts
+// from a first-party provider, found by trying each one. The section's second table is the providers.
 {
 	const docPairs = new Set();
-	for (const [protocol, types] of tableCells('models', 'choose-a-protocol-for-the-profile-type', 2)) {
+	for (const [protocol, types] of tableCells('providers/protocols', 'choose-a-protocol-for-the-profile-type', 2)) {
 		for (const type of types.code) docPairs.add(`${protocol.code[0]}/${type}`);
 	}
 	const kernelPairs = new Set(
@@ -100,7 +107,7 @@ const sameSet = (what, docSet, kernelSet) => {
 			}),
 		),
 	);
-	sameSet('models#choose-a-protocol-for-the-profile-type', docPairs, kernelPairs);
+	sameSet('providers/protocols#choose-a-protocol-for-the-profile-type', docPairs, kernelPairs);
 }
 
 // guardrails#which-profiles-take-which-guardrail: each cell against the `profileTypes` of the guardrail's field.
@@ -172,14 +179,17 @@ const sameSet = (what, docSet, kernelSet) => {
 	sameSet('tools#fix-a-failed-call', docCodes, kernelCodes);
 }
 
-// runner: the `DecisionError` codes the chapter lists are the keys the kernel maps to error kinds.
+// profiles/decision#handle-a-decision-error: the `DecisionError` codes the section lists are the keys the kernel maps to error kinds.
 {
 	const source = readFileSync(path.join(theoremai.root, 'src/kernel/engine/decision.ts'), 'utf8');
 	const block = /DECISION_ERROR_KINDS = \{([^}]*)\}/.exec(source)?.[1] ?? '';
 	const kernelCodes = new Set([...block.matchAll(/^\s*(\w+):/gm)].map((m) => m[1]));
-	const runner = index.articles.find((a) => a.slug === 'runner');
-	const listed = runner?.body.match(/Its `code` is one of ([^.]*)\./)?.[1] ?? '';
-	sameSet('runner/decision-error-codes', new Set(markdownInlineCode(listed)), kernelCodes);
+	const where = 'profiles/decision#handle-a-decision-error';
+	const article = index.articles.find((a) => a.slug === 'profiles/decision');
+	const section = article?.sections.find((entry) => entry.id === 'handle-a-decision-error');
+	const listed = section ? /Its `code` is one of ([^.]*)\./.exec(sectionText(article, section))?.[1] : undefined;
+	if (listed === undefined) problems.push(`${where}: need a section with the sentence "Its \`code\` is one of …."`);
+	else sameSet(where, new Set(markdownInlineCode(listed)), kernelCodes);
 }
 
 // Every link to a chapter must reach one that exists, and its `#` a section or glossary row there.

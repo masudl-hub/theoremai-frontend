@@ -16,7 +16,7 @@ export default [
 			? []
 			: [route('studio/project', 'routes/studio.project.tsx')]),
 		route('docs', 'routes/docs.tsx'),
-		route('docs/:slug', 'routes/docs.$slug.tsx'),
+		route('docs/*', 'routes/docs.$slug.tsx'),
 	]),
 	route('docs/:slug.md', 'routes/docs.$slug[.]md.ts'),
 	route('docs/index.json', 'routes/docs.index[.]json.ts'),

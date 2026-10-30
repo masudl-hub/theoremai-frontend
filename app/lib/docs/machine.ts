@@ -47,7 +47,7 @@ export function pageMarkdown(
 	if (pathname === '/') return homeMarkdown(origin);
 	if (pathname === '/studio') return studioMarkdown(index, origin);
 	if (pathname === '/docs') return llmsTxt(index, origin);
-	const chapter = /^\/docs\/([^/]+)$/.exec(pathname);
+	const chapter = /^\/docs\/(.+)$/.exec(pathname);
 	return chapter ? articleMarkdown(index, chapter[1], origin) : undefined;
 }
 

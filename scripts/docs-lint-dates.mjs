@@ -36,7 +36,7 @@ function localDay() {
 const base = baseRef();
 const today = localDay();
 const stale = [];
-for (const name of readdirSync(path.join(repoRoot, articlesRel))) {
+for (const name of readdirSync(path.join(repoRoot, articlesRel), { recursive: true })) {
 	if (!name.endsWith('.md')) continue;
 	const rel = `${articlesRel}/${name}`;
 	const current = readFileSync(path.join(repoRoot, rel), 'utf8');

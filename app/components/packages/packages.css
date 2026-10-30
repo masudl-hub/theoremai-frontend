@@ -84,23 +84,28 @@
 	object-fit: cover;
 }
 
-/*
- * The interface tile's chat, taller and a little wider than the tile, set right of its middle: the
- * tile crops its top and right, and the shade sits over its foot.
- */
-.packages-chat.packages-chat {
+/* The live chat and editor a tile crops: one grid cell that fills, under the shade, in the card's corners. */
+.packages-chat.packages-chat,
+.packages-editor.packages-editor {
 	position: absolute;
 	z-index: -2;
-	top: -12%;
-	left: 14%;
-	width: 30rem;
-	height: 80%;
 	display: grid;
 	grid-template-rows: minmax(0, 1fr);
 	grid-template-columns: minmax(0, 1fr);
 	border-radius: var(--radius-container);
 	overflow: hidden;
 	pointer-events: none;
+}
+
+/*
+ * The interface tile's chat, taller and a little wider than the tile, set right of its middle: the
+ * tile crops its top and right, and the shade sits over its foot.
+ */
+.packages-chat.packages-chat {
+	top: -12%;
+	left: 14%;
+	width: 30rem;
+	height: 80%;
 }
 
 /*
@@ -128,18 +133,10 @@
  * tile cuts the start of each row's title whatever the tile's width; the shade sits over its foot.
  */
 .packages-editor.packages-editor {
-	position: absolute;
-	z-index: -2;
 	top: 7%;
 	left: -1.75rem;
 	width: 24rem;
 	height: 84%;
-	display: grid;
-	grid-template-rows: minmax(0, 1fr);
-	grid-template-columns: minmax(0, 1fr);
-	border-radius: var(--radius-container);
-	overflow: hidden;
-	pointer-events: none;
 }
 
 /* why: Words over any picture. The shade is deep under the words and gone by the top third, so the still stays bright above them.
@@ -151,13 +148,7 @@
 	inset: 0;
 	/* why: The shade lies over the Agents map, which drags under it. */
 	pointer-events: none;
-	background: linear-gradient(
-		to top,
-		rgb(0 0 0 / 0.82),
-		rgb(0 0 0 / 0.62) 30%,
-		rgb(0 0 0 / 0.2) 58%,
-		rgb(0 0 0 / 0)
-	);
+	background: var(--still-shade);
 }
 
 /* invariant: The words take the theme's dark tokens on every page theme, since they are always over the shade. */
@@ -170,11 +161,13 @@
 	color: var(--color-text-primary);
 }
 
+/* fallow-ignore-next-line css-dead-surface -- Astryx renders this class, not our markup. */
 .astryx-heading.packages-name {
 	color: inherit;
 }
 
 /* why: Three lines each, so the three names sit on one line across the row. */
+/* fallow-ignore-next-line css-dead-surface -- Astryx renders this class, not our markup. */
 .astryx-text.packages-description {
 	min-height: calc(3 * 1lh);
 }
@@ -201,7 +194,7 @@
 	opacity: calc(1 - 2 * var(--packages-pull, 0));
 }
 
-.packages-run[data-open] .packages-tile:first-child .packages-words {
+.packages-words[data-under-map] {
 	visibility: hidden;
 }
 
@@ -281,6 +274,7 @@
 	pointer-events: none;
 }
 
+/* fallow-ignore-next-line css-dead-surface -- Astryx renders this class, not our markup. */
 .packages-code .astryx-codeblock,
 .packages-code pre {
 	background: none;
@@ -292,6 +286,10 @@
 	line-height: 22px;
 }
 
-.packages-map:not([data-placed]) .studio-tree-map {
+.packages-map .studio-tree-map {
 	visibility: hidden;
+}
+
+.packages-map[data-placed] .studio-tree-map {
+	visibility: visible;
 }

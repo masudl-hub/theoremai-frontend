@@ -1,5 +1,4 @@
 import { AspectRatio } from '@astryxdesign/core/AspectRatio';
-import { ClickableCard } from '@astryxdesign/core/ClickableCard';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
 import { IconButton } from '@astryxdesign/core/IconButton';
@@ -12,7 +11,15 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { IconPlayerPlay } from '@tabler/icons-react';
 import type { CookbookIncludeTag } from '@theoremjs/studio';
 import { IconMcp } from '@theoremjs/studio/ui/mcp-icon.tsx';
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { drags, follow } from '@theoremjs/studio/ui/pan.ts';
+import {
+	type CSSProperties,
+	type ReactNode,
+	type PointerEvent as ReactPointerEvent,
+	useEffect,
+	useRef,
+	useState,
+} from 'react';
 import {
 	COOKBOOK_RECIPES,
 	type CookbookRecipe,
@@ -20,58 +27,7 @@ import {
 } from '../../lib/home-content';
 import { stillRenditions } from '../../lib/stills';
 import { NewTabLink } from '../links';
-import { Statement } from '../statement';
 import './examples.css';
-
-/**
- * FLIP the stills when the active recipe changes so they ease into new slots
- * instead of snapping. Position only — no fades. Timing matches the shell
- * (`420ms` / `--th30-ease`).
- */
-function useFanFlip(activeId: string) {
-	const fanRef = useRef<HTMLDivElement>(null);
-	const prior = useRef<Map<string, DOMRect>>(new Map());
-	useLayoutEffect(() => {
-		// Re-run when the active recipe changes; the DOM order is already committed.
-		void activeId;
-		const fan = fanRef.current;
-		if (!fan) return;
-		const nodes = [...fan.querySelectorAll<HTMLElement>('[data-recipe-id]')];
-		const next = new Map<string, DOMRect>();
-		const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-		for (const node of nodes) {
-			const id = node.dataset.recipeId;
-			if (!id) continue;
-			const last = node.getBoundingClientRect();
-			next.set(id, last);
-			const first = prior.current.get(id);
-			if (reduced || !first || prior.current.size === 0) continue;
-			const dx = first.left - last.left;
-			const dy = first.top - last.top;
-			if (dx === 0 && dy === 0) continue;
-			node.style.transition = 'none';
-			node.style.transform = `translate(${String(dx)}px, ${String(dy)}px)`;
-		}
-		prior.current = next;
-		if (reduced) return;
-		// Double rAF so the invert paint lands before the eased play.
-		let play2 = 0;
-		const play1 = window.requestAnimationFrame(() => {
-			play2 = window.requestAnimationFrame(() => {
-				for (const node of nodes) {
-					if (!node.style.transform) continue;
-					node.style.transition = '';
-					node.style.transform = '';
-				}
-			});
-		});
-		return () => {
-			window.cancelAnimationFrame(play1);
-			window.cancelAnimationFrame(play2);
-		};
-	}, [activeId]);
-	return fanRef;
-}
 
 const INCLUDE_LABEL: Readonly<Record<CookbookIncludeTag, string>> = {
 	text: 'text',
@@ -88,8 +44,27 @@ const INCLUDE_LABEL: Readonly<Record<CookbookIncludeTag, string>> = {
 	'post-tool': 'post-tool',
 };
 
-/** Portrait stills; width (and thus height) comes from the fan rank. */
-const STILL_RATIO = 2 / 3;
+/**
+ * Fixed scatter slots: mixed ratios and sizes among the centred copy.
+ * Order matches `COOKBOOK_RECIPES` — place is stable; drag only offsets.
+ */
+const STILL_PLACES = [
+	{ ratio: 5 / 4, place: 0 },
+	{ ratio: 2 / 3, place: 1 },
+	{ ratio: 1, place: 2 },
+	{ ratio: 4 / 5, place: 3 },
+	{ ratio: 3 / 2, place: 4 },
+] as const;
+
+/** Same threshold as the studio map: a short press is not a drag. */
+const DRAG_FROM = 4;
+
+/** Quiet beat between auto-rotations while nothing holds the field. */
+const ROTATE_MS = 5200;
+
+type DragOffset = { x: number; y: number };
+
+const ZERO_OFFSET: DragOffset = { x: 0, y: 0 };
 
 function buildLabel(kind: CookbookRecipe['kind']): string {
 	return kind === 'system' ? 'multi-agent' : 'agent';
@@ -99,29 +74,9 @@ function tagLabels(recipe: CookbookRecipe): readonly string[] {
 	return [buildLabel(recipe.kind), ...recipe.tags.includes.map((tag) => INCLUDE_LABEL[tag])];
 }
 
-/**
- * Rotate so the active recipe sits in the centre slot — Drops peak in the middle,
- * sides step down by distance from centre.
- */
-function fanSlots(
-	recipes: readonly CookbookRecipe[],
-	activeId: string,
-): readonly { recipe: CookbookRecipe; rank: number }[] {
-	const n = recipes.length;
-	if (n === 0) return [];
-	const activeAt = Math.max(
-		0,
-		recipes.findIndex((recipe) => recipe.id === activeId),
-	);
-	const centre = Math.floor(n / 2);
-	const shift = (((activeAt - centre) % n) + n) % n;
-	const out: { recipe: CookbookRecipe; rank: number }[] = [];
-	for (let slot = 0; slot < n; slot += 1) {
-		const recipe = recipes[(slot + shift) % n];
-		if (!recipe) continue;
-		out.push({ recipe, rank: Math.abs(slot - centre) });
-	}
-	return out;
+/** Blend root around astryx chrome so difference sees the stills. */
+function Blend({ children }: { children: ReactNode }) {
+	return <span className="cookbook-blend">{children}</span>;
 }
 
 function RecipeTags({ recipe }: { recipe: CookbookRecipe }) {
@@ -137,14 +92,18 @@ function RecipeTags({ recipe }: { recipe: CookbookRecipe }) {
 					return label ? [label] : [];
 				});
 				return (
-					<Tooltip content={more.join(' · ')} placement="above">
-						<Token label={`+${String(overflow.length)}`} size="sm" />
-					</Tooltip>
+					<Blend>
+						<Tooltip content={more.join(' · ')} placement="above">
+							<Token label={`+${String(overflow.length)}`} size="sm" />
+						</Tooltip>
+					</Blend>
 				);
 			}}
 		>
 			{labels.map((label) => (
-				<Token key={label} label={label} size="sm" />
+				<Blend key={label}>
+					<Token label={label} size="sm" />
+				</Blend>
 			))}
 		</OverflowList>
 	);
@@ -157,121 +116,230 @@ function RecipeActions({ recipe }: { recipe: CookbookRecipe }) {
 		recipe.action.kind === 'hosted' ? 'Open Bonsai' : 'Open this recipe in the studio';
 	return (
 		<HStack gap={1} align="center">
-			<Tooltip content={openHint} placement="above">
-				<IconButton
-					label={openLabel}
-					icon={<IconPlayerPlay />}
-					variant="ghost"
-					size="sm"
-					href={recipe.action.href}
-					{...(recipe.action.kind === 'hosted' ? { as: NewTabLink } : {})}
-				/>
-			</Tooltip>
-			{recipe.action.kind === 'studio' ? (
-				<Tooltip content="Copy MCP reference for your coding agent" placement="above">
+			<Blend>
+				<Tooltip content={openHint} placement="above">
 					<IconButton
-						label="Copy MCP reference"
-						icon={<IconMcp />}
+						label={openLabel}
+						icon={<IconPlayerPlay />}
 						variant="ghost"
 						size="sm"
-						onClick={() => {
-							const text = cookbookMcpReference(recipe, window.location.origin);
-							void navigator.clipboard.writeText(text).then(
-								() => {
-									toast({ body: 'MCP reference copied.' });
-								},
-								() => {
-									toast({ body: "Couldn't reach the clipboard.", type: 'error' });
-								},
-							);
-						}}
+						href={recipe.action.href}
+						{...(recipe.action.kind === 'hosted' ? { as: NewTabLink } : {})}
 					/>
 				</Tooltip>
+			</Blend>
+			{recipe.action.kind === 'studio' ? (
+				<Blend>
+					<Tooltip content="Copy MCP reference for your coding agent" placement="above">
+						<IconButton
+							label="Copy MCP reference"
+							icon={<IconMcp />}
+							variant="ghost"
+							size="sm"
+							onClick={() => {
+								const text = cookbookMcpReference(recipe, window.location.origin);
+								void navigator.clipboard.writeText(text).then(
+									() => {
+										toast({ body: 'MCP reference copied.' });
+									},
+									() => {
+										toast({ body: "Couldn't reach the clipboard.", type: 'error' });
+									},
+								);
+							}}
+						/>
+					</Tooltip>
+				</Blend>
 			) : null}
 		</HStack>
 	);
 }
 
+/**
+ * Drag via the studio map's `follow` / `drags` from `pan.ts` — the map's
+ * `useDrag` itself is tied to node layout and is not reusable here.
+ */
 function RecipeStill({
 	recipe,
-	rank,
-	onSelect,
+	place,
+	ratio,
+	active,
+	offset,
+	dragging,
+	onOffsetChange,
+	onActivate,
+	onHover,
+	onDragging,
 }: {
 	recipe: CookbookRecipe;
-	rank: number;
-	onSelect: () => void;
+	place: number;
+	ratio: number;
+	active: boolean;
+	offset: DragOffset;
+	dragging: boolean;
+	onOffsetChange: (offset: DragOffset) => void;
+	onActivate: () => void;
+	onHover: (hovered: boolean) => void;
+	onDragging: (dragging: boolean) => void;
 }) {
+	const origin = useRef(offset);
+	origin.current = offset;
+
+	const onPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+		if (!drags(event)) return;
+		let moved = false;
+		const from = origin.current;
+		follow(
+			event,
+			(x, y) => {
+				if (!moved && Math.hypot(x, y) < DRAG_FROM) return;
+				if (!moved) {
+					moved = true;
+					onDragging(true);
+					onActivate();
+				}
+				onOffsetChange({ x: from.x + x, y: from.y + y });
+			},
+			() => {
+				if (moved) onDragging(false);
+				else onActivate();
+			},
+		);
+	};
+
+	const style = {
+		'--cookbook-drag-x': `${String(offset.x)}px`,
+		'--cookbook-drag-y': `${String(offset.y)}px`,
+	} as CSSProperties;
+
 	return (
-		<div className="cookbook-still" data-rank={rank} data-recipe-id={recipe.id} role="listitem">
-			<ClickableCard
-				label={recipe.label}
-				onClick={onSelect}
-				padding={0}
-				elevation="none"
-				width="100%"
-			>
-				<AspectRatio ratio={STILL_RATIO} fit="cover">
-					<img src={stillRenditions(recipe.image).tile} alt={recipe.imageAlt} decoding="async" />
-				</AspectRatio>
-			</ClickableCard>
-		</div>
+		<button
+			type="button"
+			className="cookbook-still"
+			data-place={place}
+			data-active={active ? '' : undefined}
+			data-dragging={dragging ? '' : undefined}
+			aria-label={recipe.label}
+			aria-pressed={active}
+			style={style}
+			onPointerDown={onPointerDown}
+			onPointerEnter={() => {
+				onActivate();
+				onHover(true);
+			}}
+			onPointerLeave={() => {
+				onHover(false);
+			}}
+		>
+			<AspectRatio ratio={ratio} fit="cover">
+				<img
+					src={stillRenditions(recipe.image).tile}
+					alt=""
+					decoding="async"
+					draggable={false}
+					style={{ objectPosition: recipe.imagePosition }}
+				/>
+			</AspectRatio>
+		</button>
 	);
 }
 
+/** Advance through recipes on a timer; hover or drag holds the beat. */
+function useCookbookRotation(paused: boolean) {
+	const [activeId, setActiveId] = useState(COOKBOOK_RECIPES[0]?.id ?? 'research');
+	useEffect(() => {
+		if (paused || COOKBOOK_RECIPES.length < 2) return;
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		const tick = window.setInterval(() => {
+			setActiveId((current) => {
+				const at = COOKBOOK_RECIPES.findIndex((recipe) => recipe.id === current);
+				const next = COOKBOOK_RECIPES.at((at + 1) % COOKBOOK_RECIPES.length);
+				return next?.id ?? current;
+			});
+		}, ROTATE_MS);
+		return () => {
+			window.clearInterval(tick);
+		};
+	}, [paused]);
+	return [activeId, setActiveId] as const;
+}
+
 /**
- * Cookbook screen: centred verb and tags on the shell, Drops-style still fan
- * clipped at the left, right and bottom — active recipe peaks in the centre.
+ * Cookbook screen: centred verb, tags and description; stills at mixed
+ * ratios among the copy, dragged with the studio map's pan helpers.
  */
 export function ExamplesBoard() {
-	const [activeId, setActiveId] = useState(COOKBOOK_RECIPES[0]?.id ?? 'research');
-	const active = COOKBOOK_RECIPES.find((recipe) => recipe.id === activeId) ?? COOKBOOK_RECIPES[0];
-	const slots = useMemo(() => fanSlots(COOKBOOK_RECIPES, activeId), [activeId]);
-	const fanRef = useFanFlip(activeId);
+	const [hovering, setHovering] = useState(false);
+	const [draggingId, setDraggingId] = useState<string>();
+	const [offsets, setOffsets] = useState<Readonly<Record<string, DragOffset>>>({});
+	const [activeId, setActiveId] = useCookbookRotation(hovering || draggingId !== undefined);
+	const active =
+		COOKBOOK_RECIPES.find((recipe) => recipe.id === activeId) ?? COOKBOOK_RECIPES.at(0);
 	if (!active) return null;
 	return (
 		<div className="cookbook-frame">
-			<div className="cookbook-mark">
-				<VStack gap={1} align="end">
-					<Heading level={1} justify="end">
-						cookbook
-					</Heading>
-					<Text color="secondary" justify="end" display="block">
-						made with theorem
-					</Text>
-					<Text color="secondary" justify="end" display="block">
-						referenceable as you build
-					</Text>
-				</VStack>
-			</div>
-			<div className="cookbook-hero">
-				<VStack gap={4} align="center" width="100%">
-					<Heading
-						level={2}
-						type="display-1"
-						color="secondary"
-						justify="center"
-						className="cookbook-verb"
-					>
-						{active.verb}
-					</Heading>
-					<HStack gap={3} align="center" justify="center" wrap="wrap">
-						<RecipeTags recipe={active} />
-						<RecipeActions recipe={active} />
-					</HStack>
-					<Statement className="cookbook-description">{active.description}</Statement>
-				</VStack>
-			</div>
-			<div ref={fanRef} className="cookbook-fan" role="list" aria-label="Cookbook recipes">
-				{slots.map(({ recipe, rank }) => (
-					<RecipeStill
-						key={recipe.id}
-						recipe={recipe}
-						rank={rank}
-						onSelect={() => {
-							setActiveId(recipe.id);
-						}}
-					/>
-				))}
+			<div className="cookbook-stage" aria-label="Cookbook recipes">
+				{[...COOKBOOK_RECIPES]
+					.map((recipe, index) => ({
+						recipe,
+						index,
+						slot: STILL_PLACES[index] ?? STILL_PLACES[0],
+					}))
+					.sort((a, b) => {
+						if (a.recipe.id === activeId) return 1;
+						if (b.recipe.id === activeId) return -1;
+						return a.index - b.index;
+					})
+					.map(({ recipe, slot }) => (
+						<RecipeStill
+							key={recipe.id}
+							recipe={recipe}
+							place={slot.place}
+							ratio={slot.ratio}
+							active={recipe.id === activeId}
+							offset={offsets[recipe.id] ?? ZERO_OFFSET}
+							dragging={draggingId === recipe.id}
+							onOffsetChange={(next) => {
+								setOffsets((prior) => ({ ...prior, [recipe.id]: next }));
+							}}
+							onActivate={() => {
+								setActiveId(recipe.id);
+							}}
+							onHover={setHovering}
+							onDragging={(next) => {
+								setDraggingId(next ? recipe.id : undefined);
+							}}
+						/>
+					))}
+				<div className="cookbook-mark">
+					<VStack gap={1} align="end">
+						<Blend>
+							<Heading level={1} justify="end">
+								cookbook
+							</Heading>
+						</Blend>
+						<Blend>
+							<Text justify="end" display="block">
+								made with theorem
+							</Text>
+						</Blend>
+						<Blend>
+							<Text justify="end" display="block">
+								referenceable as you build
+							</Text>
+						</Blend>
+					</VStack>
+				</div>
+				<div className="cookbook-hero">
+					<div className="cookbook-copy">
+						<h2 className="cookbook-blend cookbook-verb">{active.verb}</h2>
+						<div className="cookbook-controls">
+							<RecipeTags recipe={active} />
+							<RecipeActions recipe={active} />
+						</div>
+						<p className="cookbook-blend cookbook-description">{active.description}</p>
+					</div>
+				</div>
 			</div>
 		</div>
 	);

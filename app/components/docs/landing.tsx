@@ -46,7 +46,7 @@ const GAP_MS = 350;
 /** The reads the landing opens with, each named for what the visitor came to do. */
 const FEATURED = [
 	{ slug: 'start', title: 'Get started' },
-	{ slug: 'modalities', title: 'Define your agent' },
+	{ slug: 'profiles', title: 'Define your agent' },
 	{ slug: 'tools', title: 'Add tools' },
 	{ slug: 'guardrails', title: 'Set guardrails' },
 ] as const;
@@ -55,7 +55,6 @@ const REPO = 'https://github.com/masudl-hub/theoremai';
 
 const RESOURCES = [
 	{ label: 'Open an issue', href: `${REPO}/issues/new`, icon: IconBrandGithub },
-	{ label: 'Contribute', href: `${REPO}/blob/main/CONTRIBUTING.md`, icon: IconBrandGithub },
 	{
 		label: 'Ask DeepWiki',
 		href: 'https://deepwiki.com/masudl-hub/theoremai',
@@ -68,7 +67,8 @@ type LandingTile = {
 	href: string;
 	title: string;
 	excerpt: string;
-	showMeta: boolean;
+	/** A featured read on the empty landing: its title sits on the still, with no summary. */
+	featured: boolean;
 };
 
 type TilePhase = 'in' | 'out' | 'enter';
@@ -197,7 +197,7 @@ function tilesFromShell(
 							href: articleHref(article),
 							title,
 							excerpt: article.summary,
-							showMeta: false,
+							featured: true,
 						},
 					];
 		});
@@ -212,7 +212,7 @@ function tilesFromShell(
 						href: hit.href,
 						title: hit.title,
 						excerpt: hit.excerpt,
-						showMeta: true,
+						featured: false,
 					},
 				];
 	});
@@ -226,47 +226,80 @@ function tileSrcSet(src: string): string {
 	return `${tile} ${String(TILE_WIDTH)}w, ${full} 1536w`;
 }
 
-/** The result cards for one layout: a carousel row, or the narrow-screen column. */
-function landingTileCards(tiles: LandingTile[], phase: TilePhase) {
-	return tiles.map(({ article, href, title, excerpt, showMeta }) => (
-		<ClickableCard
-			key={href}
-			label={title}
-			href={href}
-			variant="transparent"
-			padding={0}
-			width="100%"
-			className="docs-landing-tile"
-			data-phase={phase}
+/** A tile's still, cropped to 4:3. */
+function TileStill({ article, shaded }: { article: DocArticleCard; shaded: boolean }) {
+	return (
+		<AspectRatio
+			className={
+				shaded ? 'docs-landing-tile-still docs-landing-tile-shaded' : 'docs-landing-tile-still'
+			}
+			ratio={4 / 3}
+			fit="cover"
 		>
-			<VStack gap={3}>
-				<Card padding={0}>
-					<AspectRatio className="docs-landing-tile-still" ratio={4 / 3} fit="cover">
-						<img
-							src={stillRenditions(article.cover.src).full}
-							srcSet={tileSrcSet(article.cover.src)}
-							sizes={TILE_SIZES}
-							alt={article.cover.alt}
-							decoding="async"
-							data-docs-cover={article.slug}
-						/>
-					</AspectRatio>
-				</Card>
-				<VStack gap={1}>
+			<img
+				src={stillRenditions(article.cover.src).full}
+				srcSet={tileSrcSet(article.cover.src)}
+				sizes={TILE_SIZES}
+				alt={article.cover.alt}
+				decoding="async"
+				data-docs-cover={article.slug}
+			/>
+		</AspectRatio>
+	);
+}
+
+/**
+ * The result cards for one layout: a carousel row, or the narrow-screen column. A featured read
+ * is its still, named on it, so the card's hover lands on the picture alone.
+ */
+function landingTileCards(tiles: LandingTile[], phase: TilePhase) {
+	return tiles.map(({ article, href, title, excerpt, featured }) =>
+		featured ? (
+			<ClickableCard
+				key={href}
+				label={title}
+				href={href}
+				variant="transparent"
+				padding={0}
+				width="100%"
+				className="docs-landing-tile"
+				data-phase={phase}
+				data-featured=""
+			>
+				<TileStill article={article} shaded={featured} />
+				<div className="docs-landing-tile-name">
 					<StillTitle maxLines={1}>{title}</StillTitle>
-					{showMeta ? (
+				</div>
+			</ClickableCard>
+		) : (
+			<ClickableCard
+				key={href}
+				label={title}
+				href={href}
+				variant="transparent"
+				padding={0}
+				width="100%"
+				className="docs-landing-tile"
+				data-phase={phase}
+			>
+				<VStack gap={3}>
+					<Card padding={0}>
+						<TileStill article={article} shaded={featured} />
+					</Card>
+					<VStack gap={1}>
+						<StillTitle maxLines={1}>{title}</StillTitle>
 						<HStack gap={2} wrap="wrap">
 							<Token label={article.slug} />
 							{article.slug === 'glossary' ? null : (
 								<Token label={`${String(article.ttrMinutes)} min`} />
 							)}
 						</HStack>
-					) : null}
-					<StillText maxLines={3}>{excerpt}</StillText>
+						<StillText maxLines={3}>{excerpt}</StillText>
+					</VStack>
 				</VStack>
-			</VStack>
-		</ClickableCard>
-	));
+			</ClickableCard>
+		),
+	);
 }
 
 function LandingGreeting() {
@@ -276,7 +309,7 @@ function LandingGreeting() {
 				theorem documentation
 			</Text>
 			<Heading level={1} type="display-3">
-				What are you building today?
+				What are you looking for?
 			</Heading>
 		</VStack>
 	);
