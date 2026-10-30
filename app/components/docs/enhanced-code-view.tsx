@@ -7,12 +7,12 @@ import { HStack } from '@astryxdesign/core/HStack';
 import { useScrollableArea } from '@astryxdesign/core/hooks';
 import { Icon } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
-import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { Text } from '@astryxdesign/core/Text';
 import { Token } from '@astryxdesign/core/Token';
 import { VStack } from '@astryxdesign/core/VStack';
 import {
 	IconActivity,
+	IconAdjustmentsHorizontal,
 	IconAntennaBars1,
 	IconAntennaBars2,
 	IconAntennaBars3,
@@ -20,6 +20,8 @@ import {
 	IconAntennaBars5,
 	IconAntennaBarsOff,
 	IconChartScatter3d,
+	IconCheck,
+	IconCode,
 	IconEye,
 	IconFileTypePdf,
 	IconFlame,
@@ -1002,6 +1004,57 @@ function CodeLine({
 	);
 }
 
+const CODE_VIEWS = [
+	{ id: 'code', label: 'Code', icon: IconCode, description: 'Read and change the program' },
+	{
+		id: 'studio',
+		label: 'Studio',
+		icon: IconAdjustmentsHorizontal,
+		description: 'See it in the studio',
+	},
+	{ id: 'preview', label: 'Run', icon: IconActivity, description: 'See a turn it ran' },
+] as const;
+
+type CodeViewName = (typeof CODE_VIEWS)[number]['id'];
+
+/** The studio's one button for what a panel shows: the icon of the view it is on, and a menu of them. */
+function CodeViewToggle({
+	view,
+	onView,
+}: {
+	view: CodeViewName;
+	onView: (view: CodeViewName) => void;
+}) {
+	const current = CODE_VIEWS.find((each) => each.id === view) ?? CODE_VIEWS[0];
+	return (
+		<DropdownMenu
+			button={{
+				label: current.label,
+				variant: 'ghost',
+				size: 'sm',
+				isIconOnly: true,
+				icon: <Icon icon={current.icon} size="sm" />,
+				tooltip: 'Switch between the code, the studio, and a run',
+				className: 'enhanced-code-action',
+			}}
+			menuWidth="15rem"
+			hasChevron={false}
+			placement="below"
+			alignment="end"
+			items={CODE_VIEWS.map((each) => ({
+				id: each.id,
+				label: each.label,
+				description: each.description,
+				icon: <Icon icon={each.icon} size="sm" />,
+				endContent: each.id === current.id ? <Icon icon={IconCheck} size="sm" /> : undefined,
+				onClick: () => {
+					onView(each.id);
+				},
+			}))}
+		/>
+	);
+}
+
 export function EnhancedCodeView({
 	code: initialCode,
 	language = 'typescript',
@@ -1012,7 +1065,7 @@ export function EnhancedCodeView({
 	seed?: string;
 }) {
 	const [activeCode, setActiveCode] = useState(initialCode);
-	const [view, setView] = useState<'code' | 'studio' | 'preview'>('code');
+	const [view, setView] = useState<CodeViewName>('code');
 
 	useInsertionEffect(() => {
 		ensureHighlightStyles();
@@ -1059,25 +1112,9 @@ export function EnhancedCodeView({
 		// A div, not Astryx's <pre>: the studio and run views share this frame and are not code.
 		<div className="enhanced-code-block">
 			<div className="enhanced-code-header">
-				<div className="enhanced-code-title">
-					{seed ? (
-						<SegmentedControl
-							label="Code block view"
-							size="sm"
-							value={view}
-							onChange={(val) => {
-								setView(val as 'code' | 'studio' | 'preview');
-							}}
-						>
-							<SegmentedControlItem value="code" label="Code" />
-							<SegmentedControlItem value="studio" label="Studio View" />
-							<SegmentedControlItem value="preview" label="Interactive Run" />
-						</SegmentedControl>
-					) : (
-						languageLabel
-					)}
-				</div>
+				<div className="enhanced-code-title">{languageLabel}</div>
 				<HStack gap={1} vAlign="center">
+					{seed && <CodeViewToggle view={view} onView={setView} />}
 					{seed && (
 						<IconButton
 							label="Open in Theorem Studio"
