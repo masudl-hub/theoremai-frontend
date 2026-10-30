@@ -5,7 +5,7 @@
 			"src/guardrails/labels.ts": "f50fb7aa56bb88a7b0ed7583d29030f5d4ea48c2",
 			"src/kernel/api-catalog.ts": "1266ff05b229cb15372688f4575eac621b321fea",
 			"src/kernel/schema.ts": "63c4bb2f98e3b6e359098dda8c98f5e73fdb4747",
-			"src/observability/trace-catalog.ts": "278fd07bab50d692beba6e8671a5fc1dfe53fe36"
+			"src/observability/trace-catalog.ts": "fecb75a52535a85338acc637aeb9aa836aad7405"
 		}
 	},
 	"guardrails": {
@@ -215,7 +215,7 @@
 			"src/observability/policy.ts": "ff190f523dff9c0d4e4997fa010e56e2e1248455",
 			"src/observability/resolve-policy.ts": "2f140cf6d4b57ac25564571271931ceb1aedf793",
 			"src/observability/spans.ts": "ed8e8283b3d62fcb29b214fa10dd9eaf111d4ef9",
-			"src/observability/trace-catalog.ts": "278fd07bab50d692beba6e8671a5fc1dfe53fe36",
+			"src/observability/trace-catalog.ts": "fecb75a52535a85338acc637aeb9aa836aad7405",
 			"src/observability/trace-record.ts": "54f036342886d8ca71934017f45bc9febd2c5283",
 			"src/observability/trace-schema.ts": "2519a4ccbf055b63dad42059376a9920220b88e3",
 			"src/observability/trace-sink.ts": "7c47b133e04ef979aa293fb58ada04fd248960d0",
@@ -228,7 +228,7 @@
 		"reviewed": "2026-10-30",
 		"files": {
 			"src/cli/bin.ts": "9a0100258da0fc2d541814f52ab834046dbb8c40",
-			"src/cli/commands/bench.ts": "3de1812d957c565c192179d2b06409a822d5a354",
+			"src/cli/commands/bench.ts": "81509e8077a2f1df3fc218bdaa922dd7218ef4ef",
 			"src/cli/commands/detect-compile.ts": "e02a7e6d32cc9765de10f8dc7ef9bc8ba299d9e1",
 			"src/cli/commands/eval.ts": "6a460d40e57801cf0095fa685f506614e37b62d6",
 			"src/cli/commands/fuzz-canary.ts": "992b23f03b1b9845e5115b5ff63326a26a1fd6bb",
@@ -299,7 +299,7 @@
 	"profiles/bindings": {
 		"reviewed": "2026-10-30",
 		"files": {
-			"src/kernel/protocols/binding.ts": "b5a0da8b7fabba545bda0919e3b3672e9301d2e6",
+			"src/kernel/protocols/binding.ts": "3912c44730c5dd094dbd89a64d964ca2f4f64619",
 			"src/kernel/registry/profiles.ts": "9afa5d29d3e79d969e128a1949151a7a621cbacd"
 		}
 	},
@@ -313,7 +313,7 @@
 			"src/kernel/engine/runner/stages.ts": "6924873a695fe6d89c269a25065f887e0f95695f",
 			"src/kernel/engine/runner/state.ts": "7b3907af8424ed7f9ff8a76ea3f171c99df8dec5",
 			"src/kernel/engine/runner/step-order.ts": "d55b421dc766b1775f50c999b525f721a5155b3d",
-			"src/kernel/engine/runner/steps.ts": "c1a8e1b1171a35f5c23c2ee206935ee6c479efd1",
+			"src/kernel/engine/runner/steps.ts": "a4ed75a38fe6099a97744a97dcf0ae1226fb3f4a",
 			"src/kernel/engine/runner/stream.ts": "5c017eb34b24952c32194b05f9dcd63b2560a820",
 			"src/kernel/engine/runner/usage.ts": "2fb451f7bd9b53f51f5d2faf5263a772356d6e3e",
 			"src/kernel/registry/profiles.ts": "9afa5d29d3e79d969e128a1949151a7a621cbacd"
@@ -322,7 +322,7 @@
 	"profiles/decision": {
 		"reviewed": "2026-10-30",
 		"files": {
-			"src/kernel/engine/decision.ts": "cf2a4ece0ace6c4844481cd411fc701aca8b199f",
+			"src/kernel/engine/decision.ts": "45f986f2b72dbf3132e614253b59ad64cc5ecb6d",
 			"src/kernel/registry/profiles.ts": "9afa5d29d3e79d969e128a1949151a7a621cbacd"
 		}
 	},
@@ -336,7 +336,7 @@
 			"src/kernel/engine/runner/stages.ts": "6924873a695fe6d89c269a25065f887e0f95695f",
 			"src/kernel/engine/runner/state.ts": "7b3907af8424ed7f9ff8a76ea3f171c99df8dec5",
 			"src/kernel/engine/runner/step-order.ts": "d55b421dc766b1775f50c999b525f721a5155b3d",
-			"src/kernel/engine/runner/steps.ts": "c1a8e1b1171a35f5c23c2ee206935ee6c479efd1",
+			"src/kernel/engine/runner/steps.ts": "a4ed75a38fe6099a97744a97dcf0ae1226fb3f4a",
 			"src/kernel/engine/runner/stream.ts": "5c017eb34b24952c32194b05f9dcd63b2560a820",
 			"src/kernel/engine/runner/usage.ts": "2fb451f7bd9b53f51f5d2faf5263a772356d6e3e",
 			"src/kernel/registry/profiles.ts": "9afa5d29d3e79d969e128a1949151a7a621cbacd"
@@ -359,7 +359,7 @@
 			"src/kernel/engine/runner/stages.ts": "6924873a695fe6d89c269a25065f887e0f95695f",
 			"src/kernel/engine/runner/state.ts": "7b3907af8424ed7f9ff8a76ea3f171c99df8dec5",
 			"src/kernel/engine/runner/step-order.ts": "d55b421dc766b1775f50c999b525f721a5155b3d",
-			"src/kernel/engine/runner/steps.ts": "c1a8e1b1171a35f5c23c2ee206935ee6c479efd1",
+			"src/kernel/engine/runner/steps.ts": "a4ed75a38fe6099a97744a97dcf0ae1226fb3f4a",
 			"src/kernel/engine/runner/stream.ts": "5c017eb34b24952c32194b05f9dcd63b2560a820",
 			"src/kernel/engine/runner/usage.ts": "2fb451f7bd9b53f51f5d2faf5263a772356d6e3e",
 			"src/kernel/registry/profiles.ts": "9afa5d29d3e79d969e128a1949151a7a621cbacd"
@@ -382,7 +382,7 @@
 			"src/kernel/engine/runner/stages.ts": "6924873a695fe6d89c269a25065f887e0f95695f",
 			"src/kernel/engine/runner/state.ts": "7b3907af8424ed7f9ff8a76ea3f171c99df8dec5",
 			"src/kernel/engine/runner/step-order.ts": "d55b421dc766b1775f50c999b525f721a5155b3d",
-			"src/kernel/engine/runner/steps.ts": "c1a8e1b1171a35f5c23c2ee206935ee6c479efd1",
+			"src/kernel/engine/runner/steps.ts": "a4ed75a38fe6099a97744a97dcf0ae1226fb3f4a",
 			"src/kernel/engine/runner/stream.ts": "5c017eb34b24952c32194b05f9dcd63b2560a820",
 			"src/kernel/engine/runner/usage.ts": "2fb451f7bd9b53f51f5d2faf5263a772356d6e3e",
 			"src/kernel/registry/profiles.ts": "9afa5d29d3e79d969e128a1949151a7a621cbacd"
@@ -398,7 +398,7 @@
 			"src/kernel/engine/runner/stages.ts": "6924873a695fe6d89c269a25065f887e0f95695f",
 			"src/kernel/engine/runner/state.ts": "7b3907af8424ed7f9ff8a76ea3f171c99df8dec5",
 			"src/kernel/engine/runner/step-order.ts": "d55b421dc766b1775f50c999b525f721a5155b3d",
-			"src/kernel/engine/runner/steps.ts": "c1a8e1b1171a35f5c23c2ee206935ee6c479efd1",
+			"src/kernel/engine/runner/steps.ts": "a4ed75a38fe6099a97744a97dcf0ae1226fb3f4a",
 			"src/kernel/engine/runner/stream.ts": "5c017eb34b24952c32194b05f9dcd63b2560a820",
 			"src/kernel/engine/runner/usage.ts": "2fb451f7bd9b53f51f5d2faf5263a772356d6e3e",
 			"src/kernel/registry/profiles.ts": "9afa5d29d3e79d969e128a1949151a7a621cbacd"
@@ -414,7 +414,7 @@
 			"src/kernel/engine/runner/stages.ts": "6924873a695fe6d89c269a25065f887e0f95695f",
 			"src/kernel/engine/runner/state.ts": "7b3907af8424ed7f9ff8a76ea3f171c99df8dec5",
 			"src/kernel/engine/runner/step-order.ts": "d55b421dc766b1775f50c999b525f721a5155b3d",
-			"src/kernel/engine/runner/steps.ts": "c1a8e1b1171a35f5c23c2ee206935ee6c479efd1",
+			"src/kernel/engine/runner/steps.ts": "a4ed75a38fe6099a97744a97dcf0ae1226fb3f4a",
 			"src/kernel/engine/runner/stream.ts": "5c017eb34b24952c32194b05f9dcd63b2560a820",
 			"src/kernel/engine/runner/usage.ts": "2fb451f7bd9b53f51f5d2faf5263a772356d6e3e",
 			"src/kernel/registry/profiles.ts": "9afa5d29d3e79d969e128a1949151a7a621cbacd"
@@ -430,7 +430,7 @@
 			"src/kernel/engine/runner/stages.ts": "6924873a695fe6d89c269a25065f887e0f95695f",
 			"src/kernel/engine/runner/state.ts": "7b3907af8424ed7f9ff8a76ea3f171c99df8dec5",
 			"src/kernel/engine/runner/step-order.ts": "d55b421dc766b1775f50c999b525f721a5155b3d",
-			"src/kernel/engine/runner/steps.ts": "c1a8e1b1171a35f5c23c2ee206935ee6c479efd1",
+			"src/kernel/engine/runner/steps.ts": "a4ed75a38fe6099a97744a97dcf0ae1226fb3f4a",
 			"src/kernel/engine/runner/stream.ts": "5c017eb34b24952c32194b05f9dcd63b2560a820",
 			"src/kernel/engine/runner/usage.ts": "2fb451f7bd9b53f51f5d2faf5263a772356d6e3e",
 			"src/kernel/registry/profiles.ts": "9afa5d29d3e79d969e128a1949151a7a621cbacd"
@@ -446,7 +446,7 @@
 			"src/kernel/engine/runner/stages.ts": "6924873a695fe6d89c269a25065f887e0f95695f",
 			"src/kernel/engine/runner/state.ts": "7b3907af8424ed7f9ff8a76ea3f171c99df8dec5",
 			"src/kernel/engine/runner/step-order.ts": "d55b421dc766b1775f50c999b525f721a5155b3d",
-			"src/kernel/engine/runner/steps.ts": "c1a8e1b1171a35f5c23c2ee206935ee6c479efd1",
+			"src/kernel/engine/runner/steps.ts": "a4ed75a38fe6099a97744a97dcf0ae1226fb3f4a",
 			"src/kernel/engine/runner/stream.ts": "5c017eb34b24952c32194b05f9dcd63b2560a820",
 			"src/kernel/engine/runner/usage.ts": "2fb451f7bd9b53f51f5d2faf5263a772356d6e3e",
 			"src/kernel/registry/profiles.ts": "9afa5d29d3e79d969e128a1949151a7a621cbacd"
@@ -455,17 +455,17 @@
 	"providers": {
 		"reviewed": "2026-10-30",
 		"files": {
-			"src/kernel/protocols/binding.ts": "b5a0da8b7fabba545bda0919e3b3672e9301d2e6",
+			"src/kernel/protocols/binding.ts": "3912c44730c5dd094dbd89a64d964ca2f4f64619",
 			"src/kernel/protocols/limits.ts": "68cf8a3ced2e1947f125faebba629ae8f5a7df10",
 			"src/kernel/protocols/mod.ts": "6ecffb0b3323d35c2f2b69852469400a0b6858e2",
 			"src/kernel/protocols/prices.ts": "1713607c13508cdc43ddc937d1cd64bd986f5579",
-			"src/kernel/protocols/protocol.ts": "f36cb9e2beee36e73f2173d91c9662b8f4042136",
+			"src/kernel/protocols/protocol.ts": "b5b18fdba6946276a830ec0a49805bb482b63d1c",
 			"src/kernel/protocols/provider.ts": "91b12ce543043ac71f1bb63d96ec501d51d7744b",
 			"src/kernel/protocols/runtime.ts": "adde1c3ca71805af57d70db3d23a564fcbf96cdc",
 			"src/providers/embedding-limits.ts": "70c15cf4f515c8ed6e08ce8f9c24056b76eba7f8",
-			"src/providers/gemini/embeddings-protocol.ts": "a26489255cb63b3880fac2dc4a47705ee8d88b9f",
-			"src/providers/gemini/interactions-protocol.ts": "efc1dca28631511dfcbaaee9f6068d53f9a5933e",
-			"src/providers/gemini/live-protocol.ts": "a9d0a46b0e45c91212a2cc587381b9109e51231a",
+			"src/providers/gemini/embeddings-protocol.ts": "fe8f2def56d8ef94a11b185116e3578856f352df",
+			"src/providers/gemini/interactions-protocol.ts": "ec8ea9c6964c667fc561451fc0d6073be5acd211",
+			"src/providers/gemini/live-protocol.ts": "4a1ab8085edcb20199d6e7a1970e453e65255c8c",
 			"src/providers/gemini/prices.ts": "15ef19522f4596fd68a433f03fe2d80962675cfb",
 			"src/providers/gemini/provider.ts": "54bc80057acc4fdc26dc27bfe585b2666d3b5388",
 			"src/providers/google/api-error.ts": "40f081a56014281d5bc7c3f65b54ecf6d8c78db1",
@@ -481,14 +481,14 @@
 			"src/providers/google/urls.ts": "60ac56eb467fa548f7bb5b5b7a86232ea42e5c7e",
 			"src/providers/google/usage.ts": "26c7b0785818b94da3e7dab53bbca7b28d890564",
 			"src/providers/live.ts": "d3229ff4476cc584385bc2e6510b390b2286d5da",
-			"src/providers/local/embeddings-protocol.ts": "ff0575acd3ae19f5a7d367715fc22d564983fdc1",
+			"src/providers/local/embeddings-protocol.ts": "760a4091082dc67b138f653952c428815fbd067c",
 			"src/providers/local/provider.ts": "74e10f86762a667e4381e08d3e53975bbd532409",
 			"src/providers/mod.ts": "4985eda62312a5838f7f4342730932e8ef51f5b6",
-			"src/providers/open-ai/protocol.ts": "5568c2c1d0ee4b8ad776f167b362db92fbd42f59",
-			"src/providers/openrouter/decisions-protocol.ts": "5a3c6e74b62df2cbfc46880fb1ac97c32fe0e6e6",
-			"src/providers/openrouter/embeddings-protocol.ts": "cbf79610d546b7853e1a4a39803e3855c4fb1d03",
+			"src/providers/open-ai/protocol.ts": "6cd023e09bfd6f7b4742ec1189c955e408f1ada5",
+			"src/providers/openrouter/decisions-protocol.ts": "7d85e0a9559cb5a505d4f2b83ec5f31a06dd062a",
+			"src/providers/openrouter/embeddings-protocol.ts": "4713ea75fa209a27b47a450ff79dfd65da893332",
 			"src/providers/openrouter/image.ts": "06f9ac36ff9a903bdf45ec902f0ab40ca12f5cfa",
-			"src/providers/openrouter/images-protocol.ts": "07581d1d4e5fc6b61dc6d7d48433b45f92cb4422",
+			"src/providers/openrouter/images-protocol.ts": "e7856c66f3fd8e623819d62f3222f47b9fc25c0e",
 			"src/providers/openrouter/openai/compat.ts": "19434abb07d730399d7c18e796647d1ddec5eab7",
 			"src/providers/openrouter/openai/image-payload.ts": "eda5d05a9389bd6da23ab99447800faf9f944b01",
 			"src/providers/openrouter/openai/reasoning-state.ts": "a01859baf4f82c3783e50101942b2cd40f9ab4d6",
@@ -506,7 +506,7 @@
 			"src/providers/shared/tool-draft.ts": "a1ba10cf5a7bf58cb8155c72f54ff0221e822ad0",
 			"src/providers/shared/upstream-tap.ts": "4a57e029ffb23f0333337dc1dc545cbe32ebca6b",
 			"src/providers/shared/upstream-tape.ts": "96f200691356591a80ff5361376802497167ef5d",
-			"src/providers/system-one/protocol.ts": "6dbaf58f25394f74233854159484f7ca11b36481",
+			"src/providers/system-one/protocol.ts": "eb97a5c94fbf91ff9e7bb7eee7af8d72da7e26cd",
 			"src/providers/types.ts": "c4edfe4d4ead225bb12a9e614467dd1ed6ffd009",
 			"src/providers/typesafe/provider.ts": "a5385127365a1daf6875c2b5455fa074c8982063"
 		}
@@ -523,9 +523,9 @@
 		"files": {
 			"src/kernel/protocols/provider.ts": "91b12ce543043ac71f1bb63d96ec501d51d7744b",
 			"src/providers/embedding-limits.ts": "70c15cf4f515c8ed6e08ce8f9c24056b76eba7f8",
-			"src/providers/gemini/embeddings-protocol.ts": "a26489255cb63b3880fac2dc4a47705ee8d88b9f",
-			"src/providers/gemini/interactions-protocol.ts": "efc1dca28631511dfcbaaee9f6068d53f9a5933e",
-			"src/providers/gemini/live-protocol.ts": "a9d0a46b0e45c91212a2cc587381b9109e51231a",
+			"src/providers/gemini/embeddings-protocol.ts": "fe8f2def56d8ef94a11b185116e3578856f352df",
+			"src/providers/gemini/interactions-protocol.ts": "ec8ea9c6964c667fc561451fc0d6073be5acd211",
+			"src/providers/gemini/live-protocol.ts": "4a1ab8085edcb20199d6e7a1970e453e65255c8c",
 			"src/providers/gemini/prices.ts": "15ef19522f4596fd68a433f03fe2d80962675cfb",
 			"src/providers/gemini/provider.ts": "54bc80057acc4fdc26dc27bfe585b2666d3b5388",
 			"src/providers/google/api-error.ts": "40f081a56014281d5bc7c3f65b54ecf6d8c78db1",
@@ -541,14 +541,14 @@
 			"src/providers/google/urls.ts": "60ac56eb467fa548f7bb5b5b7a86232ea42e5c7e",
 			"src/providers/google/usage.ts": "26c7b0785818b94da3e7dab53bbca7b28d890564",
 			"src/providers/live.ts": "d3229ff4476cc584385bc2e6510b390b2286d5da",
-			"src/providers/local/embeddings-protocol.ts": "ff0575acd3ae19f5a7d367715fc22d564983fdc1",
+			"src/providers/local/embeddings-protocol.ts": "760a4091082dc67b138f653952c428815fbd067c",
 			"src/providers/local/provider.ts": "74e10f86762a667e4381e08d3e53975bbd532409",
 			"src/providers/mod.ts": "4985eda62312a5838f7f4342730932e8ef51f5b6",
-			"src/providers/open-ai/protocol.ts": "5568c2c1d0ee4b8ad776f167b362db92fbd42f59",
-			"src/providers/openrouter/decisions-protocol.ts": "5a3c6e74b62df2cbfc46880fb1ac97c32fe0e6e6",
-			"src/providers/openrouter/embeddings-protocol.ts": "cbf79610d546b7853e1a4a39803e3855c4fb1d03",
+			"src/providers/open-ai/protocol.ts": "6cd023e09bfd6f7b4742ec1189c955e408f1ada5",
+			"src/providers/openrouter/decisions-protocol.ts": "7d85e0a9559cb5a505d4f2b83ec5f31a06dd062a",
+			"src/providers/openrouter/embeddings-protocol.ts": "4713ea75fa209a27b47a450ff79dfd65da893332",
 			"src/providers/openrouter/image.ts": "06f9ac36ff9a903bdf45ec902f0ab40ca12f5cfa",
-			"src/providers/openrouter/images-protocol.ts": "07581d1d4e5fc6b61dc6d7d48433b45f92cb4422",
+			"src/providers/openrouter/images-protocol.ts": "e7856c66f3fd8e623819d62f3222f47b9fc25c0e",
 			"src/providers/openrouter/openai/compat.ts": "19434abb07d730399d7c18e796647d1ddec5eab7",
 			"src/providers/openrouter/openai/image-payload.ts": "eda5d05a9389bd6da23ab99447800faf9f944b01",
 			"src/providers/openrouter/openai/reasoning-state.ts": "a01859baf4f82c3783e50101942b2cd40f9ab4d6",
@@ -566,7 +566,7 @@
 			"src/providers/shared/tool-draft.ts": "a1ba10cf5a7bf58cb8155c72f54ff0221e822ad0",
 			"src/providers/shared/upstream-tap.ts": "4a57e029ffb23f0333337dc1dc545cbe32ebca6b",
 			"src/providers/shared/upstream-tape.ts": "96f200691356591a80ff5361376802497167ef5d",
-			"src/providers/system-one/protocol.ts": "6dbaf58f25394f74233854159484f7ca11b36481",
+			"src/providers/system-one/protocol.ts": "eb97a5c94fbf91ff9e7bb7eee7af8d72da7e26cd",
 			"src/providers/types.ts": "c4edfe4d4ead225bb12a9e614467dd1ed6ffd009",
 			"src/providers/typesafe/provider.ts": "a5385127365a1daf6875c2b5455fa074c8982063"
 		}
@@ -575,7 +575,7 @@
 		"reviewed": "2026-10-30",
 		"files": {
 			"src/kernel/protocols/mod.ts": "6ecffb0b3323d35c2f2b69852469400a0b6858e2",
-			"src/kernel/protocols/protocol.ts": "f36cb9e2beee36e73f2173d91c9662b8f4042136"
+			"src/kernel/protocols/protocol.ts": "b5b18fdba6946276a830ec0a49805bb482b63d1c"
 		}
 	},
 	"runner": {
@@ -609,7 +609,7 @@
 			"src/kernel/engine/runner/stages.ts": "6924873a695fe6d89c269a25065f887e0f95695f",
 			"src/kernel/engine/runner/state.ts": "7b3907af8424ed7f9ff8a76ea3f171c99df8dec5",
 			"src/kernel/engine/runner/step-order.ts": "d55b421dc766b1775f50c999b525f721a5155b3d",
-			"src/kernel/engine/runner/steps.ts": "c1a8e1b1171a35f5c23c2ee206935ee6c479efd1",
+			"src/kernel/engine/runner/steps.ts": "a4ed75a38fe6099a97744a97dcf0ae1226fb3f4a",
 			"src/kernel/engine/runner/stream.ts": "5c017eb34b24952c32194b05f9dcd63b2560a820",
 			"src/kernel/engine/runner/usage.ts": "2fb451f7bd9b53f51f5d2faf5263a772356d6e3e",
 			"src/kernel/registry/profiles.ts": "9afa5d29d3e79d969e128a1949151a7a621cbacd"
@@ -631,7 +631,7 @@
 			"src/kernel/engine/runner/stages.ts": "6924873a695fe6d89c269a25065f887e0f95695f",
 			"src/kernel/engine/runner/state.ts": "7b3907af8424ed7f9ff8a76ea3f171c99df8dec5",
 			"src/kernel/engine/runner/step-order.ts": "d55b421dc766b1775f50c999b525f721a5155b3d",
-			"src/kernel/engine/runner/steps.ts": "c1a8e1b1171a35f5c23c2ee206935ee6c479efd1",
+			"src/kernel/engine/runner/steps.ts": "a4ed75a38fe6099a97744a97dcf0ae1226fb3f4a",
 			"src/kernel/engine/runner/stream.ts": "5c017eb34b24952c32194b05f9dcd63b2560a820",
 			"src/kernel/engine/runner/usage.ts": "2fb451f7bd9b53f51f5d2faf5263a772356d6e3e",
 			"src/kernel/protocols/runtime.ts": "adde1c3ca71805af57d70db3d23a564fcbf96cdc",
@@ -714,7 +714,7 @@
 			"studio/requirements.ts": "1a67fec70693302da26081c64f986b0f75ef2ecf",
 			"studio/run-payload-core.ts": "69b5220a91a7108971855766f6313b3bde53c352",
 			"studio/run-payload.ts": "7f06ec9718683510410315342598bf0c7f2e2e1c",
-			"studio/runtime-scope.ts": "5c514c4dc426653112c89a0265de39c9cae7121c",
+			"studio/runtime-scope.ts": "638121c62f6956dde9cc3d7abd924a86f063bd9e",
 			"studio/runtime.ts": "2ea649a88a83a0e38352f2a08e55434ee577459b",
 			"studio/section-notes.ts": "b6e66814226cf383282aacf944467060f8c1b1a9",
 			"studio/serve-page.mjs": "236e8caa506cb5b9c348a5ab854a9db17b479b1f",

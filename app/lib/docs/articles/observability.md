@@ -1,6 +1,6 @@
 ---
 title: Trace Spans Catalog
-updated: 2026-10-26
+updated: 2026-10-29
 summary: Query and export trace spans, distributed execution trees, and telemetry attributes in Theorem.
 entry: src/observability/mod.ts
 covers: src/observability, src/kernel/engine/call-trace.ts
@@ -24,10 +24,10 @@ A turn writes a tree of spans. The model calls and tool calls are children of th
 flowchart TD
 		Root["invoke_agent &lt;profile&gt; (INTERNAL)<br/>gen_ai.operation.name: invoke_agent"]
 		
-		Model1["chat &lt;apiId&gt; (CLIENT)<br/>gen_ai.request.model"]
+		Model1["chat &lt;apiId&gt; (CLIENT)<br/>gen_ai.operation.name: chat"]
 		Http1["POST (CLIENT)<br/>http.request.method: POST"]
 		Tool1["execute_tool verify_manifest (INTERNAL)<br/>gen_ai.tool.name: verify_manifest"]
-		Model2["chat &lt;apiId&gt; (CLIENT)<br/>gen_ai.request.model"]
+		Model2["chat &lt;apiId&gt; (CLIENT)<br/>gen_ai.operation.name: chat"]
 		
 		Root --> Model1
 		Model1 --> Http1
@@ -43,14 +43,30 @@ Theorem names ten span types. Nine are spans Theorem writes. The tenth, `host`, 
 | :--- | :--- | :--- | :--- |
 | **`turn`** | `invoke_agent <profile>` | `INTERNAL` | One exchange: the model calls and tool calls it took to answer (`runTurn`). |
 | **`session`** | `invoke_agent <profile>` | `INTERNAL` | A Live session, from setup to close (`runSession`). |
-| **`call`** | `chat <apiId>` in a turn, `embed <apiId>` for embeddings | `CLIENT` | One request to a model and its answer. |
-| **`response`** | `generate_content <apiId>` | `CLIENT` | One spoken response in a Live session. |
+| **`call`** | `<operation> <apiId>` | `CLIENT` | One request to a model and its answer. |
+| **`response`** | `<operation> <apiId>` | `CLIENT` | One spoken response in a Live session. |
 | **`tool`** | `execute_tool <tool>` | `INTERNAL` | One tool call Theorem ran, from its hooks to settlement. |
 | **`http`** | the HTTP method, such as `POST` | `CLIENT` | One HTTP attempt of a model call. |
 | **`cutout`** | `cutout` | `CLIENT` | A side effect the host recorded after the turn. |
-| **`decision`** | `decide <apiId>` | `CLIENT` | One typed decision over JSON state (`runDecision`). |
+| **`decision`** | `<operation> <apiId>` | `CLIENT` | One typed decision over JSON state (`runDecision`). |
 | **`evaluation`** | `theorem.eval.trial` or `theorem.eval.run` | `INTERNAL` | An eval graded this trace, or a suite ran. |
 | **`host`** | any other name | the host's choice | A step the host recorded itself. |
+
+### Operation names
+
+A model call, a Live response, an embedding call and a decision take their operation name from the protocol that made the call. The span is named `<operation> <apiId>` and carries the name in `gen_ai.operation.name`. The first-party protocols state these names:
+
+| Protocol | Profile types | Operation |
+| :--- | :--- | :--- |
+| `openAi`, `openRouterOpenAi` | `text` | `chat` |
+| `openAi`, `openRouterOpenAi` | `speech` | `generate_content` |
+| `geminiInteractions` | `text`, `image`, `speech` | `generate_content` |
+| `geminiLive` | `live` | `generate_content` |
+| `openRouterImages` | `image` | `generate_content` |
+| `geminiEmbeddings`, `openRouterEmbeddings`, `ollamaEmbeddings` | `embedding` | `embeddings` |
+| `openRouterDecisions`, `systemOne` | `decision` | `decide` |
+
+A protocol you define states its own, one for each profile type it serves, in `operationNames`. A call with no provider registered for its model has no operation name, and its span is named `<apiId>` alone.
 
 ## Semantic Attribute Catalog
 
