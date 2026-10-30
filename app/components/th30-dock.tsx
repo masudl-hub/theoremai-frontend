@@ -12,7 +12,7 @@ import {
 	IconRefresh,
 } from '@tabler/icons-react';
 import { defineAction } from '@theoremjs/agents/surface';
-import { clientFailure, LiveSessionClient } from '@theoremjs/react/client';
+import { clientFailure, LiveSessionClient, type PageTools } from '@theoremjs/react/client';
 import {
 	InkWaveform,
 	type InkWaveLevels,
@@ -269,32 +269,56 @@ async function searchForTh30(query: string, limit: number | undefined) {
 	return th30SearchOutput(index, found);
 }
 
-/** The page's answer to a highlight or a docs search; none when it has nothing to give. */
-async function pageToolAnswer(
-	name: string,
-	args: Record<string, unknown>,
-): Promise<{ output: unknown } | undefined> {
-	if (name === 'searchDocs') {
-		const query = textArg(args.query) ?? '';
-		const limit = typeof args.limit === 'number' ? args.limit : undefined;
-		return searchForTh30(query, limit).then(
-			(output) => ({ output }),
-			() => undefined,
-		);
-	}
-	if (name === 'highlight') {
-		const target = textArg(args.target) ?? textArg(args.blockId) ?? '';
-		const label = textArg(args.label);
-		const found = target ? highlightBlock(target, label) : false;
-		return {
-			output: {
-				success: found,
-				highlighted: target,
-				...(found ? {} : { error: 'Nothing on this page matches that.' }),
-			},
+/** The page's highlight: it says whether anything on the page matched. */
+function highlightOutput(args: Record<string, unknown>) {
+	const target = textArg(args.target) ?? textArg(args.blockId) ?? '';
+	const label = textArg(args.label);
+	const found = target ? highlightBlock(target, label) : false;
+	return {
+		success: found,
+		highlighted: target,
+		...(found ? {} : { error: 'Nothing on this page matches that.' }),
+	};
+}
+
+/**
+ * The page's tools for one call: a docs search, a highlight, and a surface's `look` and `act`.
+ * The client answers each dispatched call with them. A surface call the page answered that has
+ * not finished when the call drops is noted as undelivered, so th30 hears what became of it.
+ */
+function th30PageTools(): {
+	pageTools: PageTools;
+	finished: (callId: string) => void;
+	dropped: () => void;
+} {
+	const awaiting = new Set<string>();
+	const surface =
+		(name: string): PageTools[string] =>
+		async (args, { callId }) => {
+			const output = await th30Surfaces.answer(name, args, callId);
+			awaiting.add(callId);
+			return { output };
 		};
-	}
-	return undefined;
+	return {
+		pageTools: {
+			searchDocs: async (args) => ({
+				output: await searchForTh30(
+					textArg(args.query) ?? '',
+					typeof args.limit === 'number' ? args.limit : undefined,
+				),
+			}),
+			highlight: (args) => ({ output: highlightOutput(args) }),
+			look: surface('look'),
+			act: surface('act'),
+		},
+		finished: (callId) => {
+			awaiting.delete(callId);
+		},
+		dropped: () => {
+			for (const callId of awaiting) th30Surfaces.settled(callId, 'undelivered');
+			awaiting.clear();
+		},
+	};
 }
 
 function applyNavigation(navigate: NavigateFunction, output: unknown): void {
@@ -410,60 +434,25 @@ type CallSetters = {
 };
 
 /**
- * Runs one of the model's calls on the relay. A page tool comes back dispatched with a grant,
- * and the page answers that grant: a surface's `look` or `act`, or a highlight or docs search.
- * A gate the dock cannot ask about is refused, so no call is left waiting.
- */
-async function runTh30Tool(
-	client: LiveSessionClient,
-	isCurrent: () => boolean,
-	name: string,
-	meta: { callId: string; operationId: string },
-): Promise<void> {
-	const { callId, operationId } = meta;
-	const surface = th30Surfaces.isSurfaceTool(name);
-	const answered = new Set<string>();
-	let step = await client.executeToolOnRelay(meta);
-	while (step.status === 'dispatched' && isCurrent() && !answered.has(step.grantId)) {
-		answered.add(step.grantId);
-		const grant = { callId, operationId, grantId: step.grantId };
-		const answer = surface
-			? { output: await th30Surfaces.answer(name, step.arguments, callId) }
-			: await pageToolAnswer(name, step.arguments);
-		try {
-			step = await client.executeToolOnRelay(
-				answer ? { ...grant, ...answer } : { ...grant, unanswered: true },
-			);
-		} catch (err) {
-			// An applied surface call whose answer is lost is noted; any other failure is the call's.
-			if (!surface) throw err;
-			th30Surfaces.settled(callId, 'undelivered');
-			return;
-		}
-	}
-	if (step.status === 'gated' && isCurrent())
-		await client.executeToolOnRelay({ callId, operationId, decision: 'deny' });
-}
-
-/**
- * The live client's callbacks: status and phase, failures, voice levels, tool calls and cancels.
+ * The live client's callbacks: status and phase, failures, voice levels, page tools and cancels.
  * Events from a client that is no longer current are ignored. `greet` runs on each `listening`.
  */
 function callCallbacks(
 	isCurrent: () => boolean,
 	greet: () => void,
 	set: CallSetters,
-	onToolCall: CallOptions['onToolCall'],
+	page: ReturnType<typeof th30PageTools>,
 	captionsRef: RefObject<CaptionLog>,
 	navigate: NavigateFunction,
 ): Pick<
 	CallOptions,
-	'onStatusChange' | 'onError' | 'onVolumeLevel' | 'onToolCall' | 'onTurnEvent' | 'onTranscript'
+	'onStatusChange' | 'onError' | 'onVolumeLevel' | 'pageTools' | 'onTurnEvent' | 'onTranscript'
 > {
 	return {
 		onStatusChange: (next) => {
 			if (!isCurrent()) return;
 			set.setStatus(next);
+			if (next === 'reconnecting' || next === 'disconnected' || next === 'error') page.dropped();
 			if (next === 'error') set.setPhase('failed');
 			else if (next !== 'connecting' && next !== 'disconnected') set.setPhase('live');
 			if (next === 'listening') greet();
@@ -486,14 +475,15 @@ function callCallbacks(
 			if (!isCurrent()) return;
 			captionsRef.current.applyTranscript(text, isUser, meta?.interim);
 		},
-		// Page callbacks run only after the relay returns their page gate.
-		onToolCall,
+		pageTools: page.pageTools,
 		onTurnEvent: (event) => {
 			if (event.type !== 'tool' || !isCurrent()) return;
 			set.noteTool(event.tool);
 			if (event.tool.name === 'navigate' && event.tool.phase === 'complete')
 				applyNavigation(navigate, event.tool.output);
-			if (event.tool.phase === 'cancel') th30Surfaces.settled(event.tool.callId, 'cancelled');
+			const { callId, phase } = event.tool;
+			if (phase === 'complete' || phase === 'error' || phase === 'cancel') page.finished(callId);
+			if (phase === 'cancel') th30Surfaces.settled(callId, 'cancelled');
 		},
 	};
 }
@@ -547,10 +537,7 @@ async function startCall({
 			() => clientRef.current === client,
 			greet,
 			set,
-			async (name, _args, meta) => {
-				if (clientRef.current !== client) return;
-				await runTh30Tool(client, () => clientRef.current === client, name, meta);
-			},
+			th30PageTools(),
 			captionsRef,
 			navigate,
 		),

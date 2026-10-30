@@ -1,6 +1,6 @@
 ---
 title: Theorem Studio
-updated: 2026-10-29
+updated: 2026-10-30
 summary: Edit, run and test Theorem agents on your own project with one command, or as a screen in your own app.
 entry: studio/mod.ts
 covers: studio, studio/server.ts
@@ -88,7 +88,7 @@ The chat sits beside the editor, so you can test a change at once:
 
 To check a prompt change against a real conversation, replay it:
 
-1. **Importing Traces**: Click **Replay exchange** and choose a `.json` file of trace records, or a `.jsonl` file with one record on each line. Studio shows the conversation as the person saw it.
+1. **Importing Traces**: Click **Replay exchange** and choose a `.json` file of trace records, or a `.jsonl` file with one record on each line. Studio shows the conversation as the person saw it. A file with several conversations or agents opens on the first. The arrows beside **Conversation 1 of 3** step to the others.
 2. **Replay**: Studio runs the conversation again through the profile as it is now. Every model call is answered from the recording, and so is every tool result unless **Live tools** is on. The profile's guardrails, stages and gates run for real. A replay needs no keys.
 3. **Recorded and Replayed**: Switch between **Recorded** and **Replayed** to see what changed.
 4. **Divergence and Continue Live**: When the profile asks for something the recording does not hold, the replay stops there and says why. **Continue live** goes on from that point with the real model.

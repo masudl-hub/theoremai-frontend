@@ -1,6 +1,6 @@
 ---
 title: Realtime Voice & Video
-updated: 2026-10-26
+updated: 2026-10-30
 summary: Real-time bidirectional WebSockets, audio worklets, and live camera video frames in React.
 entry: react/src/index.ts
 covers: react, src/surface
@@ -106,7 +106,7 @@ Realtime sessions ingest live video frames from device cameras over the same Web
 
 Custom applications can capture frames from any HTML5 video stream and transmit them using `client.sendVideo(data, mimeType)`. `mimeType` defaults to `'image/jpeg'`. A frame sent while the socket is not open is dropped.
 
-Every client takes `onToolCall`: the model called a tool, and the host runs it with `executeToolOnRelay`. This sample runs tools that have no gate. [Headless Client Management](#headless-client-management) answers a gate:
+The client runs the tools the model calls on the relay. [Headless Client Management](#headless-client-management) adds the page's tools and an answer to a gate:
 
 ```ts
 import { LiveSessionClient } from '@theoremjs/web/client';
@@ -114,9 +114,6 @@ import { LiveSessionClient } from '@theoremjs/web/client';
 const client = new LiveSessionClient({
 	profile: 'harbor.live_dispatch',
 	relayUrl: 'wss://api.example.com/api/live/relay',
-	onToolCall: async (_name, _args, { callId, operationId }) => {
-		await client.executeToolOnRelay({ callId, operationId });
-	},
 });
 
 await client.connect();
@@ -209,15 +206,13 @@ const client = new LiveSessionClient({
 		// The microphone's level when isUser is true, the model's playback otherwise (0.0 to 1.0)
 		console.log(isUser ? 'Mic' : 'Speaker', level);
 	},
-	onToolCall: async (name, _args, { callId, operationId }) => {
-		let step = await client.executeToolOnRelay({ callId, operationId });
-		while (step.status === 'gated') {
-			// Ask the person, then send their answer to the gate
-			const decision = window.confirm(`Run ${name}?`) ? 'approve' : 'deny';
-			step = await client.executeToolOnRelay({ callId, operationId, decision });
-			if (decision === 'deny') return;
-		}
+	// A tool the profile declares with answeredBy: 'page'
+	pageTools: {
+		highlight: (args) => ({ output: { highlighted: String(args.target) } }),
 	},
+	// Ask the person, then send their answer to the gate
+	onGate: async ({ toolName }) =>
+		window.confirm(`Run ${toolName}?`) ? { decision: 'approve' } : { decision: 'deny' },
 	onError: (error: Error) => {
 		console.error('Live call failure:', error);
 	},
@@ -236,7 +231,12 @@ client.sendText('Vessel VSL-409 has reported clearance.');
 client.disconnect();
 ```
 
-`executeToolOnRelay` returns the call's next step. `settled`: the session has answered the model. `gated`: the call waits on a gate; send the person's answer as `decision`. `dispatched`: the tool is one the page answers (`answeredBy: 'page'`); send its result as `output`, with the step's `grantId`. The session answers the model however the call ends.
+The client runs each call the model makes on the relay, one at a time, and answers every step itself:
+
+- **A page tool**: The relay sends the call to the page. The client answers with the `pageTools` function of that name. A tool with no function, or a function that throws, is answered with no answer, and the console says once that the tool has no function. The turn does not wait for it.
+- **A gate**: The client asks `onGate`. A sign-in gate's approval carries the key the person typed as `secret`. `continueGatedToolInvocation` turns the person's answer into the reply. Without `onGate`, every gate is refused.
+
+The session answers the model however the call ends. Calls run in order, so a page function that never returns holds every call after it.
 
 If a network interruption drops the WebSocket, `LiveSessionClient` automatically attempts reconnection with exponential backoff (`[500, 1000, 2000, 4000, 8000]` ms) and resumes the session state using the provider's active continuation checkpoint.
 
