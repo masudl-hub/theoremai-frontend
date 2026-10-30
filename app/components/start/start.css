@@ -34,7 +34,7 @@
 /* Poster scale: the page's send-off. */
 .start-title.start-title {
 	margin: 0;
-	font-size: clamp(2.5rem, 5.2vw, 5.5rem);
+	font-size: clamp(2.25rem, 4.5vw, 4.75rem);
 	line-height: 0.95;
 	letter-spacing: -0.03em;
 }
