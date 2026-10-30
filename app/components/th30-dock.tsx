@@ -269,41 +269,32 @@ async function searchForTh30(query: string, limit: number | undefined) {
 	return th30SearchOutput(index, found);
 }
 
-/** The page answers a highlight or a docs search after the relay checks its call. */
-async function applyPageTool(
-	client: LiveSessionClient,
-	callId: string,
-	operationId: string,
+/** The page's answer to a highlight or a docs search; none when it has nothing to give. */
+async function pageToolAnswer(
 	name: string,
 	args: Record<string, unknown>,
-): Promise<void> {
+): Promise<{ output: unknown } | undefined> {
 	if (name === 'searchDocs') {
 		const query = textArg(args.query) ?? '';
 		const limit = typeof args.limit === 'number' ? args.limit : undefined;
-		try {
-			const output = await searchForTh30(query, limit);
-			await client.executeToolOnRelay({ callId, operationId, decision: 'approve', output });
-		} catch {
-			await client.executeToolOnRelay({ callId, operationId, decision: 'deny' });
-		}
-		return;
+		return searchForTh30(query, limit).then(
+			(output) => ({ output }),
+			() => undefined,
+		);
 	}
 	if (name === 'highlight') {
 		const target = textArg(args.target) ?? textArg(args.blockId) ?? '';
 		const label = textArg(args.label);
 		const found = target ? highlightBlock(target, label) : false;
-		await client.executeToolOnRelay({
-			callId,
-			operationId,
-			decision: 'approve',
+		return {
 			output: {
 				success: found,
 				highlighted: target,
 				...(found ? {} : { error: 'Nothing on this page matches that.' }),
 			},
-		});
-		return;
+		};
 	}
+	return undefined;
 }
 
 function applyNavigation(navigate: NavigateFunction, output: unknown): void {
@@ -418,25 +409,40 @@ type CallSetters = {
 	levelsRef: RefObject<InkWaveLevels>;
 };
 
-/** Answers a `look` or `act` from the page; an applied call whose answer is lost is noted. */
-async function answerSurface(
-	clientRef: RefObject<LiveSessionClient | null>,
+/**
+ * Runs one of the model's calls on the relay. A page tool comes back dispatched with a grant,
+ * and the page answers that grant: a surface's `look` or `act`, or a highlight or docs search.
+ * A gate the dock cannot ask about is refused, so no call is left waiting.
+ */
+async function runTh30Tool(
+	client: LiveSessionClient,
+	isCurrent: () => boolean,
 	name: string,
-	args: Record<string, unknown>,
-	callId: string,
-	operationId: string,
+	meta: { callId: string; operationId: string },
 ): Promise<void> {
-	const output = await th30Surfaces.answer(name, args, callId);
-	try {
-		await clientRef.current?.executeToolOnRelay({
-			callId,
-			operationId,
-			decision: 'approve',
-			output,
-		});
-	} catch {
-		th30Surfaces.settled(callId, 'undelivered');
+	const { callId, operationId } = meta;
+	const surface = th30Surfaces.isSurfaceTool(name);
+	const answered = new Set<string>();
+	let step = await client.executeToolOnRelay(meta);
+	while (step.status === 'dispatched' && isCurrent() && !answered.has(step.grantId)) {
+		answered.add(step.grantId);
+		const grant = { callId, operationId, grantId: step.grantId };
+		const answer = surface
+			? { output: await th30Surfaces.answer(name, step.arguments, callId) }
+			: await pageToolAnswer(name, step.arguments);
+		try {
+			step = await client.executeToolOnRelay(
+				answer ? { ...grant, ...answer } : { ...grant, unanswered: true },
+			);
+		} catch (err) {
+			// An applied surface call whose answer is lost is noted; any other failure is the call's.
+			if (!surface) throw err;
+			th30Surfaces.settled(callId, 'undelivered');
+			return;
+		}
 	}
+	if (step.status === 'gated' && isCurrent())
+		await client.executeToolOnRelay({ callId, operationId, decision: 'deny' });
 }
 
 /**
@@ -541,17 +547,9 @@ async function startCall({
 			() => clientRef.current === client,
 			greet,
 			set,
-			async (name, args, meta) => {
-				const active = clientRef.current;
-				if (!active || active !== client) return;
-				const checked = await active.executeToolOnRelay(meta);
-				if (clientRef.current !== active) return;
-				if (checked.status !== 'gated' || checked.gate.kind !== 'page') return;
-				if (th30Surfaces.isSurfaceTool(name)) {
-					await answerSurface(clientRef, name, args, meta.callId, meta.operationId);
-					return;
-				}
-				await applyPageTool(active, meta.callId, meta.operationId, name, args);
+			async (name, _args, meta) => {
+				if (clientRef.current !== client) return;
+				await runTh30Tool(client, () => clientRef.current === client, name, meta);
 			},
 			captionsRef,
 			navigate,
