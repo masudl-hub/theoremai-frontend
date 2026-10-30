@@ -31,18 +31,6 @@
 	min-width: 0;
 }
 
-/* The space is held before the mark draws, so nothing moves when it does. */
-.start-mark {
-	--start-mark-size: clamp(3.5rem, 9vh, 5.5rem);
-	width: var(--start-mark-size);
-	height: var(--start-mark-size);
-}
-
-.start-mark .theorem-mark {
-	width: 100%;
-	height: 100%;
-}
-
 /* Poster scale: the page's send-off. */
 .start-title.start-title {
 	margin: 0;

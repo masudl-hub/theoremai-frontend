@@ -3,8 +3,7 @@ import { Heading } from '@astryxdesign/core/Heading';
 import { Link } from '@astryxdesign/core/Link';
 import { Text } from '@astryxdesign/core/Text';
 import { IconArrowUpRight, IconBug, IconCode, IconLock, IconMessages } from '@tabler/icons-react';
-import { TheoremMark } from '@theoremjs/studio/ui/theorem-mark.tsx';
-import { type ComponentType, useEffect, useRef, useState } from 'react';
+import type { ComponentType } from 'react';
 import { CONTRIBUTE_INTRO, COPYRIGHT, WAYS } from '../../lib/home-content';
 import { SITE_PACKAGES, SITE_SECTIONS } from '../../lib/site-nav';
 import { AgentPromptButton } from '../agent-prompt-button';
@@ -20,27 +19,6 @@ const WAY_ICONS: Record<Way['id'], ComponentType<{ size?: number; stroke?: numbe
 	discussions: IconMessages,
 	security: IconLock,
 };
-
-/** The mark draws itself the first time the screen is half in view, not while it is off screen. */
-function useFirstSeen<T extends HTMLElement>() {
-	const ref = useRef<T>(null);
-	const [seen, setSeen] = useState(false);
-	useEffect(() => {
-		const node = ref.current;
-		if (!node || seen) return;
-		const observer = new IntersectionObserver(
-			([entry]) => {
-				if (entry.isIntersecting) setSeen(true);
-			},
-			{ threshold: 0.5 },
-		);
-		observer.observe(node);
-		return () => {
-			observer.disconnect();
-		};
-	}, [seen]);
-	return { ref, seen };
-}
 
 /** One way to contribute: a row that is a link, its icon, its title and its line. */
 function WayRow({ way }: { way: Way }) {
@@ -88,12 +66,10 @@ function StartFooter() {
  * install command and three ways to begin; the second lists the ways to contribute.
  */
 export function StartBoard() {
-	const { ref, seen } = useFirstSeen<HTMLDivElement>();
 	return (
-		<div ref={ref} className="start-frame">
+		<div className="start-frame">
 			<div className="start-columns">
 				<div className="start-begin">
-					<div className="start-mark">{seen ? <TheoremMark /> : null}</div>
 					<Heading level={1} type="display-1" textWrap="balance" className="start-title">
 						Build something cool.
 					</Heading>
