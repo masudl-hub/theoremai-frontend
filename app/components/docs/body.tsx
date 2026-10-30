@@ -19,7 +19,12 @@ import { chapterIcon } from '../../lib/docs/chapter-icons';
 import { CHAPTER_PLUGINS, markdownFences } from '../../lib/docs/chapter-markdown';
 import { commandChoices } from '../../lib/docs/commands';
 import { parseFigure } from '../../lib/docs/figure';
-import type { DocArticle, DocTerm } from '../../lib/docs/schema';
+import {
+	type DocArticle,
+	type DocTerm,
+	isStudioSeed,
+	type StudioSeedId,
+} from '../../lib/docs/schema';
 import { CopyIconButton } from './copy-button';
 import { EnhancedCodeView } from './enhanced-code-view';
 import { DocsFigure } from './figure';
@@ -35,7 +40,7 @@ type Chapter = {
 	/** The catalog rows the chapter's inline code names. */
 	terms: DocArticle['terms'];
 	/** The studio seed behind each seeded program, by the program's text. */
-	seeds: ReadonlyMap<string, string>;
+	seeds: ReadonlyMap<string, StudioSeedId>;
 };
 
 export const ChapterContext = createContext<Chapter>({ terms: {}, seeds: new Map() });
@@ -208,7 +213,7 @@ export function DocsBody({ article }: { article: Pick<DocArticle, 'body' | 'term
 			terms: article.terms,
 			seeds: new Map(
 				markdownFences(article.body).flatMap((fence) =>
-					fence.meta.seed === undefined ? [] : [[fence.code, fence.meta.seed] as const],
+					isStudioSeed(fence.meta.seed) ? [[fence.code, fence.meta.seed] as const] : [],
 				),
 			),
 		}),

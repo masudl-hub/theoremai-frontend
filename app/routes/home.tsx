@@ -11,6 +11,7 @@ import { StartBoard } from '../components/start/board';
 import '../components/home-scroll.css';
 import { homeTerms } from '../lib/.server/home-terms';
 import { SITE_REDIRECTS } from '../lib/docs/articles/chapters';
+import type { StudioSeedId } from '../lib/docs/schema';
 import {
 	COOKBOOK_SHOWN,
 	HOME_DESCRIPTION,
@@ -207,7 +208,7 @@ function scrollToLandingScreen(scroller: HTMLElement, screen: LandingScreen) {
 export default function Home({ loaderData }: Route.ComponentProps) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const chapter = useMemo(
-		() => ({ terms: loaderData.terms, seeds: new Map<string, string>() }),
+		() => ({ terms: loaderData.terms, seeds: new Map<string, StudioSeedId>() }),
 		[loaderData.terms],
 	);
 	const { hash, pathname } = useLocation();

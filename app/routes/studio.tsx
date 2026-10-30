@@ -5,7 +5,7 @@ import type { StudioHost, StudioOpened } from '@theoremjs/studio/ui/studio-host.
 import { StudioScreen } from '@theoremjs/studio/ui/studio-screen.tsx';
 import { useOutletContext } from 'react-router';
 import { PageJsonLd } from '../components/page-summary';
-import { STUDIO_SEED_IDS, type StudioSeedId } from '../lib/docs/schema';
+import { isStudioSeed } from '../lib/docs/schema';
 import { docsSeedDraft, docsSeedQuestion } from '../lib/docs/seeds';
 import { takeHomeAgent } from '../lib/home-agent-handoff';
 import { SITE_NAME } from '../lib/home-content';
@@ -39,10 +39,6 @@ export function meta({ matches }: Route.MetaArgs) {
 		{ name: 'twitter:title', content: title },
 		{ name: 'twitter:description', content: description },
 	];
-}
-
-function isStudioSeed(value: string | null): value is StudioSeedId {
-	return Boolean(value && (STUDIO_SEED_IDS as readonly string[]).includes(value));
 }
 
 function isCookbookId(value: string | null): value is CookbookId {

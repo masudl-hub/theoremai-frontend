@@ -1,17 +1,11 @@
-import { Button } from '@astryxdesign/core/Button';
-import { Card } from '@astryxdesign/core/Card';
 import { ensureHighlightStyles, tokenize } from '@astryxdesign/core/CodeBlock';
-import { Divider } from '@astryxdesign/core/Divider';
 import { DropdownMenu, type DropdownMenuItemData } from '@astryxdesign/core/DropdownMenu';
 import { HStack } from '@astryxdesign/core/HStack';
 import { useScrollableArea } from '@astryxdesign/core/hooks';
 import { Icon } from '@astryxdesign/core/Icon';
 import { IconButton } from '@astryxdesign/core/IconButton';
-import { Text } from '@astryxdesign/core/Text';
 import { Token } from '@astryxdesign/core/Token';
-import { VStack } from '@astryxdesign/core/VStack';
 import {
-	IconActivity,
 	IconAdjustmentsHorizontal,
 	IconAntennaBars1,
 	IconAntennaBars2,
@@ -41,7 +35,6 @@ import {
 	IconServer,
 	IconSquareRoundedNumber0,
 	IconSquareRoundedNumber2,
-	IconTool,
 	IconTrash,
 	IconUserCheck,
 	IconVolume,
@@ -59,14 +52,20 @@ import {
 import { PROFILE_TYPE_ICON, toolTypeIcon } from '@theoremjs/studio/ui/lib/type-icons.ts';
 import {
 	type CSSProperties,
+	lazy,
 	type ReactNode,
+	Suspense,
 	useEffect,
 	useInsertionEffect,
 	useMemo,
+	useRef,
 	useState,
 } from 'react';
+import type { StudioSeedId } from '../../lib/docs/schema';
 import { CopyIconButton } from './copy-button';
 import './enhanced-code-view.css';
+
+const SeedForm = lazy(() => import('./seed-form'));
 
 export interface ApplicableItem {
 	value: string;
@@ -1005,14 +1004,13 @@ function CodeLine({
 }
 
 const CODE_VIEWS = [
-	{ id: 'code', label: 'Code', icon: IconCode, description: 'Read and change the program' },
+	{ id: 'code', label: 'Code', icon: IconCode, description: 'Edit as TypeScript' },
 	{
-		id: 'studio',
-		label: 'Studio',
+		id: 'editor',
+		label: 'Editor',
 		icon: IconAdjustmentsHorizontal,
-		description: 'See it in the studio',
+		description: 'Edit as a form',
 	},
-	{ id: 'preview', label: 'Run', icon: IconActivity, description: 'See a turn it ran' },
 ] as const;
 
 type CodeViewName = (typeof CODE_VIEWS)[number]['id'];
@@ -1034,7 +1032,7 @@ function CodeViewToggle({
 				size: 'sm',
 				isIconOnly: true,
 				icon: <Icon icon={current.icon} size="sm" />,
-				tooltip: 'Switch between the code, the studio, and a run',
+				tooltip: 'Switch between the code and the editor',
 				className: 'enhanced-code-action',
 			}}
 			menuWidth="15rem"
@@ -1062,10 +1060,13 @@ export function EnhancedCodeView({
 }: {
 	code: string;
 	language?: string;
-	seed?: string;
+	seed?: StudioSeedId;
 }) {
 	const [activeCode, setActiveCode] = useState(initialCode);
 	const [view, setView] = useState<CodeViewName>('code');
+	// The form stays mounted once opened, so an edit that does not compile yet waits for the reader.
+	const hasOpenedForm = useRef(false);
+	if (view === 'editor') hasOpenedForm.current = true;
 
 	useInsertionEffect(() => {
 		ensureHighlightStyles();
@@ -1170,89 +1171,11 @@ export function EnhancedCodeView({
 				</div>
 			)}
 
-			{view === 'studio' && (
-				<div
-					style={{
-						height: 480,
-						width: '100%',
-						position: 'relative',
-						background: 'var(--color-background-surface, #121214)',
-					}}
-				>
-					<iframe
-						src={`/studio?seed=${seed ?? 'firstTurn'}&locked=1`}
-						title="Theorem Studio Preview"
-						style={{
-							width: '100%',
-							height: '100%',
-							border: 'none',
-							background: 'var(--color-background-surface, #121214)',
-						}}
-					/>
-				</div>
-			)}
-
-			{view === 'preview' && (
-				<div
-					style={{
-						padding: '24px',
-						width: '100%',
-						background: 'var(--color-background-card, #1c1c1f)',
-					}}
-				>
-					<VStack gap={4}>
-						<HStack justify="between" vAlign="center">
-							<VStack gap={0.5}>
-								<Text type="large" weight="medium">
-									Research Scout Execution Bench
-								</Text>
-								<Text type="supporting" color="secondary">
-									Replaying recorded arXiv and GitHub discovery turn from COOKBOOKS.research
-								</Text>
-							</VStack>
-							<Button
-								label="Launch in Studio"
-								variant="primary"
-								size="sm"
-								icon={<IconPlayerPlay />}
-								onClick={() => {
-									window.open(`/studio?seed=${seed ?? 'firstTurn'}`, '_blank');
-								}}
-							/>
-						</HStack>
-
-						<Card variant="glass" padding={3}>
-							<VStack gap={2}>
-								<Text type="supporting" weight="medium" color="secondary">
-									Prompt Input
-								</Text>
-								<Text type="body">
-									Find recent papers on episodic memory, vector-space memory stores, and context
-									recombination for language models, and quote exact claims from their cards or
-									abstracts.
-								</Text>
-							</VStack>
-						</Card>
-
-						<Card variant="muted" padding={3}>
-							<VStack gap={2}>
-								<HStack gap={2} vAlign="center">
-									<Icon icon={IconTool} size="sm" color="secondary" />
-									<Text type="supporting" weight="medium">
-										Tool Call: search_github &#123; q: &apos;llm episodic memory&apos; &#125;
-									</Text>
-								</HStack>
-								<Divider />
-								<HStack gap={2} vAlign="center">
-									<Icon icon={IconActivity} size="sm" color="secondary" />
-									<Text type="supporting" weight="medium">
-										Streaming Tokens: &apos;CapMem: A Benchmark for Caption-Based Episodic
-										Memory...&apos;
-									</Text>
-								</HStack>
-							</VStack>
-						</Card>
-					</VStack>
+			{seed && hasOpenedForm.current && (
+				<div className="enhanced-code-form" hidden={view !== 'editor'}>
+					<Suspense fallback={null}>
+						<SeedForm seed={seed} code={activeCode} onCode={setActiveCode} />
+					</Suspense>
 				</div>
 			)}
 		</div>

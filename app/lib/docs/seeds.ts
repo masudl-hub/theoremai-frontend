@@ -14,6 +14,7 @@ import {
 	decisionExampleDraft,
 	ON_OWN_KEYS,
 	RESEARCH_FIRST_TURN_PROMPT,
+	readStudioSource,
 	resolveCookbookSlice,
 	type StudioDraft,
 	studioSource,
@@ -40,9 +41,9 @@ function firstTurnDraft(): StudioDraft {
 	};
 }
 
-/** Wraps a compiled text profile with a `runTurn` entrypoint. */
-function withTurnDoor(exportName: string, prompt: string, keySlot: string) {
-	return (source: string, profileId: string): string => {
+/** A compiled text profile with a `runTurn` entrypoint, and the way back to the profile alone. */
+function turnDoor(exportName: string, prompt: string, keySlot: string) {
+	const wrap = (source: string, profileId: string): string => {
 		const imports = source.replace(
 			/import \{\n((?: {2}\w+,\n)+)\} from '@theoremjs\/agents';/,
 			(_match, names: string) => {
@@ -77,9 +78,11 @@ export async function ${exportName}(apiKey: string) {
 }
 `;
 	};
+	const unwrap = (text: string): string => text.split(`export async function ${exportName}(`)[0];
+	return { wrap, unwrap };
 }
 
-const asIs = (source: string): string => source;
+const asIs = { wrap: (source: string): string => source, unwrap: (text: string): string => text };
 
 /** Each seed's studio draft, the question its program asks, and how its compiled profile is wrapped for the docs fence. */
 const SEEDS: Record<
@@ -88,53 +91,54 @@ const SEEDS: Record<
 		draft: () => StudioDraft;
 		question: string;
 		wrap: (source: string, profileId: string) => string;
+		unwrap: (text: string) => string;
 	}
 > = {
 	firstTurn: {
 		draft: firstTurnDraft,
 		question: RESEARCH_FIRST_TURN_PROMPT,
-		wrap: withTurnDoor('firstTurn', RESEARCH_FIRST_TURN_PROMPT, 'openrouter'),
+		...turnDoor('firstTurn', RESEARCH_FIRST_TURN_PROMPT, 'openrouter'),
 	},
 	research: {
 		draft: createResearchScoutDraft,
 		question: RESEARCH_FIRST_TURN_PROMPT,
-		wrap: withTurnDoor('runResearchScout', RESEARCH_FIRST_TURN_PROMPT, 'openrouter'),
+		...turnDoor('runResearchScout', RESEARCH_FIRST_TURN_PROMPT, 'openrouter'),
 	},
 	concierge: {
 		draft: createExampleDraft,
 		question: 'Plan two days in Lisbon in March.',
-		wrap: asIs,
+		...asIs,
 	},
 	architect: {
 		draft: createExampleDraft,
 		question: 'Compare Cloudflare Workers and AWS Lambda cold starts.',
-		wrap: asIs,
+		...asIs,
 	},
 	'live-concierge': {
 		draft: createLiveExampleDraft,
 		question: '',
-		wrap: asIs,
+		...asIs,
 	},
 	decision: {
 		// why: Docs only need the pantry decision's shape; pictures load when Studio opens the example.
 		draft: () => decisionExampleDraft(),
 		question: '',
-		wrap: asIs,
+		...asIs,
 	},
 	'gemini-embedding-2': {
 		draft: createGeminiEmbeddingExampleDraft,
 		question: '',
-		wrap: asIs,
+		...asIs,
 	},
 	narrator: {
 		draft: createNarratorExampleDraft,
 		question: 'Welcome to the research briefing.',
-		wrap: asIs,
+		...asIs,
 	},
 	console: {
 		draft: createConsoleExampleDraft,
 		question: '',
-		wrap: asIs,
+		...asIs,
 	},
 };
 
@@ -147,14 +151,28 @@ export function docsSeedDraft(seed: StudioSeedId): StudioDraft {
 	return SEEDS[seed].draft();
 }
 
+/** A draft of the seed as its docs program, or what stops it compiling. */
+export function seedProgram(seed: StudioSeedId, draft: StudioDraft) {
+	const compiled = compileStudio(draft, ON_OWN_KEYS);
+	if (!compiled.ok) return { ok: false as const, issues: compiled.issues };
+	return {
+		ok: true as const,
+		code: SEEDS[seed].wrap(studioSource(compiled), compiled.agentId),
+	};
+}
+
+/** The seed's docs program read back into a draft, the door around it set aside. */
+export function readSeedProgram(seed: StudioSeedId, text: string, draft: StudioDraft) {
+	return readStudioSource(SEEDS[seed].unwrap(text), draft);
+}
+
 export function compileSeedSource(seed: StudioSeedId): string {
-	const compiled = compileStudio(docsSeedDraft(seed), ON_OWN_KEYS);
-	if (!compiled.ok) {
-		const issues = compiled.issues.map((issue) => issue.message).join('; ');
+	const program = seedProgram(seed, docsSeedDraft(seed));
+	if (!program.ok) {
+		const issues = program.issues.map((issue) => issue.message).join('; ');
 		throw new Error(`DOCS_SEEDS.${seed} failed to compile: ${issues}`);
 	}
-	const { wrap } = SEEDS[seed];
-	return wrap(studioSource(compiled), compiled.agentId);
+	return program.code;
 }
 
 /** Resolves an atomic cookbook slice (`<cookbook>:profile:<agentId>#<fields>` or `<cookbook>:tool:<name>#<fields>`). */

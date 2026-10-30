@@ -183,6 +183,10 @@ export const STUDIO_SEED_IDS = [
 ] as const;
 export type StudioSeedId = (typeof STUDIO_SEED_IDS)[number];
 
+export function isStudioSeed(value: string | null | undefined): value is StudioSeedId {
+	return Boolean(value && (STUDIO_SEED_IDS as readonly string[]).includes(value));
+}
+
 /** Schema exports that are closed string arrays — derived, not a hand name list. */
 export type ArrayUnionName = {
 	[K in keyof typeof SchemaModule]: (typeof SchemaModule)[K] extends readonly string[] ? K : never;

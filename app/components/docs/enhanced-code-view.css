@@ -117,3 +117,18 @@
 	font: inherit;
 	color: inherit;
 }
+
+/* The studio's form for a seeded program, under the same header as its code. */
+.enhanced-code-form {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-4);
+	max-height: 32rem;
+	padding: var(--spacing-4);
+	overflow: auto;
+	overscroll-behavior: contain;
+}
+
+.enhanced-code-form[hidden] {
+	display: none;
+}
