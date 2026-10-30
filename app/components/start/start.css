@@ -70,18 +70,13 @@
 	gap: var(--spacing-2);
 }
 
-/* The ways, one to a row, with a hairline between. */
+/* The ways, one to a row. */
 .start-ways {
 	display: flex;
 	flex-direction: column;
 	margin: 0;
 	padding: 0;
 	list-style: none;
-	border-top: 1px solid var(--color-border);
-}
-
-.start-ways > li {
-	border-bottom: 1px solid var(--color-border);
 }
 
 .start-way {
