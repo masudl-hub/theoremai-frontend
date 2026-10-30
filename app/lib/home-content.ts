@@ -107,7 +107,10 @@ export type CookbookAction =
 	| { kind: 'hosted'; href: string; label: string };
 
 /** Whether the cookbook screen is on the home page after packages. */
-export const COOKBOOK_SHOWN: boolean = false;
+export const COOKBOOK_SHOWN: boolean = true;
+
+/** Whether the agents screen, the Agents map opened, follows the packages on the home page. */
+export const AGENTS_SCREEN_SHOWN: boolean = false;
 
 /**
  * A recipe on the cookbook screen: studio cookbooks project `verb` / `tags` /

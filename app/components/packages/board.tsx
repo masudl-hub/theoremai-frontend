@@ -17,7 +17,12 @@ import {
 	useRef,
 	useState,
 } from 'react';
-import { INSTALL_COMMANDS, PACKAGE_TILES, type PackageId } from '../../lib/home-content';
+import {
+	AGENTS_SCREEN_SHOWN,
+	INSTALL_COMMANDS,
+	PACKAGE_TILES,
+	type PackageId,
+} from '../../lib/home-content';
 import { stillRenditions } from '../../lib/stills';
 import { useScrollStops } from '../home-scroll-stops';
 import { openedOn, useDrawn } from '../opening-screen';
@@ -251,6 +256,7 @@ function usePackagesRun(scrollRoot: RefObject<HTMLElement | null>) {
 		runRef,
 		stop: 'packages-stop',
 		lead: true,
+		reduced: !AGENTS_SCREEN_SHOWN,
 		onPull,
 		onRest,
 		onClear,
@@ -271,6 +277,7 @@ export function PackagesBoard({ scrollRoot }: { scrollRoot: RefObject<HTMLElemen
 			id="packages"
 			aria-label="Packages"
 			data-open={isOpen ? '' : undefined}
+			data-alone={AGENTS_SCREEN_SHOWN ? undefined : ''}
 		>
 			<div className="packages-pin">
 				<div className="packages-frame" ref={frameRef}>
@@ -314,7 +321,9 @@ export function PackagesBoard({ scrollRoot }: { scrollRoot: RefObject<HTMLElemen
 					</ul>
 				</div>
 			</div>
-			<div className="packages-stop" id="agents" data-home-stop="agents" aria-hidden />
+			{AGENTS_SCREEN_SHOWN ? (
+				<div className="packages-stop" id="agents" data-home-stop="agents" aria-hidden />
+			) : null}
 		</section>
 	);
 }

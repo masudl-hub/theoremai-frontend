@@ -15,6 +15,16 @@
 	height: 50%;
 }
 
+/* Without the agents screen the run is the packages screen alone. */
+.packages-run[data-alone] {
+	height: 100%;
+}
+
+.packages-run[data-alone] .packages-pin {
+	position: relative;
+	height: 100%;
+}
+
 /* The packages screen: three tall stills in one row, named on the picture. The row keeps the goals'
    sides: the frame's padding, then the same inset the goals' words and stills have. */
 .packages-frame {
