@@ -1,85 +1,118 @@
+/* Astryx's CodeBlock, rule for rule, in its span mode with line numbers and the card container.
+   CodeBlock draws only text, so this view draws the same block and adds its tokens. Two things
+   are ours: the header carries the view switch, and a token sits where its string was. */
+
 .enhanced-code-block {
 	position: relative;
 	isolation: isolate;
 	display: flex;
 	flex-direction: column;
-	margin: 0;
-	background-color: var(--color-background-surface, #121214);
-	border: var(--border-width, 1px) solid var(--color-border);
-	border-radius: var(--radius-element, 8px);
-	overflow: hidden;
 	width: 100%;
+	margin: 0;
+	background-color: var(--color-syntax-background);
+	border-radius: var(--radius-element);
+	border: var(--border-width) solid var(--color-border);
+	overflow: hidden;
 }
 
 .enhanced-code-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding-inline: var(--spacing-3, 0.75rem);
-	padding-block: var(--spacing-2, 0.5rem);
-	background-color: var(--color-background-surface, #121214);
-	border-bottom: var(--border-width, 1px) solid var(--color-border);
+	padding-inline: var(--spacing-4);
+	padding-block: var(--spacing-2);
+	background-color: var(--color-syntax-background);
+	border-bottom: var(--border-width) solid var(--color-border);
 	position: sticky;
 	top: 0;
-	z-index: 2;
+	z-index: 1;
+}
+
+.enhanced-code-title {
+	display: flex;
+	align-items: center;
+	flex: 1;
+	min-width: 0;
+	font-size: var(--text-supporting-size);
+	font-family: var(--font-family-code);
+	font-weight: var(--font-weight-medium);
+	color: var(--color-syntax-comment);
+	line-height: var(--text-supporting-leading);
+}
+
+/* The header's controls rest in the title's colour. Two classes, to beat Button's own. */
+.enhanced-code-block .enhanced-code-action {
+	color: var(--color-syntax-comment);
 }
 
 .enhanced-code-viewport {
-	position: relative;
-	overflow-x: auto;
 	min-height: 0;
-	padding-block: var(--spacing-3, 0.75rem);
+}
+
+.enhanced-code-content {
+	display: flex;
+	min-width: fit-content;
 }
 
 .enhanced-code {
+	position: relative;
 	display: block;
+	flex: 1;
 	min-width: max-content;
+	padding-block: var(--spacing-3);
+	padding-inline: var(--spacing-4);
 	margin: 0;
-	font-family: var(--font-family-code, monospace);
-	font-size: 13px;
-	line-height: 26px;
-	color: var(--color-syntax-variable, #e4e4e7);
+	font-family: var(--font-family-code);
+	font-size: var(--text-code-size);
+	color: var(--color-syntax-variable);
 	tab-size: 2;
 	white-space: pre;
+	word-break: normal;
+	overflow-wrap: normal;
+}
+
+/* The full-height rule between the numbers and the code. */
+.enhanced-code::after {
+	content: "";
+	position: absolute;
+	inset-block: 0;
+	inset-inline-start: calc(var(--spacing-4) + var(--enhanced-code-gutter-width) + var(--spacing-3));
+	width: 0;
+	border-inline-start: var(--border-width) solid var(--color-border);
+	pointer-events: none;
 }
 
 .enhanced-code-line {
 	display: grid;
-	grid-template-columns: var(--code-gutter-width, 3ch) 1fr;
-	column-gap: var(--spacing-4, 1rem);
-	align-items: center;
-	min-height: 26px;
-	padding-inline-end: var(--spacing-4, 1rem);
+	grid-template-columns: var(--enhanced-code-gutter-width) 1fr;
+	column-gap: calc(var(--spacing-3) + var(--border-width) + var(--spacing-4));
+	line-height: var(--text-code-leading);
 }
 
 .enhanced-code-line::before {
 	content: attr(data-line);
 	grid-column: 1;
+	align-self: start;
 	text-align: end;
-	padding-inline-start: var(--spacing-3, 0.75rem);
-	color: var(--color-syntax-comment, #71717a);
+	color: var(--color-syntax-punctuation);
 	user-select: none;
-	font-family: var(--font-family-code, monospace);
-	font-size: 12px;
-	opacity: 0.6;
+	font-family: var(--font-family-code);
 }
 
+/* invariant: Inline, never flex. A flex box drops text that is only spaces, and the space between
+   two tokens is exactly that. */
 .enhanced-code-line-content {
-	grid-column: 2;
 	min-width: 0;
-	display: inline-flex;
-	align-items: center;
-	flex-wrap: nowrap;
-	font-family: var(--font-family-code, monospace);
 }
 
+/* A token is shorter than a code line, so its row stays the height of every other row. */
 .enhanced-code-token-wrap {
 	display: inline-flex;
 	vertical-align: middle;
-	background: none;
-	border: none;
+	margin: 0;
 	padding: 0;
-	margin-inline: 2px;
+	border: none;
+	background: none;
 	cursor: pointer;
 	font: inherit;
 	color: inherit;

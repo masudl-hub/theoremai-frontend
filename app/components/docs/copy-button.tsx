@@ -6,10 +6,12 @@ export function CopyIconButton({
 	label,
 	copiedLabel,
 	text,
+	className,
 }: {
 	label: string;
 	copiedLabel: string;
 	text: string;
+	className?: string;
 }) {
 	const { copy, isCopied } = useClipboard({ announce: copiedLabel });
 	return (
@@ -19,6 +21,7 @@ export function CopyIconButton({
 			variant="ghost"
 			size="sm"
 			icon={isCopied ? <IconCheck /> : <IconCopy />}
+			className={className}
 			onClick={() => {
 				void copy(text);
 			}}
