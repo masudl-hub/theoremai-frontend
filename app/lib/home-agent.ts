@@ -290,6 +290,8 @@ function modelsFor({
 	isOpen,
 	isPicked,
 }: ModelChoice): Pick<StudioDraft, 'models' | 'modelBindings'> {
+	// why: Off is where the agent started, so leaving a beat returns the same source.
+	if (!isOpen && !isPicked) return siteResearchModels();
 	const { models, modelBindings } = createExampleDraft();
 	const named = (id: string) => modelBindings.filter(({ modelId }) => modelId === id);
 	const plain = (binding: StudioDraft['modelBindings'][number]) => ({
