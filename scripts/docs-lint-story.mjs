@@ -13,7 +13,7 @@ const articlesDir = path.join(repoRoot, 'app/lib/docs/articles');
 const gaps = JSON.parse(readFileSync(path.join(repoRoot, 'scripts/docs-story-gaps.json'), 'utf8'));
 
 const OFF_STORY =
-	/\b(harbou?rs?|harbou?r[._]\w+|vessels?|customs|cargo|freight|berths?|quays?|manifests?|declarations?|tariffs?|shipments?|acme|delete_record|transfer_funds|generate_report|run_query|fetch_inventory|charge_card|sync_user_vault|computeTrajectory|research\.orchestrator)\b|anthropic\/claude-[\w.-]+/gi;
+	/harbou?r|vessel|customs|cargo|freight|berth|quay|maritime|logistics|tariff|shipment|manifest|acme\.|billingaccount|issue_refund|delete_record|transfer_funds|generate_report|run_query|fetch_inventory|charge_card|sync_user_vault|computetrajectory|research\.orchestrator|anthropic\/claude-[\w.-]+/gi;
 
 /** @param {string} dir @returns {string[]} */
 function chapters(dir) {
