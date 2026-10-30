@@ -27,10 +27,10 @@
 	height: 100%;
 }
 
-/* One field of dots under the cookbook and the contribute screen, so there is
+/* One field of dots under the cookbook and the get started screen, so there is
    no seam between them. Lowest at the top of the screen, strongest through the
-   lower cookbook, then clears over most of contribute. Alone, it clears over
-   contribute the same way. */
+   lower cookbook, then clears over most of get started. Alone, it clears over
+   get started the same way. */
 .home-dotted {
 	display: flex;
 	flex-direction: column;

@@ -31,13 +31,13 @@ export function shellKindFor(pathname: string, hash: string): ShellKind {
 	return FRAME_PATHS.has(pathname) ? 'frame' : 'regular';
 }
 
-/** Overview, packages, cookbook, contribute and get started are screens of the landing page; their routes redirect to it. */
+/** Overview, packages, cookbook and get started are screens of the landing page, and contribute is part of get started; their routes redirect to it. */
 const LANDING_SCREENS: Record<string, string | undefined> = {
 	'/overview': '#overview',
 	'/packages': '#packages',
 	'/cookbooks': '#cookbook',
 	'/examples': '#cookbook',
-	'/contribute': '#contribute',
+	'/contribute': '#start',
 	'/start': '#start',
 };
 

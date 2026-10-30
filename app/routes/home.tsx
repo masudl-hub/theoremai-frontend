@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { ContributeBoard } from '../components/contribute/board';
 import { ChapterContext } from '../components/docs/body';
 import { ExamplesBoard } from '../components/examples/board';
 import { HomePlatform } from '../components/home-platform';
@@ -77,10 +76,9 @@ type LandingScreen =
 	| 'packages'
 	| 'agents'
 	| 'cookbook'
-	| 'contribute'
 	| 'start';
 
-/** `#examples` / `#showcase` / `#cookbooks` land on cookbook. An empty hash is landing. */
+/** `#examples` / `#showcase` / `#cookbooks` land on cookbook, `#contribute` on get started. An empty hash is landing. */
 function landingScreen(hash: string): LandingScreen | null {
 	const id = decodeURIComponent(hash.replace(/^#/, ''));
 	if (id === '' || id === 'landing') return 'landing';
@@ -93,8 +91,7 @@ function landingScreen(hash: string): LandingScreen | null {
 	if (id === 'cookbook' || id === 'showcase' || id === 'examples' || id === 'cookbooks') {
 		return 'cookbook';
 	}
-	if (id === 'contribute') return 'contribute';
-	if (id === 'start') return 'start';
+	if (id === 'start' || id === 'contribute') return 'start';
 	return null;
 }
 
@@ -124,7 +121,6 @@ function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number
 	const overview = scroller.querySelector<HTMLElement>('#overview');
 	const packages = scroller.querySelector<HTMLElement>('#packages');
 	const cookbook = scroller.querySelector<HTMLElement>('#cookbook');
-	const contribute = scroller.querySelector<HTMLElement>('#contribute');
 	const start = scroller.querySelector<HTMLElement>('#start');
 	const overviewAt =
 		settle && getComputedStyle(settle).display !== 'none'
@@ -143,11 +139,7 @@ function screenStops(scroller: HTMLElement): { screen: LandingScreen; at: number
 			at: scrollTopOf(scroller, stop),
 		})),
 		...(cookbook ? [{ screen: 'cookbook' as const, at: cookbook.offsetTop }] : []),
-		{
-			screen: 'contribute',
-			at: contribute?.offsetTop ?? cookbook?.offsetTop ?? overviewAt,
-		},
-		...(start ? [{ screen: 'start' as const, at: start.offsetTop }] : []),
+		{ screen: 'start', at: start?.offsetTop ?? cookbook?.offsetTop ?? overviewAt },
 	];
 }
 
@@ -211,7 +203,7 @@ function scrollToLandingScreen(scroller: HTMLElement, screen: LandingScreen) {
 	scroller.querySelector<HTMLElement>(`#${CSS.escape(target)}`)?.scrollIntoView({ block: 'start' });
 }
 
-/** Landing (/), then overview, goals, packages, cookbook, contribute and get started. */
+/** Landing (/), then overview, goals, packages, cookbook and get started. */
 export default function Home({ loaderData }: Route.ComponentProps) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const chapter = useMemo(
@@ -281,13 +273,10 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 						<ExamplesBoard />
 					</section>
 				) : null}
-				<section className="home-page" id="contribute" aria-label="Contribute">
-					<ContributeBoard />
+				<section className="home-page" id="start" aria-label="Get started">
+					<StartBoard />
 				</section>
 			</div>
-			<section className="home-page" id="start" aria-label="Get started">
-				<StartBoard />
-			</section>
 		</div>
 	);
 }

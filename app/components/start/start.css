@@ -1,29 +1,39 @@
-/* The landing page's last screen, centred on the page panel. */
+/*
+ * The landing page's last screen: two columns on the page panel, the way to begin and the ways
+ * to contribute, with the site's foot along the bottom. The sides match the packages screen's.
+ */
 .start-frame {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
 	box-sizing: border-box;
 	height: 100%;
-	padding: var(--spacing-8) var(--spacing-6);
+	padding: var(--spacing-8) calc(clamp(1.5rem, 3.2vw, 3.25rem) + clamp(2rem, 6vw, 5rem));
 	overflow: hidden;
 }
 
-.start-content {
+.start-columns {
 	flex: 1 1 auto;
-	justify-content: center;
+	display: grid;
+	grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+	align-items: center;
+	gap: var(--spacing-8) clamp(2rem, 6vw, 6rem);
+	width: 100%;
+	max-width: 100rem;
+	min-height: 0;
+	margin: 0 auto;
+}
+
+.start-begin {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
+	align-items: flex-start;
 	gap: var(--spacing-8);
-	max-width: min(100%, 72rem);
 	min-width: 0;
-	text-align: center;
 }
 
 /* The space is held before the mark draws, so nothing moves when it does. */
 .start-mark {
-	--start-mark-size: clamp(4.5rem, 11vh, 7rem);
+	--start-mark-size: clamp(3.5rem, 9vh, 5.5rem);
 	width: var(--start-mark-size);
 	height: var(--start-mark-size);
 }
@@ -36,7 +46,7 @@
 /* Poster scale: the answer to the headline the page opened with. */
 .start-title.start-title {
 	margin: 0;
-	font-size: clamp(2.5rem, 6vw, 6rem);
+	font-size: clamp(2.5rem, 5.2vw, 5.5rem);
 	line-height: 0.95;
 	letter-spacing: -0.03em;
 }
@@ -44,8 +54,80 @@
 .start-actions {
 	display: flex;
 	flex-wrap: wrap;
-	justify-content: center;
 	gap: var(--spacing-3);
+}
+
+.start-contribute {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-6);
+	min-width: 0;
+}
+
+.start-contribute-intro {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-2);
+}
+
+/* The ways, one to a row, with a hairline between. */
+.start-ways {
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	border-top: 1px solid var(--color-border);
+}
+
+.start-ways > li {
+	border-bottom: 1px solid var(--color-border);
+}
+
+.start-way {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	align-items: center;
+	gap: var(--spacing-4);
+	padding: var(--spacing-4) var(--spacing-2);
+	color: inherit;
+	text-decoration: none;
+	border-radius: var(--radius-container);
+}
+
+.start-way-icon {
+	display: grid;
+	place-items: center;
+	width: 2.5rem;
+	height: 2.5rem;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-container);
+	color: var(--color-text-secondary);
+}
+
+.start-way-words {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-1);
+	min-width: 0;
+}
+
+.start-way-title.start-way-title {
+	margin: 0;
+}
+
+.start-way-arrow {
+	color: var(--color-text-secondary);
+	opacity: 0;
+}
+
+.start-way:hover .start-way-arrow,
+.start-way:focus-visible .start-way-arrow {
+	opacity: 1;
+}
+
+.start-way:hover .start-way-title {
+	text-decoration: underline;
 }
 
 /* A quiet line along the bottom of the last screen. */
@@ -56,6 +138,8 @@
 	justify-content: space-between;
 	gap: var(--spacing-2) var(--spacing-6);
 	width: 100%;
+	max-width: 100rem;
+	margin: 0 auto;
 }
 
 .start-footer-links {
@@ -64,13 +148,27 @@
 	gap: var(--spacing-4);
 }
 
+/* why: A phone has no room for two columns: they stack, and the screen scrolls inside itself. */
 @media (width < 768px) {
-	.start-content {
-		gap: var(--spacing-6);
-		width: 100%;
+	.start-frame {
+		padding: var(--spacing-8) var(--spacing-4);
+		overflow-y: auto;
 	}
 
-	.start-content .install-copy {
+	.start-columns {
+		grid-template-columns: minmax(0, 1fr);
+		align-items: start;
+	}
+
+	.start-begin {
+		gap: var(--spacing-6);
+	}
+
+	.start-begin .install-copy {
 		max-width: 100%;
+	}
+
+	.start-footer {
+		margin-top: var(--spacing-8);
 	}
 }

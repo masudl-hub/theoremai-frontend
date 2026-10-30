@@ -245,32 +245,24 @@ export const WAYS = [
 		title: 'Raise an issue',
 		note: 'Tell us about a bug or an idea. Say what you ran and what happened.',
 		href: `${REPO_URL}/issues/new`,
-		src: '/imagery/th30_sanddunes.png',
-		position: '50% 50%',
 	},
 	{
 		id: 'code',
 		title: 'Contribute code',
 		note: 'Set up the repo, run the checks, and send a pull request.',
 		href: `${REPO_URL}/blob/main/CONTRIBUTING.md`,
-		src: '/imagery/th30_farm.png',
-		position: '50% 50%',
 	},
 	{
 		id: 'discussions',
 		title: 'Join the discussions',
 		note: 'Ask questions, share what you build, and meet other builders.',
 		href: `${REPO_URL}/discussions`,
-		src: '/imagery/th30_cherryblossoms.png',
-		position: '50% 50%',
 	},
 	{
 		id: 'security',
 		title: 'Report a vulnerability',
 		note: 'Report a security problem to us in private. Do not use a public issue.',
 		href: `${REPO_URL}/security/advisories/new`,
-		src: '/imagery/th30_glacialice.png',
-		position: '50% 80%',
 	},
 ] as const;
 
@@ -318,14 +310,9 @@ export function homeScreens(): readonly HomeScreen[] {
 				]
 			: []),
 		{
-			id: 'contribute',
-			name: 'Contribute',
-			text: `Contribute to the theory. ${CONTRIBUTE_INTRO} ${ways}`,
-		},
-		{
 			id: 'start',
 			name: 'Get started',
-			text: `Ready to keep your promises? Install it with ${installText}. Open the ${SITE_PAGES.map(({ label }) => label).join(' or ')}, or copy a prompt for your coding agent.`,
+			text: `Ready to keep your promises? Install it with ${installText}. Open the ${SITE_PAGES.map(({ label }) => label).join(' or ')}, or copy a prompt for your coding agent. Contribute to the theory. ${CONTRIBUTE_INTRO} ${ways}`,
 		},
 	];
 }
