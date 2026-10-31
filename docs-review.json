@@ -703,17 +703,17 @@
 			"studio/decision-example-images.ts": "802ac837864ebc9d227932e4e789d1151f68a2b2",
 			"studio/deno.json": "fde86a1efb656ba70397b1e732514b035bcb002a",
 			"studio/draft.ts": "053ebdcbe1e6af03f0607c10072a34faad649786",
-			"studio/e2e/chat.spec.ts": "534974d852bfe68c49e0e2e6575efa4b784b15d9",
+			"studio/e2e/chat.spec.ts": "0d29dee4b2e2cf82a0012b4c96f84e7e03be3a0f",
 			"studio/e2e/conversation.spec.ts": "e24827d4ed1e8962e772245fe3eb367e70d1853e",
 			"studio/e2e/drive.ts": "ccb4adfa61be4bbe85908d67afcc970aa9b9b94a",
 			"studio/e2e/fake-model.mjs": "dfd930ed2beb6c5227aae5c9d1aa15175f44bccb",
 			"studio/e2e/kinds.spec.ts": "1188d48ecbcb77afc9418f9e781aa75e538947d8",
 			"studio/e2e/playwright.config.ts": "5753ca55e43b0c6cebee6ccc1fb6c5dac2e9de90",
-			"studio/e2e/project/agents/desk.ts": "589dcc5c4089a36df23ca3f616687b94e2e399b6",
+			"studio/e2e/project/agents/desk.ts": "1a6ffe8edb9d3c939d36fc2873b51b2a648beb97",
 			"studio/e2e/project/agents/team.ts": "acded9f8a776f1ed21ca33ed85ec8236fb991a97",
 			"studio/e2e/project/app.ts": "1a87156d0adac1ad3f5cef81314078ca1e9c35af",
 			"studio/e2e/project/flows.studio.setup.ts": "1cb2908893443fe9223d2527974dd3e12e947e3a",
-			"studio/e2e/project/tools.ts": "68905eb42b67c3cd94fe7e72c13eb569297dc0f8",
+			"studio/e2e/project/tools.ts": "aecd6de6698999d629bf48e179e867e4c34d3a98",
 			"studio/e2e/save.spec.ts": "17bc1244bf4d83b1970e291da3841e1a99cbf15b",
 			"studio/e2e/serve.mjs": "113c64deda99c5d4c5fbe420b4c3cf540c96dddd",
 			"studio/e2e/studio.spec.ts": "8689ec8e31eedebea0276166f861efcda8a8211a",
@@ -764,7 +764,7 @@
 			"studio/server/edits.ts": "f1edefcf544bf84016bfc27f0aa6048f1a8528d0",
 			"studio/server/events.ts": "9cd9bc09d7491bfd2a64621f99379ea0ecf9b98b",
 			"studio/server/example.ts": "2b21e51a5e043b008d14031d0c9e8b0ed8c34397",
-			"studio/server/handler.ts": "8fe755cf62499942f9b668c482dd35dceb747e9b",
+			"studio/server/handler.ts": "19741b99452b735bcddaa231e4544ec44ca5b25b",
 			"studio/server/lent-draft.ts": "b6ceb7176c0026ae815ee705b13c97ffbf30ace7",
 			"studio/server/live.ts": "27f8ccb2a5d18b50f93f0e41e21e62a82d54e18d",
 			"studio/server/open-editor.ts": "c69c7768772f42a27dfbbd2912251334f11e6bc7",
@@ -806,7 +806,7 @@
 			"studio/tests/refusal-lines.test.ts": "d82237c4ff7bf4e33306dfcffeead3482622270c",
 			"studio/tests/setups.test.ts": "10ddb331df36b183fca6b4279d50bbe572dd6356",
 			"studio/tests/store-shared.test.ts": "9cce5f9a1f816716d9a4b0141d67245a7601eeec",
-			"studio/tests/store-surface.test.ts": "72c4ec7275451de444e57915a153b71d343d60d5",
+			"studio/tests/store-surface.test.ts": "402722df93d4207b6a02533c4b91a23acb1e3f30",
 			"studio/tests/store.test.ts": "932a1ca840c5c242902c7e658074161769ae1013",
 			"studio/tests/tab.ts": "d5531ee4215b24f4cb33bc148726fa61cafb8942",
 			"studio/tests/vite-packages.test.ts": "2bd00d4a07eb49f1b362b8a497969015069b0ab3",
@@ -927,7 +927,7 @@
 			"studio/ui/tree-map.tsx": "4e1812fe4ed5ce7b7cf48a87906c4551b4778df5",
 			"studio/ui/use-phone.ts": "35a5c97427d4d8bcc748d27e9be9e3e694821b40",
 			"studio/vite.mjs": "c7ea0e857920fb489b01cb36014a917218e39cea",
-			"studio/workspace.ts": "cab7bff4166bbf85d6696bc875dbc8387b070819"
+			"studio/workspace.ts": "d4738de040a9835acb0fce25a10b476825a6bf28"
 		}
 	},
 	"studio/compiler": {
@@ -948,7 +948,7 @@
 		"reviewed": "2026-10-31",
 		"files": {
 			"studio/compile.ts": "faaced3c9dc8b29e847b00631b93e4e0c2b344cd",
-			"studio/workspace.ts": "cab7bff4166bbf85d6696bc875dbc8387b070819"
+			"studio/workspace.ts": "d4738de040a9835acb0fce25a10b476825a6bf28"
 		}
 	},
 	"tools": {
@@ -1201,7 +1201,7 @@
 			"react/src/vite-env.d.ts": "a839446c75f312551fddbe0685c969a43a8cd874",
 			"react/tsconfig.build.json": "797c964d4d29d1528195750327dddc5f3795dc61",
 			"react/tsconfig.json": "0c8703c7f7b3ce5d472d849f5fa770b4c60152a3",
-			"src/interface/blocks.ts": "d5af402305ee8055610cdb13110c75c311fe7d4b",
+			"src/interface/blocks.ts": "d32cf064dfcff8a1df88a6902fb7722c136231fb",
 			"src/interface/composer-actions.ts": "220d00650c649be934c20b29d1632260970f5e62",
 			"src/interface/draft.ts": "6feb766bf891c9d3d5611079b2dffbe801ee4738",
 			"src/interface/from-profile.ts": "c472c963be9cc9c47e1fd05d83dfb6ac67400b59",
@@ -1216,7 +1216,7 @@
 			"src/interface/tool-calls.ts": "f5c1312fe93b5eabf63e99b67700feaa2c847c1a",
 			"src/interface/tool-invoke.ts": "3297e1407cadbdec1b0d029efeef2dc17b6b8973",
 			"src/interface/tool-media.ts": "8892b56ccbdfc88c37b10ffe26cb18b680d56c2f",
-			"src/interface/types.ts": "43074e71c7e916ffd281df91c7af85b109e6a2f1"
+			"src/interface/types.ts": "3d1bac9616923404272b950be3d7792e992a1c8a"
 		}
 	},
 	"web/astryx": {
@@ -1455,7 +1455,7 @@
 			"react/src/vite-env.d.ts": "a839446c75f312551fddbe0685c969a43a8cd874",
 			"react/tsconfig.build.json": "797c964d4d29d1528195750327dddc5f3795dc61",
 			"react/tsconfig.json": "0c8703c7f7b3ce5d472d849f5fa770b4c60152a3",
-			"src/interface/blocks.ts": "d5af402305ee8055610cdb13110c75c311fe7d4b",
+			"src/interface/blocks.ts": "d32cf064dfcff8a1df88a6902fb7722c136231fb",
 			"src/interface/composer-actions.ts": "220d00650c649be934c20b29d1632260970f5e62",
 			"src/interface/draft.ts": "6feb766bf891c9d3d5611079b2dffbe801ee4738",
 			"src/interface/from-profile.ts": "c472c963be9cc9c47e1fd05d83dfb6ac67400b59",
@@ -1470,7 +1470,7 @@
 			"src/interface/tool-calls.ts": "f5c1312fe93b5eabf63e99b67700feaa2c847c1a",
 			"src/interface/tool-invoke.ts": "3297e1407cadbdec1b0d029efeef2dc17b6b8973",
 			"src/interface/tool-media.ts": "8892b56ccbdfc88c37b10ffe26cb18b680d56c2f",
-			"src/interface/types.ts": "43074e71c7e916ffd281df91c7af85b109e6a2f1"
+			"src/interface/types.ts": "3d1bac9616923404272b950be3d7792e992a1c8a"
 		}
 	},
 	"web/realtime": {

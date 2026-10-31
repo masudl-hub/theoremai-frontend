@@ -56,6 +56,8 @@ The `useTheoremChat` hook binds `createChatController` from `@theoremjs/web/clie
 
 ### Lean Consumption
 
+When a tool call completes, each image or other media part it returned becomes a `media` block right after the call, so it stands before what the model says next.
+
 To display incoming tokens as they arrive over the wire, concatenate committed `chat.blocks` with active `chat.streamBlocks`:
 
 ```tsx
