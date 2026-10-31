@@ -53,7 +53,7 @@ The CLI loads the setup file, then the entry it names, and reads the entry's `th
 
 `agents profile --setup <file>` registers your profiles the same way before it lists or shows them.
 
-`test` and `run` send no slots and no conditions. A profile with a prompt line that reads one needs `theorem.prepare` to state it, or the turn is refused with a `request` error. The scout's `reader` slot is such a slot, so the samples on this page need a `prepare` that chooses it.
+`test` and `run` send no slots and no conditions. The scout's `reader` slot stays unset, so its `when reader is …` lines do not fit, and the samples on this page run as written. A profile with a condition, or a prompt line that fills `{name}` from a slot, needs `theorem.prepare` to state it, or the turn is refused with a `request` error.
 
 Without `--setup`, `test` and `run` have no provider, so they fail and exit `1`. A setup file with no `entry`, an entry with no `theorem`, or a setup file that still exports `default` or `provider` stops the command with the same message Studio gives. Under Node, the setup file and the entry must be files Node can import.
 

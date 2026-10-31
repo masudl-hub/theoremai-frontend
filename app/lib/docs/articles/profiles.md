@@ -100,6 +100,8 @@ identity: {
 
 A line that opens with `when` goes only on turns where it fits. Every line that fits is sent, a blank line apart. A `when` uses the same words as an activity label: `is`, `is not`, and `and`.
 
+A turn can leave a slot unset. Then `when reader is student` does not fit and `when reader is not student` fits. A fact that every turn must state belongs in a condition.
+
 Each turn states every condition, with a value the profile lists. A condition named `path` reads the turn's own `path`, and the rest go in `conditions`:
 
 ```ts frame=statements
