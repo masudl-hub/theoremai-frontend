@@ -116,7 +116,7 @@ Theorem enforces strict trust boundaries between browser clients and server stat
 1. **The Browser Never Sends History**: The conversation store owns the transcript, the history the model reads, and the paused reply. The browser sends only what the person did now, with the opaque ref (`ref`) the store issued.
 2. **Server-Owned Gate Authority**: The session store (`sessionStore`) owns which paused calls may run, with what input, and the tool permissions. Request bodies cannot grant any of them.
 3. **Credential Isolation**: A key the user types at a gate is sent once and saved in the credential store (`credentialStore`). No credential is ever sent back to the browser.
-4. **Server-Chosen Prompt Lines**: The page does not choose a turn's [prompt lines](/docs/profiles#prompt-lines-conditions). For a profile that declares conditions, the handler's `prepare` option sets the turn's `path` and `conditions` on the server. A request that carries `stated` is refused with a `request` error unless you set `pageStatesTurn`, which is for a page you trust as you trust your server.
+4. **Server-Chosen Prompt Lines**: The page does not choose a turn's [prompt lines](/docs/profiles#prompt-lines-conditions). For a profile that declares conditions, the handler's `prepare` option sets the turn's `path` and `conditions` on the server. A request that carries `stated` is refused with a `request` error unless you set `pageStatesTurn`, which is for a page you trust as you trust your server. Such a page passes `stated` to `TheoremChat`, or to `LiveRunner`, where a change during a call takes the call up again.
 
 ### Conversation Store Implementations
 

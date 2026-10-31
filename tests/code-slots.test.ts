@@ -49,6 +49,22 @@ test('a row added or removed elsewhere moves the slots after it, and leaves thos
 	assert.deepEqual(carrySlots(after, before, carrySlots(before, after, slots)), slots);
 });
 
+test('changes far apart, or on lines side by side, keep every slot', () => {
+	const before = "id: 'a',\nkey: 'x',\nslot: 'y',\nmore: 1,\nkind: 'z',\nprofile: 'a',";
+	const after = "id: 'b',\nkey: 'x2',\nslot: 'y2',\nmore: 1,\nkind: 'z',\nprofile: 'b',";
+	const slots = ["'a'", "'x'", "'y'", "'z'"].map((text) => {
+		const start = before.indexOf(text);
+		return { start, end: start + text.length, choices };
+	});
+	const last = before.lastIndexOf("'a'");
+	assert.deepEqual(
+		carrySlots(before, after, [...slots, { start: last, end: last + 3, choices }]).map(
+			({ start, end }) => after.slice(start, end),
+		),
+		["'b'", "'x2'", "'y2'", "'z'", "'b'"],
+	);
+});
+
 test('a slot whose string went away goes with it', () => {
 	const slots = [{ start: 3, end: 6, choices }];
 	assert.deepEqual(carrySlots("a: 'x',", 'a: 1,', slots), []);
