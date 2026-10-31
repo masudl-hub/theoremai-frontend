@@ -208,7 +208,7 @@ function scrollToLandingScreen(scroller: HTMLElement, screen: LandingScreen) {
 export default function Home({ loaderData }: Route.ComponentProps) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const chapter = useMemo(
-		() => ({ terms: loaderData.terms, seeds: new Map<string, StudioSeedId>() }),
+		() => ({ terms: loaderData.terms, seeds: new Map<string, StudioSeedId>(), codeSlots: {} }),
 		[loaderData.terms],
 	);
 	const { hash, pathname } = useLocation();

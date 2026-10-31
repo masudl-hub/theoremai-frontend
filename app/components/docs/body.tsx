@@ -41,9 +41,14 @@ type Chapter = {
 	terms: DocArticle['terms'];
 	/** The studio seed behind each seeded program, by the program's text. */
 	seeds: ReadonlyMap<string, StudioSeedId>;
+	codeSlots: DocArticle['codeSlots'];
 };
 
-export const ChapterContext = createContext<Chapter>({ terms: {}, seeds: new Map() });
+export const ChapterContext = createContext<Chapter>({
+	terms: {},
+	seeds: new Map(),
+	codeSlots: {},
+});
 
 /** What the catalog says about a term, and the chapter that lists it. */
 function TermCard({ term }: { term: DocTerm }) {
@@ -179,8 +184,15 @@ function Commands({ code }: { code: string }) {
 
 /** A `ts` or `text` fence. Seeded programs feature interactive view-switching and token overlays. */
 function CodeSample({ code, language }: { code: string; language: string | undefined }) {
-	const seed = useContext(ChapterContext).seeds.get(code);
-	return <EnhancedCodeView code={code} language={language} seed={seed} />;
+	const { seeds, codeSlots } = useContext(ChapterContext);
+	return (
+		<EnhancedCodeView
+			code={code}
+			language={language}
+			seed={seeds.get(code)}
+			codeSlots={codeSlots[code]}
+		/>
+	);
 }
 
 /**
@@ -207,10 +219,15 @@ function Fence({ code, language }: { code: string; language?: string }) {
 const BODY_COMPONENTS = { ...PROSE_COMPONENTS, code: Fence };
 
 /** A chapter's Markdown. Each heading carries the id the outline and the chapter tree link to. */
-export function DocsBody({ article }: { article: Pick<DocArticle, 'body' | 'terms'> }) {
+export function DocsBody({
+	article,
+}: {
+	article: Pick<DocArticle, 'body' | 'terms' | 'codeSlots'>;
+}) {
 	const chapter = useMemo(
 		() => ({
 			terms: article.terms,
+			codeSlots: article.codeSlots,
 			seeds: new Map(
 				markdownFences(article.body).flatMap((fence) =>
 					isStudioSeed(fence.meta.seed) ? [[fence.code, fence.meta.seed] as const] : [],

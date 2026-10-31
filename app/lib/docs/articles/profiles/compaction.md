@@ -23,10 +23,10 @@ models: {
 		// ...
 		compaction: {
 			maxTokens: 32_000,
-			compactAt: 0.75,                // Trigger when tokens exceed 24,000 (0.75 * 32,000)
-			profile: 'research.compactor',  // The profile that writes the summary
-			previousExchanges: 4,           // Retain the last 4 exchanges verbatim
-			timing: 'before',               // Run compaction synchronously before the turn
+			compactAt: 0.75, // Trigger when tokens exceed 24,000 (0.75 * 32,000)
+			profile: 'research.compactor', // The profile that writes the summary
+			previousExchanges: 4, // Retain the last 4 exchanges verbatim
+			timing: 'before', // Run compaction synchronously before the turn
 		},
 	},
 }

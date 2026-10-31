@@ -226,6 +226,8 @@ export const SNIPPET_FRAMES = [
 	'models',
 ] as const;
 
+export type SnippetFrame = (typeof SNIPPET_FRAMES)[number];
+
 /**
  * The fence languages a chapter may use. `ts`, `bash` and `text` are code; the rest are cards.
  * A `ts seed=<id>` fence shows that seed's program, and a button that opens it in the studio.
@@ -324,6 +326,15 @@ export type GlossaryArea = keyof typeof AREA_LABEL;
  */
 export type PageSymbol = SymbolRow & { area: GlossaryArea; chapter: DocSection };
 
+/** One value a code token can take. `icon` is the kernel value whose icon it wears. */
+export type CodeChoice = { value: string; description?: string; icon?: string };
+
+/** A string in a code sample that is a choice: where it sits in the code, quotes included. */
+export type CodeSlot = { start: number; end: number; choices: readonly CodeChoice[] };
+
+/** What a code sample can switch: its slots, and the tools its allow list can name. */
+export type CodeSlots = { slots: readonly CodeSlot[]; tools: readonly CodeChoice[] };
+
 /** A catalog row that a chapter's inline code names: its glossary row, and the chapter that explains it. */
 export type DocTerm = { symbol: PageSymbol; slug: DocSection; href: string; chapter: string };
 
@@ -340,10 +351,15 @@ export type DocArticle = Omit<DocArticleHead, 'cover'> & {
 	symbols: readonly PageSymbol[];
 	/** The inline-code spans in `body` that name one catalog row, by the span's text. */
 	terms: Readonly<Partial<Record<string, DocTerm>>>;
+	/** The code tokens of each `ts` sample in `body`, by the sample's code. */
+	codeSlots: Readonly<Partial<Record<string, CodeSlots>>>;
 };
 
 /** A chapter as a docs page lists it: everything but its text, which only its own page and search read. */
-export type DocArticleCard = Omit<DocArticle, 'body' | 'sections' | 'symbols' | 'terms'>;
+export type DocArticleCard = Omit<
+	DocArticle,
+	'body' | 'sections' | 'symbols' | 'terms' | 'codeSlots'
+>;
 
 export type DocTreeNode = {
 	id: string;

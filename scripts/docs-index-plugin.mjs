@@ -49,6 +49,8 @@ export function loadDocs(args) {
 	return withDocsServer(args, async (load) => {
 		const compose = await load('/app/lib/docs/compose.ts');
 		const markdown = await load('/app/lib/docs/chapter-markdown.ts');
+		const samples = await load('/app/lib/docs/sample-program.ts');
+		const slots = await load('/app/lib/docs/code-slots.ts');
 		const index = await compose.composeDocIndex({
 			publicRoot: path.join(args.repoRoot, 'public'),
 			kernelRoot: args.theoremai.root,
@@ -56,6 +58,10 @@ export function loadDocs(args) {
 		return {
 			index,
 			authoredSamples: markdown.authoredSamples,
+			sampleProgram: samples.sampleProgram,
+			sampleNames: slots.sampleNames,
+			prepareSampleFolder: slots.prepareSampleFolder,
+			sampleTsconfig: slots.SAMPLE_TSCONFIG,
 			markdownInlineCode: markdown.markdownInlineCode,
 			markdownLinks: markdown.markdownLinks,
 			markdownTables: markdown.markdownTables,
@@ -74,7 +80,18 @@ export function docsIndexPlugin(args) {
 	/** @type {import('vite').ViteDevServer | undefined} */
 	let parentServer;
 
-	const runCompose = async () => (await loadDocs(args)).index;
+	/** One compose per change: the index and the landing CSS share it. */
+	let composed;
+	const runCompose = () => {
+		composed ??= loadDocs(args).then(
+			({ index }) => index,
+			(error) => {
+				composed = undefined;
+				throw error;
+			},
+		);
+		return composed;
+	};
 
 	return {
 		name: 'docs-index',
@@ -103,6 +120,7 @@ export function docsIndexPlugin(args) {
 		},
 		handleHotUpdate(ctx) {
 			if (![docsRoot, kernelRoot].some((root) => ctx.file.startsWith(`${root}${path.sep}`))) return;
+			composed = undefined;
 			if (!parentServer) return;
 			for (const environment of Object.values(parentServer.environments)) {
 				for (const id of [DOCS_RESOLVED, LANDING_CSS_RESOLVED]) {

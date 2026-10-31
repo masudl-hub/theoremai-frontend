@@ -5,8 +5,8 @@
  * stay at the top. A sample that names none fails here, so no sample goes unchecked.
  */
 
-import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadDocs } from './docs-index-plugin.mjs';
@@ -18,47 +18,13 @@ const outDir = path.join(repoRoot, 'tmp/docs-typecheck');
 const theoremai = resolveTheoremaiRoot(repoRoot);
 const theoremaiRoot = theoremai.root;
 
-const { index, authoredSamples } = await loadDocs({ repoRoot, theoremai });
+const { index, authoredSamples, sampleProgram, sampleNames, prepareSampleFolder, sampleTsconfig } = await loadDocs({ repoRoot, theoremai });
 
-const rootNames = JSON.parse(
-	execFileSync(
-		'deno',
-		['eval', 'import * as r from "./mod.ts"; console.log(JSON.stringify(Object.keys(r)))'],
-		{ cwd: theoremaiRoot, encoding: 'utf8' },
-	),
-);
-const hostSource = readFileSync(path.join(repoRoot, 'scripts/docs-snippet-host.ts'), 'utf8');
-const hostNames = [...hostSource.matchAll(/^export (?:declare )?(?:const|function) (\w+)/gm)].map((m) => m[1]);
-
-const words = (code) => new Set(code.match(/[A-Za-z_$][\w$]*/g) ?? []);
-
-/** @param {string} code @param {string} frame */
-function wrap(code, frame) {
-	if (frame === 'statements') return `async function snippet() {\n${code}\n}\nvoid snippet;`;
-	if (frame === 'request') return `void runTurn({ profile: 'snippet', ${code}\n}, hostOptions);`;
-	if (frame === 'request-object') {
-		return `const turn: Parameters<typeof runTurn>[0] = { profile: 'snippet', ...${code} };\nvoid turn;`;
-	}
-	if (frame === 'guardrails') {
-		return `void defineProfile({ ...base.text, guardrails: { ${code}\n} });`;
-	}
-	if (frame === 'models') {
-		const bindings = code.replace(/^(\s+)\/\/ \.\.\.$/gm, '$1...baseBinding,');
-		return `void defineProfile({ ...base.text, ${bindings}\n});`;
-	}
-	if (frame.startsWith('tool:')) {
-		return `void registerTool({ ...baseTool.${frame.slice('tool:'.length)}, ${code}\n});`;
-	}
-	const type = frame.slice('profile:'.length);
-	return `void defineProfile({ ...base.${type}, ${code}\n});`;
-}
+const names = sampleNames(repoRoot, theoremaiRoot);
 
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
-// The site installs no `@theoremjs/web`, so samples that import it resolve it here, beside them,
-// as `@theoremjs/agents` resolves from the site's own install: a link to the package in the kernel.
-mkdirSync(path.join(outDir, 'node_modules/@theoremjs'), { recursive: true });
-symlinkSync(path.join(theoremaiRoot, 'web'), path.join(outDir, 'node_modules/@theoremjs/web'), 'dir');
+prepareSampleFolder(outDir, theoremaiRoot);
 
 const problems = [];
 let count = 0;
@@ -71,46 +37,14 @@ for (const article of index.articles) {
 			problems.push(`${id}: a ts sample without an import needs a frame`);
 			continue;
 		}
-		const used = words(block.code);
-		const imports = block.code.match(/^import\s.*$/gm) ?? [];
-		const rest = block.code.replace(/^import\s.*\n?/gm, '');
-		let body = isProgram ? block.code : `${imports.join('\n')}\n${wrap(rest, frame)}`;
-		// A name the sample imports or declares stays its own; the host supplies the rest.
-		const own = new Set(
-			[...block.code.matchAll(/(?:\b(?:const|let|var|function|class)\s+|import\s*\{[^}]*?)(\w+)/g)].map(
-				(m) => m[1],
-			),
-		);
-		for (const m of block.code.matchAll(/import\s*\{([^}]*)\}/g)) {
-			for (const name of m[1].split(',')) own.add(name.trim().split(/\s+as\s+/).pop());
-		}
-		const all = words(body);
-		const heads = [];
-		if (!isProgram) {
-			const fromRoot = rootNames.filter((n) => all.has(n) && !own.has(n));
-			if (fromRoot.length > 0) heads.push(`import { ${fromRoot.join(', ')} } from '@theoremjs/agents';`);
-		}
-		const fromHost = hostNames.filter((n) => all.has(n) && !own.has(n));
-		if (fromHost.length > 0) {
-			heads.push(`import { ${fromHost.join(', ')} } from '../../scripts/docs-snippet-host.ts';`);
-		}
-		// Each file is its own module, so two samples that declare the same name do not collide.
-		if (heads.length === 0 && !/^\s*(?:import|export)\s/m.test(body)) heads.push('export {};');
-		body = `${heads.join('\n')}\n${body}`;
+		const { text } = sampleProgram(block.code, frame, names);
 		count += 1;
-		writeFileSync(path.join(outDir, `${article.slug.replace(/\//g, '--')}--${block.id}.ts`), `${body}\n`);
+		writeFileSync(path.join(outDir, `${article.slug.replace(/\//g, '--')}--${block.id}.ts`), text);
 	}
 }
 failOn(problems);
 
-const tsconfig = {
-	extends: '../../tsconfig.json',
-	include: ['./*.ts', '../../theoremai-deno-shim.d.ts'],
-	// `allowJs`: `@theoremjs/studio/vite` is a `.mjs` whose types come from its JSDoc, as the
-	// declarations the published package ships are emitted from it.
-	compilerOptions: { rootDirs: ['.', '../..'], noEmit: true, types: ['node'], allowJs: true },
-};
-writeFileSync(path.join(outDir, 'tsconfig.json'), JSON.stringify(tsconfig, null, 2));
+writeFileSync(path.join(outDir, 'tsconfig.json'), JSON.stringify(sampleTsconfig, null, 2));
 const result = spawnSync('npx', ['tsc', '-p', path.join(outDir, 'tsconfig.json')], {
 	cwd: repoRoot,
 	encoding: 'utf8',

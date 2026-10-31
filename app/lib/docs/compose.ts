@@ -26,6 +26,7 @@ import {
 	markdownInlineCode,
 	markdownSections,
 } from './chapter-markdown';
+import { chapterCodeSlots } from './code-slots';
 import { stillFilters } from './exposure';
 import { parseFigure } from './figure';
 import { fieldsByFacet } from './ownership';
@@ -487,8 +488,16 @@ export async function composeDocIndex(options: ComposeOptions): Promise<DocIndex
 		symbols: article.slug === GLOSSARY ? owned : [],
 	}));
 	const index = termIndex(listing);
+	const codeSlots = chapterCodeSlots(listing, {
+		repoRoot: path.dirname(options.publicRoot),
+		kernelRoot: options.kernelRoot,
+	});
 	const articles = listing.map(
-		(article): DocArticle => ({ ...article, terms: chapterTerms(article.body, index) }),
+		(article): DocArticle => ({
+			...article,
+			terms: chapterTerms(article.body, index),
+			codeSlots: codeSlots.get(article.slug) ?? {},
+		}),
 	);
 
 	const suggested = articles
