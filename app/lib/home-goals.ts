@@ -134,11 +134,11 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 					},
 					{
 						id: 'host',
-						label: 'Run a tool with no model',
+						label: 'Run tools from your own code',
 						description:
-							'A tool console with typed arguments and guarded results. No model call runs.',
+							'A tool console with typed arguments and guarded results. Your code picks each tool.',
 						prompt: 'Pick a console tool, fill its arguments, and run it.',
-						result: 'A host profile invokes tools directly — no model round-trip.',
+						result: 'In a host profile your code is the orchestrator, not a model.',
 						line: 'tools:',
 					},
 					{

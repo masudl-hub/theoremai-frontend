@@ -53,10 +53,10 @@ At `pre_tool`, a stage handler can ask for a confirmation gate on a call. Pass t
 import type { StageHandler } from '@theoremjs/agents';
 
 const onStage: StageHandler = (ctx) => {
-	if (ctx.stage === 'pre_tool' && ctx.tool === 'transfer_funds') {
-		const amount = Number((ctx.input as { amount?: number } | undefined)?.amount ?? 0);
-		if (amount > 10000) {
-			return { confirm: { summary: `Authorize wire transfer of $${amount}?` } };
+	if (ctx.stage === 'pre_tool' && ctx.tool === 'read_pages') {
+		const urls = (ctx.input as { urls?: string[] } | undefined)?.urls ?? [];
+		if (urls.some((url) => !url.startsWith('https://arxiv.org/'))) {
+			return { confirm: { summary: `Read ${urls.length} pages, some outside arXiv?` } };
 		}
 	}
 	return undefined;
@@ -73,17 +73,17 @@ When a model requests several tools in one step, `ctx.stepCalls` lists every cal
 import type { StageHandler } from '@theoremjs/agents';
 
 const onStage: StageHandler = (ctx) => {
-	if (ctx.stage === 'pre_tool' && ctx.tool === 'generate_report') {
-		const queryCalls = (ctx.stepCalls ?? [])
-			.filter((call) => call.tool === 'run_query')
+	if (ctx.stage === 'pre_tool' && ctx.tool === 'read_readme') {
+		const searchCalls = (ctx.stepCalls ?? [])
+			.filter((call) => call.tool === 'search_github')
 			.map((call) => call.callId);
-		if (queryCalls.length > 0) return { waitFor: queryCalls };
+		if (searchCalls.length > 0) return { waitFor: searchCalls };
 	}
 	return undefined;
 };
 ```
 
-The body of `generate_report` starts only after those query calls settle. A call held for confirmation is held at once and does not wait.
+The body of `read_readme` starts only after those search calls settle. A call held for confirmation is held at once and does not wait.
 
 ## Sub-Agent Interception (`onAgentCall`)
 
@@ -108,8 +108,8 @@ The hook returns one of three outcomes:
 import { type AgentCall, type AgentCallRequest, runTurn } from '@theoremjs/agents';
 
 const _events = runTurn({
-	profile: 'research.orchestrator',
-	input: { text: 'Investigate vessel manifests.' },
+	profile: 'research.scout',
+	input: { text: 'Find recent papers on episodic memory for language models.' },
 	onAgentCall: async (
 		call: AgentCall,
 	): Promise<AgentCallRequest | { refuse: string } | undefined> => {
@@ -120,7 +120,7 @@ const _events = runTurn({
 
 		// Isolate tenant credentials into the child turn's host context
 		return {
-			host: { tenantId: 'tenant-cargo-01' },
+			host: { tenantId: 'tenant-lab-01' },
 			metadata: { parentCallId: call.callId },
 		};
 	},

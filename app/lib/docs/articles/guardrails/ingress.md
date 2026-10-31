@@ -86,6 +86,9 @@ The `tool_instructions` detector looks for tool text that behaves like an instru
 
 A destination here is an email address or an `http(s)://` URL.
 
+> [!NOTE]
+> An order with no destination does not match, even inside an HTML comment. This is a known gap: the detector leaves that text to the taint gates.
+
 By default the detector flags remote tool results and errors (HTTP, MCP and agent tools) and ignores function tools. A match raises the turn's taint and marks the tool result for the model as `elevated` or `high`. It never refuses a tool call on its own: refusing calls is the job of the taint gates below.
 
 To refuse the result itself, set the remote tool boundaries to `block`:

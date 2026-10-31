@@ -9,7 +9,7 @@ coverAlt: Golden marsh reeds swaying along a quiet riverbank
 coverPosition: 50% 50%
 ---
 
-Model tool calls are requests, not commitments. When an agent attempts an irreversible action—such as transferring funds, releasing cargo holds, or deleting database records—Theorem halts execution before the tool runs and waits for explicit approval.
+Model tool calls are requests, not commitments. Any tool can need a person's approval first: a scout reading a page you have not checked, or a tool that writes. Theorem halts execution before the tool runs and waits for explicit approval.
 
 A held tool call is a **gate**. The turn pauses with `stop: { kind: 'gate' }`, preserves the pending call in a `TurnToolSnapshot`, and lets your frontend present an approval prompt to the user before resuming.
 
@@ -35,7 +35,7 @@ flowchart TD
 
 1. **Gate Trigger**: When a tool requires approval, the kernel suppresses execution.
 2. **Turn Halt**: The held call emits a tool event with `phase: 'gate'`. Its `gate` carries the tool name, the filled `request` text and the prepared arguments. The turn then finishes with `stop.kind: 'gate'`, and the `done` event carries `done.tools`, the turn's tool snapshot, to pass back to `invokeTool()`.
-3. **User Decision**: The host UI presents the action using the tool's `registerTool.labels.request` template (e.g., `release hold on {shipmentId}`).
+3. **User Decision**: The host UI presents the action using the tool's `registerTool.labels.request` template (e.g., `read {urls.0}`).
 4. **Resumption**: The host passes the snapshot and an `InvokeToolResume` directive to `invokeTool()`, executing the tool or reporting a refusal back to the model.
 
 ## Permission Policies
@@ -46,31 +46,28 @@ Set `permission` on a tool definition to declare its baseline gate policy:
 import { registerTool } from '@theoremjs/agents';
 import { z } from 'zod';
 
-export const releaseHoldTool = registerTool({
-	type: 'function',
-	name: 'release_hold',
-	description: 'Release customs hold on a container.',
-	category: 'logistics',
-	access: 'destructive',
+export const readPagesTool = registerTool({
+	type: 'mcp',
+	name: 'read_pages',
+	description: 'Read up to three web pages by URL via Exa.',
+	category: 'research',
+	access: 'read-only',
 	paths: ['*'],
 	loadTier: 'T0',
-	input: z.object({ containerId: z.string() }),
-	output: z.object({ success: z.boolean() }),
+	serverUrl: 'https://mcp.exa.ai/mcp',
+	mcpToolName: 'web_fetch_exa',
+	input: z.object({ urls: z.array(z.url()), question: z.string() }),
+	output: z.string(),
 
-	permission: 'always_confirm',
+	permission: 'always_confirm', // Reads only after approval
 	labels: {
-		request: 'release the hold on container {containerId}',
-	},
-
-	handler: async (_input) => {
-		// Executes only after user approval
-		return { success: true };
+		request: 'read {urls.0}',
 	},
 });
 ```
 
 * **`'auto'`**: The tool runs immediately without pausing for confirmation.
-* **`'session_consent'`**: The tool pauses for confirmation on first use. Once approved, the host passes the tool ID in `sessionPermissions: ['release_hold']` on subsequent turns; while present, future calls execute without prompting.
+* **`'session_consent'`**: The tool pauses for confirmation on first use. Once approved, the host passes the tool ID in `sessionPermissions: ['read_pages']` on subsequent turns; while present, future calls execute without prompting.
 * **`'always_confirm'`**: The tool pauses for confirmation before every single execution, regardless of session history.
 
 ## Gate Kinds
@@ -98,7 +95,7 @@ To approve the call as proposed by the model:
 import { invokeTool } from '@theoremjs/agents';
 
 const resumeEvents = invokeTool({
-	profile: 'harbor.desk',
+	profile: 'research.scout',
 	name: gated.name,
 	snapshot: gated.snapshot,
 	resume: { granted: true },
@@ -112,18 +109,22 @@ for await (const _event of resumeEvents) {
 
 ### Modifying Arguments Before Approval
 
-Users can edit proposed arguments before approving (e.g., adjusting quantities or correcting typos). Pass `resume.edited` with the original input:
+Users can edit proposed arguments before approving (e.g., correcting a URL). Pass `resume.edited` with the original input:
 
 ```ts frame=statements
 const _resumeEvents = invokeTool({
-	profile: 'harbor.desk',
+	profile: 'research.scout',
 	name: gated.name,
 	snapshot: gated.snapshot,
 	resume: {
 		granted: true,
 		edited: { from: gated.arguments },
 	},
-	input: { containerId: 'CONT-9942' }, // User-edited argument
+	// User-edited argument
+	input: {
+		urls: ['https://arxiv.org/abs/1706.03762'],
+		question: 'What does the paper claim?',
+	},
 });
 ```
 
@@ -135,7 +136,7 @@ To decline an action, pass `granted: false`. The kernel settles the tool call as
 
 ```ts frame=statements
 const _refuseEvents = invokeTool({
-	profile: 'harbor.desk',
+	profile: 'research.scout',
 	name: gated.name,
 	snapshot: gated.snapshot,
 	resume: {
@@ -158,7 +159,7 @@ When a turn halts at a `page` gate, the action requires no user confirmation. Th
 import { invokeTool } from '@theoremjs/agents';
 
 const _resumeEvents = invokeTool({
-	profile: 'harbor.desk',
+	profile: 'research.scout',
 	name: gated.name,
 	snapshot: gated.snapshot,
 	input: gated.arguments,
@@ -187,14 +188,14 @@ Declare a `preTool` hook on the tool definition to inspect inputs before executi
 ```text
 registerTool({
 	type: 'function',
-	name: 'issue_refund',
-	// ... input, output, handler
+	name: 'read_pages',
+	// ... server, input, output
 	permission: 'auto',
 
 	preTool: async (input) => {
-		if (input.amount > 500) {
+		if (input.urls.some((url) => !url.startsWith('https://arxiv.org/'))) {
 			return {
-				confirm: { summary: `Authorize large refund of $${input.amount}?` },
+				confirm: { summary: `Read ${input.urls.length} pages, some outside arXiv?` },
 			};
 		}
 	},
@@ -207,8 +208,8 @@ Alternatively, the host application can escalate tools dynamically during turn e
 
 ```text
 // ... inside onStage callback
-if (ctx.stage === 'pre_tool' && ctx.tool === 'delete_record') {
-	return { confirm: { summary: 'Permanently remove database record?' } };
+if (ctx.stage === 'pre_tool' && ctx.tool === 'search_web') {
+	return { confirm: { summary: 'Search the open web for this?' } };
 }
 ```
 

@@ -7,7 +7,6 @@
 	"profiles/embedding.md": 6,
 	"profiles/host.md": 6,
 	"profiles/image.md": 3,
-	"profiles/lifecycle.md": 8,
 	"profiles/live.md": 9,
 	"profiles/speech.md": 5,
 	"profiles/text.md": 2,
@@ -16,9 +15,6 @@
 	"tools/agent.md": 19,
 	"tools/auth.md": 12,
 	"tools/function.md": 11,
-	"tools/gates.md": 10,
-	"tools/oauth.md": 1,
-	"tools.md": 3,
 	"web/astryx.md": 12,
 	"web/react-hooks.md": 11,
 	"web/realtime.md": 7

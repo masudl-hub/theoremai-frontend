@@ -96,10 +96,10 @@ A registered tool belongs to no profile until allowed. Profiles declare allowed 
 
 ```ts frame=profile:text
 tools: {
-	allow: ['check_hold_status', 'lookup_vessel', 'load_tools', 'issue_refund'],
+	allow: ['search_github', 'read_readme', 'load_tools', 'ask_repo_docs'],
 
-	// Evaluate at turn start: load claims tools only on claims path
-	t1Policy: ({ path }) => (path === 'claims' ? ['issue_refund'] : []),
+	// Evaluate at turn start: load code tools only on the code path
+	t1Policy: ({ path }) => (path === 'code' ? ['ask_repo_docs'] : []),
 
 	// Tool the model can call mid-turn to load additional T2 tools on demand
 	t2Loader: 'load_tools',

@@ -14,7 +14,7 @@ suggest: 1
 Theorem is a TypeScript agent kernel. An agent is defined once as a typed profile that holds its identity, model bindings, allowed tools, inputs, outputs, and guardrails.
 
 Core capabilities:
-- Profile types: text, image, speech, live (real-time voice and video), decision (judgements about a JSON state), embedding (vectors), and host (your tools with no model).
+- Profile types: text, image, speech, live (real-time voice and video), decision (judgements about a JSON state), embedding (vectors), and host (your code runs the tools, with no model orchestrating).
 - Hard boundaries: A turn cannot exceed its profile. A request can pick a model only when the profile allows it, and the model sees only the tools the profile allows. Tool arguments and results are checked against the tool's schemas. A canary token planted in the instruction is looked for in what leaves. A refused request fails before any model call.
 - Packages: `@theoremjs/agents` (the kernel), `@theoremjs/web` (Web-standard server handlers and a browser client, no UI framework), `@theoremjs/react` (headless hooks and an Astryx UI), `@theoremjs/studio` (a studio to edit, run, and test agents).
 

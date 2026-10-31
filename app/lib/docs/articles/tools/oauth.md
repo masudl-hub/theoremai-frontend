@@ -92,7 +92,7 @@ With the credential persisted in your `ToolCredentialSource`, resume the gated t
 import { invokeTool } from '@theoremjs/agents';
 
 const _resumeEvents = invokeTool({
-	profile: 'harbor.desk',
+	profile: 'research.scout',
 	name: gated.name,
 	snapshot: gated.snapshot,
 	resume: {

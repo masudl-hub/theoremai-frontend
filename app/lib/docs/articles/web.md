@@ -171,7 +171,7 @@ export const POST = handler;
 ```
 
 ### 2. Host Handlers (`createTheoremHostHandler`)
-Serves a host profile's tools to the page, with no model. `GET <base>` returns the tools the page may call, with their schemas. `POST <base>/call` streams the events for one call. `createTheoremMcpHandler` serves the same tools to MCP clients.
+Serves a host profile's tools to the page, so the page runs them directly. `GET <base>` returns the tools the page may call, with their schemas. `POST <base>/call` streams the events for one call. `createTheoremMcpHandler` serves the same tools to MCP clients.
 
 ### 3. Embedding Handlers (`createTheoremEmbeddingHandler`)
 Serves an embedding profile over HTTP.

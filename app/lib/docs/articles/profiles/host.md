@@ -1,7 +1,7 @@
 ---
 title: Host Profiles
 updated: 2026-10-30
-summary: A profile with no model that runs your registered tools through invokeTool, under the same tool checks and traces as an agent.
+summary: A profile with your own code as the orchestrator. Your code runs registered tools through invokeTool, under the same tool checks and traces as an agent.
 entry: src/kernel/tools/invoke.ts
 covers: src/kernel/tools/invoke.ts, src/kernel/registry/profiles.ts
 cover: /imagery/th30_lilachaze.png
@@ -9,11 +9,11 @@ coverAlt: Rolling mountain foothills under soft lilac atmospheric haze
 coverPosition: 50% 50%
 ---
 
-A host profile (`type: 'host'`) runs your registered tools with no model. Your app names the tool and its input, and Theorem runs it under the same permissions and traces as any agent, guarded by `detect` and `network`. Use it for function, HTTP and MCP tools that your own code calls.
+In a host profile (`type: 'host'`), your code is the orchestrator. No model picks the next step: your app names the tool and its input, and Theorem runs it under the same permissions and traces as any agent, guarded by `detect` and `network`. Use it for function, HTTP and MCP tools that your own code calls. Your code can still call a model between tools, for example with `runDecision`, because that call goes to another profile.
 
 ## Define a host profile
 
-A host profile has six fields: `type`, `id`, `tools`, and the optional `guardrails`, `observability` and `labels`. It has no `models` and no `identity`, because it never runs a model.
+A host profile has six fields: `type`, `id`, `tools`, and the optional `guardrails`, `observability` and `labels`. It has no `models` and no `identity`, because the profile itself never runs a model.
 
 ```ts
 import { defineProfile } from '@theoremjs/agents';
