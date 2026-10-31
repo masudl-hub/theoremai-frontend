@@ -35,13 +35,13 @@ registerTh30Tools({ docsSearch: 'server' });
 registerProfile({
 	type: 'text',
 	id: TH30_EVAL,
-	identity: { handle: 'th30', system: [
+	identity: { handle: 'th30', system: [[
 			...th30SystemPrompt(),
 			{
 				private:
 					"\n\nThis is a typed exchange and the call is already open: do not greet. Answer the visitor's message.",
 			},
-		] },
+		]] },
 	models: { flashLite: MODEL },
 	maxSteps: 12,
 	tools: { allow: ['searchDocs', 'read'] },

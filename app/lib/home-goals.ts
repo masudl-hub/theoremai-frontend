@@ -65,7 +65,7 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 						ask: 'Using the attached research brief, find primary sources and return verified findings with verbatim quotes.',
 						attachment: '/examples/research-brief.pdf',
 						result:
-							'The profile takes the brief (and voice), fills a source-focus slot into the system prompt, and shapes findings.',
+							'The profile takes the brief and voice. The Focus slot fills a line of the prompt and picks the reply shape.',
 						line: 'slots:',
 					},
 					{
@@ -125,11 +125,12 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 					},
 					{
 						id: 'decision',
-						label: 'Decide from a pantry photo',
+						label: 'Judge a results chart',
 						description:
-							'Jev answers box, yes/no, and brunch-choice questions on a shelf photo and reference images.',
-						prompt: 'Open Decide and run the pantry questions on the shelf photo.',
-						result: 'A decision profile asks typed questions over images — not a chat turn.',
+							'The page reader answers typed questions about a passage and a sample results chart.',
+						prompt: 'Open Decide and run the questions on the sample chart.',
+						result:
+							'A decision profile asks typed questions over text and images — not a chat turn.',
 						line: 'decision:',
 					},
 					{
@@ -154,7 +155,7 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 						id: 'embedding',
 						label: 'Embed text at a set size',
 						description: 'Encode text or media as vectors with a declared output dimensionality.',
-						prompt: 'Paste a short memory sentence or attach a file, then generate the embedding.',
+						prompt: 'Paste an abstract or attach a file, then generate the embedding.',
 						result:
 							'An embedding profile returns vectors at the dimensionality declared on the model.',
 						line: 'outputDimensionality:',

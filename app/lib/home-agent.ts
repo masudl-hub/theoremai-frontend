@@ -7,17 +7,19 @@ import { DETECTORS } from '@theoremjs/agents/guardrails';
  */
 import {
 	agentDraft,
+	agentNodeId,
 	compileWorkspace,
 	createBlankDraft,
-	createConsoleExampleDraft,
-	createDecisionExampleDraft,
 	createExampleDraft,
-	createGeminiEmbeddingExampleDraft,
-	createNarratorExampleDraft,
+	createPageReaderExampleDraft,
 	createResearchScoutDraft,
 	createResearchWorkspace,
 	defaultModelBinding,
+	draftKey,
 	firstServed,
+	newDecisionQuestion,
+	newSystemLine,
+	RESEARCH_PAGE_READER_AGENT_ID,
 	RESEARCH_REPLY_SCHEMA_ID,
 	RESEARCH_REPLY_SCHEMA_JSON,
 	readStudioSource,
@@ -44,7 +46,6 @@ const NO_MEDIA = {
 	maxBytes: null as number | null,
 	maxTurnBytes: null as number | null,
 	limitsByMime: {} as Record<string, number>,
-	slots: [] as StudioDraft['inputs']['slots'],
 };
 
 /** Limits required whenever Goals turns attachments or voice on (base scout leaves them unset). */
@@ -66,7 +67,6 @@ const ATTACH_IMAGES = {
 		'image/png': 256_000,
 		'image/jpeg': 256_000,
 	},
-	slots: [] as StudioDraft['inputs']['slots'],
 };
 
 function citeOrFailOn(draft: StudioDraft): boolean {
@@ -78,47 +78,14 @@ function citeOrFailOn(draft: StudioDraft): boolean {
 }
 
 function tripBriefInputsOn(draft: StudioDraft): boolean {
-	const focus = draft.inputs.slots.at(0);
 	return (
 		draft.inputs.attachmentsAccept.join(',') === 'application/pdf' &&
-		draft.inputs.voiceAccept.join(',') === 'audio/*' &&
-		focus?.name === 'focus' &&
-		focus.label === 'Source Bias'
+		draft.inputs.voiceAccept.join(',') === 'audio/*'
 	);
 }
 
-/**
- * Trip-brief inputs: PDF + voice, and one `focus` slot. Choice values are the words a
- * visitor sees and the words `{focus}` substitutes into the system prompt. The group
- * label and descriptions are composer-only.
- */
-const BRIEF_SLOTS: StudioDraft['inputs']['slots'] = [
-	{
-		key: 'slot-focus',
-		name: 'focus',
-		label: 'Source Bias',
-		choices: [
-			{ key: 'choice-any', value: 'Any Source', description: 'Consider all sources.' },
-			{
-				key: 'choice-academic',
-				value: 'Academic Research',
-				description: 'Prefer arXiv and papers.',
-			},
-			{
-				key: 'choice-repos',
-				value: 'Public Repositories',
-				description: 'Prefer GitHub code and docs.',
-			},
-			{
-				key: 'choice-hf',
-				value: 'Hugging Face Open Research',
-				description: 'Prefer Hugging Face model and dataset cards.',
-			},
-		],
-	},
-];
 const BRIEF_FOCUS_LINE =
-	"\n\nSource focus for this turn: {focus}. When Any Source, follow the brief's preferred sources without picking one kind first. When Academic Research, prefer arXiv and papers. When Public Repositories, prefer GitHub READMEs. When Hugging Face Open Research, prefer Hugging Face model and dataset cards.";
+	"Source focus for this turn: {focus}. When Anywhere, follow the brief's preferred sources without picking one kind first. When arXiv, prefer papers. When GitHub, prefer code and docs. When Hugging Face Open Research, prefer model and dataset cards.";
 const BRIEF_INPUTS = {
 	attachmentsAccept: ['application/pdf'],
 	voiceAccept: ['audio/*'],
@@ -127,13 +94,20 @@ const BRIEF_INPUTS = {
 		'application/pdf': 2_000_000,
 		'audio/*': 2_000_000,
 	},
-	slots: BRIEF_SLOTS,
 };
 
 /** The workspace on screen. `text` is the text agent set aside while a picture or a call is on. */
 export type HomeAgent = { workspace: StudioWorkspace; text?: StudioWorkspace };
 
 const keyOf = (workspace: StudioWorkspace) => workspace.chatWith;
+
+function agentKey(workspace: StudioWorkspace, agentId: string): string {
+	const agent = workspace.agents.find(
+		({ key }) => agentDraft(workspace, key)?.identity.agentId === agentId,
+	);
+	if (!agent) throw new Error(`The goals screen has no ${agentId}.`);
+	return agent.key;
+}
 
 function draftOf(workspace: StudioWorkspace): StudioDraft {
 	const draft = agentDraft(workspace, keyOf(workspace));
@@ -182,14 +156,14 @@ const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
 		isOn: (draft) =>
 			tripBriefInputsOn(draft) && draft.outputs.schemaId === RESEARCH_REPLY_SCHEMA_ID,
 		on: (draft) => {
-			const baseSystem = createResearchScoutDraft().identity.system;
+			const { system } = draft.identity;
 			return {
 				...draft,
 				identity: {
 					...draft.identity,
-					system: draft.identity.system.includes('{focus}')
-						? draft.identity.system
-						: `${draft.identity.system || baseSystem}${BRIEF_FOCUS_LINE}`,
+					system: system.some(({ text }) => text.includes('{focus}'))
+						? system
+						: [...system, newSystemLine(BRIEF_FOCUS_LINE)],
 				},
 				inputs: { ...draft.inputs, ...BRIEF_INPUTS },
 				outputs: {
@@ -351,12 +325,60 @@ function modelsFor({
 	};
 }
 
-const EXAMPLE_DRAFTS: Partial<Record<GoalTokenId, () => StudioDraft | Promise<StudioDraft>>> = {
-	decision: createDecisionExampleDraft,
-	host: createConsoleExampleDraft,
-	embedding: createGeminiEmbeddingExampleDraft,
-	speech: createNarratorExampleDraft,
+/** The research agent each example token opens. */
+const EXAMPLE_AGENTS: Partial<Record<GoalTokenId, string>> = {
+	decision: RESEARCH_PAGE_READER_AGENT_ID,
+	host: 'research.console',
+	embedding: 'research.embedder',
+	speech: 'research.podcast',
 };
+
+/** The sample chart the page reader judges. It is made-up data, and it says so on the picture. */
+const RESULTS_CHART = '/examples/results-chart.png';
+
+/** The page reader with the sample chart and one question about it. */
+async function judgeChart(draft: StudioDraft): Promise<StudioDraft> {
+	const response = await fetch(RESULTS_CHART);
+	if (!response.ok) throw new Error(`${RESULTS_CHART} did not load.`);
+	const bytes = new Uint8Array(await response.arrayBuffer());
+	const chart = createPageReaderExampleDraft().decision.questions[0];
+	if (!chart) throw new Error('The page reader has no question.');
+	return {
+		...draft,
+		decision: {
+			...draft.decision,
+			images: [
+				{
+					key: draftKey('image'),
+					name: 'results_chart',
+					mimeType: 'image/png',
+					data: btoa(String.fromCharCode(...bytes)),
+				},
+			],
+			questions: [
+				...draft.decision.questions,
+				{
+					...newDecisionQuestion(draft),
+					id: 'chart',
+					instructions: 'Does <results_chart> help a careful researcher answer `question`?',
+					criteria: chart.criteria.map((criterion) => ({
+						...criterion,
+						text:
+							criterion.label === 'relevant' ? 'The chart shows such a result.' : 'It does not.',
+					})),
+				},
+			],
+		},
+	};
+}
+
+/** What each example token adds to its agent before it opens. */
+const EXAMPLE_EDITS: Partial<Record<GoalTokenId, (draft: StudioDraft) => Promise<StudioDraft>>> = {
+	decision: judgeChart,
+};
+
+/** The scout's tools that need this page's or a host's code, which the site does not run. */
+const OFF_SITE_TOOLS = ['export_report', 'check_device', 'record_podcast', 'draw_method'];
 
 const TYPES: Partial<Record<GoalTokenId, 'image' | 'live'>> = {
 	'live-call': 'live',
@@ -395,8 +417,7 @@ export function tokenIsOn(agent: HomeAgent, id: GoalTokenId): boolean {
 	const draft = draftOf(agent.workspace);
 	const field = FIELD_EDITS[id];
 	if (field) return draft.identity.profileType === 'text' && field.isOn(draft);
-	const example = EXAMPLE_DRAFTS[id];
-	if (example) return draft.identity.profileType === id;
+	if (id in EXAMPLE_AGENTS) return draft.identity.profileType === id;
 	const type = TYPES[id];
 	if (type) return draft.identity.profileType === type;
 	if (id !== 'providers' || draft.identity.profileType !== 'text') return false;
@@ -406,7 +427,7 @@ export function tokenIsOn(agent: HomeAgent, id: GoalTokenId): boolean {
 
 /** A token with nothing to change: it only says what to try. */
 export function tokenEdits(id: GoalTokenId): boolean {
-	return id in FIELD_EDITS || id === 'providers' || id in TYPES || id in EXAMPLE_DRAFTS;
+	return id in FIELD_EDITS || id === 'providers' || id in TYPES || id in EXAMPLE_AGENTS;
 }
 
 /**
@@ -417,8 +438,12 @@ export async function exampleSeed(
 	agent: HomeAgent,
 	id: GoalTokenId,
 ): Promise<StudioDraft | undefined> {
-	const example = EXAMPLE_DRAFTS[id];
-	return example && !tokenIsOn(agent, id) ? await example() : undefined;
+	const agentId = EXAMPLE_AGENTS[id];
+	if (!agentId || tokenIsOn(agent, id)) return undefined;
+	const key = agentKey(agent.workspace, agentId);
+	const draft = agentDraft(agent.workspace, key);
+	if (!draft) throw new Error(`The goals screen has no ${agentId}.`);
+	return (await EXAMPLE_EDITS[id]?.(draft)) ?? draft;
 }
 
 /** The input examples: one shows at a time. */
@@ -442,7 +467,7 @@ function preparedFor(agent: HomeAgent, id: GoalTokenId): HomeAgent {
 		(id in FIELD_EDITS || id === 'providers') && typeOf(agent.workspace) !== 'text'
 			? { workspace: textOf(agent) }
 			: agent;
-	const isMode = id in EXAMPLE_DRAFTS || id in TYPES;
+	const isMode = id in EXAMPLE_AGENTS || id in TYPES;
 	return isMode && !tokenIsOn(prepared, id) ? { workspace: clearedText(prepared) } : prepared;
 }
 
@@ -458,27 +483,18 @@ function withoutOtherInputs(agent: HomeAgent, id: GoalTokenId): HomeAgent {
 	return next;
 }
 
-/**
- * The example `seed` in place of the text agent. Keeps the example's own identity (so pantry stays
- * `pantry.jev` and gets its Decide-panel seed) and remaps tool keys that share a name with the text
- * agent so library ids stay stable across the toggle.
- */
+/** Opens the research agent an example token names, as `seed`. The scout is there to return to. */
 function seededExample(text: StudioWorkspace, id: GoalTokenId, seed?: StudioDraft): HomeAgent {
-	const source = draftOf(text);
-	if (!seed) throw new Error(`The ${id} example was not made first.`);
+	const agentId = EXAMPLE_AGENTS[id];
+	if (!agentId || !seed) throw new Error(`The ${id} example was not made first.`);
 	if (!seed.identity.profileType) throw new Error('The example has no profile type.');
+	const key = agentKey(text, agentId);
 	const draft =
 		seed.identity.profileType === 'host'
 			? seed
 			: setProfileType(seed, seed.identity.profileType, SITE_KEYS);
 	return {
-		workspace: edited(text, () => ({
-			...draft,
-			toolSpecs: draft.toolSpecs.map((tool) => ({
-				...tool,
-				key: source.toolSpecs.find((entry) => entry.toolName === tool.toolName)?.key ?? tool.key,
-			})),
-		})),
+		workspace: withAgentDraft({ ...text, chatWith: key, selected: agentNodeId(key) }, key, draft),
 		text,
 	};
 }
@@ -498,7 +514,7 @@ export function toggleToken(agent: HomeAgent, id: GoalTokenId, seed?: StudioDraf
 		};
 	}
 	const text = textOf(current);
-	if (id in EXAMPLE_DRAFTS) return isOn ? { workspace: text } : seededExample(text, id, seed);
+	if (id in EXAMPLE_AGENTS) return isOn ? { workspace: text } : seededExample(text, id, seed);
 	const type = TYPES[id];
 	if (type) return isOn ? { workspace: text } : { workspace: typed(text, type), text };
 	if (id !== 'providers') return current;
@@ -519,7 +535,7 @@ export function compileHomeAgent({ workspace }: HomeAgent): HomeCompile {
 	if (!compiled.ok) return { ok: false, issues: compiled.issues };
 	const run = workspaceRunAgent(compiled, draftOf(workspace).identity.agentId.trim());
 	if (!run) return { ok: false, issues: [] };
-	const { agentId, profile, customTools, structured, questions, dependencies } = run;
+	const { agentId, profile, customTools, structured, questions, images, dependencies } = run;
 	const policy = resolveGuardrailPolicy(profile.guardrails);
 	const declared = profile.guardrails?.detect;
 	const detect = Object.fromEntries(
@@ -553,6 +569,7 @@ export function compileHomeAgent({ workspace }: HomeAgent): HomeCompile {
 			customTools,
 			structured,
 			questions,
+			images,
 			dependencies,
 			connectionMode: 'demo',
 		},
@@ -616,13 +633,17 @@ export function createHomeAgent(): HomeAgent {
 	const workspace = createResearchWorkspace();
 	const draft = agentDraft(workspace, keyOf(workspace));
 	if (!draft) throw new Error('The goals screen has no agent.');
-	// why: tokens still swap models; start on a site-allowed 3.8 Flash binding. The quote check is
-	// a beat of its own, so it starts off.
-	const plain = FIELD_EDITS['cite-or-fail']?.off(draft) ?? draft;
+	// why: tokens still swap models; start on a site-allowed 3.8 Flash binding. The quote check and
+	// the refusal after a page read are beats of their own, so they start off.
+	const plain = [FIELD_EDITS['cite-or-fail'], FIELD_EDITS['refuse-after-read']].reduce(
+		(next, edit) => edit?.off(next) ?? next,
+		draft,
+	);
 	return {
 		workspace: withAgentDraft(workspace, keyOf(workspace), {
 			...plain,
 			...siteResearchModels(),
+			toolSpecs: plain.toolSpecs.filter(({ toolName }) => !OFF_SITE_TOOLS.includes(toolName)),
 		}),
 	};
 }

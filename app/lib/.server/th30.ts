@@ -389,7 +389,7 @@ export function ensureTh30ProfileRegistered(): void {
 		id: TH30_PROFILE_ID,
 		identity: {
 			handle: 'th30',
-			system: th30SystemPrompt(),
+			system: [th30SystemPrompt()],
 		},
 		models: { gemini38Live: TH30_MODEL },
 		// The dock tells th30 the page the visitor is on, and what changed there.
