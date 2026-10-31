@@ -12,6 +12,7 @@ import {
 	createNarratorExampleDraft,
 	createPageReaderExampleDraft,
 	createResearchScoutDraft,
+	DEMO_RESEARCH_SYSTEM,
 	ON_OWN_KEYS,
 	RESEARCH_FIRST_TURN_PROMPT,
 	readStudioSource,
@@ -27,7 +28,7 @@ function firstTurnDraft(): StudioDraft {
 	return {
 		...scout,
 		// why: A line that reads a slot needs a turn that chooses it, and this program chooses none.
-		identity: { ...scout.identity, system: scout.identity.system.slice(0, 1) },
+		identity: { ...scout.identity, system: DEMO_RESEARCH_SYSTEM },
 		inputs: { ...scout.inputs, slots: [] },
 		tools: { ...scout.tools, parallel: false },
 		toolSpecs: scout.toolSpecs

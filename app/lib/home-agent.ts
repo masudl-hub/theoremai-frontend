@@ -18,7 +18,6 @@ import {
 	draftKey,
 	firstServed,
 	newDecisionQuestion,
-	newSystemLine,
 	RESEARCH_PAGE_READER_AGENT_ID,
 	RESEARCH_REPLY_SCHEMA_ID,
 	RESEARCH_REPLY_SCHEMA_JSON,
@@ -161,9 +160,7 @@ const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
 				...draft,
 				identity: {
 					...draft.identity,
-					system: system.some(({ text }) => text.includes('{focus}'))
-						? system
-						: [...system, newSystemLine(BRIEF_FOCUS_LINE)],
+					system: system.includes('{focus}') ? system : `${system}\n\n${BRIEF_FOCUS_LINE}`,
 				},
 				inputs: { ...draft.inputs, ...BRIEF_INPUTS },
 				outputs: {
