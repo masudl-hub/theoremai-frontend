@@ -17,8 +17,8 @@ Theorem provides a suite of headless React hooks in `@theoremjs/react`. These ho
 
 | Hook | Profile Type | Purpose | Primary Methods & State |
 | :--- | :--- | :--- | :--- |
-| [`useTheoremInterface`](#1-interface-discovery-usetheoreminterface) | `text`, `image`, `speech`, `live` | Describes the profile as the page sees it: inputs, models, tools and labels | `status`, `iface`, `failure` |
-| [`useTheoremChat`](#2-conversational-streaming-usetheoremchat) | `text`, `image`, `speech` | Manages transcript blocks, streaming, the composer's pending queue and tool gates | `phase`, `blocks`, `streamBlocks`, `draftText`, `setDraftText`, `handleSubmit`, `handleStop`, `handleToolDecision` |
+| [`useTheoremInterface`](#1-interface-discovery-usetheoreminterface) | `text`, `image`, `speech`, `transcription`, `live` | Describes the profile as the page sees it: inputs, models, tools and labels | `status`, `iface`, `failure` |
+| [`useTheoremChat`](#2-conversational-streaming-usetheoremchat) | `text`, `image`, `speech`, `transcription` | Manages transcript blocks, streaming, the composer's pending queue and tool gates | `phase`, `blocks`, `streamBlocks`, `draftText`, `setDraftText`, `handleSubmit`, `handleStop`, `handleToolDecision` |
 | [`useTheoremDecision`](#3-structured-decisions-usetheoremdecision) | `decision` | Asks the profile's questions about a state the page posts | `iface`, `decide`, `status`, `result`, `failure`, `cancel` |
 | [`useTheoremEmbedding`](#4-vector-search--embeddings-usetheoremembedding) | `embedding` | Embeds inputs, one call at a time | `iface`, `embed`, `status`, `result`, `failure`, `cancel` |
 | [`useEmbeddingIndex`](#4-vector-search--embeddings-usetheoremembedding) | `embedding` | Embeds documents for search in as many requests as the profile's limits need, and reports progress | `index`, `status`, `progress`, `result`, `cancel` |

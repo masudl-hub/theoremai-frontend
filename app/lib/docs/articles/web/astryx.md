@@ -17,7 +17,7 @@ Theorem provides a ready-made UI layer built on [Astryx](https://www.npmjs.com/p
 
 | Component | Profile Type | Package Entry | Description |
 | :--- | :--- | :--- | :--- |
-| [`<TheoremChat />`](#1-conversational-chat-theoremchat) | `text`, `image`, `speech` | `@theoremjs/react/ui` | Chat with transcript, composer, slot selectors, and tool gates answered in the transcript |
+| [`<TheoremChat />`](#1-conversational-chat-theoremchat) | `text`, `image`, `speech`, `transcription` | `@theoremjs/react/ui` | Chat with transcript, composer, slot selectors, and tool gates answered in the transcript |
 | [`<LiveRunner />`](#2-realtime-voice--video-liverunner) | `live` | `@theoremjs/react/live` | Voice and video call with the ink waveform, camera flip, a captions column, and tool gates in a dialog |
 | [`<TheoremDecision />`](#3-decision-evaluations-theoremdecision) | `decision` | `@theoremjs/react/ui` | The state as fields or JSON, image attachments, and the answers with their confidence, scores and boxes |
 | [`<TheoremEmbedding />`](#4-vector-search--embeddings-theoremembedding) | `embedding` | `@theoremjs/react/ui` | Split pasted text or drop files, index them, search by cosine similarity, and turn the index in a 3D view |
@@ -54,6 +54,7 @@ import { TheoremChat } from '@theoremjs/react/ui';
 />
 ```
 
+- **`emptyState`**: What shows above the centred composer before the first message. By default it is the agent's handle and a prompt. `null` shows nothing.
 - **`slots`**: The value for each of the profile's slots, sent with every turn. A slot you name is fixed to that value. A slot you leave out gets a selector in the composer bar, which starts at its first allowed value.
 - **`context`**: Any JSON the page wants the agent to know. The latest value goes with every turn, and the profile's `inputs.context.from` must list `client`. `research.scout` lists no sender, so add this before you send `context`.
 - **`pageTools`**: A function for each tool the profile declares with `answeredBy: 'page'`, by name. The reply waits while the page answers, and no one is asked.

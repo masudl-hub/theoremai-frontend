@@ -206,7 +206,7 @@ inputs: {
 }
 ```
 
-A turn sends its choice in `input.slots`, such as `{ focus: 'arXiv' }`, and `{focus}` in a prompt becomes that value. A choice can also have a `description`, which only your interface reads.
+A turn sends its choice in `input.slots`, such as `{ focus: 'arXiv' }`, and `{focus}` in a prompt becomes that value. A turn that leaves the slot unset is refused with a `request` error when a line that goes on the turn fills it. A choice can also have a `description`, which only your interface reads.
 
 In addition to attachments, profiles can say whether a turn may send text via `text`, restrict audio input via `voice.accept`, constrain categorical metadata using `slots`, and permit host-injected background context via `context.from` and `context.maxChars`.
 
