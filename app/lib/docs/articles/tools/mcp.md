@@ -17,64 +17,18 @@ Theorem speaks the protocol in the kernel. It negotiates the protocol version, o
 
 Register MCP tools using `registerTool()` with `type: 'mcp'`. This is the tool `research.scout` uses to read a page:
 
-```ts
-import { registerTool } from '@theoremjs/agents';
-import { z } from 'zod';
+```ts frame=tool:mcp
+name: 'read_pages',
+// ...
+serverUrl: 'https://mcp.exa.ai/mcp',
+mcpToolName: 'web_fetch_exa',
 
-export const readPagesTool = registerTool({
-	type: 'mcp',
-	name: 'read_pages',
-	description:
-		'Read up to three web pages by URL via Exa. Pass the specific question you are reading them for.',
-	category: 'research',
-	access: 'read-only',
-	paths: ['*'],
-	loadTier: 'T0',
-	permission: 'auto',
-
-	serverUrl: 'https://mcp.exa.ai/mcp',
-	mcpToolName: 'web_fetch_exa',
-
-	// The scout's tools set no limits. Add these to fit the server:
-	session: {
-		idleMs: 120_000, // Reuse a session unused for up to 2 minutes
-		max: 5, // Keep at most 5 sessions for this tool
-	},
-
-	maxResponseBytes: 2 * 1024 * 1024, // 2 MiB payload cap
-
-	input: z.fromJSONSchema({
-		type: 'object',
-		properties: {
-			urls: {
-				type: 'array',
-				items: { type: 'string', format: 'uri' },
-				minItems: 1,
-				maxItems: 3,
-				description: 'Web page URLs to read',
-				examples: [['https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2']],
-			},
-			maxCharacters: {
-				type: 'integer',
-				maximum: 8000,
-				description: 'Max characters per page',
-				examples: [8000],
-			},
-			question: {
-				type: 'string',
-				minLength: 1,
-				description: 'What you need from this source, as one specific question.',
-				examples: ['What datasets are evaluated?'],
-			},
-		},
-		required: ['urls', 'question'],
-	}),
-
-	output: z.fromJSONSchema({
-		type: 'string',
-		description: 'Extracted passages from the requested pages',
-	}),
-});
+// The scout's tools set no limits. Add these to fit the server:
+session: {
+	idleMs: 120_000, // Reuse a session unused for up to 2 minutes
+	max: 5, // Keep at most 5 sessions for this tool
+},
+// ...
 ```
 
 * **`serverUrl`**: The MCP server's Streamable HTTP endpoint.

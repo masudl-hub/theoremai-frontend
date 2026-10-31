@@ -16,6 +16,7 @@ export const DOC_SECTIONS = [
 	'profiles/decision',
 	'profiles/image',
 	'profiles/speech',
+	'profiles/transcription',
 	'profiles/embedding',
 	'profiles/host',
 	'profiles/bindings',
@@ -92,6 +93,7 @@ export const DOC_GROUPS: readonly DocNavGroup[] = [
 					'profiles/decision',
 					'profiles/image',
 					'profiles/speech',
+					'profiles/transcription',
 					'profiles/embedding',
 					'profiles/host',
 				],
@@ -201,6 +203,8 @@ export type ArrayUnionName = {
  * - `request-object`: a whole `TurnRequest`.
  * - `profile:<type>`: members of a `defineProfile` call of that type.
  * - `guardrails`: members of a text profile's `guardrails`.
+ * - `tool:<type>`: members of a `registerTool` call of that type.
+ * - `models`: a text profile's `models`, where an indented `// ...` stands for a binding's required fields.
  */
 export const SNIPPET_FRAMES = [
 	'statements',
@@ -210,9 +214,16 @@ export const SNIPPET_FRAMES = [
 	'profile:text',
 	'profile:image',
 	'profile:speech',
+	'profile:transcription',
 	'profile:live',
 	'profile:decision',
+	'profile:embedding',
 	'profile:host',
+	'tool:function',
+	'tool:http',
+	'tool:mcp',
+	'tool:agent',
+	'models',
 ] as const;
 
 /**

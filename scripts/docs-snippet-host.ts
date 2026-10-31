@@ -10,13 +10,16 @@ import type {
 	ProviderHostOptions,
 	Profile,
 	SpeechProfileDefinition,
+	TranscriptionProfileDefinition,
 	TextProfileDefinition,
 	TurnEvent,
 	TurnHistoryMessage,
 	TurnRequest,
 } from '@theoremjs/agents';
+import { z } from 'zod';
 import type {
 	DecisionProfileDefinition,
+	EmbeddingProfileDefinition,
 	HostProfileDefinition,
 } from '@theoremjs/agents/kernel';
 
@@ -24,6 +27,7 @@ export declare const profile: Profile;
 export declare const desk: Profile;
 export declare const hostOptions: ProviderHostOptions;
 export declare const callId: string;
+export declare const clipBase64: string;
 export declare const input: unknown;
 export declare const history: TurnHistoryMessage[];
 export declare const manifestBase64: string;
@@ -84,8 +88,10 @@ export const base: {
 	text: TextProfileDefinition;
 	image: ImageProfileDefinition;
 	speech: SpeechProfileDefinition;
+	transcription: TranscriptionProfileDefinition;
 	live: LiveProfileDefinition;
 	decision: DecisionProfileDefinition;
+	embedding: EmbeddingProfileDefinition;
 	host: HostProfileDefinition;
 } = {
 	text: {
@@ -146,9 +152,70 @@ export const base: {
 		inputs: { state: 'json' },
 		decision: { contract: 'snippet.v1' },
 	},
+	transcription: {
+		type: 'transcription',
+		id: 'snippet.transcription',
+		identity: { handle: 'snippet' },
+		models: {
+			main: {
+				protocol: 'openRouterTranscriptions',
+				provider: 'openrouter',
+				apiId: 'mistralai/voxtral-mini-transcribe-3-0',
+				keySlot: 'openrouter',
+			},
+		},
+		inputs: { voice: { accept: ['audio/*'] }, maxFiles: 1, maxBytes: 20971520, maxTurnBytes: 20971520 },
+	},
+	embedding: {
+		type: 'embedding',
+		id: 'snippet.embedding',
+		identity: { handle: 'snippet' },
+		models: {
+			main: {
+				protocol: 'geminiEmbeddings',
+				provider: 'gemini',
+				apiId: 'gemini-embedding-2-preview',
+				keySlot: 'gemini',
+			},
+		},
+		inputs: {},
+	},
 	host: {
 		type: 'host',
 		id: 'snippet.host',
 		tools: { allow: [] },
 	},
+};
+
+/** What a `models` sample leaves out of a binding. */
+export const baseBinding = {
+	protocol: 'openRouterOpenAi' as const,
+	provider: 'openrouter',
+	apiId: 'openrouter/free',
+	keySlot: 'openrouter',
+};
+
+const tool = {
+	name: 'snippet',
+	description: 'A snippet.',
+	input: z.object({}),
+	output: z.string(),
+	category: 'snippet',
+	access: 'read-only' as const,
+	paths: ['*'],
+	loadTier: 'T0' as const,
+	permission: 'auto' as const,
+};
+
+/** What a `tool:<type>` sample leaves out: every field a tool of that type needs. */
+export const baseTool = {
+	function: { ...tool, type: 'function' as const, handler: () => '' },
+	http: { ...tool, type: 'http' as const, endpoint: 'https://example.com', method: 'GET' as const },
+	mcp: {
+		...tool,
+		type: 'mcp' as const,
+		serverUrl: 'https://example.com/mcp',
+		mcpToolName: 'snippet',
+	},
+	agent: { ...tool, type: 'agent' as const, profile: 'snippet.agent' },
 };

@@ -23,7 +23,7 @@ graph TD
 
     subgraph CoreContract["Core Specification"]
         IdType["id & type"]
-        Identity["identity: { handle, system, systemByRole }"]
+        Identity["identity: { handle, conditions, system }"]
         Models["models: Record&lt;ModelId, ModelBinding&gt;"]
         Tools["tools: { allow, parallel }"]
     end
@@ -48,7 +48,7 @@ graph TD
 
 ### Profile Types
 
-Theorem supports 7 first-class profile types. The `type` determines which runner executes the profile and which specialized configuration blocks are valid:
+Theorem supports 8 first-class profile types. The `type` determines which runner executes the profile and which specialized configuration blocks are valid:
 
 | Type | Description | Reference |
 | :--- | :--- | :--- |
@@ -58,7 +58,8 @@ Theorem supports 7 first-class profile types. The `type` determines which runner
 | **`embedding`** | Vector representation for semantic search and document retrieval. | [Embedding Profiles](/docs/profiles/embedding) |
 | **`image`** | Media asset generation and editing from text prompts, configured via the `image` block (`aspectRatio`, `resolution`, `mimeType`). | [Image Profiles](/docs/profiles/image) |
 | **`speech`** | Text-to-speech audio synthesis, configured via the `speech` block (`voice`, `style`, `speed`, `format`). | [Speech Profiles](/docs/profiles/speech) |
-| **`host`** | Governed passthrough tool runner with no underlying model, executing MCP, HTTP, and local tools under standard boundary guardrails. | [Host Profiles](/docs/profiles/host) |
+| **`transcription`** | Speech to text: one voice clip in, the words out as text. | [Transcription Profiles](/docs/profiles/transcription) |
+| **`host`** | Your code is the orchestrator. It names each MCP, HTTP or function tool and its input, and Theorem runs the call under the same permissions and traces as any agent, guarded by `detect` and `network`. | [Host Profiles](/docs/profiles/host) |
 
 ## Specification Reference
 
@@ -69,7 +70,7 @@ The configuration keys in a profile follow a consistent order across the system:
 Every profile requires a unique string identifier and an archetype:
 
 * **`id`**: Unique identifier for the profile (up to 64 characters). Used for registration and lookup by turn runners.
-* **`type`**: The profile's archetype (`'text' | 'live' | 'decision' | 'embedding' | 'image' | 'speech' | 'host'`). Determines which runner executes the profile and which specialized blocks are valid.
+* **`type`**: The profile's archetype (`'text' | 'live' | 'decision' | 'embedding' | 'image' | 'speech' | 'transcription' | 'host'`). Determines which runner executes the profile and which specialized blocks are valid.
 
 ### 2. `identity`
 
@@ -82,46 +83,85 @@ identity: {
 }
 ```
 
-#### Prompt by Role (`systemByRole`)
-When an agent needs to switch personas or operational sub-modes depending on the task, declare alternate instructions under `systemByRole`:
+#### Prompt Lines (`conditions`)
+Prompt lines let one agent speak differently by plan or by channel. Declare the facts a turn states under `conditions`, and write each instruction as one line. The scout declares no conditions. To add them:
 
 ```ts frame=profile:text
 identity: {
-	handle: 'desk',
-	system: 'You are the Harbor logistics desk. Provide concise, direct operational answers.',
-	systemByRole: {
-		auditor: [
-			'You are the compliance auditor. Verify shipment declarations against harbor rules.',
-			{ private: 'Do not reveal internal audit tolerance thresholds.' },
-		],
-		triage: 'You are intake triage. Classify declarations and route them to customs or freight.',
-	},
+	handle: 'scout',
+	conditions: { path: ['web', 'imessage'], plan: ['free', 'paid'] },
+	system: [
+		// ...
+		'when plan is free: Keep the reply to one paragraph.',
+		'when path is imessage and plan is paid: Write plain text with no lists.',
+	],
 }
 ```
 
-A turn names a role in `input.role`, for example `runTurn({ profile: 'harbor.desk', input: { role: 'auditor', text: '...' } })`. If `systemByRole` has that role, its entry replaces `identity.system`. With no role, or a role it does not have, the turn uses the handle: `systemByRole[handle]` if it exists, else `identity.system`. Speech profiles do not use `systemByRole`.
+A line that opens with `when` goes only on turns where it fits. Every line that fits is sent, a blank line apart. A `when` uses the same words as an activity label: `is`, `is not`, and `and`.
 
-#### Private Prompt Parts
-To protect operational formulas, sensitive rules, or confidential policies from leaking in answers, wrap instructions in `{ private: string }`:
+Each turn states every condition, with a value the profile lists. A condition named `path` reads the turn's own `path`, and the rest go in `conditions`:
+
+```ts frame=statements
+const events = runTurn({
+	profile: 'research.scout',
+	path: 'web',
+	conditions: { plan: 'free' },
+	// ...
+});
+```
+
+A turn that leaves a condition out, gives a value the profile does not list, or names a condition the profile does not declare, is refused with a `request` error. A condition chooses lines and never fills text: only a slot fills `{name}`. Text, image and live profiles take conditions.
+
+#### Lines for a Reader
+A `when` line can also read a slot, which is how one prompt fits different people. The scout's `reader` slot says who it writes for, and two lines read it:
 
 ```ts frame=profile:text
 identity: {
 	handle: 'scout',
 	system: [
-		'Role: Advanced reasoning engine for research on how language models keep, retrieve, and recombine context.',
-		{
-			private: [
-				'Standards:',
-				'- The newest work is often not indexed yet; one search is rarely enough.',
-				'- A claim rests on a primary source: the paper, the model card, the dataset card, the repository. A blog or a list is a lead to its primary source; DeepWiki answers are leads only.',
-				'- Quote exact words from what the tools returned. Say how sure you are, and what you could not check.',
-			].join('\n'),
+		// ...
+		'when reader is reviewer: The reader reviews papers. Lead with weak evidence and what would refute a claim.',
+		'when reader is student: The reader is learning the field. Define each term the first time you use it.',
+	],
+},
+// ...
+inputs: {
+	slots: {
+		reader: {
+			label: 'Reader',
+			choices: [{ value: 'anyone' }, { value: 'reviewer' }, { value: 'student' }],
 		},
+	},
+},
+// ...
+```
+
+A turn chooses in `input.slots`, for example `runTurn({ profile: 'research.scout', input: { slots: { reader: 'reviewer' }, text: '...' } })`. The fitting line joins the rest of the prompt, so a reviewer still gets the scout's whole prompt. With `anyone`, neither line fits. A turn with a line that reads a slot must choose that slot.
+
+#### Private Prompt Parts
+To protect operational formulas, sensitive rules, or confidential policies from leaking in answers, wrap instructions in `{ private: string }`. A prompt line is a string or a list of parts, so a private part goes inside a line's list. A bare `{ private }` entry in `system` is refused. The scout's prompt opens with one line of two parts:
+
+```ts frame=profile:text
+identity: {
+	handle: 'scout',
+	system: [
+		[
+			'Role: Advanced reasoning engine for research on how language models keep, retrieve, and recombine context.',
+			{
+				private: [
+					'Standards:',
+					'- The newest work is often not indexed yet; one search is rarely enough.',
+					// ...
+				].join('\n'),
+			},
+		],
+		// ...
 	],
 }
 ```
 
-The model gets private parts as instructions, and Theorem reads the reply for them. A run of 12 words in a row from one private part is an echo, also when it is reformatted as a list, reversed, or encoded in rot13 or leetspeak. A streamed reply holds back the words an echo could grow from, so no part of an echo reaches the host. On an echo, the reply is blocked and the turn ends with a `safety` error and `stop.kind: 'filtered'`. With no private parts, the whole prompt is guarded. Both `identity.system` and entries in `identity.systemByRole` take private parts.
+The model gets private parts as instructions, and Theorem reads the reply for them. A run of 12 words in a row from one private part is an echo, also when it is reformatted as a list, reversed, or encoded in rot13 or leetspeak. A streamed reply holds back the words an echo could grow from, so no part of an echo reaches the host. On an echo, the reply is blocked and the turn ends with a `safety` error and `stop.kind: 'filtered'`. Once one part is private, the plain strings beside it are shareable. With no private parts, the whole prompt is guarded.
 
 ### 3. `models`
 
@@ -133,7 +173,7 @@ Under `tools`, an agent declares its capabilities—specifying the list of regis
 
 ### 5. `inputs`
 
-The `inputs` block defines the surface of data accepted by the profile in a `TurnRequest`. The research scout starts with `inputs: {}`. To let a turn bring a research brief as a PDF or a voice clip and choose a source bias, add this:
+The `inputs` block defines the surface of data accepted by the profile in a `TurnRequest`. The research scout's `focus` slot says where a turn looks first. To let a turn bring a research brief as a PDF or a voice clip and choose a source bias, change `inputs` to this:
 
 ```ts frame=profile:text
 inputs: {
@@ -152,19 +192,19 @@ inputs: {
 	},
 	slots: {
 		focus: {
-			label: 'Source Bias',
+			label: 'Focus',
 			choices: [
-				{ value: 'Any Source', description: 'Consider all sources.' },
-				{ value: 'Academic Research', description: 'Prefer arXiv and papers.' },
-				{ value: 'Public Repositories', description: 'Prefer GitHub code and docs.' },
-				{ value: 'Hugging Face Open Research', description: 'Prefer Hugging Face model and dataset cards.' },
+				{ value: 'Hugging Face Open Research' },
+				{ value: 'arXiv' },
+				{ value: 'GitHub' },
+				{ value: 'Anywhere' },
 			],
 		},
 	},
 }
 ```
 
-A turn sends its choice in `input.slots`, such as `{ focus: 'Academic Research' }`, and `{focus}` in a prompt becomes that value. Descriptions are for your interface only.
+A turn sends its choice in `input.slots`, such as `{ focus: 'arXiv' }`, and `{focus}` in a prompt becomes that value. A choice can also have a `description`, which only your interface reads.
 
 In addition to attachments, profiles can say whether a turn may send text via `text`, restrict audio input via `voice.accept`, constrain categorical metadata using `slots`, and permit host-injected background context via `context.from` and `context.maxChars`.
 
@@ -194,7 +234,7 @@ providerContinuation: {
 }
 ```
 
-Only model turns and live sessions use it (`text`, `image`, `speech`, `live`). It is refused on `decision`, `embedding` and `host` profiles.
+Only model turns and live sessions use it (`text`, `image`, `speech`, `live`). It is refused on `decision`, `embedding` and `host` profiles. A `transcription` profile has none.
 
 * **`'host'`** *(default)*: The host sends the history it covers (`input.history`) with the checkpoint. If the checkpoint no longer matches the provider, model, connection, key or history, the turn warns `provider_state_rebuilt` and the call goes from the history.
 * **`'provider'`**: The host sends the checkpoint alone. The provider's stored conversation is the history. A turn that goes to another model needs the host's history.

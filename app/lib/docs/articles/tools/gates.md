@@ -1,6 +1,6 @@
 ---
 title: Tool Permissions & Gates
-updated: 2026-10-29
+updated: 2026-10-30
 summary: Decoupling model tool calls with human confirmation gates, argument editing, and turn resumption.
 entry: src/kernel/tools/permission.ts
 covers: src/kernel/tools/permission.ts, src/kernel/tools/gate-answer.ts
@@ -42,28 +42,11 @@ flowchart TD
 
 Set `permission` on a tool definition to declare its baseline gate policy:
 
-```ts
-import { registerTool } from '@theoremjs/agents';
-import { z } from 'zod';
-
-export const readPagesTool = registerTool({
-	type: 'mcp',
-	name: 'read_pages',
-	description: 'Read up to three web pages by URL via Exa.',
-	category: 'research',
-	access: 'read-only',
-	paths: ['*'],
-	loadTier: 'T0',
-	serverUrl: 'https://mcp.exa.ai/mcp',
-	mcpToolName: 'web_fetch_exa',
-	input: z.object({ urls: z.array(z.url()), question: z.string() }),
-	output: z.string(),
-
-	permission: 'always_confirm', // Reads only after approval
-	labels: {
-		request: 'read {urls.0}',
-	},
-});
+```ts frame=tool:mcp
+name: 'read_pages',
+// ...
+permission: 'always_confirm', // Reads only after approval
+// ...
 ```
 
 * **`'auto'`**: The tool runs immediately without pausing for confirmation.
@@ -79,9 +62,9 @@ The kernel categorizes held calls into four distinct gate kinds (`ToolGateKind`)
 | **`'confirmation'`** | Tool has `permission: 'always_confirm'` or was escalated dynamically. | User confirms or denies the action. |
 | **`'permission'`** | Tool has `permission: 'session_consent'` and is absent from `sessionPermissions`. | User grants session consent. |
 | **`'auth'`** | Remote tool credential is missing or expired (`onUnauthenticated: 'gate'`). | User signs in via OAuth or provides credentials. |
-| **`'page'`** | Tool declares `answeredBy: 'page'`. | Web browser client executes action and returns result. |
+| **`'page'`** | Tool declares `answeredBy: 'page'`. | The page runs the call and returns the result. |
 
-While `confirmation`, `permission`, and `auth` gates pause for an explicit human decision or credential, a `page` gate is an automated execution pause: the model called an `answeredBy: 'page'` browser tool, and the turn waits for the client web page to return the DOM or client-side result.
+While `confirmation`, `permission`, and `auth` gates pause for an explicit human decision or credential, a `page` gate is an automated execution pause: the model called an `answeredBy: 'page'` tool such as `check_device`, and the turn waits for the page to return its result.
 
 ## Resuming Held Calls (`invokeTool`)
 
@@ -91,20 +74,14 @@ When the user approves or rejects an action, call `invokeTool()` with the held c
 
 To approve the call as proposed by the model:
 
-```ts
-import { invokeTool } from '@theoremjs/agents';
-
-const resumeEvents = invokeTool({
+```ts frame=statements
+const _resumeEvents = invokeTool({
 	profile: 'research.scout',
 	name: gated.name,
 	snapshot: gated.snapshot,
 	resume: { granted: true },
 	input: gated.arguments,
 });
-
-for await (const _event of resumeEvents) {
-	// Yields standard tool events up to complete
-}
 ```
 
 ### Modifying Arguments Before Approval
@@ -115,7 +92,7 @@ Users can edit proposed arguments before approving (e.g., correcting a URL). Pas
 const _resumeEvents = invokeTool({
 	profile: 'research.scout',
 	name: gated.name,
-	snapshot: gated.snapshot,
+	// ...
 	resume: {
 		granted: true,
 		edited: { from: gated.arguments },
@@ -138,12 +115,12 @@ To decline an action, pass `granted: false`. The kernel settles the tool call as
 const _refuseEvents = invokeTool({
 	profile: 'research.scout',
 	name: gated.name,
-	snapshot: gated.snapshot,
+	input: gated.arguments,
+	// ...
 	resume: {
 		granted: false,
 		cause: 'declined', // 'declined' | 'abandoned' | 'expired'
 	},
-	input: gated.arguments,
 });
 ```
 
@@ -153,18 +130,16 @@ const _refuseEvents = invokeTool({
 
 ### Answering Page Gates
 
-When a turn halts at a `page` gate, the action requires no user confirmation. The frontend web application executes the browser action directly (such as querying the DOM or inspecting canvas state) and submits the result by calling `invokeTool()` with `page: PageAnswer`:
+When a turn halts at a `page` gate, the action requires no user confirmation. The page runs the call directly (`check_device` reads whether the device has WebGPU and how much memory it has) and submits the result by calling `invokeTool()` with `page: PageAnswer`:
 
-```ts
-import { invokeTool } from '@theoremjs/agents';
-
+```ts frame=statements
 const _resumeEvents = invokeTool({
 	profile: 'research.scout',
 	name: gated.name,
-	snapshot: gated.snapshot,
 	input: gated.arguments,
+	// ...
 	page: {
-		output: { selectedIds: ['node-44', 'node-89'] },
+		output: { webgpu: true, memoryGb: 16 },
 	},
 });
 ```
@@ -172,7 +147,7 @@ const _resumeEvents = invokeTool({
 The `PageAnswer` payload supports three outcome variants:
 
 * **`{ output: unknown }`**: Successful execution. The kernel validates the returned data against the tool's Zod `output` schema before serializing it for the model.
-* **`{ timedOut: true }`**: The client stopped waiting for the browser operation. The kernel settles the call with a `tool.page_timed_out` failure for the model.
+* **`{ timedOut: true }`**: The client stopped waiting for the page. The kernel settles the call with a `tool.page_timed_out` failure for the model.
 * **`{ unanswered: true }`**: The client web page does not implement a handler for the tool. The kernel settles the call with a `tool.page_no_answer` failure for the model.
 
 In live streaming sessions where an active tool execution coordinator (`ctx.pageExecution`) is mounted, the kernel dispatches the call directly across the active connection and awaits `dispatch.result` without pausing at a turn gate.
@@ -186,20 +161,18 @@ A tool configured with `permission: 'auto'` can escalate dynamically to require 
 Declare a `preTool` hook on the tool definition to inspect inputs before execution:
 
 ```text
-registerTool({
-	type: 'function',
-	name: 'read_pages',
-	// ... server, input, output
-	permission: 'auto',
+name: 'read_pages',
+// ...
+permission: 'auto',
 
-	preTool: async (input) => {
-		if (input.urls.some((url) => !url.startsWith('https://arxiv.org/'))) {
-			return {
-				confirm: { summary: `Read ${input.urls.length} pages, some outside arXiv?` },
-			};
-		}
-	},
-});
+preTool: async (input) => {
+	if (input.urls.some((url) => !url.startsWith('https://arxiv.org/'))) {
+		return {
+			confirm: { summary: `Read ${input.urls.length} pages, some outside arXiv?` },
+		};
+	}
+},
+// ...
 ```
 
 ### Turn `onStage` Interception
@@ -207,10 +180,11 @@ registerTool({
 Alternatively, the host application can escalate tools dynamically during turn execution using `onStage` at the `'pre_tool'` stage (see [Lifecycle Hooks & Interception](/docs/profiles/lifecycle)):
 
 ```text
-// ... inside onStage callback
+// ...
 if (ctx.stage === 'pre_tool' && ctx.tool === 'search_web') {
 	return { confirm: { summary: 'Search the open web for this?' } };
 }
+// ...
 ```
 
 ## Related Guides

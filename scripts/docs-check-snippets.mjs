@@ -35,15 +35,22 @@ const words = (code) => new Set(code.match(/[A-Za-z_$][\w$]*/g) ?? []);
 /** @param {string} code @param {string} frame */
 function wrap(code, frame) {
 	if (frame === 'statements') return `async function snippet() {\n${code}\n}\nvoid snippet;`;
-	if (frame === 'request') return `void runTurn({ profile: 'snippet', ${code} }, hostOptions);`;
+	if (frame === 'request') return `void runTurn({ profile: 'snippet', ${code}\n}, hostOptions);`;
 	if (frame === 'request-object') {
 		return `const turn: Parameters<typeof runTurn>[0] = { profile: 'snippet', ...${code} };\nvoid turn;`;
 	}
 	if (frame === 'guardrails') {
-		return `void defineProfile({ ...base.text, guardrails: { ${code} } });`;
+		return `void defineProfile({ ...base.text, guardrails: { ${code}\n} });`;
+	}
+	if (frame === 'models') {
+		const bindings = code.replace(/^(\s+)\/\/ \.\.\.$/gm, '$1...baseBinding,');
+		return `void defineProfile({ ...base.text, ${bindings}\n});`;
+	}
+	if (frame.startsWith('tool:')) {
+		return `void registerTool({ ...baseTool.${frame.slice('tool:'.length)}, ${code}\n});`;
 	}
 	const type = frame.slice('profile:'.length);
-	return `void defineProfile({ ...base.${type}, ${code} });`;
+	return `void defineProfile({ ...base.${type}, ${code}\n});`;
 }
 
 rmSync(outDir, { recursive: true, force: true });

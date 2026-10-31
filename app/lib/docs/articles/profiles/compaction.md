@@ -15,20 +15,18 @@ In Theorem, **history compaction** automatically condenses older exchanges into 
 
 ## The Compaction Specification (`compaction`)
 
-Compaction is configured directly on a profile's model binding:
+Compaction is configured directly on a profile's model binding. Each of the scout's models hands its history to `research.compactor`, a text profile with no tools and one instruction: "Summarise the research so far. Keep every source URL, every exact quote, and every open lead." This is the `compaction` of the `open` model:
 
-```ts frame=profile:text
+```ts frame=models
 models: {
-	primary: {
-		protocol: 'openRouterOpenAi',
-		provider: 'openrouter',
-		apiId: 'anthropic/claude-5.5-opus',
+	open: {
+		// ...
 		compaction: {
 			maxTokens: 32_000,
-			compactAt: 0.75,          // Trigger when tokens exceed 24,000 (0.75 * 32,000)
-			previousExchanges: 2,     // Retain the last 2 exchanges verbatim
-			timing: 'before',         // Run compaction synchronously before the turn
-			meter: 'history',         // Measure history messages using token estimator
+			compactAt: 0.75,                // Trigger when tokens exceed 24,000 (0.75 * 32,000)
+			profile: 'research.compactor',  // The profile that writes the summary
+			previousExchanges: 4,           // Retain the last 4 exchanges verbatim
+			timing: 'before',               // Run compaction synchronously before the turn
 		},
 	},
 }
@@ -82,21 +80,19 @@ sequenceDiagram
 
 The kernel evaluates token counts before calling the model. If compaction is needed, it runs the compactor immediately, splices the summary into the history, and executes the turn against the fresh history.
 
-The active turn absorbs the compactor's execution latency, but the context is guaranteed to stay within limits before the model is called. During execution, Theorem emits a `compaction` lifecycle event containing the split details and the generated summary.
+The active turn absorbs the compactor's execution latency, and the model reads the shorter history on that same turn. During execution, Theorem emits a `compaction` lifecycle event containing the split details and the generated summary.
 
 ### 2. Asynchronous (`timing: 'after'`)
 
-The turn executes immediately without added latency. At the conclusion of the turn, the kernel checks whether compaction thresholds were crossed. If so, it attaches a compaction signal to the `done` event as its `compaction` field.
+The scout compacts before the turn. To compact after it instead, set `timing: 'after'`. The turn then executes immediately without added latency. At the conclusion of the turn, the kernel checks whether compaction thresholds were crossed. If so, it attaches a compaction signal to the `done` event as its `compaction` field.
 
 The host application reads this signal and triggers out-of-band compaction in the background:
 
-```ts
-import { compactHistory } from '@theoremjs/agents';
-
+```ts frame=statements
 // Inside your turn event consumer
 if (doneEvent.compaction) {
 	const result = await compactHistory({
-		profile: 'harbor.desk',
+		profile: 'research.scout',
 		history: currentHistory,
 		tokens: doneEvent.compaction.tokens,
 	});

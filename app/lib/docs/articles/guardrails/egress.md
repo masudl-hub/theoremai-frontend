@@ -82,15 +82,15 @@ The scout leaves both detectors at `flag`. To stop a reply that leaks its prompt
 
 ```ts frame=profile:text
 guardrails: {
-		detect: {
-			canary_leak: 'block',
-			prompt_leak: 'block',
-		},
-		blockedReply: {
-			onBlock: 'retry',
-			maxRetries: 1,
-		},
+	detect: {
+		canary_leak: 'block',
+		prompt_leak: 'block',
 	},
+	blockedReply: {
+		onBlock: 'retry',
+		maxRetries: 1,
+	},
+},
 ```
 
 A detector set to one action, as here, takes that action at every boundary. When a reply is blocked, `blockedReply` decides what happens next: `'retry'` (the default) asks the model again, up to `maxRetries` times (default 1), and `'refuse'` ends the reply.
@@ -111,25 +111,25 @@ Turn `ungiven_links` on to catch a citation the model made up. A URL from a page
 
 ```ts frame=profile:text
 guardrails: {
-		detect: {
-			// Block images at addresses the model was not given
-			ungiven_images: {
-				at: { reply: 'block', live_reply: 'block' },
-				allow: {
-					hosts: ['huggingface.co', 'raw.githubusercontent.com'], // Trusted asset hosts
-					fromTools: false, // Count only the URLs the system prompt, the user and history gave
-				},
+	detect: {
+		// Block images at addresses the model was not given
+		ungiven_images: {
+			at: { reply: 'block', live_reply: 'block' },
+			allow: {
+				hosts: ['huggingface.co', 'raw.githubusercontent.com'], // Trusted asset hosts
+				fromTools: false, // Count only the URLs the system prompt, the user and history gave
 			},
+		},
 
-			// Block links to addresses the model was not given
-			ungiven_links: {
-				at: { reply: 'block', live_reply: 'block' },
-				allow: {
-					hosts: ['huggingface.co'], // Every URL on this host passes
-				},
+		// Block links to addresses the model was not given
+		ungiven_links: {
+			at: { reply: 'block', live_reply: 'block' },
+			allow: {
+				hosts: ['huggingface.co'], // Every URL on this host passes
 			},
 		},
 	},
+},
 ```
 
 Under `block`, a reply with an image or link to an address that is not given and not on an allowed host is stopped before it reaches the client. A made-up URL on an allowed host still passes, because `hosts` allows the whole host, and a host on `ungiven_images` counts for `ungiven_links` too. Reserved names always pass: `example.com`, `example.net`, `example.org` and names under them, and anything under `.example`, `.test` or `.invalid`.
@@ -140,15 +140,15 @@ The `tool_leak` detector finds the profile's tool names and parameter names in w
 
 ```ts frame=profile:text
 guardrails: {
-		detect: {
-			tool_leak: {
-				at: { reply: 'block' },
-				allow: {
-					names: ['search_web', 'list_arxiv'], // Names the model may say
-				},
+	detect: {
+		tool_leak: {
+			at: { reply: 'block' },
+			allow: {
+				names: ['search_web', 'list_arxiv'], // Names the model may say
 			},
 		},
 	},
+},
 ```
 
 A tool name counts as a whole word. A parameter name counts only as a JSON key in double quotes. Names in `allow.names` are never matches. Its default is `flag` at every outbound boundary.

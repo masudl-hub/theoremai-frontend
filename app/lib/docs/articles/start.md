@@ -1,6 +1,6 @@
 ---
 title: Getting started
-updated: 2026-10-29
+updated: 2026-10-30
 summary: Define an agent once as a typed profile, run a turn, and enforce hard runtime boundaries.
 entry: src/kernel/engine/runner/mod.ts
 covers: mod.ts, src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -129,12 +129,6 @@ registerTool({
 	mapping: {
 		queryParams: ['q'],
 	},
-	labels: {
-		activity: 'Searching GitHub for {q}',
-		activityPast: 'Found hits for {q}',
-		activityFailed: 'Could not search GitHub for {q}',
-		request: 'search GitHub for {q}',
-	},
 	input: z.object({
 		q: z.string().min(1),
 	}),
@@ -173,8 +167,6 @@ const scoutProfile = defineProfile({
 			provider: 'openrouter',
 			apiId: 'google/gemini-3.8-flash',
 			keySlot: 'openrouter',
-			efforts: { normal: 'medium', deep: 'high' },
-			defaultEffort: 'normal',
 		},
 	},
 	defaultModel: 'gemini',
@@ -240,29 +232,21 @@ A request can never ask for more than the profile declares:
 
 1. **Model selection**: Theorem refuses a request that sets `model`, unless the profile sets `allowModelSelect`. Even then, the request must name one of the profile's `models`.
 2. **Tool scope**: The model can only call the tools that `tools.allow` names.
-3. **Inputs**: Theorem refuses slots the profile does not declare, context from a sender that `inputs.context` does not list, and files or voice clips of a type that the profile does not accept.
+3. **Inputs**: Theorem refuses slots and [conditions](/docs/profiles#prompt-lines-conditions) the profile does not declare, context from a sender that `inputs.context` does not list, and files or voice clips of a type that the profile does not accept.
 
 ### What happens when a request overreaches?
 
-```ts
-import { runTurn, TheoremError } from '@theoremjs/agents';
-
-const hostOptions = {
-	vault: {
-		openrouter: process.env.OPENROUTER_API_KEY ?? '',
-	},
-};
-
+```ts frame=statements
 try {
 	for await (const event of runTurn(
 		{
 			profile: 'research.scout',
 			model: 'bigger',
-			input: { text: 'Hello' },
+			// ...
 		},
 		hostOptions,
 	)) {
-		if (event.type === 'text') process.stdout.write(event.text);
+		// ...
 	}
 } catch (error) {
 	if (error instanceof TheoremError) {

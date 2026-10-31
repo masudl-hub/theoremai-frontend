@@ -1,6 +1,6 @@
 ---
 title: Agent Tools
-updated: 2026-10-29
+updated: 2026-10-30
 summary: Delegating turns to other registered agents, with input derived from the called profile and host-only channels and fields.
 entry: src/kernel/tools/agent.ts
 covers: src/kernel/tools/agent.ts, src/kernel/tools/types.ts, src/kernel/engine/runner/nested.ts
@@ -9,7 +9,7 @@ coverAlt: Geometric rows of blooming orchard trees in morning light
 coverPosition: 50% 50%
 ---
 
-An `agent` tool runs one complete turn of another registered agent profile and returns its reply to the caller. This enables specialized agents—such as a customs compliance advisor or an image generator—to act as modular capabilities within an orchestrator's workflow.
+An `agent` tool runs one complete turn of another registered agent profile and returns its reply to the caller. `research.scout` has two: `record_podcast` has `research.podcast` read the findings aloud, and `draw_method` has `research.illustrator` draw a paper's method.
 
 An agent tool needs no handler code and no schemas of your own. Theorem builds the input schema from the called profile's `inputs`, and every agent tool returns the same output shape.
 
@@ -17,40 +17,29 @@ An agent tool needs no handler code and no schemas of your own. Theorem builds t
 
 Register agent tools using `registerTool()` with `type: 'agent'`:
 
-```ts
-import { registerTool } from '@theoremjs/agents';
-
-export const customsSubAgentTool = registerTool({
-	type: 'agent',
-	name: 'consult_customs_specialist',
-	description: 'Consult the customs specialist on import tariffs and necessary cargo paperwork.',
-	category: 'logistics',
-	access: 'read-only',
-	paths: ['*'],
-	loadTier: 'T0',
-	permission: 'auto',
-
-	profile: 'harbor.customs',
-	maxCallsPerTurn: 2, // At most 2 calls in one turn of the caller
-});
+```ts frame=tool:agent
+name: 'record_podcast',
+// ...
+profile: 'research.podcast',
+// ...
 ```
 
 * **`profile`**: The ID of the agent's profile, registered before this tool.
-* **`maxCallsPerTurn`**: The most calls to this tool in one turn of its caller; a whole number above 0. A call past it fails with `call_limit`. Left out, only the caller's `maxSteps` bounds them.
+* **`maxCallsPerTurn`**: Optional. The most calls to this tool in one turn of its caller; a whole number above 0. A call past it fails with `call_limit`. Left out, as on `record_podcast` and `draw_method`, only the caller's `maxSteps` bounds them.
 
 ## Automatic Schema Derivation
 
 Because the called agent is already a declared profile, Theorem derives the tool's input from it:
 
 * **Input Schema**: The tool takes `text`, plus each channel the called profile declares in `inputs`: `attachments`, `voice` and `slots`. A `speech` profile also takes `speech`. Any other field is refused, not dropped.
-* **Output Schema**: The tool returns the called agent's reply: its `text`, or its `structured` reply in place of the text; `removed`, the items its item rules took out of `structured`; media as `parts`; and what it cited as `sources`. The caller's turn cites those sources too.
+* **Output Schema**: The tool returns the called agent's reply: its `text`, or its `structured` reply in place of the text; `removed`, the items its item rules took out of `structured`; media as `parts`; and what it cited as `sources`. The caller's turn cites those sources too. `record_podcast` returns its audio in `parts`, and `draw_method` returns its image there.
 
 ## Architectural Delegation Rules
 
 The kernel enforces four rules on every agent tool. Breaking the first three is a `config` error when the tool registers:
 
 1. **Registration Order**: The called profile, and every tool it allows, must be registered before the agent tool.
-2. **Modality Support**: The called profile must be a `text`, `image`, or `speech` profile that takes text.
+2. **Modality Support**: The called profile must be a `text`, `image`, or `speech` profile that takes text. `research.pagereader` is a `decision` profile, so it is not an agent tool: it reads each page result at `post_tool` (see [Lifecycle Hooks & Interception](/docs/profiles/lifecycle)).
 3. **No Gated Tools**: None of the called agent's own tools may stop on a gate, because no one can answer it there. Every tool it allows needs `permission: 'auto'`, and a tool with `auth` needs an `onUnauthenticated` policy other than `'gate'`, which is the default.
 4. **Context Isolation**: The caller's `ctx.host` is not passed down. The called agent's tools read no `host` unless `onAgentCall` returns one.
 
@@ -62,9 +51,10 @@ To control what the calling model can send, set field and channel rules on the a
 
 If the called profile takes channels that the calling model should not fill (such as private slots or documents), list them in `hostOnly`:
 
-```text
-// ... inside agent tool definition
+```ts frame=tool:agent
+// ...
 hostOnly: ['slots', 'attachments'],
+// ...
 ```
 
 Those channels leave the calling model's input; it still sees `text` and any channel you did not reserve. Only `onAgentCall` can send the reserved ones. Naming a channel the profile does not take is a `config` error.
@@ -73,27 +63,16 @@ Those channels leave the calling model's input; it still sees `text` and any cha
 
 Declare fields that the calling model fills, but only the host reads. A field may not reuse a name the input already has (`text`, `attachments`, `voice`, `slots`, `speech`):
 
-```ts
-import { registerTool } from '@theoremjs/agents';
-import { z } from 'zod';
-
-export const customsSubAgentTool = registerTool({
-	type: 'agent',
-	name: 'consult_customs_specialist',
-	description: 'Consult the customs specialist on import tariffs and necessary cargo paperwork.',
-	category: 'logistics',
-	access: 'read-only',
-	paths: ['*'],
-	loadTier: 'T0',
-	permission: 'auto',
-	profile: 'harbor.customs',
-	hostFields: {
-		billingAccount: z.string().describe('Billing account code for this consultation'),
-	},
-});
+```ts frame=tool:agent
+name: 'record_podcast',
+// ...
+hostFields: {
+	title: z.string().describe('The title of the report to read aloud'),
+},
+// ...
 ```
 
-The kernel hands `billingAccount` to `onAgentCall` as `hostInput` and never sends it to the called agent. A tool with `hostFields` needs the request's `onAgentCall`; a call without it is a `config` error.
+The cookbook's `record_podcast` sets no host field; add this when the model should name a saved report and your code should load it. The kernel hands `title` to `onAgentCall` as `hostInput` and never sends it to the called agent. A tool with `hostFields` needs the request's `onAgentCall`; a call without it is a `config` error.
 
 ## Host Interception (`onAgentCall`)
 

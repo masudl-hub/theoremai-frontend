@@ -21,6 +21,8 @@ When the kernel needs a user-facing string or prompt note, it resolves the text 
 2. **`overrideLabels()`**: Process-wide overrides applied across all profiles in the application.
 3. **Built-in Defaults**: Fallback strings shipped directly with the kernel.
 
+One key skips the first layer. `tool.after_field`, what the model reads on a tool's `after` field, is read when the tool registers, so a profile's `labels` do not change it.
+
 Templates use `{param}` placeholders replaced at runtime. This slice shows the `labels` block of a text profile. The research scout rewords `continue.instruction`. The two error lines are an addition:
 
 ```ts frame=profile:text
@@ -33,9 +35,7 @@ labels: {
 
 To replace wording process-wide across all profiles, invoke `overrideLabels()` during application bootstrap:
 
-```ts
-import { overrideLabels } from '@theoremjs/agents';
-
+```ts frame=statements
 overrideLabels({
 	'error.auth': 'Please sign in again to keep researching.',
 	'error.safety': 'This reply was held back by your research policy.',
@@ -50,15 +50,9 @@ All kernel exceptions surface as `TheoremError`. This class extends native `Erro
 * **`message`**: The diagnostic for hosts, traces, and logs.
 * **`copy`**: Optional user wording more specific than the kind's: one line, or one per problem found.
 
-```ts
-import { runTurn, TheoremError } from '@theoremjs/agents';
-
+```ts frame=statements
 try {
-	const events = runTurn({
-		profile: 'research.scout',
-		input: { text: 'Find papers on episodic memory for language models.' },
-	});
-	for await (const _event of events) {
+	for await (const event of runTurn(request)) {
 		// ...
 	}
 } catch (err) {

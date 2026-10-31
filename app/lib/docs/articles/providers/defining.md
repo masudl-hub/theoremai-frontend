@@ -19,7 +19,7 @@ Theorem ships with four pre-defined providers exported from `@theoremjs/agents`:
 
 | Provider Export | Default ID | Target Infrastructure | Default Auth Signer | Pre-Configured Protocols |
 | :--- | :--- | :--- | :--- | :--- |
-| **`openRouterProvider`** | `'openrouter'` | OpenRouter cloud aggregator (`https://openrouter.ai/api/v1`). | `bearer()` | `openRouterOpenAi`, `openRouterImages`, `openRouterEmbeddings`, `openRouterDecisions` |
+| **`openRouterProvider`** | `'openrouter'` | OpenRouter cloud aggregator (`https://openrouter.ai/api/v1`). | `bearer()` | `openRouterOpenAi`, `openRouterImages`, `openRouterTranscriptions`, `openRouterEmbeddings`, `openRouterDecisions` |
 | **`geminiProvider`** | `'gemini'` | Google AI Studio (`https://generativelanguage.googleapis.com`). | `header('x-goog-api-key')` *(Live: `query('key')`)* | `geminiInteractions`, `geminiEmbeddings`, `geminiLive` |
 | **`localProvider`** | `'local'` | Self-hosted servers (Ollama, vLLM, llama.cpp, LM Studio). | `bearer()` *(key optional)* | `openAi`, `ollamaEmbeddings` |
 | **`typesafeProvider`** | `'typesafe'` | TypeSafe System One decision evaluation (`https://api.typesafe.ai/v1`). | `bearer()` | `systemOne` |
@@ -34,9 +34,7 @@ Providers must be registered during application startup before profiles load.
 
 For standard cloud services, register the provider directly:
 
-```ts
-import { geminiProvider, openRouterProvider, registerProvider } from '@theoremjs/agents';
-
+```ts frame=statements
 registerProvider(openRouterProvider);
 registerProvider(geminiProvider);
 ```
@@ -45,9 +43,7 @@ registerProvider(geminiProvider);
 
 To connect to local or private network models (such as Ollama or vLLM), register `localProvider` with your server's endpoint:
 
-```ts
-import { localProvider, registerProvider } from '@theoremjs/agents';
-
+```ts frame=statements
 registerProvider(localProvider, {
 	connection: { baseUrl: 'http://localhost:11434/v1' },
 });
@@ -95,11 +91,10 @@ registerProvider(openRouterProvider, {
 
 When integrating internal enterprise proxies, custom gateway routers, or endpoints that require specialized headers or custom routing logic, define a custom provider using `defineProvider()`:
 
-```ts
-import { bearer, defineProvider, openAi, registerProvider } from '@theoremjs/agents';
+```ts frame=statements
 import { z } from 'zod';
 
-export const corporateGateway = defineProvider({
+const corporateGateway = defineProvider({
 	id: 'corp-gateway',
 	name: 'Corporate AI Gateway',
 	description: 'Internal routing proxy with compliance logging.',
@@ -120,11 +115,7 @@ export const corporateGateway = defineProvider({
 	],
 });
 
-// Register the custom provider into scope
-registerProvider(corporateGateway, {
-	connection: { gatewayUrl: 'https://gateway.internal.corp/v1' },
-	keySlot: 'internal_gateway_token',
-});
+// ...
 ```
 
 ### Constraints on `defineProvider`

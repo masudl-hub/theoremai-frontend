@@ -18,7 +18,7 @@ Theorem provides a suite of headless React hooks in `@theoremjs/react`. These ho
 | Hook | Profile Type | Purpose | Primary Methods & State |
 | :--- | :--- | :--- | :--- |
 | [`useTheoremInterface`](#1-interface-discovery-usetheoreminterface) | `text`, `image`, `speech`, `live` | Describes the profile as the page sees it: inputs, models, tools and labels | `status`, `iface`, `failure` |
-| [`useTheoremChat`](#2-conversational-streaming-usetheoremchat) | `text`, `image`, `speech` | Manages transcript blocks, streaming, the composer's pending queue and tool gates | `phase`, `blocks`, `streamBlocks`, `draftText`, `handleSubmit`, `handleStop`, `handleToolDecision` |
+| [`useTheoremChat`](#2-conversational-streaming-usetheoremchat) | `text`, `image`, `speech` | Manages transcript blocks, streaming, the composer's pending queue and tool gates | `phase`, `blocks`, `streamBlocks`, `draftText`, `setDraftText`, `handleSubmit`, `handleStop`, `handleToolDecision` |
 | [`useTheoremDecision`](#3-structured-decisions-usetheoremdecision) | `decision` | Asks the profile's questions about a state the page posts | `iface`, `decide`, `status`, `result`, `failure`, `cancel` |
 | [`useTheoremEmbedding`](#4-vector-search--embeddings-usetheoremembedding) | `embedding` | Embeds inputs, one call at a time | `iface`, `embed`, `status`, `result`, `failure`, `cancel` |
 | [`useEmbeddingIndex`](#4-vector-search--embeddings-usetheoremembedding) | `embedding` | Embeds documents for search in as many requests as the profile's limits need, and reports progress | `index`, `status`, `progress`, `result`, `cancel` |
@@ -33,14 +33,13 @@ import { createHttpTransport, useTheoremInterface } from '@theoremjs/react';
 
 const transport = createHttpTransport({ endpoint: '/api/theorem' });
 
-export function ResearchApp() {
-	const described = useTheoremInterface(transport);
+// ...
+const described = useTheoremInterface(transport);
 
-	if (described.status === 'loading') return <div>Loading interface...</div>;
-	if (described.status === 'error') return <div>Failed to load: {described.failure.error}</div>;
+if (described.status === 'loading') return <div>Loading interface...</div>;
+if (described.status === 'error') return <div>Failed to load: {described.failure.error}</div>;
 
-	return <div>Connected to {described.iface.identity.handle}</div>;
-}
+return <div>Connected to {described.iface.identity.handle}</div>;
 ```
 
 The returned `iface` object exposes client-safe metadata:
@@ -60,42 +59,15 @@ The `useTheoremChat` hook binds `createChatController` from `@theoremjs/web/clie
 To display incoming tokens as they arrive over the wire, concatenate committed `chat.blocks` with active `chat.streamBlocks`:
 
 ```tsx
-import { useMemo } from 'react';
-import { createHttpTransport, useTheoremChat, useTheoremInterface } from '@theoremjs/react';
+const chat = useTheoremChat({
+	transport,
+	iface: described.status === 'ready' && described.iface.type !== 'live' ? described.iface : null,
+});
 
-const transport = createHttpTransport({ endpoint: '/api/theorem' });
-
-export function ResearchChat() {
-	const described = useTheoremInterface(transport);
-	const chat = useTheoremChat({
-		transport,
-		iface: described.status === 'ready' && described.iface.type !== 'live' ? described.iface : null,
-	});
-
-	const allBlocks = useMemo(
-		() => [...chat.blocks, ...chat.streamBlocks],
-		[chat.blocks, chat.streamBlocks],
-	);
-
-	return (
-		<div>
-			{allBlocks.map((block) => {
-				if (block.kind === 'user-text' || block.kind === 'text') {
-					return <p key={block.id}>{block.text}</p>;
-				}
-				return null;
-			})}
-			<input value={chat.draftText} onChange={(e) => chat.setDraftText(e.target.value)} />
-			{chat.phase === 'streaming' ? (
-				<button onClick={() => chat.handleStop()}>Stop</button>
-			) : (
-				<button onClick={() => chat.handleSubmit()} disabled={chat.phase !== 'idle'}>
-					Send
-				</button>
-			)}
-		</div>
-	);
-}
+const allBlocks = useMemo(
+	() => [...chat.blocks, ...chat.streamBlocks],
+	[chat.blocks, chat.streamBlocks],
+);
 ```
 
 ### Transcript Phases & Gating
@@ -105,12 +77,12 @@ The `chat.phase` enum indicates the active runtime state:
 - `'streaming'`: Model response tokens are actively flowing into `chat.streamBlocks`.
 - `'gated'`: The turn waits for a person to answer a tool gate.
 
-When `chat.phase === 'gated'`, draw the question and answer it with `handleToolDecision` and `'allow'` or `'deny'`. The chat answers the one gate that waits, so the index the transcript passes is not used. A sign-in gate is answered with `handleAuthenticated` instead.
+When `chat.phase === 'gated'`, draw the question and answer it with `handleToolDecision` and `'allow'` or `'deny'`. The chat answers the one gate that waits, so the index the transcript passes is not used. A sign-in gate is answered with `handleAuthenticated` instead. Every tool of `research.scout` runs without asking, so add `permission: 'always_confirm'` to the tool that must ask.
 
 ```tsx
 {chat.phase === 'gated' && (
 	<div>
-		<p>Approval required to clear vessel departure.</p>
+		{/* ... */}
 		<button onClick={() => chat.handleToolDecision(0, 'allow')}>Approve</button>
 		<button onClick={() => chat.handleToolDecision(0, 'deny')}>Reject</button>
 	</div>
@@ -123,13 +95,14 @@ A tool the profile declares with `answeredBy: 'page'` runs in the browser. Give 
 
 ```tsx
 const chat = useTheoremChat({
-	transport,
-	iface: described.status === 'ready' && described.iface.type !== 'live' ? described.iface : null,
+	// ...
 	pageTools: {
-		highlightBerth: async (args) => {
-			document.getElementById(`berth-${args.berthId}`)?.classList.add('active');
-			return { output: { success: true } };
-		},
+		check_device: () => ({
+			output: {
+				webgpu: 'gpu' in navigator,
+				// ...
+			},
+		}),
 	},
 });
 ```
@@ -143,29 +116,13 @@ import { createDecisionTransport, useTheoremDecision } from '@theoremjs/react';
 
 const transport = createDecisionTransport({ endpoint: '/api/decision' });
 
-export function PageReaderEvaluator() {
-	const { decide, status, result, failure, cancel } = useTheoremDecision(transport);
+// ...
+const { decide, status, result, failure, cancel } = useTheoremDecision(transport);
 
-	const handleEvaluate = () => {
-		decide({
-			question:
-				'What write path do recent systems use to store episodic memory for language-model agents?',
-			passage:
-				'MemGPT (Packer et al.) pages conversational history into an external store and reloads relevant spans on later turns, treating context as a virtual memory hierarchy rather than a single prompt window.',
-		});
-	};
-
-	const isDeciding = status === 'deciding';
-
-	return (
-		<div>
-			<button onClick={handleEvaluate} disabled={isDeciding}>Read Passage</button>
-			{isDeciding && <button onClick={cancel}>Cancel</button>}
-			{result && <pre>{JSON.stringify(result.answers, null, 2)}</pre>}
-			{failure && <p>Evaluation failed: {failure.error}</p>}
-		</div>
-	);
-}
+decide({
+	question: 'What write path do recent systems use to store episodic memory?',
+	passage: 'MemGPT (Packer et al.) pages conversational history into an external store.',
+});
 ```
 
 ## 4. Vector Search & Embeddings (`useTheoremEmbedding`)
@@ -183,27 +140,20 @@ import {
 
 const transport = createEmbeddingTransport({ endpoint: '/api/embedding' });
 
-export function HarborSearchIndex() {
-	const query = useTheoremEmbedding(transport);
-	const { index, progress, status, result } = useEmbeddingIndex(transport);
+// ...
+const query = useTheoremEmbedding(transport);
+const { index, progress, status, result } = useEmbeddingIndex(transport);
 
-	const isIndexing = status === 'indexing';
-
-	const handleIndexDocuments = () => {
-		if (!query.iface) return;
-		index(['Berth 4 clearance protocol', 'Hazardous cargo anchorage rules'], query.iface.inputs);
-	};
-
-	return (
-		<div>
-			<button onClick={handleIndexDocuments} disabled={isIndexing}>
-				{isIndexing ? `Indexing (${progress?.done}/${progress?.total})` : 'Build Index'}
-			</button>
-			<button onClick={() => query.embed(['berth clearance'], { task: 'query' })}>Search</button>
-			{result && <p>Indexed {result.vectors.length} vectors in {result.requests} requests.</p>}
-		</div>
-	);
-}
+// ...
+index(
+	[
+		'MemGPT treats context as a virtual memory hierarchy rather than a single prompt window.',
+		// ...
+	],
+	query.iface.inputs,
+);
+// ...
+query.embed(['episodic memory'], { task: 'query' });
 ```
 
 ## 5. Host Tools & MCP Consoles (`useTheoremHost`)
@@ -215,27 +165,20 @@ import { createHostTransport, useTheoremHost } from '@theoremjs/react';
 
 const transport = createHostTransport({ endpoint: '/api/host' });
 
-export function HarborToolConsole() {
-	const { calls, run, cancel } = useTheoremHost(transport);
+// ...
+const { calls, run, cancel } = useTheoremHost(transport);
 
-	const handleRunInspection = () => {
-		run('inspect_berth_sensors', { berthId: 'B-14' });
-	};
-
-	return (
-		<div>
-			<button onClick={handleRunInspection}>Run Sensor Inspection</button>
-			<ul>
-				{calls.map((call) => (
-					<li key={call.id}>
-						Tool: {call.name} | Status: {call.isRunning ? 'Running' : 'Settled'}
-						{call.isRunning && <button onClick={() => cancel(call.id)}>Cancel</button>}
-					</li>
-				))}
-			</ul>
-		</div>
-	);
-}
+run('read_pages', {
+	urls: ['https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2'],
+	question: 'What datasets are evaluated?',
+});
+// ...
+{calls.map((call) => (
+	<li key={call.id}>
+		{/* ... */}
+		{call.isRunning && <button onClick={() => cancel(call.id)}>Cancel</button>}
+	</li>
+))}
 ```
 
 ## Related Guides

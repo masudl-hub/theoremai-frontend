@@ -57,15 +57,11 @@ Add `maxOutputTokens` to a binding to set the token limit for one reply.
 
 Bindings can also be generated using a registered provider's helper:
 
-```ts
-import { openRouterProvider, registerProvider } from '@theoremjs/agents';
-
+```ts frame=statements
 const router = registerProvider(openRouterProvider, { keySlot: 'openrouter' });
 
-export const open = router.model('openRouterOpenAi', 'openrouter/free', {
-	efforts: { normal: 'medium', deep: 'high' },
-	defaultEffort: 'normal',
-	summaries: true,
+const open = router.model('openRouterOpenAi', 'openrouter/free', {
+	// ...
 });
 ```
 
@@ -86,7 +82,7 @@ At runtime, keys come from a **vault** passed to `runTurn()` in its second argum
 const events = runTurn(
 	{
 		profile: 'research.scout',
-		input: { text: 'Find papers on episodic memory for language models.' },
+		// ...
 	},
 	{
 		vault: {
@@ -94,9 +90,6 @@ const events = runTurn(
 		},
 	},
 );
-for await (const event of events) {
-	if (event.type === 'text') console.log(event.text);
-}
 ```
 
 A vault entry is a string, an object for a provider that signs in with several fields, or a resolver function that returns either, at once or as a promise, when a call needs the key. The kernel reads a slot only for the call that names it.
@@ -105,23 +98,18 @@ A vault entry is a string, an object for a provider that signs in with several f
 
 A profile can bind more than one model. The scout binds a free OpenRouter model and a Gemini one. Each turn runs on one of them:
 
-```ts frame=profile:text
+```ts frame=models
 models: {
 	open: {
-		protocol: 'openRouterOpenAi',
-		provider: 'openrouter',
-		apiId: 'openrouter/free',
-		keySlot: 'openrouter',
+		// ...
 	},
 	gemini: {
-		protocol: 'geminiInteractions',
-		provider: 'gemini',
-		apiId: 'gemini-3.8-flash',
-		keySlot: 'gemini',
+		// ...
 	},
 },
 defaultModel: 'open',
 allowModelSelect: true,
+// ...
 ```
 
 * **`defaultModel`**: The model a turn gets when it does not pick one. Required when more than one model is bound. With one model, it is that model.
@@ -131,13 +119,10 @@ allowModelSelect: true,
 
 For reasoning models, a binding names its own efforts, and each maps to one of Theorem's thinking levels. These are the scout's efforts. To let a turn pick one, add `allowEffortSelect`:
 
-```ts frame=profile:text
+```ts frame=models
 models: {
 	gemini: {
-		protocol: 'geminiInteractions',
-		provider: 'gemini',
-		apiId: 'gemini-3.8-flash',
-		keySlot: 'gemini',
+		// ...
 		efforts: {
 			normal: 'medium',
 			deep: 'high',
@@ -160,12 +145,10 @@ models: {
 
 A binding can set the points at which Theorem stops its model's calls under `limits`. The scout sets none. To set them, add this:
 
-```ts frame=profile:text
+```ts frame=models
 models: {
 	open: {
-		protocol: 'openRouterOpenAi',
-		provider: 'openrouter',
-		apiId: 'openrouter/free',
+		// ...
 		limits: {
 			operationTimeoutMs: 30_000, // one call, retries included
 			maxWireResponseBytes: 1_000_000, // bytes the provider sends for one step
@@ -193,27 +176,26 @@ There are nine limits. Each one left out is no limit, so the provider's own limi
 
 ## Provider Built-in Tools (`builtInTools`)
 
-Tools the provider runs itself, such as OpenRouter's `webSearch` or Gemini's `googleSearch`, are declared on the binding under `builtInTools`. Each id must be registered as a builtin tool and declared by the provider's adapter. The scout uses none. To add one:
+Tools the provider runs itself, such as OpenRouter's `webSearch` or Gemini's `googleSearch`, are declared on the binding under `builtInTools`. Each id must be registered as a builtin tool and declared by the provider's adapter. The scout's `gemini` model uses `googleSearch`:
 
-```ts frame=profile:text
+```ts frame=models
 models: {
-	open: {
-		protocol: 'openRouterOpenAi',
-		provider: 'openrouter',
-		apiId: 'openrouter/free',
-		builtInTools: ['webSearch'],
+	gemini: {
+		// ...
+		builtInTools: ['googleSearch'],
 	},
 }
 ```
 
-The protocol writes each one onto the provider's request. For `webSearch`, `openRouterOpenAi` adds `web_search_options` to the request body.
+The protocol writes each one onto the provider's request. For `googleSearch`, `geminiInteractions` adds a `google_search` entry to the request's tools. For `webSearch`, `openRouterOpenAi` adds `web_search_options` to the request body.
 
-A turn can pass arguments to a built-in tool with `builtInArgs`, keyed by tool id. Each id must be in the chosen model's `builtInTools`, and the provider's schema for that tool checks the value. Gemini's `googleMaps` takes a location. On a profile whose model lists `googleMaps` in `builtInTools`:
+A turn can pass arguments to a built-in tool with `builtInArgs`, keyed by tool id. Each id must be in the chosen model's `builtInTools`, and the provider's schema for that tool checks the value. `googleSearch` takes none. Gemini's `googleMaps` takes a location. Add `googleMaps` to the `gemini` model's `builtInTools`, and a turn on that model can pass one:
 
 ```ts frame=statements
 const events = runTurn({
-	profile: 'harbor.maps',
-	input: { text: 'Find fuel docks near the harbour.' },
+	profile: 'research.scout',
+	model: 'gemini',
+	// ...
 	builtInArgs: {
 		googleMaps: { location: { latitude: 51.9, longitude: 4.48 } },
 	},

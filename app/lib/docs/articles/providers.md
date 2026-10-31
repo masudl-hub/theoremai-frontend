@@ -27,14 +27,14 @@ Models are declared under `models` on the profile. A binding defines five core f
 
 ```ts frame=profile:text
 models: {
-		open: {
-			provider: 'openrouter',
-			protocol: 'openRouterOpenAi',
-			apiId: 'openrouter/free',
-			keySlot: 'openrouter_primary',
-			fallbackKeySlot: 'openrouter_secondary',
-		},
+	open: {
+		provider: 'openrouter',
+		protocol: 'openRouterOpenAi',
+		apiId: 'openrouter/free',
+		keySlot: 'openrouter_primary',
+		fallbackKeySlot: 'openrouter_secondary',
 	},
+},
 ```
 
 Bindings can also be generated using a registered provider's helper:
@@ -47,6 +47,39 @@ const open = router.model('openRouterOpenAi', 'openrouter/free', {
 ```
 
 Both forms produce the exact same validated data object checked by `modelBindingSchema`.
+
+## Choosing Upstreams on OpenRouter
+
+OpenRouter can answer one model from several upstreams. Set `provider` in a binding's `options` to say which of them may answer. It is OpenRouter's own `provider` request field, under OpenRouter's own names. Without it, OpenRouter makes its own choice. The scout sets none. To add one:
+
+```ts frame=models
+models: {
+	open: {
+		// ...
+		options: {
+			provider: { only: ['gmicloud/fp8'], allow_fallbacks: false },
+		},
+	},
+},
+```
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| **`only`** | `string[]` | Upstream endpoints to allow, by slug, such as `gmicloud/fp8`. |
+| **`order`** | `string[]` | Upstream endpoints to try first, in order. |
+| **`ignore`** | `string[]` | Upstream endpoints to skip. |
+| **`allow_fallbacks`** | `boolean` | Whether another upstream may answer when the listed ones cannot. |
+| **`require_parameters`** | `boolean` | Whether every upstream must support every supplied parameter. On unless you set it. |
+| **`data_collection`** | `'allow'` \| `'deny'` | Whether an upstream that may store and train on data can answer. |
+| **`zdr`** | `boolean` | Use only endpoints with zero data retention. |
+| **`enforce_distillable_text`** | `boolean` | Use only models whose authors allow text distillation. |
+| **`quantizations`** | `string[]` | Quantization levels to allow, such as `fp8`. |
+| **`sort`** | `string` \| `{ by, partition? }` | What to order upstreams by: `price`, `throughput` or `latency`. |
+| **`preferred_min_throughput`** | `number` \| object | Tokens per second below which an upstream is tried later. |
+| **`preferred_max_latency`** | `number` \| object | Seconds above which an upstream is tried later. |
+| **`max_price`** | `{ prompt?, completion?, request?, image? }` | The prices above which an upstream is refused: per million input tokens, per million output tokens, per request and per image. |
+
+The field goes out on text profiles only. A speech request on this protocol leaves without it.
 
 ## Startup Verification
 
@@ -86,46 +119,32 @@ Key slots resolve with a clear priority:
 
 Vault credentials are provided to `runTurn()` via `options.vault`:
 
-```ts
-import { runTurn } from '@theoremjs/agents';
-
-const events = runTurn(
-	{
-		profile: 'research.scout',
-		input: { text: 'Find recent papers on episodic memory for language models.' },
+```ts frame=statements
+const events = runTurn(request, {
+	vault: {
+		openrouter_primary: process.env.OPENROUTER_PRIMARY_KEY,
+		openrouter_secondary: process.env.OPENROUTER_BACKUP_KEY,
 	},
-	{
-		vault: {
-			openrouter_primary: process.env.OPENROUTER_PRIMARY_KEY,
-			openrouter_secondary: process.env.OPENROUTER_BACKUP_KEY,
-		},
-	},
-);
-for await (const event of events) onEvent(event);
+});
+// ...
 ```
 
 ### Dynamic Resolvers (`CredentialResolver`)
 
 For rotating credentials, KMS lookups, or secrets fetched just-in-time, pass an async resolver function:
 
-```ts
-import { type CredentialContext, type KeyCredential, runTurn } from '@theoremjs/agents';
+```ts frame=statements
+import type { CredentialContext, KeyCredential } from '@theoremjs/agents';
 
 const getSecretKey = async (ctx: CredentialContext): Promise<KeyCredential> => {
 	// ctx contains: providerId, keySlot, and, when present, apiId and signal
 	return await kmsClient.fetchSecret(ctx.keySlot, { signal: ctx.signal });
 };
 
-const events = runTurn(
-	{
-		profile: 'research.scout',
-		input: { text: 'Find recent papers on episodic memory for language models.' },
-	},
-	{
-		vault: { openrouter_primary: getSecretKey },
-	},
-);
-for await (const event of events) onEvent(event);
+const events = runTurn(request, {
+	vault: { openrouter_primary: getSecretKey },
+});
+// ...
 ```
 
 The kernel invokes the resolver only for the slot requested by the active model call.

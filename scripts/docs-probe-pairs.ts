@@ -14,12 +14,13 @@ const providers: { definition: any; connection: Record<string, unknown> }[] = [
 	{ definition: typesafeProvider, connection: {} },
 	{ definition: localProvider, connection: { baseUrl: 'http://localhost:11434/v1' } },
 ];
-const types = ['text', 'image', 'speech', 'live', 'decision', 'embedding'];
+const types = ['text', 'image', 'speech', 'transcription', 'live', 'decision', 'embedding'];
 
 const extras: Record<string, Record<string, unknown>> = {
 	text: { tools: { allow: [] }, inputs: {} },
 	image: { tools: { allow: [] }, inputs: {}, image: {} },
 	speech: { speech: {} },
+	transcription: { inputs: { voice: { accept: ['audio/*'] }, maxFiles: 1, maxBytes: 20971520, maxTurnBytes: 20971520 } },
 	live: { tools: { allow: [] }, live: {} },
 	decision: { inputs: { state: 'json' }, decision: { contract: 'probe.v1' } },
 	embedding: { inputs: { text: true } },

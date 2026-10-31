@@ -1,6 +1,6 @@
 ---
 title: Image Profiles
-updated: 2026-10-26
+updated: 2026-10-30
 summary: Media asset generation and editing from text prompts with quality and dimension controls.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -9,11 +9,11 @@ coverAlt: Deep crimson volcanic crater rim from above
 coverPosition: 50% 50%
 ---
 
-Image profiles (`type: 'image'`) configure agents that generate, edit, or transform visual media assets from text prompts. They execute through `runTurn()`, yielding binary media events alongside optional descriptive text.
+Image profiles (`type: 'image'`) configure agents that generate, edit, or transform visual media assets from text prompts. They execute through `runTurn()`, yielding binary media events alongside optional descriptive text. The research cookbook's `research.illustrator` draws a paper's method, and the scout reaches it through its `draw_method` tool.
 
 ## Image Profile Configuration
 
-Base profile fields (`identity`, `models`, `guardrails`, `observability`, `labels`) apply across all modalities as documented in [Profiles](/docs/profiles). Image profiles declare an `image` block for image size, format, quality, and generation controls. This slice shows only that block. It runs on a Gemini image model, which refuses `quality`, `background`, `n` and `outputCompression`, so it sets none of them:
+Base profile fields (`identity`, `models`, `guardrails`, `observability`, `labels`) apply across all modalities as documented in [Profiles](/docs/profiles). Image profiles declare an `image` block for image size, format, quality, and generation controls. The illustrator sets `image: {}` and takes the model's defaults. To set them, add this block. It runs on a Gemini image model, which refuses `quality`, `background`, `n` and `outputCompression`, so it sets none of them:
 
 ```ts frame=profile:image
 image: {
@@ -69,20 +69,18 @@ Image profiles are executed using `runTurn()`, following the request patterns es
 
 ### Basic Invocation
 
-```ts
-import { runTurn } from '@theoremjs/agents';
-
+```ts frame=statements
 const events = runTurn({
-	profile: 'harbor.blueprint_illustrator',
+	profile: 'research.illustrator',
 	input: {
-		text: 'Aerial architectural rendering of a modern deepwater shipping container berth at twilight.',
+		text: 'A diagram of a method: conversational history paged into an external store, with relevant spans reloaded on later turns.',
 	},
 });
 
 for await (const event of events) {
 	if (event.type === 'media') {
 		// event.media is { mimeType, data }, with data in base64
-		saveImage(event.media.data, 'berth.png'); // The profile asks for image/png
+		saveImage(event.media.data, 'method.png'); // The profile asks for image/png
 	}
 	if (event.type === 'text') {
 		// Emitted only when image.includeText is enabled

@@ -11,22 +11,24 @@ coverPosition: 50% 50%
 
 In a host profile (`type: 'host'`), your code is the orchestrator. No model picks the next step: your app names the tool and its input, and Theorem runs it under the same permissions and traces as any agent, guarded by `detect` and `network`. Use it for function, HTTP and MCP tools that your own code calls. Your code can still call a model between tools, for example with `runDecision`, because that call goes to another profile.
 
+The research cookbook has one, `research.console`: the scout's tools, for your code to call by hand.
+
 ## Define a host profile
 
 A host profile has six fields: `type`, `id`, `tools`, and the optional `guardrails`, `observability` and `labels`. It has no `models` and no `identity`, because the profile itself never runs a model.
 
-```ts
-import { defineProfile } from '@theoremjs/agents';
-
-export const toolGateway = defineProfile({
-	type: 'host',
-	id: 'harbor.tool_gateway',
-
-	tools: {
-		allow: ['manifest_lookup', 'weather_radar', 'mcp_customs_query'],
-		parallel: true, // the calls of one invokeToolStep run side by side
-	},
-});
+```ts frame=profile:host
+type: 'host',
+id: 'research.console',
+tools: {
+	allow: [
+		'read_pages',
+		'export_report',
+		'list_arxiv',
+		// ...
+	],
+	parallel: true, // Add this: the calls of one invokeToolStep run side by side
+},
 ```
 
 * **`tools.allow`** is required. Every tool it lists can be invoked, with no visibility tiers, loading tiers or path gating. A provider's own builtin tool cannot go here, because a host profile never runs a model: registering the profile fails.
@@ -65,20 +67,33 @@ sequenceDiagram
 
 `invokeTool()` returns an async generator of turn events. The call starts when you pull the first event.
 
-```ts
-import { invokeTool } from '@theoremjs/agents';
+This code rechecks a page. `research.console` reads the page, and your code then asks `research.pagereader` whether what came back bears on the question. The tool runs through the host profile, and the model call goes to the decision profile:
+
+```ts frame=statements
+const question = 'What datasets are evaluated?';
 
 const events = invokeTool({
-	profile: 'harbor.tool_gateway',
-	name: 'manifest_lookup',
+	profile: 'research.console',
+	name: 'read_pages',
 	input: {
-		trackingNumber: 'TRK-88294100',
+		urls: ['https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2'],
+		question,
 	},
 });
 
 for await (const event of events) {
 	if (event.type === 'tool' && event.tool.phase === 'complete') {
-		console.log('Manifest result:', event.tool.output);
+		const result = await runDecision(
+			{
+				profile: 'research.pagereader',
+				state: { question, passage: String(event.tool.output) },
+				questions: {
+					// ...
+				},
+			},
+			hostOptions,
+		);
+		console.log('Recheck:', result.answers.passage);
 	}
 }
 ```

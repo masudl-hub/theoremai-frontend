@@ -1,6 +1,6 @@
 ---
 title: Auth & Credentials
-updated: 2026-10-29
+updated: 2026-10-30
 summary: Authenticating tools with OAuth, bearer tokens, and API keys without exposing secrets to models.
 entry: src/kernel/auth/mod.ts
 covers: src/kernel/auth, src/kernel/tools/signed-in-fetch.ts
@@ -14,45 +14,34 @@ Tools that read private user data or mutate external services must act on behalf
 Theorem decouples credential management from tool definitions:
 * **Zero Model Exposure**: Credentials are never placed in prompt context, tool definitions, or browser bundles.
 * **Automatic Echo Scrubbing**: If an external API reflects credentials in its response body or headers, Theorem strips the value and substitutes `[omitted - credential]` before emitting trace events or returning data to the model.
-* **Origin-Locked Dispatch**: Credentials are delivered exclusively to the tool's verified origin and never forwarded across HTTP redirects.
+* **Origin-Locked Dispatch**: Credentials go only to the origin of the request, and a redirect that leaves that origin drops them.
 
 ## Declaring Tool Auth (`auth`)
 
-Add an `auth` block to any tool definition (`function`, `http`, or `mcp`) to specify how it authenticates:
+Add an `auth` block to any tool definition (`function`, `http`, or `mcp`) to specify how it authenticates.
 
-```ts
-import { registerTool } from '@theoremjs/agents';
-import { z } from 'zod';
+The cookbook's research tools read public sources and sign in to nothing. To have the scout search a person's private repositories, you add a tool of your own. `list_my_repos` is that example, and the cookbook does not ship it. It calls `search_repositories` on GitHub's MCP server, `https://api.githubcopilot.com/mcp`:
 
-export const listShipmentsTool = registerTool({
-	type: 'http',
-	name: 'list_user_shipments',
-	description: 'List shipments for the authenticated user.',
-	category: 'logistics',
-	access: 'read-only',
-	paths: ['*'],
-	loadTier: 'T0',
-	permission: 'auto',
-	endpoint: 'https://api.tracker.example/shipments',
-	method: 'GET',
-	input: z.object({}),
-	output: z.object({ shipments: z.array(z.string()) }),
-
-	auth: {
-		slot: 'tracker',
-		type: 'oauth2',
-		service: 'FreightTracker',
-		scopes: ['shipments.read'],
-		onUnauthenticated: 'gate',
-	},
-});
+```ts frame=tool:mcp
+name: 'list_my_repos',
+// ...
+auth: {
+	slot: 'github',
+	type: 'oauth2',
+	service: 'GitHub',
+	scopes: ['repo'],
+	onUnauthenticated: 'gate',
+},
+// ...
 ```
+
+You supply the rest: a GitHub OAuth App, the sign-in routes from [OAuth PKCE Flow](/docs/tools/oauth), a `ToolCredentialSource`, and the tool's name in the scout's `tools.allow`.
 
 * **`slot`**: Logical identifier naming where this credential is saved. Multiple tools targeting the same service share a slot.
 * **`type`**: Credential shape: `'bearer'`, `'api_key'`, or `'oauth2'`.
 * **`service`**: Human-readable service name displayed on the sign-in prompt.
 * **`scopes`**: OAuth scopes required for execution.
-* **`preResolved`**: Optional endpoints (`authorizationEndpoint`, `tokenEndpoint`) for providers lacking RFC 8414 discovery metadata.
+* **`preResolved`**: Optional. Its `issuer` and `resource` are named on the auth gate. To skip discovery for a service with no metadata, pass the endpoints to `createOAuthPkceFlow` (see [OAuth PKCE Flow](/docs/tools/oauth)).
 
 ## Credential Placement
 
@@ -77,7 +66,7 @@ auth: {
 	type: 'api_key',
 	service: 'Gateway',
 	headerName: 'X-API-Key',
-	headerPrefix: '', // Omit standard "Bearer " prefix
+	headerPrefix: '', // Send the key with nothing before it
 }
 ```
 
@@ -110,8 +99,7 @@ The `onUnauthenticated` policy dictates what happens when a credential slot is e
 
 The host supplies credentials per turn or per session using a `ToolCredentialSource`. The kernel reads slots on demand when a tool runs:
 
-```ts
-import { runTurn } from '@theoremjs/agents';
+```ts frame=statements
 import type { ToolCredential, ToolCredentialSource } from '@theoremjs/agents/kernel';
 
 const userCredentials: ToolCredentialSource = {
@@ -127,8 +115,8 @@ const userCredentials: ToolCredentialSource = {
 };
 
 const _events = runTurn({
-	profile: 'harbor.desk',
-	input: { text: 'List my shipments.' },
+	profile: 'research.scout',
+	// ...
 	credentials: userCredentials,
 });
 ```
@@ -139,27 +127,17 @@ For test environments and local development, initialize an in-memory store using
 
 When an `api_key` or `bearer` tool halts on an auth gate, the frontend collects the secret from the user. The backend builds and stores the typed credential using `credentialForSignInGate()`:
 
-```ts
-import { invokeTool, type ToolGate } from '@theoremjs/agents';
+```ts frame=statements
+import type { ToolGate } from '@theoremjs/agents';
 import { credentialForSignInGate } from '@theoremjs/agents/kernel';
 
 // `gate` is the `gate` of the held call's tool event (`phase: 'gate'`).
-export async function answerSignIn(gate: ToolGate, secret: string) {
+async function answerSignIn(gate: ToolGate, secret: string) {
 	if (gate.kind !== 'auth') return;
 
-	// 1. Build typed credential from user input
 	const { slot, credential } = credentialForSignInGate(gate.authChallenge, secret);
 	await userCredentials.set(slot, credential);
-
-	// 2. Resume the held call
-	return invokeTool({
-		profile: 'harbor.desk',
-		name: gated.name,
-		snapshot: gated.snapshot,
-		resume: { granted: true, signIn: true },
-		credentials: userCredentials,
-		input: gated.arguments,
-	});
+	// ...
 }
 ```
 
@@ -170,34 +148,33 @@ Because typed secrets are validated server-side, client code cannot tamper with 
 Theorem enforces strict boundaries around tool authentication:
 
 * **Scope Boundaries**: If a service answers `insufficient_scope` and asks for a scope that `registerTool.auth.scopes` does not list, the call fails with the code `out_of_scope`, with no new sign-in. The call's progress event carries `auth_scope_refused` with the scopes asked for and the scopes declared. When every scope asked for is declared, the user signs in again.
-* **SSRF Prevention**: All authentication handshakes and tool requests are evaluated against network guardrails. Requests to private networks, loopback addresses, or cloud metadata endpoints (`169.254.169.254`) are refused unless explicitly permitted via `resolveHost`.
-* **Redirect Protection**: Authenticated requests and OAuth code exchanges never follow redirects that leave the resource server's origin.
+* **SSRF Prevention**: All authentication handshakes and tool requests are evaluated against network guardrails. Requests to private networks, loopback addresses, or cloud metadata endpoints (`169.254.169.254`) are refused unless `guardrails.network` allows them with `allowPrivateNetworks` or `allowedHosts`.
+* **Redirect Protection**: An authenticated request drops its credential when a redirect leaves the origin. OAuth discovery and token requests follow no redirect.
 
 ## OAuth PKCE Sign-In
 
-For services requiring OAuth 2.0 with PKCE (e.g., GitHub, Slack, Google), Theorem provides stateless authorization helpers and automatic token refresh:
+For services requiring OAuth 2.0 with PKCE, such as GitHub, Theorem provides stateless authorization helpers and automatic token refresh:
 
 * See the dedicated guide: **[OAuth PKCE Flow](/docs/tools/oauth)** for complete implementation patterns, callback exchanges, and session-binding security.
 
 ## Authenticated Function Tools (`signedInFetch`)
 
-For custom `function` tools that declare `auth`, Theorem provides `ctx.signedInFetch`. The handler never touches the raw secret:
+For custom `function` tools that declare `auth`, Theorem provides `ctx.signedInFetch`. The handler never touches the raw secret. The cookbook's `export_report` has no `auth`. This version saves to a service of yours that takes a token you issue:
 
 ```text
-registerTool({
-	type: 'function',
-	name: 'sync_user_vault',
-	// ... access, loadTier, input, output
-	auth: { slot: 'user_vault', type: 'bearer', service: 'UserVault' },
+name: 'export_report',
+// ...
+auth: { slot: 'reports', type: 'bearer', service: 'Reports' },
 
-	handler: async (input, ctx) => {
-		// signedInFetch injects Authorization header exclusively to the service origin
-		const response = await ctx.signedInFetch(`https://vault.example.com/${input.path}`, {
-			method: 'POST',
-		});
-		return { synced: response.ok };
-	},
-});
+handler: async (input, ctx) => {
+	// signedInFetch adds the Authorization header, for this URL's origin only
+	const response = await ctx.signedInFetch?.('https://app.example/reports', {
+		method: 'POST',
+		body: JSON.stringify(input),
+	});
+	return { saved: response?.ok ?? false };
+},
+// ...
 ```
 
 ## Related Guides

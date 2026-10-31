@@ -63,6 +63,7 @@ A model call, a Live response, an embedding call and a decision take their opera
 | `geminiInteractions` | `text`, `image`, `speech` | `generate_content` |
 | `geminiLive` | `live` | `generate_content` |
 | `openRouterImages` | `image` | `generate_content` |
+| `openRouterTranscriptions` | `transcription` | `transcribe` |
 | `geminiEmbeddings`, `openRouterEmbeddings`, `ollamaEmbeddings` | `embedding` | `embeddings` |
 | `openRouterDecisions`, `systemOne` | `decision` | `decide` |
 
@@ -97,6 +98,7 @@ Spans carry attributes named by the OpenTelemetry GenAI conventions, beside Theo
 ### 3. Agent Lifecycle & Terminal State (`turn`)
 * **`gen_ai.conversation.id`**: The conversation id the host passed (`conversationId`). Absent when it passed none.
 * **`gen_ai.agent.name`**: The profile that ran.
+* **`theorem.turn.system_lines`**: Which of the profile's prompt lines fit this turn, by number from 1. A Live `session` span carries it too.
 * **`theorem.stop.kind`**: Why the turn stopped:
   * `completed`: The model finished its answer.
   * `length`: The model stopped at its output token limit.
@@ -152,7 +154,7 @@ To join a turn to a distributed trace, set the W3C `traceparent` of the host's s
 
 ```ts frame=request
 traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
-input: { text: 'Find recent papers, models, or datasets on episodic memory for language models.' },
+// ...
 ```
 
 * The root `invoke_agent` span becomes a child of that span. Without a `traceparent`, the turn starts a new trace.

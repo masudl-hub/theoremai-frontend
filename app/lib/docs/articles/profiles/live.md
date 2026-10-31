@@ -1,6 +1,6 @@
 ---
 title: Live Profiles
-updated: 2026-10-26
+updated: 2026-10-30
 summary: Real-time duplex audio and video streaming over WebSockets with interruption handling.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -9,11 +9,11 @@ coverAlt: Curving white gypsum sand dunes under open sky
 coverPosition: 50% 50%
 ---
 
-Live profiles (`type: 'live'`) configure realtime agents that communicate over bidirectional WebSockets using audio, camera frames, and typed text. They are opened with `runSession()`, which establishes a persistent provider socket, coordinates voice activity detection and user barge-in, compresses conversation context for long sessions, and executes tools during live conversations.
+Live profiles (`type: 'live'`) configure realtime agents that communicate over bidirectional WebSockets using audio, camera frames, and typed text. They are opened with `runSession()`, which establishes a persistent provider socket, coordinates voice activity detection and user barge-in, compresses conversation context for long sessions, and executes tools during live conversations. The research cookbook's `research.scout.live` is the scout on a call: the same tools, a live model, and an instruction for speech.
 
 ## Live Profile Configuration
 
-Base profile fields (`identity`, `models`, `tools`, `guardrails`, `observability`) apply across all modalities as documented in [Profiles](/docs/profiles). Live profiles connect over bidirectional WebSockets using Gemini's Multimodal Live API (the currently supported live provider). They declare a dedicated `live` block configuring audio settings, ingress channels, interruption policies, and context window compression. This slice shows only that block:
+Base profile fields (`identity`, `models`, `tools`, `guardrails`, `observability`) apply across all modalities as documented in [Profiles](/docs/profiles). Live profiles connect over bidirectional WebSockets using Gemini's Multimodal Live API (the currently supported live provider). They declare a dedicated `live` block configuring audio settings, ingress channels, interruption policies, and context window compression. The scout on a call sets `live: {}` and takes the provider's defaults. To set them, add this block:
 
 ```ts frame=profile:live
 live: {
@@ -32,9 +32,9 @@ live: {
 		slidingWindow: { targetTokens: 400_000 },
 	},
 	sessionResumption: true,
-	greeting: 'Harbor dispatch online. State your vessel identifier.',
+	greeting: 'Greet the caller as the research scout and ask what they want to find.',
 	resumed: {
-		prompt: 'Vessel connection restored. Confirm current vessel status.',
+		prompt: 'The call came back. Say so, and carry on with the search.',
 		afterMs: 15_000,
 	},
 },
@@ -65,7 +65,7 @@ sequenceDiagram
     participant Gemini as Gemini Live WebSocket
 
     Gemini-->>Kernel: Stream model audio frames
-    Kernel-->>App: yield { type: 'media', data: '...' }
+    Kernel-->>App: yield { type: 'media', media }
     App->>User: Playback speaker audio
     User->>App: User speaks during playback (barge-in)
     App->>Kernel: sendAudio(pcmChunk)
@@ -130,9 +130,9 @@ Mobile connections drop frequently. The `sessionResumption` and `resumed` blocks
 ```ts frame=profile:live
 live: {
 	sessionResumption: true,
-	greeting: 'Harbor dispatch online. State your vessel identifier.',
+	greeting: 'Greet the caller as the research scout and ask what they want to find.',
 	resumed: {
-		prompt: 'Vessel connection restored. Confirm current vessel status.',
+		prompt: 'The call came back. Say so, and carry on with the search.',
 		afterMs: 15_000,
 	},
 }
@@ -148,13 +148,11 @@ Live sessions are opened using `runSession(request, options)`. The options carry
 
 ### Basic Invocation
 
-```ts
-import { runSession } from '@theoremjs/agents';
-
+```ts frame=statements
 // 1. Open the persistent session
 const session = await runSession(
 	{
-		profile: 'harbor.live_dispatch',
+		profile: 'research.scout.live',
 	},
 	hostOptions,
 );

@@ -13,41 +13,13 @@ Text profiles (`type: 'text'`) configure conversational agents that reason acros
 
 ## Text Profile Configuration
 
-Base profile fields (`identity`, `models`, `tools`, `guardrails`, `observability`) apply across all modalities as documented in [Profiles](/docs/profiles). By default, text profiles generate conversational markdown and text streams. Text profiles can optionally configure structured output contracts (`outputs.structured`) and what the last step may do (`turnBehaviour.atStepLimit`). This slice shows only those two blocks. The research scout sets `atStepLimit: 'answer'` and answers in the `research.reply` shape. The cite-or-fail rule is the `candidates` entry, and you write its `check`. The `summary` check is an extra, there to show `fields`:
+Base profile fields (`identity`, `models`, `tools`, `guardrails`, `observability`) apply across all modalities as documented in [Profiles](/docs/profiles). By default, text profiles generate conversational markdown and text streams. Text profiles can optionally configure structured output contracts (`outputs.structured`) and what the last step may do (`turnBehaviour.atStepLimit`). This slice shows only those two blocks. The research scout sets `atStepLimit: 'answer'` and answers in the `research.reply` shape, or in `research.models` when its `focus` picks that, as a later section shows:
 
 ```ts frame=profile:text
 // Answer in a validated JSON shape instead of freeform text
 outputs: {
 	structured: 'research.reply',
-	validation: {
-		maxRetries: 2,
-		fields: {
-			// You write this check too: the reply must say what the search found
-			summary: (candidate) =>
-				String(candidate).trim()
-					? { isValid: true }
-					: { isValid: false, error: 'Say what the search found.' },
-		},
-		items: {
-			candidates: {
-				// You write this check: each quote must be in what the tools returned this turn
-				check: (item, turn) => {
-					const { evidence = [] } = item as { evidence?: { uri: string; quote: string }[] };
-					const read = turn.toolResults.map(({ output }) =>
-						typeof output === 'string' ? output : JSON.stringify(output),
-					);
-					const invented = evidence.find(({ quote }) => !read.some((text) => text.includes(quote)));
-					return invented
-						? {
-								isValid: false,
-								error: `These words are not in what the tools returned for ${invented.uri}. Quote them exactly.`,
-							}
-						: { isValid: true };
-				},
-				onFail: 'fix', // 'fix' asks the model to rewrite refused items; 'drop' removes them
-			},
-		},
-	},
+	// ...
 },
 turnBehaviour: {
 	// What the last model call under maxSteps may do
@@ -78,79 +50,38 @@ flowchart TD
 
 Structured outputs reference registered JSON schemas. Define and register the schema in the kernel registry before binding it to a profile:
 
-```ts
-import { registerStructured } from '@theoremjs/agents';
-
+```ts frame=statements
 registerStructured('research.reply', {
 	jsonSchema: {
 		type: 'object',
 		properties: {
-			summary: {
-				type: 'string',
-				description: 'What the search found and how sure you are, in a few sentences.',
-			},
+			summary: { type: 'string' },
 			candidates: {
 				type: 'array',
 				items: {
 					type: 'object',
 					properties: {
 						kind: { type: 'string', enum: ['model', 'dataset', 'paper', 'repo', 'method'] },
-						name: {
-							type: 'string',
-							description:
-								'Its id as published: a Hub id, an arXiv id, owner/repo, or a short name.',
-						},
-						url: { type: 'string', description: 'Where it is published.' },
-						what: {
-							type: 'string',
-							description:
-								'What it is, in one sentence: architecture and size, or contents and size.',
-						},
-						why: {
-							type: 'string',
-							description:
-								'Why it could help a model keep, retrieve, or recombine context: working memory, episodic memory, or a vector store.',
-						},
-						basis: {
-							type: 'string',
-							enum: ['page', 'lead', 'memory'],
-							description:
-								'page: a source a tool returned this turn; cite it. lead: DeepWiki or a hint not yet confirmed. memory: your own recall.',
-						},
+						basis: { type: 'string', enum: ['page', 'lead', 'memory'] },
 						evidence: {
 							type: 'array',
 							items: {
 								type: 'object',
 								properties: {
-									uri: {
-										type: 'string',
-										description: 'URL of a page or paper a tool returned this turn.',
-									},
-									quote: {
-										type: 'string',
-										description:
-											'The exact words in what the tool returned that this candidate rests on.',
-									},
+									uri: { type: 'string' },
+									quote: { type: 'string' },
 								},
 								required: ['uri', 'quote'],
 							},
 						},
+						// ...
 					},
-					required: ['kind', 'name', 'url', 'what', 'why', 'basis', 'evidence'],
+					// ...
 				},
 			},
-			searched: {
-				type: 'array',
-				items: { type: 'string' },
-				description: 'The queries and sources you tried, including the empty ones.',
-			},
-			open: {
-				type: 'array',
-				items: { type: 'string' },
-				description: 'Leads you could not follow, and what would settle them.',
-			},
+			// ...
 		},
-		required: ['summary', 'candidates', 'searched', 'open'],
+		// ...
 	},
 });
 ```
@@ -166,7 +97,42 @@ The schema sets the **shape**: `summary` is a string and `candidates` is a list.
 
 ### Host Validation & Targeted Repair
 
-The `validation` block provides deterministic enforcement in your application process after the JSON is produced:
+The `validation` block provides deterministic enforcement in your application process after the JSON is produced. The cite-or-fail rule is the `candidates` entry, and you write its `check`. The `summary` check is an extra, there to show `fields`:
+
+```ts frame=profile:text
+outputs: {
+	// ...
+	validation: {
+		maxRetries: 2,
+		fields: {
+			// You write this check too: the reply must say what the search found
+			summary: (candidate) =>
+				String(candidate).trim()
+					? { isValid: true }
+					: { isValid: false, error: 'Say what the search found.' },
+		},
+		items: {
+			candidates: {
+				// You write this check: each quote must be in what the tools returned this turn
+				check: (item, turn) => {
+					const { evidence = [] } = item as { evidence?: { uri: string; quote: string }[] };
+					const read = turn.toolResults.map(({ output }) =>
+						typeof output === 'string' ? output : JSON.stringify(output),
+					);
+					const invented = evidence.find(({ quote }) => !read.some((text) => text.includes(quote)));
+					return invented
+						? {
+								isValid: false,
+								error: `These words are not in what the tools returned for ${invented.uri}. Quote them exactly.`,
+							}
+						: { isValid: true };
+				},
+				onFail: 'fix', // 'fix' asks the model to rewrite refused items; 'drop' removes them
+			},
+		},
+	},
+},
+```
 
 * **`fields` (Format & Domain Constraints)**: Dotted paths to specific properties, each with your check on that value. Use this to verify checksums, test regex formats, or query databases. A failure sends its error back to the model, which rewrites the reply while retries remain.
 * **`items` (Tool Corroboration)**: Dotted paths to array properties. The check receives one array item and the `turn` context, including `turn.toolResults`: every tool call the turn completed, each with its `tool` and `output`. Use this to verify that items in the model's structured answer match the data returned by tools earlier in the turn. A refused item never fails the reply, and the rest of the reply is kept.
@@ -181,22 +147,23 @@ The scout's check above is the plain idea, and it is yours to write. It compares
 
 ### Dynamic Schema Selection by Turn Slot
 
-For profiles handling multiple document types, `structured` accepts a slot-mapped dictionary:
+A slot can pick the reply's shape, so what the turn chose decides what comes back. The scout uses its `focus` slot. A turn that looks on Hugging Face gets `research.models`, and any other turn gets `research.reply`:
 
 ```ts frame=profile:text
 outputs: {
 	structured: {
-		by: 'declarationType',
+		by: 'focus',
 		map: {
-			freight: 'freight_declaration_v1',
-			passenger: 'passenger_declaration_v1',
+			'Hugging Face Open Research': 'research.models',
 		},
-		fallback: 'general_declaration_v1',
+		fallback: 'research.reply',
 	},
 }
 ```
 
-When slot mapping is declared, Theorem reads `TurnRequest.input.slots[by]` to select the schema. If the slot matches a key in `map`, that schema is applied; otherwise, it defaults to `fallback`.
+`research.models` is `research.reply` with more on each candidate: `kind` can only be `model`, and `task` and `license` are required.
+
+When slot mapping is declared, Theorem reads `TurnRequest.input.slots[by]` to select the schema. If the slot matches a key in `map`, that schema is applied; otherwise, it defaults to `fallback`. Registering the profile fails if `by` is not a slot in `inputs.slots`, if a key in `map` is not one of its choices, or if a schema it names is not registered.
 
 ## Step Limit Handling
 
@@ -217,9 +184,7 @@ Text profiles are executed using `runTurn()`. The runner returns an async genera
 
 You only need to handle the events your application requires. For example, streaming text to the terminal and reading the final structured output:
 
-```ts
-import { runTurn } from '@theoremjs/agents';
-
+```ts frame=statements
 const events = runTurn({
 	profile: 'research.scout',
 	input: {

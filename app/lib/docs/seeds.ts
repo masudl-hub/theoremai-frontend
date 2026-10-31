@@ -10,8 +10,8 @@ import {
 	createGeminiEmbeddingExampleDraft,
 	createLiveExampleDraft,
 	createNarratorExampleDraft,
+	createPageReaderExampleDraft,
 	createResearchScoutDraft,
-	decisionExampleDraft,
 	ON_OWN_KEYS,
 	RESEARCH_FIRST_TURN_PROMPT,
 	readStudioSource,
@@ -26,6 +26,9 @@ function firstTurnDraft(): StudioDraft {
 	const scout = createResearchScoutDraft();
 	return {
 		...scout,
+		// why: A line that reads a slot needs a turn that chooses it, and this program chooses none.
+		identity: { ...scout.identity, system: scout.identity.system.slice(0, 1) },
+		inputs: { ...scout.inputs, slots: [] },
 		tools: { ...scout.tools, parallel: false },
 		toolSpecs: scout.toolSpecs
 			.filter(({ toolName }) => toolName === 'search_github' || toolName === 'search_web')
@@ -120,8 +123,7 @@ const SEEDS: Record<
 		...asIs,
 	},
 	decision: {
-		// why: Docs only need the pantry decision's shape; pictures load when Studio opens the example.
-		draft: () => decisionExampleDraft(),
+		draft: createPageReaderExampleDraft,
 		question: '',
 		...asIs,
 	},

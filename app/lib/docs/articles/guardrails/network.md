@@ -57,8 +57,9 @@ The address checks read the URL as written. A public name whose DNS points to a 
 Give `runTurn` a `resolveHost` function to check names too:
 
 ```ts frame=request
-input: { text: 'Find recent papers, models, or datasets on episodic memory, vector-space memory stores, and context recombination for language models, and quote the exact claims from their cards or abstracts.' },
-	resolveHost: dnsOverHttpsResolver({ endpoint: 'https://cloudflare-dns.com/dns-query' }),
+// ...
+resolveHost: dnsOverHttpsResolver({ endpoint: 'https://cloudflare-dns.com/dns-query' }),
+// ...
 ```
 
 `resolveHost` takes a host name and returns its addresses. Before each of these requests, and before each redirect hop, Theorem looks the name up. It refuses the request if the name resolves to no address, or to any private or local address. It does not look up address literals, hosts in `allowedHosts`, or anything when `allowPrivateNetworks` is `true`.
@@ -73,20 +74,16 @@ Set the policy on the profile in `guardrails.network`. `research.scout` sets `al
 
 ```ts frame=profile:text
 guardrails: {
-		network: {
-			allowPrivateNetworks: false, // Set to true only in local development or CI
-			allowedHosts: [
-				'mcp.exa.ai',
-				'export.arxiv.org',
-				'huggingface.co',
-				'api.github.com',
-				'raw.githubusercontent.com',
-				'mcp.context7.com',
-				'mcp.deepwiki.com',
-			],
-			allowedSchemes: ['https'],
-		},
+	network: {
+		allowPrivateNetworks: false, // Set to true only in local development or CI
+		allowedHosts: [
+			'export.arxiv.org',
+			'huggingface.co',
+			// ...
+		],
+		allowedSchemes: ['https'],
 	},
+},
 ```
 
 * **`allowPrivateNetworks`**: Lets requests reach local names and private addresses, and allows `http:` by default. Defaults to `false`.

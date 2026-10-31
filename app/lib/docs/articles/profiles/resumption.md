@@ -52,26 +52,22 @@ The `resumption` block controls whether recoveries are automatic or require user
 
 To continue a truncated text turn, call `runTurn()` with `continueFrom` set to the stop from the last `done` event. Set the 1-based `continuation` count, and place the partial text reply as the last assistant message in `input.history`. Send no `input.text`: the turn's user message is the continue instruction.
 
-```ts
-import { runTurn } from '@theoremjs/agents';
-
+```ts frame=statements
 const continuedEvents = runTurn({
 	profile: 'research.scout',
 	continueFrom: { stop: { kind: 'length' } },
 	continuation: 1,
 	input: {
+		slots: { reader: 'anyone' },
 		history: [...previousMessages, { role: 'assistant', content: partialReplyText }],
 	},
 });
-
-for await (const event of continuedEvents) {
-	if (event.type === 'text') {
-		process.stdout.write(event.text);
-	}
-}
+// ...
 ```
 
 The model reads the partial reply from history. In place of the user's text, it gets the continue instruction (label `continue.instruction`), which you can reword like any label. The scout does, in its `labels`.
+
+A continuation builds its prompt again, so it chooses its slots and states its conditions as the first turn did. The scout's `reader` slot is why the sample sets `slots`.
 
 ## Tool Action Gates
 

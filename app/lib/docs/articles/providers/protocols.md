@@ -36,6 +36,7 @@ Choose a protocol that has an endpoint for your profile type, and a provider tha
 | :--- | :--- | :--- | :--- |
 | **`openRouterOpenAi`** | `text`, `speech` | `/chat/completions`, `/audio/speech` | `openRouterProvider` |
 | **`openRouterImages`** | `image` | `/images` | `openRouterProvider` |
+| **`openRouterTranscriptions`** | `transcription` | `/audio/transcriptions` | `openRouterProvider` |
 | **`openRouterEmbeddings`** | `embedding` | `/embeddings` | `openRouterProvider` |
 | **`openRouterDecisions`** | `decision` | `/alpha/decisions` | `openRouterProvider` |
 | **`geminiInteractions`** | `text`, `image`, `speech` | `/interactions` | `geminiProvider` |
@@ -60,12 +61,10 @@ Because profile modality configuration is already defined by the profile type (`
 
 The only builder-facing surface on a protocol is its optional `options` schema, configured under `models.<alias>.options` in a profile:
 
-```ts frame=profile:text
+```ts frame=models
 models: {
 	open: {
-		protocol: 'openRouterOpenAi',
-		provider: 'openrouter',
-		apiId: 'openrouter/free',
+		// ...
 		options: {
 			cache: { mode: 'automatic', ttl: '5m' }, // Protocol-specific setting
 		},
@@ -79,10 +78,12 @@ models: {
 | :--- | :--- | :--- | :--- |
 | **`openRouterOpenAi`** | `cache.mode` | `'automatic'` \| `'system'` | Prompt caching, for models that support it. `'automatic'` caches the whole request. `'system'` caches the system instruction only. |
 | | `cache.ttl` | `'5m'` \| `'1h'` | How long the cache is kept. Without it, the upstream default applies. |
+| | `provider` | `object` | Which upstreams may answer. See [Choosing Upstreams on OpenRouter](/docs/providers#choosing-upstreams-on-openrouter). |
 | **`geminiInteractions`** | `store` | `boolean` | Whether Google keeps the interaction. Off, nothing is stored on the server. |
 | | `persistViaInteractionId` | `boolean` | Continues from the stored interaction instead of sending the conversation again. Needs `store`. |
 | **`systemOne`** | `images` | `boolean` | Lets a decision hold images and box questions. A request that uses either is refused without it. |
 | | `longContext` | `boolean` | Raises the context window from 64k tokens to 262k. |
+| **`openRouterTranscriptions`** | `provider` | `object` | `zdr` and `data_collection` only. See [Transcription Profiles](/docs/profiles/transcription#supported-formats-and-routing). |
 | **`geminiEmbeddings`** | `taskType` | `string` | The task the vectors are for, such as `RETRIEVAL_QUERY`, `RETRIEVAL_DOCUMENT` or `CLASSIFICATION`. |
 | | `outputDimensionality` | `number` | How many numbers each vector holds, for models that can shorten theirs. |
 | **`openRouterEmbeddings`** | `encodingFormat` | `'float'` \| `'base64'` | How OpenRouter sends each vector back. Theorem decodes both to the same numbers. |
@@ -96,7 +97,7 @@ Protocols without special options (`openAi`, `geminiLive`, `openRouterImages`, `
 When `registerProfile()` runs, the kernel validates the binding against the protocol:
 
 1. **Provider Check**: Confirms that the registered provider explicitly serves the bound protocol ID (`provider.serves`).
-2. **Modality Check**: Confirms that the protocol supports the profile's modality (text, live voice, embeddings, images, speech, or decisions).
+2. **Modality Check**: Confirms that the protocol supports the profile's modality (text, live voice, embeddings, images, speech, transcription, or decisions).
 3. **Options Check**: Validates `models.*.options` against the protocol's Zod schema. Unrecognized options or malformed values throw a `TheoremError('config')` before any turns can run.
 
 ## Related Guides

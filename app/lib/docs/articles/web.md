@@ -60,22 +60,19 @@ Mount the handler under a catch-all route. It answers these sub-routes:
 
 ## Mounting on Web Frameworks
 
-`createTheoremHandler` takes the profile, the host options its model calls run on (`provider`), and a conversation store. In the samples, `researchScout` is your profile, `research.scout`, from your own module. Fill each key slot that its models name.
+`createTheoremHandler` takes the profile, the host options its model calls run on (`provider`), and a conversation store. In the samples, `profile` is your profile, `research.scout`, from your own module. Fill each key slot that its models name.
 
 ### Next.js App Router (`app/api/agent/[...path]/route.ts`)
 
 ```ts
-import type { Profile } from '@theoremjs/agents';
 import { createMemoryConversationStore, createTheoremHandler } from '@theoremjs/web/server';
 
-declare const researchScout: Profile;
-
 const handler = createTheoremHandler({
-	profile: researchScout,
+	profile,
 	provider: {
 		vault: {
 			openrouter: process.env.OPENROUTER_API_KEY ?? '',
-			gemini: process.env.GEMINI_API_KEY ?? '',
+			// ...
 		},
 	},
 	conversationStore: createMemoryConversationStore(),
@@ -90,18 +87,12 @@ export const POST = handler;
 A Worker hands each `Request` to the handler. The sealed store keeps nothing on the server. `keys` holds every sealing key still in use, by version, and `keyVersion` names the one that seals new writes. Each key is at least 32 bytes and stays off the browser:
 
 ```ts
-import type { Profile } from '@theoremjs/agents';
 import { createSealedConversationStore, createTheoremHandler } from '@theoremjs/web/server';
 
-declare const researchScout: Profile;
-
 const handler = createTheoremHandler({
-	profile: researchScout,
+	profile,
 	provider: {
-		vault: {
-			openrouter: process.env.OPENROUTER_API_KEY ?? '',
-			gemini: process.env.GEMINI_API_KEY ?? '',
-		},
+		// ...
 	},
 	conversationStore: createSealedConversationStore({
 		keys: { 1: process.env.CONVERSATION_SEAL_KEY ?? '' },
@@ -125,6 +116,7 @@ Theorem enforces strict trust boundaries between browser clients and server stat
 1. **The Browser Never Sends History**: The conversation store owns the transcript, the history the model reads, and the paused reply. The browser sends only what the person did now, with the opaque ref (`ref`) the store issued.
 2. **Server-Owned Gate Authority**: The session store (`sessionStore`) owns which paused calls may run, with what input, and the tool permissions. Request bodies cannot grant any of them.
 3. **Credential Isolation**: A key the user types at a gate is sent once and saved in the credential store (`credentialStore`). No credential is ever sent back to the browser.
+4. **Server-Chosen Prompt Lines**: The page does not choose a turn's [prompt lines](/docs/profiles#prompt-lines-conditions). For a profile that declares conditions, the handler's `prepare` option sets the turn's `path` and `conditions` on the server. A request that carries `stated` is refused with a `request` error unless you set `pageStatesTurn`, which is for a page you trust as you trust your server.
 
 ### Conversation Store Implementations
 
@@ -149,7 +141,7 @@ import { createTheoremDecisionHandler } from '@theoremjs/web/server';
 
 declare const pageReader: DecisionProfile;
 
-const handler = createTheoremDecisionHandler({
+export const handler = createTheoremDecisionHandler({
 	profile: pageReader,
 	questions: {
 		passage: {
@@ -165,9 +157,7 @@ const handler = createTheoremDecisionHandler({
 	},
 	vault: { typesafe: process.env.TYPESAFE_API_KEY ?? '' },
 });
-
-export const GET = handler;
-export const POST = handler;
+// ...
 ```
 
 ### 2. Host Handlers (`createTheoremHostHandler`)

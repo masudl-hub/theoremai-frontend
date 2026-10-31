@@ -122,13 +122,9 @@ import type { LentKeys } from '@theoremjs/studio';
 export const lentKeys: LentKeys = {
 	// Allowlist the exact models visitors can select
 	models(type, _definition) {
-		if (type === 'text') {
-			return [
-				{ id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite (Fast)' },
-				{ id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash' },
-			];
-		}
-		return [];
+		return type === 'text'
+			? [{ id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite (Fast)' }]
+			: [];
 	},
 
 	// Confirm provider support
@@ -143,12 +139,8 @@ export const lentKeys: LentKeys = {
 
 	// Reject unauthorized models or expensive frontier bindings
 	violation(binding) {
-		if (binding.apiId !== 'gemini-3.1-flash-lite' && binding.apiId !== 'gemini-3.8-flash') {
-			return {
-				field: 'apiId',
-				message:
-					'Only standard demo models (Gemini 3.1 Flash Lite and Gemini 3.8 Flash) are permitted in this playground.',
-			};
+		if (binding.apiId !== 'gemini-3.1-flash-lite') {
+			return { field: 'apiId', message: 'This playground runs Gemini 3.1 Flash Lite only.' };
 		}
 		return null;
 	},
@@ -204,8 +196,8 @@ import { createStudioDraftHandler, STUDIO_BASE } from '@theoremjs/studio/server'
 
 // The lent keys from step 3, in shared/lent-keys.ts
 declare const lentKeys: LentKeys;
-declare function getVisitorUsage(clientIp: string): Promise<number>;
-declare function incrementVisitorUsage(clientIp: string): Promise<void>;
+// Your own count of what this visitor has spent
+declare function quotaSpent(request: Request): Promise<boolean>;
 
 const studioHandler = createStudioDraftHandler({
 	lent: {
@@ -221,14 +213,9 @@ const studioHandler = createStudioDraftHandler({
 
 	// Enforce rate limits and spending quotas per user or IP
 	spend: async (_kind, request) => {
-		const clientIp = request.headers.get('x-forwarded-for') ?? 'unknown';
-		const usageCount = await getVisitorUsage(clientIp);
-
-		if (usageCount > 25) {
+		if (await quotaSpent(request)) {
 			throw new TheoremError('rate_limit', 'Demo quota exceeded.');
 		}
-
-		await incrementVisitorUsage(clientIp);
 	},
 });
 
@@ -245,7 +232,7 @@ export default {
 ### How Server Execution Works
 1. **The Draft Rides Along**: The client sends the visitor's modified profile draft in the request body. The server does not look up stored files or load a project setup.
 2. **Credential Injection**: `hostOptions` receives each draft's profile and returns the vault its model calls sign with. The draft names its own key slots (e.g., `gemini`), so fill the slots its models name. The browser never sees your API keys.
-3. **Quota Rejection**: The handler calls `spend` before each decision, host tool call, and agent tool turn on the lent keys. A chat turn does not pass through it. If `spend` throws a `TheoremError`, the handler refuses that request and the screen shows the error's wording. For an agent tool turn, the calling model reads the refusal as the tool's result.
+3. **Quota Rejection**: The handler calls `spend` before each decision, reader passage, host tool call, and agent tool turn on the lent keys. A reader passage spends as a `decision`. A chat turn does not pass through it. If `spend` throws a `TheoremError`, the handler refuses that request and the screen shows the error's wording. For an agent tool turn, the calling model reads the refusal as the tool's result.
 
 > [!NOTE]
 > **Live Streaming & Realtime Sessions**: Unary requests (text chat, decisions, and embeddings) pass through `/api/studio`. Bidirectional realtime voice sessions on lent keys connect via WebSockets to `/api/live/relay` using `attachStudioLiveSession` from `@theoremjs/studio/browser`. See [Realtime Voice & Video](/docs/web/realtime) for relay setup.

@@ -108,37 +108,16 @@ Custom applications can capture frames from any HTML5 video stream and transmit 
 
 The client runs the tools the model calls on the relay. [Headless Client Management](#headless-client-management) adds the page's tools and an answer to a gate:
 
-```ts
+```ts frame=statements
 import { LiveSessionClient } from '@theoremjs/web/client';
 
-const client = new LiveSessionClient({
-	profile: 'harbor.live_dispatch',
-	relayUrl: 'wss://api.example.com/api/live/relay',
-});
-
+const client = new LiveSessionClient({ profile: 'research.scout.live' });
 await client.connect();
 
-// Capture a frame from an off-screen canvas at 400ms intervals
-function captureAndSendFrame(videoElement: HTMLVideoElement, canvas: HTMLCanvasElement) {
-	const ctx = canvas.getContext('2d');
-	if (!ctx) return;
-	canvas.width = videoElement.videoWidth;
-	canvas.height = videoElement.videoHeight;
-	ctx.drawImage(videoElement, 0, 0);
-
-	// Encode as JPEG at 0.62 quality to optimize network bandwidth
-	const dataUrl = canvas.toDataURL('image/jpeg', 0.62);
-	const base64Jpeg = dataUrl.split(',')[1];
-	if (base64Jpeg) {
-		client.sendVideo(base64Jpeg);
-	}
-}
-
-const video = document.querySelector('video');
 const canvas = document.createElement('canvas');
-if (video) {
-	setInterval(() => captureAndSendFrame(video, canvas), 400);
-}
+// ...
+const base64Jpeg = canvas.toDataURL('image/jpeg', 0.62).split(',')[1];
+if (base64Jpeg) client.sendVideo(base64Jpeg);
 ```
 
 ### Declarative React Video
@@ -147,20 +126,11 @@ For high-level applications, `LiveRunner` from `@theoremjs/react/live` automates
 
 ```tsx
 import { LiveRunner } from '@theoremjs/react/live';
-import type { LiveProfileInterface } from '@theoremjs/agents/interface';
 
-interface CallProps {
-	iface: LiveProfileInterface;
-}
-
-export function VesselDispatchCall({ iface }: CallProps) {
-	return (
-		<LiveRunner
-			iface={iface}
-			connection={() => ({ profile: 'harbor.live_dispatch' })}
-		/>
-	);
-}
+<LiveRunner
+	iface={iface}
+	connection={() => ({ profile: 'research.scout.live' })}
+/>
 ```
 
 ## 5. Live Tool Execution & Mid-Call Gates
@@ -175,57 +145,62 @@ sequenceDiagram
 		participant Client as LiveSessionClient
 		participant UI as LiveRunner UI
 
-		Model->>Relay: toolCall: harbor_inspect_vessel({ id: "VSL-409" })
+		Model->>Relay: toolCall: read_pages({ urls: [...], question: "..." })
+		Relay->>Client: events (the tool call)
+		Client->>Relay: executeTool ({ callId, operationId })
 		Note over Relay: Tool requires human confirmation
 		Relay->>Client: executeToolResult ({ status: "gated", gate: { ... } })
 		Client->>UI: Renders ApprovalCard dialog
 		UI-->>Client: User clicks "Approve"
-		Client->>Relay: executeToolOnRelay ({ callId, decision: "approve" })
+		Client->>Relay: executeTool ({ callId, operationId, decision: "approve" })
 		Relay->>Model: Resumes with tool output
 		Model->>Client: Resumes streaming audio reply
 ```
 
-If a tool requires user approval, the call does not drop. The audio connection remains open in a listening state while the UI renders a modal approval card. Once approved, the tool result is returned over the WebSocket, and the agent continues speaking naturally.
+Every tool of `research.scout.live` runs without asking, so this diagram needs `permission: 'always_confirm'` added to `read_pages`. If a tool requires user approval, the call does not drop. The audio connection remains open in a listening state while the UI renders a modal approval card. Once approved, the tool result is returned over the WebSocket, and the agent continues speaking naturally.
 
 ## Headless Client Management
 
 Instantiate and manage realtime sessions using `LiveSessionClient`. With no `relayUrl`, it connects to `/api/live/relay` on the page's own host, with the profile in the query:
 
-```ts
+```ts frame=statements
 import { LiveSessionClient, type LiveSessionStatus } from '@theoremjs/web/client';
 
 const client = new LiveSessionClient({
-	profile: 'harbor.live_dispatch',
+	profile: 'research.scout.live',
 	onStatusChange: (status: LiveSessionStatus) => {
 		console.log('Call status:', status); // 'disconnected' | 'connecting' | 'reconnecting' | 'ready' | 'listening' | 'speaking' | 'working' | 'error'
 	},
 	onTranscript: (text: string, isUser: boolean, meta?: { interim?: boolean }) => {
-		console.log(`${isUser ? 'User' : 'Agent'}${meta?.interim ? ' (interim)' : ''}: ${text}`);
+		// ...
 	},
 	onVolumeLevel: (level: number, isUser: boolean) => {
-		// The microphone's level when isUser is true, the model's playback otherwise (0.0 to 1.0)
-		console.log(isUser ? 'Mic' : 'Speaker', level);
+		// ...
 	},
 	// A tool the profile declares with answeredBy: 'page'
 	pageTools: {
-		highlight: (args) => ({ output: { highlighted: String(args.target) } }),
+		check_device: () => ({
+			output: {
+				webgpu: 'gpu' in navigator,
+				// ...
+			},
+		}),
 	},
 	// Ask the person, then send their answer to the gate
 	onGate: async ({ toolName }) =>
 		window.confirm(`Run ${toolName}?`) ? { decision: 'approve' } : { decision: 'deny' },
 	onError: (error: Error) => {
-		console.error('Live call failure:', error);
+		// ...
 	},
 });
 
 await client.connect();
 
 // Mute/unmute microphone; returns true when muted
-const isMuted = client.toggleMute();
-console.log('Muted:', isMuted);
+client.toggleMute();
 
 // Send text utterance mid-call
-client.sendText('Vessel VSL-409 has reported clearance.');
+client.sendText('Look for datasets that test long context memory.');
 
 // Clean disconnect
 client.disconnect();

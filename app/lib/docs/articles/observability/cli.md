@@ -53,6 +53,8 @@ The CLI loads the setup file, then the entry it names, and reads the entry's `th
 
 `agents profile --setup <file>` registers your profiles the same way before it lists or shows them.
 
+`test` and `run` send no slots and no conditions. A profile with a prompt line that reads one needs `theorem.prepare` to state it, or the turn is refused with a `request` error. The scout's `reader` slot is such a slot, so the samples on this page need a `prepare` that chooses it.
+
 Without `--setup`, `test` and `run` have no provider, so they fail and exit `1`. A setup file with no `entry`, an entry with no `theorem`, or a setup file that still exports `default` or `provider` stops the command with the same message Studio gives. Under Node, the setup file and the entry must be files Node can import.
 
 ## 1. Eval Suite Execution (`agents eval`)
@@ -122,7 +124,7 @@ Each turn prints its setup, its events, and a status line. A summary of every tu
 ```text
 ▶ [THEOREM TEST] research.scout [Stress Combo]
   Profile:     research.scout (Model: gemini)
-  Custom:      read_pages, list_arxiv, search_models, search_datasets, read_model_card, read_dataset_card, search_github, read_readme, ask_repo_docs, find_library, read_library_docs, search_web
+  Custom:      search_web, read_pages, list_arxiv, search_models, search_datasets, read_model_card, read_dataset_card, search_github, read_readme, find_library, read_library_docs, ask_repo_docs, export_report, check_device
   Builtins:    none
   Attachments: 0 file(s) | Voice: no
   ------------------------------------------------------------
@@ -166,14 +168,14 @@ agents profile list --setup studio.setup.ts
 agents profile show research.scout --setup studio.setup.ts
 ```
 
-`list` prints a card for each profile: its handle and type, its model ids, its inputs, its tools and its structured output:
+`list` prints a card for each profile: its handle and type, its model ids, its inputs, its tools and its structured output. A profile whose slot picks its reply shape, as the scout's `focus` does, prints `custom`:
 
 ```text
  • Profile: research.scout   (handle: scout) [text]
    - Models:     open, gemini
    - Inputs:     text
-   - Tools:      read_pages, list_arxiv, search_models, search_datasets, read_model_card, read_dataset_card, search_github, read_readme, ask_repo_docs, find_library, read_library_docs, search_web
-   - Structured: research.reply
+   - Tools:      search_web, read_pages, list_arxiv, search_models, search_datasets, read_model_card, read_dataset_card, search_github, read_readme, find_library, read_library_docs, ask_repo_docs, export_report, check_device
+   - Structured: custom
 ----------------------------------------------------------------------
 ```
 

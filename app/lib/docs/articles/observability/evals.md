@@ -106,19 +106,31 @@ export const graders: EvalGrader[] = [
 
 ### 2. Model Judges (LLM-as-a-Judge)
 
-For qualities like helpfulness, tone or correctness, `judge` asks a judge profile to grade the trial against a rubric:
+For qualities like helpfulness, tone or correctness, `judge` asks a judge profile to grade the trial against a rubric. Here `research.judge`, a decision profile, grades the scout's reply: does the quote under each finding back that finding's claim? The grader asks once per trial, so the reply gets one verdict.
 
 ```ts
-import { judge, rubrics } from '@theoremjs/agents/evals';
+import { judge, rubric } from '@theoremjs/agents/evals';
 
-export const correctness = judge({
-	rubric: rubrics.correctness,
-	profile: 'harbor.judge',
+export const quotesBackClaims = judge({
+	rubric: rubric({
+		name: 'quotes_back_claims',
+		labels: { backed: 1, not_backed: 0 },
+		pass: ['backed'],
+		variables: ['output'],
+		question: {
+			instructions: 'Does each `quote` in `output` back the claim of its candidate?',
+			criteria: {
+				backed: 'The quote states the claim, or something that plainly entails it.',
+				not_backed: 'The quote is about something else, or says less than the claim.',
+			},
+		},
+	}),
+	profile: 'research.judge',
 });
 ```
 
-* `rubrics` holds the built-in rubrics, by camelCase name (`rubrics.toolSelection`). Make your own with `rubric({ name, labels, template })`.
-* The judge profile comes from `profile`, or else from the suite's `judge.profile`. It is a text profile with `outputs.structured` set to `'evalJudgment'` (`EVAL_JUDGMENT`), or a decision profile.
+* `rubrics` holds the built-in rubrics, by camelCase name (`rubrics.toolSelection`). Make your own with `rubric()`: a `template` for a text judge, a `question` for a decision judge, or both. A question-only rubric names its `variables`, the keys of the state the judge reads.
+* The judge profile comes from `profile`, or else from the suite's `judge.profile`. It is a text profile with `outputs.structured` set to `'evalJudgment'` (`EVAL_JUDGMENT`), or a decision profile. A decision judge needs `judgeDecision`, from the suite module's export or a `runSuite` option.
 * A turn that failed or delivered nothing is not judged. A setup error throws when the grader is made or first used.
 
 When the run gives the judge the trial's W3C `traceparent`, each judge call runs under the trial's span. The judge's records then land in the judged trace, beneath the trial. Without it, each judge call starts a trace of its own.
@@ -142,7 +154,6 @@ const run = await runSuite(loaded, {
 const summary = summarizeRun(run);
 
 console.log(`Suite ${summary.suite}: ${summary.passed ? 'PASSED' : 'FAILED'}`);
-console.log(`Total Spend: $${summary.costUsd.toFixed(4)}`);
 ```
 
 * A live run needs a `provider`. `loadSuite` reads it from the suite module's `provider` export. Without one, `runSuite` throws a `config` error.

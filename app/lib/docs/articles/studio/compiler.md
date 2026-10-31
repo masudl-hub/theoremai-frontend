@@ -1,6 +1,6 @@
 ---
 title: Draft Compiler & Code Export
-updated: 2026-10-29
+updated: 2026-10-30
 summary: How Studio checks a draft as it changes, reads code back into it, and saves edits to your files.
 entry: studio/compile.ts
 covers: studio/compile.ts, studio/compile-workspace.ts
@@ -17,7 +17,8 @@ The editor has two views of the same profile, **Editor** and **Code**. One butto
 
 * **Editor**: The profile as form fields: its model, prompt, tools, guardrails and other sections.
 * **Code**: The TypeScript the profile is declared in, in a code editor with completions, signature help, hover documentation and type errors against `@theoremjs/agents`.
-* **Reading Code Back**: When you edit the code, Studio reads it back into the draft. Anything it cannot read is an error at that spot, and the draft is left as it was. A name in `tools.allow` that no tool registers is an error too.
+* **Reading Code Back**: When you edit the code, Studio reads it back into the draft. Anything it cannot read is an error at that spot, and the draft is left as it was. A name in `tools.allow` that no tool registers is an error too, and so is a bare `{ private }` entry in a list of prompt lines.
+* **Tool Readers in Code**: A tool's reader is Studio's own, with no field in the kernel. The code shows it as a comment above the tool: `// Your host runs research.pagereader on this tool's output, at post_tool.`
 
 ## Draft Checks
 
@@ -29,10 +30,13 @@ Each model's provider must exist in the workspace and serve the agent's type on 
 The check does not read your keys. When a project opens, the studio command asks each provider about its key once and prints one line for each, such as `key for gemini (gemini) works`, `refused`, `is empty` or `could not be checked`. The `--offline` flag skips this. A run whose key slot is empty fails with an `auth` error.
 
 ### 2. Tools and Schemas
-Each tool needs a name, and no two tools may share one. A tool's input and output JSON schemas must parse. An MCP tool needs the name of its tool on the server, and an agent tool needs the agent it asks. A structured reply needs a schema id, and its schema must parse.
+Each tool needs a name, and no two tools may share one. A tool's input and output JSON schemas must parse. An MCP tool needs the name of its tool on the server, and an agent tool needs the agent it asks. A tool's reader must be a decision agent with a choice question. A structured reply needs a schema id, and its schema must parse. So must each reply shape that a slot's value picks.
 
 ### 3. Guardrails
 Allowed hosts and allowed names may not be blank. A custom detector needs a valid name, may be listed once, and its patterns must be valid.
+
+### 4. Prompt Lines
+The prompt gets the check that `defineProfile` gives it. A `when` line must read a condition or a slot the profile declares, with a value it lists, and a line may not start with `+`. Conditions must be a JSON object of lists of values.
 
 ### Finding Issues
 * The toolbar shows how many issues the draft has.

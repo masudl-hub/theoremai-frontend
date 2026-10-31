@@ -60,10 +60,10 @@ flowchart TD
 | Type | Execution Host | Typical Use Case | Guide |
 | :--- | :--- | :--- | :--- |
 | **`builtin`** | Provider | Native capabilities like Google Search or code execution. Declared in model `builtInTools`. | [Model Bindings](/docs/profiles/bindings) |
-| **`function`** | Host Process or Browser | Custom TypeScript/JavaScript logic (`handler`) or browser UI DOM tools (`answeredBy: 'page'`). | [Function Tools](/docs/tools/function) |
-| **`http`** | Kernel HTTP Client | Direct REST API calls with URL parameter mapping, rate limiting, and size caps. | [HTTP Tools](/docs/tools/http) |
-| **`mcp`** | Remote MCP Server | Tools on external servers conforming to the Model Context Protocol, with automatic session pooling. | [MCP Tools](/docs/tools/mcp) |
-| **`agent`** | Kernel Runner | Delegating a task to another registered agent profile (`text`, `image`, or `speech`). | [Agent Tools](/docs/tools/agent) |
+| **`function`** | Host Process or Browser | Custom TypeScript/JavaScript logic (`handler`), such as `export_report`, or tools the page answers (`answeredBy: 'page'`), such as `check_device`. | [Function Tools](/docs/tools/function) |
+| **`http`** | Kernel HTTP Client | Direct REST API calls, such as `list_arxiv`, with URL parameter mapping, rate limiting, and size caps. | [HTTP Tools](/docs/tools/http) |
+| **`mcp`** | Remote MCP Server | Tools on external servers conforming to the Model Context Protocol, such as `read_pages`, with automatic session pooling. | [MCP Tools](/docs/tools/mcp) |
+| **`agent`** | Kernel Runner | Delegating a task to another registered agent profile (`text`, `image`, or `speech`), such as `record_podcast`. | [Agent Tools](/docs/tools/agent) |
 
 ## Core Tool Attributes
 
@@ -71,8 +71,8 @@ Every custom tool registered with `registerTool` declares metadata that governs 
 
 * **`access`**: `'read-only'`, `'read-write'`, or `'destructive'`:
   * `'read-only'`: Only reads. An `http` tool with this access is sent again when the service is busy or briefly down.
-  * `'read-write'`: Changes external state. A write is never sent twice.
-  * `'destructive'`: Deletes data, executes financial transactions, or performs irreversible actions. Guardrails can restrict or require confirmation for these calls after reading untrusted data.
+  * `'read-write'`: Changes external state, as `export_report` does. A write is never sent twice.
+  * `'destructive'`: Deletes data or performs irreversible actions. `guardrails.taint.afterRemoteRead` can refuse these calls after a turn reads a remote result.
 * **`permission`**: `'auto'`, `'session_consent'`, or `'always_confirm'`:
   * `'auto'`: Executes without human intervention.
   * `'session_consent'`: Asks once. The approval lasts as long as the host passes the tool name back in `sessionPermissions`.
@@ -80,8 +80,9 @@ Every custom tool registered with `registerTool` declares metadata that governs 
 * **`loadTier`**: `'T0'` or `'T2'`:
   * `'T0'`: Core tools loaded into model prompt context at the start of every turn.
   * `'T2'`: On-demand tools loaded selectively at turn start via `tools.t1Policy` or mid-turn via a `tools.t2Loader` tool.
-* **`paths`**: String array restricting tool availability to specific turn paths (e.g., `['claims']`). Use `['*']` to make the tool available on all paths. When a turn specifies `runTurn({ path: 'claims' })`, only tools whose `paths` include `'claims'` or `'*'` are offered to the model.
-* **`category`**: Custom classification label for host-side organization.
+* **`paths`**: String array restricting tool availability to specific turn paths (e.g., `['code']`). Use `['*']` to make the tool available on all paths. When a turn specifies `runTurn({ path: 'code' })`, only tools whose `paths` include `'code'` or `'*'` are offered to the model.
+* **`category`**: A label for grouping tools. Nothing reads it yet.
+* **`after`**: `true` lets the model order its calls in a step. The tool's input gains an `after` field, a list of tool names called in the same step that must settle before this call starts. The kernel removes the field before the tool, the stages or a gate read the input. A name with no other call in the step fails the call with `wait_unknown`. Outside a step, as in a live session, `after` waits on nothing. `registerTool` refuses `after` on a tool whose input already has a field of that name, or whose input is not an object or a union of objects. The cookbook sets it on `read_pages`, `read_model_card`, `read_dataset_card`, `read_readme` and `read_library_docs`. For an order your own code decides, return `waitFor` at `pre_tool` (see [Lifecycle Hooks & Interception](/docs/profiles/lifecycle)).
 
 ## Direct Tool Execution (`runTool` vs `invokeTool`)
 
@@ -136,6 +137,8 @@ A failed call settles with a `code` and a message. Theorem sets these codes for 
 | `output_blocked` | `guardrails.detect` blocks a match in the result | Change the action at `tool_output_<kind>`, or return less from the tool |
 
 `tainted_turn` never stops a `read-only` tool. With `afterRemoteRead: 'write'`, it stops `read-write` and `destructive` tools. With `'destructive'`, it stops `destructive` tools only.
+
+A call that waits fails in two more ways. `wait_unknown` means `after` or `waitFor` names a call that is not in the step. `wait_cycle` means the call waits for a call that cannot finish before it.
 
 ## Tool Types In Detail
 

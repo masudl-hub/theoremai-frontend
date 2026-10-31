@@ -9,32 +9,35 @@ coverAlt: Golden wetland grasses and reflective waterways
 coverPosition: 50% 50%
 ---
 
-Embedding profiles (`type: 'embedding'`) configure agents that generate dense vector representations of text and media inputs for semantic search, document retrieval, and clustering. They are executed through `runEmbedding()`, returning numerical vector arrays in a single stateless request.
+Embedding profiles (`type: 'embedding'`) configure agents that generate dense vector representations of text and media inputs for semantic search, document retrieval, and clustering. They are executed through `runEmbedding()`, returning numerical vector arrays in a single stateless request. The research cookbook's `research.embedder` ranks a search's abstracts against the question.
 
 ## Embedding Profile Configuration
 
-Base profile fields (`identity`, `models`, `guardrails`, `observability`, `labels`) apply across all modalities as documented in [Profiles](/docs/profiles). Embedding profiles declare which inputs they accept. This program declares a whole embedding profile with one Gemini model. It takes text, which every embedding profile accepts unless `inputs.text` is `false`:
+Base profile fields (`identity`, `models`, `guardrails`, `observability`, `labels`) apply across all modalities as documented in [Profiles](/docs/profiles). Embedding profiles declare which inputs they accept. The embedder runs on one Gemini model. It takes text, which every embedding profile accepts unless `inputs.text` is `false`:
 
-```ts
-import { defineProfile } from '@theoremjs/agents';
-
-export const manifestEmbedder = defineProfile({
-	type: 'embedding',
-	id: 'harbor.manifest_embedder',
-	identity: { handle: 'manifest_embedder' },
-	models: {
-		main: {
-			protocol: 'geminiEmbeddings',
-			provider: 'gemini',
-			apiId: 'gemini-embedding-2-preview',
-			keySlot: 'gemini',
-		},
-	},
-	inputs: {}, // Text is accepted by default
-});
+```ts frame=profile:embedding
+type: 'embedding',
+id: 'research.embedder',
+// ...
+inputs: {}, // Text is accepted by default
 ```
 
-Text is checked only for whether the profile accepts it. `maxBytes`, `maxTurnBytes`, `maxFiles` and `limitsByMime` cap media inputs, which the profile allows through `attachments.accept`.
+The cookbook's embedder also accepts media, through `attachments.accept`. Text is checked only for whether the profile accepts it. `maxBytes`, `maxTurnBytes`, `maxFiles` and `limitsByMime` cap media inputs, which the profile allows through `attachments.accept`.
+
+A binding sets the vector size in `options.outputDimensionality`, for a model that can shorten its vectors. The embedder sets 768:
+
+```ts frame=profile:embedding
+models: {
+	main: {
+		protocol: 'geminiEmbeddings',
+		provider: 'gemini',
+		apiId: 'gemini-embedding-2-preview',
+		keySlot: 'gemini',
+		options: { outputDimensionality: 768 },
+	},
+},
+// ...
+```
 
 ## Architectural Invariants
 
@@ -65,8 +68,8 @@ flowchart LR
 ### The `task` Parameter
 
 `task` tells the provider what the vectors are for:
-* **`'document'`**: The input is a passage to store.
-* **`'query'`**: The input is a search query.
+* **`'document'`**: The input is what is searched.
+* **`'query'`**: The input is what someone asks.
 
 Only the Gemini embedding protocol uses it. For Gemini Embedding 2, Theorem writes the task in front of a text-only input, in the format Google gives. An input with media goes without it. For `gemini-embedding-001`, Theorem sends it as `taskType`. The OpenRouter and local embedding protocols ignore it.
 
@@ -76,22 +79,26 @@ Embeddings are generated using `runEmbedding()`. The function accepts batch inpu
 
 ### Basic Invocation
 
-```ts
-import { runEmbedding } from '@theoremjs/agents';
+To rank abstracts against a question, embed the question with `task: 'query'` and the abstracts with `task: 'document'`, then compare the vectors in your own code. Nothing is stored:
 
-const result = await runEmbedding({
-	profile: 'harbor.manifest_embedder',
-	input: [
-		'Container #CONT-9941 containing industrial pressure valves.',
-		'Safety data sheet for class 3 flammable liquid storage.',
-	],
+```ts frame=statements
+const question =
+	'What write path do recent systems use to store episodic memory for language-model agents?';
+const abstracts: string[] = [
+	// ...
+];
+
+const asked = await runEmbedding({
+	profile: 'research.embedder',
+	input: question,
+	task: 'query',
+});
+const found = await runEmbedding({
+	profile: 'research.embedder',
+	input: abstracts,
 	task: 'document',
 });
-
-for (const vec of result.embeddings) {
-	console.log(`Index ${vec.index}: ${vec.dimensions} dimensions`);
-	console.log('Sample coordinates:', vec.values.slice(0, 3));
-}
+// ...
 ```
 
 ### `EmbeddingResult` Structure

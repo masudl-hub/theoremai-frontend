@@ -1,6 +1,6 @@
 ---
 title: Speech Profiles
-updated: 2026-10-26
+updated: 2026-10-30
 summary: Text-to-speech audio synthesis with custom voice models, speed, and format options.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -9,17 +9,16 @@ coverAlt: Mirror-like flooded rice terraces reflecting morning light
 coverPosition: 50% 50%
 ---
 
-Speech profiles (`type: 'speech'`) configure text-to-speech (TTS) agents that synthesize spoken audio files from written transcripts. They execute through `runTurn()`, transforming input text into binary audio streams.
+Speech profiles (`type: 'speech'`) configure text-to-speech (TTS) agents that synthesize spoken audio files from written transcripts. They execute through `runTurn()`, transforming input text into binary audio streams. The research cookbook's `research.podcast` reads the scout's findings aloud, and the scout reaches it through its `record_podcast` tool.
 
 ## Speech Profile Configuration
 
-Base profile fields (`identity`, `models`, `guardrails`, `observability`, `labels`) apply across all modalities as documented in [Profiles](/docs/profiles). Speech profiles declare a `speech` block for the voice, delivery style, speaking rate, and audio format. This slice shows only that block. It runs on a Gemini speech model, which needs a `voice` and has no `speed` field, so the pace goes in `style`:
+Base profile fields (`identity`, `models`, `guardrails`, `observability`, `labels`) apply across all modalities as documented in [Profiles](/docs/profiles). Speech profiles declare a `speech` block for the voice, delivery style, speaking rate, and audio format. This slice is the podcast agent's block. It runs on a Gemini speech model, which needs a `voice` and has no `speed` field, so the pace goes in `style`. Gemini speech makes PCM only, so the block sets no `format`:
 
 ```ts frame=profile:speech
 speech: {
 	voice: 'Kore', // Gemini speech has no default voice
-	style: 'authoritative maritime dispatch; clear enunciation and measured pacing',
-	format: 'mp3', // 'pcm' | 'mp3'
+	style: 'Warm and unhurried, like a podcast host talking to one listener.',
 },
 ```
 
@@ -45,9 +44,9 @@ sequenceDiagram
 | Property | Type | Description |
 | :--- | :--- | :--- |
 | **`voice`** | `string` | The upstream TTS voice ID or voice alias recognized by the bound provider. |
-| **`style`** | `string` | Plain-text guidance describing pace, accent, or delivery emotion (e.g. `'calm emergency broadcast'`). This instruction is interpreted by the provider and never spoken aloud. |
-| **`speed`** | `number` | The speaking rate. `1` is the voice's own pace. |
-| **`format`** | `'pcm' \| 'mp3'` | The audio encoding. A provider that cannot make the format refuses the turn. |
+| **`style`** | `string` | Plain-text guidance describing pace, accent, or delivery emotion (e.g. `'Warm and unhurried'`). This instruction is interpreted by the provider and never spoken aloud. |
+| **`speed`** | `number` | The speaking rate. `1` is the voice's own pace. A Gemini speech model refuses it. |
+| **`format`** | `'pcm' \| 'mp3'` | The audio encoding. A provider that cannot make the format refuses the turn. Gemini speech makes `'pcm'` only. |
 
 ### Per-Turn Overrides
 
@@ -55,13 +54,10 @@ Callers can override `voice`, `style`, and `speed` dynamically for an individual
 
 ```ts frame=statements
 const events = runTurn({
-	profile: 'harbor.radio_announcer',
-	input: {
-		text: 'Gale warning in effect for harbor approaches until 0400 hours.',
-	},
+	profile: 'research.podcast',
+	// ...
 	speech: {
-		speed: 1.15,
-		style: 'urgent dispatch',
+		style: 'Brisk and bright, like a morning news summary.',
 	},
 });
 ```
@@ -74,19 +70,18 @@ Speech profiles are invoked through `runTurn()`, following the request dispatch 
 
 ### Basic Invocation
 
-```ts
-import { runTurn } from '@theoremjs/agents';
-
+```ts frame=statements
 const events = runTurn({
-	profile: 'harbor.radio_announcer',
+	profile: 'research.podcast',
 	input: {
-		text: 'Vessel Northern Star, proceed to anchorage bravo.',
+		text: 'This week, three ways to keep memory outside the prompt window.',
 	},
 });
 
 for await (const event of events) {
 	if (event.type === 'media') {
-		// event.media contains { mimeType: 'audio/mp3', data: string } (base64-encoded)
+		// event.media contains { mimeType: 'audio/wav', data: string } (base64-encoded)
+		// Gemini PCM arrives wrapped as WAV
 		playAudio(event.media.mimeType, event.media.data);
 	}
 }

@@ -32,37 +32,30 @@ Theorem provides a ready-made UI layer built on [Astryx](https://www.npmjs.com/p
 ```tsx
 import { TheoremChat } from '@theoremjs/react/ui';
 
-export function ResearchChat() {
-	return <TheoremChat endpoint="/api/theorem" />;
-}
+<TheoremChat endpoint="/api/theorem" />
 ```
 
 ### Context, Slots & Page Tools
 
 ```tsx
-import { TheoremChat } from '@theoremjs/react/ui';
-
-export function VesselDispatchChat() {
-	return (
-		<TheoremChat
-			endpoint="/api/theorem"
-			slots={{ sector: 'north-basin' }}
-			context={{ activeVessel: 'VSL-409', quayPosition: 12 }}
-			pageTools={{
-				highlightQuay: async (args) => {
-					document.getElementById(`quay-${args.quayId}`)?.scrollIntoView();
-					return { output: { success: true } };
-				},
-			}}
-			trace={true}
-			usage={true}
-		/>
-	);
-}
+<TheoremChat
+	slots={{ focus: 'arXiv' }}
+	context={{ reportTitle: 'Episodic memory for agents' }}
+	pageTools={{
+		check_device: () => ({
+			output: {
+				webgpu: 'gpu' in navigator,
+				// ...
+			},
+		}),
+	}}
+	trace={true}
+	usage={true}
+/>
 ```
 
 - **`slots`**: The value for each of the profile's slots, sent with every turn. A slot you name is fixed to that value. A slot you leave out gets a selector in the composer bar, which starts at its first allowed value.
-- **`context`**: Any JSON the page wants the agent to know. The latest value goes with every turn, and the profile's `inputs.context.from` must list `client`.
+- **`context`**: Any JSON the page wants the agent to know. The latest value goes with every turn, and the profile's `inputs.context.from` must list `client`. `research.scout` lists no sender, so add this before you send `context`.
 - **`pageTools`**: A function for each tool the profile declares with `answeredBy: 'page'`, by name. The reply waits while the page answers, and no one is asked.
 - **`trace`**: Drives the trace from your own control, and the built-in toggle hides. Omit it to keep the toggle. The trace needs a profile that records traces.
 - **`usage`**: Shows tokens and cost: each reply's total under it, and, on an agent tool's call row, what that agent used. Off by default.
@@ -73,24 +66,14 @@ export function VesselDispatchChat() {
 
 ```tsx
 import { LiveRunner } from '@theoremjs/react/live';
-import { useTheoremInterface, createHttpTransport } from '@theoremjs/react';
 
-const transport = createHttpTransport({ endpoint: '/api/theorem' });
-
-export function HarborCallView() {
-	const described = useTheoremInterface(transport);
-
-	if (described.status !== 'ready' || described.iface.type !== 'live') {
-		return <div>Loading...</div>;
-	}
-
-	return (
-		<LiveRunner
-			iface={described.iface}
-			connection={() => ({ profile: 'harbor.live_dispatch' })}
-		/>
-	);
-}
+// ...
+const described = useTheoremInterface(transport);
+// ...
+<LiveRunner
+	iface={described.iface}
+	connection={() => ({ profile: 'research.scout.live' })}
+/>
 ```
 
 `connection` returns what the call opens: a profile the relay knows by id, or your own `openMessage` for the relay. The relay is `/api/live/relay` on the page's host. To open another socket, return `createSocket`.
@@ -108,23 +91,17 @@ export function HarborCallView() {
 ```tsx
 import { TheoremDecision } from '@theoremjs/react/ui';
 
-export function PageReaderConsole() {
-	return (
-		<TheoremDecision
-			endpoint="/api/decision"
-			defaultState={JSON.stringify(
-				{
-					question:
-						'What write path do recent systems use to store episodic memory for language-model agents?',
-					passage:
-						'MemGPT (Packer et al.) pages conversational history into an external store and reloads relevant spans on later turns, treating context as a virtual memory hierarchy rather than a single prompt window.',
-				},
-				null,
-				2,
-			)}
-		/>
-	);
-}
+<TheoremDecision
+	endpoint="/api/decision"
+	defaultState={JSON.stringify(
+		{
+			question: 'What write path do recent systems use to store episodic memory?',
+			passage: 'MemGPT (Packer et al.) pages conversational history into an external store.',
+		},
+		null,
+		2,
+	)}
+/>
 ```
 
 ## 4. Vector Search & Embeddings (`<TheoremEmbedding />`)
@@ -134,15 +111,11 @@ export function PageReaderConsole() {
 ```tsx
 import { TheoremEmbedding } from '@theoremjs/react/ui';
 
-export function HarborSearchBench() {
-	return (
-		<TheoremEmbedding
-			endpoint="/api/embedding"
-			defaultText="Berth 4 clearance protocols require tugboat escort for vessels over 20,000 DWT."
-			defaultQuery="When is tugboat escort required?"
-		/>
-	);
-}
+<TheoremEmbedding
+	endpoint="/api/embedding"
+	defaultText="MemGPT (Packer et al.) pages conversational history into an external store."
+	defaultQuery="What write path do recent systems use to store episodic memory?"
+/>
 ```
 
 Once the documents are indexed, `EmbeddingSpaceView` draws the index as a space. Each document is a dot, placed by the three directions the vectors differ most along. A line joins a document to its nearest neighbour when that pair stands out, and a query's dot has a line to each match that stands out. Drag to turn it, and point at a dot to name its document.
@@ -154,9 +127,7 @@ Once the documents are indexed, `EmbeddingSpaceView` draws the index as a space.
 ```tsx
 import { TheoremHost } from '@theoremjs/react/ui';
 
-export function HarborToolWorkbench() {
-	return <TheoremHost endpoint="/api/host" />;
-}
+<TheoremHost endpoint="/api/host" />
 ```
 
 ## 6. Composable UI Primitives
@@ -206,7 +177,7 @@ export const researchTheme = defineTheme({
 Pass the customized theme and mode directly to components:
 
 ```tsx
-<TheoremChat endpoint="/api/theorem" theme={researchTheme} mode="dark" />
+<TheoremChat theme={researchTheme} mode="dark" />
 ```
 
 ### Layout Variables
@@ -223,7 +194,6 @@ Override messages per locale using the `labels` prop:
 
 ```tsx
 <TheoremChat
-	endpoint="/api/theorem"
 	labels={{
 		en: {
 			'@theorem.chat.greeting': 'Research Scout',
@@ -232,8 +202,7 @@ Override messages per locale using the `labels` prop:
 		},
 		fr: {
 			'@theorem.chat.greeting': 'Éclaireur de recherche',
-			'@theorem.composer.placeholder': 'Envoyer un message à @{handle}...',
-			'@astryx.chatSendButton.send': 'Envoyer',
+			// ...
 		},
 	}}
 />

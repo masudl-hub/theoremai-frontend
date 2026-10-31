@@ -1,7 +1,7 @@
 ---
 title: Function Tools
-updated: 2026-10-29
-summary: Authoring TypeScript function tools with Zod schema validation, streaming progress generators, and DOM page tools.
+updated: 2026-10-30
+summary: Authoring TypeScript function tools with Zod schema validation, streaming progress generators, and tools the page answers.
 entry: src/kernel/tools/execute.ts
 covers: src/kernel/tools/execute.ts, src/kernel/tools/types.ts
 cover: /imagery/th30_mineralhills.png
@@ -17,43 +17,46 @@ The kernel checks both sides with [Zod](https://zod.dev): the input before your 
 
 Register function tools using `registerTool()` with `type: 'function'`:
 
-```ts
-import { registerTool } from '@theoremjs/agents';
-import { z } from 'zod';
+```ts frame=tool:function
+name: 'export_report',
+// ...
+input: z.object({
+	title: z.string().describe("The report's title"),
+	body: z.string().describe('The report, in Markdown'),
+}),
 
-export const holdStatusTool = registerTool({
-	type: 'function',
-	name: 'check_hold_status',
-	description: 'Look up why a freight shipment is currently on hold.',
-	category: 'logistics',
-	access: 'read-only',
-	paths: ['*'],
-	loadTier: 'T0',
-	permission: 'auto',
+output: z.object({
+	saved: z.boolean(),
+}),
 
-	input: z.object({
-		shipmentId: z.string().describe('The alphanumeric shipment identifier'),
-	}),
-
-	output: z.object({
-		status: z.enum(['hold', 'cleared', 'in_transit']),
-		reason: z.string(),
-	}),
-
-	handler: async (input, ctx) => {
-		const record = await fetchShipment(input.shipmentId, { signal: ctx.signal });
-		return {
-			status: record.status,
-			reason: record.holdReason ?? 'No hold applied',
-		};
-	},
-});
+handler: async (input, ctx) => {
+	const response = await fetch('https://app.example/reports', {
+		method: 'POST',
+		body: JSON.stringify(input),
+		signal: ctx.signal,
+	});
+	return { saved: response.ok };
+},
+// ...
 ```
 
 * `name`: Identifier used by the model to call the tool.
 * `description`: Explains to the model what the tool does and when to call it.
 * `input`: Zod schema compiled to provider JSON Schema and checked before `handler` runs.
 * `output`: Zod schema validating the value returned by `handler`. A value that fails it, or no value at all, fails the call as `invalid_output`.
+
+The cookbook's `export_report` is a stub that answers `{ saved: true }`. The handler above is yours to write, and `https://app.example/reports` stands for your own store.
+
+## Why `export_report` Is `read-write`
+
+```ts frame=tool:function
+name: 'export_report',
+// ...
+access: 'read-write',
+// ...
+```
+
+`access` decides whether a call survives a page read. `research.scout` sets `guardrails.taint.afterRemoteRead: 'write'`, so once a turn has read a remote result, `export_report` fails with `tainted_turn` and its handler does not run. A page the scout read cannot steer what it saves. A `read-only` tool such as `check_device` is never stopped this way. See [Confused-Deputy Taint Tracking](/docs/guardrails/ingress).
 
 ## Handler Execution Models
 
@@ -65,8 +68,8 @@ The standard handler takes typed `input` and a `ToolContext`, and returns the ty
 
 ```text
 handler: async (input, ctx) => {
-	const result = await db.query(input.query);
-	return { rows: result.rows };
+	const saved = await saveReport(input, { signal: ctx.signal });
+	return { saved };
 }
 ```
 
@@ -76,11 +79,11 @@ For long-running tasks, declare an `async function*` handler. It can yield `prog
 
 ```text
 handler: async function* (input, ctx) {
-	yield { kind: 'progress', data: { percent: 30, stage: 'Connecting to telemetry' } };
-	const trajectory = await computeTrajectory(input.routeId, { signal: ctx.signal });
+	yield { kind: 'progress', data: { percent: 30, stage: 'Saving the report' } };
+	const saved = await saveReport(input, { signal: ctx.signal });
 
-	yield { kind: 'progress', data: { percent: 100, stage: 'Calculation complete' } };
-	yield { kind: 'complete', output: trajectory };
+	yield { kind: 'progress', data: { percent: 100, stage: 'Report saved' } };
+	yield { kind: 'complete', output: { saved } };
 }
 ```
 
@@ -88,29 +91,13 @@ The host receives the other events as the tool runs; the model reads only the `c
 
 ### Browser Tools (`answeredBy: 'page'`)
 
-When the page the person is on answers a call (such as querying the DOM, inspecting canvas state, or reading browser storage), omit the `handler` and declare `answeredBy: 'page'`. The `look` and `act` tools from `@theoremjs/agents/surface` work this way. The kernel supplies the handler; it returns what the page sent:
+When the page the person is on answers a call, omit the `handler` and declare `answeredBy: 'page'`. The scout's `check_device` works this way, because only the page can see the device. The `look` and `act` tools from `@theoremjs/agents/surface` work this way. The kernel supplies the handler; it returns what the page sent:
 
-```ts
-import { registerTool } from '@theoremjs/agents';
-import { z } from 'zod';
-
-export const readViewportSelectionTool = registerTool({
-	type: 'function',
-	name: 'read_viewport_selection',
-	description: 'Read the currently selected elements in the user canvas.',
-	category: 'workspace',
-	access: 'read-only',
-	paths: ['*'],
-	loadTier: 'T0',
-	permission: 'auto',
-
-	answeredBy: 'page', // Omit handler; execution target is the client web page
-
-	input: z.object({}),
-	output: z.object({
-		selectedIds: z.array(z.string()),
-	}),
-});
+```ts frame=tool:function
+name: 'check_device',
+// ...
+answeredBy: 'page', // Omit handler; execution target is the client web page
+// ...
 ```
 
 #### Contract & Schema Verification
@@ -118,10 +105,12 @@ export const readViewportSelectionTool = registerTool({
 Under the TypeScript `FunctionToolInput` type, `handler` is required unless the tool declares `answeredBy: 'page'`. A page tool's own `handler`, if you give one, is replaced by the kernel's:
 
 ```text
-type FunctionToolInput<TIn, TOut> = ... & (
-	| { handler: ToolHandler<TIn, NoInfer<TOut>>; answeredBy?: 'page' }
-	| { answeredBy: 'page'; handler?: undefined }
-);
+type FunctionToolInput<TIn, TOut> =
+	// ...
+	& (
+		| { handler: ToolHandler<TIn, NoInfer<TOut>>; answeredBy?: 'page' }
+		| { answeredBy: 'page'; handler?: undefined }
+	);
 ```
 
 The page's answer is checked like any handler's output. The kernel validates it against the tool's Zod `output` schema, and an answer that fails it fails the call as `invalid_output` before it reaches the model.
@@ -151,17 +140,17 @@ Handlers receive a `ToolContext` carrying host state and runtime affordances:
 
 ### Grounding Sources (`sources`)
 
-When a tool fetches web pages or places, list them as citations with the `sources` hook. Each source has a `title`, a `uri` and a `type` of `'web'` or `'maps'`:
+When a tool fetches web pages or places, list them as citations with the `sources` hook. Each source has a `title`, a `uri` and a `type` of `'web'` or `'maps'`. The cookbook's tools set no `sources`, so this is for a tool of your own whose output carries `candidates` shaped like those in `research.reply`:
 
 ```text
-// ... inside registerTool definition
-sources: (output) => [
-	{
-		title: output.vesselName,
-		uri: `https://maritime.registry/vessels/${output.imoNumber}`,
+// ...
+sources: (output) =>
+	output.candidates.map((candidate) => ({
+		title: candidate.name,
+		uri: candidate.url,
 		type: 'web',
-	},
-],
+	})),
+// ...
 ```
 
 The kernel emits the valid sources as one `citation` event for the call. A source that does not fit that shape, or a hook that throws, becomes a `sources_invalid` warning, and that source is not cited.
@@ -170,13 +159,13 @@ The kernel emits the valid sources as one `citation` event for the call. A sourc
 
 A handler must return the type of its `output` schema, or it does not compile. When it returns a value it cannot type, such as what a client sent back, wrap it in `uncheckedOutput()` to leave the check to run time:
 
-```ts
-import { uncheckedOutput } from '@theoremjs/agents';
-
-async function _exampleHandler() {
+```ts frame=tool:function
+// ...
+handler: async () => {
 	const rawPayload: unknown = await remoteClient.fetchBlob();
 	return uncheckedOutput(rawPayload);
-}
+},
+// ...
 ```
 
 The kernel checks the value against your Zod `output` schema when the call settles. A mismatch fails the call as `invalid_output`.

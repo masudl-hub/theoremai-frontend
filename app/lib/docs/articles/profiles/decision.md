@@ -9,20 +9,20 @@ coverAlt: Vibrant burnt orange sandstone canyon walls
 coverPosition: 50% 50%
 ---
 
-Decision profiles (`type: 'decision'`) configure stateless evaluation agents that judge structured JSON application state against rubric-based questions. They are executed through `runDecision()`, returning deterministic category selections, numerical scores, confidence probabilities, and bounding boxes in a single non-conversational call.
+Decision profiles (`type: 'decision'`) configure stateless evaluation agents that judge structured JSON application state against rubric-based questions. They are executed through `runDecision()`, returning category selections, numerical scores, confidence probabilities, and bounding boxes in a single non-conversational call. The research cookbook's `research.pagereader` is one: it judges whether a passage from a page the scout read bears on the question.
 
 ## Decision Profile Configuration
 
-Base profile fields (`identity`, `guardrails`, `observability`, `labels`) apply across all modalities as documented in [Profiles](/docs/profiles). Unlike conversational text agents or live sessions, decision profiles execute no tool loops, store no conversation history, and require no system prompts. They bind exactly one model. This slice shows the two decision blocks:
+Base profile fields (`identity`, `guardrails`, `observability`, `labels`) apply across all modalities as documented in [Profiles](/docs/profiles). Unlike conversational text agents or live sessions, decision profiles execute no tool loops, store no conversation history, and require no system prompts. They bind exactly one model. The pagereader binds TypeSafe's `jev-1.14.0`. This slice shows its two decision blocks:
 
 ```ts frame=profile:decision
 inputs: {
 	state: 'json',
-	maxStateBytes: 256 * 1024, // 256 KB limit on the JSON state
+	maxStateBytes: 256 * 1024, // Add this for a 256 KB limit on the JSON state
 },
 decision: {
 	// A host-owned id the trace records; not a schema definition
-	contract: 'cargo_hazard_classification_v1',
+	contract: 'research.page-passages.v1',
 },
 ```
 
@@ -58,18 +58,31 @@ sequenceDiagram
 
 ### Multimodal Asset References
 
-When a decision evaluates images (e.g. photos of cargo containers or inspection tags), callers pass image data in `DecisionRequest.assets` using bracketed references like `<seal_photo>`:
+When a decision evaluates images, callers pass image data in `DecisionRequest.assets` using bracketed references like `<results_chart>`. The scout's page reading sends no images, so this is a call you make yourself, here to ask the pagereader about a chart from a paper:
 
 ```ts frame=statements
-const assets = {
-	'<seal_photo>': {
-		mimeType: 'image/jpeg',
-		data: base64JpegBytes,
+const result = await runDecision(
+	{
+		profile: 'research.pagereader',
+		state: {
+			// ...
+			chart: '<results_chart>',
+		},
+		assets: {
+			'<results_chart>': {
+				mimeType: 'image/jpeg',
+				data: base64JpegBytes,
+			},
+		},
+		questions: {
+			// ...
+		},
 	},
-};
+	hostOptions,
+);
 ```
 
-The model reads the image wherever its reference appears in `state` or in a question's instructions. Unreferenced assets are omitted from the request automatically.
+The model reads the image wherever its reference appears in `state` or in a question's instructions or criteria. Unreferenced assets are omitted from the request automatically. An asset must be PNG or JPEG. A TypeSafe binding refuses a call with images or a `box` question unless it sets `options: { images: true }`, as the pagereader's does.
 
 ## Question Contracts & Rubrics
 
@@ -113,49 +126,65 @@ Decisions are executed using `runDecision(request, options)`. The options carry 
 
 ### Basic Invocation
 
-```ts
-import { runDecision } from '@theoremjs/agents';
-
+```ts frame=statements
 const result = await runDecision(
 	{
-		profile: 'harbor.cargo_safety_decision',
+		profile: 'research.pagereader',
 		state: {
-			containerId: 'CONT-9941',
-			declaredWeightKg: 14200,
-			flammable: true,
-			sealIntact: true,
+			question:
+				'What write path do recent systems use to store episodic memory for language-model agents?',
+			passage:
+				'MemGPT (Packer et al.) pages conversational history into an external store and reloads relevant spans on later turns, treating context as a virtual memory hierarchy rather than a single prompt window.',
 		},
 		questions: {
-			clearanceVerdict: {
+			passage: {
 				type: 'choice',
-				instructions: 'Determine intake disposition based on container state.',
+				instructions:
+					'Does `passage` state a fact a careful researcher would want when answering `question`, including facts that do not settle it and anything contradictory?',
 				criteria: {
-					clear: 'Safe for immediate yard intake.',
-					hold: 'Hold for physical inspection.',
-					quarantine: 'Hazardous cargo or compromised seal requiring quarantine.',
+					relevant: 'The passage states such a fact.',
+					not_relevant:
+						'The passage does not: it is about something else, or is only a heading, navigation, a reference or a list of links.',
 				},
 			},
-			riskScore: {
+			// ...
+		},
+	},
+	hostOptions,
+);
+
+const verdict = result.answers.passage;
+if (verdict.type === 'choice') {
+	console.log(`Verdict: ${verdict.choice}`);
+	console.log(`Confidence: ${verdict.confidence}`);
+	console.log('Class probabilities:', verdict.probabilities);
+}
+```
+
+### A Score Question
+
+A `score` question lists its criteria from lowest to highest. A call passes it in `questions`, and its answer's `score` is the level it chose:
+
+```ts frame=statements
+await runDecision(
+	{
+		profile: 'research.pagereader',
+		state: { question: '…', passage: '…' },
+		questions: {
+			support: {
 				type: 'score',
-				instructions: 'Score the overall intake risk from lowest to highest.',
+				instructions: 'Score how far `passage` answers `question`, from lowest to highest.',
 				criteria: [
-					'Routine non-hazardous cargo.',
-					'Heavy non-hazardous cargo.',
-					'Flammable cargo with verified intact seal.',
-					'Compromised seal or unverified manifest.',
+					'It does not bear on the question.',
+					'It gives background only.',
+					'It answers part of the question.',
+					'It answers the question and names the method.',
 				],
 			},
 		},
 	},
 	hostOptions,
 );
-
-const verdict = result.answers.clearanceVerdict;
-if (verdict.type === 'choice') {
-	console.log(`Verdict: ${verdict.choice}`);
-	console.log(`Confidence: ${verdict.confidence}`);
-	console.log('Class probabilities:', verdict.probabilities);
-}
 ```
 
 ### `DecisionResult` Structure

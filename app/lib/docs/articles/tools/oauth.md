@@ -1,6 +1,6 @@
 ---
 title: OAuth PKCE Flow
-updated: 2026-10-29
+updated: 2026-10-30
 summary: OAuth 2.0 PKCE authorization flow with stateless encrypted state, session binding, and token refresh.
 entry: src/kernel/auth/oauth.ts
 covers: src/kernel/auth/oauth.ts, src/kernel/auth/crypto.ts
@@ -24,6 +24,15 @@ flowchart TD
 		Persist --> Resume
 ```
 
+## What You Need From GitHub
+
+This page signs a person in to GitHub for `list_my_repos`, the tool you add in [Auth & Credentials](/docs/tools/auth). The cookbook does not ship that tool or this flow. These facts about GitHub were checked on 30 October 2026:
+
+* **Sign in against the MCP server.** `https://api.githubcopilot.com/mcp` publishes RFC 9728 metadata that names the issuer `https://github.com/login/oauth`, which advertises S256. Theorem finds the endpoints from that.
+* **`api.github.com` publishes no metadata.** Discovery fails there. For a service like this, pass the endpoints in `preResolved`.
+* **Register an OAuth App.** It gives you a client id and a client secret. GitHub's web flow requires the secret at the token endpoint. The app's callback URL must be your `redirectUri`.
+* **Pass `iss` to the exchange.** GitHub's metadata says it sends `iss`, so a callback without it is refused.
+
 ## 1. Initiate PKCE Flow
 
 When a turn halts on an auth gate (`kind: 'auth'`), initiate the authorization request using `createOAuthPkceFlow()`:
@@ -36,8 +45,8 @@ import { createOAuthPkceFlow } from '@theoremjs/agents/kernel';
 export async function startSignIn(gate: ToolGate) {
 	if (gate.kind !== 'auth') return;
 	const flow = await createOAuthPkceFlow({
-		resourceServerUrl: 'https://api.tracker.example',
-		clientId: 'https://app.example/oauth/client.json',
+		resourceServerUrl: 'https://api.githubcopilot.com/mcp',
+		clientId: process.env.GITHUB_CLIENT_ID ?? '',
 		redirectUri: 'https://app.example/oauth/callback',
 		scopes: gate.authChallenge.requiredScopes,
 		signingSecret: process.env.OAUTH_STATE_SECRET ?? '',
@@ -53,7 +62,8 @@ export async function startSignIn(gate: ToolGate) {
 
 * **`signingSecret`**: A secret key of 32 bytes or more maintained on your server. Theorem encrypts the PKCE code verifier and state parameters into the OAuth `state` string. This allows your callback route to verify and complete the exchange without storing pending flow state in a database.
 * **`sessionBinding`**: A unique identifier tied to the user's active browser session. Theorem verifies that the callback originates from the identical session that started the authorization, preventing session-fixation attacks.
-* **`resourceServerUrl`**: The target service origin (RFC 8707). Theorem binds the issued token to this resource server so it cannot be forwarded to unintended hosts.
+* **`resourceServerUrl`**: The https URL of the service, such as an MCP server, and the token's audience (RFC 8707). The token goes only to this origin, at this path or below it. Without RFC 9728 metadata of its own, the URL is treated as its own authorization server.
+* **`preResolved`**: Optional. The `issuer`, `authorizationEndpoint` and `tokenEndpoint` to use in place of discovery.
 
 ## 2. Exchange Authorization Code
 
@@ -69,38 +79,36 @@ const { credential } = await exchangeOAuthPkce({
 	redirectUri: 'https://app.example/oauth/callback',
 	signingSecret: process.env.OAUTH_STATE_SECRET ?? '',
 	sessionBinding: userSessionId,
-	clientSecret: process.env.OAUTH_CLIENT_SECRET, // Optional for confidential clients
+	clientSecret: process.env.GITHUB_CLIENT_SECRET, // A confidential client's secret; GitHub requires it
 });
 
 // Save credential into your application's credential store
-await userCredentials.set('tracker', credential);
+await userCredentials.set('github', credential);
 ```
 
 The code exchange refuses a callback that is not safe:
 1. **Session Match**: Refuses a callback whose session binding does not match the one that started the flow.
 2. **Redirect Match**: Refuses a `redirectUri` that is not the one that started the flow.
-3. **Issuer Verification**: Requires the RFC 9207 `iss` value when the server sends it, and refuses one that does not match.
+3. **Issuer Verification**: Requires the RFC 9207 `iss` value when the server's metadata advertises it, and refuses one that does not match.
 4. **Sealed Token Endpoint**: Sends the code only to the token endpoint sealed in `state`, never to one the caller gives.
-5. **Scope Enforcement**: Refuses a token that grants scopes that were not requested.
+5. **Scope Enforcement**: Refuses a token that grants scopes that were not requested. A grant may join its scopes with commas, as GitHub's `repo,gist` does: each part is checked.
 6. **No Redirects**: Does not follow a redirect during a token request.
 
 ## 3. Resume the Held Tool Call
 
 With the credential persisted in your `ToolCredentialSource`, resume the gated tool call using `invokeTool()`:
 
-```ts
-import { invokeTool } from '@theoremjs/agents';
-
+```ts frame=statements
 const _resumeEvents = invokeTool({
 	profile: 'research.scout',
 	name: gated.name,
-	snapshot: gated.snapshot,
+	input: gated.arguments,
+	// ...
 	resume: {
 		granted: true,
 		signIn: true,
 	},
 	credentials: userCredentials,
-	input: gated.arguments,
 });
 ```
 
@@ -111,9 +119,10 @@ const _resumeEvents = invokeTool({
 
 OAuth access tokens expire. When a tool with an OAuth credential executes, Theorem checks the token's expiration:
 
-* If the access token is within 30 seconds of its expiry and a `refreshToken` is present, Theorem automatically exchanges the refresh token before executing the tool call.
+* If the access token is within 30 seconds of its expiry and a `refreshToken` is present, Theorem automatically exchanges the refresh token before executing the tool call. A confidential client's secret comes from `credentials.clientSecret`.
+* With no `refreshToken`, the tool's `onUnauthenticated` policy applies.
 * The kernel saves the newly issued tokens to your `credentials` source via `credentials.set()` before dispatching the request.
-* Multiple concurrent calls sharing the same credential slot consolidate into a single token refresh request.
+* Concurrent calls that find the same expired token share a single refresh request.
 
 ## Related Guides
 

@@ -61,16 +61,16 @@ The scout leaves `injection` at its defaults, so an injection in a page is flagg
 
 ```ts frame=profile:text
 guardrails: {
-		detect: {
-			injection: {
-				at: {
-					user: 'block', // Refuse user messages containing injections
-					tool_output_http: 'block', // Drop HTTP tool results attempting overrides
-					tool_output_mcp: 'block', // Drop MCP tool results attempting overrides
-				},
+	detect: {
+		injection: {
+			at: {
+				user: 'block', // Refuse user messages containing injections
+				tool_output_http: 'block', // Drop HTTP tool results attempting overrides
+				tool_output_mcp: 'block', // Drop MCP tool results attempting overrides
 			},
 		},
 	},
+},
 ```
 
 ## Tool Directives (`tool_instructions`)
@@ -95,16 +95,16 @@ To refuse the result itself, set the remote tool boundaries to `block`:
 
 ```ts frame=profile:text
 guardrails: {
-		detect: {
-			tool_instructions: {
-				at: {
-					tool_output_http: 'block',
-					tool_output_mcp: 'block',
-					tool_output_agent: 'block',
-				},
+	detect: {
+		tool_instructions: {
+			at: {
+				tool_output_http: 'block',
+				tool_output_mcp: 'block',
+				tool_output_agent: 'block',
 			},
 		},
 	},
+},
 ```
 
 ## Confused-Deputy Taint Tracking (`taint`)
@@ -113,7 +113,7 @@ Pattern matching alone cannot catch every novel or encoded attack. Taint trackin
 
 The kernel records the origin of each tool result:
 * **Local Tools** (`function`): Host code you wrote. Its results do not taint the turn.
-* **Remote Tools** (`http`, `mcp`, `agent`): Bytes the host does not control. Their results taint the turn. Every tool on `research.scout` is remote, so the first result it reads taints the turn.
+* **Remote Tools** (`http`, `mcp`, `agent`): Bytes the host does not control. Their results taint the turn. The tools `research.scout` searches and reads with are remote, so the first result it reads taints the turn.
 
 ### Gating Tools After Remote Reads (`afterRemoteRead`)
 
@@ -121,10 +121,10 @@ The `afterRemoteRead` gate refuses tool calls on a tainted turn by each tool's d
 
 ```ts frame=profile:text
 guardrails: {
-		taint: {
-			afterRemoteRead: 'write', // 'off' | 'destructive' | 'write'
-		},
+	taint: {
+		afterRemoteRead: 'write', // 'off' | 'destructive' | 'write'
 	},
+},
 ```
 
 | Policy | Behavior After Reading Remote Content |
@@ -133,7 +133,7 @@ guardrails: {
 | **`'destructive'`** | Refuses calls to tools with `access: 'destructive'`. |
 | **`'write'`** | Refuses calls to tools with `access: 'read-write'` or `'destructive'`, so only read-only tools run for the rest of the turn. |
 
-Read-only calls always run, and every tool on the scout is `read-only`, so this setting refuses nothing on the scout as it stands. It takes effect when you add a tool that writes: after the turn reads a page, calls to that tool are refused. Because `afterRemoteRead` looks only at where the turn read from and at declared tool access, it stops a call even when the injection got past every content detector.
+Read-only calls always run. `research.scout` sets `'write'`, and `export_report` is its one tool that writes, so after the turn reads a page, a call to `export_report` is refused. Because `afterRemoteRead` looks only at where the turn read from and at declared tool access, it stops a call even when the injection got past every content detector.
 
 ## Destination Steering Protection (`remoteDestination`)
 
@@ -141,10 +141,10 @@ A hijacked agent has to send what it took somewhere, and the attacker has to say
 
 ```ts frame=profile:text
 guardrails: {
-		taint: {
-			remoteDestination: 'confirm', // 'off' | 'confirm' | 'block'
-		},
+	taint: {
+		remoteDestination: 'confirm', // 'off' | 'confirm' | 'block'
 	},
+},
 ```
 
 1. **Destinations**: Email addresses, the host of a link (`https://…`, `http://…` or `www.…`), and IBAN-shaped account numbers.

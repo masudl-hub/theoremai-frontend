@@ -53,8 +53,8 @@ The profile's `providerContinuation` block establishes who owns conversation mem
 
 ```ts frame=profile:text
 providerContinuation: {
-		history: 'host', // 'host' | 'stateless' | 'provider'
-	},
+	history: 'host', // 'host' | 'stateless' | 'provider'
+},
 ```
 
 Continuation policies are scoped strictly to turn types (`text`, `image`, `speech`, and `live`). Profiles targeting `decision`, `embedding`, or `host` do not support continuation and reject this setting during validation.
@@ -134,30 +134,21 @@ export interface ProviderWarning {
 
 `runTurn` streams events. The `done` event carries `providerState` when the protocol saved one. The host keeps it with the history it stores, and sends both on the next turn:
 
-```ts
-import { type ProviderCheckpoint, runTurn, type TurnRequest } from '@theoremjs/agents';
+```ts frame=statements
+import type { ProviderCheckpoint } from '@theoremjs/agents';
 
-async function ask(request: TurnRequest) {
-	let reply = '';
-	let providerState: ProviderCheckpoint | undefined;
-	for await (const event of runTurn(request)) {
-		if (event.type === 'text') reply += event.text;
-		if (event.type === 'done') providerState = event.providerState;
-	}
-	return { reply, providerState };
+let providerState: ProviderCheckpoint | undefined;
+for await (const event of runTurn(request)) {
+	// ...
+	if (event.type === 'done') providerState = event.providerState;
 }
 
-const question = 'Find recent papers on episodic memory for language models.';
-const first = await ask({ profile: 'research.scout', input: { text: question } });
-
-await ask({
+// The next turn, with the history the host stored
+const next = runTurn({
 	profile: 'research.scout',
-	providerState: first.providerState,
+	providerState,
 	input: {
-		history: [
-			{ role: 'user', content: question },
-			{ role: 'assistant', content: first.reply },
-		],
+		history,
 		text: 'Quote the exact claims from their abstracts.',
 	},
 });
@@ -171,8 +162,8 @@ For security-sensitive or high-throughput batch workloads where context retentio
 
 ```ts frame=profile:text
 providerContinuation: {
-		history: 'stateless',
-	},
+	history: 'stateless',
+},
 ```
 
 When `history: 'stateless'` is set:

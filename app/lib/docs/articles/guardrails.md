@@ -86,35 +86,35 @@ When an action is set to `'redact'`, Theorem replaces matches with structured pl
 
 ## Configuring Guardrails (`guardrails`)
 
-Guardrails are configured directly on an agent profile, in its `guardrails` block. `research.scout` sets only `guardrails.network`, so its detectors run at their defaults. To make them stricter, add this:
+Guardrails are configured directly on an agent profile, in its `guardrails` block. `research.scout` sets `guardrails.network`, `guardrails.taint.afterRemoteRead` and one detector of its own, so the built-in detectors run at their defaults. To make them stricter, add this:
 
 ```ts frame=profile:text
 guardrails: {
-		quota: { perDay: 1000 },
+	quota: { perDay: 1000 },
 
-		detect: {
-			ids: 'redact',
-			credentials: {
-				at: { reply: 'block' },
-			},
-			injection: {
-				at: {
-					user: 'block',
-					tool_output_http: 'block',
-					tool_output_mcp: 'block',
-				},
-			},
-			tool_leak: {
-				action: 'block',
-				allow: { names: ['search_web'] },
+	detect: {
+		ids: 'redact',
+		credentials: {
+			at: { reply: 'block' },
+		},
+		injection: {
+			at: {
+				user: 'block',
+				tool_output_http: 'block',
+				tool_output_mcp: 'block',
 			},
 		},
-
-		blockedReply: {
-			onBlock: 'retry',
-			maxRetries: 1,
+		tool_leak: {
+			action: 'block',
+			allow: { names: ['search_web'] },
 		},
 	},
+
+	blockedReply: {
+		onBlock: 'retry',
+		maxRetries: 1,
+	},
+},
 ```
 
 * **Global Action**: Specifying a single action string (e.g., `ids: 'redact'`) applies that rule across all boundaries where the detector operates.
@@ -151,33 +151,33 @@ Each guardrail applies only to some profile types.
 | `quota` | Yes | Yes | Yes | No | No |
 | `disclosure` | No | No | No | No | Yes |
 
-An `embedding` profile takes no guardrail.
+A `transcription` profile takes `detect` and `quota`, as `speech` does. An `embedding` profile takes no guardrail.
 
 ## Custom Host Detectors
 
-Enterprises can register custom detectors under namespaced keys (`vendor.name`) to enforce proprietary compliance rules or identify internal IDs:
+Add a detector of your own under a namespaced key (`namespace.name`) to enforce a rule the built-in detectors do not cover. `research.retraction` flags a page that says its paper was taken back:
 
-```text
-// ... inside the profile's guardrails.detect
-'acme.employee_id': {
-	label: 'Employee ID',
-	action: 'redact',
-	patterns: [/\bEMP-\d{6}\b/i],
-	hint: 'Do not include employee badge numbers in outputs.',
-},
+```ts
+import { compileDetect } from '@theoremjs/agents/guardrails/compile';
 
-'acme.compliance_scan': {
-	label: 'Restricted Topics',
-	action: 'block',
-	find: (text, context) => {
-		// Return array of { start, end } spans matching custom logic
-		return findRestrictedSpans(text);
+// Set this as guardrails.detect on the profile
+export const detect = compileDetect({
+	'research.retraction': {
+		label: 'Retracted paper',
+		at: { tool_output_http: 'flag', tool_output_mcp: 'flag' },
+		patterns: [
+			{
+				name: 'retraction',
+				words: ['retracted', 'retraction notice', 'withdrawn by the authors'],
+			},
+		],
 	},
-},
+});
 ```
 
-* **`patterns`**: Array of RegExp matchers evaluated against the text as written.
-* **`find`**: Synchronous function returning an array of `{ start, end }` match spans for programmatic scanning (such as checksum verification).
+* **`action`** and **`at`**: A detector of your own has no default. It reads only the boundaries that `action` or `at` set above `ignore`.
+* **`patterns`**: A list of named patterns, read on the text as written. Each holds `words`, matched whole and without regard to case, or a regular expression as `pattern` with optional `flags`. Patterns need a compiled table: wrap the setting in `compileDetect`, or write the table with `agents detect-compile` and set it as `compiled`.
+* **`find`**: Synchronous function returning an array of `{ start, end }` match spans for programmatic scanning (such as checksum verification). Use it with `patterns` or in their place. If it throws, or returns a span outside the text, the text does not cross.
 * **`hint`**: A repair hint delivered to the model when the detector blocks an outbound reply under `blockedReply: 'retry'`.
 * **`theorem`**: Set to `false` on a built-in detector (e.g., `credentials: { theorem: false, patterns: [...] }`) to disable Theorem's default patterns and run exclusively host patterns.
 
@@ -242,7 +242,6 @@ When guardrails inspect text, Theorem emits typed events on turn spans:
 
 Configure privacy bounds on telemetry in the profile's `observability` block:
 ```text
-// ... inside profile definition
 observability: {
 	include: {
 		guardrailDecisions: true,     // Log decisions to traces

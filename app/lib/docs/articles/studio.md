@@ -55,7 +55,8 @@ The editor has two views, **Editor** and **Code**. One button switches between t
 Studio checks the draft again each time it changes. It does not wait for a turn to fail:
 
 * **Model Routes**: Each model's provider must exist in the workspace and serve the agent's type on the model's protocol. The check does not read your keys: the command checks each provider's key once when the project opens, and a run whose key slot is empty fails with an `auth` error.
-* **Tools**: Each tool needs a name, used once. A tool's input and output JSON schemas must parse, an MCP tool needs its tool name, and an agent tool needs its agent.
+* **Prompt**: A `when` line must read a condition or a slot the profile declares, with a value it lists.
+* **Tools**: Each tool needs a name, used once. A tool's input and output JSON schemas must parse, an MCP tool needs its tool name, and an agent tool needs its agent. A tool's reader must be a decision agent with a choice question.
 * **Structured Output**: A structured reply needs a schema id, and its schema must parse.
 * **Guardrails**: Allowed hosts and allowed names may not be blank, and custom detectors and their patterns must be valid.
 * **Where Problems Show**: Each problem shows on the node it belongs to, and in the code editor on its line.
@@ -82,6 +83,7 @@ The chat sits beside the editor, so you can test a change at once:
 
 * **Streaming**: Thoughts, text and tool calls show as they arrive.
 * **Tool Gates**: A gated tool call shows a card with its arguments. You allow it or deny it.
+* **Tool Readers**: A tool can name a decision agent as its reader, so the model reads less. When a tool returns text and its call carries a `question`, Studio splits the text at blank lines and the reader judges each passage. A passage stays when each of the reader's choice questions lands on its first choice. If the reader fails, the model reads the output whole. The kernel has no such setting: in your own app, you run a reader at `post_tool`.
 * **Unsaved Edits**: While a project has edits you have not saved, your files and your edits run side by side under one composer. What you send goes to both, and each side treats it as its own chat would. An idle side sends it, and a busy side queues it. A steer goes to each side whose running turn takes one. The composer's model control shows each side's models in two columns, so you can run a different model on each side and compare them. Each column offers only what that side's profile offers. If you attach a file that a side's profile does not take, that side refuses the turn in its own pane. If you pick no model, each side runs its own default.
 * **Who a Run Acts As**: A setup file can export `people` and `host`. You then pick a place and a person in Settings, under People, and each run acts for that person. Each person keeps their own chat and session.
 
@@ -117,7 +119,7 @@ The command starts two servers that only this machine reaches: your project's se
 
 ### The Screen in Your App
 
-Show the same studio to your users: a playground, or an internal tool.
+Show the same studio to your users: a playground, or an internal tool. [Embedded Studio Screen & Lent Keys](/docs/studio/embedded) lists its stylesheets.
 
 ```tsx
 import { LayerProvider } from '@astryxdesign/core/Layer';
@@ -125,11 +127,7 @@ import { Theme } from '@astryxdesign/core/theme';
 import { theoremStudioTheme } from '@theoremjs/studio/ui/built/theorem-studio.ts';
 import { openStudio } from '@theoremjs/studio/ui/lib/studio-open.ts';
 import { StudioScreen } from '@theoremjs/studio/ui/studio-screen.tsx';
-import '@theoremjs/studio/ui/figtree.css';
-import '@astryxdesign/core/reset.css';
-import '@astryxdesign/core/astryx.css';
-import '@theoremjs/studio/ui/built/theme.css';
-import '@theoremjs/studio/ui/motion.css';
+// ...
 
 // In the browser, before the first render: it reads this tab's kept workspace.
 const opened = await openStudio();
@@ -148,7 +146,7 @@ export function Studio() {
 Your server answers `/api/studio` with one handler, `createStudioDraftHandler()`. It saves nothing.
 
 * **Without Lent Keys**: Drafts run in the browser, on the builder's own keys.
-* **Lent Keys**: You can lend your keys. A `LentKeys` says which models they run, which built-in tools each model may use, and how large a decision may be. A `spend` function counts each run for whoever sent it, and can refuse it.
+* **Lent Keys**: You can lend your keys. A `LentKeys` says which models they run, which built-in tools each model may use, and how large a decision may be. A `spend` function counts each run for whoever sent it, and each passage a tool's reader reads, and can refuse it.
 * **Network**: The tool connection test reaches public hosts only.
 * **Tab State**: Drafts and test conversations are kept in the browser's IndexedDB, under the tab. A reload keeps them. After the tab closes, another studio tab, open now or opened later, clears them a minute on. Keys are never kept.
 

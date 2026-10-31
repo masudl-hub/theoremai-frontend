@@ -56,8 +56,8 @@ Sampling rates range from `0` (drop all) to `1` (keep all). A value outside that
 
 Register each destination once, when the application starts:
 
-```ts
-import { registerTraceDestination, toOtlpJson } from '@theoremjs/agents';
+```ts frame=statements
+import { registerTraceDestination } from '@theoremjs/agents';
 import { jsonlSink } from '@theoremjs/agents/observability/jsonl';
 
 // Write JSONL files to local disk
@@ -66,15 +66,10 @@ registerTraceDestination('audit-jsonl', jsonlSink('/var/log/theorem/traces'));
 // Send each record to an OTLP collector
 registerTraceDestination('production-collector', {
 	async write(record) {
-		const response = await fetch('https://otel-collector.internal:4318/v1/traces', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(toOtlpJson([record])),
-		});
-		if (!response.ok) throw new Error(`Collector answered ${response.status}`);
+		// ...
 	},
 	onError(err) {
-		console.error('Failed to export trace:', err);
+		// ...
 	},
 });
 ```
@@ -94,12 +89,12 @@ import { type TraceSink, toOtlpJson } from '@theoremjs/agents';
 export function otlpHttpSink(endpoint: string): TraceSink {
 	return {
 		async write(record) {
-			const response = await fetch(endpoint, {
+			await fetch(endpoint, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(toOtlpJson([record])),
 			});
-			if (!response.ok) throw new Error(`Collector answered ${response.status}`);
+			// ...
 		},
 	};
 }
@@ -123,23 +118,18 @@ registerTraceDestination('disk', jsonlSink('/var/log/theorem'));
 ### 3. In-Memory Sinks for Testing (`memorySink`)
 `memorySink` adds each record to an array you give it. It does no file or network I/O. Pass it as the third argument of `runTurn` to override the profile's `writeTo` for that call. An override always records and ignores `sampleRate`, so tests get the same result each time.
 
-```ts
+```ts frame=statements
 import { memorySink, runTurn, type TraceRecord } from '@theoremjs/agents';
 import { recordRoot } from '@theoremjs/agents/observability';
 
 const records: TraceRecord[] = [];
 
 for await (const event of runTurn(
-	{
-		profile: 'research.scout',
-		input: {
-			text: 'Find recent papers, models, or datasets on episodic memory for language models.',
-		},
-	},
+	{ profile: 'research.scout', input: { text: 'Find recent papers on episodic memory.' } },
 	{},
 	memorySink(records),
 )) {
-	if (event.type === 'done') console.log('Stopped:', event.stop.kind);
+	// ...
 }
 
 const [record] = records;

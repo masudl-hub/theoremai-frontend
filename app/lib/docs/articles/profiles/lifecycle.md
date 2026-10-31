@@ -19,16 +19,15 @@ Theorem provides two deterministic interception hooks that execute in the host e
 
 Pass an `onStage` callback to `runTurn()` or `runSession()` to intercept execution at defined lifecycle milestones:
 
-```ts
-import { runTurn, type StageContext, type StageResult } from '@theoremjs/agents';
-
-const _events = runTurn({
+```ts frame=statements
+const events = runTurn({
 	profile: 'research.scout',
-	input: { text: 'Find papers on episodic memory for language models.' },
-	onStage: async (ctx: StageContext): Promise<StageResult | undefined> => {
+	// ...
+	onStage: (ctx) => {
 		if (ctx.stage === 'pre_tool' && ctx.tool === 'ask_repo_docs') {
 			return { deny: { code: 'FORBIDDEN', message: 'Read the primary source, not DeepWiki.' } };
 		}
+		return undefined;
 	},
 });
 ```
@@ -85,6 +84,8 @@ const onStage: StageHandler = (ctx) => {
 
 The body of `read_readme` starts only after those search calls settle. A call held for confirmation is held at once and does not wait.
 
+`waitFor` is your code's answer at a stage. A tool can also let the model set the order. A tool registered with `after: true` gets an `after` field in its input: a list of tool names in the same step that must settle first. The scout's `read_pages`, `read_model_card`, `read_dataset_card`, `read_readme` and `read_library_docs` set it. Theorem turns each name into that tool's other calls in the step, waits for them as for `waitFor`, and takes `after` out of the input before the body runs. A name with no call in the step fails the call with `wait_unknown`. Outside a step, as in a live session, `after` waits on nothing.
+
 ## Sub-Agent Interception (`onAgentCall`)
 
 An agent tool (`type: 'agent'`) delegates a subtask to another registered profile. When an agent's model requests an agent tool, Theorem invokes `onAgentCall` before dispatching the child turn.
@@ -104,15 +105,11 @@ The hook returns one of three outcomes:
 2. **`{ refuse: string }`**: Rejects the delegation. Theorem returns the refusal message to the calling model as a tool error.
 3. **`AgentCallRequest`**: Reshapes the child invocation—overriding inputs, swapping models, attaching isolated stage handlers, or passing credentials via `host`.
 
-```ts
-import { type AgentCall, type AgentCallRequest, runTurn } from '@theoremjs/agents';
-
-const _events = runTurn({
+```ts frame=statements
+const events = runTurn({
 	profile: 'research.scout',
-	input: { text: 'Find recent papers on episodic memory for language models.' },
-	onAgentCall: async (
-		call: AgentCall,
-	): Promise<AgentCallRequest | { refuse: string } | undefined> => {
+	// ...
+	onAgentCall: (call) => {
 		// Prevent unbounded sub-agent recursion
 		if (call.depth > 2) {
 			return { refuse: 'Sub-agent recursion depth exceeded.' };
@@ -131,5 +128,5 @@ const _events = runTurn({
 
 * **[Turn Resumption & Steering](/docs/profiles/resumption)**: Handling tool gates, `continueFrom` executions, and `allowSteering` settings.
 * **[Defining Tools](/docs/tools)**: Declaring function, MCP, HTTP, and agent tools.
-* **[Host Profiles](/docs/profiles/host)**: Executing model-less tools directly using `invokeTool()`.
+* **[Host Profiles](/docs/profiles/host)**: Running tools from your own code using `invokeTool()`.
 * **[Guardrails & Sanitize](/docs/guardrails)**: Declarative boundary filters applied before and after generation.
