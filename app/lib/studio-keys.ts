@@ -36,7 +36,9 @@ const JEV_BOXES: LentModel = { id: 'jev-1.14.0', label: 'Jev 1.14' };
  * against generativelanguage.googleapis.com/v1beta/models. The first of each type is where a new
  * model starts.
  */
-const GEMINI: Readonly<Record<Exclude<ModelProfileType, 'decision'>, readonly LentModel[]>> = {
+const GEMINI: Readonly<
+	Record<Exclude<ModelProfileType, 'decision' | 'transcription'>, readonly LentModel[]>
+> = {
 	text: [
 		{ id: 'gemini-3.1-flash-lite', label: '3.1 Flash Lite' },
 		{ id: 'gemini-2.5-flash-lite', label: '2.5 Flash Lite' },
@@ -83,6 +85,7 @@ function models(type: ModelProfileType, definition: string | undefined): readonl
 			: definition === 'openrouter'
 				? [SPAN_DECISION]
 				: [];
+	if (type === 'transcription') return [];
 	if (definition === 'gemini') return GEMINI[type];
 	if (definition === 'openrouter') {
 		if (type === 'text') return [{ id: OPENROUTER_FREE, label: 'Free router' }];
@@ -187,7 +190,9 @@ export const SITE_KEYS: LentKeys = {
 	start: (type) =>
 		type === 'decision'
 			? { ...firstServed('typesafe', type), apiId: JEV.id }
-			: { ...firstServed('gemini', type), apiId: GEMINI[type][0]?.id ?? '' },
+			: type === 'transcription'
+				? { ...firstServed('openrouter', type), apiId: '' }
+				: { ...firstServed('gemini', type), apiId: GEMINI[type][0]?.id ?? '' },
 	violation,
 	builtins,
 	decision: {
