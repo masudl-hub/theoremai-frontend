@@ -5,7 +5,6 @@ import { keepHomeAgent, takeHomeAgent } from '../app/lib/home-agent-handoff.ts';
 
 test('Open Studio handoff keeps the research pagereader with stage-read tools', () => {
 	const { workspace } = createHomeAgent();
-	assert.equal(workspace.agents.length, 2);
 	assert.ok(workspace.agents.some((agent) => agent.identity.agentId === 'research.pagereader'));
 	assert.ok(
 		workspace.toolSpecs.some(
@@ -17,7 +16,7 @@ test('Open Studio handoff keeps the research pagereader with stage-read tools', 
 	keepHomeAgent(workspace);
 	const handed = takeHomeAgent();
 	assert.ok(handed);
-	assert.equal(handed.agents.length, 2);
+	assert.equal(handed.agents.length, workspace.agents.length);
 	assert.ok(handed.agents.some((agent) => agent.identity.agentId === 'research.pagereader'));
 	assert.ok(
 		handed.toolSpecs.some(

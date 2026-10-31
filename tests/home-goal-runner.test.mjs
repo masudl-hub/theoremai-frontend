@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -8,6 +8,8 @@ import { renderToString } from 'react-dom/server';
 import { createServer } from 'vite';
 
 test('specialized examples render their runner before a text-chat opening exists', async () => {
+	const pageFetch = globalThis.fetch;
+	globalThis.fetch = async (path) => new Response(await readFile(join('public', String(path))));
 	const runnerId = '\0home-goal-test-runner';
 	const cacheDir = await mkdtemp(join(tmpdir(), 'theorem-goal-test-'));
 	const server = await createServer({
@@ -79,6 +81,7 @@ export function StudioRunner({payload}) {
 			assert.equal(store.get().good.payload.profile.type, 'text');
 		}
 	} finally {
+		globalThis.fetch = pageFetch;
 		await server.close();
 		await rm(cacheDir, { recursive: true, force: true });
 	}
