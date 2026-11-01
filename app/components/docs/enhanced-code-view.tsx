@@ -34,7 +34,12 @@ import {
 	IconUserCheck,
 	IconWaveSine,
 } from '@tabler/icons-react';
-import { IconGemini, IconOpenRouter } from '@theoremjs/studio/ui/brand-icons.tsx';
+import {
+	IconGemini,
+	IconOpenRouter,
+	IconTypeSafe,
+	modelFamilyMark,
+} from '@theoremjs/studio/ui/brand-icons.tsx';
 import { PROFILE_TYPE_ICON, toolTypeIcon } from '@theoremjs/studio/ui/lib/type-icons.ts';
 import {
 	type ComponentProps,
@@ -59,6 +64,13 @@ const SeedForm = lazy(() => import('./seed-form'));
 
 const NO_SLOTS: readonly CodeSlot[] = [];
 const NO_CHOICES: readonly CodeChoice[] = [];
+
+/** The mark of a provider or key slot the cookbook names. */
+const PROVIDER_MARKS: Partial<Record<string, typeof IconGemini>> = {
+	gemini: IconGemini,
+	openrouter: IconOpenRouter,
+	typesafe: IconTypeSafe,
+};
 
 /** The icon a kernel value wears, as the studio draws it. */
 const VALUE_ICONS: Partial<Record<string, ComponentProps<typeof Icon>['icon']>> = {
@@ -94,8 +106,8 @@ const VALUE_ICONS: Partial<Record<string, ComponentProps<typeof Icon>['icon']>> 
 };
 
 function valueIcon(value: string): ReactNode {
-	if (value === 'gemini') return <IconGemini width={14} height={14} />;
-	if (value === 'openrouter') return <IconOpenRouter width={14} height={14} />;
+	const Mark = PROVIDER_MARKS[value] ?? modelFamilyMark(value);
+	if (Mark) return <Mark width={14} height={14} />;
 	const icon = VALUE_ICONS[value];
 	return icon ? <Icon icon={icon} size="sm" /> : undefined;
 }
