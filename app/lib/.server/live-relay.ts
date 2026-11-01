@@ -90,13 +90,14 @@ async function openLiveSession(
 	if (!vault || !Object.values(vault).some(Boolean))
 		throw new TheoremError('auth', 'No demo Gemini credentials configured.'); // labels-exempt: internal diagnostic
 	return scope.runSession(
-		{ ...(await boundary.prepareLiveOpen(open)), profile: profileId, metadata },
 		{
-			vault,
-			openWebSocket,
+			...(await boundary.prepareLiveOpen(open)),
+			profile: profileId,
+			metadata,
 			execution: boundary.toolExecution,
 			pageExecution: boundary.pageExecution,
 		},
+		{ vault, openWebSocket },
 	);
 }
 
