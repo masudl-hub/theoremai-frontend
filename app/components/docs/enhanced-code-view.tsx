@@ -55,6 +55,7 @@ import {
 	useState,
 } from 'react';
 import { carrySlots } from '../../lib/docs/carry-slots';
+import { slotRouteChoices, swapRoute } from '../../lib/docs/model-routes';
 import { rowStarts } from '../../lib/docs/sample-program';
 import type { CodeChoice, CodeSlot, CodeSlots, StudioSeedId } from '../../lib/docs/schema';
 import { CopyIconButton } from './copy-button';
@@ -64,6 +65,7 @@ const SeedForm = lazy(() => import('./seed-form'));
 
 const NO_SLOTS: readonly CodeSlot[] = [];
 const NO_CHOICES: readonly CodeChoice[] = [];
+const NO_MODELS: CodeSlots['models'] = [];
 
 /** The mark of a provider or key slot the cookbook names. */
 const PROVIDER_MARKS: Partial<Record<string, typeof IconGemini>> = {
@@ -119,6 +121,7 @@ interface LineTokenMatch {
 	value: string;
 	choices: readonly CodeChoice[];
 	isAllowList?: boolean;
+	slot?: CodeSlot;
 }
 
 /** The slots on one line, with the line's own columns. */
@@ -127,6 +130,7 @@ function lineSlots(
 	lineStart: number,
 	lineLength: number,
 	slots: readonly CodeSlot[],
+	models: CodeSlots['models'],
 ) {
 	return slots.flatMap((slot): LineTokenMatch[] => {
 		if (slot.start < lineStart || slot.end > lineStart + lineLength) return [];
@@ -137,7 +141,10 @@ function lineSlots(
 				end: slot.end - lineStart,
 				literal,
 				value: literal.slice(1, -1),
-				choices: slot.choices,
+				choices: slot.route
+					? slotRouteChoices(code, slots, models, slot).map((value) => ({ value }))
+					: slot.choices,
+				slot,
 			},
 		];
 	});
@@ -497,6 +504,7 @@ export function EnhancedCodeView({
 		slots: codeSlots?.slots ?? NO_SLOTS,
 	});
 	const tools = codeSlots?.tools ?? NO_CHOICES;
+	const models = codeSlots?.models ?? NO_MODELS;
 	const [view, setView] = useState<CodeViewName>('code');
 	// The form stays mounted once opened, so an edit that does not compile yet waits for the reader.
 	const hasOpenedForm = useRef(false);
@@ -537,6 +545,11 @@ export function EnhancedCodeView({
 	const unallowedTools = tools.filter((tool) => !currentAllowedTools.has(tool.value));
 	const slotHandlers = (lineIdx: number) => ({
 		onSwap: (match: LineTokenMatch, newVal: string) => {
+			const { slot } = match;
+			if (slot?.route) {
+				edit((prev) => swapRoute(prev, slots, models, slot, newVal));
+				return;
+			}
 			const quote = match.literal[0];
 			edit((prev) =>
 				spliceLine(prev, lineIdx, match.start, match.end, `${quote}${newVal}${quote}`),
@@ -597,7 +610,13 @@ export function EnhancedCodeView({
 									lineIdx={lineIdx}
 									lineTokens={syntaxLines[lineIdx] ?? []}
 									slots={[
-										...lineSlots(activeCode, lineStarts[lineIdx] ?? 0, lineText.length, slots),
+										...lineSlots(
+											activeCode,
+											lineStarts[lineIdx] ?? 0,
+											lineText.length,
+											slots,
+											models,
+										),
 										...(allowBlockFlags[lineIdx] ? allowSlots(lineText, tools) : []),
 									].sort((a, b) => a.start - b.start)}
 									closesAllow={allowClose?.line === lineIdx && tools.length > 0}

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { carrySlots } from '../app/lib/docs/carry-slots.ts';
 import { chapterCodeSlots } from '../app/lib/docs/code-slots.ts';
+import { slotRouteChoices, swapRoute } from '../app/lib/docs/model-routes.ts';
 import { resolveTheoremaiRoot } from '../scripts/resolve-theoremai-root.mjs';
 import { sampleProgram } from '../app/lib/docs/sample-program.ts';
 
@@ -72,31 +73,61 @@ test('a slot whose string went away goes with it', () => {
 	assert.deepEqual(carrySlots("a: 'x',", 'a: 1,', slots), []);
 });
 
-test('a token offers only what fits the sample around it', () => {
-	const kernelRoot = resolveTheoremaiRoot(process.cwd()).root;
-	const body = [
-		'```ts frame=profile',
-		'models: {',
-		'\topen: {',
-		"\t\tprotocol: 'openRouterOpenAi',",
-		"\t\tprovider: 'openrouter',",
-		"\t\tapiId: 'google/gemini-3.8-flash',",
-		"\t\tkeySlot: 'openrouter',",
-		'\t},',
-		'},',
-		'```',
-	].join('\n');
+const model = [
+	'```ts frame=profile',
+	'models: {',
+	'\topen: {',
+	"\t\tprotocol: 'openRouterOpenAi',",
+	"\t\tprovider: 'openrouter',",
+	"\t\tapiId: 'google/gemini-3.8-flash',",
+	"\t\tkeySlot: 'openrouter',",
+	'\t},',
+	'},',
+	'```',
+].join('\n');
+
+function modelSample(body: string) {
 	const chapters = chapterCodeSlots([{ slug: 'start', body }], {
 		repoRoot: process.cwd(),
-		kernelRoot,
+		kernelRoot: resolveTheoremaiRoot(process.cwd()).root,
 	});
 	const [code, slots] = Object.entries(chapters.get('start') ?? {})[0] ?? [];
 	assert.ok(code && slots);
+	return { code, slots };
+}
+
+const fieldValue = (code: string, field: string) =>
+	new RegExp(`${field}: '([^']*)'`).exec(code)?.[1];
+
+test('a model is one route: every field is a token, and each offers what fits the others', () => {
+	const { code, slots } = modelSample(model);
 	const menus = Object.fromEntries(
-		slots.slots.map(({ start, end, choices }) => [
-			code.slice(start, end),
-			choices.map(({ value }) => value),
+		slots.slots.map((slot) => [
+			slot.route?.field,
+			slotRouteChoices(code, slots.slots, slots.models, slot),
 		]),
 	);
-	assert.deepEqual(menus, { "'google/gemini-3.8-flash'": ['google/gemini-3.8-flash', 'openrouter/free'] });
+	assert.equal(slots.slots.length, 4);
+	assert.deepEqual(menus.provider, ['openrouter', 'gemini']);
+	assert.ok(menus.protocol?.includes('geminiInteractions'));
+	assert.deepEqual(menus.apiId, ['google/gemini-3.8-flash', 'openrouter/free']);
+	assert.deepEqual(menus.keySlot, ['openrouter']);
+});
+
+test('picking a provider moves the protocol, model and key with it', () => {
+	const { code, slots } = modelSample(model);
+	const slot = (field: string) => {
+		const found = slots.slots.find((each) => each.route?.field === field);
+		assert.ok(found);
+		return found;
+	};
+	const swapped = swapRoute(code, slots.slots, slots.models, slot('provider'), 'gemini');
+	assert.equal(fieldValue(swapped, 'provider'), 'gemini');
+	assert.equal(fieldValue(swapped, 'protocol'), 'geminiInteractions');
+	assert.equal(fieldValue(swapped, 'keySlot'), 'gemini');
+	assert.match(fieldValue(swapped, 'apiId') ?? '', /^gemini-/);
+
+	const sameProvider = swapRoute(code, slots.slots, slots.models, slot('apiId'), 'openrouter/free');
+	assert.equal(fieldValue(sameProvider, 'provider'), 'openrouter');
+	assert.equal(fieldValue(sameProvider, 'apiId'), 'openrouter/free');
 });

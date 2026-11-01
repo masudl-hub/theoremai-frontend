@@ -2,19 +2,28 @@
  * Which strings in the docs' code samples are choices. The type checker reads each sample as the
  * program `sampleProgram` makes of it: a string whose type names its values is a choice among them,
  * and a string that names something (a profile, a model, a key slot) is a choice among what the
- * research cookbook has of that kind. A choice must fit what the sample already says: a model's
- * protocol is one its provider serves, a union's member is one that has the fields beside it, a
- * profile is one of the same type. Nothing here lists a value.
+ * research cookbook has of that kind. A choice must fit what the sample already says: a union's
+ * member is one that has the fields beside it, and a profile is one of the same type. A model's
+ * provider, protocol, id and key move together, as the cookbook's own models pair them. Nothing
+ * here lists a value.
  */
 
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { catalogPathFor, fieldMeta } from '@theoremjs/agents/schema';
-import { createResearchWorkspace, servedProtocols } from '@theoremjs/studio';
+import { createResearchWorkspace } from '@theoremjs/studio';
 import ts from 'typescript';
 import { markdownFences } from './chapter-markdown';
 import { rowStarts, type SampleNames, type SampleProgram, sampleProgram } from './sample-program';
-import type { CodeChoice, CodeSlot, CodeSlots, DocSection, SnippetFrame } from './schema';
+import type {
+	CodeChoice,
+	CodeRoute,
+	CodeSlot,
+	CodeSlots,
+	DocSection,
+	ModelField,
+	SnippetFrame,
+} from './schema';
 
 type Roots = { repoRoot: string; kernelRoot: string };
 
@@ -274,42 +283,56 @@ function profileTypeAt(
 	return frame?.split(':')[1] ?? 'text';
 }
 
-/** What fits a model's own field, given the provider and protocol the sample names beside it. */
-function bindingChoices(
-	field: string,
+/** The fields of a model that move together, read by the catalog path. */
+function modelField(property: ts.PropertyAssignment): ModelField | undefined {
+	const match = /^models\.\*\.(provider|protocol|apiId|keySlot)$/.exec(
+		catalogField(property)?.path ?? '',
+	);
+	return match?.[1] as ModelField | undefined;
+}
+
+/** How this model can run: as it stands, and as the cookbook runs models of its type. Protocol options or a fallback key hold it to its protocol. */
+function modelRoutes(
 	object: ts.ObjectLiteralExpression,
 	frame: SnippetFrame | undefined,
 	cookbook: Cookbook,
-): CodeChoice[] {
-	const provider = stated(object, 'provider');
-	const protocol = stated(object, 'protocol');
-	const type = profileTypeAt(object, frame) as Parameters<typeof servedProtocols>[1];
-	const held = cookbook.providers.find((each) => each.id === provider);
-	const onProvider = cookbook.bindings.filter((binding) => binding.provider === provider);
-	switch (field) {
-		case 'provider':
-			return cookbook.distinct(
-				cookbook.providers
-					.filter((each) => servedProtocols(each, type)?.some(({ id }) => id === protocol))
-					.map(({ id }) => id),
-			);
-		case 'protocol':
-			return cookbook.distinct(
-				(held ? (servedProtocols(held, type) ?? []) : []).map(({ id }) => id),
-			);
-		case 'apiId':
-			return cookbook.distinct(
-				onProvider
-					.filter((binding) => binding.protocol === protocol && binding.type === type)
-					.map((binding) => binding.apiId),
-			);
-		default:
-			return cookbook.distinct([
-				held?.keySlot,
-				held?.fallbackKeySlot,
-				...onProvider.flatMap((binding) => [binding.keySlot, binding.fallbackKeySlot]),
-			]);
+): CodeRoute[] {
+	const own: CodeRoute = {};
+	for (const field of ['provider', 'protocol', 'apiId', 'keySlot'] as const) {
+		const value = stated(object, field);
+		if (value) own[field] = value;
 	}
+	const type = profileTypeAt(object, frame);
+	const held = sibling(object, 'options') || sibling(object, 'fallbackKeySlot');
+	const routes = cookbook.bindings
+		.filter((each) => each.type === type && (!held || each.protocol === own.protocol))
+		.map(
+			(each): CodeRoute => ({
+				provider: each.provider,
+				protocol: each.protocol,
+				apiId: each.apiId,
+				keySlot: providerSlots(each.provider, cookbook)[0]?.value,
+			}),
+		);
+	const seen = new Set<string>();
+	return [own, ...routes].filter(({ provider, protocol, apiId }) => {
+		const route = `${provider} ${protocol} ${apiId}`;
+		if (seen.has(route)) return false;
+		seen.add(route);
+		return true;
+	});
+}
+
+/** The key slots the cookbook reads on a provider. */
+function providerSlots(provider: string | undefined, cookbook: Cookbook): CodeChoice[] {
+	const held = cookbook.providers.find((each) => each.id === provider);
+	return cookbook.distinct([
+		held?.keySlot,
+		held?.fallbackKeySlot,
+		...cookbook.bindings
+			.filter((binding) => binding.provider === provider)
+			.flatMap((binding) => [binding.keySlot, binding.fallbackKeySlot]),
+	]);
 }
 
 /** The cookbook's profiles of the same type as this one: a run takes one type of profile. */
@@ -323,14 +346,12 @@ function namedChoices(
 	checker: ts.TypeChecker,
 	property: ts.PropertyAssignment,
 	current: string,
-	frame: SnippetFrame | undefined,
 	cookbook: Cookbook,
 ): CodeChoice[] {
 	const field = catalogField(property);
-	const model = /^models\.\*\.(provider|protocol|apiId|keySlot|fallbackKeySlot)$/.exec(
-		field?.path ?? '',
-	);
-	if (model?.[1]) return bindingChoices(model[1], property.parent, frame, cookbook);
+	if (field?.path === 'models.*.fallbackKeySlot') {
+		return providerSlots(stated(property.parent, 'provider'), cookbook);
+	}
 	if (field?.path === 'models.*.defaultEffort') {
 		return declaredNames(property.parent, 'efforts').map((value) => ({ value }));
 	}
@@ -352,7 +373,6 @@ function choicesOf(
 	checker: ts.TypeChecker,
 	value: ts.Expression,
 	current: string,
-	frame: SnippetFrame | undefined,
 	cookbook: Cookbook,
 ): CodeChoice[] {
 	const property = ownerProperty(value);
@@ -365,8 +385,7 @@ function choicesOf(
 			const description = meta?.optionDescriptions?.[option];
 			return description ? { value: option, description } : { value: option };
 		});
-	const named =
-		property && !inArray ? namedChoices(checker, property, current, frame, cookbook) : [];
+	const named = property && !inArray ? namedChoices(checker, property, current, cookbook) : [];
 	const choices = typed.length > 1 ? typed : named;
 	if (choices.length === 0) return [];
 	const all = choices.some((choice) => choice.value === current)
@@ -375,13 +394,13 @@ function choicesOf(
 	return all.length > 1 ? all : [];
 }
 
-/** The sample's slots, each at its place in the sample's own code. */
+/** The sample's slots, each at its place in the sample's own code, and the routes of its models. */
 function samplePlaces(
 	file: ts.SourceFile,
 	sample: { code: string; frame?: SnippetFrame; program: SampleProgram },
 	checker: ts.TypeChecker,
 	cookbook: Cookbook,
-): CodeSlot[] {
+): Pick<CodeSlots, 'slots' | 'models'> {
 	const starts = rowStarts(sample.code.split('\n'));
 	const codeAt = (position: number): number | undefined => {
 		const { line, character } = file.getLineAndCharacterOfPosition(position);
@@ -390,21 +409,36 @@ function samplePlaces(
 		return start === undefined ? undefined : start + character;
 	};
 	const slots: CodeSlot[] = [];
+	const models: CodeRoute[][] = [];
+	const modelOf = new Map<ts.ObjectLiteralExpression, number>();
+	const modelAt = (object: ts.ObjectLiteralExpression): number => {
+		const known = modelOf.get(object);
+		if (known !== undefined) return known;
+		modelOf.set(object, models.length);
+		models.push(modelRoutes(object, sample.frame, cookbook));
+		return models.length - 1;
+	};
 	const visit = (node: ts.Node) => {
 		if (ts.isStringLiteralLike(node)) {
 			const value = valuePlace(node);
 			const start = codeAt(node.getStart(file));
 			if (start !== undefined && isSetValue(value)) {
-				const choices = choicesOf(checker, value, node.text, sample.frame, cookbook);
-				if (choices.length > 0) {
-					slots.push({ start, end: start + node.getWidth(file), choices });
+				const end = start + node.getWidth(file);
+				const property = ownerProperty(value);
+				const field = property?.initializer === value ? modelField(property) : undefined;
+				if (property && field) {
+					const route = { field, model: modelAt(property.parent) };
+					slots.push({ start, end, choices: [], route });
+				} else {
+					const choices = choicesOf(checker, value, node.text, cookbook);
+					if (choices.length > 0) slots.push({ start, end, choices });
 				}
 			}
 		}
 		ts.forEachChild(node, visit);
 	};
 	visit(file);
-	return slots;
+	return { slots, models };
 }
 
 /** The article's `ts` and `tsx` samples the checker can read: framed, or whole programs. */
@@ -455,10 +489,10 @@ export function chapterCodeSlots(
 		for (const { slug, sample, file } of written) {
 			const source = program.getSourceFile(file);
 			if (!source) throw new Error(`${file} is not in the sample program`);
-			const slots = samplePlaces(source, sample, checker, cookbook);
+			const { slots, models } = samplePlaces(source, sample, checker, cookbook);
 			const tools = /\ballow\s*:\s*\[/.test(sample.code) ? cookbook.tools : [];
 			if (slots.length === 0 && tools.length === 0) continue;
-			chapters.set(slug, { ...chapters.get(slug), [sample.code]: { slots, tools } });
+			chapters.set(slug, { ...chapters.get(slug), [sample.code]: { slots, tools, models } });
 		}
 		return chapters;
 	} finally {

@@ -329,11 +329,26 @@ export type PageSymbol = SymbolRow & { area: GlossaryArea; chapter: DocSection }
 /** One value a code token can take. `icon` is the kernel value whose icon it wears. */
 export type CodeChoice = { value: string; description?: string; icon?: string };
 
-/** A string in a code sample that is a choice: where it sits in the code, quotes included. */
-export type CodeSlot = { start: number; end: number; choices: readonly CodeChoice[] };
+/** The fields of a model that only make sense together. */
+export type ModelField = 'provider' | 'protocol' | 'apiId' | 'keySlot';
 
-/** What a code sample can switch: its slots, and the tools its allow list can name. */
-export type CodeSlots = { slots: readonly CodeSlot[]; tools: readonly CodeChoice[] };
+/** A way to run a model: those fields, as far as a sample states them. */
+export type CodeRoute = Partial<Record<ModelField, string>>;
+
+/** A string in a code sample that is a choice: where it sits in the code, quotes included. A `route` slot is one field of the sample's model `model`, and its choices come from that model's routes. */
+export type CodeSlot = {
+	start: number;
+	end: number;
+	choices: readonly CodeChoice[];
+	route?: { field: ModelField; model: number };
+};
+
+/** What a code sample can switch: its slots, the tools its allow list can name, and the routes of each model it states. */
+export type CodeSlots = {
+	slots: readonly CodeSlot[];
+	tools: readonly CodeChoice[];
+	models: readonly (readonly CodeRoute[])[];
+};
 
 /** A catalog row that a chapter's inline code names: its glossary row, and the chapter that explains it. */
 export type DocTerm = { symbol: PageSymbol; slug: DocSection; href: string; chapter: string };
