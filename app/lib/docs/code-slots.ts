@@ -2,13 +2,15 @@
  * Which strings in the docs' code samples are choices. The type checker reads each sample as the
  * program `sampleProgram` makes of it: a string whose type names its values is a choice among them,
  * and a string that names something (a profile, a model, a key slot) is a choice among what the
- * research cookbook has of that kind. Nothing here lists a value.
+ * research cookbook has of that kind. A choice must fit what the sample already says: a model's
+ * protocol is one its provider serves, a union's member is one that has the fields beside it, a
+ * profile is one of the same type. Nothing here lists a value.
  */
 
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { catalogPathFor, fieldMeta } from '@theoremjs/agents/schema';
-import { createResearchWorkspace } from '@theoremjs/studio';
+import { createResearchWorkspace, servedProtocols } from '@theoremjs/studio';
 import ts from 'typescript';
 import { markdownFences } from './chapter-markdown';
 import { rowStarts, type SampleNames, type SampleProgram, sampleProgram } from './sample-program';
@@ -92,7 +94,9 @@ function cookbookChoices() {
 		[...new Set(values.filter((value) => value !== undefined && value !== ''))].map((value) => ({
 			value: value as string,
 		}));
-	const bindings = agents.flatMap((agent) => agent.modelBindings);
+	const bindings = agents.flatMap((agent) =>
+		agent.modelBindings.map((binding) => ({ ...binding, type: agent.identity.profileType })),
+	);
 	const profiles = agents.map((agent) => ({
 		value: agent.identity.agentId,
 		description: `A ${agent.identity.profileType} agent`,
@@ -109,10 +113,9 @@ function cookbookChoices() {
 				icon: tool.toolType,
 			}),
 		),
-		keySlots: distinct(bindings.map((binding) => binding.keySlot)),
-		providers: distinct(providers.map((provider) => provider.id)),
-		protocols: distinct(bindings.map((binding) => binding.protocol)),
-		apiIds: distinct(bindings.map((binding) => binding.apiId)),
+		providers,
+		bindings,
+		distinct,
 	};
 }
 
@@ -172,20 +175,33 @@ function stringValues(type: ts.Type | undefined): string[] {
 	return type.isStringLiteral() ? [type.value] : [];
 }
 
-/** The values the types allow: the contextual type, and the field's whole union when a sibling narrowed it. */
+/** The keys an object literal sets. */
+function keysSet(object: ts.ObjectLiteralExpression): string[] {
+	return object.properties.flatMap((each) => {
+		const key = each.name && !ts.isComputedPropertyName(each.name) ? keyOf(each.name) : undefined;
+		return key ? [key] : [];
+	});
+}
+
+/** The values the types allow: of a union, only what its members with every field beside this one take. */
 function typedValues(checker: ts.TypeChecker, value: ts.Expression): string[] {
 	const literal = stringValues(checker.getContextualType(value));
 	const property = ownerProperty(value);
 	if (!property || property.initializer !== value) return literal;
 	const key = keyOf(property.name);
 	const object = checker.getContextualType(property.parent);
-	if (!key || !object) return literal;
-	const members = object.isUnion() ? object.types : [object];
-	const field = members.flatMap((member) => {
-		const symbol = member.getProperty(key);
-		return symbol ? stringValues(checker.getTypeOfSymbol(symbol)) : [];
-	});
-	return [...new Set([...field, ...literal])];
+	if (!key) return literal;
+	const beside = keysSet(property.parent).filter((each) => each !== key);
+	// why: A JSON Schema's `properties` or `items` beside its `type` say which type it is.
+	if (key === 'type' && beside.some((each) => each === 'properties' || each === 'items')) return [];
+	if (!object?.isUnion()) return literal;
+	const field = object.types
+		.filter((member) => beside.every((each) => member.getProperty(each)))
+		.flatMap((member) => {
+			const symbol = member.getProperty(key);
+			return symbol ? stringValues(checker.getTypeOfSymbol(symbol)) : [];
+		});
+	return field.length > 0 ? [...new Set(field)] : literal;
 }
 
 /** The type name a field's declaration writes, such as `ProfileId`. */
@@ -214,23 +230,24 @@ function sibling(object: ts.ObjectLiteralExpression, key: string): ts.Expression
 	return undefined;
 }
 
-/** The names a `models: { … }` in this object declares. */
-function declaredModels(object: ts.ObjectLiteralExpression): string[] {
-	const models = sibling(object, 'models');
-	if (!models || !ts.isObjectLiteralExpression(models)) return [];
-	return models.properties.flatMap((each) => {
-		const key = each.name && !ts.isComputedPropertyName(each.name) ? keyOf(each.name) : undefined;
-		return ts.isPropertyAssignment(each) && key ? [key] : [];
-	});
+/** The string a sibling property sets. */
+function stated(object: ts.ObjectLiteralExpression, key: string): string | undefined {
+	const value = sibling(object, key);
+	return value && ts.isStringLiteralLike(value) ? value.text : undefined;
+}
+
+/** The names this object's `key: { … }` declares. */
+function declaredNames(object: ts.ObjectLiteralExpression, key: string): string[] {
+	const names = sibling(object, key);
+	return names && ts.isObjectLiteralExpression(names) ? keysSet(names) : [];
 }
 
 /** The models this field can name: the sample's own, else those of the cookbook profile beside it. */
 function modelChoices(property: ts.PropertyAssignment, cookbook: Cookbook): CodeChoice[] {
 	const object = property.parent;
-	const own = declaredModels(object);
+	const own = declaredNames(object, 'models');
 	if (own.length > 0) return own.map((value) => ({ value }));
-	const profile = sibling(object, 'profile');
-	const id = profile && ts.isStringLiteralLike(profile) ? profile.text : undefined;
+	const id = stated(object, 'profile');
 	const known = cookbook.profiles.find((each) => each.value === id);
 	return (known?.models ?? []).map((value) => ({ value }));
 }
@@ -245,32 +262,84 @@ function catalogField(property: ts.PropertyAssignment) {
 	return { path, meta: fieldMeta(path) };
 }
 
-/** What the cookbook offers for a field that names something, by its declared type or catalog path. */
+/** The profile type the object is under: the nearest `type` it sits in, else the sample's frame. */
+function profileTypeAt(
+	object: ts.ObjectLiteralExpression,
+	frame: SnippetFrame | undefined,
+): string {
+	for (let at: ts.Node = object; !ts.isSourceFile(at); at = at.parent) {
+		const type = ts.isObjectLiteralExpression(at) ? stated(at, 'type') : undefined;
+		if (type) return type;
+	}
+	return frame?.split(':')[1] ?? 'text';
+}
+
+/** What fits a model's own field, given the provider and protocol the sample names beside it. */
+function bindingChoices(
+	field: string,
+	object: ts.ObjectLiteralExpression,
+	frame: SnippetFrame | undefined,
+	cookbook: Cookbook,
+): CodeChoice[] {
+	const provider = stated(object, 'provider');
+	const protocol = stated(object, 'protocol');
+	const type = profileTypeAt(object, frame) as Parameters<typeof servedProtocols>[1];
+	const held = cookbook.providers.find((each) => each.id === provider);
+	const onProvider = cookbook.bindings.filter((binding) => binding.provider === provider);
+	switch (field) {
+		case 'provider':
+			return cookbook.distinct(
+				cookbook.providers
+					.filter((each) => servedProtocols(each, type)?.some(({ id }) => id === protocol))
+					.map(({ id }) => id),
+			);
+		case 'protocol':
+			return cookbook.distinct(
+				(held ? (servedProtocols(held, type) ?? []) : []).map(({ id }) => id),
+			);
+		case 'apiId':
+			return cookbook.distinct(
+				onProvider
+					.filter((binding) => binding.protocol === protocol && binding.type === type)
+					.map((binding) => binding.apiId),
+			);
+		default:
+			return cookbook.distinct([
+				held?.keySlot,
+				held?.fallbackKeySlot,
+				...onProvider.flatMap((binding) => [binding.keySlot, binding.fallbackKeySlot]),
+			]);
+	}
+}
+
+/** The cookbook's profiles of the same type as this one: a run takes one type of profile. */
+function profileChoices(current: string, cookbook: Cookbook): CodeChoice[] {
+	const type = cookbook.profiles.find((profile) => profile.value === current)?.type;
+	return cookbook.profiles.filter((profile) => profile.type === type);
+}
+
+/** What the cookbook offers for a field that names something, by its catalog path or declared type. */
 function namedChoices(
 	checker: ts.TypeChecker,
 	property: ts.PropertyAssignment,
+	current: string,
+	frame: SnippetFrame | undefined,
 	cookbook: Cookbook,
 ): CodeChoice[] {
 	const field = catalogField(property);
-	switch (field?.path) {
-		case 'models.*.provider':
-			return cookbook.providers;
-		case 'models.*.protocol':
-			return cookbook.protocols;
-		case 'models.*.apiId':
-			return cookbook.apiIds;
-		case 'models.*.compaction.profile':
-			return cookbook.profiles.filter((profile) => profile.type === 'text');
-		default:
-			break;
+	const model = /^models\.\*\.(provider|protocol|apiId|keySlot|fallbackKeySlot)$/.exec(
+		field?.path ?? '',
+	);
+	if (model?.[1]) return bindingChoices(model[1], property.parent, frame, cookbook);
+	if (field?.path === 'models.*.defaultEffort') {
+		return declaredNames(property.parent, 'efforts').map((value) => ({ value }));
 	}
+	if (field?.path === 'models.*.compaction.profile') return profileChoices(current, cookbook);
 	switch (field?.meta?.type ?? declaredName(checker, property)) {
 		case 'ProfileId':
-			return cookbook.profiles;
+			return profileChoices(current, cookbook);
 		case 'ModelId':
 			return modelChoices(property, cookbook);
-		case 'KeySlot':
-			return cookbook.keySlots;
 		case 'ToolId':
 			return cookbook.tools;
 		default:
@@ -283,6 +352,7 @@ function choicesOf(
 	checker: ts.TypeChecker,
 	value: ts.Expression,
 	current: string,
+	frame: SnippetFrame | undefined,
 	cookbook: Cookbook,
 ): CodeChoice[] {
 	const property = ownerProperty(value);
@@ -295,7 +365,8 @@ function choicesOf(
 			const description = meta?.optionDescriptions?.[option];
 			return description ? { value: option, description } : { value: option };
 		});
-	const named = property && !inArray ? namedChoices(checker, property, cookbook) : [];
+	const named =
+		property && !inArray ? namedChoices(checker, property, current, frame, cookbook) : [];
 	const choices = typed.length > 1 ? typed : named;
 	if (choices.length === 0) return [];
 	const all = choices.some((choice) => choice.value === current)
@@ -307,7 +378,7 @@ function choicesOf(
 /** The sample's slots, each at its place in the sample's own code. */
 function samplePlaces(
 	file: ts.SourceFile,
-	sample: { code: string; program: SampleProgram },
+	sample: { code: string; frame?: SnippetFrame; program: SampleProgram },
 	checker: ts.TypeChecker,
 	cookbook: Cookbook,
 ): CodeSlot[] {
@@ -324,7 +395,7 @@ function samplePlaces(
 			const value = valuePlace(node);
 			const start = codeAt(node.getStart(file));
 			if (start !== undefined && isSetValue(value)) {
-				const choices = choicesOf(checker, value, node.text, cookbook);
+				const choices = choicesOf(checker, value, node.text, sample.frame, cookbook);
 				if (choices.length > 0) {
 					slots.push({ start, end: start + node.getWidth(file), choices });
 				}
@@ -345,6 +416,7 @@ function checkableSamples(body: string, names: SampleNames) {
 		return [
 			{
 				code: fence.code,
+				frame,
 				extension: fence.lang,
 				program: sampleProgram(fence.code, frame, names),
 			},

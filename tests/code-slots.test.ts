@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { carrySlots } from '../app/lib/docs/carry-slots.ts';
+import { chapterCodeSlots } from '../app/lib/docs/code-slots.ts';
+import { resolveTheoremaiRoot } from '../scripts/resolve-theoremai-root.mjs';
 import { sampleProgram } from '../app/lib/docs/sample-program.ts';
 
 const names = { root: ['defineProfile'], host: ['base'] };
@@ -68,4 +70,33 @@ test('changes far apart, or on lines side by side, keep every slot', () => {
 test('a slot whose string went away goes with it', () => {
 	const slots = [{ start: 3, end: 6, choices }];
 	assert.deepEqual(carrySlots("a: 'x',", 'a: 1,', slots), []);
+});
+
+test('a token offers only what fits the sample around it', () => {
+	const kernelRoot = resolveTheoremaiRoot(process.cwd()).root;
+	const body = [
+		'```ts frame=profile',
+		'models: {',
+		'\topen: {',
+		"\t\tprotocol: 'openRouterOpenAi',",
+		"\t\tprovider: 'openrouter',",
+		"\t\tapiId: 'google/gemini-3.8-flash',",
+		"\t\tkeySlot: 'openrouter',",
+		'\t},',
+		'},',
+		'```',
+	].join('\n');
+	const chapters = chapterCodeSlots([{ slug: 'start', body }], {
+		repoRoot: process.cwd(),
+		kernelRoot,
+	});
+	const [code, slots] = Object.entries(chapters.get('start') ?? {})[0] ?? [];
+	assert.ok(code && slots);
+	const menus = Object.fromEntries(
+		slots.slots.map(({ start, end, choices }) => [
+			code.slice(start, end),
+			choices.map(({ value }) => value),
+		]),
+	);
+	assert.deepEqual(menus, { "'google/gemini-3.8-flash'": ['google/gemini-3.8-flash', 'openrouter/free'] });
 });
