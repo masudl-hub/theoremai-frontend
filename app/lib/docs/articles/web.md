@@ -152,7 +152,7 @@ The value you return must stay valid after the request ends, until each call set
 
 The session keeps each detached call and the reply the model read, so a late result leaves the next turn free to resume. `POST <base>/conversation` shows the call as it stands: still running, its result, or an error. The chat reads that after each reply and on load. The error's code is `outcome_not_retained` when the session has dropped the result, which by default happens 24 hours after the call settles (`operationRetentionMs`).
 
-The model does not get a late result by itself. Your `prepare` passes the stored outcome in `input.lateResults` on a later turn, and again on each run of that reply. The model reads it as a tool result, and the reply counts it as a read. In `input.context` or `input.history`, the same text would read as your word or the user's.
+The model does not get a late result by itself. Your `prepare` passes the stored outcome in `input.lateResults` on a later turn. Pass each one once: the turn emits a `late_results` event, so a history built from events holds it from then on. The model reads it as a tool result, and the reply counts it as a read. In `input.context` or `input.history`, the same text would read as your word or the user's.
 
 A shared session store keeps a call as `background` when its worker dies. Your own sweep marks it `uncertain` with the reason `worker_lost`, through the store's `compareAndSwap`, and the conversation then shows the call as an error.
 

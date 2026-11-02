@@ -46,7 +46,7 @@ The screen keeps the profile it edits in the browser, as a draft, and sends the 
 
 The editor has two views, **Editor** and **Code**. One button switches between them.
 
-* **Editor**: The profile as form fields: its model, prompt, tools, guardrails and other sections. The prompt is one box, and a blank line starts a new line. It opens formatted: private text wears a line and a lock, and each condition is a token that opens its menu. The **Private** and **Condition** buttons set either on what you select. The eye and code button shows the markup text, the one form the profile stores. A prompt the formatted view would change stays in code.
+* **Editor**: The profile as form fields: its model, prompt, tools, guardrails and other sections. The prompt is one box, and a blank line starts a new line. It opens formatted: private text wears a wash, and each condition is a token that opens its menu. The **Private** and **Condition** buttons set either on what you select. The eye and code button shows the markup text, the one form the profile stores. A prompt the formatted view would change stays in code.
 * **Code**: The TypeScript the profile is declared in, in a code editor with completions, signature help, hover documentation and type errors against `@theoremjs/agents`.
 * **Reading Code Back**: When you edit the code, Studio reads it back into the draft. Anything it cannot read is shown as an error at that spot, and the draft is left as it was. Studio reads with the kernel's own checks, so a setting or value that `defineProfile` or `registerTool` refuses shows the kernel's message on its line.
 
