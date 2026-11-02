@@ -56,7 +56,7 @@
 			"src/guardrails/normalize.ts": "68338281983f026e6da916d6be3b24209f3dc326",
 			"src/guardrails/policy.ts": "b6d37b1028048e16365ac786f16294507db769f5",
 			"src/guardrails/progressive-yield.ts": "583b9b2cda5befc4fce91e28f48efc6b46e6b379",
-			"src/guardrails/prompt-echo.ts": "4f77a5b4858ccf09849182db1b4d1dcb07d39cc1",
+			"src/guardrails/prompt-echo.ts": "671e45a66b9fea1f1256973e4ab8aa82293868b5",
 			"src/guardrails/quota.ts": "894a26af74be48088653633f635a15ba198a6640",
 			"src/guardrails/rules.ts": "84c199f87d5f2239c064c756b6b6c0746f7baa08",
 			"src/guardrails/sanitize.ts": "0cf5d3e6aabf09ea0e8256b29d43c248882969d3",
@@ -78,7 +78,7 @@
 		"reviewed": "2026-11-02",
 		"files": {
 			"src/guardrails/canary.ts": "b23006c9e6ae5ccadf1c54101d429202d085a2cc",
-			"src/guardrails/prompt-echo.ts": "4f77a5b4858ccf09849182db1b4d1dcb07d39cc1"
+			"src/guardrails/prompt-echo.ts": "671e45a66b9fea1f1256973e4ab8aa82293868b5"
 		}
 	},
 	"guardrails/ingress": {
@@ -911,8 +911,8 @@
 			"studio/ui/pan.ts": "c418ab83a66c98c405d87038ea451b0006786bc8",
 			"studio/ui/profile-editor.tsx": "6d2e573926bb4787d678dd684d2b5416b4a31025",
 			"studio/ui/prompt-editor.css": "4a093fbce768ddc89cff8451ca976a6303421230",
-			"studio/ui/prompt-editor.tsx": "c62275e1bb4a284133f5740e081dd8fca45baab2",
-			"studio/ui/prompt-line-node.tsx": "870fdfc5a72f7a7036497f3089f1dfdda6f7c9b3",
+			"studio/ui/prompt-editor.tsx": "165207f2f8929fde89ded18eae5df37474e6f437",
+			"studio/ui/prompt-line-node.tsx": "8b2cfeb321679baaabc58233f415bce023f5497f",
 			"studio/ui/prompt-row.tsx": "ccfa7bb80bb618660e78343ce7816051dd9d1501",
 			"studio/ui/provider-editor.tsx": "6ae1a417caa3b387b7687d17b2a1f0c080a6852b",
 			"studio/ui/read-map.css": "3c0956b891f512cb68eb696c91b8905fb644f361",

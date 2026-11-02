@@ -73,7 +73,11 @@ At runtime, turns execute against this profile: requests are validated against t
       "parts": [
         {
           "label": "text",
-          "text": "The reply as it streams."
+          "text": "Text as the model writes it."
+        },
+        {
+          "label": "structured",
+          "text": "The reply as JSON, which is how the scout answers."
         },
         {
           "label": "tool",

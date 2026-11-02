@@ -20,7 +20,7 @@ Theorem reads what the model writes at the outbound boundaries (`reply`, `reply_
     "src": "/imagery/th30_tidalmudflats.png",
     "position": "50% 50%"
   },
-  "caption": "A reply tries to send data out through an image. Set ungiven_images to block, and the browser never loads it.",
+  "caption": "A reply tries to send data out through an image. ungiven_images flags it by default, and block stops it.",
   "lanes": [
     "The model",
     "Theorem",
@@ -60,7 +60,7 @@ Theorem reads what the model writes at the outbound boundaries (`reply`, `reply_
     {
       "lane": "The person",
       "label": "block stops the reply",
-      "text": "It never reaches the client. By default ungiven_images flags the image instead.",
+      "text": "By default the model rewrites the reply once. If that fails, the rest is withheld, and text already sent stays sent.",
       "kind": "egress"
     }
   ]

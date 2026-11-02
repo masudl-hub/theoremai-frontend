@@ -18,7 +18,7 @@ Live profiles (`type: 'live'`) configure realtime agents that communicate over b
     "src": "/imagery/th30_ocean.png",
     "position": "50% 50%"
   },
-  "caption": "research.scout.live on a call. Both sides send at the same time, over one socket, until you call close().",
+  "caption": "research.scout.live on a call. Both sides send at the same time, over one socket, until you call close() or the provider ends it.",
   "lanes": [
     "You send",
     "The session",
@@ -71,7 +71,7 @@ Live profiles (`type: 'live'`) configure realtime agents that communicate over b
         },
         {
           "label": "done",
-          "text": "One reply is over. The session stays open."
+          "text": "A reply has ended. The session stays open."
         }
       ]
     }

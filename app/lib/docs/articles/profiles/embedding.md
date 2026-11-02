@@ -18,7 +18,7 @@ Embedding profiles (`type: 'embedding'`) configure agents that generate dense ve
     "src": "/imagery/th30_dryingsaffron.png",
     "position": "50% 50%"
   },
-  "caption": "An abstract goes in and comes back as numbers. Theorem stores nothing and searches nothing: comparing the vectors is your code's job.",
+  "caption": "An abstract goes in and comes back as numbers. Theorem stores nothing, and your code compares the vectors. @theoremjs/web has cosineSimilarity and rankMatches for that.",
   "lanes": [
     "You send",
     "The model",

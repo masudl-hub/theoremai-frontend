@@ -11,7 +11,7 @@ coverPosition: 50% 50%
 
 Evaluating generative agents requires testing non-deterministic behavior across probabilistic model generations, multi-step tool call sequences, and adversarial safety boundaries. Ad-hoc testing scripts that inspect raw string replies fail to capture tool side effects, token costs, or guardrail decisions.
 
-Theorem provides a native evaluation framework built on a foundational architectural invariant: **graders inspect standardized trace records (`TraceRecord`) and nothing else**.
+Theorem provides a native evaluation framework built on a foundational architectural invariant: **graders inspect standardized trace records (`TraceRecord`) and each case's `expect`, and nothing else**.
 
 ```figure
 {
@@ -20,7 +20,7 @@ Theorem provides a native evaluation framework built on a foundational architect
     "src": "/imagery/th30_atoll.png",
     "position": "50% 50%"
   },
-  "caption": "A suite from cases to verdict. Graders read the trace and nothing else, so a live run and a recorded trace are graded the same way.",
+  "caption": "A suite from cases to verdict. Graders read the trace and the case's expect, so a live run and a recorded trace are graded the same way.",
   "lanes": [
     "Your suite",
     "The trace",
@@ -46,7 +46,7 @@ Theorem provides a native evaluation framework built on a foundational architect
     {
       "lane": "The trace",
       "label": "runSuite runs each case",
-      "text": "It calls runTurn once for each repeat. Given recorded traces, it runs no turns.",
+      "text": "It calls runTurn once for each repeat. Given recorded traces, it runs no turns of the profile. A judge still calls its own model.",
       "kind": "runner"
     },
     {

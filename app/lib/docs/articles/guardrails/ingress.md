@@ -54,7 +54,7 @@ Theorem provides two layers of ingress protection:
     {
       "lane": "The model",
       "label": "The model calls export_report",
-      "text": "It read the page, so the call may be the attacker's. Read-only calls always run.",
+      "text": "It read the page, so the call may be the attacker's. afterRemoteRead never refuses a read-only call.",
       "kind": "model"
     },
     {
@@ -150,7 +150,7 @@ Taint lasts for the reply that read the text. A pause does not end a reply: the 
 
 ### Gating Tools After Remote Reads (`afterRemoteRead`)
 
-The `afterRemoteRead` gate refuses tool calls on a tainted turn by each tool's declared `access` (`'read-only'`, `'read-write'` or `'destructive'`). Add this to the scout:
+The `afterRemoteRead` gate refuses tool calls on a tainted turn by each tool's declared `access` (`'read-only'`, `'read-write'` or `'destructive'`). The scout sets it:
 
 ```ts frame=profile:text
 guardrails: {
@@ -166,7 +166,7 @@ guardrails: {
 | **`'destructive'`** | Refuses calls to tools with `access: 'destructive'`. |
 | **`'write'`** | Refuses calls to tools with `access: 'read-write'` or `'destructive'`, so only read-only tools run for the rest of the turn. |
 
-Read-only calls always run. `research.scout` sets `'write'`, and `export_report` is its one tool that writes, so after the turn reads a page, a call to `export_report` is refused. Because `afterRemoteRead` looks only at where the turn read from and at declared tool access, it stops a call even when the injection got past every content detector.
+`afterRemoteRead` never refuses a read-only call. `research.scout` sets `'write'`, and `export_report` is its one tool that writes, so after the turn reads a page, a call to `export_report` is refused. Because `afterRemoteRead` looks only at where the turn read from and at declared tool access, it stops a call even when the injection got past every content detector.
 
 ## Destination Steering Protection (`remoteDestination`)
 

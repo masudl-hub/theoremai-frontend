@@ -46,7 +46,7 @@ In Theorem, **history compaction** automatically condenses older exchanges into 
     {
       "lane": "The compactor",
       "label": "research.compactor",
-      "text": "A text profile with no tools. It keeps every source URL, every exact quote and every open lead.",
+      "text": "A text profile with no tools. Its instructions ask it to keep every source URL, every exact quote and every open lead.",
       "kind": "profile"
     },
     {

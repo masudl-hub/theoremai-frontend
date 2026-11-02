@@ -36,7 +36,7 @@ Theorem provides `@theoremjs/web`: Web-standard server handlers that serve a pro
     {
       "lane": "Your server",
       "label": "createTheoremHandler",
-      "text": "It serves one profile, and reads the session and the keys from the options you pass.",
+      "text": "It serves one profile. It reads the keys from the options you pass, and the session from your session option or a cookie it issues.",
       "kind": "runner",
       "parts": [
         {

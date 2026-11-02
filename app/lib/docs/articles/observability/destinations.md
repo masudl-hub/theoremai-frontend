@@ -47,7 +47,7 @@ Hosts configure telemetry declaratively on agent profiles (`observability`), reg
       "parts": [
         {
           "label": "toOtlpJson",
-          "text": "For an OTLP collector."
+          "text": "Builds the OTLP body your sink sends."
         },
         {
           "label": "jsonlSink",

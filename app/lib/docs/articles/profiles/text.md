@@ -69,7 +69,11 @@ Text profiles (`type: 'text'`) configure conversational agents that reason acros
       "parts": [
         {
           "label": "text",
-          "text": "The reply as it streams."
+          "text": "Text as the model writes it."
+        },
+        {
+          "label": "structured",
+          "text": "The reply as JSON, which is how the scout answers."
         },
         {
           "label": "tool",

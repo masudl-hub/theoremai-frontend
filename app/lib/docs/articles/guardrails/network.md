@@ -39,7 +39,7 @@ Theorem checks the URL of every request it makes for a tool, against the policy 
     },
     {
       "label": "Request is sent",
-      "text": "Theorem sends the request. A redirect goes back to step 1, for up to 20 hops, and credentials are dropped once it leaves the first origin. OAuth requests do not follow redirects.",
+      "text": "Theorem sends the request. A redirect goes back to step 1, for up to 20 hops, and credentials are dropped once it leaves the first origin. OAuth requests and opening an MCP session do not follow redirects.",
       "kind": "runner"
     }
   ]
