@@ -30,13 +30,13 @@ Each model's provider must exist in the workspace and serve the agent's type on 
 The check does not read your keys. When a project opens, the studio command asks each provider about its key once and prints one line for each, such as `key for gemini (gemini) works`, `refused`, `is empty` or `could not be checked`. The `--offline` flag skips this. A run whose key slot is empty fails with an `auth` error.
 
 ### 2. Tools and Schemas
-Each tool needs a name, and no two tools may share one. A tool's input and output JSON schemas must parse. An MCP tool needs the name of its tool on the server, and an agent tool needs the agent it asks. A tool's reader must be a decision agent with a choice question. A structured reply needs a schema id, and its schema must parse. So must each reply shape that a slot's value picks.
+Each tool needs a name, and no two tools may share one. A tool's input and output JSON schemas must parse. An MCP tool needs the name of its tool on the server, and an agent tool needs the agent it asks. A tool's reader must be a decision agent with a choice question. A structured reply needs a schema id, and its schema must parse. So must each reply shape that an option's value picks.
 
 ### 3. Guardrails
 Allowed hosts and allowed names may not be blank. A custom detector needs a valid name, may be listed once, and its patterns must be valid.
 
 ### 4. Prompt Lines
-The prompt is one box, and a blank line starts a new line. It gets the check that `defineProfile` gives it. A `when` line must read a condition or a slot the profile declares, with a value it lists, and a line may not start with `+`. Each condition is a row with a name and its values. It needs a name, used once and not shared with a slot, and at least one value.
+The prompt is one box, and a blank line starts a new line. It gets the check that `defineProfile` gives it. A `when` line must read an option the profile declares, with a value it lists, and a line may not start with `+`. Each option is a row with a name and its values. It needs a name, used once, and at least one value.
 
 ### Finding Issues
 * The toolbar shows how many issues the draft has.

@@ -15,36 +15,7 @@ At runtime, turns execute against this profile: requests are validated against t
 
 ## Profile Anatomy
 
-Every profile is declared with `defineProfile()` and validates against the profile type schema:
-
-```mermaid
-graph TD
-    Profile["defineProfile({ ... })"]
-
-    subgraph CoreContract["Core Specification"]
-        IdType["id & type"]
-        Identity["identity: { handle, conditions, system }"]
-        Models["models: Record&lt;ModelId, ModelBinding&gt;"]
-        Tools["tools: { allow, parallel }"]
-    end
-
-    subgraph DataBoundaries["Data Boundaries & Persistence"]
-        Inputs["inputs: { text, attachments, voice, slots, context }"]
-        Outputs["outputs: { structured, validation, streaming }"]
-        ProviderContinuation["providerContinuation: { history: 'host' | 'stateless' | 'provider' }"]
-    end
-
-    subgraph OperationalPolicies["Operational Policies"]
-        TurnBehaviour["turnBehaviour: { resumption, allowSteering, atStepLimit }"]
-        Guardrails["guardrails: { detect, quota, network, taint }"]
-        Observability["observability: { writeTo, sampleRate, scrub }"]
-        Labels["labels: LabelOverrides"]
-    end
-
-    Profile --> CoreContract
-    Profile --> DataBoundaries
-    Profile --> OperationalPolicies
-```
+Every profile is declared with `defineProfile()`. Its `type` decides which settings it takes.
 
 ### Profile Types
 
@@ -83,13 +54,18 @@ identity: {
 }
 ```
 
-#### Prompt Lines (`conditions`)
-Prompt lines let one agent speak differently by plan or by channel. Declare the facts a turn states under `conditions`, and write each instruction as one line. The scout declares no conditions. To add them:
+#### Prompt Lines and Options
+Prompt lines let one agent speak differently by plan or by channel. Write each instruction as one line.
+
+An **option** is a named value with a list of choices. Declare it on `identity.options` when your code sets the value, and on `inputs.options` when the person sets it. A chat shows a picker for `inputs.options` only. The scout has no `identity.options`. To add them:
 
 ```ts frame=profile:text
 identity: {
 	handle: 'scout',
-	conditions: { path: ['web', 'imessage'], plan: ['free', 'paid'] },
+	options: {
+		path: { choices: [{ value: 'web' }, { value: 'imessage' }] },
+		plan: { choices: [{ value: 'free' }, { value: 'paid' }] },
+	},
 	system: [
 		// ...
 		'when plan is free: Keep the reply to one paragraph.',
@@ -100,23 +76,23 @@ identity: {
 
 A line that opens with `when` goes only on turns where it fits. Every line that fits is sent, a blank line apart. A `when` uses the same words as an activity label: `is`, `is not`, and `and`.
 
-A turn can leave a slot unset. Then `when reader is student` does not fit and `when reader is not student` fits. A fact that every turn must state belongs in a condition.
+No option is required. If an option is unset, `when plan is free` does not fit and `when plan is not free` fits. If no line fits, the prompt is empty.
 
-Each turn states every condition, with a value the profile lists. A condition named `path` reads the turn's own `path`, and the rest go in `conditions`:
+An option named `path` reads the turn's own `path`, and the rest go in `options`:
 
 ```ts frame=statements
 const events = runTurn({
 	profile: 'research.scout',
 	path: 'web',
-	conditions: { plan: 'free' },
+	options: { plan: 'free' },
 	// ...
 });
 ```
 
-A turn that leaves a condition out, gives a value the profile does not list, or names a condition the profile does not declare, is refused with a `request` error. A condition chooses lines and never fills text: only a slot fills `{name}`. Text, image and live profiles take conditions.
+A turn that gives a value the profile does not list, or names an option the profile does not declare, is refused with a `request` error. Any option also prints with `{name}`, and a line that prints an unset option is not sent. Text, image and live profiles take `identity.options`. A name cannot be on both objects, and `input` and `output` are not valid names.
 
 #### Lines for a Reader
-A `when` line can also read a slot, which is how one prompt fits different people. The scout's `reader` slot says who it writes for, and two lines read it:
+A `when` line reads an option the person sets in the same way, which is how one prompt fits different people. The scout's `reader` option says who it writes for, and two lines read it:
 
 ```ts frame=profile:text
 identity: {
@@ -129,7 +105,7 @@ identity: {
 },
 // ...
 inputs: {
-	slots: {
+	options: {
 		reader: {
 			label: 'Reader',
 			choices: [{ value: 'anyone' }, { value: 'reviewer' }, { value: 'student' }],
@@ -139,7 +115,7 @@ inputs: {
 // ...
 ```
 
-A turn chooses in `input.slots`, for example `runTurn({ profile: 'research.scout', input: { slots: { reader: 'reviewer' }, text: '...' } })`. The fitting line joins the rest of the prompt, so a reviewer still gets the scout's whole prompt. With `anyone`, neither line fits. A turn with a line that reads a slot must choose that slot.
+A turn chooses in `input.options`, for example `runTurn({ profile: 'research.scout', input: { options: { reader: 'reviewer' }, text: '...' } })`. The fitting line joins the rest of the prompt, so a reviewer still gets the scout's whole prompt. With `anyone`, or with no choice, neither line fits.
 
 #### Private Prompt Parts
 To protect operational formulas, sensitive rules, or confidential policies from leaking in answers, wrap instructions in `{ private: string }`. A prompt line is a string or a list of parts, so a private part goes inside a line's list. A bare `{ private }` entry in `system` is refused. The scout's prompt opens with one line of two parts:
@@ -175,7 +151,7 @@ Under `tools`, an agent declares its capabilities—specifying the list of regis
 
 ### 5. `inputs`
 
-The `inputs` block defines the surface of data accepted by the profile in a `TurnRequest`. The research scout's `focus` slot says where a turn looks first. To let a turn bring a research brief as a PDF or a voice clip and choose a source bias, change `inputs` to this:
+The `inputs` block defines the surface of data accepted by the profile in a `TurnRequest`. The research scout's `focus` option says where a turn looks first. To let a turn bring a research brief as a PDF or a voice clip and choose a source bias, change `inputs` to this:
 
 ```ts frame=profile:text
 inputs: {
@@ -192,7 +168,7 @@ inputs: {
 		'application/pdf': 2000000, // Replaces maxBytes for this type
 		'audio/*': 2000000,
 	},
-	slots: {
+	options: {
 		focus: {
 			label: 'Focus',
 			choices: [
@@ -206,9 +182,9 @@ inputs: {
 }
 ```
 
-A turn sends its choice in `input.slots`, such as `{ focus: 'arXiv' }`, and `{focus}` in a prompt becomes that value. A turn that leaves the slot unset is refused with a `request` error when a line that goes on the turn fills it. A choice can also have a `description`, which only your interface reads.
+A turn sends its choice in `input.options`, such as `{ focus: 'arXiv' }`, and `{focus}` in a prompt becomes that value. A choice can also have a `description`, which only your interface reads.
 
-In addition to attachments, profiles can say whether a turn may send text via `text`, restrict audio input via `voice.accept`, constrain categorical metadata using `slots`, and permit host-injected background context via `context.from` and `context.maxChars`.
+In addition to attachments, profiles can say whether a turn may send text via `text`, restrict audio input via `voice.accept`, offer a choice via `options`, and permit host-injected background context via `context.from` and `context.maxChars`.
 
 ### 6. `outputs`
 
@@ -262,31 +238,36 @@ Under `labels`, a profile overrides default kernel error strings and UI copy for
 
 ## Lifecycle: Definition, Registration & Execution
 
-A complete runnable program declaring and running a profile is shown in [Getting Started](/docs/start). The interaction between definition, registration, and runtime execution follows a strict lifecycle:
+A complete runnable program declaring and running a profile is shown in [Getting Started](/docs/start). A profile goes through three steps:
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant App as Application Bootstrap
-    participant Define as defineProfile()
-    participant Reg as registerProfile()
-    participant Runner as runTurn()
-
-    App->>Define: Profile configuration
-    Note over Define: Validates types, required fields, and schema shapes
-    alt Invalid Configuration
-        Define-->>App: Throws TheoremError('config')
-    else Valid Definition
-        Define-->>App: Validated Profile object
-    end
-
-    App->>Reg: registerProfile(profile)
-    Note over Reg: Stores in the registry by profile.id
-    
-    App->>Runner: runTurn({ profile: 'research.scout', ... })
-    Note over Runner: Retrieves profile from registry and runs turn
+```figure
+{
+  "kind": "sequence",
+  "still": {
+    "src": "/imagery/th30_poppies.png",
+    "position": "40% 50%"
+  },
+  "caption": "From a definition to a run. Register tools and schemas before the profiles that name them.",
+  "steps": [
+    {
+      "label": "defineProfile checks the definition",
+      "text": "It throws a config error on a setting the profile does not take, such as a misspelled key, and on a value of the wrong kind or outside a field's options, such as tools.parallel: 'yes' or turnBehaviour.atStepLimit: 'finish'. The error names the path.",
+      "kind": "guardrail"
+    },
+    {
+      "label": "registerProfile registers it",
+      "text": "It takes a profile or a definition, and defines it again. Then it checks each model binding, the tools and the structured schemas, and stores the profile under its id, up to 64 characters. Registering the same id again replaces it.",
+      "kind": "store"
+    },
+    {
+      "label": "A run reads it by id",
+      "text": "runTurn and runSession read the registered profile by its id. An unknown id throws a config error.",
+      "kind": "runner"
+    }
+  ]
+}
 ```
 
-1. **`defineProfile()` validates at startup**: Synchronously verifies that declared fields match the profile type and schema requirements. It throws a `config` error on a setting the profile does not take, such as a misspelled key, and on a value of the wrong kind or outside a field's options, such as `tools.parallel: 'yes'` or `turnBehaviour.atStepLimit: 'finish'`. The error names the path.
-2. **`registerProfile()` registers the profile**: Stores the definition in the kernel registry under its `id` (up to 64 characters). Registering the same `id` again replaces it.
-3. **Execution**: Functions like `runTurn()` and `runSession()` retrieve the registered profile by ID to govern the interaction.
+1. **`defineProfile checks the definition`**: It throws a `config` error on a setting the profile does not take, such as a misspelled key, and on a value of the wrong kind or outside a field's options, such as `tools.parallel: 'yes'` or `turnBehaviour.atStepLimit`: 'finish'. The error names the path.
+2. **`registerProfile registers it`**: It takes a profile or a definition, and defines it again. Then it checks each model binding, the tools and the structured schemas, and stores the profile under its id, up to 64 characters. Registering the same id again replaces it.
+3. **A run reads it by id**: `runTurn` and `runSession` read the registered profile by its id. An unknown id throws a `config` error.

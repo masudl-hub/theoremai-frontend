@@ -1,6 +1,6 @@
 ---
 title: MCP Tools
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Model Context Protocol tools over Streamable HTTP, with protocol negotiation and sessions for servers that require them.
 entry: src/kernel/tools/mcp-sessions.ts
 covers: src/kernel/tools/mcp-sessions.ts, src/kernel/tools/remote.ts
@@ -41,15 +41,42 @@ Each call is a JSON-RPC `tools/call` request sent as an HTTP POST. Theorem speak
 
 Some servers refuse a call without an `Mcp-Session-Id`. Only for those does Theorem open a session (`initialize`, then `notifications/initialized`) and keep it in memory on the tool registry. It reads back only the session ID and protocol version; the server's `instructions` are not read. Sessions are never persisted, and losing one costs one reopen.
 
-```mermaid
-flowchart TD
-		Call["Tool call"] --> Cache{"Cached session?"}
-		Cache -->|Yes| InSession["Send tools/call<br/>with Mcp-Session-Id"]
-		Cache -->|No, or idle past idleMs| Stateless["Send tools/call<br/>newest protocol version first"]
-		Stateless -->|Server requires a session| Open["Open a session<br/>(initialize)"]
-		Open --> InSession
-		InSession -->|404: session ended| Reopen["Drop it and open<br/>a new one, once"]
-		Reopen --> InSession
+```figure
+{
+  "kind": "sequence",
+  "still": {
+    "src": "/imagery/th30_atoll.png",
+    "position": "50% 50%"
+  },
+  "caption": "One MCP call and its session.",
+  "steps": [
+    {
+      "label": "Theorem sends the call",
+      "text": "It looks for a cached session that has not been idle past idleMs.",
+      "kind": "runner",
+      "parts": [
+        {
+          "label": "A session is cached",
+          "text": "It sends tools/call with Mcp-Session-Id."
+        },
+        {
+          "label": "No session is cached",
+          "text": "It sends tools/call with no session, newest protocol version first."
+        }
+      ]
+    },
+    {
+      "label": "The server asks for a session",
+      "text": "An HTTP 400 that names mcp-session-id means the server needs one. Theorem opens a session with initialize and sends the call in it.",
+      "kind": "runner"
+    },
+    {
+      "label": "The session ends",
+      "text": "A 404 means the session is gone. Theorem drops it, opens a new one and sends the call again. A second 404 fails with mcp_session_expired.",
+      "kind": "runner"
+    }
+  ]
+}
 ```
 
 ### Session Behaviour

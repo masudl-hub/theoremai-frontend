@@ -1,6 +1,6 @@
 ---
 title: Supported Protocols
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Wire formats, SSE stream parsers, multimodal input mapping, and provider-specific cache options.
 entry: src/kernel/protocols/protocol.ts
 covers: src/kernel/protocols/protocol.ts, src/kernel/protocols/mod.ts
@@ -11,19 +11,11 @@ coverPosition: 50% 50%
 
 A protocol defines the wire format used to speak to an upstream model provider. It parses streaming events, serializes multimodal inputs, translates tool calls, and extracts citations.
 
-In Theorem, a protocol owns the wire transport and stream parsing, but has no knowledge of endpoints, credentials, or vault slots. Providers declare which protocols their endpoints serve, and profiles bind models to a specific protocol.
+In Theorem, a protocol owns the wire transport and stream parsing, but holds no base URL, credentials, or vault slots. Providers declare which protocols their endpoints serve, and profiles bind models to a specific protocol.
 
 ## Protocols vs Providers
 
 Wire protocols and network endpoints are strictly separated:
-
-```mermaid
-flowchart LR
-		Binding["Profile Model Binding<br/>(protocol: 'openRouterOpenAi')"] --> Kernel["Theorem Kernel"]
-		Kernel --> Protocol["Protocol<br/>(Wire format & stream event parsing)"]
-		Kernel --> Provider["Provider<br/>(Base URL & auth signers)"]
-		Protocol & Provider --> Transport["Encrypted HTTP / WebSocket Wire Request"]
-```
 
 * **Protocols Own the Wire**: They serialize requests into provider JSON bodies, decode SSE stream chunks, re-assemble tool call arguments, parse reasoning tokens, and extract web citations. Protocols never hold URLs, API keys, or key slots.
 * **Providers Own the Destination**: They declare the base URL, authentication headers or query parameters, and which protocols their server hosts.

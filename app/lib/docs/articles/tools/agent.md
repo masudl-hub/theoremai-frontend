@@ -32,7 +32,7 @@ profile: 'research.podcast',
 
 Because the called agent is already a declared profile, Theorem derives the tool's input from it:
 
-* **Input Schema**: The tool takes `text`, plus each channel the called profile declares in `inputs`: `attachments`, `voice` and `slots`. A `speech` profile also takes `speech`. Any other field is refused, not dropped.
+* **Input Schema**: The tool takes `text`, plus each channel the called profile declares in `inputs`: `attachments`, `voice` and `options`. A `speech` profile also takes `speech`. Any other field is refused, not dropped.
 * **Output Schema**: The tool returns the called agent's reply: its `text`, or its `structured` reply in place of the text; `removed`, the items its item rules took out of `structured`; media as `parts`; and what it cited as `sources`. The caller's turn cites those sources too. `record_podcast` returns its audio in `parts`, and `draw_method` returns its image there.
 * **Usage**: The call's last `tool` event carries the called agent's usage as `tokens`. The caller's `done.tokens` includes it, unless the call settled after `done`. A call stopped after its reply reports what the agent spent until then.
 
@@ -51,11 +51,11 @@ To control what the calling model can send, set field and channel rules on the a
 
 ### Reserving Channels (`hostOnly`)
 
-If the called profile takes channels that the calling model should not fill (such as private slots or documents), list them in `hostOnly`:
+If the called profile takes channels that the calling model should not fill (such as private options or documents), list them in `hostOnly`:
 
 ```ts frame=tool:agent
 // ...
-hostOnly: ['slots', 'attachments'],
+hostOnly: ['options', 'attachments'],
 // ...
 ```
 
@@ -63,7 +63,7 @@ Those channels leave the calling model's input; it still sees `text` and any cha
 
 ### Host-Only Model Fields (`hostFields`)
 
-Declare fields that the calling model fills, but only the host reads. A field may not reuse a name the input already has (`text`, `attachments`, `voice`, `slots`, `speech`):
+Declare fields that the calling model fills, but only the host reads. A field may not reuse a name the input already has (`text`, `attachments`, `voice`, `options`, `speech`):
 
 ```ts frame=tool:agent
 name: 'record_podcast',

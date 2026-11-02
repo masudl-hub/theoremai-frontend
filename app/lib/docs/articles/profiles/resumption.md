@@ -66,7 +66,7 @@ const continuedEvents = runTurn({
 	continueFrom: { stop: { kind: 'length' } },
 	continuation: 1,
 	input: {
-		slots: { reader: 'anyone' },
+		options: { reader: 'anyone' },
 		history: [...previousMessages, { role: 'assistant', content: partialReplyText }],
 	},
 });
@@ -75,7 +75,7 @@ const continuedEvents = runTurn({
 
 The model reads the partial reply from history. In place of the user's text, it gets the continue instruction (label `continue.instruction`), which you can reword like any label. The scout does, in its `labels`.
 
-A continuation builds its prompt again, so it chooses its slots and states its conditions as the first turn did. The sample sets the `reader` slot the first turn chose, so the same lines fit.
+A continuation builds its prompt again, so it sets its options as the first turn did. The sample sets the `reader` option the first turn chose, so the same lines fit.
 
 ## Tool Action Gates
 

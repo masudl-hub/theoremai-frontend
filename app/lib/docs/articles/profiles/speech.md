@@ -26,19 +26,46 @@ speech: {
 
 The `speech` block specifies default audio synthesis properties:
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant App as Calling Application
-    participant Kernel as runTurn()
-    participant TTS as Speech Provider (TTS)
-
-    App->>Kernel: runTurn({ profile, input: { text }, speech?: { voice, style, speed } })
-    Note over Kernel: Merge profile defaults with per-turn speech overrides
-    Kernel->>TTS: Synthesize audio for input text
-    TTS-->>Kernel: Encoded audio stream
-    Kernel-->>App: yield { type: 'media', media: { mimeType, data } }
-    Kernel-->>App: yield { type: 'done', stop, tokens }
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_lilachaze.png",
+    "position": "50% 50%"
+  },
+  "caption": "One speech turn.",
+  "lanes": [
+    "Your code",
+    "Theorem",
+    "The provider"
+  ],
+  "steps": [
+    {
+      "lane": "Your code",
+      "label": "You call runTurn",
+      "text": "You pass the profile, the text, and any speech settings for this turn.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Theorem merges the settings",
+      "text": "Each setting on the turn replaces the profile's.",
+      "kind": "runner"
+    },
+    {
+      "lane": "The provider",
+      "label": "The provider speaks the text",
+      "text": "It returns audio in the format you set.",
+      "kind": "model"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Theorem yields the audio",
+      "text": "Audio arrives as media events. done ends the turn.",
+      "kind": "stream"
+    }
+  ]
+}
 ```
 
 | Property | Type | Description |

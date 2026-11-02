@@ -1,6 +1,6 @@
 ---
 title: Tool Permissions & Gates
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Decoupling model tool calls with human confirmation gates, argument editing, and turn resumption.
 entry: src/kernel/tools/permission.ts
 covers: src/kernel/tools/permission.ts, src/kernel/tools/gate-answer.ts
@@ -15,28 +15,73 @@ A held tool call is a **gate**. The turn pauses with `stop: { kind: 'gate' }`, p
 
 ## Gate Lifecycle
 
-The gate lifecycle decouples model generation from tool execution:
+A gate holds a tool call until the person answers. The model does not run while it waits:
 
-```mermaid
-flowchart TD
-		Request["1. Model Calls Tool<br/>(name, arguments)"] --> Check{"Permission Policy"}
-		Check -->|auto| Execute["Direct Execution"]
-		Check -->|Gate Triggered| Pause["2. Turn Halts<br/>(stop.kind = 'gate', snapshot captured)"]
-		
-		Pause --> UI["3. Host Shows Approval Card<br/>(registerTool.labels.request)"]
-		UI --> Decision{"User Action"}
-		
-		Decision -->|Approve / Edit| Resume["4. invokeTool({ snapshot, resume })<br/>(granted: true)"]
-		Decision -->|Reject / Abandon| Decline["4. invokeTool({ snapshot, resume })<br/>(granted: false)"]
-		
-		Resume --> Execute
-		Decline --> Refusal["Return refusal to model"]
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_corals.png",
+    "position": "50% 50%"
+  },
+  "caption": "A call held for approval. A tool with permission auto, or a session_consent tool that sessionPermissions names, passes this gate.",
+  "lanes": [
+    "The model",
+    "Theorem",
+    "Your app"
+  ],
+  "steps": [
+    {
+      "lane": "The model",
+      "label": "The model calls a tool",
+      "text": "It names the tool and its arguments.",
+      "kind": "model"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Theorem holds the call",
+      "text": "The tool does not run. A tool event with phase gate carries the tool name, the filled request text and the prepared arguments. Other calls in the step finish first.",
+      "kind": "guardrail"
+    },
+    {
+      "lane": "Theorem",
+      "label": "The turn finishes",
+      "text": "It ends with stop.kind gate. The done event carries done.tools, the turn's tool snapshot.",
+      "kind": "runner"
+    },
+    {
+      "lane": "Your app",
+      "label": "The person decides",
+      "text": "Your UI shows gate.request, filled from the tool's labels.request template, such as read {urls.0}.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "Your app",
+      "label": "You resume the call",
+      "text": "You pass the snapshot and an InvokeToolResume to invokeTool.",
+      "kind": "egress",
+      "parts": [
+        {
+          "label": "granted: true",
+          "text": "The call goes back through its checks and runs. After an edit, pass edited with the model's input as from."
+        },
+        {
+          "label": "granted: false",
+          "text": "The call settles as declined, or as cancelled for the causes abandoned and expired."
+        }
+      ]
+    }
+  ]
+}
 ```
 
-1. **Gate Trigger**: When a tool requires approval, the kernel suppresses execution.
-2. **Turn Halt**: The held call emits a tool event with `phase: 'gate'`. Its `gate` carries the tool name, the filled `request` text and the prepared arguments. The turn then finishes with `stop.kind: 'gate'`, and the `done` event carries `done.tools`, the turn's tool snapshot, to pass back to `invokeTool()`.
-3. **User Decision**: The host UI presents the action using the tool's `registerTool.labels.request` template (e.g., `read {urls.0}`).
-4. **Resumption**: The host passes the snapshot and an `InvokeToolResume` directive to `invokeTool()`, executing the tool or reporting a refusal back to the model.
+1. **The model calls a tool**: It names the tool and its arguments.
+2. **Theorem holds the call**: The tool does not run. A tool event with `phase: 'gate'` carries the tool name, the filled request text and the prepared arguments. Other calls in the step finish first.
+3. **The turn finishes**: It ends with `stop.kind: 'gate'`. The done event carries `done.tools`, the turn's tool snapshot.
+4. **The person decides**: Your UI shows `gate.request`, filled from the `request` template in the tool's labels, such as `read {urls.0}`.
+5. **You resume the call**: You pass the snapshot and an `InvokeToolResume` to `invokeTool`.
+   * **`granted: true`**: The call goes back through its checks and runs. After an edit, pass `edited` with the model's input as `from`.
+   * **`granted: false`**: The call settles as `declined`, or as `cancelled` for the causes `abandoned` and `expired`.
 
 ## Permission Policies
 
@@ -126,7 +171,7 @@ const _refuseEvents = invokeTool({
 
 * **`'declined'`**: The user said no. The call fails with the code `denied`.
 * **`'abandoned'`**: The user left without an answer. The call fails with the code `cancelled`.
-* **`'expired'`**: The answer did not come in time. A sign-in fails with the code `expired`. Any other gate fails with `cancelled`.
+* **`'expired'`**: The answer did not come in time. A sign-in fails with the code `expired`. Any other gate fails with `cancelled`. On the web handler, `gateTtlMs` sets how long a gate waits. A later answer fails with `session.gate_expired`, and the next message cancels the call. Unset, a gate waits until it is answered.
 
 ### Answering Page Gates
 

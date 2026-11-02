@@ -23,21 +23,6 @@ Model execution separates into three distinct concepts:
 
 One provider can serve several protocols. The `gemini` provider serves `geminiInteractions`, `geminiEmbeddings` and `geminiLive`. So every binding names the protocol its model speaks. When the profile is registered, Theorem checks that the provider serves that protocol and that the protocol has an endpoint for the profile's type.
 
-```mermaid
-graph LR
-    subgraph Provider["gemini provider"]
-        Chat["geminiInteractions"]
-        Embed["geminiEmbeddings"]
-        Live["geminiLive"]
-    end
-
-    subgraph Profile["research.scout models"]
-        Gemini["gemini"]
-    end
-
-    Gemini --> Chat
-```
-
 ## Declaring a Model Binding
 
 Bindings are declared under `models` on the profile. This is the research scout's `open` model:

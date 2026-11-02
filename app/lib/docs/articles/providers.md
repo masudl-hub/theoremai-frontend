@@ -151,26 +151,61 @@ The kernel invokes the resolver only for the slot requested by the active model 
 
 ## Automated Failover & Retry
 
-During upstream model execution, Theorem wraps provider requests in an automated self-healing loop:
+Theorem retries a failed model call, and can move it to a second key:
 
-```mermaid
-sequenceDiagram
-		participant Kernel as Turn Runner
-		participant Primary as Primary Slot
-		participant Fallback as Fallback Slot
-
-		Kernel->>Primary: POST request (openrouter_primary)
-		alt rate_limit or busy, before the first event
-				Primary-->>Kernel: Out of quota or busy
-				Note over Kernel: Discard session state (clean slate)
-				Kernel->>Fallback: POST request (openrouter_secondary)
-				Fallback-->>Kernel: 200 OK (Stream Events)
-				Kernel-->>User: Content Stream
-		else auth error
-				Primary-->>Kernel: Key refused
-				Note over Kernel: Invalidate cached signer & refresh once
-				Kernel->>Primary: POST retry
-		end
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_ceruleanshelf.png",
+    "position": "50% 50%"
+  },
+  "caption": "A call that fails before its first event. After the first event, an error goes through to your code.",
+  "lanes": [
+    "Theorem",
+    "The provider"
+  ],
+  "steps": [
+    {
+      "lane": "Theorem",
+      "label": "Theorem sends the request",
+      "text": "It signs the call with the key in keySlot.",
+      "kind": "runner"
+    },
+    {
+      "lane": "The provider",
+      "label": "The provider fails the call",
+      "text": "The answer is an error status, or the network fails.",
+      "kind": "model"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Theorem retries on the same key",
+      "text": "On status 408, 429, 500, 502, 503, 504 or 529, or a network failure. It tries up to 4 more times and waits up to 5 seconds in all, and it follows Retry-After.",
+      "kind": "runner"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Theorem reads the last failure",
+      "text": "What happens next depends on the kind of error.",
+      "kind": "guardrail",
+      "parts": [
+        {
+          "label": "rate_limit or busy",
+          "text": "Theorem sends the call again on fallbackKeySlot, if the vault holds that key."
+        },
+        {
+          "label": "auth",
+          "text": "Theorem drops the cached signer token and tries once more."
+        },
+        {
+          "label": "Any other error",
+          "text": "The error goes through to your code."
+        }
+      ]
+    }
+  ]
+}
 ```
 
 ### Failover Rules

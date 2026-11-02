@@ -36,20 +36,52 @@ decision: {
 
 A decision evaluates arbitrary structured data provided at call time:
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant App as Calling Application
-    participant Kernel as runDecision()
-    participant Model as Evaluator Model
-
-    App->>Kernel: runDecision({ profile, state, questions, assets? })
-    Note over Kernel: Validate state size against maxStateBytes
-    Note over Kernel: Tag trace with theorem.decision.contract
-    Kernel->>Model: Single request: state payload + rubrics
-    Model-->>Kernel: Category selections, scores, and bounds
-    Note over Kernel: Construct typed DecisionAnswer objects
-    Kernel-->>App: Promise resolves DecisionResult
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_amberresin.png",
+    "position": "50% 50%"
+  },
+  "caption": "One decision, from call to result.",
+  "lanes": [
+    "Your code",
+    "Theorem",
+    "The model"
+  ],
+  "steps": [
+    {
+      "lane": "Your code",
+      "label": "You call runDecision",
+      "text": "You pass the profile, the state, the questions and any assets.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Theorem checks the request",
+      "text": "It refuses a null state, a state over inputs.maxStateBytes, and questions or assets that do not fit. It sends only the assets a question names. guardrails.disclosure can refuse the call.",
+      "kind": "guardrail"
+    },
+    {
+      "lane": "The model",
+      "label": "The model answers",
+      "text": "One call carries the state and the questions. Theorem retries a transient failure.",
+      "kind": "model"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Theorem checks the answers",
+      "text": "An answer that does not fit its question fails with malformed_response.",
+      "kind": "guardrail"
+    },
+    {
+      "lane": "Your code",
+      "label": "You get a DecisionResult",
+      "text": "It holds the model, the answers and any usage.",
+      "kind": "egress"
+    }
+  ]
+}
 ```
 
 * **`inputs.state: 'json'`**: The payload being evaluated. State can be any JSON value except `null` (objects, arrays, strings, numbers, booleans).
@@ -87,31 +119,6 @@ The model reads the image wherever its reference appears in `state` or in a ques
 ## Question Contracts & Rubrics
 
 Callers submit one or more structured questions in `DecisionRequest.questions`. Theorem supports 4 question types:
-
-```mermaid
-flowchart LR
-    subgraph Inputs["Decision Request"]
-        State["JSON State"]
-        Q["Questions Dictionary"]
-    end
-    subgraph Types["Question Types"]
-        C["'choice'<br/>Criteria record"]
-        S["'score'<br/>Ordered scale"]
-        N["'noul'<br/>Numeric guide"]
-        B["'box'<br/>Image asset reference"]
-    end
-    subgraph Outputs["DecisionResult.answers"]
-        AC["choice, confidence, probabilities"]
-        AS["score, confidence, legend"]
-        AN["numeric estimate"]
-        AB["box: top, bottom, left, right"]
-    end
-    Q --> C & S & N & B
-    C --> AC
-    S --> AS
-    N --> AN
-    B --> AB
-```
 
 | Question Type | Type Key | Input Specification | Model Output (`DecisionAnswer`) |
 | :--- | :--- | :--- | :--- |

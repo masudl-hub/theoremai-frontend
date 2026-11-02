@@ -1,48 +1,9 @@
 import { HStack } from '@astryxdesign/core/HStack';
-import { Icon, type IconType } from '@astryxdesign/core/Icon';
-import { Token } from '@astryxdesign/core/Token';
-import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
-import {
-	IconActivity,
-	IconArrowLeft,
-	IconArrowRight,
-	IconCpu,
-	IconDatabase,
-	IconFileSmile,
-	IconPlayerPlay,
-	IconShieldCheck,
-	IconWorld,
-} from '@tabler/icons-react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { SwitchbackFigure } from '../../lib/docs/figure';
+import { FlowToken } from './flow-token';
 import { mapPolyline } from './map-line';
-
-/** Exact icon mapping from `@theoremjs/studio/ui/lib/type-icons.ts` */
-function stepIcon(kind?: string): IconType | undefined {
-	switch (kind) {
-		case 'profile':
-			return IconFileSmile;
-		case 'model':
-			return IconCpu;
-		case 'tool':
-			return IconWorld;
-		case 'ingress':
-			return IconArrowRight;
-		case 'egress':
-			return IconArrowLeft;
-		case 'guardrail':
-			return IconShieldCheck;
-		case 'stream':
-			return IconActivity;
-		case 'store':
-			return IconDatabase;
-		case 'runner':
-			return IconPlayerPlay;
-		default:
-			return undefined;
-	}
-}
 
 /** A step's left and right edges and middle height, in the figure's own coordinates. */
 interface TokenBox {
@@ -209,39 +170,18 @@ export function SwitchbackFlow({ figure }: { figure: SwitchbackFigure }) {
 						>
 							{row.steps.map((step, sIdx) => {
 								const label = step.token?.label ?? step.label;
-								const kind = step.token?.kind;
-								const icon = stepIcon(kind);
-
-								const tooltipText =
-									step.text ?? step.parts?.map((p) => p.text ?? p.label).join(' · ');
-
 								return (
 									<div
 										key={label}
 										data-map-step={`${String(rIdx)}-${String(sIdx)}`}
 										style={{ display: 'inline-flex', flexShrink: 0 }}
 									>
-										{tooltipText ? (
-											<Tooltip
-												content={tooltipText}
-												placement={rIdx === 0 ? 'above' : 'below'}
-												hasHoverIndication={false}
-												delay={120}
-											>
-												<Token
-													size="sm"
-													label={label}
-													icon={icon && <Icon icon={icon} size="sm" />}
-													description={tooltipText}
-												/>
-											</Tooltip>
-										) : (
-											<Token
-												size="sm"
-												label={label}
-												icon={icon && <Icon icon={icon} size="sm" />}
-											/>
-										)}
+										<FlowToken
+											label={label}
+											kind={step.token?.kind}
+											text={step.text ?? step.parts?.map((p) => p.text ?? p.label).join(' · ')}
+											placement={rIdx === 0 ? 'above' : 'below'}
+										/>
 									</div>
 								);
 							})}

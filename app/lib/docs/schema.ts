@@ -241,7 +241,6 @@ export const FENCE_LANGUAGES = [
 	'warning',
 	'prompt',
 	'figure',
-	'mermaid',
 ] as const;
 
 /** What an authored chapter and its composed article share. */

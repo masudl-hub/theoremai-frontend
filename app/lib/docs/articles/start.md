@@ -47,17 +47,17 @@ A request cannot call a model or a tool that the profile does not allow. Each tu
         {
           "label": "Input Boundary",
           "token": { "label": "Input Boundary", "kind": "guardrail" },
-          "text": "Detectors read the inbound text. By default a match is flagged; the profile can set redact or block instead."
+          "text": "Detectors read the inbound text, and a file type the profile does not allow is refused. By default most detectors flag a match; the profile can set redact or block instead."
         },
         {
           "label": "Profile Check",
           "token": { "label": "Profile Check", "kind": "profile" },
-          "text": "Theorem checks the request against the profile and refuses a model choice, slot, context sender or file type that the profile does not allow."
+          "text": "Theorem checks the request against the profile and refuses a model choice, option or context sender that the profile does not allow."
         },
         {
           "label": "Turn Runner",
           "token": { "label": "Turn Runner", "kind": "runner" },
-          "text": "The runner plants a canary token in the instruction and runs the steps of the turn, up to the profile's step limit."
+          "text": "The runner runs the steps of the turn, up to the profile's step limit. By default the instruction carries a canary token."
         }
       ]
     },
@@ -72,12 +72,12 @@ A request cannot call a model or a tool that the profile does not allow. Each tu
         {
           "label": "Tool Gate",
           "token": { "label": "Tool Gate", "kind": "tool" },
-          "text": "When the model asks for a tool, Theorem checks its permission and its arguments against the tool's input schema, runs it, and checks the result against the output schema."
+          "text": "When the model asks for a tool, detectors read the arguments. Theorem checks them against the tool's input schema, checks its permission, runs it, and checks the result against the output schema."
         },
         {
           "label": "Outbound Boundary",
           "token": { "label": "Outbound Boundary", "kind": "guardrail" },
-          "text": "Detectors read tool arguments and the reply. By default a canary or private-prompt leak is flagged; the profile can set redact or block instead."
+          "text": "Detectors read the reply as it streams, around the tool calls. By default a canary or private-prompt leak is flagged; the profile can set redact or block instead."
         },
         {
           "label": "Event Stream",
@@ -232,7 +232,7 @@ A request can never ask for more than the profile declares:
 
 1. **Model selection**: Theorem refuses a request that sets `model`, unless the profile sets `allowModelSelect`. Even then, the request must name one of the profile's `models`.
 2. **Tool scope**: The model can only call the tools that `tools.allow` names.
-3. **Inputs**: Theorem refuses slots and [conditions](/docs/profiles#prompt-lines-conditions) the profile does not declare, context from a sender that `inputs.context` does not list, and files or voice clips of a type that the profile does not accept.
+3. **Inputs**: Theorem refuses [options](/docs/profiles#prompt-lines-and-options) the profile does not declare, option values it does not list, context from a sender that `inputs.context` does not list, and files or voice clips of a type that the profile does not accept.
 
 ### What happens when a request overreaches?
 

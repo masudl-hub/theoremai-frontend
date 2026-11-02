@@ -1,6 +1,6 @@
 ---
 title: Provider Checkpoints & State
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Dual-layer state architecture, native provider checkpoints, history hashing, and drift recovery.
 entry: src/kernel/checkpoint.ts
 covers: src/kernel/checkpoint.ts, src/kernel/protocols/provider.ts
@@ -19,33 +19,59 @@ Theorem resolves this tension through a **dual-layer state architecture**:
 
 During multi-turn execution, the host persists both the portable history transcript and the optional native checkpoint:
 
-```mermaid
-flowchart TD
-		subgraph Host["Host Application"]
-				History["Portable History (TurnHistoryMessage[])"]
-				Checkpoint["Native Checkpoint (ProviderCheckpoint)"]
-		end
-
-		subgraph Kernel["Theorem Engine"]
-				Verify["historyHash & compatibilityKey Verification"]
-				Fallback{"Drift Detected?"}
-				Rebuild["Rebuild from History (provider_state_rebuilt)"]
-				ResumeNative["Resume Native Protocol State"]
-		end
-
-		subgraph Upstream["Model Provider"]
-				NativeSession["Native API Session / Cache"]
-		end
-
-		Host -->|runTurn({ history, providerState })| Verify
-		Verify --> Fallback
-		Fallback -->|Yes (Key, Model, or History Changed)| Rebuild
-		Fallback -->|No (State Matches)| ResumeNative
-		Rebuild -->|Full Transcript Replay| Upstream
-		ResumeNative -->|Incremental Delta| NativeSession
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_mineralhills.png",
+    "position": "30% 50%"
+  },
+  "caption": "A turn with a checkpoint. Only geminiInteractions and geminiLive write one.",
+  "lanes": [
+    "Your code",
+    "Theorem",
+    "The provider"
+  ],
+  "steps": [
+    {
+      "lane": "Your code",
+      "label": "You send both layers",
+      "text": "runTurn takes the portable history in input.history, and the checkpoint in providerState.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Theorem checks the checkpoint",
+      "text": "It runs the six checks below, in order.",
+      "kind": "guardrail",
+      "parts": [
+        {
+          "label": "All pass",
+          "text": "Theorem sends the state and only the history after it."
+        },
+        {
+          "label": "One fails",
+          "text": "Theorem yields a provider_warning and sends the history you passed, with no state."
+        }
+      ]
+    },
+    {
+      "lane": "The provider",
+      "label": "The provider answers",
+      "text": "It goes on from its saved state, or reads the history again.",
+      "kind": "model"
+    },
+    {
+      "lane": "Your code",
+      "label": "You save the new checkpoint",
+      "text": "It arrives on done.providerState.",
+      "kind": "guardrail"
+    }
+  ]
+}
 ```
 
-If the provider, the model, the connection, the key slot or the covered history changes, Theorem drops the checkpoint and sends the history instead.
+If the provider, the model, the protocol version, the connection, the key slot or the covered history changes, Theorem drops the checkpoint and sends the history instead. Under `providerContinuation.history: 'provider'` you send no history, so nothing is replayed.
 
 ## Continuation Policies (`providerContinuation.history`)
 
@@ -96,26 +122,61 @@ If a host edits, truncates, or prepends messages in earlier parts of the transcr
 
 When it restores state, Theorem checks six things, in this order:
 
-```mermaid
-flowchart TD
-		In[Incoming ProviderCheckpoint] --> C1{Protocol & Provider Match?}
-		C1 -->|No| W1["reason: 'provider_changed'"]
-		C1 -->|Yes| C2{API ID Matches?}
-		C2 -->|No| W2["reason: 'model_changed'"]
-		C2 -->|Yes| C3{Contract Version Matches?}
-		C3 -->|No| W3["reason: 'version_changed'"]
-		C3 -->|Yes| C4{Compatibility Key Matches?}
-		C4 -->|No| W4["reason: 'connection_changed'"]
-		C4 -->|Yes| C5{Key Slot Matches?}
-		C5 -->|No| W5["reason: 'key_changed'"]
-		C5 -->|Yes| C6{History Matches?}
-		C6 -->|No| W6["reason: 'history_changed'"]
-		C6 -->|Yes| Valid[State Restored Incrementally]
-
-		W1 & W2 & W3 & W4 & W5 & W6 --> EmitWarning["Emit provider_state_rebuilt Warning & Replay Transcript"]
+```figure
+{
+  "kind": "sequence",
+  "still": {
+    "src": "/imagery/th30_mineralhills.png",
+    "position": "70% 50%"
+  },
+  "caption": "The six checks, in order. The first one that fails names the reason.",
+  "steps": [
+    {
+      "label": "Theorem checks the checkpoint",
+      "text": "Each check names the reason it reports.",
+      "kind": "guardrail",
+      "parts": [
+        {
+          "label": "Protocol and provider",
+          "text": "provider_changed"
+        },
+        {
+          "label": "API id",
+          "text": "model_changed"
+        },
+        {
+          "label": "Contract version",
+          "text": "version_changed"
+        },
+        {
+          "label": "Compatibility key",
+          "text": "connection_changed"
+        },
+        {
+          "label": "Key slot",
+          "text": "key_changed"
+        },
+        {
+          "label": "History",
+          "text": "history_changed"
+        }
+      ]
+    },
+    {
+      "label": "Every check passes",
+      "text": "Theorem restores the state and sends only the new messages.",
+      "kind": "guardrail"
+    },
+    {
+      "label": "A check fails",
+      "text": "Theorem yields a provider_warning with that reason, and sends the history you passed.",
+      "kind": "guardrail"
+    }
+  ]
+}
 ```
 
-When drift occurs, execution does not crash. The engine falls back to transcript replay and emits a warning event:
+When drift occurs, execution does not crash. Theorem sends the history instead and yields a `provider_warning` event, whose `warning` has this shape:
 
 ```text
 export interface ProviderWarning {

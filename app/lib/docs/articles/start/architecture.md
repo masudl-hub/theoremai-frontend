@@ -31,34 +31,6 @@ Theorem acts only with what you give it:
 
 A turn crosses three parts: your application, the Theorem kernel, and the provider that runs the model.
 
-```mermaid
-flowchart TD
-    subgraph Tier1["Your application"]
-        HostCode["Your server code"]
-        Vault["Key vault"]
-        Registry["Profiles, tools and providers you register"]
-    end
-
-    subgraph Tier2["Theorem kernel"]
-        Sanitize["1. Input boundary"]
-        Runner["2. Turn runner"]
-        Gates["3. Tool gate"]
-        Egress["4. Outbound boundary"]
-    end
-
-    subgraph Tier3["Provider"]
-        Protocols["Protocol (wire format)"]
-        Models["Model API (HTTP or WebSocket)"]
-    end
-
-    HostCode -->|TurnRequest + vault| Tier2
-    Registry -.-> Tier2
-    Vault -.-> Tier2
-    Tier2 -->|Signed requests| Tier3
-    Tier3 -->|Streamed events| Tier2
-    Tier2 -->|Checked events| HostCode
-```
-
 1. **Your application**: Registers the profiles, tools and providers, holds the keys, and starts each turn with `runTurn`.
 2. **Theorem kernel**: Checks the request, runs the steps of the turn, gates each tool call, and reads the text at each boundary before it yields events back.
 3. **Provider**: The model's protocol turns the kernel's request into the provider's wire format, and turns the provider's stream back into events. Live sessions run over a WebSocket.
@@ -66,22 +38,6 @@ flowchart TD
 ## The parts of the kernel
 
 The kernel's work falls into six parts:
-
-```mermaid
-graph TD
-    Profiles["1. Profiles<br/>(defined once, checked when defined)"]
-    Runner["2. Turn runner<br/>(step loop, event stream)"]
-    Guardrails["3. Guardrails<br/>(detectors at each boundary, tool permissions, canary)"]
-    Protocols["4. Protocols and providers<br/>(wire formats, endpoints, sign-in)"]
-    Observability["5. Observability<br/>(turn spans, guardrail events, W3C traceparent)"]
-    Interface["6. Interface<br/>(server handlers, browser client, React)"]
-
-    Profiles --> Runner
-    Runner --> Guardrails
-    Runner --> Protocols
-    Runner --> Observability
-    Runner --> Interface
-```
 
 | Part | Scope | Responsibility |
 | :--- | :--- | :--- |
@@ -96,29 +52,73 @@ graph TD
 
 Theorem reads text at five groups of boundaries, the same groups that [The Five Boundaries](/docs/guardrails) describes:
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as User / Host
-    participant Kernel as Theorem Kernel
-    participant Model as Provider Model
-    participant Tool as Tool Handler
-
-    User->>Kernel: Send TurnRequest (text, files, context, history)
-    Note over Kernel: 1. Inbound boundaries
-    Kernel->>Model: Model request
-    Model-->>Kernel: Model asks for a tool
-    Note over Kernel: 2. Tool argument boundaries, then the tool's permission and input schema
-    Kernel->>Tool: Run the allowed tool
-    Tool-->>Kernel: Tool result
-    Note over Kernel: 3. Tool result boundaries, and 4. Tool shown boundaries
-    Kernel->>Model: Tool result
-    Model-->>Kernel: Reply
-    Note over Kernel: 5. Outbound boundaries
-    Kernel-->>User: Stream checked events
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_emeraldriver.png",
+    "position": "60% 30%"
+  },
+  "caption": "One turn with one tool call. Theorem stands between your code and the model, and the steps repeat for each tool call.",
+  "lanes": [
+    "Your app",
+    "Theorem",
+    "The model"
+  ],
+  "steps": [
+    {
+      "lane": "Your app",
+      "label": "Your app sends the request",
+      "text": "The text, files, context and history.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Inbound boundaries",
+      "text": "Theorem reads the text before the model sees it.",
+      "kind": "guardrail"
+    },
+    {
+      "lane": "The model",
+      "label": "The model streams its answer",
+      "text": "Theorem reads the reply as it arrives, at the outbound boundaries, and holds any tool call until the stream ends.",
+      "kind": "stream"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Tool argument boundaries",
+      "text": "Theorem reads what the model sends to the tool, then checks the input schema and the permission.",
+      "kind": "guardrail"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Theorem runs the tool",
+      "text": "The tool runs only if every check passed.",
+      "kind": "runner"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Tool result and tool shown boundaries",
+      "text": "Theorem checks the output schema, then reads the result for the model and what the call shows the person.",
+      "kind": "guardrail"
+    },
+    {
+      "lane": "The model",
+      "label": "The model reads the result",
+      "text": "It reads it in the next step, and answers.",
+      "kind": "model"
+    },
+    {
+      "lane": "Your app",
+      "label": "Your app gets checked events",
+      "text": "Events stream all the way through the turn, and done ends it.",
+      "kind": "guardrail"
+    }
+  ]
+}
 ```
 
-1. **Inbound**: The person's message, the text of attachments and voice, slots, context, history, and the host's added text. By default, detectors flag what they find here.
+1. **Inbound**: The person's message, the text of attachments and voice, options, context, history, and the host's added text. By default, detectors flag what they find here, except `injection`, which is off.
 2. **Tool arguments**: What the model sends to a tool. Theorem also checks the arguments against the tool's input schema, and the tool's permission decides whether it runs at once or waits for the person.
 3. **Tool results**: What a tool returns, and its error text, before the model reads them. Theorem checks the output against the tool's output schema.
 4. **Tool shown**: What a tool call shows the person: its output, error, artifacts and trace.

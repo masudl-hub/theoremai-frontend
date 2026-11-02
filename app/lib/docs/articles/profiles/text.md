@@ -31,19 +31,59 @@ turnBehaviour: {
 
 By default, text agents return conversational prose. When an application requires guaranteed data shapes, declare `outputs.structured`.
 
-Theorem enforces structured outputs across two distinct boundaries: the schema the model answers to, and host-side validation of what it wrote.
+Theorem enforces structured outputs in two places: the schema the model answers to, and the checks your application runs on what it wrote.
 
-```mermaid
-flowchart TD
-    Model["Model Reply"] --> Gram["Layer 1: The Schema<br/><i>registerStructured</i>"]
-    Gram --> Host["Layer 2: Host Validation<br/><i>outputs.validation</i>"]
-    Host -- All checks pass --> Pass["Emit { type: 'structured' }"]
-    Host -- Field or required key failed --> Retry["Rewrite the reply (up to maxRetries), then emit it with failed"]
-    Host -- Item refused --> Policy{"onFail Policy"}
-    Policy -- onFail: 'fix' --> Rewrite["Rewrite refused items once, while retries remain"]
-    Rewrite -- Now valid --> Pass
-    Rewrite -- Refused again --> Strip
-    Policy -- onFail: 'drop' --> Strip["Remove refused items & emit them in removed"]
+```figure
+{
+  "kind": "sequence",
+  "still": {
+    "src": "/imagery/th30_rustsand.png",
+    "position": "50% 50%"
+  },
+  "caption": "How Theorem checks one structured reply. Every rewrite uses one of outputs.validation.maxRetries, which defaults to 0.",
+  "steps": [
+    {
+      "label": "The schema goes with the call",
+      "text": "The model answers to the schema you registered. Theorem does not check the reply against the whole schema afterwards.",
+      "kind": "runner"
+    },
+    {
+      "label": "Theorem reads the reply",
+      "text": "It parses the reply, then checks required keys and field checks.",
+      "kind": "guardrail",
+      "parts": [
+        {
+          "label": "A retry is left",
+          "text": "The model rewrites the reply, and this step runs again."
+        },
+        {
+          "label": "No retry is left",
+          "text": "The reply goes on, marked in failed."
+        }
+      ]
+    },
+    {
+      "label": "Theorem checks the items",
+      "text": "Items with a check of their own come next. A reply can carry both failed and removed.",
+      "kind": "guardrail",
+      "parts": [
+        {
+          "label": "onFail: 'fix'",
+          "text": "With a retry left and no earlier fix, the model rewrites only the refused items, and the merged reply goes back to step 2."
+        },
+        {
+          "label": "onFail: 'drop'",
+          "text": "Theorem removes the refused items and emits them in removed. A fix with no retry left does the same."
+        }
+      ]
+    },
+    {
+      "label": "Theorem emits the reply",
+      "text": "A structured event carries the reply, with failed and removed when they apply.",
+      "kind": "stream"
+    }
+  ]
+}
 ```
 
 ### Schema Registration
@@ -145,9 +185,9 @@ The `structured` event says what happened. `removed` lists each item taken out, 
 
 The scout's check above is the plain idea, and it is yours to write. It compares exact text, and a candidate with empty `evidence` passes. Yours can be stricter: compare text with case and spacing evened out, refuse a candidate whose `basis` is `page` when it has no evidence, or match each quote to the tool result for its `uri`.
 
-### Dynamic Schema Selection by Turn Slot
+### Dynamic Schema Selection by Option
 
-A slot can pick the reply's shape, so what the turn chose decides what comes back. The scout uses its `focus` slot. A turn that looks on Hugging Face gets `research.models`, and any other turn gets `research.reply`:
+An option can pick the reply's shape, so what the turn chose decides what comes back. The scout uses its `focus` option. A turn that looks on Hugging Face gets `research.models`, and any other turn gets `research.reply`:
 
 ```ts frame=profile:text
 outputs: {
@@ -163,7 +203,7 @@ outputs: {
 
 `research.models` is `research.reply` with more on each candidate: `kind` can only be `model`, and `task` and `license` are required.
 
-When slot mapping is declared, Theorem reads `TurnRequest.input.slots[by]` to select the schema. If the slot matches a key in `map`, that schema is applied; otherwise, it defaults to `fallback`. Registering the profile fails if `by` is not a slot in `inputs.slots`, if a key in `map` is not one of its choices, or if a schema it names is not registered.
+Theorem reads the turn's value for the option `by` names, from `TurnRequest.options` or `TurnRequest.input.options`. If the value matches a key in `map`, that schema is applied; otherwise, or if the option is unset, it defaults to `fallback`. Registering the profile fails if `by` is not one of the profile's options, if a key in `map` is not one of its choices, or if a schema it names is not registered.
 
 ## Step Limit Handling
 

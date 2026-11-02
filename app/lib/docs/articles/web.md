@@ -1,7 +1,7 @@
 ---
 title: Headless Web & Transport
 updated: 2026-11-02
-summary: Headless client transport, Server-Sent Events stream decoding, and browser execution primitives.
+summary: Headless client transport, NDJSON stream decoding, and browser execution primitives.
 entry: src/interface/mod.ts
 covers: src/interface, react, web
 cover: /imagery/th30_braidedriver.png
@@ -15,34 +15,7 @@ Theorem provides `@theoremjs/web`: Web-standard server handlers that serve a pro
 
 ## Web Handler Architecture (`createTheoremHandler`)
 
-`createTheoremHandler` serves one profile as one Web-standard handler:
-
-```mermaid
-flowchart TD
-		Client["Browser / Vanilla Client (@theoremjs/web/client)"]
-		
-		subgraph Server["Web Server Route (@theoremjs/web/server)"]
-				Handler["createTheoremHandler(options)"]
-				Auth["Session & Vault Resolution"]
-				ConvStore["ConversationStore (Sealed / DB)"]
-				SessStore["SessionStore (Gate Authority)"]
-		end
-		
-		subgraph Kernel["Theorem Engine (@theoremjs/agents)"]
-				Profile["research.scout Profile"]
-				Runner["runTurn() / Gate Coordinator"]
-		end
-		
-		Client -->|GET /api/agent (Describe)| Handler
-		Client -->|POST /api/agent/turn (Stream)| Handler
-		Client -->|POST /api/agent/invoke (Answer Gate)| Handler
-		Client -->|POST /api/agent/steer (Inject)| Handler
-		
-		Handler --> Auth
-		Handler --> ConvStore
-		Handler --> SessStore
-		Handler --> Kernel
-```
+`createTheoremHandler` serves one profile as one Web-standard handler. Your route gives it the request, and it reads the session and the keys from the options you pass.
 
 ### Catch-All Route Dispatch
 
@@ -57,6 +30,7 @@ Mount the handler under a catch-all route. It answers these sub-routes:
 | **`POST <base>/stop`** | Returns `{ ok: true }` | Stops a running turn where it stands. Its stream goes on to save and send what the reply left. |
 | **`POST <base>/page-result`** | Returns `{ accepted: true }` | Takes the page's result for a tool the turn ran in the page. |
 | **`POST <base>/conversation`** | Returns `{ transcript, paused }` | Retrieves the rendered transcript and any paused reply for a conversation reference. |
+| **`POST <base>/notify`** | NDJSON Stream | Stays open: one line now, and one each time a background call in this session ends. Set `notifier` to serve it. |
 | **`POST <base>/rewind`** | Returns `{ conversation, view }` | Truncates a conversation after a designated block, returning a new conversation ref for branching. |
 
 ## Mounting on Web Frameworks
@@ -117,7 +91,7 @@ Theorem enforces strict trust boundaries between browser clients and server stat
 1. **The Browser Never Sends History**: The conversation store owns the transcript, the history the model reads, and the paused reply. The browser sends only what the person did now, with the opaque ref (`ref`) the store issued.
 2. **Server-Owned Gate Authority**: The session store (`sessionStore`) owns which paused calls may run, with what input, and the tool permissions. Request bodies cannot grant any of them.
 3. **Credential Isolation**: A key the user types at a gate is sent once and saved in the credential store (`credentialStore`). No credential is ever sent back to the browser.
-4. **Server-Chosen Prompt Lines**: The page does not choose a turn's [prompt lines](/docs/profiles#prompt-lines-conditions). For a profile that declares conditions, the handler's `prepare` option sets the turn's `path` and `conditions` on the server. A request that carries `stated` is refused with a `request` error unless you set `pageStatesTurn`, which is for a page you trust as you trust your server. Such a page passes `stated` to `TheoremChat`, or to `LiveRunner`, where a change during a call takes the call up again.
+4. **Server-Chosen Prompt Lines**: The page does not choose a turn's [prompt lines](/docs/profiles#prompt-lines-and-options). For a profile with `identity.options`, `prepare` on the handler sets the turn's `path` and `options` on the server. A request that carries `stated` is refused with a `request` error unless you set `pageStatesTurn`, which is for a page you trust as you trust your server. Such a page passes `stated` to `TheoremChat`, or to `LiveRunner`, where a change during a call takes the call up again.
 
 ### Conversation Store Implementations
 
@@ -151,6 +125,8 @@ const background: TheoremHandlerOptions['background'] = ({ sessionId }) => ({
 The value you return must stay valid after the request ends, until each call settles.
 
 The session keeps each detached call and the reply the model read, so a late result leaves the next turn free to resume. `POST <base>/conversation` shows the call as it stands: still running, its result, or an error. The chat reads that after each reply and on load. The error's code is `outcome_not_retained` when the session has dropped the result, which by default happens 24 hours after the call settles (`operationRetentionMs`).
+
+To tell an open page that a call ended, with no turn or reload, pass `notifier: createMemoryNotifier()` to `createTheoremHandler`. The page keeps `POST <base>/notify` open while a call runs, and each line makes it read the conversation again. The line carries no content. `createMemoryNotifier` reaches only pages connected to the process that ran the call, so for more than one instance, give a shared `TheoremNotifier`. For your own channel, such as a Web Push that reaches an open page, call `refresh()` on the `ChatController`. It runs the same read.
 
 The model does not get a late result by itself. Your `prepare` passes the stored outcome in `input.lateResults` on a later turn. Pass each one once: the turn emits a `late_results` event, so a history built from events holds it from then on. The model reads it as a tool result, and the reply counts it as a read. In `input.context` or `input.history`, the same text would read as your word or the user's.
 

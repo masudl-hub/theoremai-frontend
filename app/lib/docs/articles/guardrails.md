@@ -1,6 +1,6 @@
 ---
 title: The Five Boundaries
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Enforce security policies across inbound, tool argument, tool result, and outbound model boundaries.
 entry: src/guardrails/mod.ts
 covers: src/guardrails, src/kernel/stages.ts
@@ -16,46 +16,124 @@ Language model providers guarantee token generation and grammar constraints, but
 
 ## The Boundary Crossing Model
 
-Every conversational turn or tool interaction moves text across five boundary groups:
+Every turn or tool call moves text across five groups of boundaries:
 
-```mermaid
-flowchart TD
-		subgraph Inbound ["1. Inbound Boundaries"]
-				User["user / voice / attachment"]
-				HostCtx["slots / context / history / system"]
-		end
-
-		subgraph ToolArg ["2. Tool Argument Boundaries"]
-				ToTool["tool_arguments (function, http, mcp, agent)"]
-		end
-
-		subgraph ToolRes ["3. Tool Result Boundaries"]
-				FromTool["tool_output / tool_failure (function, http, mcp, agent)"]
-		end
-
-		subgraph ToolShown ["4. Tool Shown Boundaries"]
-				ToPerson["tool_shown (function, http, mcp, agent)"]
-		end
-
-		subgraph Outbound ["5. Outbound Boundaries"]
-				ToUser["reply / reply_structured / live_reply / thought"]
-		end
-
-		User --> Model["Model Execution Engine"]
-		HostCtx --> Model
-		Model --> ToTool
-		ToTool --> ToolExecution["Tool Runners (Local / HTTP / MCP / Sub-agent)"]
-		ToolExecution --> FromTool
-		FromTool --> Model
-		ToolExecution --> ToPerson
-		Model --> ToUser
+```figure
+{
+  "kind": "sequence",
+  "still": {
+    "src": "/imagery/th30_copperandobsidian.png",
+    "position": "40% 60%"
+  },
+  "caption": "The five groups of boundaries. The model's text can arrive before, between and after tool calls, so the groups repeat within a turn.",
+  "steps": [
+    {
+      "label": "Inbound boundaries",
+      "text": "Text that enters the model's context from the person or your application.",
+      "kind": "guardrail",
+      "parts": [
+        {
+          "label": "user"
+        },
+        {
+          "label": "attachment"
+        },
+        {
+          "label": "voice"
+        },
+        {
+          "label": "options"
+        },
+        {
+          "label": "context"
+        },
+        {
+          "label": "history"
+        },
+        {
+          "label": "injected"
+        },
+        {
+          "label": "system"
+        },
+        {
+          "label": "repair"
+        },
+        {
+          "label": "live_user"
+        }
+      ]
+    },
+    {
+      "label": "Tool argument boundaries",
+      "text": "What the model sends to a tool. There is one boundary for each kind of tool.",
+      "kind": "guardrail",
+      "parts": [
+        {
+          "label": "tool_arguments_function"
+        },
+        {
+          "label": "tool_arguments_http"
+        },
+        {
+          "label": "tool_arguments_mcp"
+        },
+        {
+          "label": "tool_arguments_agent"
+        }
+      ]
+    },
+    {
+      "label": "Tool result boundaries",
+      "text": "What a tool returns, and its error text, before the model reads them.",
+      "kind": "guardrail",
+      "parts": [
+        {
+          "label": "tool_output_*"
+        },
+        {
+          "label": "tool_failure_*"
+        }
+      ]
+    },
+    {
+      "label": "Tool shown boundaries",
+      "text": "What a tool call shows the person on the turn's events: its output, error, artifacts and trace.",
+      "kind": "guardrail",
+      "parts": [
+        {
+          "label": "tool_shown_*"
+        }
+      ]
+    },
+    {
+      "label": "Outbound boundaries",
+      "text": "The model's own text on its way to the person.",
+      "kind": "guardrail",
+      "parts": [
+        {
+          "label": "reply"
+        },
+        {
+          "label": "reply_structured"
+        },
+        {
+          "label": "live_reply"
+        },
+        {
+          "label": "thought"
+        }
+      ]
+    }
+  ]
+}
 ```
 
-1. **Inbound Boundaries**: Text entering model context from the user or host application (`user`, `attachment`, `voice`, `slots`, `context`, `history`, `injected`, `system`, `repair`, `live_user`).
-2. **Tool Argument Boundaries**: Model-generated arguments dispatched to external capabilities (`tool_arguments_function`, `tool_arguments_http`, `tool_arguments_mcp`, `tool_arguments_agent`).
-3. **Tool Result Boundaries**: External bytes returned by tools into model context (`tool_output_*`, `tool_failure_*`).
-4. **Tool Shown Boundaries**: What a tool call shows the person on the turn's events: its output, error, artifacts and trace (`tool_shown_*`).
-5. **Outbound Boundaries**: The model's own text on its way to the person (`reply`, `reply_structured`, `live_reply`, `thought`).
+1. **Inbound boundaries**: Text that enters the model's context from the person or your application.
+2. **Tool argument boundaries**: What the model sends to a tool. There is one boundary for each kind of tool.
+3. **Tool result boundaries**: What a tool returns, and its error text, before the model reads them.
+4. **Tool shown boundaries**: What a tool call shows the person on the turn's events: its output, error, artifacts and trace.
+5. **Outbound boundaries**: The model's own text on its way to the person.
 
 ## The Four Enforcement Actions
 

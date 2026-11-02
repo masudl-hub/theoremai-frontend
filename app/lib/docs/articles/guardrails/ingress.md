@@ -17,28 +17,7 @@ Theorem provides two layers of ingress protection:
 
 ## The Ingress Threat Model
 
-Ingress text enters model context through two distinct vectors:
-
-```mermaid
-flowchart TD
-		subgraph Direct ["Direct Ingress"]
-				User["User Messages & Attachments"]
-		end
-
-		subgraph Indirect ["Indirect Ingress"]
-				RemoteHTTP["HTTP Tool Responses"]
-				RemoteMCP["MCP Server Responses"]
-				ChildAgent["Sub-Agent Outputs"]
-		end
-
-		User -->|Direct Injection| Engine["Model Context"]
-		RemoteHTTP -->|Indirect Injection & Taint| Engine
-		RemoteMCP -->|Indirect Injection & Taint| Engine
-		ChildAgent -->|Indirect Injection & Taint| Engine
-
-		Engine --> Action{"Downstream Tool Call"}
-		Action -->|Confused Deputy| Mutate["Mutative / Destructive Tool"]
-```
+Text enters the model's context in two ways, directly from a person or indirectly through a tool. Each carries its own risk:
 
 * **Direct Prompt Injection**: A user prompt instructs the model to ignore safety rules, extract internal secrets, or act as an unrestricted persona.
 * **Indirect Prompt Injection**: A remote service, web page, or email read by a tool contains text that tries to steer the agent when the model reads the tool's result.
@@ -172,3 +151,59 @@ Besides detection, Theorem puts each kind of untrusted text inside its own tags 
 * **[Egress Enforcement & Canaries](/docs/guardrails/egress)**: Canary tokens, prompt echo detection, and thought guarding.
 * **[Network Safety & SSRF](/docs/guardrails/network)**: Private address checks, redirect checks, and host name lookups.
 * **[Tool Permissions & Gates](/docs/tools/gates)**: Handling human approval cards and gate resumption.
+
+```figure
+{
+  "kind": "sequence",
+  "still": {
+    "src": "/imagery/th30_crimsoncrater.png",
+    "position": "30% 50%"
+  },
+  "caption": "What happens to text from a person or a tool, up to the next tool call, with the default settings.",
+  "steps": [
+    {
+      "label": "Text reaches the model",
+      "text": "A person's message crosses the inbound boundaries. A tool's result crosses the tool result boundaries.",
+      "kind": "guardrail",
+      "parts": [
+        {
+          "label": "injection",
+          "text": "Off by default. Set it to flag, redact or block."
+        },
+        {
+          "label": "tool_instructions",
+          "text": "Flags text that behaves like an instruction, in the results of remote tools."
+        }
+      ]
+    },
+    {
+      "label": "A remote result taints the turn",
+      "text": "A result from an HTTP or MCP tool taints the turn, whether or not a detector matched. So does an agent tool whose profile has tools or built-in tools.",
+      "kind": "guardrail"
+    },
+    {
+      "label": "The model calls another tool",
+      "text": "On a tainted turn, read-only calls always run. A read-write or destructive call is reported as a steered turn. Two settings go further.",
+      "kind": "model",
+      "parts": [
+        {
+          "label": "afterRemoteRead",
+          "text": "Refuses tool calls on a tainted turn by each tool's access. The default is off."
+        },
+        {
+          "label": "remoteDestination",
+          "text": "Checks where a tool call's arguments point."
+        }
+      ]
+    }
+  ]
+}
+```
+
+1. **Text reaches the model**: A person's message crosses the inbound boundaries. A tool's result crosses the tool result boundaries.
+   * **`injection`**: Off by default. Set it to flag, redact or block.
+   * **`tool_instructions`**: Flags text that behaves like an instruction, in the results of remote tools.
+2. **A remote result taints the turn**: A result from an HTTP or MCP tool taints the turn, whether or not a detector matched. So does an agent tool whose profile has tools or built-in tools.
+3. **The model calls another tool**: On a tainted turn, read-only calls always run. A read-write or destructive call is reported as a steered turn. Two settings go further.
+   * **`afterRemoteRead`**: Refuses tool calls on a tainted turn by each tool's access. The default is off.
+   * **`remoteDestination`**: Checks where a tool call's arguments point.

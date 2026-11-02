@@ -1,6 +1,6 @@
 ---
 title: Network Safety & SSRF
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Address, scheme and redirect checks that keep tool requests away from private networks.
 entry: src/guardrails/network.ts
 covers: src/guardrails/network.ts, src/guardrails/destinations.ts
@@ -15,20 +15,37 @@ Theorem checks the URL of every request it makes for a tool, against the policy 
 
 ## How a Request Is Checked
 
-```mermaid
-flowchart TD
-		Request["Request<br/>(HTTP / MCP / OAuth / images)"] --> Scheme{"Allowed scheme?<br/>(default: https)"}
-		Scheme -->|No| BlockScheme["Refused"]
-		Scheme -->|Yes| Target{"Address check"}
-
-		Target -->|Local name or private address| BlockPriv["Refused"]
-		Target -->|Public name, resolveHost set| DNS["resolveHost lookup"]
-		Target -->|Public address, or no resolveHost| Hop["Send"]
-
-		DNS -->|Private address, or none| BlockDns["Refused"]
-		DNS -->|Public addresses| Hop
-		Hop -->|Redirect| Scheme
-		Hop --> Server["Response"]
+```figure
+{
+  "kind": "sequence",
+  "still": {
+    "src": "/imagery/th30_blueabyss.png",
+    "position": "50% 40%"
+  },
+  "caption": "The checks on one request. A failed check refuses the request.",
+  "steps": [
+    {
+      "label": "The scheme",
+      "text": "The scheme must be allowed. The default is https. allowPrivateNetworks also allows http.",
+      "kind": "guardrail"
+    },
+    {
+      "label": "The address",
+      "text": "A local name or a private address is refused, unless allowedHosts or allowPrivateNetworks permits it.",
+      "kind": "guardrail"
+    },
+    {
+      "label": "The lookup",
+      "text": "When you pass resolveHost, Theorem looks up a public name. A private address, or no address, refuses the request. Literal addresses, allowed hosts and allowPrivateNetworks skip the lookup.",
+      "kind": "guardrail"
+    },
+    {
+      "label": "The send",
+      "text": "Theorem sends the request. A redirect goes back to step 1, for up to 20 hops, and credentials are dropped once it leaves the first origin. OAuth requests do not follow redirects.",
+      "kind": "runner"
+    }
+  ]
+}
 ```
 
 ## Default Network Restrictions

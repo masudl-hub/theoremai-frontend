@@ -1,6 +1,6 @@
 ---
 title: Evals & Benchmarks
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Author and execute agent evaluation test suites with automated rubrics and assertion trial runners.
 entry: src/evals/mod.ts
 covers: src/evals, src/evals/suite.ts, src/evals/run.ts, src/evals/graders
@@ -13,13 +13,37 @@ Evaluating generative agents requires testing non-deterministic behavior across 
 
 Theorem provides a native evaluation framework built on a foundational architectural invariant: **graders inspect standardized trace records (`TraceRecord`) and nothing else**.
 
-```mermaid
-flowchart LR
-		Suite["EvalSuite (Cases & Graders)"] --> Runner["runSuite()"]
-		Runner --> Execution["Execute Turns (runTurn)"]
-		Execution --> Traces["Standard TraceRecords"]
-		Traces --> Graders["Deterministic Graders & LLM Judges"]
-		Graders --> Verdict["Trial Verdicts & Metric Summaries"]
+```figure
+{
+  "kind": "sequence",
+  "still": {
+    "src": "/imagery/th30_siennadunes.png",
+    "position": "50% 50%"
+  },
+  "caption": "A suite from file to verdict. A recorded run skips the turns and reads the traces it is given.",
+  "steps": [
+    {
+      "label": "Load the suite",
+      "text": "loadSuite reads the suite and its cases file.",
+      "kind": "store"
+    },
+    {
+      "label": "Run the turns",
+      "text": "runSuite runs each case with runTurn, once for each repeat, and collects the traces. With recorded traces it runs no turns.",
+      "kind": "runner"
+    },
+    {
+      "label": "Grade the trials",
+      "text": "Theorem builds a trial from each trace, and each grader reads it. A grader's source is code or a model.",
+      "kind": "runner"
+    },
+    {
+      "label": "Reach the verdicts",
+      "text": "Each trial gets an outcome, and each case a verdict. runSuite returns the run. summarizeRun adds it up.",
+      "kind": "runner"
+    }
+  ]
+}
 ```
 
 Because evaluations grade the trace rather than custom runner hooks:

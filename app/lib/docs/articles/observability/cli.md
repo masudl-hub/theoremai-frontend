@@ -1,6 +1,6 @@
 ---
 title: Command-Line Evals & Testing
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Command line test runner for batch evals, prompt regression matrix testing, and trace replays.
 entry: src/cli/index.ts
 covers: src/cli, src/cli/commands
@@ -27,7 +27,7 @@ Theorem includes a command-line interface, `@theoremjs/agents/cli`. The `agents`
 
 ## Installation & Invocation
 
-The CLI is packaged inside `@theoremjs/agents` as the `agents` binary. The package needs Node 20 or later:
+The CLI is packaged inside `@theoremjs/agents` as the `agents` binary. The package needs Node 22 or later:
 
 ```bash
 agents <command> [options]
@@ -53,7 +53,7 @@ The CLI loads the setup file, then the entry it names, and reads the entry's `th
 
 `agents profile --setup <file>` registers your profiles the same way before it lists or shows them.
 
-`test` and `run` send no slots and no conditions. The scout's `reader` slot stays unset, so its `when reader is …` lines do not fit, and the samples on this page run as written. A profile with a condition, or a prompt line that fills `{name}` from a slot, needs `theorem.prepare` to state it, or the turn is refused with a `request` error.
+`test` and `run` send no options. The scout's `reader` option stays unset, so its `when reader is …` lines do not fit, and the samples on this page run as written. A line that prints an unset option is not sent. To set an option on these commands, state it in `theorem.prepare`.
 
 Without `--setup`, `test` and `run` have no provider, so they fail and exit `1`. A setup file with no `entry`, an entry with no `theorem`, or a setup file that still exports `default` or `provider` stops the command with the same message Studio gives. Under Node, the setup file and the entry must be files Node can import.
 
@@ -168,7 +168,7 @@ agents profile list --setup studio.setup.ts
 agents profile show research.scout --setup studio.setup.ts
 ```
 
-`list` prints a card for each profile: its handle and type, its model ids, its inputs, its tools and its structured output. A profile whose slot picks its reply shape, as the scout's `focus` does, prints `custom`:
+`list` prints a card for each profile: its handle and type, its model ids, its inputs, its tools and its structured output. A profile whose option picks its reply shape, as the scout's `focus` does, prints `custom`:
 
 ```text
  • Profile: research.scout   (handle: scout) [text]

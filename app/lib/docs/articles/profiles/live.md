@@ -56,27 +56,60 @@ The `ingress` block defines which media channels the host application can push t
 
 ### Interruption Handling (Barge-in)
 
-Realtime voice conversations require natural turn-taking. The `live.vad` block configures Voice Activity Detection:
+Realtime voice conversations need natural turn-taking. The `live.vad` block configures Voice Activity Detection:
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant User as Client Audio
-    participant App as Host Application
-    participant Kernel as LiveSession Controller
-    participant Gemini as Gemini Live WebSocket
-
-    Gemini-->>Kernel: Stream model audio frames
-    Kernel-->>App: yield { type: 'media', media }
-    App->>User: Playback speaker audio
-    User->>App: User speaks during playback (barge-in)
-    App->>Kernel: sendAudio(pcmChunk)
-    Kernel->>Gemini: Forward audio chunk
-    Note over Gemini: VAD detects user speech
-    Gemini-->>Kernel: Interruption signal
-    Kernel-->>App: yield { type: 'done', interrupted: true }
-    Note over App: Halt client speaker playback
-    Gemini-->>Kernel: Stream reply to new user utterance
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_moonlitriver.png",
+    "position": "50% 50%"
+  },
+  "caption": "A person talks over the model. With activityHandling set to 'NO_INTERRUPTION', the reply goes on instead.",
+  "lanes": [
+    "Your app",
+    "Theorem",
+    "Gemini"
+  ],
+  "steps": [
+    {
+      "lane": "Gemini",
+      "label": "Gemini streams the reply",
+      "text": "Audio comes down the socket.",
+      "kind": "stream"
+    },
+    {
+      "lane": "Theorem",
+      "label": "The session yields the audio",
+      "text": "Each frame is a media event on session.events().",
+      "kind": "stream"
+    },
+    {
+      "lane": "Your app",
+      "label": "The person talks over it",
+      "text": "Your app plays the audio, and passes the microphone's audio to sendAudio.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "Gemini",
+      "label": "Gemini hears the speech",
+      "text": "With automatic detection on, Gemini decides that the person has started speaking, and interrupts the reply.",
+      "kind": "model"
+    },
+    {
+      "lane": "Theorem",
+      "label": "The session ends the reply",
+      "text": "It drops the events still waiting, and yields done with interrupted: true.",
+      "kind": "runner"
+    },
+    {
+      "lane": "Your app",
+      "label": "Your app stops the speaker",
+      "text": "It cancels playback. The answer to the person comes as the next reply.",
+      "kind": "egress"
+    }
+  ]
+}
 ```
 
 | Property | Values | Description |
@@ -94,16 +127,6 @@ When a user interrupts model speech, Theorem emits an event with `interrupted: t
 ## Context Compression for Long Sessions
 
 Live sessions fill their context quickly. Without compression, Gemini ends audio sessions at 15 minutes and audio-video sessions at 2.
-
-```mermaid
-flowchart TD
-    Init["Context grows as the call goes on"] --> Check{"Context >= triggerTokens?"}
-    Check -- No --> Keep["Keep streaming"]
-    Check -- Yes --> Shrink["Sliding window"]
-    Shrink --> Sys["System instruction stays"]
-    Shrink --> Prune["Oldest turns are dropped"]
-    Sys & Prune --> Target["Context trimmed to targetTokens"]
-```
 
 The `live.contextCompression` block trims the session's context once it grows past the trigger:
 

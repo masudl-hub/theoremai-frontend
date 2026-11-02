@@ -43,7 +43,7 @@ return <div>Connected to {described.iface.identity.handle}</div>;
 ```
 
 The returned `iface` object exposes client-safe metadata:
-- **`inputs`**: What the profile accepts: text (`inputs.text`), attachments (`inputs.attachments`), voice notes, and slots (`inputs.slots`).
+- **`inputs`**: What the profile accepts: text (`inputs.text`), attachments (`inputs.attachments`), voice notes, and options (`inputs.options`).
 - **`models`**: The profile's model bindings, without their host functions.
 - **`tools`**: The tools the profile allows, and the names of the tools the page answers.
 - **`labels`**: The profile's wording overrides for the client's messages. Pass them to `labelText`.
@@ -58,7 +58,7 @@ The `useTheoremChat` hook binds `createChatController` from `@theoremjs/web/clie
 
 When a tool call completes, each image or other media part it returned becomes a `media` block right after the call, so it stands before what the model says next.
 
-A tool call whose `state.phase` is `'background'` has answered the model and goes on after the turn. The chat reads the conversation from the host after each reply, so its block then shows how the call ended, or that it is still running.
+A tool call whose `state.phase` is `'background'` has answered the model and goes on after the turn. The chat reads the conversation from the host after each reply, so its block then shows how the call ended, or that it is still running. With a [`notifier`](/docs/web) on the handler, an open page also reads it when the call ends.
 
 To display incoming tokens as they arrive over the wire, concatenate committed `chat.blocks` with active `chat.streamBlocks`:
 

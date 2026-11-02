@@ -23,17 +23,29 @@ const part = z.strictObject({
 	chapter: z.enum(DOC_SECTIONS).optional(),
 });
 
-/** One step, and the parts it is made of when it has any. */
+const tokenKind = z.enum([
+	'profile',
+	'model',
+	'tool',
+	'ingress',
+	'egress',
+	'guardrail',
+	'stream',
+	'store',
+	'runner',
+]);
+
+/** One step, the icon its token wears, and the parts it is made of when it has any. */
 const step = z.strictObject({
 	label: z.string(),
 	text: z.string(),
+	kind: tokenKind.optional(),
 	parts: z.array(part).min(1).optional(),
 });
 
-/** Steps that happen in order. `layout` draws them down the page, or across it where there is room. */
+/** Steps that happen in order. */
 const sequence = z.strictObject({
 	kind: z.literal('sequence'),
-	layout: z.enum(['column', 'row']).default('column'),
 	still,
 	caption: z.string(),
 	steps: z.array(step).min(2),
@@ -54,18 +66,6 @@ const lanes = z
 	.refine((figure) => figure.steps.every((each) => figure.lanes.includes(each.lane)), {
 		error: 'a step names a lane the figure does not have',
 	});
-
-const tokenKind = z.enum([
-	'profile',
-	'model',
-	'tool',
-	'ingress',
-	'egress',
-	'guardrail',
-	'stream',
-	'store',
-	'runner',
-]);
 
 const tokenColor = z.enum(['neutral', 'blue', 'green', 'amber', 'purple', 'red']);
 
@@ -98,6 +98,7 @@ const switchback = z.strictObject({
 
 const figure = z.union([sequence, lanes, switchback]);
 
+export type TokenKind = z.infer<typeof tokenKind>;
 export type DocFigure = z.infer<typeof figure>;
 export type SequenceFigure = z.infer<typeof sequence>;
 export type LanesFigure = z.infer<typeof lanes>;

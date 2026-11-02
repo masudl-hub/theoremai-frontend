@@ -48,43 +48,131 @@ models: {
 
 ## Timing: Synchronous vs Asynchronous Compaction
 
-Theorem supports two operational timing models: in-turn synchronous execution, or out-of-band asynchronous execution.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    rect rgb(245, 247, 250)
-        Note over App,Runner: timing: 'before' (Synchronous In-Turn)
-        App->>Runner: runTurn()
-        Runner->>Runner: Tokens > compactAt * maxTokens?
-        Runner->>Model: Run compaction agent on older history
-        Model-->>Runner: Return summary
-        Runner->>Runner: Splice summary + retain exchanges
-        Runner->>Model: Execute primary turn with compacted history
-        Runner-->>App: Emit turn completion
-    end
-
-    rect rgb(240, 244, 248)
-        Note over App,Runner: timing: 'after' (Asynchronous Host-Driven)
-        App->>Runner: runTurn()
-        Runner->>Model: Execute turn normally
-        Runner->>Runner: Turn tokens > compactAt * maxTokens?
-        Runner-->>App: done event with done.compaction signal
-        Note over App: Zero latency added to active turn
-        App->>Runner: compactHistory(done.compaction) in background
-        Runner-->>App: Compacted history, for the host to save
-    end
-```
+Compaction runs at one of two times: before the turn, or after it in the background.
 
 ### 1. Synchronous (`timing: 'before'`)
 
 The kernel evaluates token counts before calling the model. If compaction is needed, it runs the compactor immediately, splices the summary into the history, and executes the turn against the fresh history.
 
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_nightide.png",
+    "position": "30% 50%"
+  },
+  "caption": "timing: 'before'. The turn waits for the compactor, and the model reads the shorter history on that turn.",
+  "lanes": [
+    "Your code",
+    "Theorem",
+    "The model"
+  ],
+  "steps": [
+    {
+      "lane": "Your code",
+      "label": "You call runTurn",
+      "text": "You pass the history so far.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Theorem measures the history",
+      "text": "It compares the count with compactAt of maxTokens, or asks your trigger. Under the threshold, the turn runs as it is.",
+      "kind": "guardrail"
+    },
+    {
+      "lane": "The model",
+      "label": "The compactor summarises",
+      "text": "A nested turn with no tools summarises the older messages.",
+      "kind": "model"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Theorem yields a compaction event",
+      "text": "It carries the outcome, the message and token counts, and the summary.",
+      "kind": "stream"
+    },
+    {
+      "lane": "The model",
+      "label": "The model answers",
+      "text": "It reads the summary and the messages that were kept.",
+      "kind": "model"
+    },
+    {
+      "lane": "Your code",
+      "label": "You get the turn's events",
+      "text": "The turn ends with done.",
+      "kind": "egress"
+    }
+  ]
+}
+```
+
 The active turn absorbs the compactor's execution latency, and the model reads the shorter history on that same turn. During execution, Theorem emits a `compaction` lifecycle event containing the outcome, the message and token counts, and the generated summary.
 
 ### 2. Asynchronous (`timing: 'after'`)
 
-The scout compacts before the turn. To compact after it instead, set `timing: 'after'`. The turn then executes immediately without added latency. At the conclusion of the turn, the kernel checks whether compaction thresholds were crossed. If so, it attaches a compaction signal to the `done` event as its `compaction` field.
+The scout compacts before the turn. To compact after it instead, set `timing: 'after'`. The turn then executes without waiting for the compactor. At the conclusion of the turn, the kernel checks whether compaction thresholds were crossed. If so, it attaches a compaction signal to the `done` event as its `compaction` field.
+
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_nightide.png",
+    "position": "70% 50%"
+  },
+  "caption": "timing: 'after'. Your code runs the compactor after the turn, in the background.",
+  "lanes": [
+    "Your code",
+    "Theorem",
+    "The model"
+  ],
+  "steps": [
+    {
+      "lane": "Your code",
+      "label": "You call runTurn",
+      "text": "You pass the history so far.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "The model",
+      "label": "The model answers",
+      "text": "It reads the whole history.",
+      "kind": "model"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Theorem measures the history",
+      "text": "This runs before done is delivered. The compactor does not.",
+      "kind": "guardrail"
+    },
+    {
+      "lane": "Your code",
+      "label": "You read done.compaction",
+      "text": "It is there only when the history needs compacting.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "Your code",
+      "label": "You call compactHistory",
+      "text": "You pass the history and tokens from done.compaction.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "The model",
+      "label": "The compactor summarises",
+      "text": "It runs on your host options, away from any turn.",
+      "kind": "model"
+    },
+    {
+      "lane": "Your code",
+      "label": "You save the result",
+      "text": "result.history comes first, then this turn's messages.",
+      "kind": "store"
+    }
+  ]
+}
+```
 
 The host application reads this signal and triggers out-of-band compaction in the background:
 

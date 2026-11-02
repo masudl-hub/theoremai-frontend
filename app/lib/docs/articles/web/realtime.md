@@ -15,32 +15,60 @@ Theorem implements a dedicated native browser media pipeline in `@theoremjs/web/
 
 ## The Realtime Media Architecture
 
-Duplex streaming connects the browser to an upstream live provider via a WebSocket relay. Rather than requiring WebRTC peer negotiation and ICE/STUN/TURN infrastructure, Theorem streams native PCM audio chunks and JPEG video frames directly over a bidirectional WebSocket (`/api/live/relay`):
+Duplex streaming connects the browser to a live provider through a WebSocket relay that you run on your server. There is no WebRTC negotiation and no ICE, STUN or TURN infrastructure: PCM audio chunks and JPEG video frames travel over one WebSocket. The client connects to `/api/live/relay` unless you give it another address.
 
-```mermaid
-flowchart TD
-		subgraph Browser["Browser Client (@theoremjs/web/client)"]
-				Mic["Microphone Stream"] --> Worklet["AudioWorklet (mic-capture.js)<br/>Mono Float Frames"]
-				Worklet --> QuietGate{"Quiet-Mic Gate<br/>(Speaker Bleed Guard)"}
-				QuietGate --> Downsample["16kHz PCM Downsampling"]
-				Downsample -->|16kHz PCM Chunks| WSOut["WebSocket Outbound (/api/live/relay)"]
-				
-				Camera["Camera Video Stream"] --> FrameCap["Frame Capture (Canvas JPEG)"]
-				FrameCap -->|client.sendVideo()| WSOut
-				
-				WSIn["WebSocket Inbound"] --> Decode["24kHz PCM Decoder"]
-				Decode --> AudioCtx["Web Audio API (AudioContext)<br/>Gapless Playback Scheduler"]
-				AudioCtx --> Speaker["Device Speaker"]
-				
-				WSIn --> Interruption{"Interrupted Turn"}
-				Interruption -->|client.cancelPlayback()| AudioCtx
-		end
-
-		subgraph Server["Server Relay (@theoremjs/web/server)"]
-				WSOut --> Boundary["Session Boundary<br/>prepareLiveOpen()"]
-				Boundary --> Upstream["Gemini Live Gateway<br/>(runSession)"]
-				Upstream --> WSIn
-		end
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_cobaltwaves.png",
+    "position": "40% 50%"
+  },
+  "caption": "Sound in and sound out. The relay is your server code, built on the boundary that @theoremjs/web/server provides.",
+  "lanes": [
+    "Browser",
+    "Your relay",
+    "Gemini"
+  ],
+  "steps": [
+    {
+      "lane": "Browser",
+      "label": "The browser captures the microphone",
+      "text": "An AudioWorklet posts mono float frames. While the model plays, a quiet frame is dropped so the speaker does not feed back. The rest are downsampled to 16 kHz PCM.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "Your relay",
+      "label": "Your relay opens the session",
+      "text": "The first message is an open. prepareLiveOpen reads it, and runSession starts the live session.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "Your relay",
+      "label": "Your relay forwards each frame",
+      "text": "parseLiveClientMessage reads later messages, and your relay passes them to the session's sendAudio, sendVideo, sendText and sendContext. Camera frames arrive from client.sendVideo.",
+      "kind": "stream"
+    },
+    {
+      "lane": "Gemini",
+      "label": "Gemini answers",
+      "text": "Its audio and events go back to the session.",
+      "kind": "model"
+    },
+    {
+      "lane": "Your relay",
+      "label": "Your relay sends the events",
+      "text": "The session's events go to the browser in an events message.",
+      "kind": "stream"
+    },
+    {
+      "lane": "Browser",
+      "label": "The browser plays the reply",
+      "text": "A media event goes to gapless playback. A done event with interrupted calls cancelPlayback.",
+      "kind": "stream"
+    }
+  ]
+}
 ```
 
 ## 1. Background Audio Ingestion (`AudioWorklet`)
@@ -138,27 +166,73 @@ import { LiveRunner } from '@theoremjs/react/live';
 
 Models can execute tools during an active voice stream without closing the WebSocket connection:
 
-```mermaid
-sequenceDiagram
-		autonumber
-		participant Model as Gemini Live Engine
-		participant Relay as Session Boundary Relay
-		participant Client as LiveSessionClient
-		participant UI as LiveRunner UI
-
-		Model->>Relay: toolCall: read_pages({ urls: [...], question: "..." })
-		Relay->>Client: events (the tool call)
-		Client->>Relay: executeTool ({ callId, operationId })
-		Note over Relay: Tool requires human confirmation
-		Relay->>Client: executeToolResult ({ status: "gated", gate: { ... } })
-		Client->>UI: Renders ApprovalCard dialog
-		UI-->>Client: User clicks "Approve"
-		Client->>Relay: executeTool ({ callId, operationId, decision: "approve" })
-		Relay->>Model: Resumes with tool output
-		Model->>Client: Resumes streaming audio reply
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_midnightblueberries.png",
+    "position": "50% 50%"
+  },
+  "caption": "A tool call held for approval during a voice call. The socket stays open all the way through.",
+  "lanes": [
+    "The model",
+    "Your relay",
+    "The browser"
+  ],
+  "steps": [
+    {
+      "lane": "The model",
+      "label": "The model calls a tool",
+      "text": "read_pages, with its urls and question.",
+      "kind": "model"
+    },
+    {
+      "lane": "Your relay",
+      "label": "Your relay sends the call",
+      "text": "It reaches the browser in an events message.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "The browser",
+      "label": "The browser asks to run it",
+      "text": "It sends executeTool with the callId and operationId.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "Your relay",
+      "label": "The session finds a gate",
+      "text": "Your relay answers executeToolResult with status gated and the gate.",
+      "kind": "guardrail"
+    },
+    {
+      "lane": "The browser",
+      "label": "The person decides",
+      "text": "LiveRunner shows an ApprovalCard in a dialog through onGate. With no onGate, every gate is refused.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "The browser",
+      "label": "The browser sends the answer",
+      "text": "It sends executeTool again, with decision: 'approve'.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "Your relay",
+      "label": "The tool runs",
+      "text": "The session sends the result to the model, and your relay answers with status settled.",
+      "kind": "tool"
+    },
+    {
+      "lane": "The model",
+      "label": "The model goes on speaking",
+      "text": "Its audio reaches the browser as media events, through your relay.",
+      "kind": "model"
+    }
+  ]
+}
 ```
 
-Every tool of `research.scout.live` runs without asking, so this diagram needs `permission: 'always_confirm'` added to `read_pages`. If a tool requires user approval, the call does not drop. The audio connection stays open while the UI shows an approval card in a dialog. Once approved, the tool result is returned over the WebSocket, and the agent goes on speaking.
+Every tool of `research.scout.live` runs without asking, so this figure needs `permission: 'always_confirm'` added to `read_pages`. If a tool requires user approval, the call does not drop. The audio connection stays open while the UI shows an approval card in a dialog. Once approved, the tool result is returned over the WebSocket, and the agent goes on speaking.
 
 A tool with a `background` setting can answer the model now and finish later, as on the [web handler](/docs/web#tools-that-finish-after-their-turn). Your relay passes its `background` service and its `execution` coordinator to `runSession`.
 

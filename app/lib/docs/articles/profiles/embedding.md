@@ -47,23 +47,7 @@ models: {
 
 ## Embedding Execution Flow
 
-Theorem runs the embedding request directly against the bound model and returns the raw vector coordinates. Theorem owns no database and performs no vector search:
-
-```mermaid
-flowchart LR
-    subgraph Input["EmbeddingRequest"]
-        T["input: EmbeddingInput | EmbeddingInput[]"]
-        K["task?: 'query' | 'document'"]
-    end
-    subgraph Kernel["runEmbedding()"]
-        M["Upstream Embedding Model"]
-    end
-    subgraph Output["EmbeddingResult"]
-        E["embeddings: EmbeddingVector[]<br/><i>index, values: number[], dimensions</i>"]
-        U["usage: { inputTokens, costUsd }"]
-    end
-    T & K --> M --> E & U
-```
+Theorem runs the embedding request directly against the bound model and returns the raw vector coordinates. Theorem owns no database and performs no vector search.
 
 ### The `task` Parameter
 

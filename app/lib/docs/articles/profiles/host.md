@@ -46,21 +46,98 @@ tools: {
 * **Credentials read when needed.** When you pass `credentials`, Theorem reads a slot from it only when a tool that signs in runs.
 * **Output checked.** The `detect` guardrail reads what the tool returns at the `tool_output` boundary, and what the person is shown at `tool_shown`. A blocked output fails the call with `output_blocked`.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant App as Your app
-    participant Kernel as invokeTool()
-    participant Tool as Tool (function / HTTP / MCP)
-
-    App->>Kernel: invokeTool({ profile, name, input })
-    Kernel-->>App: tool event (the call and its arguments)
-    Kernel->>Kernel: tools.allow, detect at tool_arguments
-    Kernel->>Tool: run with parsed input (network, credentials)
-    Tool-->>Kernel: result
-    Kernel->>Kernel: detect at tool_output and tool_shown
-    Kernel-->>App: tool event, phase complete (or error)
-    Kernel-->>App: done
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_lapis.png",
+    "position": "50% 50%"
+  },
+  "caption": "One invokeTool call, with the checks in the order they run for a function tool.",
+  "lanes": [
+    "Your code",
+    "Theorem",
+    "The tool"
+  ],
+  "steps": [
+    {
+      "lane": "Your code",
+      "label": "You call invokeTool",
+      "text": "You pass the profile, the tool's name and its input.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Theorem reports the call",
+      "text": "A tool event carries the call and its arguments. A request that names a callId skips this event.",
+      "kind": "stream"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Theorem checks the call",
+      "text": "A check that needs a person holds the call: a tool event has phase gate, and the run ends with stop.kind gate.",
+      "kind": "guardrail",
+      "parts": [
+        {
+          "label": "tools.allow"
+        },
+        {
+          "label": "tool_arguments"
+        },
+        {
+          "label": "Taint"
+        },
+        {
+          "label": "Destination"
+        },
+        {
+          "label": "Input schema"
+        },
+        {
+          "label": "Permission"
+        },
+        {
+          "label": "Sign-in"
+        },
+        {
+          "label": "pre_tool"
+        }
+      ]
+    },
+    {
+      "lane": "The tool",
+      "label": "The tool runs",
+      "text": "It gets the parsed input, under the network policy and with your credentials.",
+      "kind": "tool"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Theorem checks the result",
+      "text": "A failure before the tool runs skips the output checks.",
+      "kind": "guardrail",
+      "parts": [
+        {
+          "label": "Output schema"
+        },
+        {
+          "label": "tool_output"
+        },
+        {
+          "label": "post_tool"
+        },
+        {
+          "label": "tool_shown"
+        }
+      ]
+    },
+    {
+      "lane": "Your code",
+      "label": "You get the outcome",
+      "text": "A tool event with phase complete, or an error, and then done.",
+      "kind": "egress"
+    }
+  ]
+}
 ```
 
 ## Invoke a tool: `invokeTool()`

@@ -46,7 +46,7 @@ The screen keeps the profile it edits in the browser, as a draft, and sends the 
 
 The editor has two views, **Editor** and **Code**. One button switches between them.
 
-* **Editor**: The profile as form fields: its model, prompt, tools, guardrails and other sections. The prompt is one box, and a blank line starts a new line. It opens formatted: private text wears a wash, and each condition is a token that opens its menu. The **Private** and **Condition** buttons set either on what you select. The eye and code button shows the markup text, the one form the profile stores. A prompt the formatted view would change stays in code.
+* **Editor**: The profile as form fields: its model, prompt, tools, guardrails and other sections. The prompt is one box, and a blank line starts a new line. It opens formatted: private text wears a wash, and each option is a token that opens its menu. The **Private** and **Option** buttons set either on what you select. The eye and code button shows the markup text, the one form the profile stores. A prompt the formatted view would change stays in code.
 * **Code**: The TypeScript the profile is declared in, in a code editor with completions, signature help, hover documentation and type errors against `@theoremjs/agents`.
 * **Reading Code Back**: When you edit the code, Studio reads it back into the draft. Anything it cannot read is shown as an error at that spot, and the draft is left as it was. Studio reads with the kernel's own checks, so a setting or value that `defineProfile` or `registerTool` refuses shows the kernel's message on its line.
 
@@ -55,7 +55,7 @@ The editor has two views, **Editor** and **Code**. One button switches between t
 Studio checks the draft again each time it changes. It does not wait for a turn to fail:
 
 * **Model Routes**: Each model's provider must exist in the workspace and serve the agent's type on the model's protocol. The check does not read your keys: the command checks each provider's key once when the project opens, and a run whose key slot is empty fails with an `auth` error.
-* **Prompt**: A `when` line must read a condition or a slot the profile declares, with a value it lists. Each condition needs a name, used once, and at least one value.
+* **Prompt**: A `when` line must read an option the profile declares, with a value it lists. Each option needs a name, used once, and at least one value.
 * **Tools**: Each tool needs a name, used once. A tool's input and output JSON schemas must parse, an MCP tool needs its tool name, and an agent tool needs its agent. A tool's reader must be a decision agent with a choice question.
 * **Structured Output**: A structured reply needs a schema id, and its schema must parse.
 * **Guardrails**: Allowed hosts and allowed names may not be blank, and custom detectors and their patterns must be valid.
@@ -82,10 +82,10 @@ The map shows the providers, models, shared settings, profiles and tools in colu
 The chat sits beside the editor, so you can test a change at once:
 
 * **Streaming**: Thoughts, text and tool calls show as they arrive.
-* **Tool Gates**: A gated tool call shows a card with its arguments. You allow it or deny it. With the command, Studio adds no gate of its own: a tool runs as its **Permission** says, in the chat and on a live call.
+* **Tool Gates**: A gated tool call shows a card with its arguments. You allow it or deny it. With the command, Studio adds no gate of its own: a tool runs as its **Permission** says, in the chat and on a live call. A reload keeps an open gate and a running background call.
 * **Background Tools**: A tool's **Background** setting, under **Policy**, says when the model gets its reply while the tool goes on: **Never**, **Model asks**, **Always** or **After a time**. Runs in the chat and on a live call follow it. A chat on lent keys does not: the model gets its reply when the tool ends. A tool the page answers and the profile's `tools.t2Loader` do not offer the setting.
 * **Tool Readers**: A tool can name a decision agent as its reader, so the model reads less. When a tool returns text and its call carries a `question`, Studio splits the text at blank lines and the reader judges each passage. A passage stays when each of the reader's choice questions lands on its first choice. If the reader fails, the model reads the output whole. The kernel has no such setting: in your own app, you run a reader at `post_tool`.
-* **Conditions**: **Conditions** sit in the editor's **System prompt** section, above the prompt. There is one row for each condition: its name and its values. The marked value is the one the studio states. It starts on the first value listed. Press another value to state it on the next run and on an open live call.
+* **Options**: **Options** sit in the editor's **System prompt** section, above the prompt. There is one row for each option: its name and its values. The marked value is the one the studio states. It starts on the first value listed. Press another value to state it on the next run and on an open live call. An option's pencil opens **Shown in interface**. Turn it on and the option goes on `inputs.options`, where a person picks it. Turn it off and the option goes on `identity.options`.
 * **Unsaved Edits**: While a project has edits you have not saved, your files and your edits run side by side under one composer. What you send goes to both, and each side treats it as its own chat would. An idle side sends it, and a busy side queues it. A steer goes to each side whose running turn takes one. The composer's model control shows each side's models in two columns, so you can run a different model on each side and compare them. Each column offers only what that side's profile offers. If you attach a file that a side's profile does not take, that side refuses the turn in its own pane. If you pick no model, each side runs its own default.
 * **Who a Run Acts As**: A setup file can export `people` and `host`. You then pick a place and a person in Settings, under People, and each run acts for that person. Each person keeps their own chat and session.
 
@@ -95,7 +95,7 @@ To check a prompt change against a real conversation, replay it:
 
 1. **Importing Traces**: Click **Replay exchange** and choose a `.json` file of trace records, or a `.jsonl` file with one record on each line. Studio shows the conversation as the person saw it. A file with several conversations or agents opens on the first. The arrows beside **Conversation 1 of 3** step to the others.
 2. **Replay**: Studio runs the conversation again through the profile as it is now. Every model call is answered from the recording, and so is every tool result unless **Live tools** is on. The profile's guardrails, stages and gates run for real. A replay needs no keys.
-3. **Recorded and Replayed**: Switch between **Recorded** and **Replayed** to see what changed.
+3. **Recorded and Replayed**: One button switches between the recorded and the replayed conversation, to show what changed.
 4. **Divergence and Continue Live**: When the profile asks for something the recording does not hold, the replay stops there and says why. **Continue live** goes on from that point with the real model.
 
 ## Two Ways to Run Studio

@@ -12,50 +12,123 @@ suggest: 5
 
 A tool is code or an external capability that a model can request Theorem to execute. You register tools once in your application scope, then name them in each profile that is permitted to invoke them.
 
-Theorem routes all tool calls through a checked execution pipeline that validates inputs, inspects security boundaries, enforces human approval gates, and verifies output shapes before results reach model context.
+Theorem routes every tool call through the same checks before its result reaches the model.
 
 ## Tool Execution Pipeline
 
-When a model requests a tool, Theorem runs the call through five deterministic verification stages:
+When a model asks for a tool, Theorem runs the call through these checks, in this order:
 
-```mermaid
-flowchart LR
-		Step1["1. Model Request<br/>(name, arguments)"] --> Step2["2. Validation & Gates<br/>(tools.allow, Zod input, human gate)"]
-		Step2 --> Step3["3. Tool Runner<br/>(function, http, mcp, agent)"]
-		Step3 --> Step4["4. Result Validation<br/>(Zod output, guardrail check)"]
-		Step4 --> Step5["5. Model Context<br/>(verified result in history)"]
+```figure
+{
+  "kind": "sequence",
+  "still": {
+    "src": "/imagery/th30_malachite.png",
+    "position": "30% 40%"
+  },
+  "caption": "The order for a function tool. HTTP and MCP tools check their network address just before they send.",
+  "steps": [
+    {
+      "label": "The model asks for a tool",
+      "text": "Theorem holds the call until the model's stream ends.",
+      "kind": "model"
+    },
+    {
+      "label": "Theorem checks the call",
+      "text": "A failed check fails the call before the tool runs.",
+      "kind": "guardrail",
+      "parts": [
+        {
+          "label": "tools.allow",
+          "text": "The profile must list the tool."
+        },
+        {
+          "label": "tool_arguments",
+          "text": "Detectors read the arguments."
+        },
+        {
+          "label": "Taint",
+          "text": "A tainted turn can refuse the call."
+        },
+        {
+          "label": "Destination",
+          "text": "Theorem checks where the arguments point."
+        },
+        {
+          "label": "Input schema",
+          "text": "The arguments must fit the tool's input Zod schema."
+        },
+        {
+          "label": "Permission",
+          "text": "A tool that needs approval holds the call, and the turn stops with stop.kind gate."
+        },
+        {
+          "label": "Sign-in",
+          "text": "A tool that signs in gets its credential."
+        },
+        {
+          "label": "pre_tool",
+          "text": "Your hook can stop the call."
+        }
+      ]
+    },
+    {
+      "label": "The tool runs",
+      "text": "A function, http, mcp or agent tool. A built-in tool never gets here: the provider runs it.",
+      "kind": "tool"
+    },
+    {
+      "label": "Theorem checks the result",
+      "text": "What the model and the person see has passed these checks.",
+      "kind": "guardrail",
+      "parts": [
+        {
+          "label": "Output schema",
+          "text": "The result must fit the tool's output Zod schema."
+        },
+        {
+          "label": "tool_output",
+          "text": "Detectors read what the tool returned."
+        },
+        {
+          "label": "post_tool",
+          "text": "Your hook sees the result."
+        },
+        {
+          "label": "tool_shown",
+          "text": "Detectors read what the call shows the person."
+        }
+      ]
+    },
+    {
+      "label": "The model reads the result",
+      "text": "The result reaches the model in the next step.",
+      "kind": "model"
+    }
+  ]
+}
 ```
 
-1. **Step Completion**: The provider stream must conclude without truncation or network drops before pending tool calls are authorized.
-2. **Profile Authorization**: The active profile must list the tool in `tools.allow`.
-3. **Input Validation**: Arguments are validated against the tool's `input` Zod schema. Malformed arguments reject the call before any handler executes.
-4. **Boundary Inspection & Gates**: Egress guardrails inspect arguments for sensitive data. If `permission` requires human approval, execution pauses with `stop: { kind: 'gate' }`.
-5. **Output Verification**: The result returned by the runner is validated against the tool's `output` Zod schema and inspected by ingress guardrails before entering model history.
+1. **The model asks for a tool**: Theorem holds the call until the model's stream ends.
+2. **Theorem checks the call**: A failed check fails the call before the tool runs.
+   * **`tools.allow`**: The profile must list the tool.
+   * **`tool_arguments`**: Detectors read the arguments.
+   * **Taint**: A tainted turn can refuse the call.
+   * **Destination**: Theorem checks where the arguments point.
+   * **Input schema**: The arguments must fit the tool's input Zod schema.
+   * **Permission**: A tool that needs approval holds the call, and the turn stops with `stop.kind: 'gate'`.
+   * **Sign-in**: A tool that signs in gets its credential.
+   * **`pre_tool`**: Your hook can stop the call.
+3. **The tool runs**: A function, http, mcp or agent tool. A built-in tool never gets here: the provider runs it.
+4. **Theorem checks the result**: What the model and the person see has passed these checks.
+   * **Output schema**: The result must fit the tool's output Zod schema.
+   * **`tool_output`**: Detectors read what the tool returned.
+   * **`post_tool`**: Your hook sees the result.
+   * **`tool_shown`**: Detectors read what the call shows the person.
+5. **The model reads the result**: The result reaches the model in the next step.
 
 ## Tool Types Taxonomy
 
 Theorem categorizes tools into five distinct execution types:
-
-```mermaid
-flowchart TD
-		subgraph Provider ["Upstream Provider Infrastructure"]
-				Builtin["builtin<br/>(Google Search, Code Execution)"]
-		end
-
-		subgraph Host ["Host Application & Kernel"]
-				Function["function<br/>(Local Handler or UI Page)"]
-				HTTP["http<br/>(Declarative REST Endpoint)"]
-				MCP["mcp<br/>(Remote Model Context Protocol Server)"]
-				Agent["agent<br/>(Sub-Agent Profile Delegation)"]
-		end
-
-		Call["Model Tool Request"] --> Router{"Tool Type"}
-		Router -->|Provider-native| Builtin
-		Router -->|Custom code| Function
-		Router -->|Direct API| HTTP
-		Router -->|External MCP| MCP
-		Router -->|Sub-agent| Agent
-```
 
 | Type | Execution Host | Typical Use Case | Guide |
 | :--- | :--- | :--- | :--- |

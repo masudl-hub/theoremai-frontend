@@ -27,9 +27,8 @@ function firstTurnDraft(): StudioDraft {
 	const scout = createResearchScoutDraft();
 	return {
 		...scout,
-		// why: A line that reads a slot needs a turn that chooses it, and this program chooses none.
-		identity: { ...scout.identity, system: DEMO_RESEARCH_SYSTEM },
-		inputs: { ...scout.inputs, slots: [] },
+		// why: This program sets no option, so a first read has none to explain.
+		identity: { ...scout.identity, system: DEMO_RESEARCH_SYSTEM, options: [] },
 		tools: { ...scout.tools, parallel: false },
 		toolSpecs: scout.toolSpecs
 			.filter(({ toolName }) => toolName === 'search_github' || toolName === 'search_web')

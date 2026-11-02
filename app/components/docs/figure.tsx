@@ -1,172 +1,91 @@
-import { Badge } from '@astryxdesign/core/Badge';
 import { Card } from '@astryxdesign/core/Card';
-import { Grid } from '@astryxdesign/core/Grid';
-import { HStack } from '@astryxdesign/core/HStack';
-import { Icon } from '@astryxdesign/core/Icon';
-import { Link } from '@astryxdesign/core/Link';
-import { StackItem } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
-import { MediaTheme } from '@astryxdesign/core/theme';
 import { VStack } from '@astryxdesign/core/VStack';
-import type { CSSProperties } from 'react';
-import { chapterIcon } from '../../lib/docs/chapter-icons';
-import type { DocFigure, LanesFigure, SequenceFigure } from '../../lib/docs/figure';
+import { type ComponentProps, type CSSProperties, useLayoutEffect, useRef, useState } from 'react';
+import type { DocFigure, SequenceFigure, SwitchbackFigure } from '../../lib/docs/figure';
 import { stillRenditions } from '../../lib/stills';
 
+import { LanesFlow } from './lanes-flow';
 import { SwitchbackFlow } from './switchback-flow';
 
-type FigureStep = SequenceFigure['steps'][number] | LanesFigure['steps'][number];
-type FigurePart = NonNullable<SequenceFigure['steps'][number]['parts']>[number];
+/** Most steps on one row of a sequence, and the width a switchback's rows need. */
+const ROW_STEPS = 4;
+const ROW_MIN_WIDTH = 640;
 
-/** A part's name. With a chapter, it carries that chapter's icon and links to it. */
-function PartLabel({ part }: { part: FigurePart }) {
-	if (part.chapter === undefined) {
-		return (
-			<Text type="label" weight="medium">
-				{part.label}
-			</Text>
-		);
+/** The steps as switchback rows: each row runs back the way the last one ended. */
+function sequenceRows(figure: SequenceFigure): SwitchbackFigure['rows'] {
+	const rows: SwitchbackFigure['rows'] = [];
+	for (let at = 0; at < figure.steps.length; at += ROW_STEPS) {
+		rows.push({
+			direction: rows.length % 2 === 0 ? 'ltr' : 'rtl',
+			steps: figure.steps.slice(at, at + ROW_STEPS).map((step) => ({
+				label: step.label,
+				text: step.text,
+				token: { label: step.label, kind: step.kind },
+			})),
+		});
 	}
-	return (
-		<HStack gap={1.5} vAlign="center">
-			<Icon icon={chapterIcon(part.chapter)} size="sm" color="secondary" />
-			<Link href={`/docs/${part.chapter}`} type="label" weight="medium" color="primary">
-				{part.label}
-			</Link>
-		</HStack>
+	return rows;
+}
+
+/** A switchback's rows as the one line it runs along. */
+function switchbackSteps(figure: SwitchbackFigure): ComponentProps<typeof LanesFlow>['steps'] {
+	return figure.rows.flatMap((row) =>
+		row.steps.map((step) => ({
+			label: step.token?.label ?? step.label,
+			kind: step.token?.kind,
+			text: step.text ?? step.parts?.map((part) => part.text ?? part.label).join(' · ') ?? '',
+		})),
 	);
 }
 
-function Parts({ parts }: { parts: NonNullable<FigureStep['parts']> }) {
-	return (
-		<Grid columns={{ minWidth: 200, max: Math.min(parts.length, 3) }} columnGap={6} rowGap={3}>
-			{parts.map((part) => (
-				<VStack key={part.label} gap={0.5}>
-					<PartLabel part={part} />
-					{part.text === undefined ? null : (
-						<Text type="supporting" color="secondary">
-							{part.text}
-						</Text>
-					)}
-				</VStack>
-			))}
-		</Grid>
-	);
-}
-
-function StepText({ step }: { step: FigureStep }) {
-	return (
-		<VStack gap={3}>
-			<VStack gap={0.5}>
-				<Text type="large" weight="medium">
-					{step.label}
-				</Text>
-				<Text type="supporting" color="secondary">
-					{step.text}
-				</Text>
-			</VStack>
-			{step.parts ? <Parts parts={step.parts} /> : null}
-		</VStack>
-	);
-}
-
-/** A step whose number is beside its text. */
-function StepCard({
-	step,
-	number,
-	maxWidth,
+/** The steps across in switchback rows where they fit, and down one line where they don't. */
+function FittedFlow({
+	rows,
+	caption,
+	steps,
 }: {
-	step: FigureStep;
-	number: number;
-	maxWidth?: number;
+	rows: SwitchbackFigure['rows'];
+	caption: string;
+	steps: ComponentProps<typeof LanesFlow>['steps'];
 }) {
+	const rootRef = useRef<HTMLDivElement>(null);
+	const [width, setWidth] = useState(ROW_MIN_WIDTH);
+
+	useLayoutEffect(() => {
+		const root = rootRef.current;
+		if (!root) return;
+		const measure = () => {
+			setWidth(root.getBoundingClientRect().width);
+		};
+		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(root);
+		return () => {
+			observer.disconnect();
+		};
+	}, []);
+
 	return (
-		<Card variant="glass" padding={4} width="100%" maxWidth={maxWidth} elevation="med">
-			<HStack gap={3} vAlign="start">
-				<StackItem size="static">
-					<Badge label={String(number)} />
-				</StackItem>
-				<StackItem size="fill">
-					<StepText step={step} />
-				</StackItem>
-			</HStack>
-		</Card>
+		<div ref={rootRef}>
+			{width >= ROW_MIN_WIDTH ? (
+				<SwitchbackFlow figure={{ kind: 'switchback', caption, rows }} />
+			) : (
+				<LanesFlow lanes={['']} steps={steps} />
+			)}
+		</div>
 	);
 }
 
-/** A step in a row: its number above its text, because the card is narrow. */
-function RowStepCard({ step, number }: { step: FigureStep; number: number }) {
-	return (
-		<Card variant="glass" padding={4} elevation="med">
-			<VStack gap={3} hAlign="start">
-				<Badge label={String(number)} />
-				<StepText step={step} />
-			</VStack>
-		</Card>
-	);
-}
-
+/** Steps in order, down one line when they carry parts, which a row has no room for. */
 function Sequence({ figure }: { figure: SequenceFigure }) {
-	if (figure.layout === 'row') {
-		return (
-			<Grid columns={{ minWidth: 200, max: figure.steps.length }} gap={3}>
-				{figure.steps.map((step, at) => (
-					<RowStepCard key={step.label} step={step} number={at + 1} />
-				))}
-			</Grid>
-		);
+	if (figure.steps.some((step) => step.parts)) {
+		return <LanesFlow lanes={['']} steps={figure.steps} />;
 	}
-	return (
-		<VStack gap={3} hAlign="center">
-			{figure.steps.map((step, at) => (
-				<StepCard key={step.label} step={step} number={at + 1} maxWidth={592} />
-			))}
-		</VStack>
-	);
+	return <FittedFlow rows={sequenceRows(figure)} caption={figure.caption} steps={figure.steps} />;
 }
 
-/** Where a lane sits on the line: the first at the start, the last at the end, a third between them. */
-function laneAlign(figure: LanesFigure, lane: string): 'start' | 'center' | 'end' {
-	const at = figure.lanes.indexOf(lane);
-	if (at === 0) return 'start';
-	return at === figure.lanes.length - 1 ? 'end' : 'center';
-}
-
-/** The widest a card in an outer lane grows. On a narrow page the card fills the line. */
-const OUTER_LANE_WIDTH = 400;
-
-/**
- * Each step sits in the lane of the actor that did it, so the path of the turn shows who acted.
- * A step in the middle lane spans the line, because the turn crosses that lane each time.
- */
-function Lanes({ figure }: { figure: LanesFigure }) {
-	return (
-		<VStack gap={3}>
-			<MediaTheme mode="dark">
-				<Grid columns={figure.lanes.length} gap={3}>
-					{figure.lanes.map((lane) => (
-						<HStack key={lane} hAlign={laneAlign(figure, lane)}>
-							<Text type="label" weight="medium">
-								{lane}
-							</Text>
-						</HStack>
-					))}
-				</Grid>
-			</MediaTheme>
-			{figure.steps.map((step, at) => (
-				<HStack key={step.label} hAlign={laneAlign(figure, step.lane)}>
-					<StepCard
-						step={step}
-						number={at + 1}
-						maxWidth={laneAlign(figure, step.lane) === 'center' ? undefined : OUTER_LANE_WIDTH}
-					/>
-				</HStack>
-			))}
-		</VStack>
-	);
-}
-
-/** A `figure` fence: its steps in order, rendered as a sequence, lanes, or switchback flow. */
+/** A `figure` fence: its steps in order, as one line on one panel. */
 export function DocsFigure({ figure }: { figure: DocFigure }) {
 	const still = figure.still
 		? ({
@@ -177,9 +96,9 @@ export function DocsFigure({ figure }: { figure: DocFigure }) {
 
 	const content =
 		figure.kind === 'switchback' ? (
-			<SwitchbackFlow figure={figure} />
+			<FittedFlow rows={figure.rows} caption={figure.caption} steps={switchbackSteps(figure)} />
 		) : figure.kind === 'lanes' ? (
-			<Lanes figure={figure} />
+			<LanesFlow lanes={figure.lanes} steps={figure.steps} />
 		) : (
 			<Sequence figure={figure} />
 		);
@@ -188,13 +107,9 @@ export function DocsFigure({ figure }: { figure: DocFigure }) {
 		<VStack gap={2} role="figure" aria-label={figure.caption}>
 			{still ? (
 				<Card variant="still" padding={6} style={still}>
-					{figure.kind === 'switchback' ? (
-						<Card variant="glass" padding={0} elevation="med" width="100%">
-							{content}
-						</Card>
-					) : (
-						content
-					)}
+					<Card variant="glass" padding={0} elevation="med" width="100%">
+						{content}
+					</Card>
 				</Card>
 			) : (
 				<Card variant="glass" padding={4} elevation="low">

@@ -1,6 +1,6 @@
 ---
 title: OAuth PKCE Flow
-updated: 2026-10-30
+updated: 2026-11-02
 summary: OAuth 2.0 PKCE authorization flow with stateless encrypted state, session binding, and token refresh.
 entry: src/kernel/auth/oauth.ts
 covers: src/kernel/auth/oauth.ts, src/kernel/auth/crypto.ts
@@ -11,17 +11,60 @@ coverPosition: 50% 50%
 
 Theorem includes native helpers for OAuth 2.0 with Proof Key for Code Exchange (PKCE, RFC 7636). Host applications can manage user authorizations without third-party OAuth libraries or session database tables.
 
-The OAuth lifecycle operates through three stages: initiating the flow during a turn, exchanging the authorization code on a callback route, and resuming the held tool call.
+A sign-in has three stages: start the flow during a turn, exchange the code on a callback route, and resume the held tool call.
 
-```mermaid
-flowchart TD
-		Gate["1. Tool Triggers Auth Gate<br/>(kind: 'auth')"] --> Start["createOAuthPkceFlow({ ... })"]
-		Start --> Redirect["2. Redirect User to Provider"]
-		Redirect --> Callback["3. Provider Returns Code to Callback URL"]
-		Callback --> Exchange["exchangeOAuthPkce({ code, state })"]
-		Exchange --> Persist["Save Credential via credentials.set()"]
-		Resume["4. invokeTool({ snapshot, resume: { granted: true, signIn: true } })"]
-		Persist --> Resume
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_amethyst.png",
+    "position": "50% 50%"
+  },
+  "caption": "A sign-in from the held call to its resume. With onUnauthenticated set to another value, the call fails instead of holding.",
+  "lanes": [
+    "Your app",
+    "Theorem",
+    "GitHub"
+  ],
+  "steps": [
+    {
+      "lane": "Theorem",
+      "label": "A tool needs a sign-in",
+      "text": "The turn stops on an auth gate. This is the default, onUnauthenticated: 'gate'.",
+      "kind": "runner"
+    },
+    {
+      "lane": "Your app",
+      "label": "You start the flow",
+      "text": "createOAuthPkceFlow gives you the address to send the person to.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "GitHub",
+      "label": "The person signs in",
+      "text": "GitHub sends a code to your callback URL.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "Your app",
+      "label": "You exchange the code",
+      "text": "exchangeOAuthPkce turns the code into tokens and a credential.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "Your app",
+      "label": "You save the credential",
+      "text": "credentials.set takes the slot and the credential.",
+      "kind": "store"
+    },
+    {
+      "lane": "Your app",
+      "label": "You resume the call",
+      "text": "invokeTool takes the snapshot, your credentials, and resume with granted: true and signIn: true.",
+      "kind": "egress"
+    }
+  ]
+}
 ```
 
 ## What You Need From GitHub

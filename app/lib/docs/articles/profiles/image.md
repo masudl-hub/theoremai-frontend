@@ -1,6 +1,6 @@
 ---
 title: Image Profiles
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Media asset generation and editing from text prompts with quality and dimension controls.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -29,23 +29,46 @@ image: {
 
 The `image` block configures how downstream providers render generated visual assets:
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant App as Calling Application
-    participant Kernel as runTurn()
-    participant Provider as Image Model Provider
-
-    App->>Kernel: runTurn({ profile, input: { text } })
-    Note over Kernel: Resolve canvas settings (aspectRatio, resolution, quality)
-    Kernel->>Provider: Prompt text + canvas parameters + references
-    Provider-->>Kernel: Rendered image binary data
-    opt includeText Enabled
-        Provider-->>Kernel: Interleaved descriptive text
-        Kernel-->>App: yield { type: 'text', text }
-    end
-    Kernel-->>App: yield { type: 'media', media: { mimeType, data } }
-    Kernel-->>App: yield { type: 'done', stop, tokens }
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_marigolds.png",
+    "position": "50% 50%"
+  },
+  "caption": "One image turn. Text and images arrive in the order the provider sends them.",
+  "lanes": [
+    "Your code",
+    "Theorem",
+    "The provider"
+  ],
+  "steps": [
+    {
+      "lane": "Your code",
+      "label": "You call runTurn",
+      "text": "You pass the profile and the prompt.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Theorem builds the request",
+      "text": "It adds the settings the provider has, and any references.",
+      "kind": "runner"
+    },
+    {
+      "lane": "The provider",
+      "label": "The provider makes the images",
+      "text": "With includeText on, the model may also write text.",
+      "kind": "model"
+    },
+    {
+      "lane": "Theorem",
+      "label": "Theorem yields the events",
+      "text": "Each image is a media event with base64 data. Text is a text event. done ends the turn.",
+      "kind": "stream"
+    }
+  ]
+}
 ```
 
 | Setting | Type | Description |

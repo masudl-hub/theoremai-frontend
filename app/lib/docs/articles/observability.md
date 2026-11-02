@@ -18,21 +18,15 @@ Theorem builds tracing into the kernel:
 
 ## Span Hierarchy & Topology
 
-A turn writes a tree of spans. The model calls and tool calls are children of the root. Each HTTP attempt is a child of its model call. A tool call set to [go on after its turn](/docs/tools#finish-a-call-after-its-turn) can be the one exception: see [Calls That Outlive Their Turn](#calls-that-outlive-their-turn).
+A turn writes a tree of spans. The model calls and tool calls are children of the root. Each HTTP attempt is a child of its model call, and a retry adds another. A tool call set to [go on after its turn](/docs/tools#finish-a-call-after-its-turn) can be the one exception: see [Calls That Outlive Their Turn](#calls-that-outlive-their-turn).
 
-```mermaid
-flowchart TD
-		Root["invoke_agent &lt;profile&gt; (INTERNAL)<br/>gen_ai.operation.name: invoke_agent"]
-		
-		Model1["chat &lt;apiId&gt; (CLIENT)<br/>gen_ai.operation.name: chat"]
-		Http1["POST (CLIENT)<br/>http.request.method: POST"]
-		Tool1["execute_tool read_pages (INTERNAL)<br/>gen_ai.tool.name: read_pages"]
-		Model2["chat &lt;apiId&gt; (CLIENT)<br/>gen_ai.operation.name: chat"]
-		
-		Root --> Model1
-		Model1 --> Http1
-		Root --> Tool1
-		Root --> Model2
+```text
+invoke_agent <profile>       INTERNAL
+├─ chat <apiId>              CLIENT
+│  └─ POST                   CLIENT
+├─ execute_tool read_pages   INTERNAL
+└─ chat <apiId>              CLIENT
+   └─ POST                   CLIENT
 ```
 
 ### Span Types (`TraceSpanType`)
@@ -129,21 +123,11 @@ export interface TraceRecord {
 }
 ```
 
-```mermaid
-flowchart LR
-		Span1["Span: invoke_agent<br/>gen_ai.input.messages: { content_sha256: 'a1b2...' }"]
-		Span2["Span: chat<br/>gen_ai.input.messages: { content_sha256: 'a1b2...' }"]
-		Dict["Record content map<br/>'a1b2...': 'Role: Advanced reasoning engine...'"]
-
-		Span1 -.->|References Hash| Dict
-		Span2 -.->|References Hash| Dict
-```
-
 When the record is built:
 1. The text is scrubbed as the profile's `observability.scrub` says, with the patterns its detectors declare.
 2. The scrubbed text is hashed with SHA-256.
 3. The text is stored once, at `record.content[hash]`.
-4. Spans carry only `{ content_sha256: hash }` references.
+4. Spans carry a reference in place of the text: `{ content_sha256: hash }`, or `{ json_sha256: hash }` for JSON. In a JSON body, media and thought signatures are stored as a hash alone.
 
 `toOtlpJson` puts the content back inline when it exports a record, so OpenTelemetry backends and Phoenix see the full text. `inlineContent(record, value)` does the same for one value.
 
