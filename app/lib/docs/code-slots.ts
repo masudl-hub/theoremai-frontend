@@ -25,7 +25,7 @@ import type {
 	SnippetFrame,
 } from './schema';
 
-type Roots = { repoRoot: string; kernelRoot: string };
+export type Roots = { repoRoot: string; kernelRoot: string };
 
 /** The compiler options samples build with, for a folder two levels under the repo. */
 export const SAMPLE_TSCONFIG = {
@@ -76,13 +76,13 @@ function rootExports(kernelRoot: string, options: ts.CompilerOptions): string[] 
 
 function hostExports(repoRoot: string): string[] {
 	const source = readFileSync(path.join(repoRoot, 'scripts/docs-snippet-host.ts'), 'utf8');
-	return [...source.matchAll(/^export (?:declare )?(?:const|function) (\w+)/gm)].flatMap(
-		(match) => match[1] ?? [],
+	return [...source.matchAll(/^export (?:declare )?(?:const|function) (\w+)/gm)].map(
+		(match) => match[1],
 	);
 }
 
 /** The names a sample may use unimported. */
-export function sampleNames(repoRoot: string, kernelRoot: string): SampleNames {
+function sampleNames(repoRoot: string, kernelRoot: string): SampleNames {
 	mkdirSync(path.join(repoRoot, 'tmp'), { recursive: true });
 	const folder = mkdtempSync(path.join(repoRoot, 'tmp/docs-names-'));
 	try {
@@ -316,7 +316,7 @@ function modelRoutes(
 		);
 	const seen = new Set<string>();
 	return [own, ...routes].filter(({ provider, protocol, apiId }) => {
-		const route = `${provider} ${protocol} ${apiId}`;
+		const route = JSON.stringify([provider, protocol, apiId]);
 		if (seen.has(route)) return false;
 		seen.add(route);
 		return true;
@@ -402,9 +402,11 @@ function samplePlaces(
 	cookbook: Cookbook,
 ): Pick<CodeSlots, 'slots' | 'models'> {
 	const starts = rowStarts(sample.code.split('\n'));
+	// why: the program's wrapper lines sit outside this list, so a line may have no row.
+	const sourceRows: readonly (number | undefined)[] = sample.program.sourceLines;
 	const codeAt = (position: number): number | undefined => {
 		const { line, character } = file.getLineAndCharacterOfPosition(position);
-		const row = sample.program.sourceLines[line - sample.program.firstLine];
+		const row = sourceRows[line - sample.program.firstLine];
 		const start = row === undefined ? undefined : starts[row];
 		return start === undefined ? undefined : start + character;
 	};

@@ -338,7 +338,7 @@ async function judgeChart(draft: StudioDraft): Promise<StudioDraft> {
 	const response = await fetch(RESULTS_CHART);
 	if (!response.ok) throw new Error(`${RESULTS_CHART} did not load.`);
 	const bytes = new Uint8Array(await response.arrayBuffer());
-	const chart = createPageReaderExampleDraft().decision.questions[0];
+	const chart = createPageReaderExampleDraft().decision.questions.at(0);
 	if (!chart) throw new Error('The page reader has no question.');
 	return {
 		...draft,

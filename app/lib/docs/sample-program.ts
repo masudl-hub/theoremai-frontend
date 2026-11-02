@@ -50,12 +50,12 @@ function frameAround(frame: SnippetFrame): [open: string, close: string] {
 /** The sample's own names, which the host's and the root's do not shadow. */
 function ownNames(code: string): Set<string> {
 	const own = new Set(
-		[...code.matchAll(/(?:\b(?:const|let|var|function|class)\s+|import\s*\{[^}]*?)(\w+)/g)].flatMap(
-			(match) => match[1] ?? [],
+		[...code.matchAll(/(?:\b(?:const|let|var|function|class)\s+|import\s*\{[^}]*?)(\w+)/g)].map(
+			(match) => match[1],
 		),
 	);
 	for (const match of code.matchAll(/import\s*\{([^}]*)\}/g)) {
-		for (const name of match[1]?.split(',') ?? []) {
+		for (const name of match[1].split(',')) {
 			const local = name
 				.trim()
 				.split(/\s+as\s+/)

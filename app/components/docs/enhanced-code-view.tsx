@@ -153,8 +153,8 @@ function lineSlots(
 /** The strings on a line of the allow array, each a tool the array could name instead. */
 function allowSlots(lineText: string, tools: readonly CodeChoice[]): LineTokenMatch[] {
 	if (tools.length === 0) return [];
-	return [...lineText.matchAll(/'([^']+)'|"([^"]+)"/g)].flatMap((match) => {
-		const value = match[1] ?? match[2] ?? '';
+	return [...lineText.matchAll(/(['"])(.+?)\1/g)].flatMap((match) => {
+		const value = match[2];
 		if (!tools.some((tool) => tool.value === value)) return [];
 		const end = match.index + match[0].length;
 		const literal = match[0];
@@ -524,7 +524,12 @@ export function EnhancedCodeView({
 			return { code, slots: carrySlots(prev.code, code, prev.slots) };
 		});
 	}, []);
-	const setActiveCode = useCallback((code: string) => edit(() => code), [edit]);
+	const setActiveCode = useCallback(
+		(code: string) => {
+			edit(() => code);
+		},
+		[edit],
+	);
 
 	const {
 		lines,
