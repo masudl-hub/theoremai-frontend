@@ -13,8 +13,6 @@ A tool request can be steered by injected text toward internal services, private
 
 Theorem checks the URL of every request it makes for a tool, against the policy in `guardrails.network` on the profile. It checks the scheme and the address before the request is sent, checks every redirect hop the same way, and drops credentials once a redirect leaves the first origin. The same checks apply to HTTP and MCP tools, OAuth, `signedInFetch`, and the images a tool's `images` option names.
 
-## How a Request Is Checked
-
 ```figure
 {
   "kind": "sequence",
@@ -22,25 +20,25 @@ Theorem checks the URL of every request it makes for a tool, against the policy 
     "src": "/imagery/th30_blueabyss.png",
     "position": "50% 40%"
   },
-  "caption": "The checks on one request. A failed check refuses the request.",
+  "caption": "One request from a tool. A failed check refuses it, and each redirect starts again from the scheme.",
   "steps": [
     {
-      "label": "The scheme",
+      "label": "Scheme is allowed",
       "text": "The scheme must be allowed. The default is https. allowPrivateNetworks also allows http.",
       "kind": "guardrail"
     },
     {
-      "label": "The address",
+      "label": "Address is public",
       "text": "A local name or a private address is refused, unless allowedHosts or allowPrivateNetworks permits it.",
       "kind": "guardrail"
     },
     {
-      "label": "The lookup",
+      "label": "resolveHost finds a public address",
       "text": "When you pass resolveHost, Theorem looks up a public name. A private address, or no address, refuses the request. Literal addresses, allowed hosts and allowPrivateNetworks skip the lookup.",
       "kind": "guardrail"
     },
     {
-      "label": "The send",
+      "label": "Request is sent",
       "text": "Theorem sends the request. A redirect goes back to step 1, for up to 20 hops, and credentials are dropped once it leaves the first origin. OAuth requests do not follow redirects.",
       "kind": "runner"
     }

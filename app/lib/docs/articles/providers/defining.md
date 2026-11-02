@@ -175,6 +175,6 @@ Registration parses the connection with the provider's schema, and fails with a 
 
 ## Related Guides
 
-* **[Model Bindings & Key Slots](/docs/providers)**: Binding models to providers, vault slots, and failover routing.
+* **[Key Slots & Failover](/docs/providers)**: Binding models to providers, vault slots, and failover routing.
 * **[Supported Protocols](/docs/providers/protocols)**: Wire protocols, SSE stream parsers, and modality support.
 * **[Network Safety & SSRF](/docs/guardrails/network)**: Private network restrictions and host resolution gates.

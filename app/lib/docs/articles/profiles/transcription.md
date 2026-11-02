@@ -1,6 +1,6 @@
 ---
 title: Transcription Profiles
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Speech to text. One voice clip goes in, and the words come back as text.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts, src/kernel/registry/ingress.ts, src/providers/openrouter/transcriptions-protocol.ts
@@ -10,6 +10,56 @@ coverPosition: 50% 50%
 ---
 
 Transcription profiles (`type: 'transcription'`) turn one voice clip into text. They run through `runTurn()`, so a turn gives back `text`, `tokens` and `done` events, and a trace records the call. The research cookbook has no transcription agent. `research.transcriber` on this page is one you write, to put a recorded talk into words the scout can read.
+
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_farm.png",
+    "position": "50% 50%"
+  },
+  "caption": "One clip goes in, and its words come back as text events.",
+  "lanes": [
+    "You send",
+    "The model",
+    "You get back"
+  ],
+  "steps": [
+    {
+      "lane": "You send",
+      "label": "input.voice",
+      "text": "Exactly one clip, and no text.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "The model",
+      "label": "mistralai/voxtral-mini-transcribe-3-0",
+      "text": "The model the research.transcriber binding names. It follows no instruction and calls no tools.",
+      "kind": "model"
+    },
+    {
+      "lane": "You get back",
+      "label": "The turn's events",
+      "text": "A clip with no speech gives no text event.",
+      "kind": "stream",
+      "parts": [
+        {
+          "label": "text",
+          "text": "The words."
+        },
+        {
+          "label": "tokens",
+          "text": "What the call used."
+        },
+        {
+          "label": "done",
+          "text": "The turn is over."
+        }
+      ]
+    }
+  ]
+}
+```
 
 ## Transcription Profile Configuration
 

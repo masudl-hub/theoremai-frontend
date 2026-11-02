@@ -13,6 +13,54 @@ In a host profile (`type: 'host'`), your code is the orchestrator. No model pick
 
 The research cookbook has one, `research.console`: the scout's tools, for your code to call by hand.
 
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_lilachaze.png",
+    "position": "50% 50%"
+  },
+  "caption": "research.console rechecks a page. Your code picks each step where a model would, and the tool call gets the same checks.",
+  "lanes": [
+    "Your code",
+    "Theorem",
+    "The tool"
+  ],
+  "steps": [
+    {
+      "lane": "Your code",
+      "label": "invokeTool({ name: 'read_pages' })",
+      "text": "No model picks the tool: your code names it and its input.",
+      "kind": "runner"
+    },
+    {
+      "lane": "Theorem",
+      "label": "The same checks as a model's call",
+      "text": "Allowed, arguments, input schema, network and output. The next section lists them.",
+      "kind": "guardrail"
+    },
+    {
+      "lane": "The tool",
+      "label": "read_pages runs",
+      "text": "It reads the page under the profile's network policy.",
+      "kind": "tool"
+    },
+    {
+      "lane": "Your code",
+      "label": "done",
+      "text": "A tool event carries the output, and done ends the run.",
+      "kind": "stream"
+    },
+    {
+      "lane": "Your code",
+      "label": "runDecision({ profile: 'research.pagereader' })",
+      "text": "Your code chooses what happens next. This call goes to another profile, so a host profile can still use a model.",
+      "kind": "model"
+    }
+  ]
+}
+```
+
 ## Define a host profile
 
 A host profile has six fields: `type`, `id`, `tools`, and the optional `guardrails`, `observability` and `labels`. It has no `models` and no `identity`, because the profile itself never runs a model.
@@ -45,100 +93,6 @@ tools: {
 * **Network checked.** HTTP and MCP calls go through the `network` guardrail. When you pass `resolveHost`, Theorem looks up each host name before it is fetched, and refuses it when any address is private or the name does not resolve. The lookup is skipped for literal addresses and where the network policy already permits private targets.
 * **Credentials read when needed.** When you pass `credentials`, Theorem reads a slot from it only when a tool that signs in runs.
 * **Output checked.** The `detect` guardrail reads what the tool returns at the `tool_output` boundary, and what the person is shown at `tool_shown`. A blocked output fails the call with `output_blocked`.
-
-```figure
-{
-  "kind": "lanes",
-  "still": {
-    "src": "/imagery/th30_lapis.png",
-    "position": "50% 50%"
-  },
-  "caption": "One invokeTool call, with the checks in the order they run for a function tool.",
-  "lanes": [
-    "Your code",
-    "Theorem",
-    "The tool"
-  ],
-  "steps": [
-    {
-      "lane": "Your code",
-      "label": "You call invokeTool",
-      "text": "You pass the profile, the tool's name and its input.",
-      "kind": "ingress"
-    },
-    {
-      "lane": "Theorem",
-      "label": "Theorem reports the call",
-      "text": "A tool event carries the call and its arguments. A request that names a callId skips this event.",
-      "kind": "stream"
-    },
-    {
-      "lane": "Theorem",
-      "label": "Theorem checks the call",
-      "text": "A check that needs a person holds the call: a tool event has phase gate, and the run ends with stop.kind gate.",
-      "kind": "guardrail",
-      "parts": [
-        {
-          "label": "tools.allow"
-        },
-        {
-          "label": "tool_arguments"
-        },
-        {
-          "label": "Taint"
-        },
-        {
-          "label": "Destination"
-        },
-        {
-          "label": "Input schema"
-        },
-        {
-          "label": "Permission"
-        },
-        {
-          "label": "Sign-in"
-        },
-        {
-          "label": "pre_tool"
-        }
-      ]
-    },
-    {
-      "lane": "The tool",
-      "label": "The tool runs",
-      "text": "It gets the parsed input, under the network policy and with your credentials.",
-      "kind": "tool"
-    },
-    {
-      "lane": "Theorem",
-      "label": "Theorem checks the result",
-      "text": "A failure before the tool runs skips the output checks.",
-      "kind": "guardrail",
-      "parts": [
-        {
-          "label": "Output schema"
-        },
-        {
-          "label": "tool_output"
-        },
-        {
-          "label": "post_tool"
-        },
-        {
-          "label": "tool_shown"
-        }
-      ]
-    },
-    {
-      "lane": "Your code",
-      "label": "You get the outcome",
-      "text": "A tool event with phase complete, or an error, and then done.",
-      "kind": "egress"
-    }
-  ]
-}
-```
 
 ## Invoke a tool: `invokeTool()`
 

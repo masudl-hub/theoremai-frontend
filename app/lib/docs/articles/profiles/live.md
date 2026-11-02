@@ -11,6 +11,74 @@ coverPosition: 50% 50%
 
 Live profiles (`type: 'live'`) configure realtime agents that communicate over bidirectional WebSockets using audio, camera frames, and typed text. They are opened with `runSession()`, which establishes a persistent provider socket, coordinates voice activity detection and user barge-in, compresses conversation context for long sessions, and executes tools during live conversations. The research cookbook's `research.scout.live` is the scout on a call: the same tools, a live model, and an instruction for speech.
 
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_ocean.png",
+    "position": "50% 50%"
+  },
+  "caption": "research.scout.live on a call. Both sides send at the same time, over one socket, until you call close().",
+  "lanes": [
+    "You send",
+    "The session",
+    "You get back"
+  ],
+  "steps": [
+    {
+      "lane": "You send",
+      "label": "session.send…",
+      "text": "These go in at any time while the session is open.",
+      "kind": "ingress",
+      "parts": [
+        {
+          "label": "sendAudio",
+          "text": "Microphone PCM."
+        },
+        {
+          "label": "sendVideo",
+          "text": "JPEG camera frames."
+        },
+        {
+          "label": "sendText",
+          "text": "Typed text, when the profile turns it on."
+        }
+      ]
+    },
+    {
+      "lane": "The session",
+      "label": "runSession",
+      "text": "Opens one WebSocket to the provider and keeps it open.",
+      "kind": "runner"
+    },
+    {
+      "lane": "You get back",
+      "label": "session.events()",
+      "text": "These come out as the model speaks and acts.",
+      "kind": "stream",
+      "parts": [
+        {
+          "label": "media",
+          "text": "The model's audio."
+        },
+        {
+          "label": "text",
+          "text": "Text from the model."
+        },
+        {
+          "label": "tool",
+          "text": "A tool call and its phases."
+        },
+        {
+          "label": "done",
+          "text": "One reply is over. The session stays open."
+        }
+      ]
+    }
+  ]
+}
+```
+
 ## Live Profile Configuration
 
 Base profile fields (`identity`, `models`, `tools`, `guardrails`, `observability`) apply across all modalities as documented in [Profiles](/docs/profiles). Live profiles connect over bidirectional WebSockets using Gemini's Multimodal Live API (the currently supported live provider). They declare a dedicated `live` block configuring audio settings, ingress channels, interruption policies, and context window compression. The scout on a call sets `live: {}` and takes the provider's defaults. To set them, add this block:

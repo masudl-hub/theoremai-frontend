@@ -15,10 +15,6 @@ Theorem resolves this tension through a **dual-layer state architecture**:
 1. **Portable History Layer (`TurnHistoryMessage[]`)**: Universal, provider-agnostic transcripts maintained in open formats (`role`, `content`, `parts`, `reasoning`).
 2. **Native Provider Checkpoint Layer (`ProviderCheckpoint`)**: The protocol's saved JSON state, and what it was saved for.
 
-## The Dual-Layer Conversation Model
-
-During multi-turn execution, the host persists both the portable history transcript and the optional native checkpoint:
-
 ```figure
 {
   "kind": "lanes",
@@ -71,6 +67,10 @@ During multi-turn execution, the host persists both the portable history transcr
 }
 ```
 
+## The Dual-Layer Conversation Model
+
+During multi-turn execution, the host persists both the portable history transcript and the optional native checkpoint:
+
 If the provider, the model, the protocol version, the connection, the key slot or the covered history changes, Theorem drops the checkpoint and sends the history instead. Under `providerContinuation.history: 'provider'` you send no history, so nothing is replayed.
 
 ## Continuation Policies (`providerContinuation.history`)
@@ -122,59 +122,14 @@ If a host edits, truncates, or prepends messages in earlier parts of the transcr
 
 When it restores state, Theorem checks six things, in this order:
 
-```figure
-{
-  "kind": "sequence",
-  "still": {
-    "src": "/imagery/th30_mineralhills.png",
-    "position": "70% 50%"
-  },
-  "caption": "The six checks, in order. The first one that fails names the reason.",
-  "steps": [
-    {
-      "label": "Theorem checks the checkpoint",
-      "text": "Each check names the reason it reports.",
-      "kind": "guardrail",
-      "parts": [
-        {
-          "label": "Protocol and provider",
-          "text": "provider_changed"
-        },
-        {
-          "label": "API id",
-          "text": "model_changed"
-        },
-        {
-          "label": "Contract version",
-          "text": "version_changed"
-        },
-        {
-          "label": "Compatibility key",
-          "text": "connection_changed"
-        },
-        {
-          "label": "Key slot",
-          "text": "key_changed"
-        },
-        {
-          "label": "History",
-          "text": "history_changed"
-        }
-      ]
-    },
-    {
-      "label": "Every check passes",
-      "text": "Theorem restores the state and sends only the new messages.",
-      "kind": "guardrail"
-    },
-    {
-      "label": "A check fails",
-      "text": "Theorem yields a provider_warning with that reason, and sends the history you passed.",
-      "kind": "guardrail"
-    }
-  ]
-}
-```
+1. **Protocol and provider**: `provider_changed`
+2. **API id**: `model_changed`
+3. **Contract version**: `version_changed`
+4. **Compatibility key**: `connection_changed`
+5. **Key slot**: `key_changed`
+6. **History**: `history_changed`
+
+If every check passes, Theorem restores the state and sends only the new messages. The first check that fails names the reason.
 
 When drift occurs, execution does not crash. Theorem sends the history instead and yields a `provider_warning` event, whose `warning` has this shape:
 
@@ -236,6 +191,6 @@ This guarantees that multi-turn history cannot accidentally leak into stateless 
 ## Related Guides
 
 * **[Profiles & Continuation](/docs/profiles)**: Declaring `providerContinuation.history` on agent profiles.
-* **[Model Bindings & Key Slots](/docs/providers)**: Multi-model bindings, key slot failover, and fallback routing.
+* **[Key Slots & Failover](/docs/providers)**: Multi-model bindings, key slot failover, and fallback routing.
 * **[Supported Protocols](/docs/providers/protocols)**: Wire protocols, SSE stream parsers, and modality matrix.
 * **[History Compaction](/docs/profiles/compaction)**: Automated token counting, sliding windows, and transcript pruning.

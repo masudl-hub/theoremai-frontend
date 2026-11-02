@@ -1,6 +1,6 @@
 ---
 title: Telemetry Destinations
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Connect telemetry to OpenTelemetry OTLP collectors, Phoenix tracing, or streaming JSONL logs.
 entry: src/observability/destinations.ts
 covers: src/observability/destinations.ts, src/observability/otlp.ts, src/observability/jsonl.ts, src/observability/policy.ts, src/observability/openinference.ts, src/observability/phoenix.ts
@@ -12,6 +12,56 @@ coverPosition: 50% 50%
 Theorem maintains no proprietary telemetry database or persistent background daemon. Instead, the kernel produces standardized trace records and hands them to **trace sinks**—pluggable writers that buffer, transform, or export records to external observability platforms.
 
 Hosts configure telemetry declaratively on agent profiles (`observability`), register named global destinations at startup (`registerTraceDestination`), or pass a trace sink to one `runTurn` call.
+
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_arctic.png",
+    "position": "50% 50%"
+  },
+  "caption": "From a turn to your own system. The profile's writeTo names one destination, and Theorem keeps no telemetry of its own.",
+  "lanes": [
+    "The turn",
+    "Theorem",
+    "Your destination"
+  ],
+  "steps": [
+    {
+      "lane": "The turn",
+      "label": "research.scout runs",
+      "text": "With no observability block, the profile records nothing.",
+      "kind": "profile"
+    },
+    {
+      "lane": "Theorem",
+      "label": "TraceRecord",
+      "text": "The kernel builds the record, and sampleRate decides whether it is written.",
+      "kind": "runner"
+    },
+    {
+      "lane": "Your destination",
+      "label": "writeTo",
+      "text": "A registered destination id or an inline TraceSink.",
+      "kind": "store",
+      "parts": [
+        {
+          "label": "toOtlpJson",
+          "text": "For an OTLP collector."
+        },
+        {
+          "label": "jsonlSink",
+          "text": "JSONL files on disk."
+        },
+        {
+          "label": "memorySink",
+          "text": "In memory, for tests."
+        }
+      ]
+    }
+  ]
+}
+```
 
 ## Observability Policy (`ProfileObservabilitySpec`)
 

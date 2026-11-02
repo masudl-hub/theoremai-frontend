@@ -11,24 +11,6 @@ coverPosition: 50% 50%
 
 Image profiles (`type: 'image'`) configure agents that generate, edit, or transform visual media assets from text prompts. They execute through `runTurn()`, yielding binary media events alongside optional descriptive text. The research cookbook's `research.illustrator` draws a paper's method, and the scout reaches it through its `draw_method` tool.
 
-## Image Profile Configuration
-
-Base profile fields (`identity`, `models`, `guardrails`, `observability`, `labels`) apply across all modalities as documented in [Profiles](/docs/profiles). Image profiles declare an `image` block for image size, format, quality, and generation controls. The illustrator sets `image: {}` and takes the model's defaults. To set them, add this block. It runs on a Gemini image model, which refuses `quality`, `background`, `n` and `outputCompression`, so it sets none of them:
-
-```ts frame=profile:image
-image: {
-	aspectRatio: '16:9',
-	resolution: '2K',
-	mimeType: 'image/png',
-	seed: 42,
-	includeText: true, // Also ask for interleaved text with the images
-},
-```
-
-## Image Generation Settings
-
-The `image` block configures how downstream providers render generated visual assets:
-
 ```figure
 {
   "kind": "lanes",
@@ -98,6 +80,24 @@ The `image` block configures how downstream providers render generated visual as
   ]
 }
 ```
+
+## Image Profile Configuration
+
+Base profile fields (`identity`, `models`, `guardrails`, `observability`, `labels`) apply across all modalities as documented in [Profiles](/docs/profiles). Image profiles declare an `image` block for image size, format, quality, and generation controls. The illustrator sets `image: {}` and takes the model's defaults. To set them, add this block. It runs on a Gemini image model, which refuses `quality`, `background`, `n` and `outputCompression`, so it sets none of them:
+
+```ts frame=profile:image
+image: {
+	aspectRatio: '16:9',
+	resolution: '2K',
+	mimeType: 'image/png',
+	seed: 42,
+	includeText: true, // Also ask for interleaved text with the images
+},
+```
+
+## Image Generation Settings
+
+The `image` block configures how downstream providers render generated visual assets:
 
 | Setting | Type | Description |
 | :--- | :--- | :--- |

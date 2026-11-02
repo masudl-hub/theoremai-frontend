@@ -11,21 +11,6 @@ coverPosition: 50% 50%
 
 Speech profiles (`type: 'speech'`) configure text-to-speech (TTS) agents that synthesize spoken audio files from written transcripts. They execute through `runTurn()`, transforming input text into binary audio streams. The research cookbook's `research.podcast` reads the scout's findings aloud, and the scout reaches it through its `record_podcast` tool.
 
-## Speech Profile Configuration
-
-Base profile fields (`identity`, `models`, `guardrails`, `observability`, `labels`) apply across all modalities as documented in [Profiles](/docs/profiles). Speech profiles declare a `speech` block for the voice, delivery style, speaking rate, and audio format. This slice is the podcast agent's block. It runs on a Gemini speech model, which needs a `voice` and has no `speed` field, so the pace goes in `style`. Gemini speech makes PCM only, so the block sets no `format`:
-
-```ts frame=profile:speech
-speech: {
-	voice: 'Kore', // Gemini speech has no default voice
-	style: 'Warm and unhurried, like a podcast host talking to one listener.',
-},
-```
-
-## Audio Synthesis Settings & Overrides
-
-The `speech` block specifies default audio synthesis properties:
-
 ```figure
 {
   "kind": "lanes",
@@ -91,6 +76,21 @@ The `speech` block specifies default audio synthesis properties:
   ]
 }
 ```
+
+## Speech Profile Configuration
+
+Base profile fields (`identity`, `models`, `guardrails`, `observability`, `labels`) apply across all modalities as documented in [Profiles](/docs/profiles). Speech profiles declare a `speech` block for the voice, delivery style, speaking rate, and audio format. This slice is the podcast agent's block. It runs on a Gemini speech model, which needs a `voice` and has no `speed` field, so the pace goes in `style`. Gemini speech makes PCM only, so the block sets no `format`:
+
+```ts frame=profile:speech
+speech: {
+	voice: 'Kore', // Gemini speech has no default voice
+	style: 'Warm and unhurried, like a podcast host talking to one listener.',
+},
+```
+
+## Audio Synthesis Settings & Overrides
+
+The `speech` block specifies default audio synthesis properties:
 
 | Property | Type | Description |
 | :--- | :--- | :--- |

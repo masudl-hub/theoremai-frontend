@@ -13,6 +13,60 @@ In Theorem, models are not hardcoded vendor strings. A model is declared as a **
 
 Because conversation histories grow over multi-turn interactions, model bindings can also declare automated history compaction thresholds, detailed in [History Compaction](/docs/profiles/compaction).
 
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_basaltplanes.png",
+    "position": "50% 50%"
+  },
+  "caption": "The scout's open model. The profile names a binding, and the binding names everything a call needs except the key.",
+  "lanes": [
+    "The profile",
+    "The binding",
+    "Your vault"
+  ],
+  "steps": [
+    {
+      "lane": "The profile",
+      "label": "research.scout",
+      "text": "A profile lists its models under models, each under a name of your own.",
+      "kind": "profile"
+    },
+    {
+      "lane": "The binding",
+      "label": "models.open",
+      "text": "One entry under models.",
+      "kind": "model",
+      "parts": [
+        {
+          "label": "protocol: 'openRouterOpenAi'",
+          "text": "The code that speaks this API shape."
+        },
+        {
+          "label": "provider: 'openrouter'",
+          "text": "Where the service is and how to sign in to it."
+        },
+        {
+          "label": "apiId: 'openrouter/free'",
+          "text": "The id the provider knows the model by."
+        },
+        {
+          "label": "keySlot: 'openrouter'",
+          "text": "The slot this model's calls are signed with."
+        }
+      ]
+    },
+    {
+      "lane": "Your vault",
+      "label": "vault.openrouter",
+      "text": "The key itself. You pass the vault with each call, so the profile holds no secret.",
+      "kind": "store"
+    }
+  ]
+}
+```
+
 ## The Model Triad: Protocol, Provider, Binding
 
 Model execution separates into three distinct concepts:

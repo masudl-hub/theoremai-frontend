@@ -15,32 +15,67 @@ Theorem provides a native evaluation framework built on a foundational architect
 
 ```figure
 {
-  "kind": "sequence",
+  "kind": "lanes",
   "still": {
-    "src": "/imagery/th30_siennadunes.png",
+    "src": "/imagery/th30_atoll.png",
     "position": "50% 50%"
   },
-  "caption": "A suite from file to verdict. A recorded run skips the turns and reads the traces it is given.",
+  "caption": "A suite from cases to verdict. Graders read the trace and nothing else, so a live run and a recorded trace are graded the same way.",
+  "lanes": [
+    "Your suite",
+    "The trace",
+    "The graders"
+  ],
   "steps": [
     {
-      "label": "Load the suite",
-      "text": "loadSuite reads the suite and its cases file.",
+      "lane": "Your suite",
+      "label": "profile: 'research.scout'",
+      "text": "An EvalSuite names the profile, its cases, how many trials to run, and the graders.",
+      "kind": "profile",
+      "parts": [
+        {
+          "label": "cases",
+          "text": "One EvalCase per line of a JSON Lines file."
+        },
+        {
+          "label": "trials",
+          "text": "How many times to run each case, and what counts as a pass."
+        }
+      ]
+    },
+    {
+      "lane": "The trace",
+      "label": "runSuite runs each case",
+      "text": "It calls runTurn once for each repeat. Given recorded traces, it runs no turns.",
+      "kind": "runner"
+    },
+    {
+      "lane": "The trace",
+      "label": "TraceRecord",
+      "text": "What the run did, in the standard trace.",
       "kind": "store"
     },
     {
-      "label": "Run the turns",
-      "text": "runSuite runs each case with runTurn, once for each repeat, and collects the traces. With recorded traces it runs no turns.",
-      "kind": "runner"
+      "lane": "The graders",
+      "label": "graders read it",
+      "text": "Each grader reads a trial built from the trace.",
+      "kind": "guardrail",
+      "parts": [
+        {
+          "label": "Code",
+          "text": "Deterministic checks, such as toolTrajectory or budget."
+        },
+        {
+          "label": "Model",
+          "text": "judge asks a judge profile to grade against a rubric."
+        }
+      ]
     },
     {
-      "label": "Grade the trials",
-      "text": "Theorem builds a trial from each trace, and each grader reads it. A grader's source is code or a model.",
-      "kind": "runner"
-    },
-    {
-      "label": "Reach the verdicts",
-      "text": "Each trial gets an outcome, and each case a verdict. runSuite returns the run. summarizeRun adds it up.",
-      "kind": "runner"
+      "lane": "The graders",
+      "label": "Verdict",
+      "text": "Each trial gets an outcome, and each case a verdict. summarizeRun adds up the run.",
+      "kind": "egress"
     }
   ]
 }

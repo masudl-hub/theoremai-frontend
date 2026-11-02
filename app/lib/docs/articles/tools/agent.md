@@ -13,6 +13,55 @@ An `agent` tool runs one complete turn of another registered agent profile and r
 
 An agent tool needs no handler code and no schemas of your own. Theorem builds the input schema from the called profile's `inputs`, and every agent tool returns the same output shape.
 
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_maplecanopies.png",
+    "position": "50% 50%"
+  },
+  "caption": "The scout hands its findings to another agent, and carries on with the reply.",
+  "lanes": [
+    "research.scout",
+    "research.podcast"
+  ],
+  "steps": [
+    {
+      "lane": "research.scout",
+      "label": "record_podcast({ text })",
+      "text": "The model calls the agent tool like any other. Theorem builds its input from the called profile's inputs.",
+      "kind": "tool"
+    },
+    {
+      "lane": "research.podcast",
+      "label": "One complete turn",
+      "text": "The called agent runs its own turn, with its own profile. The caller's ctx.host is not passed down.",
+      "kind": "runner"
+    },
+    {
+      "lane": "research.scout",
+      "label": "The reply as a tool result",
+      "text": "Every agent tool returns the same shape.",
+      "kind": "egress",
+      "parts": [
+        {
+          "label": "text",
+          "text": "The reply, or structured in its place."
+        },
+        {
+          "label": "parts",
+          "text": "Media, such as the audio."
+        },
+        {
+          "label": "sources",
+          "text": "What it cited."
+        }
+      ]
+    }
+  ]
+}
+```
+
 ## Registering an Agent Tool
 
 Register agent tools using `registerTool()` with `type: 'agent'`:

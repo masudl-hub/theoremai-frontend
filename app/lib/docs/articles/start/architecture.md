@@ -11,6 +11,79 @@ coverPosition: 50% 50%
 
 Theorem keeps your application's policy apart from how a turn runs. Your application decides what an agent is and what it may do. Theorem runs each turn inside those limits.
 
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_glacialice.png",
+    "position": "50% 50%"
+  },
+  "caption": "Who does what in one turn. Your app sets the limits, and Theorem works only inside them.",
+  "lanes": [
+    "Your app decides",
+    "Theorem runs",
+    "The provider answers"
+  ],
+  "steps": [
+    {
+      "lane": "Your app decides",
+      "label": "Your application",
+      "text": "You write the profiles, register the tools and the providers, hold the keys, and choose where traces go.",
+      "kind": "profile",
+      "parts": [
+        {
+          "label": "Profiles"
+        },
+        {
+          "label": "Tools"
+        },
+        {
+          "label": "Providers"
+        },
+        {
+          "label": "Keys"
+        },
+        {
+          "label": "Traces"
+        }
+      ]
+    },
+    {
+      "lane": "Theorem runs",
+      "label": "runTurn",
+      "text": "Theorem checks the request, runs the steps of the turn, gates each tool call, and reads the text at each boundary.",
+      "kind": "runner",
+      "parts": [
+        {
+          "label": "Checks the request"
+        },
+        {
+          "label": "Runs each step"
+        },
+        {
+          "label": "Gates each tool call"
+        },
+        {
+          "label": "Reads text at each boundary"
+        }
+      ]
+    },
+    {
+      "lane": "The provider answers",
+      "label": "The model",
+      "text": "The model's protocol turns the request into the provider's wire format, and turns its stream back into events.",
+      "kind": "model"
+    },
+    {
+      "lane": "Your app decides",
+      "label": "The turn's events",
+      "text": "Your code reads what Theorem yields.",
+      "kind": "stream"
+    }
+  ]
+}
+```
+
 ## Host decides, Theorem runs
 
 Your application owns every decision about the agent:
@@ -51,72 +124,6 @@ The kernel's work falls into six parts:
 ## The boundaries a turn crosses
 
 Theorem reads text at five groups of boundaries, the same groups that [The Five Boundaries](/docs/guardrails) describes:
-
-```figure
-{
-  "kind": "lanes",
-  "still": {
-    "src": "/imagery/th30_emeraldriver.png",
-    "position": "60% 30%"
-  },
-  "caption": "One turn with one tool call. Theorem stands between your code and the model, and the steps repeat for each tool call.",
-  "lanes": [
-    "Your app",
-    "Theorem",
-    "The model"
-  ],
-  "steps": [
-    {
-      "lane": "Your app",
-      "label": "Your app sends the request",
-      "text": "The text, files, context and history.",
-      "kind": "ingress"
-    },
-    {
-      "lane": "Theorem",
-      "label": "Inbound boundaries",
-      "text": "Theorem reads the text before the model sees it.",
-      "kind": "guardrail"
-    },
-    {
-      "lane": "The model",
-      "label": "The model streams its answer",
-      "text": "Theorem reads the reply as it arrives, at the outbound boundaries, and holds any tool call until the stream ends.",
-      "kind": "stream"
-    },
-    {
-      "lane": "Theorem",
-      "label": "Tool argument boundaries",
-      "text": "Theorem reads what the model sends to the tool, then checks the input schema and the permission.",
-      "kind": "guardrail"
-    },
-    {
-      "lane": "Theorem",
-      "label": "Theorem runs the tool",
-      "text": "The tool runs only if every check passed.",
-      "kind": "runner"
-    },
-    {
-      "lane": "Theorem",
-      "label": "Tool result and tool shown boundaries",
-      "text": "Theorem checks the output schema, then reads the result for the model and what the call shows the person.",
-      "kind": "guardrail"
-    },
-    {
-      "lane": "The model",
-      "label": "The model reads the result",
-      "text": "It reads it in the next step, and answers.",
-      "kind": "model"
-    },
-    {
-      "lane": "Your app",
-      "label": "Your app gets checked events",
-      "text": "Events stream all the way through the turn, and done ends it.",
-      "kind": "guardrail"
-    }
-  ]
-}
-```
 
 1. **Inbound**: The person's message, the text of attachments and voice, options, context, history, and the host's added text. By default, detectors flag what they find here, except `injection`, which is off.
 2. **Tool arguments**: What the model sends to a tool. Theorem also checks the arguments against the tool's input schema, and the tool's permission decides whether it runs at once or waits for the person.

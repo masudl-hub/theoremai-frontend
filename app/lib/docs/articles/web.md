@@ -13,6 +13,58 @@ Deploying an agent to web browsers requires streaming incremental tokens over HT
 
 Theorem provides `@theoremjs/web`: Web-standard server handlers that serve a profile, and the browser client that talks to them, with no UI framework. A handler takes a `Request` and returns a `Response`, so it mounts on any framework that speaks them: Deno.serve, Hono, Next.js route handlers, SvelteKit, or Cloudflare Workers.
 
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_sanddunes.png",
+    "position": "50% 50%"
+  },
+  "caption": "One message. The browser sends what the person did now, and the keys stay on your server.",
+  "lanes": [
+    "The browser",
+    "Your server",
+    "The model"
+  ],
+  "steps": [
+    {
+      "lane": "The browser",
+      "label": "POST <base>/turn",
+      "text": "The message and the opaque ref the store issued.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "Your server",
+      "label": "createTheoremHandler",
+      "text": "It serves one profile, and reads the session and the keys from the options you pass.",
+      "kind": "runner",
+      "parts": [
+        {
+          "label": "provider",
+          "text": "The host options its model calls run on."
+        },
+        {
+          "label": "conversation store",
+          "text": "Owns the transcript and the history the model reads."
+        }
+      ]
+    },
+    {
+      "lane": "The model",
+      "label": "research.scout runs",
+      "text": "The handler runs the turn.",
+      "kind": "model"
+    },
+    {
+      "lane": "The browser",
+      "label": "NDJSON stream",
+      "text": "The turn's events, one JSON object to a line.",
+      "kind": "stream"
+    }
+  ]
+}
+```
+
 ## Web Handler Architecture (`createTheoremHandler`)
 
 `createTheoremHandler` serves one profile as one Web-standard handler. Your route gives it the request, and it reads the session and the keys from the options you pass.

@@ -94,7 +94,7 @@ When `registerProfile()` runs, the kernel validates the binding against the prot
 
 ## Related Guides
 
-* **[Model Bindings & Key Slots](/docs/providers)**: Binding models to key slots, operational limits, and failover keys.
+* **[Key Slots & Failover](/docs/providers)**: Binding models to key slots, operational limits, and failover keys.
 * **[Defining a Provider](/docs/providers/defining)**: Configuring endpoints, base URLs, and authentication signers.
 * **[Provider Checkpoints & State](/docs/providers/checkpoints)**: Native checkpoints, continuation policies, and fallback warnings.
 * **[Profiles & Modalities](/docs/profiles)**: Modality-specific profile configuration.

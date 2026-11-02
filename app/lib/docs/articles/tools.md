@@ -14,10 +14,6 @@ A tool is code or an external capability that a model can request Theorem to exe
 
 Theorem routes every tool call through the same checks before its result reaches the model.
 
-## Tool Execution Pipeline
-
-When a model asks for a tool, Theorem runs the call through these checks, in this order:
-
 ```figure
 {
   "kind": "sequence",
@@ -29,84 +25,71 @@ When a model asks for a tool, Theorem runs the call through these checks, in thi
   "steps": [
     {
       "label": "The model asks for a tool",
-      "text": "Theorem holds the call until the model's stream ends.",
       "kind": "model"
     },
     {
       "label": "Theorem checks the call",
-      "text": "A failed check fails the call before the tool runs.",
       "kind": "guardrail",
       "parts": [
         {
-          "label": "tools.allow",
-          "text": "The profile must list the tool."
+          "label": "tools.allow"
         },
         {
-          "label": "tool_arguments",
-          "text": "Detectors read the arguments."
+          "label": "tool_arguments"
         },
         {
-          "label": "Taint",
-          "text": "A tainted turn can refuse the call."
+          "label": "Taint"
         },
         {
-          "label": "Destination",
-          "text": "Theorem checks where the arguments point."
+          "label": "Destination"
         },
         {
-          "label": "Input schema",
-          "text": "The arguments must fit the tool's input Zod schema."
+          "label": "Input schema"
         },
         {
-          "label": "Permission",
-          "text": "A tool that needs approval holds the call, and the turn stops with stop.kind gate."
+          "label": "Permission"
         },
         {
-          "label": "Sign-in",
-          "text": "A tool that signs in gets its credential."
+          "label": "Sign-in"
         },
         {
-          "label": "pre_tool",
-          "text": "Your hook can stop the call."
+          "label": "pre_tool"
         }
       ]
     },
     {
       "label": "The tool runs",
-      "text": "A function, http, mcp or agent tool. A built-in tool never gets here: the provider runs it.",
       "kind": "tool"
     },
     {
       "label": "Theorem checks the result",
-      "text": "What the model and the person see has passed these checks.",
       "kind": "guardrail",
       "parts": [
         {
-          "label": "Output schema",
-          "text": "The result must fit the tool's output Zod schema."
+          "label": "Output schema"
         },
         {
-          "label": "tool_output",
-          "text": "Detectors read what the tool returned."
+          "label": "tool_output"
         },
         {
-          "label": "post_tool",
-          "text": "Your hook sees the result."
+          "label": "post_tool"
         },
         {
-          "label": "tool_shown",
-          "text": "Detectors read what the call shows the person."
+          "label": "tool_shown"
         }
       ]
     },
     {
       "label": "The model reads the result",
-      "text": "The result reaches the model in the next step.",
       "kind": "model"
     }
   ]
 }
 ```
+
+## Tool Execution Pipeline
+
+When a model asks for a tool, Theorem runs the call through these checks, in this order:
 
 1. **The model asks for a tool**: Theorem holds the call until the model's stream ends.
 2. **Theorem checks the call**: A failed check fails the call before the tool runs.

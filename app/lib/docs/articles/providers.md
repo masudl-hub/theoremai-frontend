@@ -1,7 +1,7 @@
 ---
-title: Model Bindings & Key Slots
+title: Key Slots & Failover
 updated: 2026-11-02
-summary: Configure model bindings, credentials, and secondary failover slots across upstream AI providers.
+summary: Where a model's keys come from, how slots resolve, and how a failed call retries or moves to a second key.
 entry: src/providers/mod.ts
 covers: src/providers, src/kernel/protocols
 cover: /imagery/th30_hayss.png
@@ -9,21 +9,13 @@ coverAlt: Golden haystacks across open farmland at dusk
 coverPosition: 50% 50%
 ---
 
-A model binding connects a profile to an upstream AI model. It pairs a registered provider with one of its served protocols, an upstream model ID, and credential slots.
+A [model binding](/docs/profiles/bindings) names the key slot its calls are signed with. Your vault holds the key, and Theorem reads it when a turn runs. This page covers where keys come from, how they resolve, and what happens when a call fails.
 
-Model bindings contain pure configuration. They hold no secret keys, open no sockets, and remain decoupled from environment variables. All credentials stay in the host vault and resolve when a turn runs.
+Bindings hold no secret keys, open no sockets, and stay apart from environment variables.
 
-## Declaring a Model Binding
+## Name a Binding's Key Slots
 
-Models are declared under `models` on the profile. A binding defines five core fields:
-
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| **`provider`** | `string` | The ID of a registered provider (e.g., `'openrouter'`, `'gemini'`, `'local'`). |
-| **`protocol`** | `string` | The protocol ID served by that provider (e.g., `'openRouterOpenAi'`, `'geminiInteractions'`). |
-| **`apiId`** | `string` | Upstream model identifier recognized by the provider (e.g., `'openrouter/free'`). |
-| **`keySlot`** | `string` *(optional)* | Vault credential slot name. Defaults to the provider's registered `keySlot`. |
-| **`fallbackKeySlot`** | `string` *(optional)* | Secondary vault slot tried when the primary key is out of quota, rate limited or busy. Defaults to the provider's registered `fallbackKeySlot`. |
+`keySlot` names the key a model's calls are signed with, and `fallbackKeySlot` names a second key. Left out, each one defaults to the slot registered on the provider:
 
 ```ts frame=profile:text
 models: {
@@ -36,17 +28,6 @@ models: {
 	},
 },
 ```
-
-Bindings can also be generated using a registered provider's helper:
-
-```text
-const open = router.model('openRouterOpenAi', 'openrouter/free', {
-	keySlot: 'openrouter_primary',
-	fallbackKeySlot: 'openrouter_secondary',
-});
-```
-
-Both forms produce the exact same validated data object checked by `modelBindingSchema`.
 
 ## Choosing Upstreams on OpenRouter
 

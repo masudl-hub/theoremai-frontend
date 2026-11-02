@@ -51,7 +51,7 @@ Some servers refuse a call without an `Mcp-Session-Id`. Only for those does Theo
   "caption": "One MCP call and its session.",
   "steps": [
     {
-      "label": "Theorem sends the call",
+      "label": "tools/call",
       "text": "It looks for a cached session that has not been idle past idleMs.",
       "kind": "runner",
       "parts": [
@@ -66,12 +66,12 @@ Some servers refuse a call without an `Mcp-Session-Id`. Only for those does Theo
       ]
     },
     {
-      "label": "The server asks for a session",
+      "label": "HTTP 400: initialize, then send again",
       "text": "An HTTP 400 that names mcp-session-id means the server needs one. Theorem opens a session with initialize and sends the call in it.",
       "kind": "runner"
     },
     {
-      "label": "The session ends",
+      "label": "HTTP 404: open a new session",
       "text": "A 404 means the session is gone. Theorem drops it, opens a new one and sends the call again. A second 404 fails with mcp_session_expired.",
       "kind": "runner"
     }

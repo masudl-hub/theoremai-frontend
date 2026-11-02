@@ -1,6 +1,6 @@
 ---
 title: HTTP Tools
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Declarative REST API tools with URL argument mapping, request limits, timeouts, and image fetching.
 entry: src/kernel/tools/remote.ts
 covers: src/kernel/tools/remote.ts, src/kernel/tools/http-limit.ts, src/kernel/tools/image-fetch.ts
@@ -10,6 +10,48 @@ coverPosition: 50% 50%
 ---
 
 An `http` tool sends an HTTP request to an external REST endpoint with no handler code. Theorem validates the input with Zod, places the arguments in the URL path, the query string or the JSON body, and checks the response body against the output schema.
+
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_orangecanyon.png",
+    "position": "50% 50%"
+  },
+  "caption": "The scout's list_arxiv. The model fills in arguments, and the mapping says where each one goes in the request.",
+  "lanes": [
+    "The model",
+    "mapping",
+    "The service"
+  ],
+  "steps": [
+    {
+      "lane": "The model",
+      "label": "{ search_query: 'all:episodic' }",
+      "text": "Theorem validates the input with Zod.",
+      "kind": "model"
+    },
+    {
+      "lane": "mapping",
+      "label": "queryParams: ['search_query']",
+      "text": "pathParams fills {name} placeholders. bodyParam names the JSON body.",
+      "kind": "tool"
+    },
+    {
+      "lane": "The service",
+      "label": "…&search_query=all%3Aepisodic",
+      "text": "GET to export.arxiv.org. The argument goes after the query already in endpoint.",
+      "kind": "egress"
+    },
+    {
+      "lane": "The model",
+      "label": "The checked response",
+      "text": "Theorem checks the response body against the output schema.",
+      "kind": "ingress"
+    }
+  ]
+}
+```
 
 ## Registering an HTTP Tool
 

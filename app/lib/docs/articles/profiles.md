@@ -13,6 +13,82 @@ In Theorem, an agent is configured as a **profile**. Declared via `defineProfile
 
 At runtime, turns execute against this profile: requests are validated against the profile's declared models, tools, and input limits before dispatching to any provider.
 
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_cherryblossoms.png",
+    "position": "50% 50%"
+  },
+  "caption": "The scout as a profile. Everything it may do is in one place, and every request runs from it.",
+  "lanes": [
+    "You define",
+    "You run",
+    "You get back"
+  ],
+  "steps": [
+    {
+      "lane": "You define",
+      "label": "research.scout",
+      "text": "defineProfile checks the definition. Each block has its own section below.",
+      "kind": "profile",
+      "parts": [
+        {
+          "label": "identity",
+          "text": "Its name and its instructions."
+        },
+        {
+          "label": "models",
+          "text": "The models it may call."
+        },
+        {
+          "label": "tools",
+          "text": "The tools it may call."
+        },
+        {
+          "label": "inputs",
+          "text": "What it accepts."
+        },
+        {
+          "label": "outputs",
+          "text": "What it replies with."
+        },
+        {
+          "label": "guardrails",
+          "text": "What it checks at each boundary."
+        }
+      ]
+    },
+    {
+      "lane": "You run",
+      "label": "runTurn({ profile: 'research.scout' })",
+      "text": "A request names the profile by its id, and cannot call a model or a tool that the profile does not allow.",
+      "kind": "runner"
+    },
+    {
+      "lane": "You get back",
+      "label": "The turn's events",
+      "text": "They arrive as the turn runs.",
+      "kind": "stream",
+      "parts": [
+        {
+          "label": "text",
+          "text": "The reply as it streams."
+        },
+        {
+          "label": "tool",
+          "text": "Each tool call and its phases."
+        },
+        {
+          "label": "done",
+          "text": "The turn is over, and how it stopped."
+        }
+      ]
+    }
+  ]
+}
+```
+
 ## Profile Anatomy
 
 Every profile is declared with `defineProfile()`. Its `type` decides which settings it takes.
@@ -240,34 +316,6 @@ Under `labels`, a profile overrides default kernel error strings and UI copy for
 
 A complete runnable program declaring and running a profile is shown in [Getting Started](/docs/start). A profile goes through three steps:
 
-```figure
-{
-  "kind": "sequence",
-  "still": {
-    "src": "/imagery/th30_poppies.png",
-    "position": "40% 50%"
-  },
-  "caption": "From a definition to a run. Register tools and schemas before the profiles that name them.",
-  "steps": [
-    {
-      "label": "defineProfile checks the definition",
-      "text": "It throws a config error on a setting the profile does not take, such as a misspelled key, and on a value of the wrong kind or outside a field's options, such as tools.parallel: 'yes' or turnBehaviour.atStepLimit: 'finish'. The error names the path.",
-      "kind": "guardrail"
-    },
-    {
-      "label": "registerProfile registers it",
-      "text": "It takes a profile or a definition, and defines it again. Then it checks each model binding, the tools and the structured schemas, and stores the profile under its id, up to 64 characters. Registering the same id again replaces it.",
-      "kind": "store"
-    },
-    {
-      "label": "A run reads it by id",
-      "text": "runTurn and runSession read the registered profile by its id. An unknown id throws a config error.",
-      "kind": "runner"
-    }
-  ]
-}
-```
-
-1. **`defineProfile checks the definition`**: It throws a `config` error on a setting the profile does not take, such as a misspelled key, and on a value of the wrong kind or outside a field's options, such as `tools.parallel: 'yes'` or `turnBehaviour.atStepLimit`: 'finish'. The error names the path.
-2. **`registerProfile registers it`**: It takes a profile or a definition, and defines it again. Then it checks each model binding, the tools and the structured schemas, and stores the profile under its id, up to 64 characters. Registering the same id again replaces it.
+1. **`defineProfile` checks the definition**: It throws a `config` error on a setting the profile does not take, such as a misspelled key, and on a value of the wrong kind or outside a field's options, such as `tools.parallel: 'yes'` or `turnBehaviour.atStepLimit`: 'finish'. The error names the path.
+2. **`registerProfile` registers it**: It takes a profile or a definition, and defines it again. Then it checks each model binding, the tools and the structured schemas, and stores the profile under its id, up to 64 characters. Registering the same id again replaces it.
 3. **A run reads it by id**: `runTurn` and `runSession` read the registered profile by its id. An unknown id throws a `config` error.

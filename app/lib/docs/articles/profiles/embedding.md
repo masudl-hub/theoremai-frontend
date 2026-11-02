@@ -11,6 +11,62 @@ coverPosition: 50% 50%
 
 Embedding profiles (`type: 'embedding'`) configure agents that generate dense vector representations of text and media inputs for semantic search, document retrieval, and clustering. They are executed through `runEmbedding()`, returning numerical vector arrays in a single stateless request. The research cookbook's `research.embedder` ranks a search's abstracts against the question.
 
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_dryingsaffron.png",
+    "position": "50% 50%"
+  },
+  "caption": "An abstract goes in and comes back as numbers. Theorem stores nothing and searches nothing: comparing the vectors is your code's job.",
+  "lanes": [
+    "You send",
+    "The model",
+    "You get back"
+  ],
+  "steps": [
+    {
+      "lane": "You send",
+      "label": "input: abstracts",
+      "text": "One input or a batch, each a string or parts.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "You send",
+      "label": "task: 'document'",
+      "text": "What the vectors are for. Use 'query' for what someone asks.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "The model",
+      "label": "gemini-embedding-2-preview",
+      "text": "research.embedder sets 768 dimensions in options.outputDimensionality.",
+      "kind": "model"
+    },
+    {
+      "lane": "You get back",
+      "label": "embeddings",
+      "text": "One vector for each input, in the input's order.",
+      "kind": "egress",
+      "parts": [
+        {
+          "label": "index",
+          "text": "Which input it belongs to."
+        },
+        {
+          "label": "values",
+          "text": "The numbers."
+        },
+        {
+          "label": "dimensions",
+          "text": "How many numbers: 768 here."
+        }
+      ]
+    }
+  ]
+}
+```
+
 ## Embedding Profile Configuration
 
 Base profile fields (`identity`, `models`, `guardrails`, `observability`, `labels`) apply across all modalities as documented in [Profiles](/docs/profiles). Embedding profiles declare which inputs they accept. The embedder runs on one Gemini model. It takes text, which every embedding profile accepts unless `inputs.text` is `false`:

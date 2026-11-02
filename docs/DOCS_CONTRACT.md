@@ -33,6 +33,16 @@ Curious people, developers, designers, design engineers, builders, and AI system
 - A snippet shows only what its section is about. Everything else is `// ...`. A section on labels shows the tool's `name` and `labels`, not its description, access or schema. A section on one profile field shows that field. Keep the name that says what the reader is looking at, then elide. A snippet shows all of something only when the reader must see all of it: a program the section tells them to run as written.
 - There is no build-time composition of a shared profile plus an addition, and no `highlightLines`. `npm run lint:docs` type-checks every `ts` snippet against the kernel. A snippet with an `import` is a whole program. Any other names a frame on its fence line (` ```ts frame=statements `, ` ```ts frame=tool:mcp `), which says how the check completes it, so a snippet can elide what a type requires.
 
+## Figures
+
+A figure earns its place by telling the reader something the prose cannot show. Every figure passes these five tests:
+
+1. **What it is, first.** A page with a figure that says what the thing is puts it right under the intro, before the first heading. From it a reader can say what goes in, what comes back, and who does each part. Mechanism figures can follow later. They do not replace the first one.
+2. **Real names.** Labels are the names a reader meets in code: the cookbook agent, the field, the event. What is visible without hovering carries the story.
+3. **The swap test.** Change the page's topic. If the figure still reads true, it says nothing.
+4. **A shape, not a list.** A figure shows order, ownership, branching, or before and after. A list drawn as steps is a list. When a list sits under a figure, the figure carries the shape and the list carries the words.
+5. **No figure is fine.** A reference page does not need one.
+
 ## When stuck
 
 If the package cannot answer a question a page needs, stop and ask. Do not fill the gap.

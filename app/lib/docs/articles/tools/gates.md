@@ -13,10 +13,6 @@ Model tool calls are requests, not commitments. Any tool can need a person's app
 
 A held tool call is a **gate**. The turn pauses with `stop: { kind: 'gate' }`, preserves the pending call in a `TurnToolSnapshot`, and lets your frontend present an approval prompt to the user before resuming.
 
-## Gate Lifecycle
-
-A gate holds a tool call until the person answers. The model does not run while it waits:
-
 ```figure
 {
   "kind": "lanes",
@@ -34,46 +30,43 @@ A gate holds a tool call until the person answers. The model does not run while 
     {
       "lane": "The model",
       "label": "The model calls a tool",
-      "text": "It names the tool and its arguments.",
       "kind": "model"
     },
     {
       "lane": "Theorem",
       "label": "Theorem holds the call",
-      "text": "The tool does not run. A tool event with phase gate carries the tool name, the filled request text and the prepared arguments. Other calls in the step finish first.",
       "kind": "guardrail"
     },
     {
       "lane": "Theorem",
       "label": "The turn finishes",
-      "text": "It ends with stop.kind gate. The done event carries done.tools, the turn's tool snapshot.",
       "kind": "runner"
     },
     {
       "lane": "Your app",
       "label": "The person decides",
-      "text": "Your UI shows gate.request, filled from the tool's labels.request template, such as read {urls.0}.",
       "kind": "ingress"
     },
     {
       "lane": "Your app",
       "label": "You resume the call",
-      "text": "You pass the snapshot and an InvokeToolResume to invokeTool.",
       "kind": "egress",
       "parts": [
         {
-          "label": "granted: true",
-          "text": "The call goes back through its checks and runs. After an edit, pass edited with the model's input as from."
+          "label": "granted: true"
         },
         {
-          "label": "granted: false",
-          "text": "The call settles as declined, or as cancelled for the causes abandoned and expired."
+          "label": "granted: false"
         }
       ]
     }
   ]
 }
 ```
+
+## Gate Lifecycle
+
+A gate holds a tool call until the person answers. The model does not run while it waits:
 
 1. **The model calls a tool**: It names the tool and its arguments.
 2. **Theorem holds the call**: The tool does not run. A tool event with `phase: 'gate'` carries the tool name, the filled request text and the prepared arguments. Other calls in the step finish first.

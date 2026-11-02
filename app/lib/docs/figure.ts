@@ -38,7 +38,8 @@ const tokenKind = z.enum([
 /** One step, the icon its token wears, and the parts it is made of when it has any. */
 const step = z.strictObject({
 	label: z.string(),
-	text: z.string(),
+	/** Shown on hover. Leave it out when a list under the figure carries the words. */
+	text: z.string().optional(),
 	kind: tokenKind.optional(),
 	parts: z.array(part).min(1).optional(),
 });
@@ -113,7 +114,7 @@ export function parseFigure(code: string): DocFigure {
 function stepMarkdown(
 	at: number,
 	head: string,
-	text: string,
+	text: string | undefined,
 	parts: readonly z.infer<typeof part>[] = [],
 ): string {
 	const lines = parts.map((one) => {
@@ -121,7 +122,7 @@ function stepMarkdown(
 		const see = one.chapter ? ` (see /docs/${one.chapter})` : '';
 		return `   - ${one.label}${detail}${see}`;
 	});
-	return [`${String(at + 1)}. ${head}: ${text}`, ...lines].join('\n');
+	return [`${String(at + 1)}. ${head}${text ? `: ${text}` : ''}`, ...lines].join('\n');
 }
 
 /** A figure as Markdown a reader without vision can follow: the caption, then each step and its parts. */
@@ -132,7 +133,7 @@ export function figureMarkdown(fig: DocFigure): string {
 					.flatMap((row) => row.steps)
 					.map((each, at) => {
 						const token = each.token ? ` [${each.token.label}]` : '';
-						return stepMarkdown(at, `**${each.label}**${token}`, each.text ?? '', each.parts);
+						return stepMarkdown(at, `**${each.label}**${token}`, each.text, each.parts);
 					})
 			: fig.steps.map((each, at) => {
 					const who = 'lane' in each ? `[${each.lane}] ` : '';

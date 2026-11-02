@@ -11,6 +11,80 @@ coverPosition: 50% 50%
 
 Text profiles (`type: 'text'`) configure conversational agents that reason across multi-step tool loops, stream incremental text, and optionally enforce structured JSON schemas. They are invoked through `runTurn()`, which dispatches the request to the bound model, executes permitted tools, validates output contracts, and yields real-time execution events.
 
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_cranberrybog.png",
+    "position": "50% 50%"
+  },
+  "caption": "One scout turn. The model calls tools and reads each result, step by step, until it can answer.",
+  "lanes": [
+    "Your code",
+    "The model",
+    "Your tools"
+  ],
+  "steps": [
+    {
+      "lane": "Your code",
+      "label": "input.text",
+      "text": "runTurn takes the profile's id and the person's message.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "The model",
+      "label": "Step 1 asks for list_arxiv",
+      "text": "The model names the tool and its arguments.",
+      "kind": "model"
+    },
+    {
+      "lane": "Your tools",
+      "label": "list_arxiv runs",
+      "text": "Theorem checks the call, runs it, and gives the result to the model in the next step.",
+      "kind": "tool"
+    },
+    {
+      "lane": "The model",
+      "label": "Step 2 asks for read_pages",
+      "text": "The model reads the result and decides what to do next. The profile's maxSteps bounds the steps.",
+      "kind": "model"
+    },
+    {
+      "lane": "Your tools",
+      "label": "read_pages runs",
+      "text": "Tool calls go through the same checks at every step.",
+      "kind": "tool"
+    },
+    {
+      "lane": "The model",
+      "label": "Step 3 writes the reply",
+      "text": "With nothing left to call, the model answers.",
+      "kind": "model"
+    },
+    {
+      "lane": "Your code",
+      "label": "The turn's events",
+      "text": "They stream through every step.",
+      "kind": "stream",
+      "parts": [
+        {
+          "label": "text",
+          "text": "The reply as it streams."
+        },
+        {
+          "label": "tool",
+          "text": "Each tool call and its phases."
+        },
+        {
+          "label": "done",
+          "text": "The turn is over, and how it stopped."
+        }
+      ]
+    }
+  ]
+}
+```
+
 ## Text Profile Configuration
 
 Base profile fields (`identity`, `models`, `tools`, `guardrails`, `observability`) apply across all modalities as documented in [Profiles](/docs/profiles). By default, text profiles generate conversational markdown and text streams. Text profiles can optionally configure structured output contracts (`outputs.structured`) and what the last step may do (`turnBehaviour.atStepLimit`). This slice shows only those two blocks. The research scout sets `atStepLimit: 'answer'` and answers in the `research.reply` shape, or in `research.models` when its `focus` picks that, as a later section shows:

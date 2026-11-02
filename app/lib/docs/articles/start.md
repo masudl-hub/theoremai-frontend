@@ -40,13 +40,13 @@ A request cannot call a model or a tool that the profile does not allow. Each tu
       "direction": "ltr",
       "steps": [
         {
-          "label": "Host Request",
-          "token": { "label": "Host Request", "kind": "ingress" },
+          "label": "runTurn",
+          "token": { "label": "runTurn", "kind": "ingress" },
           "text": "Your code calls runTurn with the profile id, the input text, and any attachments, voice clips, context or history the profile accepts."
         },
         {
-          "label": "Input Boundary",
-          "token": { "label": "Input Boundary", "kind": "guardrail" },
+          "label": "Inbound checks",
+          "token": { "label": "Inbound checks", "kind": "guardrail" },
           "text": "Detectors read the inbound text, and a file type the profile does not allow is refused. By default most detectors flag a match; the profile can set redact or block instead."
         },
         {
@@ -55,8 +55,8 @@ A request cannot call a model or a tool that the profile does not allow. Each tu
           "text": "Theorem checks the request against the profile and refuses a model choice, option or context sender that the profile does not allow."
         },
         {
-          "label": "Turn Runner",
-          "token": { "label": "Turn Runner", "kind": "runner" },
+          "label": "Turn steps",
+          "token": { "label": "Turn steps", "kind": "runner" },
           "text": "The runner runs the steps of the turn, up to the profile's step limit. By default the instruction carries a canary token."
         }
       ]
@@ -65,23 +65,23 @@ A request cannot call a model or a tool that the profile does not allow. Each tu
       "direction": "rtl",
       "steps": [
         {
-          "label": "Model Dispatch",
-          "token": { "label": "Model Dispatch", "kind": "model" },
+          "label": "Model call",
+          "token": { "label": "Model call", "kind": "model" },
           "text": "The model's protocol turns the request into the provider's wire format. The call is signed with the key from your vault."
         },
         {
-          "label": "Tool Gate",
-          "token": { "label": "Tool Gate", "kind": "tool" },
+          "label": "Tool checks",
+          "token": { "label": "Tool checks", "kind": "tool" },
           "text": "When the model asks for a tool, detectors read the arguments. Theorem checks them against the tool's input schema, checks its permission, runs it, and checks the result against the output schema."
         },
         {
-          "label": "Outbound Boundary",
-          "token": { "label": "Outbound Boundary", "kind": "guardrail" },
+          "label": "Reply checks",
+          "token": { "label": "Reply checks", "kind": "guardrail" },
           "text": "Detectors read the reply as it streams, around the tool calls. By default a canary or private-prompt leak is flagged; the profile can set redact or block instead."
         },
         {
-          "label": "Event Stream",
-          "token": { "label": "Event Stream", "kind": "stream" },
+          "label": "Your events",
+          "token": { "label": "Your events", "kind": "stream" },
           "text": "runTurn yields text, tool and lifecycle events to your code. @theoremjs/web sends them to a browser as lines of JSON."
         }
       ]

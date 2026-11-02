@@ -13,6 +13,62 @@ Over long-running conversations, dialogue history consumes substantial token bud
 
 In Theorem, **history compaction** automatically condenses older exchanges into a summary while preserving recent context verbatim.
 
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_cloud.png",
+    "position": "50% 50%"
+  },
+  "caption": "The scout's history at 24,000 tokens. The older exchanges become one summary, and the last four stay word for word.",
+  "lanes": [
+    "Before",
+    "The compactor",
+    "After"
+  ],
+  "steps": [
+    {
+      "lane": "Before",
+      "label": "History over 24,000 tokens",
+      "text": "compactAt: 0.75 of maxTokens: 32_000.",
+      "kind": "store",
+      "parts": [
+        {
+          "label": "Older exchanges",
+          "text": "These go to the compactor."
+        },
+        {
+          "label": "Last 4 exchanges",
+          "text": "previousExchanges: 4 keeps these as they are."
+        }
+      ]
+    },
+    {
+      "lane": "The compactor",
+      "label": "research.compactor",
+      "text": "A text profile with no tools. It keeps every source URL, every exact quote and every open lead.",
+      "kind": "profile"
+    },
+    {
+      "lane": "After",
+      "label": "Shorter history",
+      "text": "The summary comes first, then the messages that were kept.",
+      "kind": "store",
+      "parts": [
+        {
+          "label": "Summary",
+          "text": "The compactor's text, in place of the older exchanges."
+        },
+        {
+          "label": "Last 4 exchanges",
+          "text": "Unchanged."
+        }
+      ]
+    }
+  ]
+}
+```
+
 ## The Compaction Specification (`compaction`)
 
 Compaction is configured directly on a profile's model binding. Each of the scout's models hands its history to `research.compactor`, a text profile with no tools and one instruction: "Summarise the research so far. Keep every source URL, every exact quote, and every open lead." This is the `compaction` of the `open` model:
