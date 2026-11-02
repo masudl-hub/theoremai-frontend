@@ -12,6 +12,7 @@ import type { SiteEnv } from '../../cloudflare';
 import { ON_SITE } from '../studio-supplies';
 import { d1ProbeLog } from './guardrail-probe';
 import { resolveHost } from './resolve-host';
+import { siteSessionStore } from './site-session-store';
 import { type AllowanceKind, spendAllowance } from './studio-allowance';
 import { allowanceStore } from './studio-decide-allowance';
 import { studioSteerInbox } from './studio-steer';
@@ -43,6 +44,7 @@ export function studioServer(env: SiteEnv): StudioDraftHandler {
 				hostOptions: (profile) => studioProviders(env, profile),
 			},
 			resolveHost,
+			sessionStore: siteSessionStore(),
 			spend: (kind, request) =>
 				import.meta.env.DEV
 					? Promise.resolve()

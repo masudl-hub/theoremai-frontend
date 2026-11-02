@@ -18,7 +18,6 @@ import {
 } from '@theoremjs/agents';
 import { clientError } from '@theoremjs/agents/host';
 import {
-	createMemorySessionStore,
 	createTheoremSessionBoundary,
 	type LiveOpenMessage,
 	parseLiveOpenMessage,
@@ -28,10 +27,11 @@ import {
 import type { StudioLiveDraftMessage, StudioTraceLine } from '@theoremjs/studio';
 import { attachStudioLiveSession } from '@theoremjs/studio/browser';
 import { ensureKernelInitialized } from './kernel-init';
+import { siteSessionStore } from './site-session-store';
 import { studioScope } from './studio-register';
 import { studioProviders, studioTraces } from './studio-turn';
 
-const liveSessionStore = createMemorySessionStore();
+const liveSessionStore = siteSessionStore();
 
 export type LiveRelayOptions = Partial<
 	Pick<SessionBoundaryOptions, 'session' | 'sessionStore' | 'gateTtlMs' | 'operationRetentionMs'>

@@ -97,7 +97,7 @@ Theorem enforces strict trust boundaries between browser clients and server stat
 
 | Store | Function | Storage Mechanism | Best Fit |
 | :--- | :--- | :--- | :--- |
-| **Memory Store** | `createMemoryConversationStore()` | Process memory. Idle conversations are forgotten, and the oldest go first when the store is full. | One server instance. |
+| **Memory Store** | `createMemoryConversationStore()` | Process memory. It keeps every conversation until the process ends, unless you set `ttlMs` or `maxSessions`. | One server instance. |
 | **Sealed Store** | `createSealedConversationStore({ keys, keyVersion })` | **No database**: the `ref` is the conversation, sealed with the host's key (AES-256-GCM) and bound to the session. The browser carries it, and cannot read or change it. | Hosts that keep nothing on the server, such as Workers. |
 | **Your Own Store** | Your `TheoremConversationStore` (`read` and `write`) | Your database. | Requests that can reach different instances, and long retention. |
 
