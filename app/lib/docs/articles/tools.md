@@ -89,7 +89,7 @@ Every custom tool registered with `registerTool` declares metadata that governs 
 
 Theorem exposes two programmatic entry points for executing registered tools outside an active model turn:
 
-* **`invokeTool(request)`**: Returns an async generator of `TurnEvent`s: the lifecycle events (start, progress, completion, citations) as the tool executes. Ideal for streaming progress to user interfaces or resuming held tool gates.
+* **`invokeTool(request)`**: Returns an async generator of `TurnEvent`s: the lifecycle events (start, progress, completion, citations) as the tool executes. Ideal for streaming progress to user interfaces or resuming held tool gates. It also takes the controls every run takes, such as `signal`, `metadata`, `traceparent` and `projectId`. The trace records `projectId`.
 * **`runTool(request)`**: A Promise-based alternative that resolves to a `ToolCallResult` when the call settles: it completed, a gate held it, it failed, or it went on in the background. Ideal for backend batch operations and headless integrations.
 
 ## Dynamic Tool Loading & Profile Binding

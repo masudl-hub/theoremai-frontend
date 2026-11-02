@@ -350,7 +350,7 @@
 		"reviewed": "2026-11-02",
 		"files": {
 			"src/kernel/registry/profiles.ts": "a6cd21de24871e0cc47dab531af9d2ae0500e98c",
-			"src/kernel/tools/invoke.ts": "e34c7dc56bc860c0f49354f8aa08177f7319a167"
+			"src/kernel/tools/invoke.ts": "b4f761989c870e5f487efb1cda48ccb3269d3691"
 		}
 	},
 	"profiles/image": {
@@ -920,7 +920,7 @@
 			"studio/ui/shell-motion.css": "3f004f80a89711d201848518203ca2b3078f5dbd",
 			"studio/ui/shell-motion.ts": "826a5ff13de41b04c1a4afd750cdde63ec80dcb7",
 			"studio/ui/studio-code-pane.tsx": "693f819d0bbeb08ad6d0885f5d45004fe151932b",
-			"studio/ui/studio-compare.tsx": "28c127bec5fb645eff5352622c66430a95243d01",
+			"studio/ui/studio-compare.tsx": "87760744c85ca7d24128c9128ea2d25ffe694d3e",
 			"studio/ui/studio-conflicts.tsx": "8796cc67144e7813b1b40a4e1c1088f2fcbe0010",
 			"studio/ui/studio-connection.tsx": "61081b9617095923d23ae5575941d7f65a41d0be",
 			"studio/ui/studio-decision.tsx": "5f29323f74ac0cc798085fd9cda3b7f4b666d83d",
@@ -996,7 +996,7 @@
 			"src/kernel/tools/harness.ts": "d06353da78838752724ab1dc451950d78d9934fb",
 			"src/kernel/tools/http-limit.ts": "66de16b2453fa26b3b27d409a2faaf4f13b6732c",
 			"src/kernel/tools/image-fetch.ts": "fba610f9c833cac92510334a94da0ea8008c8291",
-			"src/kernel/tools/invoke.ts": "e34c7dc56bc860c0f49354f8aa08177f7319a167",
+			"src/kernel/tools/invoke.ts": "b4f761989c870e5f487efb1cda48ccb3269d3691",
 			"src/kernel/tools/mcp-sessions.ts": "a7d9d5b32f49880585dd16d1d6660645bc6f53b9",
 			"src/kernel/tools/memory-execution.ts": "39de141c88b53a6b76f27ed67c2d2cf59a58dbfe",
 			"src/kernel/tools/mod.ts": "8ec4774570d5ccab03cbe50ce77b24b9428a5f54",
@@ -1012,7 +1012,7 @@
 			"src/kernel/tools/schema.ts": "80139c4a59ef3ff6010fda7b786da2dd97cb8ff9",
 			"src/kernel/tools/signed-in-fetch.ts": "895e3d568782bff4840e2ce731e96e992dc08eb3",
 			"src/kernel/tools/stage-run.ts": "3f3cd4778ade5de70e5ac05a801f0292bb92c066",
-			"src/kernel/tools/types.ts": "240257ccdbcdc2308e9158a7e8c5ba14bb55d7df",
+			"src/kernel/tools/types.ts": "29ffead2f4570852837eb5abdd658a2b7f7e34c0",
 			"src/kernel/tools/unchecked-output.ts": "cd3ad46a12d91555ceec356258efc9f3707f0ecb"
 		}
 	},
@@ -1021,7 +1021,7 @@
 		"files": {
 			"src/kernel/engine/runner/nested.ts": "2d4f2bad1de44074829450c1b9aab6b570e99765",
 			"src/kernel/tools/agent.ts": "c19a39ab0130cd6a04671c5007177485ac6050ae",
-			"src/kernel/tools/types.ts": "240257ccdbcdc2308e9158a7e8c5ba14bb55d7df"
+			"src/kernel/tools/types.ts": "29ffead2f4570852837eb5abdd658a2b7f7e34c0"
 		}
 	},
 	"tools/auth": {
@@ -1041,7 +1041,7 @@
 		"reviewed": "2026-11-02",
 		"files": {
 			"src/kernel/tools/execute.ts": "89c80bee69367ac2d317ea9952cf430c4ba8bb90",
-			"src/kernel/tools/types.ts": "240257ccdbcdc2308e9158a7e8c5ba14bb55d7df"
+			"src/kernel/tools/types.ts": "29ffead2f4570852837eb5abdd658a2b7f7e34c0"
 		}
 	},
 	"tools/gates": {
@@ -1063,7 +1063,7 @@
 		"reviewed": "2026-11-02",
 		"files": {
 			"src/kernel/tools/activity-label.ts": "4fc86bf4b78c42043d1c02a26c0d2884176bc78c",
-			"src/kernel/tools/types.ts": "240257ccdbcdc2308e9158a7e8c5ba14bb55d7df"
+			"src/kernel/tools/types.ts": "29ffead2f4570852837eb5abdd658a2b7f7e34c0"
 		}
 	},
 	"tools/mcp": {
@@ -1174,7 +1174,7 @@
 			"react/src/ui/EmbeddingResults.tsx": "3eb5926e6ef6c94914ffec7a7089e2b4a5266394",
 			"react/src/ui/EmbeddingSpace.tsx": "4ca21b216808796148f4a87cf076e6f0efc60f5c",
 			"react/src/ui/LiveCaptionsPanel.tsx": "a8a2be25be9a939544219e3b0baa0a6a9d8181e2",
-			"react/src/ui/LiveRunner.tsx": "8a31117e773ef25ae80c938f35476b02925a2edc",
+			"react/src/ui/LiveRunner.tsx": "4c44090ac12eb9d2b33acb544581ac2b530a9afd",
 			"react/src/ui/PaneState.tsx": "8dd9972f3a3165d405392228bed6b39c0967ade5",
 			"react/src/ui/SchemaFields.tsx": "c249c5941569e3b2a43fbaf7af882d5f30557ac1",
 			"react/src/ui/ShapedData.tsx": "33559bfc5fd55fd6931366a617ee9e45ee629ff9",
@@ -1379,7 +1379,7 @@
 			"react/src/ui/EmbeddingResults.tsx": "3eb5926e6ef6c94914ffec7a7089e2b4a5266394",
 			"react/src/ui/EmbeddingSpace.tsx": "4ca21b216808796148f4a87cf076e6f0efc60f5c",
 			"react/src/ui/LiveCaptionsPanel.tsx": "a8a2be25be9a939544219e3b0baa0a6a9d8181e2",
-			"react/src/ui/LiveRunner.tsx": "8a31117e773ef25ae80c938f35476b02925a2edc",
+			"react/src/ui/LiveRunner.tsx": "4c44090ac12eb9d2b33acb544581ac2b530a9afd",
 			"react/src/ui/PaneState.tsx": "8dd9972f3a3165d405392228bed6b39c0967ade5",
 			"react/src/ui/SchemaFields.tsx": "c249c5941569e3b2a43fbaf7af882d5f30557ac1",
 			"react/src/ui/ShapedData.tsx": "33559bfc5fd55fd6931366a617ee9e45ee629ff9",
@@ -1568,7 +1568,7 @@
 			"react/src/ui/EmbeddingResults.tsx": "3eb5926e6ef6c94914ffec7a7089e2b4a5266394",
 			"react/src/ui/EmbeddingSpace.tsx": "4ca21b216808796148f4a87cf076e6f0efc60f5c",
 			"react/src/ui/LiveCaptionsPanel.tsx": "a8a2be25be9a939544219e3b0baa0a6a9d8181e2",
-			"react/src/ui/LiveRunner.tsx": "8a31117e773ef25ae80c938f35476b02925a2edc",
+			"react/src/ui/LiveRunner.tsx": "4c44090ac12eb9d2b33acb544581ac2b530a9afd",
 			"react/src/ui/PaneState.tsx": "8dd9972f3a3165d405392228bed6b39c0967ade5",
 			"react/src/ui/SchemaFields.tsx": "c249c5941569e3b2a43fbaf7af882d5f30557ac1",
 			"react/src/ui/ShapedData.tsx": "33559bfc5fd55fd6931366a617ee9e45ee629ff9",
@@ -1773,7 +1773,7 @@
 			"react/src/ui/EmbeddingResults.tsx": "3eb5926e6ef6c94914ffec7a7089e2b4a5266394",
 			"react/src/ui/EmbeddingSpace.tsx": "4ca21b216808796148f4a87cf076e6f0efc60f5c",
 			"react/src/ui/LiveCaptionsPanel.tsx": "a8a2be25be9a939544219e3b0baa0a6a9d8181e2",
-			"react/src/ui/LiveRunner.tsx": "8a31117e773ef25ae80c938f35476b02925a2edc",
+			"react/src/ui/LiveRunner.tsx": "4c44090ac12eb9d2b33acb544581ac2b530a9afd",
 			"react/src/ui/PaneState.tsx": "8dd9972f3a3165d405392228bed6b39c0967ade5",
 			"react/src/ui/SchemaFields.tsx": "c249c5941569e3b2a43fbaf7af882d5f30557ac1",
 			"react/src/ui/ShapedData.tsx": "33559bfc5fd55fd6931366a617ee9e45ee629ff9",

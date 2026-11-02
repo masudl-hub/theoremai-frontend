@@ -79,6 +79,8 @@ const described = useTheoremInterface(transport);
 
 `connection` returns what the call opens: a profile the relay knows by id, or your own `openMessage` for the relay. The relay is `/api/live/relay` on the page's host. To open another socket, return `createSocket`.
 
+`<LiveRunner />` also takes every `LiveCallOptions` prop and passes it to the call. `model` and `effort` pick the call's model and that model's effort, as in [the realtime client](/docs/web/realtime).
+
 `<LiveRunner />` includes:
 - **Waveform**: `InkWaveform`, driven by the microphone and model audio levels.
 - **Camera Flip & Preview**: Manages front and rear camera selection (`facingMode: 'user' | 'environment'`), asks the camera for 640x480, and sends a frame every 400ms.
