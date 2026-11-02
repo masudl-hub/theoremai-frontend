@@ -82,7 +82,8 @@ function hostExports(repoRoot: string): string[] {
 }
 
 /** The names a sample may use unimported. */
-function sampleNames(repoRoot: string, kernelRoot: string): SampleNames {
+// fallow-ignore-next-line unused-export -- scripts/docs-index-plugin.mjs reads it at run time.
+export function sampleNames(repoRoot: string, kernelRoot: string): SampleNames {
 	mkdirSync(path.join(repoRoot, 'tmp'), { recursive: true });
 	const folder = mkdtempSync(path.join(repoRoot, 'tmp/docs-names-'));
 	try {
