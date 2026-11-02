@@ -114,7 +114,7 @@ export const theoremSiteTheme = {
     "--color-accent-muted": "light-dark(#f1f1f1, #262626)",
     "--color-neutral": "light-dark(#0000000F, #ffffff1A)",
     "--color-overlay": "light-dark(#00000080, #000000CC)",
-    "--color-overlay-hover": "light-dark(#0000000D, #ffffff0D)",
+    "--color-overlay-hover": "light-dark(#05365914, #FFFFFF14)",
     "--color-overlay-pressed": "light-dark(#0000001A, #ffffff1A)",
     "--color-text-primary": "light-dark(#000000, #ffffff)",
     "--color-text-secondary": "light-dark(#474747, #9e9e9e)",
@@ -579,6 +579,31 @@ export const theoremSiteTheme = {
         },
         ":where([data-resizing] + [role=\"complementary\"], [role=\"complementary\"]:has(+ [data-resizing]))": {
           "transition": "none"
+        }
+      }
+    },
+    "dialog": {
+      "base": {
+        "--font-size-xs": "0.625rem",
+        "--font-size-sm": "0.75rem",
+        "--font-size-base": "0.875rem",
+        "--font-size-lg": "1.0625rem",
+        "--font-size-xl": "1.25rem",
+        "--font-size-2xl": "1.5rem",
+        "--text-body-size": "var(--font-size-base)",
+        "--text-code-size": "var(--font-size-base)",
+        "--text-label-size": "var(--font-size-base)",
+        "--text-large-size": "var(--font-size-lg)",
+        "--text-supporting-size": "var(--font-size-sm)",
+        "--text-heading-1-size": "var(--font-size-2xl)",
+        "--text-heading-2-size": "var(--font-size-xl)",
+        "--text-heading-3-size": "var(--font-size-lg)",
+        "--text-heading-4-size": "var(--font-size-base)",
+        "--text-heading-5-size": "var(--font-size-sm)",
+        "--text-heading-6-size": "var(--font-size-xs)",
+        "boxShadow": "0 4px 6px light-dark(oklch(0 0 0 / 10%), oklch(0 0 0 / 50%)), 0 12px 24px light-dark(oklch(0 0 0 / 15%), oklch(0 0 0 / 70%))",
+        "::backdrop": {
+          "backgroundColor": "light-dark(#00000080, #000000BF)"
         }
       }
     },
