@@ -1,6 +1,6 @@
 ---
 title: Agent Tools
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Delegating turns to other registered agents, with input derived from the called profile and host-only channels and fields.
 entry: src/kernel/tools/agent.ts
 covers: src/kernel/tools/agent.ts, src/kernel/tools/types.ts, src/kernel/engine/runner/nested.ts
@@ -26,6 +26,7 @@ profile: 'research.podcast',
 
 * **`profile`**: The ID of the agent's profile, registered before this tool.
 * **`maxCallsPerTurn`**: Optional. The most calls to this tool in one turn of its caller; a whole number above 0. A call past it fails with `call_limit`. Left out, as on `record_podcast` and `draw_method`, only the caller's `maxSteps` bounds them.
+* **`background`**: Optional. Lets the call [finish after the caller's turn](/docs/tools#finish-a-call-after-its-turn). The called agent's own tools still run inline, because its turn has no background service.
 
 ## Automatic Schema Derivation
 
@@ -33,6 +34,7 @@ Because the called agent is already a declared profile, Theorem derives the tool
 
 * **Input Schema**: The tool takes `text`, plus each channel the called profile declares in `inputs`: `attachments`, `voice` and `slots`. A `speech` profile also takes `speech`. Any other field is refused, not dropped.
 * **Output Schema**: The tool returns the called agent's reply: its `text`, or its `structured` reply in place of the text; `removed`, the items its item rules took out of `structured`; media as `parts`; and what it cited as `sources`. The caller's turn cites those sources too. `record_podcast` returns its audio in `parts`, and `draw_method` returns its image there.
+* **Usage**: The call's last `tool` event carries the called agent's usage as `tokens`. The caller's `done.tokens` includes it, unless the call settled after `done`. A call stopped after its reply reports what the agent spent until then.
 
 ## Architectural Delegation Rules
 

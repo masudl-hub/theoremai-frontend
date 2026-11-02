@@ -1,6 +1,6 @@
 ---
 title: Trace Spans Catalog
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Query and export trace spans, distributed execution trees, and telemetry attributes in Theorem.
 entry: src/observability/mod.ts
 covers: src/observability, src/kernel/engine/call-trace.ts
@@ -18,7 +18,7 @@ Theorem builds tracing into the kernel:
 
 ## Span Hierarchy & Topology
 
-A turn writes a tree of spans. The model calls and tool calls are children of the root. Each HTTP attempt is a child of its model call:
+A turn writes a tree of spans. The model calls and tool calls are children of the root. Each HTTP attempt is a child of its model call. A tool call set to [go on after its turn](/docs/tools#finish-a-call-after-its-turn) can be the one exception: see [Calls That Outlive Their Turn](#calls-that-outlive-their-turn).
 
 ```mermaid
 flowchart TD
@@ -74,7 +74,7 @@ A protocol you define states its own, one for each profile type it serves, in `o
 Spans carry attributes named by the OpenTelemetry GenAI conventions, beside Theorem's own `theorem.*` attributes.
 
 ### 1. Model Inference (`call`)
-* **`gen_ai.operation.name`**: What the span did: `invoke_agent`, `chat`, `generate_content`, `execute_tool`, `decide` or `embeddings`.
+* **`gen_ai.operation.name`**: What the span did: `invoke_agent`, `chat`, `generate_content`, `transcribe`, `execute_tool`, `decide` or `embeddings`.
 * **`gen_ai.request.model`**: The model id sent to the provider.
 * **`gen_ai.provider.name`**: Who served the call. A local server appears by its declared name. Absent when unknown.
 * **`gen_ai.usage.input_tokens`**: Tokens the model read.
@@ -161,8 +161,11 @@ traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
 * A malformed `traceparent` throws.
 * A traced tool call gets the W3C `traceparent` of its `execute_tool` span as `ctx.traceparent`. A tool parents its own outbound spans on it.
 
+### Calls That Outlive Their Turn
+A span in a turn's tree cannot outlive the turn. So when a request has a background service, a tool call whose `background` setting lets it go on after its reply writes its `execute_tool` span in a `TraceRecord` of its own, when the call ends. That span's parent is the turn's root, so both records belong to one trace. The call gets this record even if it ends before the reply. An `'ask'` call that the model did not send to the background stays in the turn's tree.
+
 ### Span Links (`TraceSpanLink`)
-When one turn follows another, the host passes `links` on the request. Each link names the earlier root's `traceparent` (its terminal `done.traceparent`) and a kind:
+When one run follows another, the host passes `links` on the request. A turn, a Live session, a decision, an embedding call, a compaction and `invokeTool` all take them. Each link names the earlier root's `traceparent` (its terminal `done.traceparent`) and a kind:
 
 | Link Kind | Trigger Condition |
 | :--- | :--- |

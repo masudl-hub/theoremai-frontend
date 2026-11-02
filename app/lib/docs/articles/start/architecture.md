@@ -1,6 +1,6 @@
 ---
 title: Architecture & Contracts Map
-updated: 2026-10-30
+updated: 2026-11-02
 summary: The rule that keeps policy in your application, the parts a turn crosses, and the boundaries where Theorem reads text.
 entry: src/kernel/engine/runner/mod.ts
 covers: mod.ts, src/kernel/engine/runner, src/kernel/registry/profiles.ts, src/kernel/registry/vault.ts, src/kernel/protocols/runtime.ts, src/guardrails/boundaries.ts, src/guardrails/detectors.ts, src/guardrails/network.ts, web/src/server/handler.ts, react/src/index.ts, react/src/live.ts
@@ -86,7 +86,7 @@ graph TD
 | Part | Scope | Responsibility |
 | :--- | :--- | :--- |
 | **Profiles** | `defineProfile`, `registerProfile` | `defineProfile` validates a definition and returns the profile, throwing on a malformed one; `registerProfile` defines, validates, and registers a profile in the default scope. |
-| **Turn runner** | `runTurn`, `invokeTool`, `invokeToolStep` | `runTurn` runs one turn and streams its events; `invokeTool` runs a held tool call and streams the events of the turn it resumes; `invokeToolStep` runs the host's calls as one step. |
+| **Turn runner** | `runTurn`, `invokeTool`, `invokeToolStep` | `runTurn` runs one turn and streams its events; `invokeTool` runs one tool with no model, a held call or your own, and streams its events; `invokeToolStep` runs the host's calls as one step. |
 | **Guardrails** | `guardrails` | Detectors read text at five groups of boundaries. Each tool also has a permission (`auto`, `session_consent`, `always_confirm`), and a canary token planted in the instruction shows a leak. |
 | **Protocols and providers** | `defineProvider`, `registerProvider` | `defineProvider` defines a provider; nothing in it can change a request or read a reply. `registerProvider` registers it in the default scope, with this project's connection and key slots. |
 | **Observability** | `observability` | Writes a trace record (`TraceRecord`) of each turn to the sinks you configure (`TraceSink`), exports spans as OpenTelemetry (`OtlpSpan`), and continues a W3C `traceparent` that you pass. |

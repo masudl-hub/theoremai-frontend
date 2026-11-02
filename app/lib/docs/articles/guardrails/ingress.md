@@ -1,6 +1,6 @@
 ---
 title: Ingress Protection & Taint Tracking
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Protect agents against direct prompt injections, indirect payload steering, and confused-deputy attacks.
 entry: src/guardrails/injection.ts
 covers: src/guardrails/injection.ts, src/guardrails/detectors.ts
@@ -114,6 +114,8 @@ Pattern matching alone cannot catch every novel or encoded attack. Taint trackin
 The kernel records the origin of each tool result:
 * **Local Tools** (`function`): Host code you wrote. Its results do not taint the turn.
 * **Remote Tools** (`http`, `mcp`, `agent`): Bytes the host does not control. Their results taint the turn. The tools `research.scout` searches and reads with are remote, so the first result it reads taints the turn.
+
+Taint lasts for the reply that read the text. A pause does not end a reply: the run that goes on after an approval reads the marks back from that reply's tool results. A new message starts clean. A result the host passes in `input.lateResults` counts as read in the reply that receives it.
 
 ### Gating Tools After Remote Reads (`afterRemoteRead`)
 

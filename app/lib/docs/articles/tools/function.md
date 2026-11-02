@@ -1,6 +1,6 @@
 ---
 title: Function Tools
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Authoring TypeScript function tools with Zod schema validation, streaming progress generators, and tools the page answers.
 entry: src/kernel/tools/execute.ts
 covers: src/kernel/tools/execute.ts, src/kernel/tools/types.ts
@@ -102,7 +102,7 @@ answeredBy: 'page', // Omit handler; execution target is the client web page
 
 #### Contract & Schema Verification
 
-Under the TypeScript `FunctionToolInput` type, `handler` is required unless the tool declares `answeredBy: 'page'`. A page tool's own `handler`, if you give one, is replaced by the kernel's:
+Under the TypeScript `FunctionToolInput` type, `handler` is required unless the tool declares `answeredBy: 'page'`. A page tool's own `handler`, if you give one, is replaced by the kernel's. A page tool cannot set `background`, because it must answer in an open turn:
 
 ```text
 type FunctionToolInput<TIn, TOut> =
@@ -130,7 +130,7 @@ If the page cannot complete the call, the host answers with a failure variant of
 
 Handlers receive a `ToolContext` carrying host state and runtime affordances:
 
-* **`ctx.signal`**: The request's `AbortSignal`, when it has one. Pass it to database queries or outbound network calls.
+* **`ctx.signal`**: The request's `AbortSignal`, when it has one. Pass it to database queries or outbound network calls. A call that can [finish after its turn](/docs/tools#finish-a-call-after-its-turn) has a signal of its own: the request's reaches it until the reply, and after that only `stop` does.
 * **`ctx.host`**: Opaque host data from the request's `host` (`runTurn` or `invokeTool`), such as tenant credentials or database pools. The kernel never reads it.
 * **`ctx.callId`**: The identifier of this tool call.
 * **`ctx.traceparent`**: The W3C `traceparent` of this call's `execute_tool` span. Parent the tool's own outbound spans on it.

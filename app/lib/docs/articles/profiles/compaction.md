@@ -1,6 +1,6 @@
 ---
 title: History Compaction
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Automated transcript compaction and exchange pruning for long-running conversations.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -11,7 +11,7 @@ coverPosition: 50% 50%
 
 Over long-running conversations, dialogue history consumes substantial token budgets and risks exceeding model context windows. Left unmanaged, long histories degrade model reasoning and increase latency.
 
-In Theorem, **history compaction** automatically condenses older exchanges into a structured summary while preserving recent context verbatim.
+In Theorem, **history compaction** automatically condenses older exchanges into a summary while preserving recent context verbatim.
 
 ## The Compaction Specification (`compaction`)
 
@@ -38,7 +38,7 @@ models: {
 * **`compactAt`**: Fraction of `maxTokens` (between `0` and `1`) that activates compaction. In the example above, compaction fires once tokens exceed 24,000 ($0.75 \times 32,000$).
 * **`previousExchanges`**: Governs how much recent dialogue is preserved:
   * `≥ 1` (integer): Preserves the last $N$ user-assistant exchanges intact.
-  * `(0, 1)` (fraction): Preserves exchanges that fit within that fraction of `maxTokens`.
+  * `(0, 1)` (fraction): Preserves exchanges that fit within that fraction of `maxTokens`. It must be below `compactAt`.
   * `0`: Compacts all history; nothing is retained verbatim.
 * **`meter`**: Determines how tokens are calculated:
   * `'history'` (default): Counts the tokens in the earlier conversation.
@@ -72,7 +72,7 @@ sequenceDiagram
         Runner-->>App: done event with done.compaction signal
         Note over App: Zero latency added to active turn
         App->>Runner: compactHistory(done.compaction) in background
-        Runner-->>App: Compacted history saved for future turns
+        Runner-->>App: Compacted history, for the host to save
     end
 ```
 
@@ -80,7 +80,7 @@ sequenceDiagram
 
 The kernel evaluates token counts before calling the model. If compaction is needed, it runs the compactor immediately, splices the summary into the history, and executes the turn against the fresh history.
 
-The active turn absorbs the compactor's execution latency, and the model reads the shorter history on that same turn. During execution, Theorem emits a `compaction` lifecycle event containing the split details and the generated summary.
+The active turn absorbs the compactor's execution latency, and the model reads the shorter history on that same turn. During execution, Theorem emits a `compaction` lifecycle event containing the outcome, the message and token counts, and the generated summary.
 
 ### 2. Asynchronous (`timing: 'after'`)
 
@@ -91,19 +91,29 @@ The host application reads this signal and triggers out-of-band compaction in th
 ```ts frame=statements
 // Inside your turn event consumer
 if (doneEvent.compaction) {
-	const result = await compactHistory({
-		profile: 'research.scout',
-		history: currentHistory,
-		tokens: doneEvent.compaction.tokens,
-	});
+	const result = await compactHistory(
+		{
+			profile: 'research.scout',
+			model: 'gemini', // The model the turn ran on
+			history: doneEvent.compaction.history,
+			tokens: doneEvent.compaction.tokens,
+		},
+		hostOptions,
+	);
 
 	// undefined: there was nothing to compact
-	if (result?.outcome === 'compacted') {
-		// Persist result.history for subsequent turns
+	if (result) {
+		// Put this turn's messages after result.history, and persist that
 		await saveSessionHistory(sessionId, result.history);
 	}
 }
 ```
+
+* **`history`**: `done.compaction` carries the history the turn was given, before its own message and reply. Those are not compacted, so put them after `result.history` when you save it.
+* **`model`**: The binding whose `compaction` applies. Left out, it is `defaultModel`.
+* **Second argument**: The compactor runs a model, so `compactHistory()` takes the same host options as `runTurn()`, such as the `vault`.
+
+`compactHistory()` also takes the controls every run takes: `signal`, `metadata`, `traceparent`, `projectId`, `conversationId` and `links`. So the compaction's trace joins the conversation it belongs to.
 
 This model is ideal for user-facing applications where response latency is critical, shifting summarization work to background tasks between turns.
 

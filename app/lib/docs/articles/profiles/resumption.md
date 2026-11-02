@@ -1,6 +1,6 @@
 ---
 title: Turn Resumption & Steering
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Continuing turns across token limits, resuming after gates, and steering mid-flight.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -15,7 +15,7 @@ The `turnBehaviour` configuration governs how Theorem manages these pauses—ena
 
 ## Turn Behavior Configuration
 
-Base profile fields (`identity`, `models`, `tools`, `guardrails`, `observability`) apply across all modalities as documented in [Profiles](/docs/profiles). Text profiles declare a `turnBehaviour` block to configure continuation rules, steering affordances, and step limits. This slice shows only that block, as the research scout sets it:
+Base profile fields such as `identity`, `models`, `guardrails` and `observability` are documented in [Profiles](/docs/profiles). Text profiles declare a `turnBehaviour` block to configure continuation rules, steering affordances, and what the last step may do. This slice shows only that block, as the research scout sets it:
 
 ```ts frame=profile:text
 turnBehaviour: {
@@ -71,9 +71,16 @@ A continuation builds its prompt again, so it chooses its slots and states its c
 
 ## Tool Action Gates
 
-When a tool requires human confirmation or session consent, Theorem halts the turn before tool execution begins with `stop: { kind: 'gate' }` and captures the pending call in `done.tools: TurnToolSnapshot`.
+When a tool requires human confirmation or session consent, Theorem halts the turn before tool execution begins with `stop: { kind: 'gate' }`. The `tool` event with phase `gate` carries the held call, and `done.tools` carries the turn's tool snapshot.
 
 Unlike incomplete model replies, held tool calls are not resumed with `continueFrom`. Instead, your frontend application collects the user's approval and resumes or declines execution using `invokeTool()`.
+
+A pause does not end the reply. When the model reads the answered call, the run that goes on keeps what the reply had. Pass two fields on that `runTurn()`:
+
+* **`stepsTaken`**: The steps the reply already took, from `done.steps`. They count against `maxSteps`, so a pause does not give the reply its steps back.
+* **`promoted`**: The tools the reply already had, so a tool the model loaded stays on its list. An id the profile does not grant is left out.
+
+`replyCarriedFromEvents()` from `@theoremjs/agents/interface` reads both from the paused run's events. `createTheoremHandler` passes them for you.
 
 For approval cards, argument modification, and gate resumption patterns, see [Tool Permissions & Gates](/docs/tools/gates).
 
@@ -106,7 +113,7 @@ Every turn ends with a `done` event. Its `stop.kind` says why the turn ended:
 | **`'provider_error'`** | The provider call failed. | Continue with `runTurn({ continueFrom })`, or let `autoContinue` do it. |
 | **`'tool'`** | The model called tools, and the turn gives them to the host in `done.tools`. | Run them with `invokeTool({ snapshot })`. |
 | **`'gate'`** | A `pre_tool` gate held a call. | Settle it with `invokeTool({ snapshot, resume })`. |
-| **`'step_limit'`** | The last call allowed by `profile.maxSteps` asked for tools, so there is no answer. | Nothing; set `atStepLimit: 'answer'` to prevent it. |
+| **`'step_limit'`** | The last call allowed by `profile.maxSteps` asked for tools, or the reply spent its steps before it paused, so there is no answer. | Nothing; set `atStepLimit: 'answer'` to prevent it. |
 | **`'filtered'`** | A provider filter or a Theorem guardrail blocked the reply. | Nothing; `guardrails.blockedReply` sets whether the model rewrites a blocked reply first. |
 | **`'cancelled'`** | The signal aborted the turn, or a stage handler returned `abort`. | Nothing. |
 | **`'interrupted'`** | Live: the session was aborted or interrupted during the turn. | Nothing. |

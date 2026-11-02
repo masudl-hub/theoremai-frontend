@@ -1,6 +1,6 @@
 ---
 title: Embedding Profiles
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Vector representations of text and documents for semantic search and retrieval.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -52,7 +52,7 @@ Theorem runs the embedding request directly against the bound model and returns 
 ```mermaid
 flowchart LR
     subgraph Input["EmbeddingRequest"]
-        T["input: string[] | EmbeddingPart[]"]
+        T["input: EmbeddingInput | EmbeddingInput[]"]
         K["task?: 'query' | 'document'"]
     end
     subgraph Kernel["runEmbedding()"]
@@ -75,7 +75,7 @@ Only the Gemini embedding protocol uses it. For Gemini Embedding 2, Theorem writ
 
 ## Invoking Embeddings: `runEmbedding()`
 
-Embeddings are generated using `runEmbedding()`. The function accepts batch inputs (strings or multimodal parts) and resolves to an `EmbeddingResult` containing ordered vector arrays.
+Embeddings are generated using `runEmbedding()`. The function accepts one input or a batch, each a string or `{ parts }` for multimodal input, and resolves to an `EmbeddingResult` containing ordered vector arrays. The request also takes `signal` and the trace fields a turn takes: `metadata`, `traceparent`, `projectId`, `conversationId` and `links`.
 
 ### Basic Invocation
 

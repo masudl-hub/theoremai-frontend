@@ -1,9 +1,9 @@
 ---
 title: Astryx UI Components
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Ready-made Astryx components for chat, live, decision, embedding and host profiles.
 entry: react/src/index.ts
-covers: react
+covers: react, web
 cover: /imagery/th30_geothermal.png
 coverAlt: Smoking geothermal steam vents across colorful volcanic terrain
 coverPosition: 50% 50%
@@ -81,7 +81,7 @@ const described = useTheoremInterface(transport);
 
 `<LiveRunner />` includes:
 - **Waveform**: `InkWaveform`, driven by the microphone and model audio levels.
-- **Camera Flip & Preview**: Manages front and rear camera selection (`facingMode: 'user' | 'environment'`) and downsamples frames to 640x480 at 400ms intervals.
+- **Camera Flip & Preview**: Manages front and rear camera selection (`facingMode: 'user' | 'environment'`), asks the camera for 640x480, and sends a frame every 400ms.
 - **Tool gates**: An `ApprovalCard` in a dialog over the call when a tool waits for a person's answer.
 - **Captions**: `LiveCaptionsPanel` in the right-hand column: the call's transcript and a text composer.
 
@@ -123,7 +123,7 @@ Once the documents are indexed, `EmbeddingSpaceView` draws the index as a space.
 
 ## 5. Host & MCP Tools (`<TheoremHost />`)
 
-`<TheoremHost />` is a drop-in console for a `host` profile served by `createTheoremHostHandler`, at `/api/host` unless you set `endpoint`. Pick a tool (a function, an HTTP endpoint or an MCP server's tool), fill in the request its input schema draws, and Run it with the button or ⌘/Ctrl+Enter. The response is laid out from what the tool returned: figures, charts, images and the data. Gates are answered in place.
+`<TheoremHost />` is a drop-in console for a `host` profile served by `createTheoremHostHandler`, at `/api/host` unless you set `endpoint`. Pick a tool (a function, an HTTP endpoint or an MCP server's tool), fill in the request its input schema draws, and Run it with the button or ⌘/Ctrl+Enter. The response is laid out from what the tool returned: figures, charts, images and the data. Gates are answered in place. A call that answered and goes on after its reply shows as `in background`.
 
 ```tsx
 import { TheoremHost } from '@theoremjs/react/ui';
@@ -145,7 +145,7 @@ import {
 } from '@theoremjs/react/ui';
 ```
 
-- **`<ChatTranscript />`**: Theorem transcript blocks drawn as Astryx chat messages.
+- **`<ChatTranscript />`**: Theorem transcript blocks drawn as Astryx chat messages. A tool call that goes on after its turn draws as running.
 - **`<ChatComposerBar />`**: The Astryx composer wired to send, stop, queue, steer and stash. For a live profile, it is the text field and send button only.
 - **`<ApprovalCard />`**: The card for a tool gate: the tool, its access, the gate's summary and the call's input, and an answer of `'allow'` or `'deny'`.
 - **`<InkWaveform />`**: Waveform bars driven by microphone and speaker levels.
@@ -185,7 +185,7 @@ Pass the customized theme and mode directly to components:
 
 Adjust pane geometry using scoped CSS custom properties:
 - `--theorem-pane-background`: The background of raised side panes. The default is `--color-background-card`.
-- `--theorem-pane-edge`: A raised pane's gap from the page's end and bottom edges. The default is `12px`. Set it to `0` when your page already insets its content.
+- `--theorem-pane-edge`: A raised pane's gap from the page's end and bottom edges. The default is `--spacing-3`. Set it to `0` when your page already insets its content.
 
 ## 8. Localized Labels & ICU Overrides
 

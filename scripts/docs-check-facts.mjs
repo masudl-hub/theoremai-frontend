@@ -160,7 +160,7 @@ const sameSet = (what, docSet, kernelSet) => {
 
 // tools#fix-a-failed-call: a failure code is a free string, so read each site that sets one.
 {
-	const source = ['src/kernel/tools/execute.ts', 'src/kernel/tools/events.ts']
+	const source = ['src/kernel/tools/execute.ts', 'src/kernel/tools/events.ts', 'src/kernel/tools/coordinate.ts']
 		.map((file) => readFileSync(path.join(theoremai.root, file), 'utf8'))
 		.join('\n');
 	const kernelCodes = new Set();

@@ -1,6 +1,6 @@
 ---
 title: Kernel Labels & Errors
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Customizing system error strings, tool activity messages, and localized copy.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/profiles.ts, src/kernel/schema.ts
@@ -21,7 +21,10 @@ When the kernel needs a user-facing string or prompt note, it resolves the text 
 2. **`overrideLabels()`**: Process-wide overrides applied across all profiles in the application.
 3. **Built-in Defaults**: Fallback strings shipped directly with the kernel.
 
-One key skips the first layer. `tool.after_field`, what the model reads on a tool's `after` field, is read when the tool registers, so a profile's `labels` do not change it.
+Some keys skip the first layer:
+
+* **Read when the tool registers**: `tool.after_field` and `tool.background_field`, what the model reads on a tool's `after` and `background` fields. A profile's `labels` do not change them. Call `overrideLabels()` before you register the tool.
+* **Host lines**: every `provider.*` and `protocol.*` key, and `labels.decision.box_image`. Only `overrideLabels()` changes them, and a profile that sets one is refused when it registers.
 
 Templates use `{param}` placeholders replaced at runtime. This slice shows the `labels` block of a text profile. The research scout rewords `continue.instruction`. The two error lines are an addition:
 
@@ -44,7 +47,7 @@ overrideLabels({
 
 ## Error Handling (`TheoremError`)
 
-All kernel exceptions surface as `TheoremError`. This class extends native `Error` and provides structured error categorization:
+The kernel's own failures surface as `TheoremError`. This class extends native `Error` and provides structured error categorization:
 
 * **`kind`**: An `ErrorKind` identifying why the operation failed.
 * **`message`**: The diagnostic for hosts, traces, and logs.

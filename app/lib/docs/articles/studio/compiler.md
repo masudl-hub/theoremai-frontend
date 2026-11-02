@@ -1,6 +1,6 @@
 ---
 title: Draft Compiler & Code Export
-updated: 2026-10-30
+updated: 2026-11-02
 summary: How Studio checks a draft as it changes, reads code back into it, and saves edits to your files.
 entry: studio/compile.ts
 covers: studio/compile.ts, studio/compile-workspace.ts
@@ -17,7 +17,7 @@ The editor has two views of the same profile, **Editor** and **Code**. One butto
 
 * **Editor**: The profile as form fields: its model, prompt, tools, guardrails and other sections.
 * **Code**: The TypeScript the profile is declared in, in a code editor with completions, signature help, hover documentation and type errors against `@theoremjs/agents`.
-* **Reading Code Back**: When you edit the code, Studio reads it back into the draft. Anything it cannot read is an error at that spot, and the draft is left as it was. A name in `tools.allow` that no tool registers is an error too, and so is a bare `{ private }` entry in a list of prompt lines.
+* **Reading Code Back**: When you edit the code, Studio reads it back into the draft. Anything it cannot read is an error at that spot, and the draft is left as it was. A name in `tools.allow` that no tool registers is an error too, and so is a bare `{ private }` entry in a list of prompt lines, or a `when` line that holds a blank line.
 * **Tool Readers in Code**: A tool's reader is Studio's own, with no field in the kernel. The code shows it as a comment above the tool: `// Your host runs research.pagereader on this tool's output, at post_tool.`
 
 ## Draft Checks
@@ -36,7 +36,7 @@ Each tool needs a name, and no two tools may share one. A tool's input and outpu
 Allowed hosts and allowed names may not be blank. A custom detector needs a valid name, may be listed once, and its patterns must be valid.
 
 ### 4. Prompt Lines
-The prompt gets the check that `defineProfile` gives it. A `when` line must read a condition or a slot the profile declares, with a value it lists, and a line may not start with `+`. Conditions must be a JSON object of lists of values.
+The prompt is one box, and a blank line starts a new line. It gets the check that `defineProfile` gives it. A `when` line must read a condition or a slot the profile declares, with a value it lists, and a line may not start with `+`. Each condition is a row with a name and its values. It needs a name, used once and not shared with a slot, and at least one value.
 
 ### Finding Issues
 * The toolbar shows how many issues the draft has.

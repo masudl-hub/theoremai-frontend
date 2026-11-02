@@ -1,9 +1,9 @@
 ---
 title: React Hooks
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Headless React hooks for chat, decision, embedding and host profiles.
 entry: react/src/index.ts
-covers: react, src/interface
+covers: react, src/interface, web
 cover: /imagery/th30_canyon.png
 coverAlt: Red sandstone desert canyon carved by ancient flowing rivers
 coverPosition: 50% 50%
@@ -58,6 +58,8 @@ The `useTheoremChat` hook binds `createChatController` from `@theoremjs/web/clie
 
 When a tool call completes, each image or other media part it returned becomes a `media` block right after the call, so it stands before what the model says next.
 
+A tool call whose `state.phase` is `'background'` has answered the model and goes on after the turn. The chat reads the conversation from the host after each reply, so its block then shows how the call ended, or that it is still running.
+
 To display incoming tokens as they arrive over the wire, concatenate committed `chat.blocks` with active `chat.streamBlocks`:
 
 ```tsx
@@ -79,7 +81,7 @@ The `chat.phase` enum indicates the active runtime state:
 - `'streaming'`: Model response tokens are actively flowing into `chat.streamBlocks`.
 - `'gated'`: The turn waits for a person to answer a tool gate.
 
-When `chat.phase === 'gated'`, draw the question and answer it with `handleToolDecision` and `'allow'` or `'deny'`. The chat answers the one gate that waits, so the index the transcript passes is not used. A sign-in gate is answered with `handleAuthenticated` instead. Every tool of `research.scout` runs without asking, so add `permission: 'always_confirm'` to the tool that must ask.
+When `chat.phase === 'gated'`, draw the question and answer it with `handleToolDecision` and `'allow'` or `'deny'`. The chat answers the one gate that waits, so the index the transcript passes is not used. A sign-in gate is answered with `handleAuthenticated` instead. A gate can show in `chat.streamBlocks` before its run ends: an answer given then waits for the run, then goes to that gate. Every tool of `research.scout` runs without asking, so add `permission: 'always_confirm'` to the tool that must ask.
 
 ```tsx
 {chat.phase === 'gated' && (
@@ -160,7 +162,7 @@ query.embed(['episodic memory'], { task: 'query' });
 
 ## 5. Host Tools & MCP Consoles (`useTheoremHost`)
 
-A host profile serves its tools to the page through `createTheoremHostHandler`, and to MCP clients through `createTheoremMcpHandler`. The `useTheoremHost` hook describes the host once, then `run(name, input)` starts a call and returns its id at once. Calls run side by side: `cancel(id)` stops one, and `answer(id, resolution)` answers the gate it pauses on. Each call carries its streamed `events`, its latest `progress`, `isRunning` and `failure`. The hook renders nothing.
+A host profile serves its tools to the page through `createTheoremHostHandler`, and to MCP clients through `createTheoremMcpHandler`. The `useTheoremHost` hook describes the host once, then `run(name, input)` starts a call and returns its id at once. Calls run side by side: `cancel(id)` stops one, and `answer(id, resolution)` answers the gate it pauses on. Each call carries its streamed `events`, its latest `progress`, `isRunning` and `failure`. A call whose tool goes on after its reply ends its stream with `call.state.phase` as `'background'`, so `isRunning` is false while the tool works. The hook renders nothing.
 
 ```tsx
 import { createHostTransport, useTheoremHost } from '@theoremjs/react';

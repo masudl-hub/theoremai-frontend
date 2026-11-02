@@ -1,6 +1,6 @@
 ---
 title: Studio Setup & Workspaces
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Configuring Theorem Studio, launching local workspaces, and synchronizing project files.
 entry: studio/workspace.ts
 covers: studio/workspace.ts, studio/compile.ts
@@ -171,8 +171,8 @@ In **Settings** → **Files**, **Open files in** offers **Automatic**, **VS Code
 When multiple agents run in the same project, Studio organizes them into a unified workspace:
 
 * **Shared Tool Library**: All tools registered by your application join a project-wide catalog. Agents do not duplicate tool definitions; each profile declares an allowlist selecting from the catalog.
-* **Decoupled Editing & Testing**: You can select one agent in the editor to tweak its system prompt or model parameters, while selecting a different agent in the chat bench (`chatWith`) to run tests.
-* **Agent-to-Agent Delegation**: When an agent invokes another profile through an agent tool (`type: 'agent'`; for example, `research.scout` handing a script to `research.podcast` through `record_podcast`), Studio traces the delegation in the run bench, allowing you to inspect parent and child spans in real time.
+* **Decoupled Editing & Testing**: You can select one agent in the editor to tweak its system prompt or model parameters, while selecting a different agent in the chat to run tests.
+* **Agent-to-Agent Delegation**: When an agent invokes another profile through an agent tool (`type: 'agent'`; for example, `research.scout` handing a script to `research.podcast` through `record_podcast`), the chat shows the called agent's tool calls under that call as they happen.
 
 ## Related Guides
 

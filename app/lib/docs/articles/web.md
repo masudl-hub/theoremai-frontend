@@ -1,9 +1,9 @@
 ---
 title: Headless Web & Transport
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Headless client transport, Server-Sent Events stream decoding, and browser execution primitives.
 entry: src/interface/mod.ts
-covers: src/interface, react
+covers: src/interface, react, web
 cover: /imagery/th30_braidedriver.png
 coverAlt: Glacial braided river channels carving sandbanks from aerial view
 coverPosition: 50% 50%
@@ -52,10 +52,11 @@ Mount the handler under a catch-all route. It answers these sub-routes:
 | :--- | :--- | :--- |
 | **`GET <base>`** | Returns `{ interface }` | Serves the profile's client-safe interface (`clientProfileInterface`), without its server-only fields. |
 | **`POST <base>/turn`** | NDJSON Stream | Streams the turn's events (`text`, `tool`, `done`, and the rest). A message sent while the reply waits on gates walks away from them first. |
-| **`POST <base>/invoke`** | NDJSON Stream | Streams the events for the user's answer to a paused tool call (`approve`, `deny`, or `abandon`, or a key the user types at a sign-in gate). |
+| **`POST <base>/invoke`** | NDJSON Stream | Streams the events for the user's answer to a paused tool call (`approve` or `deny`, with a key the user types at a sign-in gate). |
 | **`POST <base>/steer`** | Returns `{ ok: true }` | Adds messages to a running turn. |
 | **`POST <base>/stop`** | Returns `{ ok: true }` | Stops a running turn where it stands. Its stream goes on to save and send what the reply left. |
-| **`POST <base>/conversation`** | Returns `{ transcript, reply }` | Retrieves the rendered transcript and any paused reply state for a conversation reference. |
+| **`POST <base>/page-result`** | Returns `{ accepted: true }` | Takes the page's result for a tool the turn ran in the page. |
+| **`POST <base>/conversation`** | Returns `{ transcript, paused }` | Retrieves the rendered transcript and any paused reply for a conversation reference. |
 | **`POST <base>/rewind`** | Returns `{ conversation, view }` | Truncates a conversation after a designated block, returning a new conversation ref for branching. |
 
 ## Mounting on Web Frameworks
@@ -128,12 +129,39 @@ Theorem enforces strict trust boundaries between browser clients and server stat
 
 For profiles configured with `providerContinuation: { history: 'stateless' }`, no conversation is retained and `conversationStore` is omitted.
 
+## Tools That Finish After Their Turn
+
+A tool with a `background` setting (see [Tools](/docs/tools)) can answer the model now and finish after its turn, so a long job does not hold the reply. It runs inline until you give the handler its `background` option. `createTheoremHostHandler` takes the same option.
+
+The option takes `{ request, sessionId }` and returns a `ToolBackgroundService`. The service gets each detached call and that call's late events:
+
+```ts frame=statements
+import type { TheoremHandlerOptions } from '@theoremjs/web/server';
+
+const background: TheoremHandlerOptions['background'] = ({ sessionId }) => ({
+	detached(call) {
+		// call.stop() stops the call, and call.done resolves once it has settled
+	},
+	event(event, call) {
+		// ...
+	},
+});
+```
+
+The value you return must stay valid after the request ends, until each call settles.
+
+The session keeps each detached call and the reply the model read, so a late result leaves the next turn free to resume. `POST <base>/conversation` shows the call as it stands: still running, its result, or an error. The chat reads that after each reply and on load. The error's code is `outcome_not_retained` when the session has dropped the result, which by default happens 24 hours after the call settles (`operationRetentionMs`).
+
+The model does not get a late result by itself. Your `prepare` passes the stored outcome in `input.lateResults` on a later turn, and again on each run of that reply. The model reads it as a tool result, and the reply counts it as a read. In `input.context` or `input.history`, the same text would read as your word or the user's.
+
+A shared session store keeps a call as `background` when its worker dies. Your own sweep marks it `uncertain` with the reason `worker_lost`, through the store's `compareAndSwap`, and the conversation then shows the call as an error.
+
 ## Specialized Handlers
 
 Beyond conversational agents, `@theoremjs/web/server` provides specialized handlers for other modalities:
 
 ### 1. Decision Handlers (`createTheoremDecisionHandler`)
-Serves a decision profile. `GET <base>` returns its interface, and `POST <base>/decide` returns the answers for the posted `{ state }`. The host owns the questions: the browser sends only the state, so a visitor cannot spend the host's key on questions of their own. `pageReader` is your decision profile, `research.pagereader`. Its model reads the key slot `typesafe`:
+Serves a decision profile. `GET <base>` returns its interface, and `POST <base>/decide` returns the answers for the posted `{ state }`. The host owns the questions: the browser sends only the state, the images it names and, when you build the questions for each decision, the input your builder takes. A visitor cannot spend the host's key on questions of their own. `pageReader` is your decision profile, `research.pagereader`. Its model reads the key slot `typesafe`:
 
 ```ts
 import type { DecisionProfile } from '@theoremjs/agents';
@@ -161,7 +189,7 @@ export const handler = createTheoremDecisionHandler({
 ```
 
 ### 2. Host Handlers (`createTheoremHostHandler`)
-Serves a host profile's tools to the page, so the page runs them directly. `GET <base>` returns the tools the page may call, with their schemas. `POST <base>/call` streams the events for one call. `createTheoremMcpHandler` serves the same tools to MCP clients.
+Serves a host profile's tools to the page, so the page runs them directly. `GET <base>` returns the tools the page may call, with their schemas. `POST <base>/call` streams the events for one call, `POST <base>/invoke` answers a gate that call paused on, and `POST <base>/page-result` takes the page's result for a tool it runs. `createTheoremMcpHandler` serves the same tools to MCP clients.
 
 ### 3. Embedding Handlers (`createTheoremEmbeddingHandler`)
 Serves an embedding profile over HTTP.

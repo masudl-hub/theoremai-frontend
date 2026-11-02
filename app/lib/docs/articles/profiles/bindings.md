@@ -1,6 +1,6 @@
 ---
 title: Model Bindings
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Binding a provider, a protocol and a model to a profile, with its keys, efforts, limits and built-in tools.
 entry: src/kernel/protocols/binding.ts
 covers: src/kernel/protocols/binding.ts, src/kernel/registry/profiles.ts
@@ -53,7 +53,7 @@ models: {
 }
 ```
 
-Add `maxOutputTokens` to a binding to set the token limit for one reply.
+Add `maxOutputTokens` to a binding to set the most tokens the model may write in one step.
 
 Bindings can also be generated using a registered provider's helper:
 
@@ -113,7 +113,7 @@ allowModelSelect: true,
 ```
 
 * **`defaultModel`**: The model a turn gets when it does not pick one. Required when more than one model is bound. With one model, it is that model.
-* **`allowModelSelect`**: When `true`, a turn can pick a model by its key (`runTurn({ profile: 'research.scout', model: 'gemini', input: { ... } })`). A key the profile does not declare is refused. When it is left out or `false`, a turn that names a model is refused with a `TheoremError`.
+* **`allowModelSelect`**: When `true`, a turn can pick a model by its key (`runTurn({ profile: 'research.scout', model: 'gemini', input: { ... } })`). A key the profile does not declare is refused. When it is left out or `false`, a turn that names a model is refused with a `TheoremError`. A live call picks its model and effort the same way, on its `runSession()` request.
 
 ## Reasoning Efforts & Thinking
 

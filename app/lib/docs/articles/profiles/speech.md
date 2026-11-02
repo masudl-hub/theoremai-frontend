@@ -1,6 +1,6 @@
 ---
 title: Speech Profiles
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Text-to-speech audio synthesis with custom voice models, speed, and format options.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -92,7 +92,7 @@ for await (const event of events) {
 | Event Type | Payload | Description |
 | :--- | :--- | :--- |
 | **`media`** | `event.media: { mimeType: string, data: string }` | Emitted when audio synthesis completes, containing the base64-encoded audio bytes and MIME type. |
-| **`done`** | `event.stop: TurnStop`, `event.tokens?: TurnTokens` | Terminal event reporting completion status and character or token usage. |
+| **`done`** | `event.stop: TurnStop`, `event.tokens?: TurnTokens` | Terminal event reporting completion status and token usage. |
 | **`error`** | `event.errorKind: ErrorKind`, `event.error?: string` | Emitted if synthesis fails, the voice is unavailable, or the audio format is unsupported. |
 
 ## Related Guides

@@ -1,6 +1,6 @@
 ---
 title: Live Profiles
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Real-time duplex audio and video streaming over WebSockets with interruption handling.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -39,6 +39,8 @@ live: {
 	},
 },
 ```
+
+A live profile takes no `maxSteps`, because a call has no one reply to count steps against. `defineProfile` refuses it.
 
 ## Ingress Channels & Voice Activity Detection
 
@@ -146,6 +148,8 @@ live: {
 
 Live sessions are opened using `runSession(request, options)`. The options carry the key vault and transport settings. Unlike `runTurn()`, which runs a discrete exchange and closes, `runSession()` resolves a persistent `LiveSession` controller.
 
+The request picks the model and effort as a turn does: `model` needs `allowModelSelect`, and `effort` needs the binding's `allowEffortSelect`. `execution`, `pageExecution` and `background` also go on the request. `background` is your service for tool calls that go on after their reply. It needs an `execution` coordinator with `detach`, and without it every tool runs inline.
+
 ### Basic Invocation
 
 ```ts frame=statements
@@ -176,7 +180,7 @@ for await (const event of session.events()) {
 
 ### `LiveSession` Controller Methods
 
-The `LiveSession` object provides methods to push media, inject context, and close the connection:
+The `LiveSession` object provides methods to push media, inject context, run tool calls, and close the connection:
 
 | Method | Signature | Description |
 | :--- | :--- | :--- |
@@ -185,6 +189,8 @@ The `LiveSession` object provides methods to push media, inject context, and clo
 | **`sendText`** | `(text) => Promise<void>` | Sends typed text. The profile must set `live.ingress.text: true`. |
 | **`sendContext`** | `(context) => Promise<void>` | Tells the model what the page or host knows. It opens no turn and draws no reply. The model sees it from its next turn on. |
 | **`events`** | `() => AsyncGenerator<TurnEvent>` | Returns the stream of incoming text, media, tool calls, and lifecycle events. |
+| **`executeTool`** | `(args) => Promise<LiveExecuteToolResult>` | Runs a call the model made, by its `callId`. Its events join `events()`. A gate returns `gated`, and the model gets no answer until the call has its `decision`. |
+| **`answerToolCall`** | `(args) => LiveExecuteToolResult` | Settles a call whose body ran in the process that owns the tool registry. Its events join `events()`, and the model reads its `readBack`. |
 | **`close`** | `(reason?) => Promise<void>` | Ends the session. `events()` stops. |
 
 ### Key Live Events
@@ -197,7 +203,7 @@ As the model streams back responses, `session.events()` yields events:
 | **`evidence`** | `event.text`, `event.evidence.kind` | A transcript of speech: `output_transcription` for the model, `input_transcription` for the user. `evidence.interim: true` marks a draft transcript of the user. |
 | **`media`** | `event.media: { mimeType, data }` | A base64 chunk of the model's voice. Gemini PCM arrives wrapped as `audio/wav`. |
 | **`done`** | `event.stop`, `event.interrupted?: boolean` | `stop.kind` is `generation_complete` when the model finishes an utterance. It is `interrupted`, with `interrupted: true`, when the provider reports that the user spoke over the model. |
-| **`tool`** | `event.tool: ToolCallEvent` | Emitted when the model calls a tool during the conversation. |
+| **`tool`** | `event.tool: ToolCallEvent` | Emitted when the model calls a tool during the conversation. Your code runs the call with `executeTool`. |
 
 ## Browser Client & WebSocket Relay
 
@@ -205,7 +211,7 @@ In production web applications, browsers cannot connect directly to Gemini Live 
 
 Theorem resolves this using a relay architecture:
 * **Backend Relay**: Your application server hosts a WebSocket relay endpoint (e.g. `/api/live/relay`) powered by `runSession()`.
-* **Browser Client (`@theoremjs/web/client`)**: `LiveSessionClient` connects to your relay. It sends the microphone as 16-bit 16 kHz PCM and plays the model's voice without gaps (raw PCM is read as 24 kHz). On barge-in it clears the queued audio at once. It asks the browser for echo cancellation, and it holds back quiet mic audio while the model speaks.
+* **Browser Client (`@theoremjs/web/client`)**: `LiveSessionClient` connects to your relay. It sends the microphone as 16-bit 16 kHz PCM and plays the model's voice without gaps (raw PCM is read as 24 kHz). On barge-in it clears the queued audio at once. It asks the browser for echo cancellation, and it holds back quiet mic audio while the model speaks. Its `model` and `effort` options pick them for the call.
 * **React (`@theoremjs/react/live`)**: The `LiveRunner` component runs a live session on the Astryx UI.
 
 For browser setup and relay handlers, see [Headless Web & Transport](/docs/web) and [React Live Components](/docs/web/react-hooks).

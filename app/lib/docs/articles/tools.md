@@ -1,6 +1,6 @@
 ---
 title: Tools & Execution Pipeline
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Give an agent tools that run custom code, call REST APIs, query MCP servers, or delegate to sub-agents.
 entry: src/kernel/tools/mod.ts
 covers: src/kernel/tools, src/kernel/auth
@@ -83,13 +83,14 @@ Every custom tool registered with `registerTool` declares metadata that governs 
 * **`paths`**: String array restricting tool availability to specific turn paths (e.g., `['code']`). Use `['*']` to make the tool available on all paths. When a turn specifies `runTurn({ path: 'code' })`, only tools whose `paths` include `'code'` or `'*'` are offered to the model.
 * **`category`**: A label for grouping tools. Nothing reads it yet.
 * **`after`**: `true` lets the model order its calls in a step. The tool's input gains an `after` field, a list of tool names called in the same step that must settle before this call starts. The kernel removes the field before the tool, the stages or a gate read the input. A name with no other call in the step fails the call with `wait_unknown`. Outside a step, as in a live session, `after` waits on nothing. `registerTool` refuses `after` on a tool whose input already has a field of that name, or whose input is not an object or a union of objects. The cookbook sets it on `read_pages`, `read_model_card`, `read_dataset_card`, `read_readme` and `read_library_docs`. For an order your own code decides, return `waitFor` at `pre_tool` (see [Lifecycle Hooks & Interception](/docs/profiles/lifecycle)).
+* **`background`**: `'never'`, `'always'`, `{ afterMs }` or `'ask'`: when the model gets its reply, so a slow tool can finish after its turn (see [Finish a Call After Its Turn](#finish-a-call-after-its-turn)).
 
 ## Direct Tool Execution (`runTool` vs `invokeTool`)
 
 Theorem exposes two programmatic entry points for executing registered tools outside an active model turn:
 
 * **`invokeTool(request)`**: Returns an async generator of `TurnEvent`s: the lifecycle events (start, progress, completion, citations) as the tool executes. Ideal for streaming progress to user interfaces or resuming held tool gates.
-* **`runTool(request)`**: A Promise-based alternative that resolves to a `ToolCallResult` only when the tool finishes, delivering its final validated output and status directly. Ideal for backend batch operations and headless integrations.
+* **`runTool(request)`**: A Promise-based alternative that resolves to a `ToolCallResult` when the call settles: it completed, a gate held it, it failed, or it went on in the background. Ideal for backend batch operations and headless integrations.
 
 ## Dynamic Tool Loading & Profile Binding
 
@@ -113,6 +114,54 @@ tools: {
 
 Live and host profiles ignore `loadTier` and load all allowed tools at turn start.
 
+## Finish a Call After Its Turn
+
+A slow tool can give the model a reply now and finish later, so the turn does not wait for it. The model reads that the call has started and that it has no result yet. The call's end reaches your host alone. The model reads it only when your host passes the stored outcome in `input.lateResults` on a later turn.
+
+Set `background` on the tool. The cookbook sets it on no tool. Add this when the model should choose whether `record_podcast` finishes after the turn:
+
+```ts frame=tool:agent
+name: 'record_podcast',
+// ...
+background: 'ask',
+// ...
+```
+
+| Value | When the model gets its reply |
+| :--- | :--- |
+| `'never'` | When the call ends. This is the default. |
+| `'always'` | When the call has passed its gates and `pre_tool`. |
+| `{ afterMs }` | That many milliseconds after the call has passed them, if it has not ended. |
+| `'ask'` | The tool's input gains a `background` field. If the model sets it to `true`, as with `'always'`. If not, as with `'never'`. |
+
+Then pass a background service and a coordinator on the request. `runTurn`, `runSession`, `invokeTool` and `runTool` all take them. Without a service, every tool runs inline and the model does not see the `background` field.
+
+```ts frame=request
+execution: createMemoryToolExecution(),
+background: {
+	detached: (call) => void call.done.then(() => send({ finished: call.toolId })),
+	event: (event) => send(event),
+},
+// ...
+```
+
+* **`execution`**: Keeps the reply and the call's end. It must have `detach`, or the run fails with a `config` error. `createMemoryToolExecution()` has it, and keeps them in memory.
+* **`detached`**: Runs once for each call that goes on. `call` holds the `operationId`, `callId` and `toolId`, with `stop` and `done`.
+* **`event`**: Receives each later event of the call, up to the `tool` event that ends it. A shutdown sends no such event. A failure here does not change how the call ends.
+
+The model reads the `tool.background_started` label. It says not to state a result and not to call the tool again. The call's `tool` event has `phase: 'background'`.
+
+After the reply, the turn's signal no longer reaches the call, so the end of the turn does not stop it. `call.stop(reason)` does: the call settles as a `cancelled` failure with `reason` as its `code`. With no reason, the stop is a shutdown, and the call ends `execution_interrupted`. With `{ graceMs }`, a handler that ignores `ctx.signal` past that time settles anyway. `call.done` resolves when the call has ended.
+
+No turn is open after the reply. An `inject` or `abort` from `post_tool` reaches nothing, and a call that asks the user a question fails with `awaiting_after_reply`.
+
+Theorem refuses `background` with a `config` error on:
+
+* A tool with `answeredBy: 'page'`.
+* An `afterMs` that is below 0 or is not a finite number.
+* An `'ask'` tool whose input already has a `background` field, or whose input is not an object or a union of objects.
+* The tool that a profile names as `tools.t2Loader`, when a turn starts.
+
 ## Fix a failed call
 
 A failed call settles with a `code` and a message. Theorem sets these codes for every type of tool.
@@ -135,6 +184,8 @@ A failed call settles with a `code` and a message. Theorem sets these codes for 
 | `network_blocked` | `guardrails.network` refuses the address | Change `guardrails.network`, or the address |
 | `invalid_output` | The result does not match `output`, the handler returned nothing, or a `t2Loader` result has the wrong shape | Fix the handler, or the `output` schema |
 | `output_blocked` | `guardrails.detect` blocks a match in the result | Change the action at `tool_output_<kind>`, or return less from the tool |
+| `awaiting_after_reply` | A call that went on after its reply asked the user a question, and no turn is open to answer it | Have the tool finish without asking, or keep it in the turn |
+| `result_too_large` | The result is larger than the coordinator's `maxOutcomeBytes` | Return less from the tool, or raise that limit |
 
 `tainted_turn` never stops a `read-only` tool. With `afterRemoteRead: 'write'`, it stops `read-write` and `destructive` tools. With `'destructive'`, it stops `destructive` tools only.
 

@@ -1,17 +1,17 @@
 ---
 title: Realtime Voice & Video
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Real-time bidirectional WebSockets, audio worklets, and live camera video frames in React.
 entry: react/src/index.ts
-covers: react, src/surface
+covers: react, src/surface, web
 cover: /imagery/th30_drysavannah.png
 coverAlt: Vast dry golden savannah grasslands beneath acacia trees
 coverPosition: 50% 50%
 ---
 
-Building responsive, bidirectional voice and video agents in the browser requires low-latency audio capture, streaming playback, barge-in interruption handling, and acoustic echo suppression. Coordinating these media streams on the main JavaScript thread causes UI frame drops, audio stuttering, and dropped network packets.
+Building responsive, bidirectional voice and video agents in the browser requires low-latency audio capture, streaming playback, barge-in interruption handling, and acoustic echo suppression.
 
-Theorem implements a dedicated native browser media pipeline in `@theoremjs/web/client` and `@theoremjs/react/live`. Heavy audio processing runs entirely in background `AudioWorklet` threads, while the Web Audio API coordinates low-latency, gapless voice synthesis.
+Theorem implements a dedicated native browser media pipeline in `@theoremjs/web/client` and `@theoremjs/react/live`. An `AudioWorklet` reads the microphone off the main thread, and the Web Audio API schedules the model's voice without gaps.
 
 ## The Realtime Media Architecture
 
@@ -20,9 +20,10 @@ Duplex streaming connects the browser to an upstream live provider via a WebSock
 ```mermaid
 flowchart TD
 		subgraph Browser["Browser Client (@theoremjs/web/client)"]
-				Mic["Microphone Stream"] --> Worklet["AudioWorklet (mic-capture.js)<br/>16kHz PCM Downsampling"]
+				Mic["Microphone Stream"] --> Worklet["AudioWorklet (mic-capture.js)<br/>Mono Float Frames"]
 				Worklet --> QuietGate{"Quiet-Mic Gate<br/>(Speaker Bleed Guard)"}
-				QuietGate -->|16kHz PCM Chunks| WSOut["WebSocket Outbound (/api/live/relay)"]
+				QuietGate --> Downsample["16kHz PCM Downsampling"]
+				Downsample -->|16kHz PCM Chunks| WSOut["WebSocket Outbound (/api/live/relay)"]
 				
 				Camera["Camera Video Stream"] --> FrameCap["Frame Capture (Canvas JPEG)"]
 				FrameCap -->|client.sendVideo()| WSOut
@@ -31,7 +32,7 @@ flowchart TD
 				Decode --> AudioCtx["Web Audio API (AudioContext)<br/>Gapless Playback Scheduler"]
 				AudioCtx --> Speaker["Device Speaker"]
 				
-				WSIn --> Interruption{"Barge-In Detector"}
+				WSIn --> Interruption{"Interrupted Turn"}
 				Interruption -->|client.cancelPlayback()| AudioCtx
 		end
 
@@ -44,16 +45,16 @@ flowchart TD
 
 ## 1. Background Audio Ingestion (`AudioWorklet`)
 
-Microphone input is captured at hardware sample rates (typically 44.1kHz or 48kHz) and downsampled off the main thread to 16-bit 16kHz linear PCM, matching upstream provider specifications.
+Microphone input is captured at the `AudioContext`'s sample rate. The worklet hands each frame to the page's main thread, where the client downsamples it to 16-bit 16kHz linear PCM, matching upstream provider specifications.
 
 ### Automatic Worklet Ingestion
 
 When instantiating `LiveSessionClient`, audio processing is completely automated:
 
-1. `client.connect()` asks for the microphone with `navigator.mediaDevices.getUserMedia`: one channel, with echo cancellation, noise suppression, and gain control. Set `voiceIngress: false` to skip the microphone; the call still receives the model's audio.
-2. The client instantiates a browser `AudioContext` and loads the internal `mic-capture.js` worklet module.
-3. The worklet converts incoming multi-channel float audio into single-channel 16kHz 16-bit signed integer PCM.
-4. Downsampled frames stream over the WebSocket without blocking UI rendering or main-thread React updates.
+1. Once the relay is ready, the client asks for the microphone with `navigator.mediaDevices.getUserMedia`: one channel, with echo cancellation, noise suppression, and gain control. Set `voiceIngress: false` to skip the microphone; the call still receives the model's audio.
+2. The client loads the internal `mic-capture.js` worklet module into its `AudioContext`.
+3. The worklet copies each frame of the first channel, as floats, and posts it to the main thread.
+4. The client converts the frame to 16kHz 16-bit signed integer PCM and sends it over the WebSocket.
 
 The metering callback `onVolumeLevel(level, isUser)` reports a level in the range $[0, 1]$: the microphone's when `isUser` is true, the model's playback when it is false. It can drive waveform bars such as `InkWaveform`.
 
@@ -65,7 +66,7 @@ Upstream providers return streaming model audio in variable-length 24kHz PCM chu
 
 ```text
 // Schedule incoming PCM chunks along the Web Audio clock
-let nextPlayTime = audioContext.currentTime;
+let nextPlaybackTime = audioContext.currentTime;
 
 function enqueueAudioChunk(pcmData: Float32Array, sampleRate = 24000) {
 	const buffer = audioContext.createBuffer(1, pcmData.length, sampleRate);
@@ -73,16 +74,16 @@ function enqueueAudioChunk(pcmData: Float32Array, sampleRate = 24000) {
 
 	const sourceNode = audioContext.createBufferSource();
 	sourceNode.buffer = buffer;
-	sourceNode.connect(audioContext.destination);
+	sourceNode.connect(playbackBus);
 
 	// Guarantee gapless continuity: schedule immediately after prior chunk
-	const startTime = Math.max(audioContext.currentTime, nextPlayTime);
+	const startTime = Math.max(audioContext.currentTime, nextPlaybackTime);
 	sourceNode.start(startTime);
-	nextPlayTime = startTime + buffer.duration;
+	nextPlaybackTime = startTime + buffer.duration;
 }
 ```
 
-By queuing chunks relative to `audioContext.currentTime`, audio playback remains perfectly smooth even when network packets arrive in jittered batches.
+Each chunk starts where the one before it ends, so chunks that arrive in uneven batches play without a gap. A chunk that arrives after the one before it has finished starts at once.
 
 ## 3. Barge-In Interruption & Acoustic Gating
 
@@ -91,7 +92,7 @@ Conversational realism requires that a user can interrupt the model mid-sentence
 Theorem employs a two-tier acoustic defense:
 
 ### Instant Buffer Flushing (Barge-In)
-When the server emits an interruption signal or the user speaks over the agent, `LiveSessionClient.cancelPlayback()` immediately stops and disconnects all scheduled `AudioBufferSourceNode` instances, resetting `nextPlayTime` to `audioContext.currentTime`. The model ceases speaking with zero perceptual latency.
+When a `done` event arrives marked `interrupted`, `LiveSessionClient.cancelPlayback()` stops and disconnects all scheduled `AudioBufferSourceNode` instances, skips audio still waiting to be scheduled, and resets `nextPlaybackTime` to `audioContext.currentTime`. The model stops speaking at once.
 
 ### The Quiet-Mic Echo Gate
 While model audio is actively playing through the speaker, Theorem's client-side microphone gate drops quiet frames below an RMS of 0.05:
@@ -122,7 +123,7 @@ if (base64Jpeg) client.sendVideo(base64Jpeg);
 
 ### Declarative React Video
 
-For high-level applications, `LiveRunner` from `@theoremjs/react/live` automates camera acquisition, device toggling (`facingMode: 'user' | 'environment'`), canvas downsampling (640x480 at 400ms intervals), and video preview rendering:
+For high-level applications, `LiveRunner` from `@theoremjs/react/live` automates camera acquisition, device toggling (`facingMode: 'user' | 'environment'`), frame capture (it asks the camera for 640x480, and sends a JPEG frame every 400ms), and video preview rendering:
 
 ```tsx
 import { LiveRunner } from '@theoremjs/react/live';
@@ -157,7 +158,9 @@ sequenceDiagram
 		Model->>Client: Resumes streaming audio reply
 ```
 
-Every tool of `research.scout.live` runs without asking, so this diagram needs `permission: 'always_confirm'` added to `read_pages`. If a tool requires user approval, the call does not drop. The audio connection remains open in a listening state while the UI renders a modal approval card. Once approved, the tool result is returned over the WebSocket, and the agent continues speaking naturally.
+Every tool of `research.scout.live` runs without asking, so this diagram needs `permission: 'always_confirm'` added to `read_pages`. If a tool requires user approval, the call does not drop. The audio connection stays open while the UI shows an approval card in a dialog. Once approved, the tool result is returned over the WebSocket, and the agent goes on speaking.
+
+A tool with a `background` setting can answer the model now and finish later, as on the [web handler](/docs/web#tools-that-finish-after-their-turn). Your relay passes its `background` service and its `execution` coordinator to `runSession`.
 
 ## Headless Client Management
 
@@ -206,6 +209,8 @@ client.sendText('Look for datasets that test long context memory.');
 client.disconnect();
 ```
 
+`model` and `effort` pick the call's model and that model's effort. The profile must allow the pick (`allowModelSelect`), and the binding must allow the effort.
+
 The client runs each call the model makes on the relay, one at a time, and answers every step itself:
 
 - **A page tool**: The relay sends the call to the page. The client answers with the `pageTools` function of that name. A tool with no function, or a function that throws, is answered with no answer, and the console says once that the tool has no function. The turn does not wait for it.
@@ -213,7 +218,7 @@ The client runs each call the model makes on the relay, one at a time, and answe
 
 The session answers the model however the call ends. Calls run in order, so a page function that never returns holds every call after it.
 
-If a network interruption drops the WebSocket, `LiveSessionClient` automatically attempts reconnection with exponential backoff (`[500, 1000, 2000, 4000, 8000]` ms) and resumes the session state using the provider's active continuation checkpoint.
+If a network interruption drops the WebSocket after the provider gave a continuation checkpoint, `LiveSessionClient` tries to reconnect with exponential backoff (`[500, 1000, 2000, 4000, 8000]` ms) and resumes the session from that checkpoint. After the last try, the call fails. With no checkpoint, the call ends.
 
 ## Related Guides
 

@@ -1,6 +1,6 @@
 ---
 title: Host Profiles
-updated: 2026-10-30
+updated: 2026-11-02
 summary: A profile with your own code as the orchestrator. Your code runs registered tools through invokeTool, under the same tool checks and traces as an agent.
 entry: src/kernel/tools/invoke.ts
 covers: src/kernel/tools/invoke.ts, src/kernel/registry/profiles.ts
@@ -100,13 +100,15 @@ for await (const event of events) {
 
 To run several calls as one step, use `invokeToolStep({ profile, calls })`. Each entry of `calls` has a `name` and an `input`. The calls share one tool snapshot, and `tools.parallel` decides whether they run side by side.
 
+To let a long tool go on after the invoke ends, pass your `background` service and an `execution` coordinator with `detach`. When a tool with a `background` setting hands off, you get a `tool` event with phase `background`, then `done`, and the call's later events go to your service. Without a service, every tool runs inline.
+
 `invokeTool()` also runs tools for other profile types, for example to resume a call that a gate held during a turn. A decision or embedding profile cannot invoke tools.
 
 ### The events you get
 
 | Event type | Payload | When |
 | :--- | :--- | :--- |
-| **`tool`** | `event.tool: ToolCallEvent` | First the call and its `arguments`. Then its phases: `running`, `progress` while it runs, then `complete` with the `output`, `gate` when a confirmation, permission or sign-in holds the call, or `error` with the `failure`. |
+| **`tool`** | `event.tool: ToolCallEvent` | First the call and its `arguments`. Then its phases: `running`, `progress` while it runs, then `complete` with the `output`, `gate` when a confirmation, permission or sign-in holds the call, `background` when the call goes on after the invoke, or `error` with the `failure`. |
 | **`guardrail`** | `event.guardrail: GuardrailEvent` | A guardrail flagged or blocked something at a tool boundary or on the network. |
 | **`done`** | `event.stop: TurnStop` | Always last. `stop.kind` is `completed`, or `gate` when a gate held the call. |
 | **`error`** | `event.errorKind: ErrorKind`, `event.error?: string` | The invoke threw outside the call itself. A tool that fails reports it as a `tool` event with phase `error`, not here. |

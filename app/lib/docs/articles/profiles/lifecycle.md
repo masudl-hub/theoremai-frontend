@@ -1,6 +1,6 @@
 ---
 title: Lifecycle Hooks
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Observing and intercepting turn stages, gate approvals, and sub-agent invocations.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -14,6 +14,8 @@ Large language models predict next tokens and generate tool calls, but they oper
 Theorem provides two deterministic interception hooks that execute in the host environment outside the model's token context:
 * **`onStage`**: Observes turn milestones and applies host directives (denying tools, mutating inputs, requiring confirmation, or injecting messages).
 * **`onAgentCall`**: Intercepts, shapes, or refuses delegations when an agent invokes a nested sub-agent tool.
+
+To read a turn's raw events instead, use `onEvent`, at the end of this page.
 
 ## Stage Interception (`onStage`)
 
@@ -42,7 +44,9 @@ A turn moves through up to five lifecycle stages in sequence. The handler receiv
 | **`'pre_tool'`** | Fires after the model requests tools, before handlers execute. `ctx.stepCalls` lists all calls in the step. | `abort`, `deny`, `confirm`, `mutate`, `waitFor` |
 | **`'post_tool'`** | Fires after a tool settles or fails. `ctx.outputRaw`, `ctx.outputModel`, and `ctx.failure` are populated. | `inject`, `abort`, `deny`, `mutate`, `labelFailed` |
 | **`'before_end'`** | Fires after final reply generation, before guardrail verdict and history commit. `ctx.reply` contains the draft answer. | `inject`, `abort` |
-| **`'post_turn'`** | Fires after all generation, tool loops, and cleanup finish, right before `done`. | *(None — read-only telemetry)* |
+| **`'post_turn'`** | Fires after `done`, once generation, tool loops, and cleanup finish. `ctx.stop` says how the turn ended. | *(None — read-only telemetry)* |
+
+When a tool call goes on after its reply, `post_tool` fires when the call settles, after the turn has ended. No turn is open then, so an `inject` or `abort` it returns is dropped.
 
 ### Tool Gate Escalation (`confirm`)
 
@@ -62,7 +66,7 @@ const onStage: StageHandler = (ctx) => {
 };
 ```
 
-When returned, Theorem halts execution immediately with `stop: { kind: 'gate' }` and preserves the pending action in `done.tools` for later resumption via `invokeTool()`.
+When returned, the call is held. The turn ends with `stop: { kind: 'gate' }`, and `done.tools` carries the tool snapshot that `invokeTool()` resumes from.
 
 ### Parallel Tool Coordination (`waitFor`)
 
@@ -103,7 +107,7 @@ The host hook receives an `AgentCall` descriptor:
 The hook returns one of three outcomes:
 1. **`undefined`**: Executes the child agent turn with the caller's arguments as-is.
 2. **`{ refuse: string }`**: Rejects the delegation. Theorem returns the refusal message to the calling model as a tool error.
-3. **`AgentCallRequest`**: Reshapes the child invocation—overriding inputs, swapping models, attaching isolated stage handlers, or passing credentials via `host`.
+3. **`AgentCallRequest`**: Reshapes the child invocation—overriding inputs, swapping models, attaching isolated stage handlers, or setting the `host` value the child's tools read.
 
 ```ts frame=statements
 const events = runTurn({
@@ -115,7 +119,7 @@ const events = runTurn({
 			return { refuse: 'Sub-agent recursion depth exceeded.' };
 		}
 
-		// Isolate tenant credentials into the child turn's host context
+		// Give the child turn's tools their own host context
 		return {
 			host: { tenantId: 'tenant-lab-01' },
 			metadata: { parentCallId: call.callId },
@@ -123,6 +127,27 @@ const events = runTurn({
 	},
 });
 ```
+
+## Reading Each Event (`onEvent`)
+
+`onEvent` hears each of a turn's events as it leaves `runTurn()`, before your loop gets it. Use it to save a turn someone else runs, such as one `createTheoremHandler` or Studio runs, by setting it in `TurnWiring.prepare`. Stage handlers cannot do this: `post_turn` carries no reply, and the reply at `before_end` has not passed the guardrails.
+
+```ts frame=statements
+const seen: unknown[] = [];
+
+const events = runTurn({
+	profile: 'research.scout',
+	// ...
+	onEvent: async (event) => {
+		seen.push(event);
+		if (event.type === 'done') await saveSessionHistory(sessionId, seen);
+	},
+});
+```
+
+* The turn waits for your handler, and a throw ends the turn with that error.
+* Only `runTurn()` calls it. `invokeTool()` and `runSession()` do not.
+* `prepare` also gets a turn for a held call that goes on once answered, with `answersHeldCall` set. No model runs and `input` is the paused turn's, so do not read it as a new message.
 
 ## Related Guides
 

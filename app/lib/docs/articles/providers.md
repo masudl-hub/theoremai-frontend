@@ -1,6 +1,6 @@
 ---
 title: Model Bindings & Key Slots
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Configure model bindings, credentials, and secondary failover slots across upstream AI providers.
 entry: src/providers/mod.ts
 covers: src/providers, src/kernel/protocols
@@ -87,7 +87,7 @@ When `registerProfile()` loads a profile, Theorem validates every model binding 
 
 1. **Provider Check**: Confirms the provider ID exists in the active registry.
 2. **Protocol Check**: Confirms the registered provider serves `binding.protocol`.
-3. **Modality Check**: Confirms the protocol supports the profile's modality (text, live voice, embeddings, images, speech, or decisions).
+3. **Modality Check**: Confirms the protocol supports the profile's modality (text, live voice, embeddings, images, speech, transcription, or decisions).
 4. **Options Validation**: Parses `models.*.options` through the protocol's Zod validator.
 5. **Slot Invariants**: Ensures `keySlot` does not equal `fallbackKeySlot`, and rejects key slots if the provider definition requires no key.
 

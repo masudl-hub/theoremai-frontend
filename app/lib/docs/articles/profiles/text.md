@@ -1,6 +1,6 @@
 ---
 title: Text Profiles
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Multi-step conversational agents running tool loops, multi-turn reasoning, and streaming text.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -174,7 +174,9 @@ When an agent calls tools, each round of model generation and tool execution con
 | **`'stop'`** *(default)* | The last model call may still call tools. If it does, the turn ends with stop kind `'step_limit'` and has no answer. | Strict execution budgets or automated pipelines requiring deterministic step ceilings. |
 | **`'answer'`** | On the final permitted step, Theorem suppresses your tool definitions from the model prompt. The model cannot call additional tools and must write a textual response synthesizing accumulated evidence. | User-facing assistants that must deliver a partial answer rather than a blank halt when research takes too many steps. |
 
-When using `atStepLimit: 'answer'`, `profile.maxSteps` must be set to `2` or higher during registration to allow at least one step for tool calling before the answer step. The scout sets `maxSteps: 32` and `atStepLimit: 'answer'`, so a long search still ends in an answer.
+With `atStepLimit: 'answer'`, registering the profile fails if `maxSteps` is `1`, because no step could call a tool. Left out, `maxSteps` is 20. The scout sets `maxSteps: 32` and `atStepLimit: 'answer'`, so a long search still ends in an answer.
+
+A gate does not give a reply its steps back. `done.steps` counts the model calls so far, and the run after an answered gate passes that number as `stepsTaken`. `createTheoremHandler` does this for you.
 
 ## Invoking Text Profiles: `runTurn()`
 
@@ -205,6 +207,8 @@ for await (const event of events) {
 
 * **`system`**: Appends dynamic, one-off instructions to this turn alone without mutating the profile's permanent `identity.system`.
 * **`path`**: Selects the execution channel, exposing only registered tools declaring this path or wildcard (`paths: ['*']`). Every scout tool declares the wildcard, so a `path` changes nothing for it.
+* **`onEvent`**: Reads each event before the caller gets it, so your code can act on a turn someone else runs, such as saving the reply when `done` arrives. A throw ends the turn with that error.
+* **`background`**: Your service for tool calls that go on after their reply. It needs an `execution` coordinator with `detach`. Without it, every tool runs inline. A tool's own `background` setting says when it hands off.
 
 Because `runTurn()` returns an async generator, execution begins when the caller pulls the first event.
 
@@ -216,10 +220,10 @@ For full-featured conversational interfaces, `runTurn()` emits granular lifecycl
 | :--- | :--- | :--- |
 | **`text`** | `text: string` | Incremental completion text token delta. |
 | **`thought`** | `text: string` | Incremental internal reasoning token delta (when `streaming.streamThoughts` is enabled). |
-| **`tool`** | `tool: ToolCallEvent` | Tool execution updates: emitted when a tool call starts (`input`) and when it finishes (`output`). |
+| **`tool`** | `tool: ToolCallEvent` | Tool execution updates: first the call and its `arguments`, then its phases. `complete` carries the `output`. `background` means the model has its reply and the call goes on after the turn. |
 | **`structured`** | `structured: unknown`, `removed?: RemovedItem[]`, `failed?: InvalidField[]` | The reply as JSON. `removed` lists items your item rules took out. `failed` lists fields still invalid when retries ran out. |
 | **`stage`** | `stage: TurnStage` | Lifecycle transitions: `'pre_turn'`, `'pre_tool'`, `'post_tool'`, `'before_end'`, `'post_turn'`. |
-| **`done`** | `stop: TurnStop`, `tokens?: TurnTokens` | Terminal event emitted when the turn concludes, reporting stop reasons and token counts. |
+| **`done`** | `stop: TurnStop`, `tokens?: TurnTokens`, `steps?: number` | Terminal event emitted when the turn concludes, reporting stop reasons, token counts, and the model calls that count against `maxSteps`. |
 | **`error`** | `errorKind: ErrorKind`, `error?: string`, `errorCopy?`, `errorInternal?` | The turn failed. `error` is the safe wording for users. `errorCopy` is the label key behind it. `errorInternal` is detail for traces and logs: never show it to users. |
 
 ## Related Guides
