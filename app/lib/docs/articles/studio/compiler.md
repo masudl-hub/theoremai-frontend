@@ -17,7 +17,7 @@ The editor has two views of the same profile, **Editor** and **Code**. One butto
 
 * **Editor**: The profile as form fields: its model, prompt, tools, guardrails and other sections.
 * **Code**: The TypeScript the profile is declared in, in a code editor with completions, signature help, hover documentation and type errors against `@theoremjs/agents`.
-* **Reading Code Back**: When you edit the code, Studio reads it back into the draft. Anything it cannot read is an error at that spot, and the draft is left as it was. A name in `tools.allow` that no tool registers is an error too, and so is a bare `{ private }` entry in a list of prompt lines, or a `when` line that holds a blank line.
+* **Reading Code Back**: When you edit the code, Studio reads it back into the draft. Anything it cannot read is an error at that spot, and the draft is left as it was. Studio reads with the kernel's own checks, so a setting or value that `defineProfile` or `registerTool` refuses shows the kernel's message on its line. A name in `tools.allow` that no tool registers is an error too, and so is a bare `{ private }` entry in a list of prompt lines, or a `when` line that holds a blank line.
 * **Tool Readers in Code**: A tool's reader is Studio's own, with no field in the kernel. The code shows it as a comment above the tool: `// Your host runs research.pagereader on this tool's output, at post_tool.`
 
 ## Draft Checks
@@ -55,7 +55,7 @@ The dialog shows the changed lines of each file:
 * **What Save Changes**: Save rewrites each changed value of a profile or a tool where your file sets it. A value written in the call is changed in place. A value from a constant is changed where the constant is set, when every profile and tool that reads it makes the same change. A tool's Zod schema is changed one part at a time. The rest of the file is left as it was.
 
 ### All or Nothing
-Save writes every change or none. It then type-checks and loads the project. If the project does not type-check, does not start, or does not load as what you tested, Save puts your files back and says why. Your files then hold what you tested, or what they held before.
+Save writes every change or none. A Save made during a reply lands when the reply ends, and a file you change during a reply loads then too, so the reply keeps running. Save then type-checks and loads the project. If the project does not type-check, does not start, or does not load as what you tested, Save puts your files back and says why. Your files then hold what you tested, or what they held before.
 
 ### Changes Save Does Not Write
 The review lists each change Save cannot write, and why. For example:

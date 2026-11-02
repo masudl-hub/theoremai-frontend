@@ -23,7 +23,7 @@ Models are declared under `models` on the profile. A binding defines five core f
 | **`protocol`** | `string` | The protocol ID served by that provider (e.g., `'openRouterOpenAi'`, `'geminiInteractions'`). |
 | **`apiId`** | `string` | Upstream model identifier recognized by the provider (e.g., `'openrouter/free'`). |
 | **`keySlot`** | `string` *(optional)* | Vault credential slot name. Defaults to the provider's registered `keySlot`. |
-| **`fallbackKeySlot`** | `string` *(optional)* | Secondary vault slot tried when the primary key is out of quota or the model is busy. Defaults to the provider's registered `fallbackKeySlot`. |
+| **`fallbackKeySlot`** | `string` *(optional)* | Secondary vault slot tried when the primary key is out of quota, rate limited or busy. Defaults to the provider's registered `fallbackKeySlot`. |
 
 ```ts frame=profile:text
 models: {

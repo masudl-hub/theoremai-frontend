@@ -223,7 +223,7 @@ For full-featured conversational interfaces, `runTurn()` emits granular lifecycl
 | **`tool`** | `tool: ToolCallEvent` | Tool execution updates: first the call and its `arguments`, then its phases. `complete` carries the `output`. `background` means the model has its reply and the call goes on after the turn. |
 | **`structured`** | `structured: unknown`, `removed?: RemovedItem[]`, `failed?: InvalidField[]` | The reply as JSON. `removed` lists items your item rules took out. `failed` lists fields still invalid when retries ran out. |
 | **`stage`** | `stage: TurnStage` | Lifecycle transitions: `'pre_turn'`, `'pre_tool'`, `'post_tool'`, `'before_end'`, `'post_turn'`. |
-| **`done`** | `stop: TurnStop`, `tokens?: TurnTokens`, `steps?: number` | Terminal event emitted when the turn concludes, reporting stop reasons, token counts, and the model calls that count against `maxSteps`. |
+| **`done`** | `stop: TurnStop`, `tokens?: TurnTokens`, `steps?: number`, `mediaRefused?: MediaRefused` | Terminal event emitted when the turn concludes, reporting stop reasons, token counts, and the model calls that count against `maxSteps`. `mediaRefused` lists [files the provider refused](/docs/profiles/resumption#a-file-the-provider-refuses). |
 | **`error`** | `errorKind: ErrorKind`, `error?: string`, `errorCopy?`, `errorInternal?` | The turn failed. `error` is the safe wording for users. `errorCopy` is the label key behind it. `errorInternal` is detail for traces and logs: never show it to users. |
 
 ## Related Guides

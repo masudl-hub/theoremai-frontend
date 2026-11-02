@@ -67,7 +67,7 @@ flowchart TD
 
 ## Core Tool Attributes
 
-Every custom tool registered with `registerTool` declares metadata that governs how the kernel classifies, routes, and protects the capability:
+Every custom tool registered with `registerTool` declares metadata that governs how the kernel classifies, routes, and protects the capability. `registerTool` throws a `config` error on a setting the tool does not take, and on a value of the wrong kind or outside a field's options, such as `access: 'read'`. `assertToolSettings(def)` makes the same checks without registering the tool.
 
 * **`access`**: `'read-only'`, `'read-write'`, or `'destructive'`:
   * `'read-only'`: Only reads. An `http` tool with this access is sent again when the service is busy or briefly down.
@@ -158,6 +158,7 @@ No turn is open after the reply. An `inject` or `abort` from `post_tool` reaches
 Theorem refuses `background` with a `config` error on:
 
 * A tool with `answeredBy: 'page'`.
+* A value that is not `'never'`, `'always'`, `'ask'` or `{ afterMs }`.
 * An `afterMs` that is below 0 or is not a finite number.
 * An `'ask'` tool whose input already has a `background` field, or whose input is not an object or a union of objects.
 * The tool that a profile names as `tools.t2Loader`, when a turn starts.

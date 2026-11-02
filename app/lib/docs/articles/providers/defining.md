@@ -1,6 +1,6 @@
 ---
 title: Defining a Provider
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Register cloud aggregators, local endpoints, or custom enterprise gateway providers in Theorem.
 entry: src/providers/mod.ts
 covers: src/providers, src/kernel/protocols/provider.ts
@@ -83,7 +83,7 @@ registerProvider(openRouterProvider, {
 ```
 
 * **`keySlot`**: Default vault slot name for models that do not specify their own slot.
-* **`fallbackKeySlot`**: Secondary vault slot tried when the primary key is out of quota or the model is busy. Cannot match `keySlot`.
+* **`fallbackKeySlot`**: Secondary vault slot tried when the primary key is out of quota, rate limited or busy. Cannot match `keySlot`.
 
 `registerProvider()` returns a `RegisteredProvider` reference containing the active registration metadata and helper methods (`model()` and `decisionModel()`) for declaring model bindings without re-specifying the provider ID.
 

@@ -1,6 +1,6 @@
 ---
 title: Profiles
-updated: 2026-10-30
+updated: 2026-11-02
 summary: The central specification for configuring an agent identity, models, tools, and boundaries.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/profiles.ts, src/kernel/schema.ts
@@ -287,6 +287,6 @@ sequenceDiagram
     Note over Runner: Retrieves profile from registry and runs turn
 ```
 
-1. **`defineProfile()` validates at startup**: Synchronously verifies that declared fields match the profile type and schema requirements.
+1. **`defineProfile()` validates at startup**: Synchronously verifies that declared fields match the profile type and schema requirements. It throws a `config` error on a setting the profile does not take, such as a misspelled key, and on a value of the wrong kind or outside a field's options, such as `tools.parallel: 'yes'` or `turnBehaviour.atStepLimit: 'finish'`. The error names the path.
 2. **`registerProfile()` registers the profile**: Stores the definition in the kernel registry under its `id` (up to 64 characters). Registering the same `id` again replaces it.
 3. **Execution**: Functions like `runTurn()` and `runSession()` retrieve the registered profile by ID to govern the interaction.

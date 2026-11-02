@@ -48,6 +48,14 @@ The `resumption` block controls whether recoveries are automatic or require user
 * **`autoContinue`**: Lists stop kinds the host continues on its own, after a short pause. Omit it for `length` and `stream_incomplete`; `[]` means none. When you set this list and it names `provider_error` or `stream_incomplete`, a text turn also sends a failed model call again itself, if the call gave no reply and no tool call. Omitted, the turn sends nothing again itself.
 * **`maxContinues`**: The cap that `continuation` is compared against. Omit it for no cap. It also sets how many times one text turn sends a failed model call again itself (default: one).
 
+### A File the Provider Refuses
+
+One file a provider cannot read refuses every call that replays it. So when a text turn may send a failed call again (see `autoContinue`), and a call that carried files fails as `unsupported` with no reply and no tool call, the turn sends it once more without them. It takes out this turn's files. If this turn has none, it takes out the files in the conversation. A turn tries this once.
+
+A note stands where each file was, so the model knows what it could not read. The notes are the labels `turn.media_refused_image`, `turn.media_refused_video` and `turn.media_refused_file`, and a profile's `labels` can reword them.
+
+If the provider accepts the call, the turn goes on and `done.mediaRefused` says what happened. `dropped` lists each file's `mimeType` and where the turn carried it (`from`: `'input'`, `'history'` or `'tool'`). `said` is the provider's own reason. `forClient` removes `mediaRefused`, so your server reads it and a client does not. If the provider refuses the call again, the files go back and the failure stands.
+
 ### Executing a Continuation Turn
 
 To continue a truncated text turn, call `runTurn()` with `continueFrom` set to the stop from the last `done` event. Set the 1-based `continuation` count, and place the partial text reply as the last assistant message in `input.history`. Send no `input.text`: the turn's user message is the continue instruction.

@@ -1,6 +1,6 @@
 ---
 title: Egress Enforcement & Canaries
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Canary tokens, prompt echo detection, zero-click image defense, and tool name protection.
 entry: src/guardrails/canary.ts
 covers: src/guardrails/canary.ts, src/guardrails/prompt-echo.ts
@@ -101,7 +101,7 @@ A browser loads a markdown image as soon as it renders it. An attacker can use t
 
 Theorem knows which URLs the turn was given:
 1. **Given URLs**: URLs in the system prompt, the user's input, and the host's history.
-2. **Tool URLs**: URLs in tool results. They count as given while `allow.fromTools` is `true`, the default.
+2. **Tool URLs**: URLs in tool results, and in results your host passes in `input.lateResults`. They count as given while `allow.fromTools` is `true`, the default.
 
 By default `ungiven_images` flags an image at an address the model was not given, and `ungiven_links` is off (`ignore`), because replies often cite pages.
 

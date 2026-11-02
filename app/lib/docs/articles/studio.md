@@ -46,9 +46,9 @@ The screen keeps the profile it edits in the browser, as a draft, and sends the 
 
 The editor has two views, **Editor** and **Code**. One button switches between them.
 
-* **Editor**: The profile as form fields: its model, prompt, tools, guardrails and other sections. The prompt is one box, and a blank line starts a new line.
+* **Editor**: The profile as form fields: its model, prompt, tools, guardrails and other sections. The prompt is one box, and a blank line starts a new line. It opens formatted: private text wears a line and a lock, and each condition is a token that opens its menu. The **Private** and **Condition** buttons set either on what you select. The eye and code button shows the markup text, the one form the profile stores. A prompt the formatted view would change stays in code.
 * **Code**: The TypeScript the profile is declared in, in a code editor with completions, signature help, hover documentation and type errors against `@theoremjs/agents`.
-* **Reading Code Back**: When you edit the code, Studio reads it back into the draft. Anything it cannot read is shown as an error at that spot, and the draft is left as it was.
+* **Reading Code Back**: When you edit the code, Studio reads it back into the draft. Anything it cannot read is shown as an error at that spot, and the draft is left as it was. Studio reads with the kernel's own checks, so a setting or value that `defineProfile` or `registerTool` refuses shows the kernel's message on its line.
 
 ### 2. Draft Checks
 
@@ -85,7 +85,7 @@ The chat sits beside the editor, so you can test a change at once:
 * **Tool Gates**: A gated tool call shows a card with its arguments. You allow it or deny it. With the command, Studio adds no gate of its own: a tool runs as its **Permission** says, in the chat and on a live call.
 * **Background Tools**: A tool's **Background** setting, under **Policy**, says when the model gets its reply while the tool goes on: **Never**, **Model asks**, **Always** or **After a time**. Runs in the chat and on a live call follow it. A chat on lent keys does not: the model gets its reply when the tool ends. A tool the page answers and the profile's `tools.t2Loader` do not offer the setting.
 * **Tool Readers**: A tool can name a decision agent as its reader, so the model reads less. When a tool returns text and its call carries a `question`, Studio splits the text at blank lines and the reader judges each passage. A passage stays when each of the reader's choice questions lands on its first choice. If the reader fails, the model reads the output whole. The kernel has no such setting: in your own app, you run a reader at `post_tool`.
-* **Conditions**: The editor's **Conditions** section, above the prompt, has one row for each condition: its name and its values. The marked value is the one the studio states. It starts on the first value listed. Press another value to state it on the next run and on an open live call.
+* **Conditions**: The editor's **Conditions** section, below the prompt, has one row for each condition: its name and its values. The marked value is the one the studio states. It starts on the first value listed. Press another value to state it on the next run and on an open live call.
 * **Unsaved Edits**: While a project has edits you have not saved, your files and your edits run side by side under one composer. What you send goes to both, and each side treats it as its own chat would. An idle side sends it, and a busy side queues it. A steer goes to each side whose running turn takes one. The composer's model control shows each side's models in two columns, so you can run a different model on each side and compare them. Each column offers only what that side's profile offers. If you attach a file that a side's profile does not take, that side refuses the turn in its own pane. If you pick no model, each side runs its own default.
 * **Who a Run Acts As**: A setup file can export `people` and `host`. You then pick a place and a person in Settings, under People, and each run acts for that person. Each person keeps their own chat and session.
 
