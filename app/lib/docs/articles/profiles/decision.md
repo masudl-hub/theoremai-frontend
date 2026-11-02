@@ -11,6 +11,72 @@ coverPosition: 50% 50%
 
 Decision profiles (`type: 'decision'`) configure stateless evaluation agents that judge structured JSON application state against rubric-based questions. They are executed through `runDecision()`, returning category selections, numerical scores, confidence probabilities, and bounding boxes in a single non-conversational call. The research cookbook's `research.pagereader` is one: it judges whether a passage from a page the scout read bears on the question.
 
+```figure
+{
+  "kind": "lanes",
+  "still": {
+    "src": "/imagery/th30_amberresin.png",
+    "position": "50% 50%"
+  },
+  "caption": "One question about one passage. The answer comes back typed, ready for your code to branch on.",
+  "lanes": [
+    "You send",
+    "The model",
+    "You get back"
+  ],
+  "steps": [
+    {
+      "lane": "You send",
+      "label": "state: { question, passage }",
+      "text": "The data to judge. It can be any JSON value except null.",
+      "kind": "ingress"
+    },
+    {
+      "lane": "You send",
+      "label": "questions.passage: choice",
+      "text": "What to judge, and the answers to choose from. One call can ask several questions.",
+      "kind": "ingress",
+      "parts": [
+        {
+          "label": "relevant",
+          "text": "The passage states such a fact."
+        },
+        {
+          "label": "not_relevant",
+          "text": "The passage does not: it is about something else, or is only a heading, navigation, a reference or a list of links."
+        }
+      ]
+    },
+    {
+      "lane": "The model",
+      "label": "One model call",
+      "text": "It reads the state and every question, with no tools and no history. Theorem retries a transient failure, and an answer that does not fit its question fails with malformed_response.",
+      "kind": "model"
+    },
+    {
+      "lane": "You get back",
+      "label": "answers.passage: choice",
+      "text": "One answer for each question, under the question's id. The fields depend on the question's type.",
+      "kind": "egress",
+      "parts": [
+        {
+          "label": "choice: 'relevant'",
+          "text": "One of the criteria."
+        },
+        {
+          "label": "confidence",
+          "text": "A number for the model's confidence."
+        },
+        {
+          "label": "probabilities",
+          "text": "A number for each criterion."
+        }
+      ]
+    }
+  ]
+}
+```
+
 ## Decision Profile Configuration
 
 Base profile fields (`identity`, `guardrails`, `observability`, `labels`) apply across all modalities as documented in [Profiles](/docs/profiles). Unlike conversational text agents or live sessions, decision profiles execute no tool loops, store no conversation history, and require no system prompts. They bind exactly one model. The pagereader binds TypeSafe's `jev-1.14.0`. This slice shows its two decision blocks:
@@ -35,54 +101,6 @@ decision: {
 ## JSON State Inputs & Asset References
 
 A decision evaluates arbitrary structured data provided at call time:
-
-```figure
-{
-  "kind": "lanes",
-  "still": {
-    "src": "/imagery/th30_amberresin.png",
-    "position": "50% 50%"
-  },
-  "caption": "One decision, from call to result.",
-  "lanes": [
-    "Your code",
-    "Theorem",
-    "The model"
-  ],
-  "steps": [
-    {
-      "lane": "Your code",
-      "label": "You call runDecision",
-      "text": "You pass the profile, the state, the questions and any assets.",
-      "kind": "ingress"
-    },
-    {
-      "lane": "Theorem",
-      "label": "Theorem checks the request",
-      "text": "It refuses a null state, a state over inputs.maxStateBytes, and questions or assets that do not fit. It sends only the assets a question names. guardrails.disclosure can refuse the call.",
-      "kind": "guardrail"
-    },
-    {
-      "lane": "The model",
-      "label": "The model answers",
-      "text": "One call carries the state and the questions. Theorem retries a transient failure.",
-      "kind": "model"
-    },
-    {
-      "lane": "Theorem",
-      "label": "Theorem checks the answers",
-      "text": "An answer that does not fit its question fails with malformed_response.",
-      "kind": "guardrail"
-    },
-    {
-      "lane": "Your code",
-      "label": "You get a DecisionResult",
-      "text": "It holds the model, the answers and any usage.",
-      "kind": "egress"
-    }
-  ]
-}
-```
 
 * **`inputs.state: 'json'`**: The payload being evaluated. State can be any JSON value except `null` (objects, arrays, strings, numbers, booleans).
 * **`inputs.maxStateBytes`**: Maximum payload size in bytes. A larger state is refused with code `invalid_request` before it leaves your process.

@@ -33,24 +33,38 @@ The `speech` block specifies default audio synthesis properties:
     "src": "/imagery/th30_lilachaze.png",
     "position": "50% 50%"
   },
-  "caption": "One speech turn.",
+  "caption": "The text goes in with a voice and a style. The audio comes back as media events.",
   "lanes": [
-    "Your code",
-    "Theorem",
-    "The provider"
+    "You send",
+    "The provider",
+    "You get back"
   ],
   "steps": [
     {
-      "lane": "Your code",
-      "label": "You call runTurn",
-      "text": "You pass the profile, the text, and any speech settings for this turn.",
+      "lane": "You send",
+      "label": "input.text",
+      "text": "The words to speak.",
       "kind": "ingress"
     },
     {
-      "lane": "Theorem",
-      "label": "Theorem merges the settings",
-      "text": "Each setting on the turn replaces the profile's.",
-      "kind": "runner"
+      "lane": "You send",
+      "label": "speech",
+      "text": "The profile's settings. Each setting on the turn replaces the profile's.",
+      "kind": "profile",
+      "parts": [
+        {
+          "label": "voice",
+          "text": "The voice that speaks."
+        },
+        {
+          "label": "style",
+          "text": "How to speak. It is never spoken aloud."
+        },
+        {
+          "label": "format",
+          "text": "The audio format."
+        }
+      ]
     },
     {
       "lane": "The provider",
@@ -59,10 +73,20 @@ The `speech` block specifies default audio synthesis properties:
       "kind": "model"
     },
     {
-      "lane": "Theorem",
-      "label": "Theorem yields the audio",
-      "text": "Audio arrives as media events. done ends the turn.",
-      "kind": "stream"
+      "lane": "You get back",
+      "label": "The turn's events",
+      "text": "The audio, then the end of the turn.",
+      "kind": "egress",
+      "parts": [
+        {
+          "label": "media",
+          "text": "The audio."
+        },
+        {
+          "label": "done",
+          "text": "The turn is over."
+        }
+      ]
     }
   ]
 }

@@ -36,24 +36,38 @@ The `image` block configures how downstream providers render generated visual as
     "src": "/imagery/th30_marigolds.png",
     "position": "50% 50%"
   },
-  "caption": "One image turn. Text and images arrive in the order the provider sends them.",
+  "caption": "A prompt and the profile's image settings go in. Images come back as media events, with any text in the order the provider sends it.",
   "lanes": [
-    "Your code",
-    "Theorem",
-    "The provider"
+    "You send",
+    "The provider",
+    "You get back"
   ],
   "steps": [
     {
-      "lane": "Your code",
-      "label": "You call runTurn",
-      "text": "You pass the profile and the prompt.",
+      "lane": "You send",
+      "label": "input.text",
+      "text": "The prompt.",
       "kind": "ingress"
     },
     {
-      "lane": "Theorem",
-      "label": "Theorem builds the request",
-      "text": "It adds the settings the provider has, and any references.",
-      "kind": "runner"
+      "lane": "You send",
+      "label": "image",
+      "text": "The profile's settings. Theorem sends the ones the provider has.",
+      "kind": "profile",
+      "parts": [
+        {
+          "label": "aspectRatio",
+          "text": "The shape of the images."
+        },
+        {
+          "label": "resolution",
+          "text": "How detailed the images are."
+        },
+        {
+          "label": "references",
+          "text": "Images sent with every turn, before the user's."
+        }
+      ]
     },
     {
       "lane": "The provider",
@@ -62,10 +76,24 @@ The `image` block configures how downstream providers render generated visual as
       "kind": "model"
     },
     {
-      "lane": "Theorem",
-      "label": "Theorem yields the events",
-      "text": "Each image is a media event with base64 data. Text is a text event. done ends the turn.",
-      "kind": "stream"
+      "lane": "You get back",
+      "label": "The turn's events",
+      "text": "They arrive in the order the provider sends them.",
+      "kind": "egress",
+      "parts": [
+        {
+          "label": "media",
+          "text": "One image, as base64 data."
+        },
+        {
+          "label": "text",
+          "text": "Any text the model wrote."
+        },
+        {
+          "label": "done",
+          "text": "The turn is over."
+        }
+      ]
     }
   ]
 }
