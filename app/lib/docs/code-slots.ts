@@ -395,6 +395,38 @@ function choicesOf(
 	return all.length > 1 ? all : [];
 }
 
+/** The models a sample states, numbered as they are met. */
+function sampleModels(frame: SnippetFrame | undefined, cookbook: Cookbook) {
+	const models: CodeRoute[][] = [];
+	const numbers = new Map<ts.ObjectLiteralExpression, number>();
+	const modelAt = (object: ts.ObjectLiteralExpression): number => {
+		const known = numbers.get(object);
+		if (known !== undefined) return known;
+		numbers.set(object, models.length);
+		models.push(modelRoutes(object, frame, cookbook));
+		return models.length - 1;
+	};
+	return { models, modelAt };
+}
+
+/** The slot a string is, if it is one: a field of a model, or a value with choices of its own. */
+function slotOf(
+	node: ts.StringLiteralLike,
+	place: { start: number; end: number },
+	checker: ts.TypeChecker,
+	cookbook: Cookbook,
+	modelAt: (object: ts.ObjectLiteralExpression) => number,
+): CodeSlot | undefined {
+	const value = valuePlace(node);
+	const property = ownerProperty(value);
+	const field = property?.initializer === value ? modelField(property) : undefined;
+	if (property && field) {
+		return { ...place, choices: [], route: { field, model: modelAt(property.parent) } };
+	}
+	const choices = choicesOf(checker, value, node.text, cookbook);
+	return choices.length > 0 ? { ...place, choices } : undefined;
+}
+
 /** The sample's slots, each at its place in the sample's own code, and the routes of its models. */
 function samplePlaces(
 	file: ts.SourceFile,
@@ -412,31 +444,13 @@ function samplePlaces(
 		return start === undefined ? undefined : start + character;
 	};
 	const slots: CodeSlot[] = [];
-	const models: CodeRoute[][] = [];
-	const modelOf = new Map<ts.ObjectLiteralExpression, number>();
-	const modelAt = (object: ts.ObjectLiteralExpression): number => {
-		const known = modelOf.get(object);
-		if (known !== undefined) return known;
-		modelOf.set(object, models.length);
-		models.push(modelRoutes(object, sample.frame, cookbook));
-		return models.length - 1;
-	};
+	const { models, modelAt } = sampleModels(sample.frame, cookbook);
 	const visit = (node: ts.Node) => {
-		if (ts.isStringLiteralLike(node)) {
-			const value = valuePlace(node);
+		if (ts.isStringLiteralLike(node) && isSetValue(valuePlace(node))) {
 			const start = codeAt(node.getStart(file));
-			if (start !== undefined && isSetValue(value)) {
-				const end = start + node.getWidth(file);
-				const property = ownerProperty(value);
-				const field = property?.initializer === value ? modelField(property) : undefined;
-				if (property && field) {
-					const route = { field, model: modelAt(property.parent) };
-					slots.push({ start, end, choices: [], route });
-				} else {
-					const choices = choicesOf(checker, value, node.text, cookbook);
-					if (choices.length > 0) slots.push({ start, end, choices });
-				}
-			}
+			const place = start === undefined ? undefined : { start, end: start + node.getWidth(file) };
+			const slot = place && slotOf(node, place, checker, cookbook, modelAt);
+			if (slot) slots.push(slot);
 		}
 		ts.forEachChild(node, visit);
 	};

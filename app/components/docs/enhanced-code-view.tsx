@@ -488,31 +488,12 @@ function CodeViewToggle({
 	);
 }
 
-export function EnhancedCodeView({
-	code: initialCode,
-	language = 'typescript',
-	seed,
-	codeSlots,
-}: {
-	code: string;
-	language?: string;
-	seed?: StudioSeedId;
-	codeSlots?: CodeSlots;
-}) {
-	const [{ code: activeCode, slots }, setEdited] = useState({
+/** The code as the reader has edited it, its slots carried along with each edit. */
+function useEditedCode(initialCode: string, codeSlots: CodeSlots | undefined) {
+	const [{ code, slots }, setEdited] = useState({
 		code: initialCode,
 		slots: codeSlots?.slots ?? NO_SLOTS,
 	});
-	const tools = codeSlots?.tools ?? NO_CHOICES;
-	const models = codeSlots?.models ?? NO_MODELS;
-	const [view, setView] = useState<CodeViewName>('code');
-	// The form stays mounted once opened, so an edit that does not compile yet waits for the reader.
-	const hasOpenedForm = useRef(false);
-	if (view === 'editor') hasOpenedForm.current = true;
-
-	useInsertionEffect(() => {
-		ensureHighlightStyles();
-	}, []);
 
 	useEffect(() => {
 		setEdited({ code: initialCode, slots: codeSlots?.slots ?? NO_SLOTS });
@@ -520,17 +501,73 @@ export function EnhancedCodeView({
 
 	const edit = useCallback((change: (code: string) => string) => {
 		setEdited((prev) => {
-			const code = change(prev.code);
-			return { code, slots: carrySlots(prev.code, code, prev.slots) };
+			const next = change(prev.code);
+			return { code: next, slots: carrySlots(prev.code, next, prev.slots) };
 		});
 	}, []);
-	const setActiveCode = useCallback(
-		(code: string) => {
-			edit(() => code);
-		},
-		[edit],
-	);
+	return { code, slots, edit };
+}
 
+/** The frame's title and its actions: the view, the studio and copy. */
+function CodeHeader({
+	label,
+	seed,
+	view,
+	onView,
+	code,
+}: {
+	label: string | null;
+	seed?: StudioSeedId;
+	view: CodeViewName;
+	onView: (view: CodeViewName) => void;
+	code: string;
+}) {
+	return (
+		<div className="enhanced-code-header">
+			<div className="enhanced-code-title">{label}</div>
+			<HStack gap={1} vAlign="center">
+				{seed && <CodeViewToggle view={view} onView={onView} />}
+				{seed && (
+					<IconButton
+						label="Open in Theorem Studio"
+						tooltip="Open in Theorem Studio"
+						variant="ghost"
+						size="sm"
+						icon={<IconPlayerPlay />}
+						href={`/studio?seed=${seed}`}
+						target="_blank"
+						className="enhanced-code-action"
+					/>
+				)}
+				<CopyIconButton
+					label="Copy code"
+					copiedLabel="Copied"
+					text={code}
+					className="enhanced-code-action"
+				/>
+			</HStack>
+		</div>
+	);
+}
+
+/** The code itself: its lines, with a token menu at each slot. */
+function CodeLines({
+	code,
+	language,
+	label,
+	slots,
+	codeSlots,
+	edit,
+}: {
+	code: string;
+	language: string;
+	label: string | null;
+	slots: readonly CodeSlot[];
+	codeSlots: CodeSlots | undefined;
+	edit: (change: (code: string) => string) => void;
+}) {
+	const tools = codeSlots?.tools ?? NO_CHOICES;
+	const models = codeSlots?.models ?? NO_MODELS;
 	const {
 		lines,
 		syntaxLines,
@@ -539,12 +576,10 @@ export function EnhancedCodeView({
 		allowBlockFlags,
 		allowClose,
 		currentAllowedTools,
-	} = useMemo(() => codeModel(activeCode, language), [activeCode, language]);
-
-	const languageLabel = language === 'plaintext' ? null : language;
+	} = useMemo(() => codeModel(code, language), [code, language]);
 	const scrollArea = useScrollableArea({
 		axis: 'both',
-		keyboardAccess: { owner: 'viewport', role: 'group', label: languageLabel ?? 'Code' },
+		keyboardAccess: { owner: 'viewport', role: 'group', label: label ?? 'Code' },
 	});
 
 	const unallowedTools = tools.filter((tool) => !currentAllowedTools.has(tool.value));
@@ -569,75 +604,83 @@ export function EnhancedCodeView({
 	});
 
 	return (
+		<div {...scrollArea.getViewportProps<HTMLDivElement>({ className: 'enhanced-code-viewport' })}>
+			<div {...scrollArea.getContentProps<HTMLDivElement>({ className: 'enhanced-code-content' })}>
+				<code
+					className="enhanced-code"
+					style={{ '--enhanced-code-gutter-width': `${String(maxDigits)}ch` } as CSSProperties}
+				>
+					{lines.map((lineText, lineIdx) => (
+						<CodeLine
+							// biome-ignore lint/suspicious/noArrayIndexKey: a code line is its position in the snippet
+							key={lineIdx}
+							lineText={lineText}
+							lineIdx={lineIdx}
+							lineTokens={syntaxLines[lineIdx] ?? []}
+							slots={[
+								...lineSlots(code, lineStarts[lineIdx] ?? 0, lineText.length, slots, models),
+								...(allowBlockFlags[lineIdx] ? allowSlots(lineText, tools) : []),
+							].sort((a, b) => a.start - b.start)}
+							closesAllow={allowClose?.line === lineIdx && tools.length > 0}
+							unallowed={unallowedTools}
+							{...slotHandlers(lineIdx)}
+						/>
+					))}
+				</code>
+			</div>
+		</div>
+	);
+}
+
+export function EnhancedCodeView({
+	code: initialCode,
+	language = 'typescript',
+	seed,
+	codeSlots,
+}: {
+	code: string;
+	language?: string;
+	seed?: StudioSeedId;
+	codeSlots?: CodeSlots;
+}) {
+	const { code, slots, edit } = useEditedCode(initialCode, codeSlots);
+	const [view, setView] = useState<CodeViewName>('code');
+	// The form stays mounted once opened, so an edit that does not compile yet waits for the reader.
+	const hasOpenedForm = useRef(false);
+	if (view === 'editor') hasOpenedForm.current = true;
+
+	useInsertionEffect(() => {
+		ensureHighlightStyles();
+	}, []);
+
+	const setCode = useCallback(
+		(next: string) => {
+			edit(() => next);
+		},
+		[edit],
+	);
+	const label = language === 'plaintext' ? null : language;
+
+	return (
 		// A div, not Astryx's <pre>: the studio and run views share this frame and are not code.
 		<div className="enhanced-code-block">
-			<div className="enhanced-code-header">
-				<div className="enhanced-code-title">{languageLabel}</div>
-				<HStack gap={1} vAlign="center">
-					{seed && <CodeViewToggle view={view} onView={setView} />}
-					{seed && (
-						<IconButton
-							label="Open in Theorem Studio"
-							tooltip="Open in Theorem Studio"
-							variant="ghost"
-							size="sm"
-							icon={<IconPlayerPlay />}
-							href={`/studio?seed=${seed}`}
-							target="_blank"
-							className="enhanced-code-action"
-						/>
-					)}
-					<CopyIconButton
-						label="Copy code"
-						copiedLabel="Copied"
-						text={activeCode}
-						className="enhanced-code-action"
-					/>
-				</HStack>
-			</div>
+			<CodeHeader label={label} seed={seed} view={view} onView={setView} code={code} />
 
 			{view === 'code' && (
-				<div
-					{...scrollArea.getViewportProps<HTMLDivElement>({ className: 'enhanced-code-viewport' })}
-				>
-					<div
-						{...scrollArea.getContentProps<HTMLDivElement>({ className: 'enhanced-code-content' })}
-					>
-						<code
-							className="enhanced-code"
-							style={{ '--enhanced-code-gutter-width': `${String(maxDigits)}ch` } as CSSProperties}
-						>
-							{lines.map((lineText, lineIdx) => (
-								<CodeLine
-									// biome-ignore lint/suspicious/noArrayIndexKey: a code line is its position in the snippet
-									key={lineIdx}
-									lineText={lineText}
-									lineIdx={lineIdx}
-									lineTokens={syntaxLines[lineIdx] ?? []}
-									slots={[
-										...lineSlots(
-											activeCode,
-											lineStarts[lineIdx] ?? 0,
-											lineText.length,
-											slots,
-											models,
-										),
-										...(allowBlockFlags[lineIdx] ? allowSlots(lineText, tools) : []),
-									].sort((a, b) => a.start - b.start)}
-									closesAllow={allowClose?.line === lineIdx && tools.length > 0}
-									unallowed={unallowedTools}
-									{...slotHandlers(lineIdx)}
-								/>
-							))}
-						</code>
-					</div>
-				</div>
+				<CodeLines
+					code={code}
+					language={language}
+					label={label}
+					slots={slots}
+					codeSlots={codeSlots}
+					edit={edit}
+				/>
 			)}
 
 			{seed && hasOpenedForm.current && (
 				<div className="enhanced-code-form" hidden={view !== 'editor'}>
 					<Suspense fallback={null}>
-						<SeedForm seed={seed} code={activeCode} onCode={setActiveCode} />
+						<SeedForm seed={seed} code={code} onCode={setCode} />
 					</Suspense>
 				</div>
 			)}
