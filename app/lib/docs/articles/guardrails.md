@@ -199,7 +199,7 @@ Theorem provides 15 built-in detectors organized into four functional groups:
 
 Scans for personal identifiers and confidential secrets:
 
-* **`ids`**: US SSN, ITIN and EIN numbers, in their dashed forms or in any 9-digit form right after a field name that says which (`ssn`, `tax id`, `ein`).
+* **`ids`**: US SSN, ITIN and EIN numbers, in their dashed forms, or in any 9-digit form after a field name that says which (`ssn`, `tax id`, `ein`), with up to three words between: `My EIN is 123456789`.
   * *Scenario*: A user types `"Verify SSN 000-12-3456"`. On redact, model context receives `"Verify SSN [omitted - sensitive]"`.
 * **`financial`**: Card numbers and IBANs. An IBAN may be one run or printed in groups of four, and it matches only when its check digits hold.
   * *Scenario*: A page that `read_pages` returns holds `"Card on file 4111111111111111"`. On redact, model context receives `"Card on file [omitted - sensitive]"`.
