@@ -9,7 +9,7 @@ coverAlt: Frozen arctic ice sheet stretching toward pale polar horizon
 coverPosition: 50% 50%
 ---
 
-Theorem maintains no proprietary telemetry database or persistent background daemon. Instead, the kernel produces standardized trace records and hands them to **trace sinks**—pluggable writers that buffer, transform, or export records to external observability platforms.
+Theorem keeps no telemetry of its own and runs no background service. The kernel produces standardized trace records and hands them to **trace sinks**—pluggable writers that buffer, transform, or export records to external observability platforms.
 
 Hosts configure telemetry declaratively on agent profiles (`observability`), register named global destinations at startup (`registerTraceDestination`), or pass a trace sink to one `runTurn` call.
 
@@ -20,7 +20,7 @@ Hosts configure telemetry declaratively on agent profiles (`observability`), reg
     "src": "/imagery/th30_arctic.png",
     "position": "50% 50%"
   },
-  "caption": "From a turn to your own system. The profile's writeTo names one destination, and Theorem keeps no telemetry of its own.",
+  "caption": "From a turn to your own system. The profile's writeTo picks one destination, and Theorem keeps no telemetry of its own.",
   "lanes": [
     "The turn",
     "Theorem",
