@@ -1,6 +1,6 @@
 ---
 title: The Five Boundaries
-updated: 2026-11-02
+updated: 2026-11-03
 summary: Enforce security policies across inbound, tool argument, tool result, and outbound model boundaries.
 entry: src/guardrails/mod.ts
 covers: src/guardrails, src/kernel/stages.ts
@@ -84,7 +84,7 @@ When an action is set to `'redact'`, Theorem replaces matches with structured pl
 
 | Detector Kind | Placeholder | Typical Target |
 | :--- | :--- | :--- |
-| **`sensitive`** | `[omitted - sensitive]` | SSNs, credit cards, bank accounts, or API credentials. |
+| **`sensitive`** | `[omitted - sensitive]` | SSNs, card numbers, email addresses, phone numbers, bank accounts, or API credentials. |
 | **`injection`** | `[omitted - injection]` | Jailbreak phrases or instruction override attempts. |
 | **`canary`** | `[omitted - canary]` | Leaked canary tokens. |
 | **`prompt`** | `[omitted - instructions]` | Verbatim stretches of private system instructions. |
@@ -193,20 +193,28 @@ export const detect = compileDetect({
 
 ## Detectors Catalog & Scenarios
 
-Theorem provides 12 built-in detectors organized into four functional groups:
+Theorem provides 15 built-in detectors organized into four functional groups:
 
 ### 1. Sensitive Data (`data`)
 
 Scans for personal identifiers and confidential secrets:
 
-* **`ids`**: Government identification numbers (US SSN, ITIN, EIN).
+* **`ids`**: US SSN, ITIN and EIN numbers, in their dashed forms or in any 9-digit form right after a field name that says which (`ssn`, `tax id`, `ein`).
   * *Scenario*: A user types `"Verify SSN 000-12-3456"`. On redact, model context receives `"Verify SSN [omitted - sensitive]"`.
-* **`financial`**: Credit card numbers and bank account identifiers (IBAN).
+* **`financial`**: Card numbers and IBANs. An IBAN may be one run or printed in groups of four, and it matches only when its check digits hold.
   * *Scenario*: A page that `read_pages` returns holds `"Card on file 4111111111111111"`. On redact, model context receives `"Card on file [omitted - sensitive]"`.
-* **`network`**: Internal IPv4/IPv6 addresses, private subnets, and CIDR ranges.
+* **`network`**: IPv4 and IPv6 addresses.
   * *Scenario*: A diagnostic error returns `"Database unreachable at 10.0.12.4"`. On redact, model context receives `"Database unreachable at [omitted - sensitive]"`.
 * **`credentials`**: API keys, JWTs, bearer tokens, and private keys.
   * *Scenario*: A model reply repeats a token from a README: `"Use token ghp_Xk7mQ2vR9tLp..."`. On redact, the outgoing reply becomes `"Use token [omitted - sensitive]"` before reaching the user.
+* **`email`**: Email addresses.
+  * *Scenario*: A page that `read_pages` returns ends `"Correspondence: a.lovelace@example.org"`. On redact, model context receives `"Correspondence: [omitted - sensitive]"`.
+* **`phone`**: Phone numbers: international, North American and national, or any number after a phone label such as `phone`, `tel` or `mobile`.
+* **`bank_account`**: Account, routing and sort-code numbers after a label that names them, such as `account number` or `routing`. An IBAN is `financial`'s.
+
+All seven flag what reaches the model (inbound text, tool arguments and tool results) and ignore what is shown to the person. `credentials` also flags tool shown text and replies.
+
+`email`, `phone` and `bank_account` are data an agent works with: an address to write to, a number to call. Theorem takes them out only where your profile's `detect` says so. Text cleaned with no profile in hand keeps them, such as a result that `formatToolResult` formats without its `modelText`. So does a trace that `observability.scrub.sensitive` cleans.
 
 ### 2. Manipulation (`manipulation`)
 

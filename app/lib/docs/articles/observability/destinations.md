@@ -1,6 +1,6 @@
 ---
 title: Telemetry Destinations
-updated: 2026-11-02
+updated: 2026-11-03
 summary: Connect telemetry to OpenTelemetry OTLP collectors, Phoenix tracing, or streaming JSONL logs.
 entry: src/observability/destinations.ts
 covers: src/observability/destinations.ts, src/observability/otlp.ts, src/observability/jsonl.ts, src/observability/policy.ts, src/observability/openinference.ts, src/observability/phoenix.ts
@@ -216,7 +216,7 @@ Telemetry must never send API credentials, personal data or canary tokens to an 
 
 Theorem cleans each record before it reaches a trace sink:
 
-1. **Sensitive data (`scrub.sensitive`)**: The `ids`, `financial`, `network` and `credentials` detectors, and the host's own, clean the stored text. They clean the trace even when the turn sets them to `ignore`.
+1. **Sensitive data (`scrub.sensitive`)**: The `ids`, `financial`, `network` and `credentials` detectors, and the host's own, clean the stored text. They clean the trace even when the turn sets them to `ignore`. The `email`, `phone` and `bank_account` detectors do not clean it, so a trace keeps the addresses and numbers an agent works with.
 2. **Injection (`scrub.injection`)**: The `injection` and `tool_instructions` detectors clean the stored text.
 3. **Canary (`scrub.canary`)**: The canary token is never stored. It is replaced with `[omitted - canary]`.
 
