@@ -2,7 +2,7 @@
 	"glossary": {
 		"reviewed": "2026-11-03",
 		"files": {
-			"src/guardrails/labels.ts": "65656f29382261042d91bdab877d0142164c2275",
+			"src/guardrails/labels.ts": "11f559d88725115606ed9322933b30c6c79e23de",
 			"src/kernel/api-catalog.ts": "7c9bcef1b2b97c3bb48dde1a7e7b47a2baf443a9",
 			"src/kernel/schema.ts": "0a94beb72e901ba68da32203af5fd196d91973f9",
 			"src/observability/trace-catalog.ts": "5add7fdec78250b7f82c2d73b4c238099b37f2bc"
@@ -37,7 +37,7 @@
 			"src/guardrails/egress-stream.ts": "93335328398e37867567614bf21432d8da2bbf56",
 			"src/guardrails/egress-urls.ts": "ab5f7caafe7be7c11b99ac281a7a962666797bd2",
 			"src/guardrails/egress.ts": "07c2a2603d709337527e007c9866f090b010a78d",
-			"src/guardrails/error.ts": "9f65ade70df44ea9faae43150ba886f158517cfd",
+			"src/guardrails/error.ts": "f8e63d635ee5b8b4cab2a95a4bc4d80c79e89cd8",
 			"src/guardrails/eval/corpus.ts": "7ef52d5d1f5cc44907945b7ddc1ee306a4fb2f62",
 			"src/guardrails/eval/mod.ts": "71d0fdd9f80ddadb9732a2e027cb632f81da1bc5",
 			"src/guardrails/eval/score.ts": "e0c6ca809c24efa76e7b02929e308bd068a22d33",
@@ -49,7 +49,7 @@
 			"src/guardrails/injection-patterns.ts": "24b7bc33c0d808d2ef569e0f861bb2ea74d30156",
 			"src/guardrails/injection-reversed.ts": "94f9787033a9c299c8d2cb95f2e5aab747e63c64",
 			"src/guardrails/injection.ts": "e32285373fd636daba69bf10343ea3a8839c9fd6",
-			"src/guardrails/labels.ts": "65656f29382261042d91bdab877d0142164c2275",
+			"src/guardrails/labels.ts": "11f559d88725115606ed9322933b30c6c79e23de",
 			"src/guardrails/live-outbound-gate.ts": "ddb1d552a45dade82eee99678b37b15c4414b9f7",
 			"src/guardrails/mod.ts": "c045e950d1dd1790d4013c7681fc427742fce28c",
 			"src/guardrails/network.ts": "65487c8f3fdac6e14ce16bd46c4a20ac77d61cde",
@@ -371,8 +371,9 @@
 		}
 	},
 	"profiles/labels": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
+			"src/guardrails/error.ts": "f8e63d635ee5b8b4cab2a95a4bc4d80c79e89cd8",
 			"src/kernel/registry/profiles.ts": "4cbe8b1be9934d0be54a7a8195ab1196c09cc1a2",
 			"src/kernel/schema.ts": "0a94beb72e901ba68da32203af5fd196d91973f9"
 		}

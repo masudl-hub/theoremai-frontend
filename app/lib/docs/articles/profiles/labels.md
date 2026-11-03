@@ -3,7 +3,7 @@ title: Kernel Labels & Errors
 updated: 2026-11-02
 summary: Customizing system error strings, tool activity messages, and localized copy.
 entry: src/kernel/registry/profiles.ts
-covers: src/kernel/registry/profiles.ts, src/kernel/schema.ts
+covers: src/kernel/registry/profiles.ts, src/kernel/schema.ts, src/guardrails/error.ts
 cover: /imagery/th30_wideorchard.png
 coverAlt: Geometric rows of fruit trees in evening light
 coverPosition: 50% 50%
@@ -44,6 +44,8 @@ overrideLabels({
 	'error.safety': 'This reply was held back by your research policy.',
 });
 ```
+
+A tool step that fails with no wording of its own reads its kind's `error.*` line too, and that line may use `{tool}` to name the tool. One case differs: a tool whose request never reached its host reads `tool.unreachable`, "Sorry, a tool couldn't be reached. Please try again." So `error.network` speaks only of the model provider, and rewording it does not change what a user reads when a tool cannot be reached.
 
 ## Error Handling (`TheoremError`)
 
