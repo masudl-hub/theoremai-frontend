@@ -1,6 +1,6 @@
 ---
 title: Embedded Studio Screen
-updated: 2026-10-30
+updated: 2026-11-02
 summary: Embedding Theorem Studio into existing React applications with scoped project workspaces.
 entry: studio/server.ts
 covers: studio/server.ts, studio/browser.ts
@@ -233,6 +233,8 @@ export default {
 1. **The Draft Rides Along**: The client sends the visitor's modified profile draft in the request body. The server does not look up stored files or load a project setup.
 2. **Credential Injection**: `hostOptions` receives each draft's profile and returns the vault its model calls sign with. The draft names its own key slots (e.g., `gemini`), so fill the slots its models name. The browser never sees your API keys.
 3. **Quota Rejection**: The handler calls `spend` before each decision, reader passage, host tool call, and agent tool turn on the lent keys. A reader passage spends as a `decision`. A chat turn does not pass through it. If `spend` throws a `TheoremError`, the handler refuses that request and the screen shows the error's wording. For an agent tool turn, the calling model reads the refusal as the tool's result.
+4. **Tool Requests from the Browser**: A visitor who runs a draft on their own keys runs it in the browser. A page reaches only hosts that allow it by CORS, so the draft sends each HTTP and MCP tool request to `/api/studio/forward`, and the handler sends it on and returns the host's reply. The request's headers and body, the tool's credentials among them, pass through your server in memory only. The handler never logs or stores them. It reaches public hosts only, and a request to a local or private address goes straight from the browser. A forwarded request does not pass through `spend`.
+5. **Header Size**: The host's headers come back to the page in one response header. A host whose headers are larger than your platform allows in one header (about 16 KB on Cloudflare Workers) fails the request.
 
 > [!NOTE]
 > **Live Streaming & Realtime Sessions**: Unary requests (text chat, decisions, and embeddings) pass through `/api/studio`. Bidirectional realtime voice sessions on lent keys connect via WebSockets to `/api/live/relay` using `attachStudioLiveSession` from `@theoremjs/studio/browser`. See [Realtime Voice & Video](/docs/web/realtime) for relay setup.

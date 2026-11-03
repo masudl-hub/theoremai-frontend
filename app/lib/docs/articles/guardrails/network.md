@@ -83,6 +83,12 @@ resolveHost: dnsOverHttpsResolver({ endpoint: 'https://cloudflare-dns.com/dns-qu
 
 This lookup is separate from the one the connection makes. It stops names that point inward, but not a DNS server that changes its answer between the two lookups (DNS rebinding). Only the host's own egress layer can stop that.
 
+## Who Sends the Request (`fetch`)
+
+Give `runTurn` a `fetch` function, and Theorem sends each request a remote tool makes through it: HTTP and MCP calls, a signed-in fetch, and an image read. Theorem runs every check on this page first, on each redirect hop, and calls your `fetch` only for a request that passes. Without it, Theorem uses the global `fetch`.
+
+A run in the browser uses it to send tool requests through its own server, since a page reaches only hosts that allow it by CORS. [Theorem Studio](/docs/studio) does this.
+
 ## Configuring Network Guardrails
 
 Set the policy on the profile in `guardrails.network`. `research.scout` sets `allowedHosts`. The other two lines show the defaults:

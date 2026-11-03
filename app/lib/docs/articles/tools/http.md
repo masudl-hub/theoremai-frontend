@@ -95,6 +95,7 @@ maxResponseBytes: 1024 * 1024,
 * **`limit`**: The service's own limit (`requests` per `windowMs`); the kernel keeps this tool's requests within it. A request holds its place from when it is sent until one window after its answer. A `429` with `Retry-After` holds every request of the tool until then. A call waits up to 5 seconds for a place; past that it sends nothing and fails with `rate_limit_window`.
 * **`timeoutMs`**: How long the service may take to answer, reading the body included. The clock starts at send, so waiting for a `limit` place does not count. A call past it fails with `timeout`.
 * **`maxResponseBytes`**: The most of a response body the kernel reads. A body past it fails the call with `response_too_large`.
+* **Who Sends It**: The kernel sends the request with `runTurn`'s `fetch`, once its [network checks](/docs/guardrails/network) pass. Left out, it uses the global `fetch`.
 
 ## Image Fetching (`images`)
 

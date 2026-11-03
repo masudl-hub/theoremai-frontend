@@ -103,7 +103,7 @@ To check a prompt change against a real conversation, replay it:
 | Approach | How You Run It | Where It Runs | What It Saves |
 | :--- | :--- | :--- | :--- |
 | **The command** | `npx theorem-studio` | Your project, on this machine | Your edits, to your files |
-| **The screen in your app** | `<StudioScreen />` and `createStudioDraftHandler()` | Any visitor, on your server | Nothing on the server; drafts stay in the browser tab |
+| **The screen in your app** | `<StudioScreen />` and `createStudioDraftHandler()` | Any visitor, on your server | Nothing. Drafts stay in the browser tab |
 
 ### The Command
 
@@ -118,6 +118,7 @@ The command starts two servers that only this machine reaches: your project's se
 * **Saving**: **Save** writes your edits back to your project's files.
 * **Keys**: Runs sign with the keys in your entry's `theorem.provider.vault`. Load the keys however your start script does. Studio never writes them down.
 * **Your Editor**: Studio opens a line of your files in your editor (`--editor`; default `$VISUAL` or `$EDITOR`, else `code`).
+* **Tool Requests**: A draft that runs in the page sends its tool requests through your project's server, which reaches what the draft's network rules allow.
 
 ### The Screen in Your App
 
@@ -148,8 +149,10 @@ export function Studio() {
 Your server answers `/api/studio` with one handler, `createStudioDraftHandler()`. It saves nothing.
 
 * **Without Lent Keys**: Drafts run in the browser, on the builder's own keys.
+* **Tool Requests**: A page reaches only hosts that allow it by CORS, so a draft that runs in the browser sends each HTTP and MCP tool request through your handler, which sends it on. The request's headers and body, the tool's credentials among them, pass through your server in memory only. The handler never logs or stores them. A request to a local or private address goes straight from the browser.
+* **Header Size**: The host's headers come back to the page in one response header. A host whose headers are larger than your platform allows in one header (about 16 KB on Cloudflare Workers) fails the request.
 * **Lent Keys**: You can lend your keys. A `LentKeys` says which models they run, which built-in tools each model may use, and how large a decision may be. A `spend` function counts each run for whoever sent it, and each passage a tool's reader reads, and can refuse it.
-* **Network**: The tool connection test reaches public hosts only.
+* **Network**: The tool connection test and the tool requests your handler sends on reach public hosts only.
 * **Tab State**: Drafts and test conversations are kept in the browser's IndexedDB, under the tab. A reload keeps them. After the tab closes, another studio tab, open now or opened later, clears them a minute on. Keys are never kept.
 
 ## Related Guides

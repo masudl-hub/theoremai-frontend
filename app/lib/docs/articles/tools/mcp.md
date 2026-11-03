@@ -94,6 +94,7 @@ The kernel accepts the server's response as a JSON body or as a Server-Sent Even
 * **Results**: When the server sends `structuredContent` that fits your `output` schema, that is the output. Otherwise the text content is used, and a `structuredContent` that does not fit raises an `mcp_structured_mismatch` warning. Image and audio content reaches the model as media parts.
 * **Payload Capping**: Set `maxResponseBytes` to cap the response body the kernel reads. Left out, there is no limit. A body past it fails the call with `response_too_large`.
 * **Authenticated MCP Servers**: Pass an `auth` block (see [Auth & Credentials](/docs/tools/auth)) to attach OAuth tokens or API keys to the session opening and tool calls.
+* **Who Sends It**: The kernel sends every MCP request, the session opening included, with `runTurn`'s `fetch`, once its [network checks](/docs/guardrails/network) pass. Left out, it uses the global `fetch`.
 * **Pictures by Address**: Set the `images` hook (and `imageLimits`) to fetch image URLs named in the tool's output and hand them to the model as image parts, as on [HTTP tools](/docs/tools/http).
 
 ## Related Guides

@@ -1,9 +1,9 @@
 {
 	"glossary": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
 			"src/guardrails/labels.ts": "b43b44544126f5285c402d0f0ea63fe21752ae9e",
-			"src/kernel/api-catalog.ts": "dd5330880ebfcc1382c800a354067e751169f734",
+			"src/kernel/api-catalog.ts": "7c9bcef1b2b97c3bb48dde1a7e7b47a2baf443a9",
 			"src/kernel/schema.ts": "0a94beb72e901ba68da32203af5fd196d91973f9",
 			"src/observability/trace-catalog.ts": "5add7fdec78250b7f82c2d73b4c238099b37f2bc"
 		}
@@ -89,7 +89,7 @@
 		}
 	},
 	"guardrails/network": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
 			"src/guardrails/destinations.ts": "02cff5c78e559739d2337e06864861e2a6f6b988",
 			"src/guardrails/network.ts": "65487c8f3fdac6e14ce16bd46c4a20ac77d61cde"
@@ -347,10 +347,10 @@
 		}
 	},
 	"profiles/host": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
 			"src/kernel/registry/profiles.ts": "4cbe8b1be9934d0be54a7a8195ab1196c09cc1a2",
-			"src/kernel/tools/invoke.ts": "b4f761989c870e5f487efb1cda48ccb3269d3691"
+			"src/kernel/tools/invoke.ts": "1e95cd54756ef99f247f7c22b0497a25d7bbbe81"
 		}
 	},
 	"profiles/image": {
@@ -695,7 +695,7 @@
 			"studio/browser-engine.ts": "2b2dda40186aaec5cd446c978626181393938074",
 			"studio/browser-execution.ts": "31a817d0837a24dd22b3d2c45acca79695270e00",
 			"studio/browser-live.ts": "00baf571fe2a74c9e53426cd59c55216814a2093",
-			"studio/browser-transport.ts": "de5e64ff2dd274cacdda0484ea7d9d61d52bee67",
+			"studio/browser-transport.ts": "4d24fc776e4ffa0f89e35e13ed8609f03237f353",
 			"studio/browser.ts": "fd73f67b816431201a2cd5c8f9edadf59f68f0fe",
 			"studio/canonical.ts": "f9f1e503542933f2738be6461aaa093c33af1d9a",
 			"studio/compile-workspace.ts": "c920ff250b0796597ecda5a229abd749320a9cca",
@@ -728,13 +728,14 @@
 			"studio/e2e/project/flows.studio.setup.ts": "1cb2908893443fe9223d2527974dd3e12e947e3a",
 			"studio/e2e/project/tools.ts": "4023071f08e8b14eb64ceffcd2a84cd6539b81e1",
 			"studio/e2e/prompt-editor.spec.ts": "f2f4e50aa9756a34e8edd5c6ea7e386868a6d2b2",
-			"studio/e2e/prompt-lines.spec.ts": "a450a3367dcdee1069c165cc1d5ad496ead7afde",
+			"studio/e2e/prompt-lines.spec.ts": "2c46ed4ee42053199e8aa50c26cf6ae4bd5500cf",
 			"studio/e2e/save.spec.ts": "ded603b55394ac0d1e63ae029080540308d385ff",
 			"studio/e2e/serve.mjs": "113c64deda99c5d4c5fbe420b4c3cf540c96dddd",
 			"studio/e2e/studio.spec.ts": "c6d4117d2657216cd2ea0f65b486e96b5e68a7e6",
 			"studio/e2e/tree.spec.ts": "0b6ce0ea76662863da2920fd141747ab201d748b",
 			"studio/editors.ts": "b84f14202c90dcbe35c238c070ac2d49e8fc42a6",
 			"studio/example-embedding-files.ts": "6ff0f693609d18a54dfb55a8a831124f5e83127b",
+			"studio/forwarded-fetch.ts": "1b675b5eeed4787f3a8d6f4caff8112c39c31de0",
 			"studio/guardrail-probe.ts": "a8d330740f20c5462d731144fd8152dcfd8e8267",
 			"studio/held-credentials.ts": "668eb33f4e068e10be751f64fa871ca28398e4d9",
 			"studio/installed.mjs": "0909b88889b77f6aeb5a691961dee897333ac2a6",
@@ -765,22 +766,23 @@
 			"studio/replay.ts": "cc42fc515fe851d3419c839c64c650397705c4bc",
 			"studio/requirements.ts": "1a67fec70693302da26081c64f986b0f75ef2ecf",
 			"studio/run-payload.ts": "715e33aeb5725707a4c5aae0006d4414798fa13b",
-			"studio/runtime-scope.ts": "81c1f0e2dd51764aa07fbce770f4af05adda2f62",
-			"studio/runtime.ts": "78341e97a93f22a6e747d3fca5339db017b85f3a",
+			"studio/runtime-scope.ts": "44b746d86744dbe79ff14e1067a9d86441948e0a",
+			"studio/runtime.ts": "40742148ae7de32d82c3af1fbaaa467def83e165",
 			"studio/section-notes.ts": "04546afc22f79fc2a6c471d0c983a47268f0e4a4",
 			"studio/serve-page.mjs": "c07bae439e64f38a2990065814cd204d1dfe6c11",
 			"studio/server.ts": "cf7cdf5039933c8f17f62dba163768921ad24c48",
 			"studio/server/alerts.ts": "b7f1699ab9fd75e8dd68923f30a57d9278dc01b7",
 			"studio/server/draft-decide.ts": "3988797a811bcc378c531d7e569cd64c66aa93a2",
 			"studio/server/draft-embedding.ts": "b77aeee03a64cba3f89a47f7b7f3d7281f53c05c",
-			"studio/server/draft-handler.ts": "3a8129c81105677ba5b7fdd9f9b3827e224b365d",
+			"studio/server/draft-handler.ts": "b19b6aa710f995e9eb6617b5ef5efac4419d9743",
 			"studio/server/draft-probe.ts": "5c5246762f9efa08384f1feef89db690e3f8b969",
 			"studio/server/draft-replies.ts": "b21a3ebc531f18f1de62fff12dffa645a27e0984",
 			"studio/server/edited-session.ts": "21706d244149321280eb187f26082c2957b59119",
 			"studio/server/edits.ts": "f1edefcf544bf84016bfc27f0aa6048f1a8528d0",
 			"studio/server/events.ts": "b03c2993044d7f8d746b033319a532c2eb9f0e89",
 			"studio/server/example.ts": "2b21e51a5e043b008d14031d0c9e8b0ed8c34397",
-			"studio/server/handler.ts": "a05c135bc42937b6e140a14fded71045c9276fd6",
+			"studio/server/forward.ts": "9261c1dcfab138321da379e8419bcc9e9a5be7e6",
+			"studio/server/handler.ts": "47d341903f5f07b09c7d6e7c3deaab32cac120ac",
 			"studio/server/kept-sessions.ts": "45ad86d0cb1d1ce9634c0710ff853b55ab6dc43b",
 			"studio/server/lent-draft.ts": "b6ceb7176c0026ae815ee705b13c97ffbf30ace7",
 			"studio/server/live.ts": "739f070ab9e95a3d04450e29f5b233a0fe77510c",
@@ -810,8 +812,8 @@
 			"studio/stub.ts": "df138a46a394be28c530511b07750a897cdd3f19",
 			"studio/surface.ts": "30209c923410ad54e537ad08193d6be334f206f4",
 			"studio/system-markup.ts": "c33cde3db24cf7a9affaccbbaccac402d29fd733",
-			"studio/tests/boot-sequence.test.ts": "10690140754cab5f84cf52f42672b95ebb207e99",
-			"studio/tests/coverage.test.ts": "ad28e7d787e17a8df9c2e3f47c9796bf76c9c069",
+			"studio/tests/boot-sequence.test.ts": "8d5a96748fe68ccb87c7de6347bf9ba9523653a1",
+			"studio/tests/coverage.test.ts": "27467f13869aa33ebda0de1a2f360e8e3c28d896",
 			"studio/tests/entries.test.ts": "339c02df70aa3a7aadcc67bbab46ca8f0342aadf",
 			"studio/tests/export-agent.test.ts": "797bede9b01978888f9a2b1d9c35377b5cfe6fcf",
 			"studio/tests/keep.test.ts": "a4bbd23796791b8c275246f8b0a747c4d611c2a9",
@@ -824,6 +826,7 @@
 			"studio/tests/read-map.test.ts": "55323824ce8c481da53a64fa9c53896848c519fc",
 			"studio/tests/read-studio.test.ts": "ac19eeefef32ed59e0b21d09f9494814c20826f1",
 			"studio/tests/refusal-lines.test.ts": "d82237c4ff7bf4e33306dfcffeead3482622270c",
+			"studio/tests/runtime-hold.test.ts": "5db8cb908165bde3ef739ece2784561949e5992b",
 			"studio/tests/setups.test.ts": "10ddb331df36b183fca6b4279d50bbe572dd6356",
 			"studio/tests/store-shared.test.ts": "9cce5f9a1f816716d9a4b0141d67245a7601eeec",
 			"studio/tests/store-surface.test.ts": "0b218ed234ed1fe10e650af61cf13e595427bbe0",
@@ -841,7 +844,7 @@
 			"studio/ui/acting-as-button.tsx": "66bc7164fc0dd9ec6aa7c9b965262e1f7e088881",
 			"studio/ui/add-provider.tsx": "0ceef6db4e2388245f504f129f9fde2c987e3ddc",
 			"studio/ui/boot-mark.css": "d046da8d63445d141a63d1c8312578acdf44f9af",
-			"studio/ui/boot-mark.tsx": "8e5401219aad19455dc9df3b490a465f7e1744c4",
+			"studio/ui/boot-mark.tsx": "d3c00e5608b367c01a22b43a79bb53b9f51c9bff",
 			"studio/ui/boot-paint.ts": "2de93e64d1ea904af9ad60ad6e27dd7f8406ffad",
 			"studio/ui/brand-icons.tsx": "445e7f28997895cc354fe302eefc249759d51286",
 			"studio/ui/built/theme.css": "bda78ce742730cbbeb6133c6847fa9c476a89c56",
@@ -864,7 +867,7 @@
 			"studio/ui/inspector.tsx": "7a4056afc9636b9086118e03a45d6a1d72a5d4cf",
 			"studio/ui/lib/acting-as.ts": "234f8b5406400258adf7c77abf61477b54c4d927",
 			"studio/ui/lib/boot-hold.ts": "34a8877bba677068e4b85aa7b08350607035945c",
-			"studio/ui/lib/boot-sequence.ts": "2dfd66d896fdf8add5fb9309ee45765a29409e73",
+			"studio/ui/lib/boot-sequence.ts": "c100865a54379693795b062f0c43380ee4cb52b7",
 			"studio/ui/lib/conversation-types.ts": "90619f6145cb5ac29bffdf5e844066eec4970da6",
 			"studio/ui/lib/entries.ts": "50327abdb7765d8eed851f10f508f6617837e2bf",
 			"studio/ui/lib/export-agent.ts": "e0a0bcfb732fb61998addce4e52e25955984995e",
@@ -878,6 +881,7 @@
 			"studio/ui/lib/read-progress.ts": "20b53a27624ad1546fea9e2f08d5d9f041781d7f",
 			"studio/ui/lib/refusal-lines.ts": "36f91d3ea8498b0f359c70549c0783c0b5b136d9",
 			"studio/ui/lib/run-keys.ts": "e9972725c79d0ea82694efc9e4d3caec62b01375",
+			"studio/ui/lib/runtime-hold.ts": "a07c35b12af3ec8f81e99577b1f2535f8a55cab6",
 			"studio/ui/lib/send-when-ready.ts": "516feff899a1b438df2b24878ed18b8a3c43f348",
 			"studio/ui/lib/studio-activity.ts": "f81a66522b65d8dc70e9733edcd87d2ec7d97044",
 			"studio/ui/lib/studio-console.ts": "becd7b3921298cce99bbbcd205135f87c33ecf5b",
@@ -909,7 +913,7 @@
 			"studio/ui/motion.css": "25860861ea9c807526e90ce2262831bdfb73bd0a",
 			"studio/ui/node-icon.ts": "6cf58b6c121167caad33f394afee5fc82af72073",
 			"studio/ui/pan.ts": "c418ab83a66c98c405d87038ea451b0006786bc8",
-			"studio/ui/profile-editor.tsx": "6d2e573926bb4787d678dd684d2b5416b4a31025",
+			"studio/ui/profile-editor.tsx": "363440562bc259bd7b5b47b6cf2e14a2097b7c14",
 			"studio/ui/prompt-editor.css": "4a093fbce768ddc89cff8451ca976a6303421230",
 			"studio/ui/prompt-editor.tsx": "165207f2f8929fde89ded18eae5df37474e6f437",
 			"studio/ui/prompt-line-node.tsx": "8b2cfeb321679baaabc58233f415bce023f5497f",
@@ -919,12 +923,12 @@
 			"studio/ui/read-map.tsx": "341245fe1f1c5c5e02f3010cb314fa9e7fa34607",
 			"studio/ui/refusal-detail.tsx": "0ccd81c9d46917f271bd6088ba18271f83116162",
 			"studio/ui/shared-change.tsx": "eb7d419f28ca88a2d63f4a59209fce802c57fe18",
-			"studio/ui/shell-motion.css": "8476adab9e11890496f1d43c7e372eeb2c35b71e",
-			"studio/ui/shell-motion.ts": "28673a3ad9702d2a2dfd90720f9ce3a37f798219",
+			"studio/ui/shell-motion.css": "3f004f80a89711d201848518203ca2b3078f5dbd",
+			"studio/ui/shell-motion.ts": "826a5ff13de41b04c1a4afd750cdde63ec80dcb7",
 			"studio/ui/studio-code-pane.tsx": "693f819d0bbeb08ad6d0885f5d45004fe151932b",
 			"studio/ui/studio-compare.tsx": "8b2067d42f9cd2fad824c6cfd11b2f9d311e4c70",
 			"studio/ui/studio-conflicts.tsx": "8796cc67144e7813b1b40a4e1c1088f2fcbe0010",
-			"studio/ui/studio-connection.tsx": "61081b9617095923d23ae5575941d7f65a41d0be",
+			"studio/ui/studio-connection.tsx": "529ed2c8eab9251a9cbaf5380ca4d80e6068dffa",
 			"studio/ui/studio-decision.tsx": "5f29323f74ac0cc798085fd9cda3b7f4b666d83d",
 			"studio/ui/studio-embedding.tsx": "ec308b602c96ef0857a727377ddd2dffe61e6d9d",
 			"studio/ui/studio-host-console.tsx": "63e211bcdce8b542c69792abeff1deadbacabb41",
@@ -963,7 +967,7 @@
 		}
 	},
 	"studio/embedded": {
-		"reviewed": "2026-10-30",
+		"reviewed": "2026-11-03",
 		"files": {
 			"studio/browser.ts": "fd73f67b816431201a2cd5c8f9edadf59f68f0fe",
 			"studio/server.ts": "cf7cdf5039933c8f17f62dba163768921ad24c48"
@@ -977,7 +981,7 @@
 		}
 	},
 	"tools": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
 			"src/kernel/auth/credential-source.ts": "b791a1d6f39ce5b5e048c83f3db108c68c8baf6d",
 			"src/kernel/auth/crypto.ts": "5f1d8e3906b072368be6715f165b6ee2a1534acd",
@@ -997,8 +1001,8 @@
 			"src/kernel/tools/handler-events.ts": "c9199a432f0c9f42d3e5111e63901aa897d1dee8",
 			"src/kernel/tools/harness.ts": "d06353da78838752724ab1dc451950d78d9934fb",
 			"src/kernel/tools/http-limit.ts": "66de16b2453fa26b3b27d409a2faaf4f13b6732c",
-			"src/kernel/tools/image-fetch.ts": "fba610f9c833cac92510334a94da0ea8008c8291",
-			"src/kernel/tools/invoke.ts": "b4f761989c870e5f487efb1cda48ccb3269d3691",
+			"src/kernel/tools/image-fetch.ts": "edbc150a922569f3383bf2089b069df0dd9c38a6",
+			"src/kernel/tools/invoke.ts": "1e95cd54756ef99f247f7c22b0497a25d7bbbe81",
 			"src/kernel/tools/mcp-sessions.ts": "a7d9d5b32f49880585dd16d1d6660645bc6f53b9",
 			"src/kernel/tools/memory-execution.ts": "39de141c88b53a6b76f27ed67c2d2cf59a58dbfe",
 			"src/kernel/tools/mod.ts": "8ec4774570d5ccab03cbe50ce77b24b9428a5f54",
@@ -1008,26 +1012,26 @@
 			"src/kernel/tools/permission.ts": "9fbcb6ac4cda38e715e3ca299f61976e87579c7f",
 			"src/kernel/tools/project.ts": "eef1a5382f267fdc48b62fa624cb23aa3cf1c7b3",
 			"src/kernel/tools/registry.ts": "0d19697d98dfc0af51ebe3f43515599569dafa8e",
-			"src/kernel/tools/remote.ts": "88f8d501f706db3ecc25c0b2f6c9c7a6331898d7",
+			"src/kernel/tools/remote.ts": "701cd7f2a759f7bab478302530e0ffaa3c1135b3",
 			"src/kernel/tools/resolve.ts": "6cd5346927d06fe0ab59d73e7a08d11bb07c44ed",
 			"src/kernel/tools/run.ts": "62ad05c2443568fc320a34e4f878861c6c0c8b85",
 			"src/kernel/tools/schema.ts": "80139c4a59ef3ff6010fda7b786da2dd97cb8ff9",
-			"src/kernel/tools/signed-in-fetch.ts": "895e3d568782bff4840e2ce731e96e992dc08eb3",
+			"src/kernel/tools/signed-in-fetch.ts": "eb5ceabae661169891bcc6b38ae3170ccb1633a2",
 			"src/kernel/tools/stage-run.ts": "3f3cd4778ade5de70e5ac05a801f0292bb92c066",
-			"src/kernel/tools/types.ts": "494141a48a7e4ce231b6ea17f19fb111df96625d",
+			"src/kernel/tools/types.ts": "9e9c277ffa34f0c76c18129d00a04a620aa60d72",
 			"src/kernel/tools/unchecked-output.ts": "cd3ad46a12d91555ceec356258efc9f3707f0ecb"
 		}
 	},
 	"tools/agent": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
 			"src/kernel/engine/runner/nested.ts": "2d4f2bad1de44074829450c1b9aab6b570e99765",
 			"src/kernel/tools/agent.ts": "d8567deea5e4b8070709794d101a366631eb7c97",
-			"src/kernel/tools/types.ts": "494141a48a7e4ce231b6ea17f19fb111df96625d"
+			"src/kernel/tools/types.ts": "9e9c277ffa34f0c76c18129d00a04a620aa60d72"
 		}
 	},
 	"tools/auth": {
-		"reviewed": "2026-10-31",
+		"reviewed": "2026-11-03",
 		"files": {
 			"src/kernel/auth/credential-source.ts": "b791a1d6f39ce5b5e048c83f3db108c68c8baf6d",
 			"src/kernel/auth/crypto.ts": "5f1d8e3906b072368be6715f165b6ee2a1534acd",
@@ -1036,14 +1040,14 @@
 			"src/kernel/auth/scope-refusal.ts": "32af737d1562a10600a03b0ddae0408f64d9dd55",
 			"src/kernel/auth/typed-secret.ts": "307a280cf1ba474928b3f7be8389d4d97df81dbf",
 			"src/kernel/auth/types.ts": "da6c05c7bb2c0177e1edfae7e3740f4477440a86",
-			"src/kernel/tools/signed-in-fetch.ts": "895e3d568782bff4840e2ce731e96e992dc08eb3"
+			"src/kernel/tools/signed-in-fetch.ts": "eb5ceabae661169891bcc6b38ae3170ccb1633a2"
 		}
 	},
 	"tools/function": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
 			"src/kernel/tools/execute.ts": "89c80bee69367ac2d317ea9952cf430c4ba8bb90",
-			"src/kernel/tools/types.ts": "494141a48a7e4ce231b6ea17f19fb111df96625d"
+			"src/kernel/tools/types.ts": "9e9c277ffa34f0c76c18129d00a04a620aa60d72"
 		}
 	},
 	"tools/gates": {
@@ -1054,25 +1058,25 @@
 		}
 	},
 	"tools/http": {
-		"reviewed": "2026-10-30",
+		"reviewed": "2026-11-03",
 		"files": {
 			"src/kernel/tools/http-limit.ts": "66de16b2453fa26b3b27d409a2faaf4f13b6732c",
-			"src/kernel/tools/image-fetch.ts": "fba610f9c833cac92510334a94da0ea8008c8291",
-			"src/kernel/tools/remote.ts": "88f8d501f706db3ecc25c0b2f6c9c7a6331898d7"
+			"src/kernel/tools/image-fetch.ts": "edbc150a922569f3383bf2089b069df0dd9c38a6",
+			"src/kernel/tools/remote.ts": "701cd7f2a759f7bab478302530e0ffaa3c1135b3"
 		}
 	},
 	"tools/liquid-labels": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
 			"src/kernel/tools/activity-label.ts": "4fc86bf4b78c42043d1c02a26c0d2884176bc78c",
-			"src/kernel/tools/types.ts": "494141a48a7e4ce231b6ea17f19fb111df96625d"
+			"src/kernel/tools/types.ts": "9e9c277ffa34f0c76c18129d00a04a620aa60d72"
 		}
 	},
 	"tools/mcp": {
-		"reviewed": "2026-10-30",
+		"reviewed": "2026-11-03",
 		"files": {
 			"src/kernel/tools/mcp-sessions.ts": "a7d9d5b32f49880585dd16d1d6660645bc6f53b9",
-			"src/kernel/tools/remote.ts": "88f8d501f706db3ecc25c0b2f6c9c7a6331898d7"
+			"src/kernel/tools/remote.ts": "701cd7f2a759f7bab478302530e0ffaa3c1135b3"
 		}
 	},
 	"tools/oauth": {
