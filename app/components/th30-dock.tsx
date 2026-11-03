@@ -2,54 +2,19 @@ import { Button } from '@astryxdesign/core/Button';
 import { HStack } from '@astryxdesign/core/HStack';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
-import { Theme } from '@astryxdesign/core/theme';
 import { VStack } from '@astryxdesign/core/VStack';
+import { IconMessage, IconMicrophone, IconMicrophoneOff } from '@tabler/icons-react';
 import {
-	IconMessage,
-	IconMicrophone,
-	IconMicrophoneOff,
-	IconPhoneOff,
-	IconRefresh,
-} from '@tabler/icons-react';
-import { defineAction } from '@theoremjs/agents/surface';
-import { clientFailure, LiveSessionClient, type PageTools } from '@theoremjs/react/client';
-import {
-	InkWaveform,
-	type InkWaveLevels,
-	type InkWaveStatus,
-	useLiveCaptionLog,
-} from '@theoremjs/react/ui';
-import {
+	type ComponentType,
 	createContext,
-	lazy,
 	type ReactNode,
-	type RefObject,
-	Suspense,
 	useCallback,
 	useContext,
 	useEffect,
-	useLayoutEffect,
+	useMemo,
 	useRef,
 	useState,
 } from 'react';
-import { type NavigateFunction, useLocation, useMatches, useNavigate } from 'react-router';
-import { z } from 'zod';
-import { theoremSiteTheme } from '../built/theorem-site';
-import { clientDocIndex } from '../lib/docs/client-index';
-import { highlightBlock, highlightWhenPresent } from '../lib/docs/th30-client';
-import { th30SearchOutput } from '../lib/docs/th30-search';
-import { warmDocsSearch } from '../lib/docs/warm-docs-search';
-import { resolveSitePath } from '../lib/site-path';
-import { TH30_PROFILE_ID } from '../lib/th30-id';
-import {
-	readPageFromDom,
-	type Th30Page,
-	type Th30PageHandle,
-	th30PageLine,
-} from '../lib/th30-page';
-import { useTh30StudioState } from '../lib/th30-studio-state';
-import { onTh30Note, setTh30SurfaceOpener, th30Surfaces } from '../lib/th30-surfaces';
-import { th30Voice } from '../lib/th30-voice';
 import { Th30Light } from './th30-light';
 import './th30.css';
 
@@ -69,14 +34,27 @@ export type Th30Api = {
 	toggleMessages: () => void;
 };
 
-const Th30Context = createContext<Th30Api>({
+export type Th30Status = Pick<Th30Api, 'isLive' | 'canMute' | 'isMuted' | 'messagesOpen'>;
+export type Th30Actions = Omit<Th30Api, keyof Th30Status>;
+
+/** What the provider gives the call once it has loaded. */
+export type Th30RuntimeProps = {
+	connect: (actions: Th30Actions) => void;
+	onStatus: (status: Th30Status) => void;
+};
+
+const NO_CALL: Th30Status = {
 	isLive: false,
-	toggle: () => undefined,
-	ask: () => undefined,
 	canMute: false,
 	isMuted: false,
-	mute: () => undefined,
 	messagesOpen: false,
+};
+
+const Th30Context = createContext<Th30Api>({
+	...NO_CALL,
+	toggle: () => undefined,
+	ask: () => undefined,
+	mute: () => undefined,
 	toggleMessages: () => undefined,
 });
 
@@ -178,903 +156,88 @@ export function Th30Trigger({
 	);
 }
 
-type Phase = 'idle' | 'connecting' | 'live' | 'failed';
-
-const PAGE_LINE_DEBOUNCE_MS = 800;
-
-/** Where each surface th30 can open lives. */
-const SURFACE_PAGES: Record<string, string> = { studio: '/studio' };
-const SITE_PAGES = { home: '/', docs: '/docs', studio: '/studio' } as const;
-
-/** The page the visitor is on: a route that reports live state, else what the page itself says. */
-function useTh30PageLine(): string | null {
-	const matches = useMatches();
-	const { pathname, hash } = useLocation();
-	const studio = useTh30StudioState();
-	const [rendered, setRendered] = useState<Th30Page | null>(null);
-	// The page's own markup is what changes on navigation, so the path triggers the read.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: pathname is the trigger, not an input
-	useEffect(() => {
-		const next = readPageFromDom(hash);
-		setRendered((prev) =>
-			prev?.title === next?.title &&
-			prev?.summary === next?.summary &&
-			prev?.viewing === next?.viewing
-				? prev
-				: next,
-		);
-	}, [hash, pathname]);
-	for (const match of [...matches].reverse()) {
-		const describe = (match.handle as Th30PageHandle | undefined)?.th30Page;
-		if (!describe) continue;
-		const page = (describe as (data: unknown, hash: string) => Th30Page)(match.loaderData, hash);
-		return th30PageLine(pathname, page, pathname === '/studio' ? studio : null);
-	}
-	return rendered ? th30PageLine(pathname, rendered, pathname === '/studio' ? studio : null) : null;
-}
-
-/** th30 opens a surface's page when it asks for one that isn't mounted, and can always move the person. */
-function useSiteSurface(navigate: NavigateFunction): void {
-	const { pathname } = useLocation();
-	const pathnameRef = useRef(pathname);
-	pathnameRef.current = pathname;
-	useEffect(() => {
-		setTh30SurfaceOpener((surfaceId) => {
-			const to = SURFACE_PAGES[surfaceId];
-			if (to && window.location.pathname !== to) void navigate(to);
-		});
-		const unmount = th30Surfaces.mount({
-			id: 'site',
-			title: 'The theorem site',
-			revision: () => 1,
-			summary: () => `on ${pathnameRef.current}`,
-			nodes: () => [
-				{
-					id: '',
-					title: 'The theorem site',
-					actions: {
-						go: defineAction({
-							description: 'Take the person to the home page, the docs, or the studio.',
-							effect: 'run',
-							input: z.object({ page: z.enum(['home', 'docs', 'studio']) }),
-							run: ({ page }) => {
-								// flushSync: volume updates during a call would otherwise starve the route change.
-								void navigate(SITE_PAGES[page], { flushSync: true });
-								return { result: { went: page } };
-							},
-						}),
-					},
-				},
-			],
-		});
-		return () => {
-			setTh30SurfaceOpener(null);
-			unmount();
-		};
-	}, [navigate]);
-}
-
-function textArg(value: unknown): string | undefined {
-	return typeof value === 'string' && value.trim() ? value : undefined;
-}
-
-/** The docs hits for a question: by meaning when the model loads, by words when it cannot. */
-async function searchForTh30(query: string, limit: number | undefined) {
-	const index = await clientDocIndex();
-	const found = await import('../lib/docs/semantic')
-		.then(({ searchDocsSemantic }) => searchDocsSemantic(index, query, limit))
-		.catch(() =>
-			import('../lib/docs/query').then(({ searchDocs }) => searchDocs(index, query, limit)),
-		);
-	return th30SearchOutput(index, found);
-}
-
-/** The page's highlight: it says whether anything on the page matched. */
-function highlightOutput(args: Record<string, unknown>) {
-	const target = textArg(args.target) ?? textArg(args.blockId) ?? '';
-	const label = textArg(args.label);
-	const found = target ? highlightBlock(target, label) : false;
-	return {
-		success: found,
-		highlighted: target,
-		...(found ? {} : { error: 'Nothing on this page matches that.' }),
-	};
-}
+/** How long the call may wait for the browser to go idle before it loads anyway. */
+const RUNTIME_IDLE_TIMEOUT_MS = 2000;
 
 /**
- * The page's tools for one call: a docs search, a highlight, and a surface's `look` and `act`.
- * The client answers each dispatched call with them. A surface call the page answered that has
- * not finished when the call drops is noted as undelivered, so th30 hears what became of it.
+ * th30's buttons work from the first paint. The call behind them loads when the browser goes idle,
+ * or on the first press, and a press that gets there first runs once it has.
  */
-function th30PageTools(): {
-	pageTools: PageTools;
-	finished: (callId: string) => void;
-	dropped: () => void;
-} {
-	const awaiting = new Set<string>();
-	const surface =
-		(name: string): PageTools[string] =>
-		async (args, { callId }) => {
-			const output = await th30Surfaces.answer(name, args, callId);
-			awaiting.add(callId);
-			return { output };
-		};
-	return {
-		pageTools: {
-			searchDocs: async (args) => ({
-				output: await searchForTh30(
-					textArg(args.query) ?? '',
-					typeof args.limit === 'number' ? args.limit : undefined,
-				),
-			}),
-			highlight: (args) => ({ output: highlightOutput(args) }),
-			look: surface('look'),
-			act: surface('act'),
-		},
-		finished: (callId) => {
-			awaiting.delete(callId);
-		},
-		dropped: () => {
-			for (const callId of awaiting) th30Surfaces.settled(callId, 'undelivered');
-			awaiting.clear();
-		},
-	};
-}
-
-function applyNavigation(navigate: NavigateFunction, output: unknown): void {
-	if (
-		typeof output !== 'object' ||
-		output === null ||
-		!('success' in output) ||
-		output.success !== true ||
-		!('navigatedTo' in output) ||
-		typeof output.navigatedTo !== 'string'
-	)
-		return;
-	const resolved = resolveSitePath(output.navigatedTo);
-	if (!resolved.ok) return;
-	void navigate(resolved.href, { flushSync: true });
-	if (resolved.hash) {
-		const pathname = resolved.href.split('#')[0] ?? resolved.href;
-		highlightWhenPresent(resolved.hash, pathname);
-	}
-}
-
-/** The kernel's line for a failure. The diagnostic stays in the console. */
-function wordFailure(err: unknown): string {
-	console.warn('[th30]', err);
-	return clientFailure(err).error;
-}
-
-/** What the strip says while a call connects, is taken up again after a drop, or after it failed. */
-function stripStatus(phase: Phase, failure: string | null, status: InkWaveStatus): string {
-	if (phase === 'connecting') return 'Connecting to th30…';
-	if (status === 'reconnecting') return 'Reconnecting…';
-	if (phase !== 'failed') return '';
-	return failure ?? '';
-}
-
-/** What the page tells th30: the page the person is on, and what last changed there. */
-type PagePackage = { page?: string; state?: string; ask?: string };
-
-/** The page line th30 hears, and the last one it was told. */
-type PageRefs = {
-	/** The context th30 was last sent; a call opens with it. */
-	packageRef: RefObject<PagePackage>;
-	/** A question the next call opens with; the call takes it and clears it. */
-	askRef: RefObject<string | null>;
-	pageLine: string | null;
-	pageLineRef: RefObject<string | null>;
-	/** The last page line th30 was told, so an unchanged page says nothing; `undefined` until the call is greeted. */
-	toldRef: RefObject<string | null | undefined>;
-};
-
-function usePageRefs(): PageRefs {
-	const pageLine = useTh30PageLine();
-	const pageLineRef = useRef(pageLine);
-	pageLineRef.current = pageLine;
-	const toldRef = useRef<string | null | undefined>(undefined);
-	const packageRef = useRef<PagePackage>({});
-	const askRef = useRef<string | null>(null);
-	return { pageLine, pageLineRef, toldRef, packageRef, askRef };
-}
-
-/** A call with th30: its phase, voice levels and mute, and how to start, end, mute and write to it. */
-type CaptionLog = ReturnType<typeof useLiveCaptionLog>;
-
-/** What th30 is doing for the visitor: a tool's words, then its past tense for a moment. */
-type Work = { text: string; done: boolean };
-
-/** How long a finished call's past tense stays on the strip. */
-const WORK_LINGER_MS = 3200;
-
-/** Words for a call whose tool has no activity label: the page's own look and act. */
-const SURFACE_WORK: Partial<Record<string, string>> = {
-	look: 'Looking at the page',
-	act: 'Making a change on the page',
-};
-
-type Th30Call = {
-	phase: Phase;
-	/** The tool th30 is running, or just finished, in the tool's words. */
-	work: Work | null;
-	isMuted: boolean;
-	/** Why the last call failed, in the profile's own wording. */
-	failure: string | null;
-	status: InkWaveStatus;
-	/** Mic and speaker levels. The waveform reads this; a sample does not render. */
-	levelsRef: RefObject<InkWaveLevels>;
-	clientRef: RefObject<LiveSessionClient | null>;
-	captions: CaptionLog['captions'];
-	pastCalls: CaptionLog['pastCalls'];
-	draft: string;
-	setDraft: (text: string) => void;
-	send: () => void;
-	restart: () => void;
-	toggle: () => void;
-	ask: (question: string) => void;
-	stop: () => void;
-	mute: () => void;
-};
-
-type CallOptions = ConstructorParameters<typeof LiveSessionClient>[0];
-type ToolPhaseEvent = Extract<
-	Parameters<NonNullable<CallOptions['onTurnEvent']>>[0],
-	{ type: 'tool' }
->['tool'];
-
-/** The state a call's events set. */
-type CallSetters = {
-	setStatus: (status: InkWaveStatus) => void;
-	setPhase: (phase: Phase) => void;
-	setFailure: (failure: string | null) => void;
-	/** One tool phase event: the strip follows the calls that are open. */
-	noteTool: (tool: ToolPhaseEvent) => void;
-	levelsRef: RefObject<InkWaveLevels>;
-};
-
-/**
- * The live client's callbacks: status and phase, failures, voice levels, page tools and cancels.
- * Events from a client that is no longer current are ignored. `greet` runs on each `listening`.
- */
-function callCallbacks(
-	isCurrent: () => boolean,
-	greet: () => void,
-	set: CallSetters,
-	page: ReturnType<typeof th30PageTools>,
-	captionsRef: RefObject<CaptionLog>,
-	navigate: NavigateFunction,
-): Pick<
-	CallOptions,
-	'onStatusChange' | 'onError' | 'onVolumeLevel' | 'pageTools' | 'onTurnEvent' | 'onTranscript'
-> {
-	return {
-		onStatusChange: (next) => {
-			if (!isCurrent()) return;
-			set.setStatus(next);
-			if (next === 'reconnecting' || next === 'disconnected' || next === 'error') page.dropped();
-			if (next === 'error') set.setPhase('failed');
-			else if (next !== 'connecting' && next !== 'disconnected') set.setPhase('live');
-			if (next === 'listening') greet();
-		},
-		onError: (err) => {
-			if (!isCurrent()) return;
-			set.setFailure(wordFailure(err));
-			set.setPhase('failed');
-		},
-		onVolumeLevel: (level, isUser) => {
-			if (isUser) {
-				th30Voice.user = level;
-				set.levelsRef.current.input = level;
-			} else {
-				th30Voice.agent = level;
-				set.levelsRef.current.output = level;
-			}
-		},
-		onTranscript: (text, isUser, meta) => {
-			if (!isCurrent()) return;
-			captionsRef.current.applyTranscript(text, isUser, meta?.interim);
-		},
-		pageTools: page.pageTools,
-		onTurnEvent: (event) => {
-			if (event.type !== 'tool' || !isCurrent()) return;
-			set.noteTool(event.tool);
-			if (event.tool.name === 'navigate' && event.tool.phase === 'complete')
-				applyNavigation(navigate, event.tool.output);
-			const { callId, phase } = event.tool;
-			if (phase === 'complete' || phase === 'error' || phase === 'cancel') page.finished(callId);
-			if (phase === 'cancel') th30Surfaces.settled(callId, 'cancelled');
-		},
-	};
-}
-
-/** What starting a call needs from the hook that owns it. */
-type CallContext = Pick<PageRefs, 'pageLineRef' | 'toldRef' | 'packageRef' | 'askRef'> & {
-	navigate: NavigateFunction;
-	clientRef: RefObject<LiveSessionClient | null>;
-	chimeRef: RefObject<ReturnType<typeof makeChime> | null>;
-	captionsRef: RefObject<CaptionLog>;
-	set: CallSetters;
-};
-
-/** Opens a call unless one is on, knowing the page: chimes once through, and records a failure. */
-async function startCall({
-	navigate,
-	clientRef,
-	chimeRef,
-	captionsRef,
-	pageLineRef,
-	toldRef,
-	packageRef,
-	askRef,
-	set,
-}: CallContext): Promise<void> {
-	if (clientRef.current) return;
-	const chime = makeChime();
-	chimeRef.current = chime;
-	let chimed = false;
-	// The call opens with the page, so th30's greeting (the profile's `live.greeting`) fits it.
-	const line = pageLineRef.current;
-	const state = th30Surfaces.stateLine();
-	toldRef.current = line;
-	const ask = askRef.current;
-	askRef.current = null;
-	const held: PagePackage = { ...(line ? { page: line } : {}), ...(state ? { state } : {}) };
-	// The question opens this call only: later context updates leave it out.
-	const opening: PagePackage = ask ? { ...held, ask } : held;
-	packageRef.current = held;
-	// Through, the first time only: a call taken up again after a drop does not chime.
-	const greet = () => {
-		if (chimed) return;
-		chimed = true;
-		chime.play();
-	};
-	const client: LiveSessionClient = new LiveSessionClient({
-		profile: TH30_PROFILE_ID,
-		voiceIngress: true,
-		context: opening,
-		...callCallbacks(
-			() => clientRef.current === client,
-			greet,
-			set,
-			th30PageTools(),
-			captionsRef,
-			navigate,
-		),
-	});
-	clientRef.current = client;
-	set.setFailure(null);
-	set.setPhase('connecting');
-	// why: the search model and the captions load while the call connects, so neither keeps the call waiting.
-	warmDocsSearch();
-	void captionsPanel().catch(() => undefined);
-	try {
-		await client.connect();
-	} catch (err) {
-		if (clientRef.current !== client) return;
-		set.setFailure(wordFailure(err));
-		set.setPhase('failed');
-	}
-}
-
-function useTh30Work() {
-	const [work, setWork] = useState<Work | null>(null);
-	const openRef = useRef(new Map<string, string>());
-	const lingerRef = useRef<number | undefined>(undefined);
-	const clearWork = useCallback(() => {
-		window.clearTimeout(lingerRef.current);
-		openRef.current.clear();
-		setWork(null);
-	}, []);
-
-	const noteTool = useCallback((tool: ToolPhaseEvent) => {
-		const open = openRef.current;
-		if (tool.phase === 'running') {
-			window.clearTimeout(lingerRef.current);
-			const text = tool.activity ?? SURFACE_WORK[tool.name] ?? 'Working on it';
-			open.set(tool.callId, text);
-			setWork({ text, done: false });
-			return;
-		}
-		if (tool.phase !== 'complete' && tool.phase !== 'error' && tool.phase !== 'cancel') return;
-		const text = open.get(tool.callId);
-		if (text === undefined) return;
-		open.delete(tool.callId);
-		const stillOpen = [...open.values()].at(-1);
-		if (stillOpen !== undefined) {
-			setWork({ text: stillOpen, done: false });
-			return;
-		}
-		if (tool.phase !== 'complete') {
-			setWork(null);
-			return;
-		}
-		// The past tense holds a moment, so a quick call is still read.
-		setWork({ text: tool.activityPast ?? text, done: true });
-		window.clearTimeout(lingerRef.current);
-		lingerRef.current = window.setTimeout(() => {
-			setWork(null);
-		}, WORK_LINGER_MS);
-	}, []);
-
-	return { work, clearWork, noteTool };
-}
-
-function askTh30(
-	question: string,
-	{
-		client,
-		captions,
-		askRef,
-		start,
-	}: {
-		client: LiveSessionClient | null;
-		captions: ReturnType<typeof useLiveCaptionLog>;
-		askRef: PageRefs['askRef'];
-		start: () => Promise<void>;
-	},
-): void {
-	const text = question.trim();
-	if (!text) return;
-	if (client) {
-		client.sendText(text);
-		captions.noteSentText(text);
-		return;
-	}
-	askRef.current = text;
-	void start();
-}
-
-function disconnectTh30(
-	{
-		clientRef,
-		chimeRef,
-		levelsRef,
-	}: {
-		clientRef: RefObject<LiveSessionClient | null>;
-		chimeRef: RefObject<ReturnType<typeof makeChime> | null>;
-		levelsRef: RefObject<InkWaveLevels>;
-	},
-	detachFirst = false,
-): void {
-	const client = clientRef.current;
-	if (detachFirst) clientRef.current = null;
-	client?.disconnect();
-	clientRef.current = null;
-	chimeRef.current?.close();
-	chimeRef.current = null;
-	th30Voice.user = 0;
-	th30Voice.agent = 0;
-	levelsRef.current.input = 0;
-	levelsRef.current.output = 0;
-}
-
-function useTh30ConnectionState() {
-	const [phase, setPhase] = useState<Phase>('idle');
-	const [isMuted, setMuted] = useState(false);
-	const [failure, setFailure] = useState<string | null>(null);
-	const [status, setStatus] = useState<InkWaveStatus>('disconnected');
-	const levelsRef = useRef<InkWaveLevels>({ input: 0, output: 0 });
-	const clientRef = useRef<LiveSessionClient | null>(null);
-	const chimeRef = useRef<ReturnType<typeof makeChime> | null>(null);
-	return {
-		phase,
-		setPhase,
-		isMuted,
-		setMuted,
-		failure,
-		setFailure,
-		status,
-		setStatus,
-		levelsRef,
-		clientRef,
-		chimeRef,
-	};
-}
-
-function useTh30Call(
-	navigate: NavigateFunction,
-	{ pageLineRef, toldRef, packageRef, askRef }: PageRefs,
-): Th30Call {
-	const {
-		phase,
-		setPhase,
-		isMuted,
-		setMuted,
-		failure,
-		setFailure,
-		status,
-		setStatus,
-		levelsRef,
-		clientRef,
-		chimeRef,
-	} = useTh30ConnectionState();
-	const [draft, setDraft] = useState('');
-	const { work, clearWork, noteTool } = useTh30Work();
-	const captions = useLiveCaptionLog();
-	const captionsRef = useRef(captions);
-	captionsRef.current = captions;
-
-	const stop = useCallback(() => {
-		clearWork();
-		captionsRef.current.clear();
-		setDraft('');
-		disconnectTh30({ clientRef, chimeRef, levelsRef });
-		setMuted(false);
-		setStatus('disconnected');
-		setPhase('idle');
-	}, [clearWork, setPhase, levelsRef, setStatus, clientRef, setMuted, chimeRef]);
-
-	const start = useCallback(
-		() =>
-			startCall({
-				navigate,
-				clientRef,
-				chimeRef,
-				captionsRef,
-				pageLineRef,
-				toldRef,
-				packageRef,
-				askRef,
-				set: { setStatus, setPhase, setFailure, noteTool, levelsRef },
-			}),
-		[
-			navigate,
-			pageLineRef,
-			toldRef,
-			packageRef,
-			askRef,
-			noteTool,
-			setStatus,
-			clientRef,
-			setPhase,
-			levelsRef,
-			setFailure,
-			chimeRef,
-		],
-	);
-
-	const restart = useCallback(() => {
-		clearWork();
-		captionsRef.current.beginNextCall();
-		setDraft('');
-		disconnectTh30({ clientRef, chimeRef, levelsRef }, true);
-		setMuted(false);
-		setStatus('disconnected');
-		setFailure(null);
-		setPhase('connecting');
-		void start();
-	}, [start, clearWork, setFailure, setMuted, setStatus, clientRef, setPhase, levelsRef, chimeRef]);
-
-	const send = useCallback(
-		(text?: string) => {
-			const message = (typeof text === 'string' ? text : draft).trim();
-			const client = clientRef.current;
-			if (!message || !client) return;
-			client.sendText(message);
-			captionsRef.current.noteSentText(message);
-			setDraft('');
-		},
-		[draft, clientRef.current],
-	);
-
-	const toggle = useCallback(() => {
-		if (clientRef.current) stop();
-		else void start();
-	}, [start, stop, clientRef.current]);
-
-	const ask = useCallback(
-		(question: string) => {
-			askTh30(question, {
-				client: clientRef.current,
-				captions: captionsRef.current,
-				askRef,
-				start,
-			});
-		},
-		[start, askRef, clientRef.current],
-	);
-
-	useEffect(() => stop, [stop]);
-
-	const mute = () => {
-		const client = clientRef.current;
-		if (client) setMuted(client.toggleMute());
-	};
-	return {
-		phase,
-		work,
-		isMuted,
-		failure,
-		status,
-		levelsRef,
-		clientRef,
-		captions: captions.captions,
-		pastCalls: captions.pastCalls,
-		draft,
-		setDraft,
-		send,
-		restart,
-		toggle,
-		ask,
-		stop,
-		mute,
-	};
-}
-
-/** While a call is live, tells th30 what the page notes and where the person goes, each debounced. */
-function useTh30Feed(
-	phase: Phase,
-	clientRef: RefObject<LiveSessionClient | null>,
-	{ pageLine, toldRef, packageRef }: PageRefs,
-): void {
-	useEffect(() => {
-		if (phase !== 'live') return;
-		let pending: string[] = [];
-		let timer: number | undefined;
-		const off = onTh30Note((line) => {
-			pending.push(line);
-			window.clearTimeout(timer);
-			timer = window.setTimeout(() => {
-				const lines = pending;
-				pending = [];
-				packageRef.current = { ...packageRef.current, state: lines.join('; ') };
-				clientRef.current?.setContext(packageRef.current);
-			}, PAGE_LINE_DEBOUNCE_MS);
-		});
-		return () => {
-			off();
-			window.clearTimeout(timer);
-		};
-	}, [phase, clientRef, packageRef]);
-
-	useEffect(() => {
-		if (phase !== 'live' || !pageLine || pageLine === toldRef.current) return;
-		const timer = window.setTimeout(() => {
-			const client = clientRef.current;
-			if (!client || toldRef.current === undefined) return;
-			toldRef.current = pageLine;
-			packageRef.current = { ...packageRef.current, page: pageLine };
-			client.setContext(packageRef.current);
-		}, PAGE_LINE_DEBOUNCE_MS);
-		return () => {
-			window.clearTimeout(timer);
-		};
-	}, [pageLine, phase, clientRef, toldRef, packageRef]);
-}
-
-/** Marks the page while a call is on, and lets Escape end it. */
-function useLiveCallKeys(isLive: boolean, stop: () => void): void {
-	useEffect(() => {
-		document.documentElement.classList.toggle('th30-live', isLive);
-		if (!isLive) return;
-		const onKey = (event: KeyboardEvent) => {
-			if (event.key === 'Escape' && !event.defaultPrevented) stop();
-		};
-		window.addEventListener('keydown', onKey);
-		return () => {
-			window.removeEventListener('keydown', onKey);
-		};
-	}, [isLive, stop]);
-}
-
 export function Th30Provider({ children }: { children: ReactNode }) {
-	const navigate = useNavigate();
-	useSiteSurface(navigate);
-	const page = usePageRefs();
-	const call = useTh30Call(navigate, page);
-	useTh30Feed(call.phase, call.clientRef, page);
-	const isLive = call.phase !== 'idle';
-	const [messagesOpen, setMessagesOpen] = useState(false);
-	useLiveCallKeys(isLive, call.stop);
-	useEffect(() => {
-		if (call.phase === 'idle' || call.phase === 'failed') setMessagesOpen(false);
-	}, [call.phase]);
-	useEffect(() => {
-		document.documentElement.classList.toggle('th30-messages', messagesOpen);
-		return () => {
-			document.documentElement.classList.remove('th30-messages');
-		};
-	}, [messagesOpen]);
+	const [Runtime, setRuntime] = useState<ComponentType<Th30RuntimeProps>>();
+	const [status, setStatus] = useState(NO_CALL);
+	const actions = useRef<Th30Actions>(undefined);
+	const pressed = useRef<(call: Th30Actions) => void>(undefined);
+	const loading = useRef(false);
 
-	const toggleMessages = useCallback(() => {
-		setMessagesOpen((open) => !open);
+	const load = useCallback(() => {
+		if (loading.current) return;
+		loading.current = true;
+		import('./th30-runtime').then(
+			({ Th30Runtime }) => {
+				setRuntime(() => Th30Runtime);
+			},
+			() => {
+				loading.current = false;
+			},
+		);
 	}, []);
+
+	useEffect(() => {
+		if (!('requestIdleCallback' in window)) {
+			load();
+			return;
+		}
+		const idle = window.requestIdleCallback(load, { timeout: RUNTIME_IDLE_TIMEOUT_MS });
+		return () => {
+			window.cancelIdleCallback(idle);
+		};
+	}, [load]);
+
+	const connect = useCallback((next: Th30Actions) => {
+		actions.current = next;
+		pressed.current?.(next);
+		pressed.current = undefined;
+	}, []);
+
+	const api = useMemo((): Th30Api => {
+		const press = (act: (call: Th30Actions) => void) => {
+			if (actions.current) {
+				act(actions.current);
+				return;
+			}
+			pressed.current = act;
+			load();
+		};
+		return {
+			...status,
+			toggle: () => {
+				press((call) => {
+					call.toggle();
+				});
+			},
+			ask: (question) => {
+				press((call) => {
+					call.ask(question);
+				});
+			},
+			mute: () => {
+				press((call) => {
+					call.mute();
+				});
+			},
+			toggleMessages: () => {
+				press((call) => {
+					call.toggleMessages();
+				});
+			},
+		};
+	}, [status, load]);
 
 	return (
-		<Th30Context.Provider
-			value={{
-				isLive,
-				toggle: call.toggle,
-				ask: call.ask,
-				canMute: call.phase === 'live',
-				isMuted: call.isMuted,
-				mute: call.mute,
-				messagesOpen,
-				toggleMessages,
-			}}
-		>
+		<Th30Context.Provider value={api}>
 			{children}
-			<Theme theme={theoremSiteTheme} mode="dark">
-				<Th30Strip call={call} isLive={isLive} />
-				{isLive ? <Th30Messages call={call} open={messagesOpen} /> : null}
-			</Theme>
+			{Runtime ? <Runtime connect={connect} onStatus={setStatus} /> : null}
 		</Th30Context.Provider>
 	);
-}
-
-const captionsPanel = () => import('./th30-captions');
-const LiveCaptionsPanel = lazy(() =>
-	import('./th30-captions').then(({ LiveCaptionsPanel }) => ({ default: LiveCaptionsPanel })),
-);
-
-/** Messages beside the page: the live runner's captions, and the call's controls. */
-function Th30Messages({ call, open }: { call: Th30Call; open: boolean }) {
-	return (
-		<div
-			className="th30-messages-panel"
-			id="th30-messages"
-			role="complementary"
-			aria-label="Messages"
-			inert={!open}
-			aria-hidden={!open}
-		>
-			<HStack
-				width="100%"
-				hAlign="end"
-				vAlign="center"
-				gap={1}
-				paddingInline={3}
-				paddingBlock={2}
-				role="toolbar"
-				aria-label="Call controls"
-			>
-				<IconButton
-					label={call.isMuted ? 'Unmute' : 'Mute'}
-					tooltip={call.isMuted ? 'Unmute' : 'Mute'}
-					icon={call.isMuted ? <IconMicrophoneOff /> : <IconMicrophone />}
-					variant="ghost"
-					isDisabled={call.phase !== 'live'}
-					onClick={call.mute}
-				/>
-				<IconButton
-					label="Restart call"
-					tooltip="Restart call"
-					icon={<IconRefresh />}
-					variant="ghost"
-					onClick={call.restart}
-				/>
-				<IconButton
-					label="End call"
-					tooltip="End call"
-					icon={<IconPhoneOff />}
-					variant="destructive"
-					onClick={call.stop}
-				/>
-			</HStack>
-			<div className="th30-messages-body">
-				<Suspense fallback={null}>
-					<LiveCaptionsPanel
-						handle="th30"
-						captions={call.captions}
-						pastCalls={call.pastCalls}
-						draftText={call.draft}
-						onDraftTextChange={call.setDraft}
-						onSubmit={call.send}
-						isDisabled={call.phase !== 'live'}
-					/>
-				</Suspense>
-			</div>
-		</div>
-	);
-}
-
-/**
- * What th30 is doing, at the left of the strip where "Connecting" shows. The waveform eases
- * right to make room: the gap is measured from the text and animates as a registered property.
- */
-function Th30Work({ work }: { work: Work | null }) {
-	const textRef = useRef<HTMLSpanElement>(null);
-	// Held while the words fade, so they do not vanish before the wave comes back.
-	const heldRef = useRef(work);
-	if (work) heldRef.current = work;
-	const shown = heldRef.current;
-	useLayoutEffect(() => {
-		const strip = textRef.current?.closest<HTMLElement>('.th30-strip');
-		if (!strip) return;
-		const width = work ? (textRef.current?.offsetWidth ?? 0) : 0;
-		strip.style.setProperty('--th30-gap', `${String(work ? width + 24 : 0)}px`);
-	}, [work]);
-	return (
-		<span
-			ref={textRef}
-			className="th30-strip-work"
-			data-open={work ? '' : undefined}
-			data-done={work?.done ? '' : undefined}
-			role="status"
-		>
-			{shown?.text}
-		</span>
-	);
-}
-
-/** The strip along the page while a call is on: th30's voice, and how the call is going. */
-function Th30Strip({ call, isLive }: { call: Th30Call; isLive: boolean }) {
-	const { phase, status, levelsRef, work } = call;
-	return (
-		<div className="th30-strip" inert={!isLive} aria-hidden={!isLive}>
-			{phase === 'live' ? (
-				<div className="th30-wave" aria-hidden>
-					<InkWaveform
-						status={status}
-						levelsRef={levelsRef}
-						variant="strip"
-						toolActive={work !== null && !work.done}
-					/>
-				</div>
-			) : null}
-			{phase === 'live' ? <Th30Work work={work} /> : null}
-			<span className="th30-strip-status" role="status">
-				{stripStatus(phase, call.failure, status)}
-			</span>
-		</div>
-	);
-}
-
-/** Seconds for a custom property written as `12ms` or `0.22s`. */
-function cssSeconds(name: string, fallback: number): number {
-	const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-	const value = Number.parseFloat(raw);
-	if (!Number.isFinite(value)) return fallback;
-	return raw.endsWith('ms') ? value / 1000 : value;
-}
-
-/** How long the strip's bars take to arrive, and how long the last one takes to appear. */
-function waveEntrance(): { total: number; fade: number } {
-	if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return { total: 1, fade: 0.2 };
-	const fade = cssSeconds('--th30-bar-in', 0.14);
-	const stagger = cssSeconds('--th30-bar-stagger', 0.006);
-	const bars = Number.parseFloat(
-		getComputedStyle(document.documentElement).getPropertyValue('--th30-bars'),
-	);
-	const count = Number.isFinite(bars) ? bars : 120;
-	return { total: (count - 1) * stagger + fade, fade };
-}
-
-/**
- * A calm two-note chime for "you're through". Its own context, made on the click that starts
- * the call, so the browser lets it sound. A low major third. It stays audible until the last
- * bar, then leaves with that bar.
- */
-function makeChime(): { play: () => void; close: () => void } {
-	const ctx = new AudioContext();
-	const { total, fade } = waveEntrance();
-	return {
-		play: () => {
-			const at = ctx.currentTime + 0.02;
-			const end = at + total;
-			const releaseAt = end - fade;
-			[261.63, 329.63].forEach((hz, i) => {
-				const start = at + i * 0.28;
-				const attackEnd = start + 0.1;
-				const tone = ctx.createOscillator();
-				const gain = ctx.createGain();
-				tone.type = 'sine';
-				tone.frequency.value = hz;
-				gain.gain.setValueAtTime(0, start);
-				gain.gain.linearRampToValueAtTime(0.04, attackEnd);
-				if (releaseAt > attackEnd + 0.02) {
-					gain.gain.exponentialRampToValueAtTime(0.018, releaseAt);
-				}
-				gain.gain.linearRampToValueAtTime(0.001, end - 0.02);
-				gain.gain.exponentialRampToValueAtTime(0.0001, end);
-				tone.connect(gain).connect(ctx.destination);
-				tone.start(start);
-				tone.stop(end);
-			});
-		},
-		close: () => {
-			window.setTimeout(() => void ctx.close(), Math.ceil(total * 1000) + 400);
-		},
-	};
 }

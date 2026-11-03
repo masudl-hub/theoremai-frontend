@@ -13,8 +13,10 @@ import { Token } from '@astryxdesign/core/Token';
 import { VStack } from '@astryxdesign/core/VStack';
 import { IconBrandGithub, IconPlayerPlay, IconSearch } from '@tabler/icons-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { articleHref, cardFor, type DocSearchHit } from '../../lib/docs/query';
-import type { DocArticleCard, DocShell } from '../../lib/docs/schema';
+import { articleHref } from '../../lib/docs/article-href';
+import { loadedDocIndex } from '../../lib/docs/client-index';
+import type { DocSearchHit } from '../../lib/docs/query';
+import type { DocArticleCard } from '../../lib/docs/schema';
 import { useDocsSearch } from '../../lib/docs/use-docs-search';
 import { warmDocsSearch } from '../../lib/docs/warm-docs-search';
 import { stillRenditions, TILE_WIDTH } from '../../lib/stills';
@@ -43,13 +45,8 @@ const TYPE_MS = 55;
 const ERASE_MS = 25;
 const HOLD_MS = 1800;
 const GAP_MS = 350;
-/** The reads the landing opens with, each named for what the visitor came to do. */
-const FEATURED = [
-	{ slug: 'start', title: 'Get started' },
-	{ slug: 'profiles', title: 'Define your agent' },
-	{ slug: 'tools', title: 'Add tools' },
-	{ slug: 'guardrails', title: 'Set guardrails' },
-] as const;
+/** A read the landing opens with, named for what the visitor came to do. */
+export type FeaturedRead = { article: DocArticleCard; title: string };
 
 const REPO = 'https://github.com/masudl-hub/theoremai';
 
@@ -180,30 +177,24 @@ function useSearchHint(paused: boolean): string {
 	return shown < 0 ? text : text.slice(0, shown);
 }
 
-function tilesFromShell(
-	shell: DocShell,
+function landingTiles(
+	featured: readonly FeaturedRead[],
 	query: string,
 	hits: readonly DocSearchHit[],
 ): LandingTile[] {
-	const trimmed = query.trim();
-	if (!trimmed) {
-		return FEATURED.flatMap(({ slug, title }) => {
-			const article = cardFor(shell, slug);
-			return article === undefined
-				? []
-				: [
-						{
-							article,
-							href: articleHref(article),
-							title,
-							excerpt: article.summary,
-							featured: true,
-						},
-					];
-		});
+	if (!query.trim()) {
+		return featured.map(({ article, title }) => ({
+			article,
+			href: articleHref(article),
+			title,
+			excerpt: article.summary,
+			featured: true,
+		}));
 	}
+	// A hit comes from the index, so the index is here to give its card.
+	const cards = loadedDocIndex()?.bySlug;
 	return hits.flatMap((hit) => {
-		const article = cardFor(shell, hit.slug);
+		const article = cards?.[hit.slug];
 		return article === undefined
 			? []
 			: [
@@ -377,12 +368,12 @@ function LandingResults({
 	);
 }
 
-export function DocsLanding({ shell }: { shell: DocShell }) {
+export function DocsLanding({ featured }: { featured: readonly FeaturedRead[] }) {
 	const [query, setQuery] = useState('');
 	const found = useDocsSearch(query, SEARCH_LIMIT);
 	const target = useMemo(
-		() => tilesFromShell(shell, found.term, found.results),
-		[shell, found.term, found.results],
+		() => landingTiles(featured, found.term, found.results),
+		[featured, found.term, found.results],
 	);
 	const { tiles, phase } = useEasedTiles(target);
 	const searching = found.term.length > 0;

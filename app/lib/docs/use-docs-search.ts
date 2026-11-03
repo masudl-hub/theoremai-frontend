@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { clientDocIndex, loadedDocIndex } from './client-index';
-import { type DocSearchHit, searchDocs } from './query';
+import { clientDocIndex } from './client-index';
+import type { DocSearchHit, searchDocs } from './query';
 import type { DocIndex } from './schema';
 
 /** What the hook gives back: the hits to show, the question they answer, and how they were ranked. */
@@ -39,25 +39,36 @@ function useSettledTerm(typed: string): string {
 	return typed ? term : '';
 }
 
-/** The docs index once there is a question to search it for; `failed` when it cannot be fetched. */
-function useIndexFor(term: string): DocIndex | 'failed' | undefined {
-	const [index, setIndex] = useState<DocIndex | 'failed' | undefined>(loadedDocIndex);
+/** The docs index and the code that searches it, both fetched for the first question. */
+type Searchable = { index: DocIndex; search: typeof searchDocs };
+
+let searchable: Searchable | undefined;
+
+async function loadSearchable(): Promise<Searchable> {
+	const [index, { searchDocs: search }] = await Promise.all([clientDocIndex(), import('./query')]);
+	searchable = { index, search };
+	return searchable;
+}
+
+/** What searches the docs once there is a question for it; `failed` when it cannot be fetched. */
+function useSearchableFor(term: string): Searchable | 'failed' | undefined {
+	const [loaded, setLoaded] = useState<Searchable | 'failed' | undefined>(searchable);
 	useEffect(() => {
-		if (!term || (index !== undefined && index !== 'failed')) return;
+		if (!term || (loaded !== undefined && loaded !== 'failed')) return;
 		let current = true;
-		clientDocIndex().then(
+		loadSearchable().then(
 			(fetched) => {
-				if (current) setIndex(fetched);
+				if (current) setLoaded(fetched);
 			},
 			() => {
-				if (current) setIndex('failed');
+				if (current) setLoaded('failed');
 			},
 		);
 		return () => {
 			current = false;
 		};
-	}, [term, index]);
-	return index;
+	}, [term, loaded]);
+	return loaded;
 }
 
 /**
@@ -70,10 +81,10 @@ function useIndexFor(term: string): DocIndex | 'failed' | undefined {
  */
 export function useDocsSearch(query: string, limit: number): DocsSearch {
 	const term = useSettledTerm(query.trim());
-	const index = useIndexFor(term);
-	const ready = index !== undefined && index !== 'failed' ? index : undefined;
+	const loaded = useSearchableFor(term);
+	const ready = loaded !== undefined && loaded !== 'failed' ? loaded : undefined;
 	const words = useMemo(
-		() => (ready && term ? searchDocs(ready, term, limit) : undefined),
+		() => (ready && term ? ready.search(ready.index, term, limit) : undefined),
 		[ready, term, limit],
 	);
 	const [answer, setAnswer] = useState<{ term: string; hits: Semantic } | 'failed'>();
@@ -82,7 +93,7 @@ export function useDocsSearch(query: string, limit: number): DocsSearch {
 		if (!term || !ready) return;
 		let current = true;
 		void import('./semantic')
-			.then(({ searchDocsSemantic }) => searchDocsSemantic(ready, term, limit))
+			.then(({ searchDocsSemantic }) => searchDocsSemantic(ready.index, term, limit))
 			.then(
 				(hits) => {
 					if (!current) return;
@@ -100,7 +111,7 @@ export function useDocsSearch(query: string, limit: number): DocsSearch {
 
 	const settled = useMemo((): DocsSearch | undefined => {
 		if (!term) return NO_QUESTION;
-		if (index === 'failed') return { ...NO_QUESTION, term, ranking: 'words-only' };
+		if (loaded === 'failed') return { ...NO_QUESTION, term, ranking: 'words-only' };
 		if (!words) return undefined;
 		if (answer === 'failed') return { term, ...words, ranking: 'words-only' };
 		if (answer?.term === term) {
@@ -112,7 +123,7 @@ export function useDocsSearch(query: string, limit: number): DocsSearch {
 			};
 		}
 		return modelWarm ? undefined : { term, ...words, ranking: 'words' };
-	}, [term, index, words, answer, modelWarm]);
+	}, [term, loaded, words, answer, modelWarm]);
 
 	const [shown, setShown] = useState<DocsSearch>(NO_QUESTION);
 	if (settled && settled !== shown) setShown(settled);

@@ -5,7 +5,7 @@ import { PageJsonLd } from '../components/page-summary';
 import { getDocIndex, getDocShell } from '../lib/docs/.server/load-index';
 import { markdownTwinOrNotFound } from '../lib/docs/.server/markdown-twin';
 import { articleJsonLd } from '../lib/docs/machine';
-import { SITE_NAME } from '../lib/home-content';
+import { SITE_NAME } from '../lib/site-identity';
 import type { Route } from './+types/docs.$slug';
 
 export function loader({ params, request }: Route.LoaderArgs) {

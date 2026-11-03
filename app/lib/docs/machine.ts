@@ -2,15 +2,8 @@
  * Machine twins of the composed index. Same projector as Th30 read.
  */
 
-import {
-	DISCORD_URL,
-	HOME_DESCRIPTION,
-	homeMarkdown,
-	KERNEL,
-	KERNEL_NAME,
-	PACKAGE_LINKS,
-	SITE_NAME,
-} from '../home-content';
+import { HOME_DESCRIPTION, homeMarkdown, KERNEL } from '../home-content';
+import { DISCORD_URL, KERNEL_NAME, PACKAGE_LINKS, SITE_NAME } from '../site-identity';
 import { studioMarkdown } from '../studio-content';
 import { symbolTerm } from './catalog-rows';
 import { projectArticleText } from './project-text';

@@ -31,7 +31,7 @@ import { shapeAt, shellKindFor, shellKindOfHref } from '../components/shell-moti
 import { NavMark } from '../components/shell-navigation';
 import { Th30Provider, Th30Trigger } from '../components/th30-dock';
 import { getDocIndex } from '../lib/docs/.server/load-index';
-import { PACKAGE_LINKS } from '../lib/home-content';
+import { PACKAGE_LINKS } from '../lib/site-identity';
 import { studioJsonLd } from '../lib/studio-content';
 import type { Route } from './+types/shell';
 

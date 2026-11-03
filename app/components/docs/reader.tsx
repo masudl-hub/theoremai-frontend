@@ -18,13 +18,14 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { IconBrandGithub, IconMenu2, IconSearch } from '@tabler/icons-react';
 import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
+import { articleHref } from '../../lib/docs/article-href';
 import {
 	chapterIsOpen,
 	chapterNavigationTree,
 	setChapterCollapsed,
 } from '../../lib/docs/chapter-navigation';
 import { projectArticleText } from '../../lib/docs/project-text';
-import { articleHref, chapterNeighbors, type DocSearchHit } from '../../lib/docs/query';
+import { chapterNeighbors, type DocSearchHit } from '../../lib/docs/query';
 import type { DocArticle, DocSectionEntry, DocShell, DocTreeNode } from '../../lib/docs/schema';
 import { useDocsSearch } from '../../lib/docs/use-docs-search';
 import { warmDocsSearch } from '../../lib/docs/warm-docs-search';

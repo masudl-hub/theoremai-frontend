@@ -4,7 +4,7 @@
  */
 import { openStudioProject } from '@theoremjs/studio/ui/lib/studio-open.ts';
 import { StudioNoProject } from '@theoremjs/studio/ui/studio-no-project.tsx';
-import { SITE_NAME } from '../lib/home-content';
+import { SITE_NAME } from '../lib/site-identity';
 
 export { default, HydrateFallback, handle } from './studio';
 

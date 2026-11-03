@@ -12,15 +12,10 @@ import '../components/home-scroll.css';
 import { homeTerms } from '../lib/.server/home-terms';
 import { SITE_REDIRECTS } from '../lib/docs/articles/chapters';
 import type { StudioSeedId } from '../lib/docs/schema';
-import {
-	COOKBOOK_SHOWN,
-	HOME_DESCRIPTION,
-	homeJsonLd,
-	KERNEL,
-	SITE_NAME,
-} from '../lib/home-content';
+import { COOKBOOK_SHOWN, HOME_DESCRIPTION, homeJsonLd, KERNEL } from '../lib/home-content';
 import { type GoalId, isGoalId } from '../lib/home-goals';
 import { isPlatformId, PLATFORM_SHOWN, type PlatformId } from '../lib/home-platform';
+import { SITE_NAME } from '../lib/site-identity';
 import { GOALS, HOME_TAGLINE } from '../lib/site-pitch';
 import type { Route } from './+types/home';
 export function loader({ request }: Route.LoaderArgs) {

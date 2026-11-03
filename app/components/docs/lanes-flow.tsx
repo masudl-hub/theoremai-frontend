@@ -6,7 +6,7 @@ import type { LanesFigure } from '../../lib/docs/figure';
 import { FlowToken } from './flow-token';
 import { mapPolyline } from './map-line';
 
-type LaneStep = Omit<LanesFigure['steps'][number], 'lane'> & { lane?: string };
+export type LaneStep = Omit<LanesFigure['steps'][number], 'lane'> & { lane?: string };
 
 /** Below this width the lanes no longer fit side by side, so the steps stack and name their lane. */
 export const LANES_MIN_WIDTH = 560;

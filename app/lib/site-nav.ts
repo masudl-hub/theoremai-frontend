@@ -1,6 +1,6 @@
 import { SITE_PAGES } from '@theoremjs/studio/ui/studio-nav.ts';
 import { PACKAGE_ICONS, PAGE_ICONS } from '@theoremjs/studio/ui/studio-shell.tsx';
-import { PACKAGE_LINKS } from './home-content';
+import { PACKAGE_LINKS } from './site-identity';
 
 /** The rail's rows with their icons, for the landing page's own copy of them. */
 export const SITE_SECTIONS = SITE_PAGES.map((page) => ({

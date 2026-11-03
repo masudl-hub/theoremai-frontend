@@ -9,9 +9,10 @@ import {
 	type CookbookIncludeTag,
 	type CookbookTags,
 } from '@theoremjs/studio';
-import { packageLinks, SITE_PAGES } from '@theoremjs/studio/ui/studio-nav.ts';
+import { SITE_PAGES } from '@theoremjs/studio/ui/studio-nav.ts';
 import { goalText } from './home-goals';
 import { KERNEL_PACKAGE_VERSION } from './kernel-version';
+import { DISCORD_URL, KERNEL_NAME, PACKAGE_LINKS, REPO_URL, SITE_NAME } from './site-identity';
 import { ARGUMENT, GOALS, HOME_TAGLINE } from './site-pitch';
 
 const env = import.meta.env as Record<string, unknown>;
@@ -33,8 +34,6 @@ function envList(key: string): readonly string[] {
 		: [];
 }
 
-export const SITE_NAME = 'theorem';
-export const KERNEL_NAME = '@theoremjs/agents';
 export const KERNEL = {
 	name: KERNEL_NAME,
 	version: KERNEL_PACKAGE_VERSION,
@@ -43,10 +42,8 @@ export const KERNEL = {
 	keywords: envList('KERNEL_KEYWORDS'),
 } as const;
 
-export const REPO_URL = envString('KERNEL_REPOSITORY') || 'https://github.com/masudl-hub/theoremai';
 /** The holder the package's LICENSE names. */
 export const COPYRIGHT = '© 2026 Orchid AI LLC';
-export const DISCORD_URL = 'https://discord.gg/X6RQvSWQ58';
 /** What each package's README says to install (read at build time), in the order the switch cycles. */
 export const INSTALL_COMMANDS = (
 	[
@@ -94,7 +91,6 @@ export const PACKAGE_TILES = [
 	packages: readonly PackageId[];
 	docs: string;
 }[];
-export const PACKAGE_LINKS = packageLinks(KERNEL_NAME, REPO_URL);
 
 export const HEADLINE = [
 	{ text: 'What if agentic', claim: false },

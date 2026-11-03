@@ -8,7 +8,8 @@ import { PROFILE_GRAPH, PROFILE_TYPES } from '@theoremjs/agents/schema';
 import { STUDIO_EXAMPLES } from '@theoremjs/studio/ui/lib/studio-examples.ts';
 import { FACET_SECTION } from './docs/placement';
 import type { DocIndex, DocSection, PageSymbol } from './docs/schema';
-import { KERNEL, KERNEL_NAME, SITE_NAME } from './home-content';
+import { KERNEL } from './home-content';
+import { KERNEL_NAME, SITE_NAME } from './site-identity';
 
 export const STUDIO_TITLE = 'Studio';
 

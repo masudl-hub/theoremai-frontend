@@ -3,18 +3,14 @@
  */
 
 import { create, insert, type Orama, search } from '@orama/orama';
+import { articleHref } from './article-href';
 import { symbolTerm } from './catalog-rows';
 import { introText, sectionText } from './chapter-markdown';
 import { projectArticleText } from './project-text';
 import type { DocArticle, DocArticleCard, DocIndex, DocShell, DocTreeNode } from './schema';
 import { formatWithLineNumbers, plainMarkdown } from './text-format';
 
-export function articleHref(article: Pick<DocArticle, 'canonicalPath'>, blockId?: string): string {
-	return blockId ? `${article.canonicalPath}#${blockId}` : article.canonicalPath;
-}
-
-/** A chapter's card by its slug. */
-export function cardFor(shell: DocShell, slug: string): DocArticleCard | undefined {
+function cardOfSlug(shell: DocShell, slug: string): DocArticleCard | undefined {
 	return shell.articles.find((article) => article.slug === slug);
 }
 
@@ -35,8 +31,8 @@ export function chapterNeighbors(
 	const prevSlug = at > 0 ? slugs[at - 1] : undefined;
 	const nextSlug = at < slugs.length - 1 ? slugs[at + 1] : undefined;
 	return {
-		prev: prevSlug === undefined ? undefined : cardFor(shell, prevSlug),
-		next: nextSlug === undefined ? undefined : cardFor(shell, nextSlug),
+		prev: prevSlug === undefined ? undefined : cardOfSlug(shell, prevSlug),
+		next: nextSlug === undefined ? undefined : cardOfSlug(shell, nextSlug),
 	};
 }
 
