@@ -113,7 +113,8 @@ test('every response carries the site headers, and a route keeps one it set itse
 
 test('the static files carry the same headers as the Worker sets', () => {
 	const file = readFileSync(new URL('../public/_headers', import.meta.url), 'utf8');
-	const lines = file.split('\n').filter((line) => line.startsWith('  '));
+	const everyFile = file.slice(file.indexOf('/*\n'), file.indexOf('\n\n', file.indexOf('/*\n')));
+	const lines = everyFile.split('\n').filter((line) => line.startsWith('  '));
 	assert.deepEqual(
 		lines.map((line) => line.trim()),
 		Object.entries(SECURITY_HEADERS).map(([name, value]) => `${name}: ${value}`),

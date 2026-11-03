@@ -156,12 +156,13 @@ export function Th30Trigger({
 	);
 }
 
-/** How long the call may wait for the browser to go idle before it loads anyway. */
+/** How long the call may wait, once the page has loaded, for the browser to go idle. */
 const RUNTIME_IDLE_TIMEOUT_MS = 2000;
 
 /**
- * th30's buttons work from the first paint. The call behind them loads when the browser goes idle,
- * or on the first press, and a press that gets there first runs once it has.
+ * th30's buttons work from the first paint. The call behind them loads on the first press, or once
+ * the page has loaded and the browser is idle, so it never competes with the page's own files. A
+ * press that gets there first runs once it has.
  */
 export function Th30Provider({ children }: { children: ReactNode }) {
 	const [Runtime, setRuntime] = useState<ComponentType<Th30RuntimeProps>>();
@@ -184,13 +185,22 @@ export function Th30Provider({ children }: { children: ReactNode }) {
 	}, []);
 
 	useEffect(() => {
-		if (!('requestIdleCallback' in window)) {
-			load();
-			return;
+		let idle: number | undefined;
+		const loadWhenIdle = () => {
+			if ('requestIdleCallback' in window) {
+				idle = window.requestIdleCallback(load, { timeout: RUNTIME_IDLE_TIMEOUT_MS });
+			} else {
+				load();
+			}
+		};
+		if (document.readyState === 'complete') {
+			loadWhenIdle();
+		} else {
+			window.addEventListener('load', loadWhenIdle, { once: true });
 		}
-		const idle = window.requestIdleCallback(load, { timeout: RUNTIME_IDLE_TIMEOUT_MS });
 		return () => {
-			window.cancelIdleCallback(idle);
+			window.removeEventListener('load', loadWhenIdle);
+			if (idle !== undefined) window.cancelIdleCallback(idle);
 		};
 	}, [load]);
 

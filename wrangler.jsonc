@@ -8,6 +8,8 @@
 	"compatibility_flags": ["nodejs_compat"],
 	"observability": { "enabled": true },
 	"upload_source_maps": true,
+	// A page built ahead of time keeps its address: /docs serves docs/index.html, with no redirect.
+	"assets": { "html_handling": "drop-trailing-slash" },
 	// The studio's mid-turn steer inboxes, one object per inbox id; and the
 	// day's studio allowances (every API request, decisions on the site's
 	// TypeSafe key, host tool calls, voice calls), per visitor address and for the site.

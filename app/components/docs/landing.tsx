@@ -218,7 +218,15 @@ function tileSrcSet(src: string): string {
 }
 
 /** A tile's still, cropped to 4:3. */
-function TileStill({ article, shaded }: { article: DocArticleCard; shaded: boolean }) {
+function TileStill({
+	article,
+	shaded,
+	isFirst,
+}: {
+	article: DocArticleCard;
+	shaded: boolean;
+	isFirst: boolean;
+}) {
 	return (
 		<AspectRatio
 			className={
@@ -233,6 +241,7 @@ function TileStill({ article, shaded }: { article: DocArticleCard; shaded: boole
 				sizes={TILE_SIZES}
 				alt={article.cover.alt}
 				decoding="async"
+				fetchPriority={isFirst ? 'high' : undefined}
 				data-docs-cover={article.slug}
 			/>
 		</AspectRatio>
@@ -244,7 +253,7 @@ function TileStill({ article, shaded }: { article: DocArticleCard; shaded: boole
  * is its still, named on it, so the card's hover lands on the picture alone.
  */
 function landingTileCards(tiles: LandingTile[], phase: TilePhase) {
-	return tiles.map(({ article, href, title, excerpt, featured }) =>
+	return tiles.map(({ article, href, title, excerpt, featured }, at) =>
 		featured ? (
 			<ClickableCard
 				key={href}
@@ -257,7 +266,7 @@ function landingTileCards(tiles: LandingTile[], phase: TilePhase) {
 				data-phase={phase}
 				data-featured=""
 			>
-				<TileStill article={article} shaded={featured} />
+				<TileStill article={article} shaded={featured} isFirst={at === 0} />
 				<div className="docs-landing-tile-name">
 					<StillTitle maxLines={1}>{title}</StillTitle>
 				</div>
@@ -275,7 +284,7 @@ function landingTileCards(tiles: LandingTile[], phase: TilePhase) {
 			>
 				<VStack gap={3}>
 					<Card padding={0}>
-						<TileStill article={article} shaded={featured} />
+						<TileStill article={article} shaded={featured} isFirst={at === 0} />
 					</Card>
 					<VStack gap={1}>
 						<StillTitle maxLines={1}>{title}</StillTitle>

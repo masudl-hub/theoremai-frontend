@@ -7,3 +7,7 @@
   Content-Security-Policy: frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'
   Strict-Transport-Security: max-age=31536000
   Cross-Origin-Opener-Policy: same-origin-allow-popups
+
+# The build names these by their contents, so a name never comes back with other bytes.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

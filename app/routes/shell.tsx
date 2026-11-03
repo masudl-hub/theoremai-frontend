@@ -123,10 +123,8 @@ function Th30Button() {
  */
 export function loader({ request }: Route.LoaderArgs) {
 	const url = new URL(request.url);
-	return {
-		origin: url.origin,
-		studioJsonLd: url.pathname === '/studio' ? studioJsonLd(getDocIndex(), url.origin) : undefined,
-	};
+	if (url.pathname !== '/studio') return {};
+	return { origin: url.origin, studioJsonLd: studioJsonLd(getDocIndex(), url.origin) };
 }
 
 /**

@@ -21,7 +21,9 @@ function modelContext(): ModelContext | undefined {
 
 /** The page at `path` as Markdown, the same text the site serves to `Accept: text/markdown`. */
 async function pageText(path: string): Promise<string> {
-	const response = await fetch(path, { headers: { accept: 'text/markdown' } });
+	// /docs is a static page the Worker never sees, so only its `.md` address answers in Markdown.
+	const address = path === '/docs' ? '/docs.md' : path;
+	const response = await fetch(address, { headers: { accept: 'text/markdown' } });
 	const type = response.headers.get('content-type') ?? '';
 	if (!response.ok || !type.startsWith('text/markdown')) {
 		throw new Error(`${path} has no Markdown: try /, /studio, /docs or /docs/<chapter>`);
