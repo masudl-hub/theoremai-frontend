@@ -306,9 +306,9 @@
 		}
 	},
 	"profiles/compaction": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
-			"src/kernel/engine/runner/gates.ts": "61ec2b682ee720ad7776fefdaea77a0d7f0a80cc",
+			"src/kernel/engine/runner/gates.ts": "c43a65d9cb1f8547b5251d82fe04119797a1c0be",
 			"src/kernel/engine/runner/mod.ts": "550637d8c10be46a4ad6987186f132bffe05af5c",
 			"src/kernel/engine/runner/nested.ts": "2d4f2bad1de44074829450c1b9aab6b570e99765",
 			"src/kernel/engine/runner/refused-media.ts": "766aa0c084ea08389172b3c506f1ff97a27e3f56",
@@ -330,9 +330,9 @@
 		}
 	},
 	"profiles/embedding": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
-			"src/kernel/engine/runner/gates.ts": "61ec2b682ee720ad7776fefdaea77a0d7f0a80cc",
+			"src/kernel/engine/runner/gates.ts": "c43a65d9cb1f8547b5251d82fe04119797a1c0be",
 			"src/kernel/engine/runner/mod.ts": "550637d8c10be46a4ad6987186f132bffe05af5c",
 			"src/kernel/engine/runner/nested.ts": "2d4f2bad1de44074829450c1b9aab6b570e99765",
 			"src/kernel/engine/runner/refused-media.ts": "766aa0c084ea08389172b3c506f1ff97a27e3f56",
@@ -354,9 +354,9 @@
 		}
 	},
 	"profiles/image": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
-			"src/kernel/engine/runner/gates.ts": "61ec2b682ee720ad7776fefdaea77a0d7f0a80cc",
+			"src/kernel/engine/runner/gates.ts": "c43a65d9cb1f8547b5251d82fe04119797a1c0be",
 			"src/kernel/engine/runner/mod.ts": "550637d8c10be46a4ad6987186f132bffe05af5c",
 			"src/kernel/engine/runner/nested.ts": "2d4f2bad1de44074829450c1b9aab6b570e99765",
 			"src/kernel/engine/runner/refused-media.ts": "766aa0c084ea08389172b3c506f1ff97a27e3f56",
@@ -378,9 +378,9 @@
 		}
 	},
 	"profiles/lifecycle": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
-			"src/kernel/engine/runner/gates.ts": "61ec2b682ee720ad7776fefdaea77a0d7f0a80cc",
+			"src/kernel/engine/runner/gates.ts": "c43a65d9cb1f8547b5251d82fe04119797a1c0be",
 			"src/kernel/engine/runner/mod.ts": "550637d8c10be46a4ad6987186f132bffe05af5c",
 			"src/kernel/engine/runner/nested.ts": "2d4f2bad1de44074829450c1b9aab6b570e99765",
 			"src/kernel/engine/runner/refused-media.ts": "766aa0c084ea08389172b3c506f1ff97a27e3f56",
@@ -395,9 +395,9 @@
 		}
 	},
 	"profiles/live": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
-			"src/kernel/engine/runner/gates.ts": "61ec2b682ee720ad7776fefdaea77a0d7f0a80cc",
+			"src/kernel/engine/runner/gates.ts": "c43a65d9cb1f8547b5251d82fe04119797a1c0be",
 			"src/kernel/engine/runner/mod.ts": "550637d8c10be46a4ad6987186f132bffe05af5c",
 			"src/kernel/engine/runner/nested.ts": "2d4f2bad1de44074829450c1b9aab6b570e99765",
 			"src/kernel/engine/runner/refused-media.ts": "766aa0c084ea08389172b3c506f1ff97a27e3f56",
@@ -412,9 +412,9 @@
 		}
 	},
 	"profiles/resumption": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
-			"src/kernel/engine/runner/gates.ts": "61ec2b682ee720ad7776fefdaea77a0d7f0a80cc",
+			"src/kernel/engine/runner/gates.ts": "c43a65d9cb1f8547b5251d82fe04119797a1c0be",
 			"src/kernel/engine/runner/mod.ts": "550637d8c10be46a4ad6987186f132bffe05af5c",
 			"src/kernel/engine/runner/nested.ts": "2d4f2bad1de44074829450c1b9aab6b570e99765",
 			"src/kernel/engine/runner/refused-media.ts": "766aa0c084ea08389172b3c506f1ff97a27e3f56",
@@ -429,9 +429,9 @@
 		}
 	},
 	"profiles/speech": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
-			"src/kernel/engine/runner/gates.ts": "61ec2b682ee720ad7776fefdaea77a0d7f0a80cc",
+			"src/kernel/engine/runner/gates.ts": "c43a65d9cb1f8547b5251d82fe04119797a1c0be",
 			"src/kernel/engine/runner/mod.ts": "550637d8c10be46a4ad6987186f132bffe05af5c",
 			"src/kernel/engine/runner/nested.ts": "2d4f2bad1de44074829450c1b9aab6b570e99765",
 			"src/kernel/engine/runner/refused-media.ts": "766aa0c084ea08389172b3c506f1ff97a27e3f56",
@@ -446,9 +446,9 @@
 		}
 	},
 	"profiles/text": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
-			"src/kernel/engine/runner/gates.ts": "61ec2b682ee720ad7776fefdaea77a0d7f0a80cc",
+			"src/kernel/engine/runner/gates.ts": "c43a65d9cb1f8547b5251d82fe04119797a1c0be",
 			"src/kernel/engine/runner/mod.ts": "550637d8c10be46a4ad6987186f132bffe05af5c",
 			"src/kernel/engine/runner/nested.ts": "2d4f2bad1de44074829450c1b9aab6b570e99765",
 			"src/kernel/engine/runner/refused-media.ts": "766aa0c084ea08389172b3c506f1ff97a27e3f56",
@@ -463,9 +463,9 @@
 		}
 	},
 	"profiles/transcription": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
-			"src/kernel/engine/runner/gates.ts": "61ec2b682ee720ad7776fefdaea77a0d7f0a80cc",
+			"src/kernel/engine/runner/gates.ts": "c43a65d9cb1f8547b5251d82fe04119797a1c0be",
 			"src/kernel/engine/runner/mod.ts": "550637d8c10be46a4ad6987186f132bffe05af5c",
 			"src/kernel/engine/runner/nested.ts": "2d4f2bad1de44074829450c1b9aab6b570e99765",
 			"src/kernel/engine/runner/refused-media.ts": "766aa0c084ea08389172b3c506f1ff97a27e3f56",
@@ -630,10 +630,10 @@
 		}
 	},
 	"start": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
 			"mod.ts": "c079ed3d4b23ace334d1843c811962e449a4ff47",
-			"src/kernel/engine/runner/gates.ts": "61ec2b682ee720ad7776fefdaea77a0d7f0a80cc",
+			"src/kernel/engine/runner/gates.ts": "c43a65d9cb1f8547b5251d82fe04119797a1c0be",
 			"src/kernel/engine/runner/mod.ts": "550637d8c10be46a4ad6987186f132bffe05af5c",
 			"src/kernel/engine/runner/nested.ts": "2d4f2bad1de44074829450c1b9aab6b570e99765",
 			"src/kernel/engine/runner/refused-media.ts": "766aa0c084ea08389172b3c506f1ff97a27e3f56",
@@ -648,7 +648,7 @@
 		}
 	},
 	"start/architecture": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
 			"mod.ts": "c079ed3d4b23ace334d1843c811962e449a4ff47",
 			"react/src/index.ts": "72e32fc273515803083dc8c2585d3d93e4c2ed5a",
@@ -656,7 +656,7 @@
 			"src/guardrails/boundaries.ts": "a41ba9f69fc62e262754727a2c8b2b4dfe3068d0",
 			"src/guardrails/detectors.ts": "0a66036d2f8107f575ef2be7676dc522bfc1e70c",
 			"src/guardrails/network.ts": "65487c8f3fdac6e14ce16bd46c4a20ac77d61cde",
-			"src/kernel/engine/runner/gates.ts": "61ec2b682ee720ad7776fefdaea77a0d7f0a80cc",
+			"src/kernel/engine/runner/gates.ts": "c43a65d9cb1f8547b5251d82fe04119797a1c0be",
 			"src/kernel/engine/runner/mod.ts": "550637d8c10be46a4ad6987186f132bffe05af5c",
 			"src/kernel/engine/runner/nested.ts": "2d4f2bad1de44074829450c1b9aab6b570e99765",
 			"src/kernel/engine/runner/refused-media.ts": "766aa0c084ea08389172b3c506f1ff97a27e3f56",
