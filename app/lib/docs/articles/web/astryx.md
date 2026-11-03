@@ -19,6 +19,7 @@ Theorem provides a ready-made UI layer built on [Astryx](https://www.npmjs.com/p
 | :--- | :--- | :--- | :--- |
 | [`<TheoremChat />`](#1-conversational-chat-theoremchat) | `text`, `image`, `speech`, `transcription` | `@theoremjs/react/ui` | Chat with transcript, composer, option selectors, and tool gates answered in the transcript |
 | [`<LiveRunner />`](#2-realtime-voice--video-liverunner) | `live` | `@theoremjs/react/live` | Voice and video call with the ink waveform, camera flip, a captions column, and tool gates in a dialog |
+| [`<LiveCallTile />`](#2-realtime-voice--video-liverunner) | `live` | `@theoremjs/react/live` | The same call drawn small, for when the person leaves the call's page: preview or waveform, call time, mute, end, and expand |
 | [`<TheoremDecision />`](#3-decision-evaluations-theoremdecision) | `decision` | `@theoremjs/react/ui` | The state as fields or JSON, image attachments, and the answers with their confidence, scores and boxes |
 | [`<TheoremEmbedding />`](#4-vector-search--embeddings-theoremembedding) | `embedding` | `@theoremjs/react/ui` | Split pasted text or drop files, index them, search by cosine similarity, and turn the index in a 3D view |
 | [`<TheoremHost />`](#5-host--mcp-tools-theoremhost) | `host` | `@theoremjs/react/ui` | Console to pick one of the host's tools, fill in its request, run it, and answer its gates in place |
@@ -82,6 +83,16 @@ const call = useLiveCall({
 The call lasts as long as the component that calls `useLiveCall`. Call it above your routes, and the call goes on while the person moves to another page. `<LiveRunner />` can unmount and mount again on the same call.
 
 Give `<LiveRunner />` an `onMinimize` to show a minimize control in the call. Theorem calls it and does not navigate: your code decides where to go, and the call goes on.
+
+`<LiveCallTile />` draws the same call small: the camera preview, or the ink waveform when the camera is off, then the call time, mute, end, and expand. It fills the box you give it, so your code places it and sizes it. A press on the tile or its expand control calls `onExpand`.
+
+```tsx
+import { LiveCallTile } from '@theoremjs/react/live';
+
+<LiveCallTile call={call} onExpand={() => navigate('/call')} />
+```
+
+Show `<LiveRunner />` or `<LiveCallTile />` for a call, not both: the camera preview is one element, and it shows in the one that mounted last.
 
 `iface` is the profile's interface, as `useTheoremInterface` describes it. `connection` returns what the call opens: a profile the relay knows by id, or your own `openMessage` for the relay. The relay is `/api/live/relay` on the page's host. To open another socket, return `createSocket`.
 

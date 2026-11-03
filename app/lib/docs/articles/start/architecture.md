@@ -119,7 +119,7 @@ The kernel's work falls into six parts:
 | **Guardrails** | `guardrails` | Detectors read text at five groups of boundaries. Each tool also has a permission (`auto`, `session_consent`, `always_confirm`), and a canary token planted in the instruction shows a leak. |
 | **Protocols and providers** | `defineProvider`, `registerProvider` | `defineProvider` defines a provider; nothing in it can change a request or read a reply. `registerProvider` registers it in the default scope, with this project's connection and key slots. |
 | **Observability** | `observability` | Writes a trace record (`TraceRecord`) of each turn to the sinks you configure (`TraceSink`), exports spans as OpenTelemetry (`OtlpSpan`), and continues a W3C `traceparent` that you pass. |
-| **Interface** | `@theoremjs/web`, `@theoremjs/react` | `@theoremjs/web` serves a profile with `createTheoremHandler`, which streams each turn's events as lines of JSON. `@theoremjs/react` provides the `<TheoremChat />` chat (`@theoremjs/react/ui`), the `<LiveRunner />` voice and video call and the `useLiveCall` hook that holds it (`@theoremjs/react/live`), and hooks (`useTheoremChat`, `useTheoremInterface`). |
+| **Interface** | `@theoremjs/web`, `@theoremjs/react` | `@theoremjs/web` serves a profile with `createTheoremHandler`, which streams each turn's events as lines of JSON. `@theoremjs/react` provides the `<TheoremChat />` chat (`@theoremjs/react/ui`), the `<LiveRunner />` voice and video call, the `<LiveCallTile />` that draws it small, and the `useLiveCall` hook that holds it (`@theoremjs/react/live`), and hooks (`useTheoremChat`, `useTheoremInterface`). |
 
 ## The boundaries a turn crosses
 

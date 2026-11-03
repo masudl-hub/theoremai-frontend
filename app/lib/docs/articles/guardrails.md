@@ -210,7 +210,7 @@ Scans for personal identifiers and confidential secrets:
 * **`email`**: Email addresses.
   * *Scenario*: A page that `read_pages` returns ends `"Correspondence: a.lovelace@example.org"`. On redact, model context receives `"Correspondence: [omitted - sensitive]"`.
 * **`phone`**: Phone numbers: international, North American and national, or any number after a phone label such as `phone`, `tel` or `mobile`.
-* **`bank_account`**: Account, routing and sort-code numbers after a label that names them, such as `account number` or `routing`. An IBAN is `financial`'s.
+* **`bank_account`**: Account, routing and sort-code numbers after a label that names them, such as `account number` or `routing`. The number can sit in the next table cell, in brackets, or straight after a hyphen (`ACCT-…`). An IBAN is `financial`'s.
 
 All seven flag what reaches the model (inbound text, tool arguments and tool results) and ignore what is shown to the person. `credentials` also flags tool shown text and replies.
 
