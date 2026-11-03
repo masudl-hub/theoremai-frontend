@@ -293,7 +293,7 @@ As the model streams back responses, `session.events()` yields events:
 | **`text`** | `event.text: string` | A text part of the model's reply. |
 | **`evidence`** | `event.text`, `event.evidence.kind` | A transcript of speech: `output_transcription` for the model, `input_transcription` for the user. `evidence.interim: true` marks a draft transcript of the user. |
 | **`media`** | `event.media: { mimeType, data }` | A base64 chunk of the model's voice. Gemini PCM arrives wrapped as `audio/wav`. |
-| **`done`** | `event.stop`, `event.interrupted?: boolean` | `stop.kind` is `generation_complete` when the model finishes generating and `completed` when the turn ends. It is `interrupted`, with `interrupted: true`, when the provider reports that the user spoke over the model, and a reply cut off before it finished generating gets no `completed`. It is `filtered` when guardrails withhold the reply. One reply brings more than one `done`, so read `stop.kind` and do not count them. |
+| **`done`** | `event.stop`, `event.interrupted?: boolean` | `stop.kind` is `generation_complete` when the model finishes generating and `completed` when the turn ends. It is `interrupted`, with `interrupted: true`, when the provider reports that the user spoke over the model, and a reply cut off before it finished generating gets no `completed`. It is `filtered` when guardrails withhold or refuse the reply. One reply brings more than one `done`, so read `stop.kind` and do not count them. |
 | **`tool`** | `event.tool: ToolCallEvent` | Emitted when the model calls a tool during the conversation. Your code runs the call with `executeTool`. |
 
 ## Browser Client & WebSocket Relay

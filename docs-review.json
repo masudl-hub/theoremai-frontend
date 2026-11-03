@@ -9,7 +9,7 @@
 		}
 	},
 	"guardrails": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
 			"src/guardrails/boundaries.ts": "a41ba9f69fc62e262754727a2c8b2b4dfe3068d0",
 			"src/guardrails/canary-gate.ts": "68e9fd922d448f9781cb90e16a1e6f42550eff9f",
@@ -50,7 +50,7 @@
 			"src/guardrails/injection-reversed.ts": "94f9787033a9c299c8d2cb95f2e5aab747e63c64",
 			"src/guardrails/injection.ts": "e32285373fd636daba69bf10343ea3a8839c9fd6",
 			"src/guardrails/labels.ts": "b43b44544126f5285c402d0f0ea63fe21752ae9e",
-			"src/guardrails/live-outbound-gate.ts": "97685ecbaba0d39fc06049d4ed0bfaec3abce6fc",
+			"src/guardrails/live-outbound-gate.ts": "ddb1d552a45dade82eee99678b37b15c4414b9f7",
 			"src/guardrails/mod.ts": "c045e950d1dd1790d4013c7681fc427742fce28c",
 			"src/guardrails/network.ts": "65487c8f3fdac6e14ce16bd46c4a20ac77d61cde",
 			"src/guardrails/normalize.ts": "68338281983f026e6da916d6be3b24209f3dc326",
@@ -482,7 +482,7 @@
 		}
 	},
 	"providers": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
 			"src/kernel/protocols/binding.ts": "1e5cdadab178eaada3b3a2ba742e2c1bdb0bf609",
 			"src/kernel/protocols/limits.ts": "68cf8a3ced2e1947f125faebba629ae8f5a7df10",
@@ -494,7 +494,7 @@
 			"src/providers/embedding-limits.ts": "70c15cf4f515c8ed6e08ce8f9c24056b76eba7f8",
 			"src/providers/gemini/embeddings-protocol.ts": "fe8f2def56d8ef94a11b185116e3578856f352df",
 			"src/providers/gemini/interactions-protocol.ts": "ec8ea9c6964c667fc561451fc0d6073be5acd211",
-			"src/providers/gemini/live-protocol.ts": "4a1ab8085edcb20199d6e7a1970e453e65255c8c",
+			"src/providers/gemini/live-protocol.ts": "d2c1550df16f1d15239b46b8d73db507f453ae3e",
 			"src/providers/gemini/prices.ts": "15ef19522f4596fd68a433f03fe2d80962675cfb",
 			"src/providers/gemini/provider.ts": "54bc80057acc4fdc26dc27bfe585b2666d3b5388",
 			"src/providers/google/api-error.ts": "40f081a56014281d5bc7c3f65b54ecf6d8c78db1",
@@ -505,7 +505,7 @@
 			"src/providers/google/interactions/stream.ts": "464ebcf4467efd1a7b04b1f3ec17cfb17a110afa",
 			"src/providers/google/limits.ts": "d0682fddf0325922efc90faa8ecf4e769bf08822",
 			"src/providers/google/live/framing.ts": "bca8e340ede7b07bfaf9d9e0e2d6590e52d7aaec",
-			"src/providers/google/live/stream.ts": "43f6e9f32cc4fdd55f487b95f91b36f6d534ce49",
+			"src/providers/google/live/stream.ts": "edfff5966e388a0edc74b104793726bb6a301e30",
 			"src/providers/google/thinking.ts": "26fd76cba5996dcef832f59111093d4e86748fe4",
 			"src/providers/google/urls.ts": "60ac56eb467fa548f7bb5b5b7a86232ea42e5c7e",
 			"src/providers/google/usage.ts": "26c7b0785818b94da3e7dab53bbca7b28d890564",
@@ -549,13 +549,13 @@
 		}
 	},
 	"providers/defining": {
-		"reviewed": "2026-11-02",
+		"reviewed": "2026-11-03",
 		"files": {
 			"src/kernel/protocols/provider.ts": "91b12ce543043ac71f1bb63d96ec501d51d7744b",
 			"src/providers/embedding-limits.ts": "70c15cf4f515c8ed6e08ce8f9c24056b76eba7f8",
 			"src/providers/gemini/embeddings-protocol.ts": "fe8f2def56d8ef94a11b185116e3578856f352df",
 			"src/providers/gemini/interactions-protocol.ts": "ec8ea9c6964c667fc561451fc0d6073be5acd211",
-			"src/providers/gemini/live-protocol.ts": "4a1ab8085edcb20199d6e7a1970e453e65255c8c",
+			"src/providers/gemini/live-protocol.ts": "d2c1550df16f1d15239b46b8d73db507f453ae3e",
 			"src/providers/gemini/prices.ts": "15ef19522f4596fd68a433f03fe2d80962675cfb",
 			"src/providers/gemini/provider.ts": "54bc80057acc4fdc26dc27bfe585b2666d3b5388",
 			"src/providers/google/api-error.ts": "40f081a56014281d5bc7c3f65b54ecf6d8c78db1",
@@ -566,7 +566,7 @@
 			"src/providers/google/interactions/stream.ts": "464ebcf4467efd1a7b04b1f3ec17cfb17a110afa",
 			"src/providers/google/limits.ts": "d0682fddf0325922efc90faa8ecf4e769bf08822",
 			"src/providers/google/live/framing.ts": "bca8e340ede7b07bfaf9d9e0e2d6590e52d7aaec",
-			"src/providers/google/live/stream.ts": "43f6e9f32cc4fdd55f487b95f91b36f6d534ce49",
+			"src/providers/google/live/stream.ts": "edfff5966e388a0edc74b104793726bb6a301e30",
 			"src/providers/google/thinking.ts": "26fd76cba5996dcef832f59111093d4e86748fe4",
 			"src/providers/google/urls.ts": "60ac56eb467fa548f7bb5b5b7a86232ea42e5c7e",
 			"src/providers/google/usage.ts": "26c7b0785818b94da3e7dab53bbca7b28d890564",
