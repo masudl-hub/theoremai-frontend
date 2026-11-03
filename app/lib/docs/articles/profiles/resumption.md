@@ -36,7 +36,7 @@ turnBehaviour: {
 
 Completions can halt prematurely when reaching output token budgets or when network streams drop. Theorem standardizes continuation across three stop reasons (`ContinueStopKind`):
 
-* **`'length'`**: The reply hit its output token limit (`maxOutputTokens`) or the provider's budget.
+* **`'length'`**: The reply hit its output token limit (`maxOutputTokens`) or the provider's budget. A [structured reply](/docs/profiles/text) cut this way is first asked for again by the turn itself, so a structured turn ends at `length` only when the cut left no answer to send back.
 * **`'stream_incomplete'`**: The stream ended before the provider said the reply was done.
 * **`'provider_error'`**: The provider call failed. The provider sent an error, reported a failed status, or gave a finish reason Theorem does not know.
 

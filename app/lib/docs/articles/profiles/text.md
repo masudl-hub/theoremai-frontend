@@ -118,7 +118,7 @@ Theorem enforces structured outputs in two places: the schema the model answers 
     "src": "/imagery/th30_rustsand.png",
     "position": "50% 50%"
   },
-  "caption": "How Theorem checks one structured reply. Every rewrite uses one of outputs.validation.maxRetries, which defaults to 0.",
+  "caption": "How Theorem checks one structured reply. Every rewrite uses one of outputs.validation.maxRetries, which defaults to 0. A reply the output limit cuts off gets one rewrite even so.",
   "steps": [
     {
       "label": "The schema goes with the call",
@@ -208,7 +208,7 @@ registerStructured('research.reply', {
 
 When `outputs.structured` names a registered schema, Theorem gives the model that JSON Schema with the call. How it does that depends on whether the turn has tools:
 
-* **With tools**, as the scout has: the model answers by calling a tool named `final_answer`, whose parameters are the schema, and the reply is the arguments of that call. Many endpoints refuse a response format beside tools, so this tool takes its place. It stays on the last step under `atStepLimit: 'answer'`, when your tools are gone. If the model ends without calling it, the turn asks again while `validation` has a retry left, and otherwise fails with a `bad_response` error. No tool of your own may use the name `final_answer`.
+* **With tools**, as the scout has: the model answers by calling a tool named `final_answer`, whose parameters are the schema, and the reply is the arguments of that call. Many endpoints refuse a response format beside tools, so this tool takes its place. It stays on the last step under `atStepLimit: 'answer'`, when your tools are gone. If the model ends without calling it, the turn asks again while `validation` has a retry left, and otherwise fails with a `bad_response` error. A call the output limit cuts off is asked for again as a cut-off reply is, below. No tool of your own may use the name `final_answer`.
 * **Without tools**: OpenAI-compatible chat gets `response_format` with `type: 'json_schema'` and `strict: true`. Gemini Interactions gets `responseFormat` as JSON text with that schema.
 
 The schema sets the **shape**: `summary` is a string and `candidates` is a list. It cannot check the facts. The model provider cannot execute application code, inspect external databases, or cross-reference facts against tool responses. A model can return well-formed JSON with a quote no source ever said.
@@ -258,6 +258,7 @@ outputs: {
   * `'fix'`: Theorem asks the model to rewrite *only the refused items*, keeping the valid ones and avoiding a full regeneration. It does this once, while retries remain. Any item refused again is removed. If that rewrite ends with no answer, the reply it was fixing goes out without the refused items.
   * `'drop'`: Theorem removes refused items from the array and continues.
 * **`maxRetries`**: How many times the model may rewrite a reply that fails your checks or the schema's required keys. Left out, there are no rewrites, so `'fix'` removes refused items at once. Once retries run out, the reply goes out as it is. Under `streaming.mode: 'sse'`, an attempt that gets rewritten has already streamed.
+* **Cut-off replies**: A reply that the output limit cuts off holds nothing to check. Theorem sends it back with what the model wrote and asks for the whole answer again, shorter. This happens once, even without `outputs.validation`, or `maxRetries` times when that is more. Cut off again, the turn fails with a `bad_response` error.
 
 The `structured` event says what happened. `removed` lists each item taken out, with its list's path and the reason. `failed` lists the fields still invalid when retries ran out.
 
