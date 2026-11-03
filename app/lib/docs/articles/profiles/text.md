@@ -255,7 +255,7 @@ outputs: {
 * **`fields` (Format & Domain Constraints)**: Dotted paths to specific properties, each with your check on that value. Use this to verify checksums, test regex formats, or query databases. A failure sends its error back to the model, which rewrites the reply while retries remain.
 * **`items` (Tool Corroboration)**: Dotted paths to array properties. The check receives one array item and the `turn` context, including `turn.toolResults`: every tool call the turn completed, each with its `tool` and `output`. Use this to verify that items in the model's structured answer match the data returned by tools earlier in the turn. A refused item never fails the reply, and the rest of the reply is kept.
 * **`onFail` (Surgical Remediation)**: When a list item fails its check:
-  * `'fix'`: Theorem asks the model to rewrite *only the refused items*, keeping the valid ones and avoiding a full regeneration. It does this once, while retries remain. Any item refused again is removed.
+  * `'fix'`: Theorem asks the model to rewrite *only the refused items*, keeping the valid ones and avoiding a full regeneration. It does this once, while retries remain. Any item refused again is removed. If that rewrite ends with no answer, the reply it was fixing goes out without the refused items.
   * `'drop'`: Theorem removes refused items from the array and continues.
 * **`maxRetries`**: How many times the model may rewrite a reply that fails your checks or the schema's required keys. Left out, there are no rewrites, so `'fix'` removes refused items at once. Once retries run out, the reply goes out as it is. Under `streaming.mode: 'sse'`, an attempt that gets rewritten has already streamed.
 

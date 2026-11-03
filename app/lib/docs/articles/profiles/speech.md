@@ -15,7 +15,7 @@ Speech profiles (`type: 'speech'`) configure text-to-speech (TTS) agents that sy
 {
   "kind": "lanes",
   "still": {
-    "src": "/imagery/th30_lilachaze.png",
+    "src": "/imagery/th30_violetheather.png",
     "position": "50% 50%"
   },
   "caption": "The text goes in with a voice and a style. The audio comes back as media events.",

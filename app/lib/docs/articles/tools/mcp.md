@@ -45,7 +45,7 @@ Some servers refuse a call without an `Mcp-Session-Id`. Only for those does Theo
 {
   "kind": "sequence",
   "still": {
-    "src": "/imagery/th30_atoll.png",
+    "src": "/imagery/th30_peninsula.png",
     "position": "50% 50%"
   },
   "caption": "One MCP call and its session.",

@@ -138,7 +138,7 @@ Theorem retries a failed model call, and can move it to a second key:
 {
   "kind": "lanes",
   "still": {
-    "src": "/imagery/th30_ceruleanshelf.png",
+    "src": "/imagery/th30_mountain.png",
     "position": "50% 50%"
   },
   "caption": "A call that fails before its first event. After the first event, an error goes through to your code.",

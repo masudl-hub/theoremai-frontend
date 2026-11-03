@@ -15,7 +15,7 @@ Image profiles (`type: 'image'`) configure agents that generate, edit, or transf
 {
   "kind": "lanes",
   "still": {
-    "src": "/imagery/th30_marigolds.png",
+    "src": "/imagery/th30_poppies.png",
     "position": "50% 50%"
   },
   "caption": "A prompt and the profile's image settings go in. Images come back as media events, with any text in the order the provider sends it.",

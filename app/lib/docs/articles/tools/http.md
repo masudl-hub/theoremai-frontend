@@ -15,7 +15,7 @@ An `http` tool sends an HTTP request to an external REST endpoint with no handle
 {
   "kind": "lanes",
   "still": {
-    "src": "/imagery/th30_orangecanyon.png",
+    "src": "/imagery/th30_meltedbronze.png",
     "position": "50% 50%"
   },
   "caption": "The scout's list_arxiv. The model fills in arguments, and the mapping says where each one goes in the request.",

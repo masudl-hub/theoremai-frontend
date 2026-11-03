@@ -17,7 +17,7 @@ In Theorem, **history compaction** automatically condenses older exchanges into 
 {
   "kind": "lanes",
   "still": {
-    "src": "/imagery/th30_cloud.png",
+    "src": "/imagery/th30_dryclay.png",
     "position": "50% 50%"
   },
   "caption": "The scout's history at 24,000 tokens. The older exchanges become one summary, and the last four stay word for word.",

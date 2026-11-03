@@ -17,7 +17,7 @@ Because conversation histories grow over multi-turn interactions, model bindings
 {
   "kind": "lanes",
   "still": {
-    "src": "/imagery/th30_basaltplanes.png",
+    "src": "/imagery/th30_terrace.png",
     "position": "50% 50%"
   },
   "caption": "The scout's open model. The profile names a binding, and the binding names everything a call needs except the key.",

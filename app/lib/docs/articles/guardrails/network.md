@@ -17,7 +17,7 @@ Theorem checks the URL of every request it makes for a tool, against the policy 
 {
   "kind": "sequence",
   "still": {
-    "src": "/imagery/th30_blueabyss.png",
+    "src": "/imagery/th30_lapis.png",
     "position": "50% 40%"
   },
   "caption": "One request from a tool. A failed check refuses it, and each redirect starts again from the scheme.",

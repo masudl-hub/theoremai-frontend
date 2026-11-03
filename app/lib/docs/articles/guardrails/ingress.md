@@ -19,7 +19,7 @@ Theorem provides two layers of ingress protection:
 {
   "kind": "lanes",
   "still": {
-    "src": "/imagery/th30_tropicalforest.png",
+    "src": "/imagery/th30_cobaltpaddies.png",
     "position": "50% 50%"
   },
   "caption": "A page tries to steer the scout. Whatever its wording, the turn read a remote result, so with afterRemoteRead: 'write' the write is refused.",

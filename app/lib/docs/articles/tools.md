@@ -18,7 +18,7 @@ Theorem routes every tool call through the same checks before its result reaches
 {
   "kind": "sequence",
   "still": {
-    "src": "/imagery/th30_malachite.png",
+    "src": "/imagery/th30_autumnmoss.png",
     "position": "30% 40%"
   },
   "caption": "The order for a function tool. HTTP and MCP tools check their network address just before they send.",

@@ -15,7 +15,7 @@ Decision profiles (`type: 'decision'`) configure stateless evaluation agents tha
 {
   "kind": "lanes",
   "still": {
-    "src": "/imagery/th30_amberresin.png",
+    "src": "/imagery/th30_wheatwaves.png",
     "position": "50% 50%"
   },
   "caption": "One question about one passage. The answer comes back typed, ready for your code to branch on.",

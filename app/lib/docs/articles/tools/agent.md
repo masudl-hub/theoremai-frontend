@@ -17,7 +17,7 @@ An agent tool needs no handler code and no schemas of your own. Theorem builds t
 {
   "kind": "lanes",
   "still": {
-    "src": "/imagery/th30_maplecanopies.png",
+    "src": "/imagery/th30_meadow.png",
     "position": "50% 50%"
   },
   "caption": "The scout hands its findings to another agent, and carries on with the reply.",

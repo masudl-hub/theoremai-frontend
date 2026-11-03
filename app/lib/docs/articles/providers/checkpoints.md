@@ -19,7 +19,7 @@ Theorem resolves this tension through a **dual-layer state architecture**:
 {
   "kind": "lanes",
   "still": {
-    "src": "/imagery/th30_mineralhills.png",
+    "src": "/imagery/th30_purpleshale.png",
     "position": "30% 50%"
   },
   "caption": "A turn with a checkpoint. Only geminiInteractions and geminiLive write one.",

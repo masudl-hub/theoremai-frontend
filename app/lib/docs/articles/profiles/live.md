@@ -15,7 +15,7 @@ Live profiles (`type: 'live'`) configure realtime agents that communicate over b
 {
   "kind": "lanes",
   "still": {
-    "src": "/imagery/th30_ocean.png",
+    "src": "/imagery/th30_pond.png",
     "position": "50% 50%"
   },
   "caption": "research.scout.live on a call. Both sides send at the same time, over one socket, until you call close() or the provider ends it.",
@@ -130,7 +130,7 @@ Realtime voice conversations need natural turn-taking. The `live.vad` block conf
 {
   "kind": "lanes",
   "still": {
-    "src": "/imagery/th30_moonlitriver.png",
+    "src": "/imagery/th30_fjord.png",
     "position": "50% 50%"
   },
   "caption": "A person talks over the model. With activityHandling set to 'NO_INTERRUPTION', the reply goes on instead.",

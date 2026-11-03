@@ -10,7 +10,7 @@ const APP = join(ROOT, 'app');
 const SKIP_FILES = new Set(['app/lib/docs/exposure.ts']);
 // Related pages may share one still, and only the pairs named here: the overview's "Built-in
 // boundaries" and the Guardrails chapter are about the same thing.
-const RELATED = [['th30_obsidianshores.png', ['app/components/home-stage.tsx', 'docs chapter "guardrails"']]];
+const RELATED = [['th30_obsidianshores.png', ['app/lib/site-pitch.ts', 'docs chapter "guardrails"']]];
 const CHAPTER = /^app\/lib\/docs\/articles\/(.+)\.md$/;
 const STILL = /\/imagery\/([A-Za-z0-9_.-]+\.(?:png|jpe?g|webp|avif))/g;
 

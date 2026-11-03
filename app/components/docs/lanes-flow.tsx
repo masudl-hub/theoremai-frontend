@@ -47,7 +47,7 @@ function flowLines(root: HTMLElement): string[] {
 		const into = held
 			? [`M ${String(token.x)} ${String(token.bottom)} L ${String(token.x)} ${String(held.top)}`]
 			: [];
-		const next = tokens[at + 1];
+		const next = tokens.at(at + 1);
 		if (!next) return into;
 		const middle = (bottom + next.top) / 2;
 		return [
