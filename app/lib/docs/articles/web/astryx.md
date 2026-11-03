@@ -1,6 +1,6 @@
 ---
 title: Astryx UI Components
-updated: 2026-11-02
+updated: 2026-11-03
 summary: Ready-made Astryx components for chat, live, decision, embedding and host profiles.
 entry: react/src/index.ts
 covers: react, web
@@ -65,21 +65,25 @@ import { TheoremChat } from '@theoremjs/react/ui';
 
 `<LiveRunner />` runs calls for a `live` profile. Before a call, it offers a voice or video call. In a call, it shows the agent over the ink waveform, the captions in a column on the right, the call controls in a toolbar, and tool gates in a dialog. The call streams the microphone and camera over a WebSocket relay and plays the model's 24kHz audio without gaps.
 
+`useLiveCall` holds the call, and `<LiveRunner />` draws it:
+
 ```tsx
-import { LiveRunner } from '@theoremjs/react/live';
+import { LiveRunner, useLiveCall } from '@theoremjs/react/live';
 
 // ...
-const described = useTheoremInterface(transport);
+const call = useLiveCall({
+	iface,
+	connection: () => ({ profile: 'research.scout.live' }),
+});
 // ...
-<LiveRunner
-	iface={described.iface}
-	connection={() => ({ profile: 'research.scout.live' })}
-/>
+<LiveRunner call={call} />
 ```
 
-`connection` returns what the call opens: a profile the relay knows by id, or your own `openMessage` for the relay. The relay is `/api/live/relay` on the page's host. To open another socket, return `createSocket`.
+The call lasts as long as the component that calls `useLiveCall`. Call it above your routes, and the call goes on while the person moves to another page. `<LiveRunner />` can unmount and mount again on the same call.
 
-`<LiveRunner />` also takes every `LiveCallOptions` prop and passes it to the call. `model` and `effort` pick the call's model and that model's effort, as in [the realtime client](/docs/web/realtime).
+`iface` is the profile's interface, as `useTheoremInterface` describes it. `connection` returns what the call opens: a profile the relay knows by id, or your own `openMessage` for the relay. The relay is `/api/live/relay` on the page's host. To open another socket, return `createSocket`.
+
+`useLiveCall` also takes every `LiveCallOptions` value and passes it to the call. `model` and `effort` pick the call's model and that model's effort, as in [the realtime client](/docs/web/realtime).
 
 `<LiveRunner />` includes:
 - **Waveform**: `InkWaveform`, driven by the microphone and model audio levels.

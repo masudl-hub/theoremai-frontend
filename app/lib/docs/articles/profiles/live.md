@@ -1,6 +1,6 @@
 ---
 title: Live Profiles
-updated: 2026-11-02
+updated: 2026-11-03
 summary: Real-time duplex audio and video streaming over WebSockets with interruption handling.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -303,7 +303,7 @@ In production web applications, browsers cannot connect directly to Gemini Live 
 Theorem resolves this using a relay architecture:
 * **Backend Relay**: Your application server hosts a WebSocket relay endpoint (e.g. `/api/live/relay`) powered by `runSession()`.
 * **Browser Client (`@theoremjs/web/client`)**: `LiveSessionClient` connects to your relay. It sends the microphone as 16-bit 16 kHz PCM and plays the model's voice without gaps (raw PCM is read as 24 kHz). On barge-in it clears the queued audio at once. It asks the browser for echo cancellation, and it holds back quiet mic audio while the model speaks. Its `model` and `effort` options pick them for the call.
-* **React (`@theoremjs/react/live`)**: The `LiveRunner` component runs a live session on the Astryx UI.
+* **React (`@theoremjs/react/live`)**: `useLiveCall` holds a live session, and the `LiveRunner` component draws it on the Astryx UI.
 
 For browser setup and relay handlers, see [Headless Web & Transport](/docs/web) and [React Live Components](/docs/web/react-hooks).
 

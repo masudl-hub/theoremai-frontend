@@ -1,6 +1,6 @@
 ---
 title: Realtime Voice & Video
-updated: 2026-11-02
+updated: 2026-11-03
 summary: Real-time bidirectional WebSockets, audio worklets, and live camera video frames in React.
 entry: react/src/index.ts
 covers: react, src/surface, web
@@ -154,12 +154,14 @@ if (base64Jpeg) client.sendVideo(base64Jpeg);
 For high-level applications, `LiveRunner` from `@theoremjs/react/live` automates camera acquisition, device toggling (`facingMode: 'user' | 'environment'`), frame capture (it asks the camera for 640x480, and sends a JPEG frame every 400ms), and video preview rendering:
 
 ```tsx
-import { LiveRunner } from '@theoremjs/react/live';
+import { LiveRunner, useLiveCall } from '@theoremjs/react/live';
 
-<LiveRunner
-	iface={iface}
-	connection={() => ({ profile: 'research.scout.live' })}
-/>
+const call = useLiveCall({
+	iface,
+	connection: () => ({ profile: 'research.scout.live' }),
+});
+
+<LiveRunner call={call} />
 ```
 
 ## 5. Live Tool Execution & Mid-Call Gates
