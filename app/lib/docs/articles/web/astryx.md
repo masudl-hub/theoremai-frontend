@@ -81,6 +81,8 @@ const call = useLiveCall({
 
 The call lasts as long as the component that calls `useLiveCall`. Call it above your routes, and the call goes on while the person moves to another page. `<LiveRunner />` can unmount and mount again on the same call.
 
+Give `<LiveRunner />` an `onMinimize` to show a minimize control in the call. Theorem calls it and does not navigate: your code decides where to go, and the call goes on.
+
 `iface` is the profile's interface, as `useTheoremInterface` describes it. `connection` returns what the call opens: a profile the relay knows by id, or your own `openMessage` for the relay. The relay is `/api/live/relay` on the page's host. To open another socket, return `createSocket`.
 
 `useLiveCall` also takes every `LiveCallOptions` value and passes it to the call. `model` and `effort` pick the call's model and that model's effort, as in [the realtime client](/docs/web/realtime).
