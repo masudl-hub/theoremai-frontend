@@ -649,13 +649,13 @@
 		}
 	},
 	"start/architecture": {
-		"reviewed": "2026-11-03",
+		"reviewed": "2026-11-04",
 		"files": {
 			"mod.ts": "c079ed3d4b23ace334d1843c811962e449a4ff47",
 			"react/src/index.ts": "72e32fc273515803083dc8c2585d3d93e4c2ed5a",
 			"react/src/live.ts": "2b15d0b0ba7800d61074ff199d417d779e4568c9",
 			"src/guardrails/boundaries.ts": "a41ba9f69fc62e262754727a2c8b2b4dfe3068d0",
-			"src/guardrails/detectors.ts": "2e50a8852fc179c4b4959dbc67900693702e3f8d",
+			"src/guardrails/detectors.ts": "6decf961cf35c1411ce05b62f41571fa85405b1c",
 			"src/guardrails/network.ts": "65487c8f3fdac6e14ce16bd46c4a20ac77d61cde",
 			"src/kernel/engine/runner/gates.ts": "425ff33e153519d9e7a142dd0c5fb5ee0fdeecc5",
 			"src/kernel/engine/runner/mod.ts": "550637d8c10be46a4ad6987186f132bffe05af5c",
@@ -1117,9 +1117,9 @@
 		}
 	},
 	"web": {
-		"reviewed": "2026-11-03",
+		"reviewed": "2026-11-04",
 		"files": {
-			"react/README.md": "854f604a007a3b0d227233b2f1fa8185a78a0873",
+			"react/README.md": "905e005d95a3a37f898fbee61c5f1365e62c111f",
 			"react/docs/composer.md": "24c2e1e33af6f41cd7cb9021149ecd49385c6e4b",
 			"react/docs/credentials.md": "5cecc169547a841b141dd561cce78ab528c13621",
 			"react/docs/wire.md": "e9eda4200b473c9a091b35e4f5eb8872279ce95b",
@@ -1181,9 +1181,10 @@
 			"react/src/ui/EmbeddingQuery.tsx": "cd0b1f908ce729424541a39a7e9a902cc2cfbdec",
 			"react/src/ui/EmbeddingResults.tsx": "3eb5926e6ef6c94914ffec7a7089e2b4a5266394",
 			"react/src/ui/EmbeddingSpace.tsx": "4ca21b216808796148f4a87cf076e6f0efc60f5c",
-			"react/src/ui/LiveCallTile.tsx": "6d27f67501a53df7f4d88168ed0a143551610c67",
+			"react/src/ui/LiveCallTile.tsx": "0735b9ef79afd58207e64d6af9272a2480a3fe0b",
 			"react/src/ui/LiveCaptionsPanel.tsx": "a8a2be25be9a939544219e3b0baa0a6a9d8181e2",
-			"react/src/ui/LiveRunner.tsx": "5f1746ebd02fc271d89c04e2643f6b6e48e5593e",
+			"react/src/ui/LiveRunner.tsx": "4ab13d926473c265aeaea65ed31e955a97a82f31",
+			"react/src/ui/LiveToolGateDialog.tsx": "5d63c4f5e2a6e7e0bdb450a01a9f802f09ff8ad1",
 			"react/src/ui/LiveVideoPreview.tsx": "5a50c394e14804d045aa9e3dca89c08839d38cf5",
 			"react/src/ui/PaneState.tsx": "8dd9972f3a3165d405392228bed6b39c0967ade5",
 			"react/src/ui/SchemaFields.tsx": "c249c5941569e3b2a43fbaf7af882d5f30557ac1",
@@ -1325,9 +1326,9 @@
 		}
 	},
 	"web/astryx": {
-		"reviewed": "2026-11-03",
+		"reviewed": "2026-11-04",
 		"files": {
-			"react/README.md": "854f604a007a3b0d227233b2f1fa8185a78a0873",
+			"react/README.md": "905e005d95a3a37f898fbee61c5f1365e62c111f",
 			"react/docs/composer.md": "24c2e1e33af6f41cd7cb9021149ecd49385c6e4b",
 			"react/docs/credentials.md": "5cecc169547a841b141dd561cce78ab528c13621",
 			"react/docs/wire.md": "e9eda4200b473c9a091b35e4f5eb8872279ce95b",
@@ -1389,9 +1390,10 @@
 			"react/src/ui/EmbeddingQuery.tsx": "cd0b1f908ce729424541a39a7e9a902cc2cfbdec",
 			"react/src/ui/EmbeddingResults.tsx": "3eb5926e6ef6c94914ffec7a7089e2b4a5266394",
 			"react/src/ui/EmbeddingSpace.tsx": "4ca21b216808796148f4a87cf076e6f0efc60f5c",
-			"react/src/ui/LiveCallTile.tsx": "6d27f67501a53df7f4d88168ed0a143551610c67",
+			"react/src/ui/LiveCallTile.tsx": "0735b9ef79afd58207e64d6af9272a2480a3fe0b",
 			"react/src/ui/LiveCaptionsPanel.tsx": "a8a2be25be9a939544219e3b0baa0a6a9d8181e2",
-			"react/src/ui/LiveRunner.tsx": "5f1746ebd02fc271d89c04e2643f6b6e48e5593e",
+			"react/src/ui/LiveRunner.tsx": "4ab13d926473c265aeaea65ed31e955a97a82f31",
+			"react/src/ui/LiveToolGateDialog.tsx": "5d63c4f5e2a6e7e0bdb450a01a9f802f09ff8ad1",
 			"react/src/ui/LiveVideoPreview.tsx": "5a50c394e14804d045aa9e3dca89c08839d38cf5",
 			"react/src/ui/PaneState.tsx": "8dd9972f3a3165d405392228bed6b39c0967ade5",
 			"react/src/ui/SchemaFields.tsx": "c249c5941569e3b2a43fbaf7af882d5f30557ac1",
@@ -1517,9 +1519,9 @@
 		}
 	},
 	"web/react-hooks": {
-		"reviewed": "2026-11-03",
+		"reviewed": "2026-11-04",
 		"files": {
-			"react/README.md": "854f604a007a3b0d227233b2f1fa8185a78a0873",
+			"react/README.md": "905e005d95a3a37f898fbee61c5f1365e62c111f",
 			"react/docs/composer.md": "24c2e1e33af6f41cd7cb9021149ecd49385c6e4b",
 			"react/docs/credentials.md": "5cecc169547a841b141dd561cce78ab528c13621",
 			"react/docs/wire.md": "e9eda4200b473c9a091b35e4f5eb8872279ce95b",
@@ -1581,9 +1583,10 @@
 			"react/src/ui/EmbeddingQuery.tsx": "cd0b1f908ce729424541a39a7e9a902cc2cfbdec",
 			"react/src/ui/EmbeddingResults.tsx": "3eb5926e6ef6c94914ffec7a7089e2b4a5266394",
 			"react/src/ui/EmbeddingSpace.tsx": "4ca21b216808796148f4a87cf076e6f0efc60f5c",
-			"react/src/ui/LiveCallTile.tsx": "6d27f67501a53df7f4d88168ed0a143551610c67",
+			"react/src/ui/LiveCallTile.tsx": "0735b9ef79afd58207e64d6af9272a2480a3fe0b",
 			"react/src/ui/LiveCaptionsPanel.tsx": "a8a2be25be9a939544219e3b0baa0a6a9d8181e2",
-			"react/src/ui/LiveRunner.tsx": "5f1746ebd02fc271d89c04e2643f6b6e48e5593e",
+			"react/src/ui/LiveRunner.tsx": "4ab13d926473c265aeaea65ed31e955a97a82f31",
+			"react/src/ui/LiveToolGateDialog.tsx": "5d63c4f5e2a6e7e0bdb450a01a9f802f09ff8ad1",
 			"react/src/ui/LiveVideoPreview.tsx": "5a50c394e14804d045aa9e3dca89c08839d38cf5",
 			"react/src/ui/PaneState.tsx": "8dd9972f3a3165d405392228bed6b39c0967ade5",
 			"react/src/ui/SchemaFields.tsx": "c249c5941569e3b2a43fbaf7af882d5f30557ac1",
@@ -1725,9 +1728,9 @@
 		}
 	},
 	"web/realtime": {
-		"reviewed": "2026-11-03",
+		"reviewed": "2026-11-04",
 		"files": {
-			"react/README.md": "854f604a007a3b0d227233b2f1fa8185a78a0873",
+			"react/README.md": "905e005d95a3a37f898fbee61c5f1365e62c111f",
 			"react/docs/composer.md": "24c2e1e33af6f41cd7cb9021149ecd49385c6e4b",
 			"react/docs/credentials.md": "5cecc169547a841b141dd561cce78ab528c13621",
 			"react/docs/wire.md": "e9eda4200b473c9a091b35e4f5eb8872279ce95b",
@@ -1789,9 +1792,10 @@
 			"react/src/ui/EmbeddingQuery.tsx": "cd0b1f908ce729424541a39a7e9a902cc2cfbdec",
 			"react/src/ui/EmbeddingResults.tsx": "3eb5926e6ef6c94914ffec7a7089e2b4a5266394",
 			"react/src/ui/EmbeddingSpace.tsx": "4ca21b216808796148f4a87cf076e6f0efc60f5c",
-			"react/src/ui/LiveCallTile.tsx": "6d27f67501a53df7f4d88168ed0a143551610c67",
+			"react/src/ui/LiveCallTile.tsx": "0735b9ef79afd58207e64d6af9272a2480a3fe0b",
 			"react/src/ui/LiveCaptionsPanel.tsx": "a8a2be25be9a939544219e3b0baa0a6a9d8181e2",
-			"react/src/ui/LiveRunner.tsx": "5f1746ebd02fc271d89c04e2643f6b6e48e5593e",
+			"react/src/ui/LiveRunner.tsx": "4ab13d926473c265aeaea65ed31e955a97a82f31",
+			"react/src/ui/LiveToolGateDialog.tsx": "5d63c4f5e2a6e7e0bdb450a01a9f802f09ff8ad1",
 			"react/src/ui/LiveVideoPreview.tsx": "5a50c394e14804d045aa9e3dca89c08839d38cf5",
 			"react/src/ui/PaneState.tsx": "8dd9972f3a3165d405392228bed6b39c0967ade5",
 			"react/src/ui/SchemaFields.tsx": "c249c5941569e3b2a43fbaf7af882d5f30557ac1",
