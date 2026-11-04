@@ -1119,7 +1119,7 @@
 	"web": {
 		"reviewed": "2026-11-04",
 		"files": {
-			"react/README.md": "905e005d95a3a37f898fbee61c5f1365e62c111f",
+			"react/README.md": "e97a2b8986d7bb5d7ad45c3c36a027ccf7f290e3",
 			"react/docs/composer.md": "24c2e1e33af6f41cd7cb9021149ecd49385c6e4b",
 			"react/docs/credentials.md": "5cecc169547a841b141dd561cce78ab528c13621",
 			"react/docs/wire.md": "e9eda4200b473c9a091b35e4f5eb8872279ce95b",
@@ -1172,8 +1172,9 @@
 			"react/src/studio/studio.css": "cf93144652e4f68db6642410889b16b71ff4a52d",
 			"react/src/styles/ink-controls.css": "d8390cc7d5568240161e319ba4abde8c5a9024d9",
 			"react/src/ui/CardWall.tsx": "ee29723ab3f115488848d9aea9f2b7ef1e84bbfa",
-			"react/src/ui/ChatComposerBar.tsx": "7667c687dc40aeef74e7d5fc0f612a03c56029cb",
+			"react/src/ui/ChatComposerBar.tsx": "3731ed5d6a3cb55c916758320331b5160137978c",
 			"react/src/ui/ChatTranscript.tsx": "3a7d2c12a906a4285925770b75e6a283ae7794a8",
+			"react/src/ui/ComposerControls.tsx": "ea2504dc16465c3a6adc7e2aedcea4b07a24558e",
 			"react/src/ui/ConsoleFrame.tsx": "651323a33878e70b8f5aac65352be2aabfcf113e",
 			"react/src/ui/DecisionAnswers.tsx": "1117db67828a3948ee3c53b2a1dc700436d4c5b9",
 			"react/src/ui/DecisionImages.tsx": "4acbcc1543ae24d17766a92377dfbaa913849445",
@@ -1328,7 +1329,7 @@
 	"web/astryx": {
 		"reviewed": "2026-11-04",
 		"files": {
-			"react/README.md": "905e005d95a3a37f898fbee61c5f1365e62c111f",
+			"react/README.md": "e97a2b8986d7bb5d7ad45c3c36a027ccf7f290e3",
 			"react/docs/composer.md": "24c2e1e33af6f41cd7cb9021149ecd49385c6e4b",
 			"react/docs/credentials.md": "5cecc169547a841b141dd561cce78ab528c13621",
 			"react/docs/wire.md": "e9eda4200b473c9a091b35e4f5eb8872279ce95b",
@@ -1381,8 +1382,9 @@
 			"react/src/studio/studio.css": "cf93144652e4f68db6642410889b16b71ff4a52d",
 			"react/src/styles/ink-controls.css": "d8390cc7d5568240161e319ba4abde8c5a9024d9",
 			"react/src/ui/CardWall.tsx": "ee29723ab3f115488848d9aea9f2b7ef1e84bbfa",
-			"react/src/ui/ChatComposerBar.tsx": "7667c687dc40aeef74e7d5fc0f612a03c56029cb",
+			"react/src/ui/ChatComposerBar.tsx": "3731ed5d6a3cb55c916758320331b5160137978c",
 			"react/src/ui/ChatTranscript.tsx": "3a7d2c12a906a4285925770b75e6a283ae7794a8",
+			"react/src/ui/ComposerControls.tsx": "ea2504dc16465c3a6adc7e2aedcea4b07a24558e",
 			"react/src/ui/ConsoleFrame.tsx": "651323a33878e70b8f5aac65352be2aabfcf113e",
 			"react/src/ui/DecisionAnswers.tsx": "1117db67828a3948ee3c53b2a1dc700436d4c5b9",
 			"react/src/ui/DecisionImages.tsx": "4acbcc1543ae24d17766a92377dfbaa913849445",
@@ -1521,7 +1523,7 @@
 	"web/react-hooks": {
 		"reviewed": "2026-11-04",
 		"files": {
-			"react/README.md": "905e005d95a3a37f898fbee61c5f1365e62c111f",
+			"react/README.md": "e97a2b8986d7bb5d7ad45c3c36a027ccf7f290e3",
 			"react/docs/composer.md": "24c2e1e33af6f41cd7cb9021149ecd49385c6e4b",
 			"react/docs/credentials.md": "5cecc169547a841b141dd561cce78ab528c13621",
 			"react/docs/wire.md": "e9eda4200b473c9a091b35e4f5eb8872279ce95b",
@@ -1574,8 +1576,9 @@
 			"react/src/studio/studio.css": "cf93144652e4f68db6642410889b16b71ff4a52d",
 			"react/src/styles/ink-controls.css": "d8390cc7d5568240161e319ba4abde8c5a9024d9",
 			"react/src/ui/CardWall.tsx": "ee29723ab3f115488848d9aea9f2b7ef1e84bbfa",
-			"react/src/ui/ChatComposerBar.tsx": "7667c687dc40aeef74e7d5fc0f612a03c56029cb",
+			"react/src/ui/ChatComposerBar.tsx": "3731ed5d6a3cb55c916758320331b5160137978c",
 			"react/src/ui/ChatTranscript.tsx": "3a7d2c12a906a4285925770b75e6a283ae7794a8",
+			"react/src/ui/ComposerControls.tsx": "ea2504dc16465c3a6adc7e2aedcea4b07a24558e",
 			"react/src/ui/ConsoleFrame.tsx": "651323a33878e70b8f5aac65352be2aabfcf113e",
 			"react/src/ui/DecisionAnswers.tsx": "1117db67828a3948ee3c53b2a1dc700436d4c5b9",
 			"react/src/ui/DecisionImages.tsx": "4acbcc1543ae24d17766a92377dfbaa913849445",
@@ -1730,7 +1733,7 @@
 	"web/realtime": {
 		"reviewed": "2026-11-04",
 		"files": {
-			"react/README.md": "905e005d95a3a37f898fbee61c5f1365e62c111f",
+			"react/README.md": "e97a2b8986d7bb5d7ad45c3c36a027ccf7f290e3",
 			"react/docs/composer.md": "24c2e1e33af6f41cd7cb9021149ecd49385c6e4b",
 			"react/docs/credentials.md": "5cecc169547a841b141dd561cce78ab528c13621",
 			"react/docs/wire.md": "e9eda4200b473c9a091b35e4f5eb8872279ce95b",
@@ -1783,8 +1786,9 @@
 			"react/src/studio/studio.css": "cf93144652e4f68db6642410889b16b71ff4a52d",
 			"react/src/styles/ink-controls.css": "d8390cc7d5568240161e319ba4abde8c5a9024d9",
 			"react/src/ui/CardWall.tsx": "ee29723ab3f115488848d9aea9f2b7ef1e84bbfa",
-			"react/src/ui/ChatComposerBar.tsx": "7667c687dc40aeef74e7d5fc0f612a03c56029cb",
+			"react/src/ui/ChatComposerBar.tsx": "3731ed5d6a3cb55c916758320331b5160137978c",
 			"react/src/ui/ChatTranscript.tsx": "3a7d2c12a906a4285925770b75e6a283ae7794a8",
+			"react/src/ui/ComposerControls.tsx": "ea2504dc16465c3a6adc7e2aedcea4b07a24558e",
 			"react/src/ui/ConsoleFrame.tsx": "651323a33878e70b8f5aac65352be2aabfcf113e",
 			"react/src/ui/DecisionAnswers.tsx": "1117db67828a3948ee3c53b2a1dc700436d4c5b9",
 			"react/src/ui/DecisionImages.tsx": "4acbcc1543ae24d17766a92377dfbaa913849445",

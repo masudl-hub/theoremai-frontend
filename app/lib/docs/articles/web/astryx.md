@@ -56,7 +56,7 @@ import { TheoremChat } from '@theoremjs/react/ui';
 ```
 
 - **`emptyState`**: What shows above the centred composer before the first message. By default it is the agent's handle and a prompt. `null` shows nothing.
-- **`options`**: The value for each of the profile's `inputs.options`, sent with every turn. An option you name is fixed to that value. An option you leave out gets a selector in the composer bar, which starts at its first allowed value.
+- **`options`**: The value for each of the profile's `inputs.options`, sent with every turn. An option you name is fixed to that value. An option you leave out gets a selector in the composer bar, which starts at its first allowed value. When the selectors' values do not fit the bar, each shows only its icon, and a tooltip gives its name and value. When the icons do not fit either, the row scrolls inside the composer.
 - **`context`**: Any JSON the page wants the agent to know. The latest value goes with every turn, and the profile's `inputs.context.from` must list `client`. `research.scout` lists no sender, so add this before you send `context`.
 - **`pageTools`**: A function for each tool the profile declares with `answeredBy: 'page'`, by name. The reply waits while the page answers, and no one is asked.
 - **`trace`**: Drives the trace from your own control, and the built-in toggle hides. Omit it to keep the toggle. The trace needs a profile that records traces.
