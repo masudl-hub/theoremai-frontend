@@ -1,6 +1,6 @@
 ---
 title: Embedded Studio Screen
-updated: 2026-11-02
+updated: 2026-11-04
 summary: Embedding Theorem Studio into existing React applications with scoped project workspaces.
 entry: studio/server.ts
 covers: studio/server.ts, studio/browser.ts
@@ -51,7 +51,7 @@ Embedding the Studio screen creates an interactive workbench where visitors can 
 Install `@theoremjs/studio` with `@theoremjs/agents` and `@theoremjs/web` at the same version. To show the screen, also install `@theoremjs/react` at that version, React 19, and the design packages at the versions `@theoremjs/react` lists in `peerDependencies`:
 
 ```bash
-npm install @theoremjs/studio @theoremjs/agents @theoremjs/web @theoremjs/react react react-dom @astryxdesign/core@0.7.6 @astryxdesign/theme-neutral@0.7.6 @stylexjs/stylex@0.19.0
+npm install @theoremjs/studio @theoremjs/agents @theoremjs/web @theoremjs/react react react-dom @astryxdesign/core@0.7.7 @astryxdesign/theme-neutral@0.7.7 @stylexjs/stylex@0.19.0
 ```
 
 Add the `studioVite` plugin to the plugins in your `vite.config.ts`, beside the ones your app has. It resolves the screen's packages to your install, so the page has one copy of React and Astryx. It also serves the code editor's icons and the type declarations it checks a profile's code against. `hostRoot` is the folder of the app that shows the screen:

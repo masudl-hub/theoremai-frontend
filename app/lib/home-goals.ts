@@ -189,7 +189,7 @@ export const GOAL_BEATS: readonly GoalBeat[] = [
 						prompt:
 							'Turn this on, then in the tester send “An attack shaped like a task update”. Expect Blocked on the tool-result path.',
 						result: 'Instructions in remote tool output block — a page cannot seize the turn.',
-						line: 'tool_instructions:',
+						line: 'injection:',
 					},
 					{
 						id: 'refuse-after-read',

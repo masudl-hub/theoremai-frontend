@@ -123,7 +123,7 @@ export type DraftEdit = (draft: StudioDraft) => StudioDraft;
 type FieldEdit = { isOn: (draft: StudioDraft) => boolean; on: DraftEdit; off: DraftEdit };
 
 function detectEdit(
-	detector: 'credentials' | 'tool_instructions',
+	detector: 'credentials' | 'injection',
 	boundaries: readonly ('reply' | 'tool_output_http' | 'tool_output_mcp' | 'tool_output_agent')[],
 ): FieldEdit {
 	const rest = createBlankDraft().guardrails.detect[detector];
@@ -242,7 +242,7 @@ const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
 		off: (draft) => ({ ...draft, inputs: { ...draft.inputs, ...NO_MEDIA } }),
 	},
 	'block-secret': detectEdit('credentials', ['reply']),
-	'block-injection': detectEdit('tool_instructions', [
+	'block-injection': detectEdit('injection', [
 		'tool_output_http',
 		'tool_output_mcp',
 		'tool_output_agent',

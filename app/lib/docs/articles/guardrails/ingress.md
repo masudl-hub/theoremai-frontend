@@ -1,6 +1,6 @@
 ---
 title: Ingress Protection & Taint Tracking
-updated: 2026-11-02
+updated: 2026-11-04
 summary: Protect agents against direct prompt injections, indirect payload steering, and confused-deputy attacks.
 entry: src/guardrails/injection.ts
 covers: src/guardrails/injection.ts, src/guardrails/detectors.ts
@@ -12,7 +12,7 @@ coverPosition: 50% 50%
 External content entering an agent's context is an attack surface. Attackers use prompt injections in user prompts and untrusted tool outputs to hijack agent instructions, manipulate tool arguments, and abuse ambient authority.
 
 Theorem provides two layers of ingress protection:
-1. **Content Detectors**: Pattern-based scanners that detect direct prompt overrides, obfuscated jailbreaks, and tool manipulation directives.
+1. **Content Detectors**: Pattern-based scanners that detect direct prompt overrides, obfuscated jailbreaks, and orders to the agent in what a tool returns.
 2. **Structural Taint Tracking**: Deterministic runtime gates that track data provenance and stop confused-deputy attacks, regardless of how an attacker crafts their phrasing.
 
 ```figure
@@ -42,12 +42,8 @@ Theorem provides two layers of ingress protection:
       "kind": "guardrail",
       "parts": [
         {
-          "label": "tool_instructions",
-          "text": "Flags text that behaves like an instruction."
-        },
-        {
           "label": "injection",
-          "text": "Off by default. Set it to flag, redact or block."
+          "text": "Flags injection phrasing and orders to the agent. A match marks the result."
         }
       ]
     },
@@ -77,7 +73,7 @@ Text enters the model's context in two ways, directly from a person or indirectl
 
 ## Prompt Injection Detection (`injection`)
 
-The `injection` detector reads text for prompt-injection phrasing, plain or disguised. By default it flags inbound text and tool results and errors, and ignores tool arguments, what a tool shows, and what the model writes. The profile's own system prompt (`identity.system`) is trusted text and is never read for injection.
+The `injection` detector reads text for prompt-injection phrasing, plain or disguised. In what a tool returns, it also reads for orders to the agent (see *Orders in tool text* below). By default it flags inbound text and tool results and errors, and ignores tool arguments and what a tool shows. It does not read what the model writes: setting it at `reply` or `thought` is an error. The profile's own system prompt (`identity.system`) is trusted text and is never read for injection.
 
 It finds:
 
@@ -104,11 +100,11 @@ guardrails: {
 },
 ```
 
-## Tool Directives (`tool_instructions`)
+## Orders in tool text
 
 Tool results often contain ordinary instructional text, such as API documentation or error messages. Flagging every `"must"` or `"call"` would flag most of them.
 
-The `tool_instructions` detector looks for tool text that behaves like an instruction to the agent. It finds four signals:
+In a tool's result or error, `injection` also looks for text that behaves like an instruction to the agent. It finds four signals, and each match names its `signal`:
 
 1. **Override**: An order to set the agent's instructions aside. This one counts on its own.
 2. **Tool Name**: The name of a tool the model can call this turn, in a sentence that also holds a destination.
@@ -120,23 +116,9 @@ A destination here is an email address or an `http(s)://` URL.
 > [!NOTE]
 > An order with no destination does not match, even inside an HTML comment. This is a known gap: the detector leaves that text to the taint gates.
 
-By default the detector flags remote tool results and errors (HTTP, MCP and agent tools) and ignores function tools. A match raises the turn's taint and marks the tool result for the model as `elevated` or `high`. It never refuses a tool call on its own: refusing calls is the job of the taint gates below.
+By default `injection` flags the results and errors of every tool. In a remote tool's text (HTTP, MCP and agent tools), any `injection` match raises the turn's taint and marks the result for the model: `high` for injection phrasing, an override, a callable tool's name, or two signals together, and `elevated` for one order or one claim of authority. A function tool's matches are flagged and raise nothing. A match never refuses a tool call on its own: refusing calls is the job of the taint gates below.
 
-To refuse the result itself, set the remote tool boundaries to `block`:
-
-```ts frame=profile:text
-guardrails: {
-	detect: {
-		tool_instructions: {
-			at: {
-				tool_output_http: 'block',
-				tool_output_mcp: 'block',
-				tool_output_agent: 'block',
-			},
-		},
-	},
-},
-```
+To refuse the result itself, set the tool boundaries to `block`, as the setting above does for HTTP and MCP. An agent tool's results cross `tool_output_agent`.
 
 ## Confused-Deputy Taint Tracking (`taint`)
 

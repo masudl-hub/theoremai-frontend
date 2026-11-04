@@ -1,6 +1,6 @@
 ---
 title: Telemetry Destinations
-updated: 2026-11-03
+updated: 2026-11-04
 summary: Connect telemetry to OpenTelemetry OTLP collectors, Phoenix tracing, or streaming JSONL logs.
 entry: src/observability/destinations.ts
 covers: src/observability/destinations.ts, src/observability/otlp.ts, src/observability/jsonl.ts, src/observability/policy.ts, src/observability/openinference.ts, src/observability/phoenix.ts
@@ -84,7 +84,7 @@ observability: {
 	scrub: {
 		sensitive: true, // The ids, financial, network and credentials detectors (default: true)
 		canary: true, // Never store the canary token (default: true)
-		injection: true, // The injection and tool_instructions detectors (default: true)
+		injection: true, // The injection detector, with the orders it finds in tool text (default: true)
 	},
 	retainForDays: 14, // Handed to each destination with the record (default: 14)
 	rotateAfterMiB: 32, // File size at which a file destination starts a new file (default: 32)
@@ -217,7 +217,7 @@ Telemetry must never send API credentials, personal data or canary tokens to an 
 Theorem cleans each record before it reaches a trace sink:
 
 1. **Sensitive data (`scrub.sensitive`)**: The `ids`, `financial`, `network` and `credentials` detectors, and the host's own, clean the stored text. They clean the trace even when the turn sets them to `ignore`. The `email`, `phone` and `bank_account` detectors do not clean it, so a trace keeps the addresses and numbers an agent works with.
-2. **Injection (`scrub.injection`)**: The `injection` and `tool_instructions` detectors clean the stored text.
+2. **Injection (`scrub.injection`)**: The `injection` detector cleans the stored text, and with it the orders to the agent it finds in what a tool returns.
 3. **Canary (`scrub.canary`)**: The canary token is never stored. It is replaced with `[omitted - canary]`.
 
 Set a switch to `{ theorem: false }` or `{ host: false }` to turn off one side: Theorem's patterns or the host's.
