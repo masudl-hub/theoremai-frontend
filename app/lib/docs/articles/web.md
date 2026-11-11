@@ -1,6 +1,6 @@
 ---
 title: Headless Web & Transport
-updated: 2026-11-03
+updated: 2026-11-10
 summary: Headless client transport, NDJSON stream decoding, and browser execution primitives.
 entry: src/interface/mod.ts
 covers: src/interface, react, web
@@ -180,7 +180,15 @@ The session keeps each detached call and the reply the model read, so a late res
 
 To tell an open page that a call ended, with no turn or reload, pass `notifier: createMemoryNotifier()` to `createTheoremHandler`. The page keeps `POST <base>/notify` open while a call runs, and each line makes it read the conversation again. The line carries no content. `createMemoryNotifier` reaches only pages connected to the process that ran the call, so for more than one instance, give a shared `TheoremNotifier`. For your own channel, such as a Web Push that reaches an open page, call `refresh()` on the `ChatController`. It runs the same read.
 
-The handler gives each late result to the model once, and you add nothing. When a result is due, the chat wakes the conversation: it posts `<base>/wake`, and the model answers with no message from the person. An open page learns of it through `notifier`, and a page that opens later wakes when it loads. Each result wakes the conversation once. To cap wakes, set `authorizeWake` on your `TurnWiring`. It reads the turn's `host`, so the studio applies the same limit to the person it acts as. A result it refuses waits for the person's next message. A message sent during a wake wins, and the wake writes nothing.
+Your app decides who tells the model that a background call ended, with `lateResultsDecider` on your `TurnWiring`. Without one, the model is never told: no page wakes the chat, and no reply reads a late result. Theorem runs the replies, and the decider says which results each one reads:
+
+- `give` returns the results a reply gives the model. Each one is read once. One it leaves out stays for a later reply.
+- `due` says whether a page open on the chat wakes it now.
+- `ended` runs on the server when a call ends. It can wake the chat with no page open, or tell the open pages.
+
+Each one reads the turn's `host`, so the studio decides the same way for the person it acts as. `pageWakes` from `@theoremjs/web/server` is the decider for an app with no server of its own: it gives every result, and the open page wakes the chat.
+
+When the chat wakes, it posts `<base>/wake`, and the model answers with no message from the person. An open page learns of it through `notifier`, and a page that opens later wakes when it loads. Each result wakes the conversation once. A message sent during a wake wins, and the wake writes nothing.
 
 The model reads a late result as a tool result, in `input.lateResults`. If your `background` service also tells the model, remove that, or the model reads the result twice.
 
