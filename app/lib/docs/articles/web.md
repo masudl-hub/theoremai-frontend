@@ -180,7 +180,9 @@ The session keeps each detached call and the reply the model read, so a late res
 
 To tell an open page that a call ended, with no turn or reload, pass `notifier: createMemoryNotifier()` to `createTheoremHandler`. The page keeps `POST <base>/notify` open while a call runs, and each line makes it read the conversation again. The line carries no content. `createMemoryNotifier` reaches only pages connected to the process that ran the call, so for more than one instance, give a shared `TheoremNotifier`. For your own channel, such as a Web Push that reaches an open page, call `refresh()` on the `ChatController`. It runs the same read.
 
-The model does not get a late result by itself. Your `prepare` passes the stored outcome in `input.lateResults` on a later turn. Pass each one once: the turn emits a `late_results` event, so a history built from events holds it from then on. The model reads it as a tool result, and the reply counts it as a read. In `input.context` or `input.history`, the same text would read as your word or the user's.
+The handler gives each late result to the model once, and you add nothing. When a result is due, the chat wakes the conversation: it posts `<base>/wake`, and the model answers with no message from the person. An open page learns of it through `notifier`, and a page that opens later wakes when it loads. Each result wakes the conversation once. To cap wakes, pass `authorizeWake` to `createTheoremHandler`. A result it refuses waits for the person's next message. A message sent during a wake wins, and the wake writes nothing.
+
+The model reads a late result as a tool result, in `input.lateResults`. If your `background` service also tells the model, remove that, or the model reads the result twice.
 
 A shared session store keeps a call as `background` when its worker dies. Your own sweep marks it `uncertain` with the reason `worker_lost`, through the store's `compareAndSwap`, and the conversation then shows the call as an error.
 
