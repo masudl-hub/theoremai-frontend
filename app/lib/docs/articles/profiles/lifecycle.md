@@ -1,6 +1,6 @@
 ---
 title: Lifecycle Hooks
-updated: 2026-11-02
+updated: 2026-11-10
 summary: Observing and intercepting turn stages, gate approvals, and sub-agent invocations.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -47,6 +47,36 @@ A turn moves through up to five lifecycle stages in sequence. The handler receiv
 | **`'post_turn'`** | Fires after `done`, once generation, tool loops, and cleanup finish. `ctx.stop` says how the turn ended. | *(None — read-only telemetry)* |
 
 When a tool call goes on after its reply, `post_tool` fires when the call settles, after the turn has ended. No turn is open then, so an `inject` or `abort` it returns is dropped.
+
+### Refusing a Call (`deny`)
+
+`deny` turns a call into a failure the model reads. At `pre_tool` the tool never runs. At `post_tool` the failure replaces what the tool returned, for example when the tool answered but your own step after it failed. The failure's kind is `blocked`. Left out, `code` is `not_authorized`.
+
+Give `details`, a JSON object, when the model needs more than the message. They become the failure's details. The guardrails read them first, then the model reads them. Details that are not a JSON object are dropped with a `deny_invalid` warning, and the call is still refused.
+
+```ts
+import type { StageHandler } from '@theoremjs/agents';
+
+declare function keepPages(output: unknown): Promise<{ kept: boolean; retryId: string }>;
+
+export const onStage: StageHandler = async (ctx) => {
+	if (ctx.stage === 'post_tool' && ctx.tool === 'read_pages' && !ctx.failure) {
+		const copy = await keepPages(ctx.outputRaw);
+		if (!copy.kept) {
+			return {
+				deny: {
+					code: 'not_kept',
+					message: 'The pages were read, but no copy was kept.',
+					details: { retryId: copy.retryId },
+				},
+			};
+		}
+	}
+	return undefined;
+};
+```
+
+To keep a failed call's failure and only give it new details, return `mutate: { details }` at `post_tool` instead. The code, kind and message stay.
 
 ### Tool Gate Escalation (`confirm`)
 
