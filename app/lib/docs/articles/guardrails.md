@@ -64,7 +64,7 @@ Every turn or tool call moves text across five groups of boundaries:
 1. **Inbound boundaries**: Text that enters the model's context from the person or your application. `user`, `attachment`, `voice`, `options`, `context`, `history`, `injected`, `system`, `repair`, `live_user`
 2. **Tool argument boundaries**: What the model sends to a tool. There is one boundary for each kind of tool. `tool_arguments_function`, `tool_arguments_http`, `tool_arguments_mcp`, `tool_arguments_agent`
 3. **Tool result boundaries**: What a tool returns, and its error text, before the model reads them. `tool_output_*`, `tool_failure_*`
-4. **Tool shown boundaries**: What a tool call shows the person on the turn's events: its output, error, artifacts and trace. `tool_shown_*`
+4. **Tool shown boundaries**: What a tool call shows the person on the turn's events: its output, error and trace. `tool_shown_*`
 5. **Outbound boundaries**: The model's own text on its way to the person. `reply`, `reply_structured`, `live_reply`, `thought`
 
 ## The Four Enforcement Actions

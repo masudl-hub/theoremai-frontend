@@ -39,7 +39,6 @@ function ran(
 		},
 		startedAt: AT,
 		endedAt: AT + ms,
-		artifacts: [],
 	};
 }
 

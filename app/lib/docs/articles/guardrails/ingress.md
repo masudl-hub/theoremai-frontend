@@ -128,7 +128,7 @@ The kernel records the origin of each tool result:
 * **Local Tools** (`function`): Host code you wrote. Its results do not taint the turn.
 * **Remote Tools** (`http`, `mcp`, `agent`): Bytes the host does not control. Their results taint the turn. The tools `research.scout` searches and reads with are remote, so the first result it reads taints the turn.
 
-Taint lasts for the reply that read the text. A pause does not end a reply: the run that goes on after an approval reads the marks back from that reply's tool results. A new message starts clean. A result the host passes in `input.lateResults` counts as read in the reply that receives it.
+Taint lasts for the reply that read the text. A pause does not end a reply: the run that goes on after an approval reads the marks back from that reply's tool results. A new message starts clean. A result the host gives from `TurnRequest.lateResults` counts as read in the reply that receives it, and a late result that lands inside a reply does not end it.
 
 ### Gating Tools After Remote Reads (`afterRemoteRead`)
 

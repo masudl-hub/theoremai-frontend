@@ -172,7 +172,7 @@ Live and host profiles ignore `loadTier` and load all allowed tools at turn star
 
 ## Finish a Call After Its Turn
 
-A slow tool can give the model a reply now and finish later, so the turn does not wait for it. The model reads that the call has started and that it has no result yet. The call's end reaches your host alone. The model reads it on a later turn, in `input.lateResults`. Your app's `lateResultsDecider` decides when, and without one the model is never told.
+A slow tool can give the model a reply now and finish later, so the turn does not wait for it. The model reads that the call has started and that it has no result yet. The call's end reaches your host alone. The model reads it in the turn that is running when it ends, or in a later one, from `TurnRequest.lateResults`. Your app's `lateResultsDecider` decides when, and without one the model is never told.
 
 Set `background` on the tool. The cookbook sets it on no tool. Add this when the model should choose whether `record_podcast` finishes after the turn:
 

@@ -190,7 +190,7 @@ Each one reads the turn's `host`, so the studio decides the same way for the per
 
 When the chat wakes, it posts `<base>/wake`, and the model answers with no message from the person. An open page learns of it through `notifier`, and a page that opens later wakes when it loads. Each result wakes the conversation once. A message sent during a wake wins, and the wake writes nothing.
 
-The model reads a late result as a tool result, in `input.lateResults`. If your `background` service also tells the model, remove that, or the model reads the result twice.
+The model reads a late result as a tool result, from `TurnRequest.lateResults`. If your `background` service also tells the model, remove that, or the model reads the result twice.
 
 A shared session store keeps a call as `background` when its worker dies. Your own sweep marks it `uncertain` with the reason `worker_lost`, through the store's `compareAndSwap`, and the conversation then shows the call as an error.
 

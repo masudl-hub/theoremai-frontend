@@ -128,7 +128,7 @@ Theorem reads text at five groups of boundaries, the same groups that [The Five 
 1. **Inbound**: The person's message, the text of attachments and voice, options, context, history, and the host's added text. By default, detectors flag what they find here, except `injection`, which is off.
 2. **Tool arguments**: What the model sends to a tool. Theorem also checks the arguments against the tool's input schema, and the tool's permission decides whether it runs at once or waits for the person.
 3. **Tool results**: What a tool returns, and its error text, before the model reads them. Theorem checks the output against the tool's output schema.
-4. **Tool shown**: What a tool call shows the person: its output, error, artifacts and trace.
+4. **Tool shown**: What a tool call shows the person: its output, error and trace.
 5. **Outbound**: The model's reply, structured reply, live reply and thoughts. By default, a canary leak or a leak of private instruction text is flagged here.
 
 Each detector's action at each boundary is `ignore`, `flag`, `redact` or `block`. The profile's `guardrails.detect` changes the defaults.

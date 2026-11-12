@@ -137,7 +137,7 @@ A browser loads a markdown image as soon as it renders it. An attacker can use t
 
 Theorem knows which URLs the turn was given:
 1. **Given URLs**: URLs in the system prompt, the user's input, and the host's history.
-2. **Tool URLs**: URLs in tool results, and in results your host passes in `input.lateResults`. They count as given while `allow.fromTools` is `true`, the default.
+2. **Tool URLs**: URLs in tool results, and in results your host gives from `TurnRequest.lateResults`. They count as given while `allow.fromTools` is `true`, the default.
 
 By default `ungiven_images` flags an image at an address the model was not given, and `ungiven_links` is off (`ignore`), because replies often cite pages.
 

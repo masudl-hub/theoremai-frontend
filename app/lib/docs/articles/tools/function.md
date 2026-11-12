@@ -75,7 +75,7 @@ handler: async (input, ctx) => {
 
 ### Streaming Generator Handlers
 
-For long-running tasks, declare an `async function*` handler. It can yield `progress`, `draft`, `trace`, `artifact` and `warning` events for the host to show, and ends with one `complete` event that carries the output:
+For long-running tasks, declare an `async function*` handler. It can yield `progress`, `draft`, `trace` and `warning` events for the host to show, and ends with one `complete` event that carries the output:
 
 ```text
 handler: async function* (input, ctx) {
