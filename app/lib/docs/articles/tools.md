@@ -240,7 +240,7 @@ A failed call settles with a `code` and a message. Theorem sets these codes for 
 | `handler_error` | The handler threw an error | Fix the handler. The model reads the text of the error |
 | `network_blocked` | `guardrails.network` refuses the address | Change `guardrails.network`, or the address |
 | `invalid_output` | The result does not match `output`, the handler returned nothing, or a `t2Loader` result has the wrong shape | Fix the handler, or the `output` schema |
-| `output_blocked` | `guardrails.detect` blocks a match in the result | Change the action at `tool_output_<kind>`, or return less from the tool |
+| `output_blocked` | `guardrails.detect` blocks a match in the result, or in a failed call's details | Change the action at `tool_output_<kind>`, or return less from the tool |
 | `awaiting_after_reply` | A call that went on after its reply asked the user a question, and no turn is open to answer it | Have the tool finish without asking, or keep it in the turn |
 | `run_failed` | A call that went on after its reply threw before it settled | Read the message. It says what threw |
 | `result_too_large` | The result is larger than the coordinator's `maxOutcomeBytes` | Return less from the tool, or raise that limit |

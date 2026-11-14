@@ -1,6 +1,6 @@
 ---
 title: Astryx UI Components
-updated: 2026-11-03
+updated: 2026-11-13
 summary: Ready-made Astryx components for chat, live, decision, embedding and host profiles.
 entry: react/src/index.ts
 covers: react, web
@@ -60,6 +60,8 @@ import { TheoremChat } from '@theoremjs/react/ui';
 - **`context`**: Any JSON the page wants the agent to know. The latest value goes with every turn, and the profile's `inputs.context.from` must list `client`. `research.scout` lists no sender, so add this before you send `context`.
 - **`pageTools`**: A function for each tool the profile declares with `answeredBy: 'page'`, by name. The reply waits while the page answers, and no one is asked.
 - **`trace`**: Drives the trace from your own control, and the built-in toggle hides. Omit it to keep the toggle. The trace needs a profile that records traces.
+- **`media`**: Which media a tool returned the chat shows. `'sent'`, the default, shows only what the tool sent to the person (`sent: true`) and its references. `'all'` also shows what only the model read, for an evaluation view. Media the model made and files the person attached always show. Hiding is not withholding: the page still receives every piece.
+- **`resolveMedia`**: Turns a reference a tool sent (`{ type, mimeType, uri }`) into an address the page can load, under the viewer's own sign-in, or `null`. Until it answers, and on `null`, the chat shows the file name. The model never reads a reference.
 - **`usage`**: Shows tokens and cost: each reply's total under it, and, on an agent tool's call row, what that agent used. Off by default.
 
 ## 2. Realtime Voice & Video (`<LiveRunner />`)
@@ -104,6 +106,8 @@ Show `<LiveRunner />` or `<LiveCallTile />` for a call, not both: the camera pre
 - **Tool gates**: An `ApprovalCard` in a dialog over the call when a tool waits for a person's answer.
 - **Captions**: `LiveCaptionsPanel` in the right-hand column: the call's transcript and a text composer.
 
+`<LiveRunner />` takes `media` and `resolveMedia`, as `<TheoremChat />` does. Its captions show the media a tool sent, or every piece with `media="all"`, and a reference through `resolveMedia`.
+
 ## 3. Decision Evaluations (`<TheoremDecision />`)
 
 `<TheoremDecision />` is a drop-in surface for a `decision` profile served by `createTheoremDecisionHandler`, at `/api/decision` unless you set `endpoint`. It shows the state as fields or JSON, takes image attachments, and shows the answers with their confidence, scores and boxes. Decide runs with the button or ⌘/Ctrl+Enter.
@@ -142,7 +146,7 @@ Once the documents are indexed, `EmbeddingSpaceView` draws the index as a space.
 
 ## 5. Host & MCP Tools (`<TheoremHost />`)
 
-`<TheoremHost />` is a drop-in console for a `host` profile served by `createTheoremHostHandler`, at `/api/host` unless you set `endpoint`. Pick a tool (a function, an HTTP endpoint or an MCP server's tool), fill in the request its input schema draws, and Run it with the button or ⌘/Ctrl+Enter. The response is laid out from what the tool returned: figures, charts, images and the data. Gates are answered in place. A call that answered and goes on after its reply shows as `in background`.
+`<TheoremHost />` is a drop-in console for a `host` profile served by `createTheoremHostHandler`, at `/api/host` unless you set `endpoint`. Pick a tool (a function, an HTTP endpoint, an MCP server's tool or an agent), fill in the request its input schema draws, and Run it with the button or ⌘/Ctrl+Enter. The response is laid out from what the tool returned: figures, charts, images and the data. Gates are answered in place. A call that answered and goes on after its reply shows as `in background`. `resolveMedia` loads a tool's references, as in the chat.
 
 ```tsx
 import { TheoremHost } from '@theoremjs/react/ui';

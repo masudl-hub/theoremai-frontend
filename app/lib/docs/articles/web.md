@@ -84,6 +84,7 @@ Mount the handler under a catch-all route. It answers these sub-routes:
 | **`POST <base>/conversation`** | Returns `{ transcript, paused }` | Retrieves the rendered transcript and any paused reply for a conversation reference. |
 | **`POST <base>/notify`** | NDJSON Stream | Stays open: one line now, and one each time a background call in this session ends. Set `notifier` to serve it. |
 | **`POST <base>/rewind`** | Returns `{ conversation, view }` | Truncates a conversation after a designated block, returning a new conversation ref for branching. |
+| **`POST <base>/wake`** | NDJSON Stream | A reply to no message: the model takes up the results of background calls that ended since it last ran. Empty when none waits. |
 
 ## Mounting on Web Frameworks
 
@@ -176,6 +177,12 @@ const background: TheoremHandlerOptions['background'] = ({ sessionId }) => ({
 
 The value you return must stay valid after the request ends, until each call settles.
 
+Your app may keep its own record of these calls. `TurnWiring.prepare` can return `execution`, `background` and `lateResults` for a turn, and each runs with the session's own:
+
+- **`execution`**: Your coordinator decides each call. The session still records the same call, so the page shows it and a resend reads it back.
+- **`background`**: Your service runs in place of the handler's `background`, and `notifier` still tells the page when a call ends.
+- **`lateResults`**: Your results come first, then the session's, at each moment the turn asks.
+
 The session keeps each detached call and the reply the model read, so a late result leaves the next turn free to resume. `POST <base>/conversation` shows the call as it stands: still running, its result, or an error. The chat reads that after each reply and on load. The error's code is `outcome_not_retained` when the session has dropped the result, which by default happens 24 hours after the call settles (`operationRetentionMs`).
 
 To tell an open page that a call ended, with no turn or reload, pass `notifier: createMemoryNotifier()` to `createTheoremHandler`. The page keeps `POST <base>/notify` open while a call runs, and each line makes it read the conversation again. The line carries no content. `createMemoryNotifier` reaches only pages connected to the process that ran the call, so for more than one instance, give a shared `TheoremNotifier`. For your own channel, such as a Web Push that reaches an open page, call `refresh()` on the `ChatController`. It runs the same read.
@@ -192,6 +199,19 @@ When the policy tells a result to a reply to no message, the chat wakes: it post
 The model reads a late result as a tool result, from `TurnRequest.lateResults`. If your `background` service also tells the model, remove that, or the model reads the result twice.
 
 A shared session store keeps a call as `background` when its worker dies. Your own sweep marks it `uncertain` with the reason `worker_lost`, through the store's `compareAndSwap`, and the conversation then shows the call as an error.
+
+### Your Own Server (`@theoremjs/agents/conversation`)
+
+The handler above keeps its chat in the session store. A server of your own uses the layer under it, `@theoremjs/agents/conversation`. It has no HTTP and no transcript. `runConversation` runs one reply under a hold of the conversation, so one reply at a time reads it:
+
+- **`inbox`**: Your storage, a `ConversationInbox`. It holds the items that wait, such as late results, and the hold with its lease. `createMemoryInbox` keeps it in memory.
+- **`policy`**: Your rule for what the reply reads now, an `InboxPolicy`. It is the decider's `policy`, with the same moments.
+- **`start`**: What opens the reply: a `message`, a `wake`, or a `follow_up` under the hold a run before it kept.
+- **`reply`**: Your reply. Its save marks told what it told, in the same write as the reply, and only while its hold still has the conversation. `run.signal` aborts once the hold has lost it, and then the reply must not save.
+- **`gaveUp`**: Hears the items the policy gave up, once.
+- **`newId`** and **`renewEveryMs`**: Make the ids of replies and holds, and set how often the hold renews its lease.
+
+A reply that fails gives its items back, so a later reply reads them. The run ends `held` when another hold has the conversation, `released` when nothing waits that may be told, `continue` when items wait and the hold keeps the conversation for your next reply, or `lost` when another hold took it. `failure` holds what the reply threw. `@theoremjs/agents/conversation/testing` has the scenarios every inbox must pass, as `conversationScenarios`.
 
 ## Specialized Handlers
 

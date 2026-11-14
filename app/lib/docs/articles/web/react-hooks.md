@@ -1,6 +1,6 @@
 ---
 title: React Hooks
-updated: 2026-11-02
+updated: 2026-11-13
 summary: Headless React hooks for chat, decision, embedding and host profiles.
 entry: react/src/index.ts
 covers: react, src/interface, web
@@ -56,7 +56,7 @@ The `useTheoremChat` hook binds `createChatController` from `@theoremjs/web/clie
 
 ### Lean Consumption
 
-When a tool call completes, each image or other media part it returned becomes a `media` block right after the call, so it stands before what the model says next.
+When a tool call completes, each image or other media part it returned becomes a `media` block right after the call, so it stands before what the model says next. The block has `fromTool: true`. It holds the bytes in `data`, or a reference's `uri` and `type`, which only your own resolver turns into something to show. `sent` marks what the tool sent to the person: a reference always is. `metadata` holds the tool's own values for the file. The page receives every piece, and `TheoremChat`'s `media` setting decides which it shows.
 
 A tool call whose `state.phase` is `'background'` has answered the model and goes on after the turn. The chat reads the conversation from the host after each reply, so its block then shows how the call ended, or that it is still running. With a [`notifier`](/docs/web) on the handler, an open page also reads it when the call ends.
 
