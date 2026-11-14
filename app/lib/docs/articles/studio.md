@@ -39,6 +39,7 @@ The screen keeps the profile it edits in the browser, as a draft, and sends the 
 3. **Workspace Map**: A map of the project's providers, models, shared settings, profiles and tools, and how they join.
 4. **Chat and Tool Approvals**: Run the profile in a chat beside the editor, and allow or deny a gated tool call from its card.
 5. **Trace Replay**: Import recorded turns and run them again through the profile as it is now, with no model calls.
+6. **Guardrail Test**: Send a sample text across one guardrail boundary and see what the draft's guardrails do with it.
 
 ## The Studio Workbench
 
@@ -97,6 +98,14 @@ To check a prompt change against a real conversation, replay it:
 2. **Replay**: Studio runs the conversation again through the profile as it is now. Every model call is answered from the recording, and so is every tool result unless **Live tools** is on. The profile's guardrails, stages and gates run for real. A replay needs no keys.
 3. **Recorded and Replayed**: One button switches between the recorded and the replayed conversation, to show what changed.
 4. **Divergence and Continue Live**: When the profile asks for something the recording does not hold, the replay stops there and says why. **Continue live** goes on from that point with the real model.
+
+### 6. Guardrail Test
+
+To see what the draft's guardrails do with a text, click **Test guardrails** in the editor. The test opens in the preview's place.
+
+1. **Boundary**: Choose where the text enters the turn: a user message, an earlier message, host system text, a local or remote tool result, a tool error, tool arguments, the model's reply or its thought. Hover a boundary to see when the kernel reads it and what it does there.
+2. **Send**: Type a text, or load the examples, and click **Send**. The turn is the kernel's own on a scripted model, so each check is the one a real turn runs, on the guardrails as the draft writes them. No model or host is called. A text is at most 8,000 characters.
+3. **Result**: Each text comes back **Passed**, **Flagged**, **Redacted** or **Blocked**, with each guardrail decision of the turn and the text the model, the tool or the user got.
 
 ## Two Ways to Run Studio
 

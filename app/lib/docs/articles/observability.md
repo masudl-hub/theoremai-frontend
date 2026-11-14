@@ -106,6 +106,7 @@ Spans carry attributes named by the OpenTelemetry GenAI conventions, beside Theo
   * `stream_incomplete`: The provider's stream ended before the answer was complete.
   * `interrupted`: The user spoke over a Live response.
   * `generation_complete`: Live only. The model finished generating this response; the turn may still be open.
+  * `go_away`: Live only, on the `session` span. The provider warned the session would end, then closed it.
 
 When a host hook throws, the span it ran in gets a `theorem.hook_failed` event. It holds `hook`, the `stage` when the hook ran at one, `error_kind`, and `reason`: what the hook threw, in its own words. See [When Your Code Throws](/docs/profiles/lifecycle).
 

@@ -281,7 +281,7 @@ The `LiveSession` object provides methods to push media, inject context, run too
 | **`sendContext`** | `(context) => Promise<void>` | Tells the model what the page or host knows. It opens no turn and draws no reply. The model sees it from its next turn on. |
 | **`events`** | `() => AsyncGenerator<TurnEvent>` | Returns the stream of incoming text, media, tool calls, and lifecycle events. |
 | **`executeTool`** | `(args) => Promise<LiveExecuteToolResult>` | Runs a call the model made, by its `callId`. Its events join `events()`. A gate returns `gated`, and the model gets no answer until the call has its `decision`. |
-| **`answerToolCall`** | `(args) => LiveExecuteToolResult` | Settles a call whose body ran in the process that owns the tool registry. Its events join `events()`, and the model reads its `readBack`. |
+| **`answerToolCall`** | `(args) => LiveExecuteToolResult` | Settles a call whose body ran in the process that owns the tool registry. Its events join `events()`, and the model reads its `readBack`. When that process cannot answer, pass a `tool` event of your own in the `error` phase, with `readBack: formatToolResult(formatToolFailureForModel(failure))`, so the model reads it like every other failure. |
 | **`close`** | `(reason?) => Promise<void>` | Ends the session. `events()` stops. |
 
 ### Key Live Events

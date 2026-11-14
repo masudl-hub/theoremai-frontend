@@ -129,7 +129,7 @@ The cookbook's `record_podcast` sets no host field; add this when the model shou
 
 When a model calls an agent tool, Theorem runs the request's `onAgentCall` hook before the called agent's turn. The hook receives an `AgentCall` carrying the tool name, the called profile, the calling profile, the model's input, any `hostInput` from `hostFields`, and the call's `depth`.
 
-The hook can return nothing to run the agent on what the model sent, or return `{ refuse: string }` to fail the call with `refused_by_host` and read the text back to the calling model. To limit delegation depth, refuse based on `depth`. It can also return an `AgentCallRequest` to reshape the `input`, choose the `model` or `provider`, or set the `host` the called agent's tools read. If the hook throws, the call fails as not started with `hook_failed`, and the turn goes on. See [When Your Code Throws](/docs/profiles/lifecycle).
+The hook can return nothing to run the agent on what the model sent, or return `{ refuse: string }` to fail the call with `refused_by_host` and read the text back to the calling model. To limit delegation depth, refuse based on `depth`. It can also return an `AgentCallRequest` to reshape the `input`, choose the `model` or `provider`, or set the `host` the called agent's tools read. Return `path` for the path its turn runs on and `options` for its own `when` lines. Without `path`, the called agent gets only the tools on every path (`'*'`). Without `options`, no `when … is …:` line of it fits. If the hook throws, the call fails as not started with `hook_failed`, and the turn goes on. See [When Your Code Throws](/docs/profiles/lifecycle).
 
 For complete `onAgentCall` interceptor patterns, see [Lifecycle Hooks & Interception](/docs/profiles/lifecycle).
 
