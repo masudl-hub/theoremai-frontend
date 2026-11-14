@@ -1,6 +1,6 @@
 ---
 title: Live Profiles
-updated: 2026-11-03
+updated: 2026-11-13
 summary: Real-time duplex audio and video streaming over WebSockets with interruption handling.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -295,6 +295,35 @@ As the model streams back responses, `session.events()` yields events:
 | **`media`** | `event.media: { mimeType, data }` | A base64 chunk of the model's voice. Gemini PCM arrives wrapped as `audio/wav`. |
 | **`done`** | `event.stop`, `event.interrupted?: boolean` | `stop.kind` is `generation_complete` when the model finishes generating and `completed` when the turn ends. It is `interrupted`, with `interrupted: true`, when the provider reports that the user spoke over the model, and an interrupted reply gets no `completed`, even after `generation_complete`. It is `filtered` when guardrails withhold or refuse the reply. One reply brings more than one `done`, so read `stop.kind` and do not count them. |
 | **`tool`** | `event.tool: ToolCallEvent` | Emitted when the model calls a tool during the conversation. Your code runs the call with `executeTool`. |
+
+### Lines the Model Can Cite (`lines`)
+
+Pass `lines` in the options to give each line of the call an id. A user line is all the user said before the model acted on it. The model's line is its whole turn. `lines` takes three functions:
+
+* **`reserve`** gives a new id for a line still to come. A failure fails the open, or the line that needed the id.
+* **`note`** gives the words that tell the model a line's id. The model reads a user line's note before that line, so it can cite the line it is hearing. It reads its own line's note after that line is kept.
+* **`keep`** takes each finished line: its `id`, `role` (`'user'` or `'assistant'`) and `text`. The model's next tool call reaches your host only after the line before it is kept, so resolve once the line is yours, for example queued, not once it is stored far away. A failure ends the session with that error.
+
+```ts frame=statements
+let next = 0;
+const kept: { id: string; role: string; text: string }[] = [];
+
+const session = await runSession(
+	{ profile: 'research.scout.live' },
+	{
+		...hostOptions,
+		lines: {
+			reserve: async () => `line-${++next}`,
+			note: ({ id, role }) => `The ${role === 'user' ? 'next user line' : 'line you just said'} is ${id}.`,
+			keep: async (line) => {
+				kept.push(line);
+			},
+		},
+	},
+);
+```
+
+Without `lines`, lines get no ids, and your host reads them from `events()`. Either way, the session history holds one entry per line.
 
 ## Browser Client & WebSocket Relay
 

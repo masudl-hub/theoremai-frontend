@@ -1,6 +1,6 @@
 ---
 title: Liquid Tool Labels
-updated: 2026-10-30
+updated: 2026-11-13
 summary: Dynamic, typed status label templates for tool activity spinners, approval prompts, and transcripts.
 entry: src/kernel/tools/activity-label.ts
 covers: src/kernel/tools/activity-label.ts, src/kernel/tools/types.ts
@@ -92,6 +92,7 @@ labels: {
 * **Equality**: `when urls.length is 1: ...`
 * **Negation**: `when urls.length is not 1: ...`
 * **Null Checks**: `when <field> is null: ...`, for a field whose schema allows null. A field that the model left out is not null. On a field that can never be null, this throws at registration.
+* **Shape Checks**: `when <field> has <name>: ...` fits when the group at `<field>` holds the field `<name>`. A tool whose input is one of several keyed shapes words each one: `when action has erase: erasing an item` fits when the model sent `{ action: { erase: … } }`. On a field that is not a group, or a name the group never holds, this throws at registration and names the fields it has.
 * **Compound Logic**: Join multiple checks with `and`:
   `when urls.length is 1 and maxCharacters is 8000: reading {urls.0} in full`
 

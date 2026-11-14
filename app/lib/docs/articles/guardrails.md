@@ -1,6 +1,6 @@
 ---
 title: The Five Boundaries
-updated: 2026-11-04
+updated: 2026-11-13
 summary: Enforce security policies across inbound, tool argument, tool result, and outbound model boundaries.
 entry: src/guardrails/mod.ts
 covers: src/guardrails, src/kernel/stages.ts

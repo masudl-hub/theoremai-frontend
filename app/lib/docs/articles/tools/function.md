@@ -1,6 +1,6 @@
 ---
 title: Function Tools
-updated: 2026-11-02
+updated: 2026-11-13
 summary: Authoring TypeScript function tools with Zod schema validation, streaming progress generators, and tools the page answers.
 entry: src/kernel/tools/execute.ts
 covers: src/kernel/tools/execute.ts, src/kernel/tools/types.ts
@@ -72,6 +72,27 @@ handler: async (input, ctx) => {
 	return { saved };
 }
 ```
+
+#### A Call That Did Not Work (`ToolFailed`)
+
+When a call ran but did not do what it was asked, throw `ToolFailed` from `@theoremjs/agents`. The call fails under your own `code` and `kind`, and the model reads your `message`. Give `details`, a JSON object, when the model needs more. The guardrails read the message and the details before the model does. The person gets the wording for the `kind`.
+
+```text
+handler: async (input, ctx) => {
+	const saved = await saveReport(input, { signal: ctx.signal });
+	if (saved.duplicate) {
+		throw new ToolFailed({
+			code: 'report_exists',
+			kind: 'conflict',
+			message: `A report named "${input.title}" already exists.`,
+			details: { existing: saved.id },
+		});
+	}
+	return { saved };
+}
+```
+
+Any other throw fails the call as `handler_error`.
 
 ### Streaming Generator Handlers
 
@@ -169,6 +190,30 @@ handler: async () => {
 ```
 
 The kernel checks the value against your Zod `output` schema when the call settles. A mismatch fails the call as `invalid_output`.
+
+### Media (`parts`)
+
+A function tool returns its media itself, in a `parts` list on its output. The model reads each part, and the person sees only what the tool marks:
+
+- **Text**: `{ type: 'text', text }`, read by the model beside the output.
+- **Bytes**: `{ type, mimeType, data }`, with `data` in base64. Only the model reads it, unless you add `sent: true`.
+- **A reference**: `{ type, mimeType, uri }`, such as a `gs://` object. The person is shown it through your app's own resolver, and the model never reads it, so a private address never reaches a provider.
+
+```text
+// ...
+handler: async (input) => {
+	const csv = await buildReport(input);
+	return {
+		saved: true,
+		parts: [{ type: 'document', mimeType: 'text/csv', data: btoa(csv), sent: true, metadata: { rows: 42 } }],
+	};
+},
+// ...
+```
+
+`metadata` holds your own values, such as a caption or a length. Theorem does not read it, and the model never sees it; the `complete` event and the chat carry it as you gave it. A part with a field it does not name, empty bytes, a blank `mimeType` or an empty `uri` fails the call as `invalid_output`, with the bad field named. `toolOutputPartSchema` checks a part the same way.
+
+A CSV, plain-text or Markdown part is read by the [guardrails](/docs/guardrails) as an attachment is. The model reads it as UTF-8, with a CSV's formula cells escaped, and the person gets the file's own bytes.
 
 ## Related Guides
 

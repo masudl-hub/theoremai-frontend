@@ -1,6 +1,6 @@
 ---
 title: Tools & Execution Pipeline
-updated: 2026-11-10
+updated: 2026-11-13
 summary: Give an agent tools that run custom code, call REST APIs, query MCP servers, or delegate to sub-agents.
 entry: src/kernel/tools/mod.ts
 covers: src/kernel/tools, src/kernel/auth
@@ -252,7 +252,7 @@ A call that waits fails in two more ways. `wait_unknown` means `after` or `waitF
 ## Tool Types In Detail
 
 * **[Function Tools](/docs/tools/function)**: Local JavaScript/TypeScript handlers, streaming generators, browser UI tools (`answeredBy: 'page'`), `ToolContext`, grounding citations (`sources`), and `uncheckedOutput`.
-* **[HTTP Tools](/docs/tools/http)**: Declarative REST endpoints, URL mapping (`pathParams`, `queryParams`, `bodyParam`), rate limits, timeout controls, and multimodal image extraction (`images`).
+* **[HTTP Tools](/docs/tools/http)**: Declarative REST endpoints, URL mapping (`pathParams`, `queryParams`, `bodyParam`), rate limits, timeout controls, and the media the model and the person see (`media`).
 * **[MCP Tools](/docs/tools/mcp)**: Model Context Protocol integration, server endpoints, and native MCP session pooling (`session.idleMs`, `session.max`, LRU eviction, parallel open deduplication).
 * **[Agent Tools](/docs/tools/agent)**: Delegating to registered agent profiles, input/output schema derivation, `maxCallsPerTurn`, isolation, and `onAgentCall` interception.
 

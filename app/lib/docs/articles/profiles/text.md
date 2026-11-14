@@ -1,6 +1,6 @@
 ---
 title: Text Profiles
-updated: 2026-11-02
+updated: 2026-11-13
 summary: Multi-step conversational agents running tool loops, multi-turn reasoning, and streaming text.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -118,7 +118,7 @@ Theorem enforces structured outputs in two places: the schema the model answers 
     "src": "/imagery/th30_rustsand.png",
     "position": "50% 50%"
   },
-  "caption": "How Theorem checks one structured reply. Every rewrite uses one of outputs.validation.maxRetries, which defaults to 0. A reply the output limit cuts off gets one rewrite even so.",
+  "caption": "How Theorem checks one structured reply. Every rewrite uses one of outputs.validation.maxRetries, which defaults to 0. A reply the output limit cuts off is sent back only when you set turnBehaviour.resumption.autoContinue to a list that names length.",
   "steps": [
     {
       "label": "The schema goes with the call",
@@ -258,7 +258,7 @@ outputs: {
   * `'fix'`: Theorem asks the model to rewrite *only the refused items*, keeping the valid ones and avoiding a full regeneration. It does this once, while retries remain. Any item refused again is removed. If that rewrite ends with no answer, the reply it was fixing goes out without the refused items.
   * `'drop'`: Theorem removes refused items from the array and continues.
 * **`maxRetries`**: How many times the model may rewrite a reply that fails your checks or the schema's required keys. Left out, there are no rewrites, so `'fix'` removes refused items at once. Once retries run out, the reply goes out as it is. Under `streaming.mode: 'sse'`, an attempt that gets rewritten has already streamed.
-* **Cut-off replies**: A reply that the output limit cuts off holds nothing to check. Theorem sends it back with what the model wrote and asks for the whole answer again, shorter. This happens once, even without `outputs.validation`, or `maxRetries` times when that is more. Cut off again, the turn fails with a `bad_response` error.
+* **Cut-off replies**: A reply or tool call that the output limit cuts off holds nothing to check or run. When you set `turnBehaviour.resumption.autoContinue` and it names `'length'`, Theorem sends back what the model wrote, says why it stopped, and asks it to fit. It does this up to `maxContinues` times a turn (default: one), a count it shares with failed calls the turn sends again. Leaving `autoContinue` out does not turn this on. With no repair left, a cut structured reply fails the turn with a `bad_response` error, and so does a tool call cut again after a repair. Without the repair, a cut tool call stops the turn as `provider_error`. A cut text reply goes out as it is, for the host's Continue.
 
 The `structured` event says what happened. `removed` lists each item taken out, with its list's path and the reason. `failed` lists the fields still invalid when retries ran out.
 
@@ -326,7 +326,7 @@ for await (const event of events) {
 
 * **`system`**: Appends dynamic, one-off instructions to this turn alone without mutating the profile's permanent `identity.system`.
 * **`path`**: Selects the execution channel, exposing only registered tools declaring this path or wildcard (`paths: ['*']`). Every scout tool declares the wildcard, so a `path` changes nothing for it.
-* **`onEvent`**: Reads each event before the caller gets it, so your code can act on a turn someone else runs, such as saving the reply when `done` arrives. A throw ends the turn with that error.
+* **`onEvent`**: Reads each event before the caller gets it, so your code can act on a turn someone else runs, such as saving the reply when `done` arrives. A throw does not end the turn: the caller gets a `hook_failed` event after that event (see [When Your Code Throws](/docs/profiles/lifecycle)).
 * **`background`**: Your service for tool calls that go on after their reply. It needs an `execution` coordinator with `detach`. Without it, every tool runs inline. A tool's own `background` setting says when it hands off.
 
 Because `runTurn()` returns an async generator, execution begins when the caller pulls the first event.
@@ -343,6 +343,7 @@ For full-featured conversational interfaces, `runTurn()` emits granular lifecycl
 | **`structured`** | `structured: unknown`, `removed?: RemovedItem[]`, `failed?: InvalidField[]` | The reply as JSON. `removed` lists items your item rules took out. `failed` lists fields still invalid when retries ran out. |
 | **`stage`** | `stage: TurnStage` | Lifecycle transitions: `'pre_turn'`, `'pre_tool'`, `'post_tool'`, `'before_end'`, `'post_turn'`. |
 | **`done`** | `stop: TurnStop`, `tokens?: TurnTokens`, `steps?: number`, `mediaRefused?: MediaRefused` | Terminal event emitted when the turn concludes, reporting stop reasons, token counts, and the model calls that count against `maxSteps`. `mediaRefused` lists [files the provider refused](/docs/profiles/resumption#a-file-the-provider-refuses). |
+| **`hook_failed`** | `hook: HookName`, `stage?`, `callId?`, `errorKind`, `errorInternal?` | Your code threw, and the turn went on without its answer. See [When Your Code Throws](/docs/profiles/lifecycle). |
 | **`error`** | `errorKind: ErrorKind`, `error?: string`, `errorCopy?`, `errorInternal?` | The turn failed. `error` is the safe wording for users. `errorCopy` is the label key behind it. `errorInternal` is detail for traces and logs: never show it to users. |
 
 ## Related Guides

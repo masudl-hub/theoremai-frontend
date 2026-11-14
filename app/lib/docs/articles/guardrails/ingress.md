@@ -1,6 +1,6 @@
 ---
 title: Ingress Protection & Taint Tracking
-updated: 2026-11-04
+updated: 2026-11-13
 summary: Protect agents against direct prompt injections, indirect payload steering, and confused-deputy attacks.
 entry: src/guardrails/injection.ts
 covers: src/guardrails/injection.ts, src/guardrails/detectors.ts

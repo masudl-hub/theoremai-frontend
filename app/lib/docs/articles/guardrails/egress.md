@@ -1,6 +1,6 @@
 ---
 title: Egress Enforcement & Canaries
-updated: 2026-11-02
+updated: 2026-11-13
 summary: Canary tokens, prompt echo detection, zero-click image defense, and tool name protection.
 entry: src/guardrails/canary.ts
 covers: src/guardrails/canary.ts, src/guardrails/prompt-echo.ts

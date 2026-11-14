@@ -1,6 +1,6 @@
 ---
 title: MCP Tools
-updated: 2026-11-02
+updated: 2026-11-13
 summary: Model Context Protocol tools over Streamable HTTP, with protocol negotiation and sessions for servers that require them.
 entry: src/kernel/tools/mcp-sessions.ts
 covers: src/kernel/tools/mcp-sessions.ts, src/kernel/tools/remote.ts
@@ -91,11 +91,12 @@ Some servers refuse a call without an `Mcp-Session-Id`. Only for those does Theo
 
 The kernel accepts the server's response as a JSON body or as a Server-Sent Events (`text/event-stream`) stream.
 
-* **Results**: When the server sends `structuredContent` that fits your `output` schema, that is the output. Otherwise the text content is used, and a `structuredContent` that does not fit raises an `mcp_structured_mismatch` warning. Image and audio content reaches the model as media parts.
+* **Results**: When the server sends `structuredContent` that fits your `output` schema, that is the output. Otherwise the text content is used, and a `structuredContent` that does not fit raises an `mcp_structured_mismatch` warning.
+* **Media**: Image and audio content reaches the model as media parts. A block whose `annotations.audience` includes `"user"` is shown to the person too. A `resource_link` with a `mimeType` becomes a reference: the person is shown it, and the model never reads it.
 * **Payload Capping**: Set `maxResponseBytes` to cap the response body the kernel reads. Left out, there is no limit. A body past it fails the call with `response_too_large`.
 * **Authenticated MCP Servers**: Pass an `auth` block (see [Auth & Credentials](/docs/tools/auth)) to attach OAuth tokens or API keys to the session opening and tool calls.
 * **Who Sends It**: The kernel sends every MCP request, the session opening included, with `runTurn`'s `fetch`, once its [network checks](/docs/guardrails/network) pass. Left out, it uses the global `fetch`.
-* **Pictures by Address**: Set the `images` hook (and `imageLimits`) to fetch image URLs named in the tool's output and hand them to the model as image parts, as on [HTTP tools](/docs/tools/http).
+* **Pictures by Address**: Set the `media` hook (and `imageLimits`) to fetch pictures named in the tool's output for the model, or to show the person a reference, as on [HTTP tools](/docs/tools/http).
 
 ## Related Guides
 

@@ -1,6 +1,6 @@
 ---
 title: Headless Web & Transport
-updated: 2026-11-10
+updated: 2026-11-13
 summary: Headless client transport, NDJSON stream decoding, and browser execution primitives.
 entry: src/interface/mod.ts
 covers: src/interface, react, web
@@ -180,15 +180,14 @@ The session keeps each detached call and the reply the model read, so a late res
 
 To tell an open page that a call ended, with no turn or reload, pass `notifier: createMemoryNotifier()` to `createTheoremHandler`. The page keeps `POST <base>/notify` open while a call runs, and each line makes it read the conversation again. The line carries no content. `createMemoryNotifier` reaches only pages connected to the process that ran the call, so for more than one instance, give a shared `TheoremNotifier`. For your own channel, such as a Web Push that reaches an open page, call `refresh()` on the `ChatController`. It runs the same read.
 
-Your app decides who tells the model that a background call ended, with `lateResultsDecider` on your `TurnWiring`. Without one, the model is never told: no page wakes the chat, and no reply reads a late result. Theorem runs the replies, and the decider says which results each one reads:
+Your app decides who tells the model that a background call ended, with `lateResultsDecider` on your `TurnWiring`. Without one, the model is never told: no page wakes the chat, and no reply reads a late result. Theorem runs the replies, one at a time for each chat, and the decider chooses what each one reads:
 
-- `give` returns the results a reply gives the model. Each one is read once. One it leaves out stays for a later reply.
-- `due` says whether a page open on the chat wakes it now.
-- `ended` runs on the server when a call ends. It can wake the chat with no page open, or tell the open pages.
+- `policy` gets the results that wait and the moment it is asked at. It returns the ones the model reads now (`tell`), and the ones no reply will read (`giveUp`). The rest wait for a later reply. It is asked as a reply opens, after each step, once the model has answered, and as the reply ends. It keeps its own count, such as a cap or quiet hours, and it must change nothing.
+- `ended` runs on the server when a call ends. Its `wake` replies with no page open, and its `notify` tells the open pages to read the chat again.
 
-Each one reads the turn's `host`, so the studio decides the same way for the person it acts as. `pageWakes` from `@theoremjs/web/server` is the decider for an app with no server of its own: it gives every result, and the open page wakes the chat.
+The moment's `host` says whose chat it is, so the studio decides the same way for the person it acts as. `tellEveryResult` from `@theoremjs/web/server` is the decider for an app with no server of its own: it tells each result to the first reply that runs, and the open page wakes the chat. It gives up a result after two replies read it without telling it.
 
-When the chat wakes, it posts `<base>/wake`, and the model answers with no message from the person. An open page learns of it through `notifier`, and a page that opens later wakes when it loads. Each result wakes the conversation once. A message sent during a wake wins, and the wake writes nothing.
+When the policy tells a result to a reply to no message, the chat wakes: it posts `<base>/wake`, and the model answers with no message from the person. An open page learns of it through `notifier`, and a page that opens later wakes when it loads. Two pages that wake at once run one reply. A wake that fails gives its results back, and the chat wakes again. A message sent during a wake takes the chat, and the wake writes nothing. A server wake that finds another reply running tries again once that reply's hold runs out: `conversationLeaseMs`, 60 seconds by default.
 
 The model reads a late result as a tool result, from `TurnRequest.lateResults`. If your `background` service also tells the model, remove that, or the model reads the result twice.
 
@@ -227,7 +226,7 @@ export const handler = createTheoremDecisionHandler({
 ```
 
 ### 2. Host Handlers (`createTheoremHostHandler`)
-Serves a host profile's tools to the page, so the page runs them directly. `GET <base>` returns the tools the page may call, with their schemas. `POST <base>/call` streams the events for one call, `POST <base>/invoke` answers a gate that call paused on, and `POST <base>/page-result` takes the page's result for a tool it runs. `createTheoremMcpHandler` serves the same tools to MCP clients.
+Serves a host profile's tools to the page, so the page runs them directly. `GET <base>` returns the tools the page may call, agent tools included, with their schemas. An agent tool shows the input its caller fills. `POST <base>/call` streams the events for one call, `POST <base>/invoke` answers a gate that call paused on, and `POST <base>/page-result` takes the page's result for a tool it runs. `createTheoremMcpHandler` serves the same tools to MCP clients. Its `tools/call` returns the text and media a model reads: not the references a tool returned, and nothing from a tool with `exposeToModel: false`.
 
 ### 3. Embedding Handlers (`createTheoremEmbeddingHandler`)
 Serves an embedding profile over HTTP.

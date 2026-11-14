@@ -1,6 +1,6 @@
 ---
 title: Turn Resumption & Steering
-updated: 2026-11-02
+updated: 2026-11-13
 summary: Continuing turns across token limits, resuming after gates, and steering mid-flight.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -45,8 +45,8 @@ Completions can halt prematurely when reaching output token budgets or when netw
 The `resumption` block controls whether recoveries are automatic or require user confirmation:
 
 * **`allowContinue`**: Lists stop kinds for which your frontend UI should display a "Continue" button. This is UI policy only: the kernel does not refuse a `continueFrom` for a stop outside it. Omit it to offer Continue for all three kinds; `[]` offers none.
-* **`autoContinue`**: Lists stop kinds the host continues on its own, after a short pause. Omit it for `length` and `stream_incomplete`; `[]` means none. When you set this list and it names `provider_error` or `stream_incomplete`, a text turn also sends a failed model call again itself, if the call gave no reply and no tool call. Omitted, the turn sends nothing again itself.
-* **`maxContinues`**: The cap that `continuation` is compared against. Omit it for no cap. It also sets how many times one text turn sends a failed model call again itself (default: one).
+* **`autoContinue`**: Lists stop kinds the host continues on its own, after a short pause. Omit it for `length` and `stream_incomplete`; `[]` means none. When you set this list and it names `provider_error` or `stream_incomplete`, a text turn also sends a failed model call again itself, if the call gave no reply and no tool call. Omitted, the turn sends nothing again itself. When the list you set names `length`, a turn also sends back a reply or tool call the output limit cut off, with what the model wrote and how to fit (see [Text Profiles](/docs/profiles/text)). The default does not do this.
+* **`maxContinues`**: The cap that `continuation` is compared against. Omit it for no cap. It also sets how many times one turn sends a model call again itself, counting failed calls and cut-off repairs together (default: one).
 
 ### A File the Provider Refuses
 

@@ -1,7 +1,7 @@
 ---
 title: HTTP Tools
-updated: 2026-11-02
-summary: Declarative REST API tools with URL argument mapping, request limits, timeouts, and image fetching.
+updated: 2026-11-13
+summary: Declarative REST API tools with URL argument mapping, request limits, timeouts, and media.
 entry: src/kernel/tools/remote.ts
 covers: src/kernel/tools/remote.ts, src/kernel/tools/http-limit.ts, src/kernel/tools/image-fetch.ts
 cover: /imagery/th30_mistyforest.png
@@ -97,24 +97,27 @@ maxResponseBytes: 1024 * 1024,
 * **`maxResponseBytes`**: The most of a response body the kernel reads. A body past it fails the call with `response_too_large`.
 * **Who Sends It**: The kernel sends the request with `runTurn`'s `fetch`, once its [network checks](/docs/guardrails/network) pass. Left out, it uses the global `fetch`.
 
-## Image Fetching (`images`)
+## Media (`media`)
 
-When an HTTP tool returns data that names image URLs (for example satellite imagery or product photos), set the `images` hook to return the https addresses the model should see. The kernel fetches each one and hands it to the model as an image part:
+When an HTTP tool returns data that names pictures (for example satellite imagery or product photos), set the `media` hook to say which ones the model and the person see. Each entry is one of two kinds:
+
+- **`{ url }`**: an https address of a picture the model should see. The kernel fetches it and hands it to the model as an image part. Add `sent: true` to show it to the person too.
+- **A reference, `{ type, mimeType, uri }`**: a file the person is shown through your app's own resolver, such as a `gs://` object. The model never reads it, and the kernel never fetches it, so a private address never reaches a provider.
 
 ```text
 // ...
-images: (output) => output.results.map((item) => item.thumbnailUrl),
+media: (output) => output.results.map((item) => ({ url: item.thumbnailUrl, sent: true })),
 
 imageLimits: {
-	count: 3,                 // Fetch the first 3 images named
-	bytes: 1024 * 1024,       // Max 1 MiB per image
-	totalBytes: 2 * 1024 * 1024, // Max 2 MiB across all images
-	timeoutMs: 4000,          // 4s timeout per image
+	count: 3,                 // Fetch the first 3 pictures named
+	bytes: 1024 * 1024,       // Max 1 MiB per picture
+	totalBytes: 2 * 1024 * 1024, // Max 2 MiB across all pictures
+	timeoutMs: 4000,          // 4s timeout per picture
 },
 // ...
 ```
 
-Each `imageLimits` field left out is no limit. Theorem fetches each image after the result passes the output guard, through the profile's network policy, without the tool's credentials. Only PNG, JPEG, GIF and WebP images are kept. An address that is not https, or an image that is blocked, too slow, too large, past `totalBytes` or not an image, is left out and reported in one `images_unfetched` warning; the tool call itself does not fail. Images named past `count` are not fetched.
+Each `imageLimits` field left out is no limit, and references are not counted. Theorem fetches each picture after the result passes the output guard, through the profile's network policy, without the tool's credentials. Only PNG, JPEG, GIF and WebP images are kept. An address that is not https, or an image that is blocked, too slow, too large, past `totalBytes` or not an image, is left out and reported in one `images_unfetched` warning; the tool call itself does not fail. Images named past `count` are not fetched.
 
 ## Related Guides
 

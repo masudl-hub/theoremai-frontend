@@ -1,6 +1,6 @@
 ---
 title: Architecture & Contracts Map
-updated: 2026-11-03
+updated: 2026-11-13
 summary: The rule that keeps policy in your application, the parts a turn crosses, and the boundaries where Theorem reads text.
 entry: src/kernel/engine/runner/mod.ts
 covers: mod.ts, src/kernel/engine/runner, src/kernel/registry/profiles.ts, src/kernel/registry/vault.ts, src/kernel/protocols/runtime.ts, src/guardrails/boundaries.ts, src/guardrails/detectors.ts, src/guardrails/network.ts, web/src/server/handler.ts, react/src/index.ts, react/src/live.ts
