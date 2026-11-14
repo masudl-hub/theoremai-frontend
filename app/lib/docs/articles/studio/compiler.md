@@ -1,6 +1,6 @@
 ---
 title: Draft Compiler & Code Export
-updated: 2026-11-02
+updated: 2026-11-13
 summary: How Studio checks a draft as it changes, reads code back into it, and saves edits to your files.
 entry: studio/compile.ts
 covers: studio/compile.ts, studio/compile-workspace.ts
@@ -17,7 +17,7 @@ The editor has two views of the same profile, **Editor** and **Code**. One butto
 
 * **Editor**: The profile as form fields: its model, prompt, tools, guardrails and other sections.
 * **Code**: The TypeScript the profile is declared in, in a code editor with completions, signature help, hover documentation and type errors against `@theoremjs/agents`.
-* **Reading Code Back**: When you edit the code, Studio reads it back into the draft. Anything it cannot read is an error at that spot, and the draft is left as it was. Studio reads with the kernel's own checks, so a setting or value that `defineProfile` or `registerTool` refuses shows the kernel's message on its line. A name in `tools.allow` that no tool registers is an error too, and so is a bare `{ private }` entry in a list of prompt lines, or a `when` line that holds a blank line.
+* **Reading Code Back**: When you edit the code, Studio reads it back into the draft. Anything it cannot read is an error at that spot, and the draft is left as it was. Studio reads with the kernel's own checks, so a setting or value that `defineProfile` or `registerTool` refuses shows the kernel's message on its line. A name in `tools.allow` that no tool registers is an error too, and so is a prompt that is not text, or lines of text and `{ private }` parts. Studio keeps the prompt as the file writes it.
 * **Tool Readers in Code**: A tool's reader is Studio's own, with no field in the kernel. The code shows it as a comment above the tool: `// Your host runs research.pagereader on this tool's output, at post_tool.`
 
 ## Draft Checks

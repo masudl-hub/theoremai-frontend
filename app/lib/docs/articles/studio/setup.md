@@ -1,6 +1,6 @@
 ---
 title: Studio Setup & Workspaces
-updated: 2026-11-02
+updated: 2026-11-13
 summary: Configuring Theorem Studio, launching local workspaces, and synchronizing project files.
 entry: studio/workspace.ts
 covers: studio/workspace.ts, studio/compile.ts
@@ -51,15 +51,16 @@ Studio reads only these exports from the setup file. `entry` is required. The ot
 | `people` | Declares test environments and simulated personas that appear in Studio's user picker. |
 | `host` | Builds the runtime context object passed to your tools (`ctx.host`) based on the active persona selected in Studio. Can be `async`. |
 | `questions` | Defines criteria and options for decision profiles (`{ [profileId]: { [questionId]: DecisionQuestion } }`). |
-| `images` | Supplies reference images that decision profiles can inspect during evaluation. |
+| `images` | The pictures each decision profile sends, by profile id. A picture goes to the model only where the state or a question writes its reference, such as `<ghs02>`. |
 
-Studio reads three fields of `theorem`:
+Studio reads four fields of `theorem`:
 
 | Field | What It Configures |
 | :--- | :--- |
 | `register()` | Called once as Studio loads the project, before anything runs. Register your profiles (`registerProfile`) and tools here. Can be `async`. |
 | `provider` | The keys, network, and limits each model call runs on (`ProviderHostOptions`). |
-| `prepare(turn)` | Receives each text, image, and speech turn. Studio runs the turn it returns. |
+| `prepare(turn)` | Receives each text, image, and speech turn. Studio runs the turn it returns, with the `execution` and `background` your app adds, and records each call in its own session too. |
+| `lateResultsDecider` | Decides, as your server does, who tells a chat's model that a background call ended. Unset, no chat wakes and no reply reads a late result. |
 
 A setup file that exports `default` or `provider` does not open. Studio stops with a message that names the move to the entry. A setup file with no `entry` does not open either.
 

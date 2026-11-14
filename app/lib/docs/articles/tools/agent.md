@@ -1,6 +1,6 @@
 ---
 title: Agent Tools
-updated: 2026-11-02
+updated: 2026-11-13
 summary: Delegating turns to other registered agents, with input derived from the called profile and host-only channels and fields.
 entry: src/kernel/tools/agent.ts
 covers: src/kernel/tools/agent.ts, src/kernel/tools/types.ts, src/kernel/engine/runner/nested.ts
@@ -75,7 +75,7 @@ profile: 'research.podcast',
 
 * **`profile`**: The ID of the agent's profile, registered before this tool.
 * **`maxCallsPerTurn`**: Optional. The most calls to this tool in one turn of its caller; a whole number above 0. A call past it fails with `call_limit`. Left out, as on `record_podcast` and `draw_method`, only the caller's `maxSteps` bounds them.
-* **`background`**: Optional. Lets the call [finish after the caller's turn](/docs/tools#finish-a-call-after-its-turn). The called agent's own tools still run inline, because its turn has no background service.
+* **`background`**: Optional. Lets the call [finish after the caller's turn](/docs/tools#finish-a-call-after-its-turn). The called agent's own tools still run inline, because its turn has no background service. While the call runs, the host can tell the agent something new with [`steer`](/docs/tools#finish-a-call-after-its-turn).
 
 ## Automatic Schema Derivation
 
@@ -108,7 +108,7 @@ hostOnly: ['options', 'attachments'],
 // ...
 ```
 
-Those channels leave the calling model's input; it still sees `text` and any channel you did not reserve. Only `onAgentCall` can send the reserved ones. Naming a channel the profile does not take is a `config` error.
+Those channels leave the calling model's input; it still sees `text` and any channel you did not reserve. Only `onAgentCall` can send the reserved ones. A `speech` profile's `speech` channel can be reserved the same way, so your code picks the voice and style the agent speaks with. Naming a channel the profile does not take is a `config` error.
 
 ### Host-Only Model Fields (`hostFields`)
 
@@ -129,7 +129,7 @@ The cookbook's `record_podcast` sets no host field; add this when the model shou
 
 When a model calls an agent tool, Theorem runs the request's `onAgentCall` hook before the called agent's turn. The hook receives an `AgentCall` carrying the tool name, the called profile, the calling profile, the model's input, any `hostInput` from `hostFields`, and the call's `depth`.
 
-The hook can return nothing to run the agent on what the model sent, or return `{ refuse: string }` to fail the call with `refused_by_host` and read the text back to the calling model. To limit delegation depth, refuse based on `depth`. It can also return an `AgentCallRequest` to reshape the `input`, choose the `model` or `provider`, or set the `host` the called agent's tools read.
+The hook can return nothing to run the agent on what the model sent, or return `{ refuse: string }` to fail the call with `refused_by_host` and read the text back to the calling model. To limit delegation depth, refuse based on `depth`. It can also return an `AgentCallRequest` to reshape the `input`, choose the `model` or `provider`, or set the `host` the called agent's tools read. If the hook throws, the call fails as not started with `hook_failed`, and the turn goes on. See [When Your Code Throws](/docs/profiles/lifecycle).
 
 For complete `onAgentCall` interceptor patterns, see [Lifecycle Hooks & Interception](/docs/profiles/lifecycle).
 

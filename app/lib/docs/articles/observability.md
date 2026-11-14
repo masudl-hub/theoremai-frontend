@@ -1,6 +1,6 @@
 ---
 title: Trace Spans Catalog
-updated: 2026-11-02
+updated: 2026-11-13
 summary: Query and export trace spans, distributed execution trees, and telemetry attributes in Theorem.
 entry: src/observability/mod.ts
 covers: src/observability, src/kernel/engine/call-trace.ts
@@ -97,14 +97,17 @@ Spans carry attributes named by the OpenTelemetry GenAI conventions, beside Theo
   * `completed`: The model finished its answer.
   * `length`: The model stopped at its output token limit.
   * `tool`: Stopped to hand a tool call back to the host. Deprecated: approval now stops as `gate`.
-  * `gate`: A tool call needs confirmation, permission, or sign-in before it runs; the host resumes it.
+  * `gate`: A tool call waits for confirmation, permission, sign-in, or the page that answers it; the host resumes it.
   * `filtered`: A safety filter or the output guardrail held the answer back.
   * `provider_error`: The provider reported an error.
-  * `cancelled`: The user or host stopped it.
+  * `cancelled`: The user or host stopped it, or a stage aborted it.
   * `step_limit`: The last model call the profile allows asked for tools, so the turn ended without an answer.
+  * `answer_missing`: The model finished without calling the answer tool, and no repair was left.
   * `stream_incomplete`: The provider's stream ended before the answer was complete.
   * `interrupted`: The user spoke over a Live response.
   * `generation_complete`: Live only. The model finished generating this response; the turn may still be open.
+
+When a host hook throws, the span it ran in gets a `theorem.hook_failed` event. It holds `hook`, the `stage` when the hook ran at one, `error_kind`, and `reason`: what the hook threw, in its own words. See [When Your Code Throws](/docs/profiles/lifecycle).
 
 ## Content Interning Architecture
 

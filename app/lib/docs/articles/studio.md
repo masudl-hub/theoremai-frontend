@@ -1,6 +1,6 @@
 ---
 title: Theorem Studio
-updated: 2026-11-02
+updated: 2026-11-13
 summary: Edit, run and test Theorem agents on your own project with one command, or as a screen in your own app.
 entry: studio/mod.ts
 covers: studio, studio/server.ts
@@ -46,7 +46,7 @@ The screen keeps the profile it edits in the browser, as a draft, and sends the 
 
 The editor has two views, **Editor** and **Code**. One button switches between them.
 
-* **Editor**: The profile as form fields: its model, prompt, tools, guardrails and other sections. The prompt is one box, and a blank line starts a new line. It opens formatted: private text wears a wash, and each option is a token that opens its menu. The **Private** and **Option** buttons set either on what you select. The eye and code button shows the markup text, the one form the profile stores. A prompt the formatted view would change stays in code.
+* **Editor**: The profile as form fields: its model, prompt, tools, guardrails and other sections. The prompt is one box, and a blank line starts a new line. It opens formatted: private text wears a wash, and each option is a token that opens its menu. The **Private** and **Option** buttons set either on what you select. The eye and code button shows the same prompt as markup text. Both views read back only what you change: a line you did not touch stays exactly as the file writes it, and a prompt the file writes as one text stays one text while it is one line. A prompt the formatted view cannot hold stays in code.
 * **Code**: The TypeScript the profile is declared in, in a code editor with completions, signature help, hover documentation and type errors against `@theoremjs/agents`.
 * **Reading Code Back**: When you edit the code, Studio reads it back into the draft. Anything it cannot read is shown as an error at that spot, and the draft is left as it was. Studio reads with the kernel's own checks, so a setting or value that `defineProfile` or `registerTool` refuses shows the kernel's message on its line.
 
@@ -73,7 +73,7 @@ The map shows the providers, models, shared settings, profiles and tools in colu
 ```
 
 * **Links**: A provider `serves` a model, a model `runs` a profile, a profile `allows` a tool, an agent tool `asks` its profile, a shared setting `sets` a section of a profile or a tool, and a profile can have another write its summaries (`summarised`).
-* **Providers**: Studio registers Gemini, OpenRouter, Local (a server such as Ollama, llama.cpp, vLLM or LM Studio), and TypeSafe. A project can register its own.
+* **Providers**: Studio registers Gemini, OpenRouter, Local (a server such as Ollama, llama.cpp, vLLM or LM Studio), and TypeSafe. A project can register its own. While a run uses a local model, its HTTP and MCP tools reach no host unless the **Remote tools** switch is on. It is off by default.
 * **Agent Tools**: An agent tool (`type: 'agent'`) lets one profile ask another.
 * **Reading the Map**: **Expand** shows each profile as a card of its sections. Drag a node to move it, and **Tidy** puts every node back. Right-click a node to see only what feeds it and what it feeds. A search shows the same for every node it finds. The map changes nothing; a node opens what it stands for.
 

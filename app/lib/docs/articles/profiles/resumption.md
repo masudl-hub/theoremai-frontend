@@ -34,17 +34,18 @@ turnBehaviour: {
 
 ## Continuing Incomplete Replies
 
-Completions can halt prematurely when reaching output token budgets or when network streams drop. Theorem standardizes continuation across three stop reasons (`ContinueStopKind`):
+Completions can halt prematurely when reaching output token budgets or when network streams drop. Theorem standardizes continuation across four stop reasons (`ContinueStopKind`):
 
-* **`'length'`**: The reply hit its output token limit (`maxOutputTokens`) or the provider's budget. A [structured reply](/docs/profiles/text) cut this way is first asked for again by the turn itself, so a structured turn ends at `length` only when the cut left no answer to send back.
+* **`'length'`**: The reply hit its output token limit (`maxOutputTokens`) or the provider's budget. When `autoContinue` is set and names `length`, a [structured reply](/docs/profiles/text) cut this way is first sent back by the turn itself.
 * **`'stream_incomplete'`**: The stream ended before the provider said the reply was done.
 * **`'provider_error'`**: The provider call failed. The provider sent an error, reported a failed status, or gave a finish reason Theorem does not know.
+* **`'answer_missing'`**: A structured reply ended without calling the answer tool, and no retry was left.
 
 ### Manual vs. Automated Continuations
 
 The `resumption` block controls whether recoveries are automatic or require user confirmation:
 
-* **`allowContinue`**: Lists stop kinds for which your frontend UI should display a "Continue" button. This is UI policy only: the kernel does not refuse a `continueFrom` for a stop outside it. Omit it to offer Continue for all three kinds; `[]` offers none.
+* **`allowContinue`**: Lists stop kinds for which your frontend UI should display a "Continue" button. This is UI policy only: the kernel does not refuse a `continueFrom` for a stop outside it. Omit it to offer Continue for all four kinds; `[]` offers none.
 * **`autoContinue`**: Lists stop kinds the host continues on its own, after a short pause. Omit it for `length` and `stream_incomplete`; `[]` means none. When you set this list and it names `provider_error` or `stream_incomplete`, a text turn also sends a failed model call again itself, if the call gave no reply and no tool call. Omitted, the turn sends nothing again itself. When the list you set names `length`, a turn also sends back a reply or tool call the output limit cut off, with what the model wrote and how to fit (see [Text Profiles](/docs/profiles/text)). The default does not do this.
 * **`maxContinues`**: The cap that `continuation` is compared against. Omit it for no cap. It also sets how many times one turn sends a model call again itself, counting failed calls and cut-off repairs together (default: one).
 
@@ -119,6 +120,7 @@ Every turn ends with a `done` event. Its `stop.kind` says why the turn ended:
 | **`'length'`** | The reply hit its output token limit. | Continue with `runTurn({ continueFrom })`. |
 | **`'stream_incomplete'`** | The stream ended before the provider said it was done. | Continue with `runTurn({ continueFrom })`, or let `autoContinue` do it. |
 | **`'provider_error'`** | The provider call failed. | Continue with `runTurn({ continueFrom })`, or let `autoContinue` do it. |
+| **`'answer_missing'`** | A structured reply ended without calling the answer tool, and no retry was left. | Continue with `runTurn({ continueFrom })`. |
 | **`'tool'`** | The model called tools, and the turn gives them to the host in `done.tools`. | Run them with `invokeTool({ snapshot })`. |
 | **`'gate'`** | A `pre_tool` gate held a call. | Settle it with `invokeTool({ snapshot, resume })`. |
 | **`'step_limit'`** | The last call allowed by `profile.maxSteps` asked for tools, or the reply spent its steps before it paused, so there is no answer. | Nothing; set `atStepLimit: 'answer'` to prevent it. |

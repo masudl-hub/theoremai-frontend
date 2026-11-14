@@ -42,7 +42,7 @@ A turn moves through up to five lifecycle stages in sequence. The handler receiv
 | :--- | :--- | :--- |
 | **`'pre_turn'`** | Fires before dispatching input to the provider. `ctx.history` contains existing messages. | `inject`, `abort` |
 | **`'pre_tool'`** | Fires after the model requests tools, before handlers execute. `ctx.stepCalls` lists all calls in the step. | `abort`, `deny`, `confirm`, `mutate`, `waitFor` |
-| **`'post_tool'`** | Fires after a tool settles or fails. `ctx.outputRaw`, `ctx.outputModel`, and `ctx.failure` are populated. | `inject`, `abort`, `deny`, `mutate`, `labelFailed`, `end` |
+| **`'post_tool'`** | Fires after a tool settles or fails. `ctx.outputRaw`, `ctx.outputForModel` (the output without the fields the model does not read), `ctx.outputModel`, and `ctx.failure` are populated. | `inject`, `abort`, `deny`, `mutate`, `labelFailed`, `end` |
 | **`'before_end'`** | Fires after final reply generation, before guardrail verdict and history commit. `ctx.reply` contains the draft answer. In a Live session it fires after the guardrail verdict, when the cycle ends, and `ctx.reply` is not set. | `inject`, `abort` |
 | **`'post_turn'`** | Fires after `done`, once generation, tool loops, and cleanup finish. `ctx.stop` says how the turn ended. | *(None — read-only telemetry)* |
 

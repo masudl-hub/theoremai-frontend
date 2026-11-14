@@ -140,6 +140,33 @@ Every custom tool registered with `registerTool` declares metadata that governs 
 * **`category`**: A label for grouping tools. Nothing reads it yet.
 * **`after`**: `true` lets the model order its calls in a step. The tool's input gains an `after` field, a list of tool names called in the same step that must settle before this call starts. The kernel removes the field before the tool, the stages or a gate read the input. A name with no other call in the step fails the call with `wait_unknown`. Outside a step, as in a live session, `after` waits on nothing. `registerTool` refuses `after` on a tool whose input already has a field of that name, or whose input is not an object or a union of objects. The cookbook sets it on `read_pages`, `read_model_card`, `read_dataset_card`, `read_readme` and `read_library_docs`. For an order your own code decides, return `waitFor` at `pre_tool` (see [Lifecycle Hooks & Interception](/docs/profiles/lifecycle)).
 * **`background`**: `'never'`, `'always'`, `{ afterMs }` or `'ask'`: when the model gets its reply, so a slow tool can finish after its turn (see [Finish a Call After Its Turn](#finish-a-call-after-its-turn)).
+* **`exposeToModel`**: `false` keeps what the tool returns from the model. The model can call it, but reads only `Completed.` (the `tool.completed_hidden` label). The person still sees the media it sends.
+
+## Fields Only the Host Reads (`exposeToModel: false`)
+
+One tool can serve two readers: a page that needs every field, and a model that must not read some of them. Mark such a field in the tool's output schema:
+
+```text
+output: z.object({
+	name: z.string(),
+	photoUrl: z.string().meta({ exposeToModel: false }),
+}),
+```
+
+The model never reads a marked field, at any depth, in objects and in the items of lists. That holds in a turn, a live session, the guardrails that read the result, the history a later turn replays, and the MCP server's text. A field that any branch of a union marks is left out of every branch. The tool's `output` keeps every field: `invokeTool`, the host handler, the transcript and the `post_tool` stage read it whole. At `post_tool`, `ctx.outputForModel` is the output as the model reads it. An agent tool reads the marks in the called agent's structured reply schemas. The called agent still writes the field, and the provider never gets the mark.
+
+A tool can also take a value the model must not see or choose, such as the id of the person's store. Mark the field in the tool's input, and make it optional:
+
+```text
+input: z.object({
+	plant: z.string(),
+	storeId: z.string().meta({ exposeToModel: false }).optional(),
+}),
+```
+
+The model's schema leaves the field out. Your code fills it: on a model's call, at `pre_tool` with `mutate: { input }`, or in the input of its own `invokeTool` call. If nothing fills it, the handler gets `undefined`. A model's call that sends the field fails with `invalid_input` before the tool runs, and `failure.details.notInputs` names the fields. What the model reads back as its call leaves the field out. An agent tool marks such a field in `hostFields`, and `onAgentCall` reads it as `call.hostInput`.
+
+`registerTool`, or `registerStructured` for a reply schema, refuses a mark whose value is not `false`, a mark on the whole output or the whole input, and on the input side, a mark on a required field, a list item, or a branch of a union. To hide the whole output, set `exposeToModel: false` on the tool.
 
 ## Direct Tool Execution (`runTool` vs `invokeTool`)
 
@@ -202,12 +229,24 @@ background: {
 ```
 
 * **`execution`**: Keeps the reply and the call's end. It must have `detach`, or the run fails with a `config` error. `createMemoryToolExecution()` has it, and keeps them in memory.
-* **`detached`**: Runs once for each call that goes on. `call` holds the `operationId`, `callId` and `toolId`, with `stop` and `done`.
+* **`detached`**: Runs once for each call that goes on. `call` holds the `operationId`, `callId` and `toolId`, with `stop`, `steer` and `done`.
 * **`event`**: Receives each later event of the call, up to the `tool` event that ends it. A shutdown sends no such event. A failure here does not change how the call ends.
 
 The model reads the `tool.background_started` label. It says not to state a result and not to call the tool again. The call's `tool` event has `phase: 'background'`.
 
 After the reply, the turn's signal no longer reaches the call, so the end of the turn does not stop it. `call.stop(reason)` does: the call settles as a `cancelled` failure with `reason` as its `code`. With no reason, the stop is a shutdown, and the call ends `execution_interrupted`. With `{ graceMs }`, a handler that ignores `ctx.signal` past that time settles anyway. `call.done` resolves when the call has ended.
+
+`call.steer(text, { id })` tells a running agent tool's agent something new. The message waits, then joins the agent's own turn as a user message with `id` as its inject id. It lands at the next stage that takes an inject: `pre_turn` or `before_end`, after the host's own injects, or `post_tool` once a step, after each call's own. It passes the agent profile's guardrails. The host gets the agent's `stage` event as a `progress` event of the call. A tool inside the agent's turn never reads the message. When `call.done` resolves, its `unreadSteers` holds the ids of the messages that never landed.
+
+| `steer` returns | When |
+| :--- | :--- |
+| `{ queued: true }` | The message waits for the agent's turn. |
+| `{ queued: false, reason: 'settled' }` | The call has ended. |
+| `{ queued: false, reason: 'stopped' }` | The host called `stop`, and the call has not ended yet. |
+| `{ queued: false, reason: 'not_agent' }` | The call is not an agent tool, so no turn reads the message. |
+| `{ queued: false, reason: 'steering_off' }` | The agent's profile sets `turnBehaviour.allowSteering: false`. |
+
+A call refused with `not_agent` or `steering_off` refuses every message. To check before you offer one, call `profileAllowsInject` on the agent tool's profile.
 
 No turn is open after the reply. An `inject` or `abort` from `post_tool` reaches nothing, and a call that asks the user a question fails with `awaiting_after_reply`.
 
