@@ -61,7 +61,7 @@ Save writes every change or none. A Save made during a reply lands when the repl
 The review lists each change Save cannot write, and why. For example:
 * **Changed Files**: "… changed after the studio opened it. Reload the studio." If your files change after the review was made, Save writes nothing and says: "Your files changed after this review was made. Close it and review again."
 * **Values Set in Code**: "Set in code at …. Change it there." Edit that value in your own editor.
-* **Shared Constants**: A constant that other profiles or tools read, and that they would not change the same way, is not written. The review names who shares it.
+* **Shared Constants**: A constant that other profiles or tools read, and that they would not change the same way, is not written. The review names who shares it. Taking a model or a setting out of one profile takes it out of that profile only, and the constant stays for the others.
 
 ### Undo Save
 After a save, a message names the files Studio wrote, with an **Undo** button for 15 seconds. **Undo** puts the files back as they were before the save. Your edits stay in Studio, unsaved again.

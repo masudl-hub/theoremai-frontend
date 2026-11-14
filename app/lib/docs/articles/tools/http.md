@@ -117,7 +117,7 @@ imageLimits: {
 // ...
 ```
 
-Each `imageLimits` field left out is no limit, and references are not counted. Theorem fetches each picture after the result passes the output guard, through the profile's network policy, without the tool's credentials. Only PNG, JPEG, GIF and WebP images are kept. An address that is not https, or an image that is blocked, too slow, too large, past `totalBytes` or not an image, is left out and reported in one `images_unfetched` warning; the tool call itself does not fail. Images named past `count` are not fetched.
+Each `imageLimits` field left out is no limit, and references are not counted. Theorem fetches each picture after the result passes the output guard, through the profile's network policy, without the tool's credentials. Only PNG, JPEG, GIF and WebP images are kept. An address that is not https, a reference that is not a valid part, or an image that is blocked, too slow, too large, past `totalBytes` or not an image, is left out and reported in one `images_unfetched` warning, which says why; the tool call itself does not fail. Images named past `count` are not fetched.
 
 ## Related Guides
 

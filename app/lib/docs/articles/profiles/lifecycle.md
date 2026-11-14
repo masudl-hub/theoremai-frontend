@@ -76,7 +76,7 @@ export const onStage: StageHandler = async (ctx) => {
 };
 ```
 
-To keep a failed call's failure and only give it new details, return `mutate: { details }` at `post_tool` instead. The code, kind and message stay.
+To keep a failed call's failure and only give it new details, return `mutate: { details }` at `post_tool` instead. The code, kind and message stay. The details must be a JSON object. `{ details }` on a call that completed, `{ output }` on one that failed, or any other shape changes nothing, with a `mutate_invalid` warning.
 
 ### Ending the Turn After a Call (`end`)
 
