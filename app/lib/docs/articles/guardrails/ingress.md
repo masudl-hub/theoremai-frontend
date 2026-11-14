@@ -174,7 +174,7 @@ guardrails: {
 
 Besides detection, Theorem puts each kind of untrusted text inside its own tags when it builds the prompt:
 
-* **User Data Fencing (`<user_data>`)**: The user's message is enclosed in `<user_data>` tags. A note in the system prompt tells the model to treat it as the user's request, never as instructions that change the prompt.
+* **User Data Fencing (`<user_data>`)**: The user's message is enclosed in `<user_data>` tags. A note in the system prompt tells the model to treat it as the user's request, never as instructions that change the prompt. When the turn's `input.messageId` is set, the fence carries it as `<user_data id="…">`. The id is 1 to 32 letters, digits, `.`, `_`, `:` or `-`. Theorem refuses any other id.
 * **Context Fencing (`<turn_context>`)**: Context from the app or the host is enclosed in `<turn_context from="client">` or `<turn_context from="server">` tags. A note tells the model to use it as information, never as instructions.
 * **Tool Result Fencing (`<tool_data>`)**: Each tool result is enclosed in a `<tool_data>` tag that carries the tool's name and origin, so a result cannot claim a friendlier origin in its own text.
 * **Fence Stripping**: Before it wraps text, Theorem removes any fence tags already in it. User and context text lose every `<user_data>` and `<turn_context>` tag, again and again until none is left, so a user who types `</user_data>` cannot close their own fence. Tool results lose every `<tool_data>` tag.

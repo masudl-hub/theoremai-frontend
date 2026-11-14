@@ -1,6 +1,6 @@
 ---
 title: History Compaction
-updated: 2026-11-02
+updated: 2026-11-13
 summary: Automated transcript compaction and exchange pruning for long-running conversations.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -100,7 +100,7 @@ models: {
   * `'history'` (default): Counts the tokens in the earlier conversation.
   * `'input'`: Uses the prompt tokens the provider reported for the last call, or the count the host passes in.
 * **`profile`**: The text profile that writes the summary. Register it before this one. Leave it out and a text agent summarises its own history, with its own instructions and model and no tools. Other profile types must name one.
-* **`trigger`**: Your function that decides when to compact: it gets `ctx` and returns, or resolves to, `true` to compact. When set, it decides alone: `compactAt` and `maxTokens` are not compared. `ctx` carries the token count and the meter it used.
+* **`trigger`**: Your function that decides when to compact: it gets `ctx` and returns, or resolves to, `true` to compact. When set, it decides alone: `compactAt` and `maxTokens` are not compared. `ctx` carries the token count and the meter it used. If it throws, `compactAt` and `maxTokens` decide for that turn, and the host gets a `hook_failed` event.
 
 ## Timing: Synchronous vs Asynchronous Compaction
 

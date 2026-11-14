@@ -65,9 +65,9 @@ Every turn or tool call moves text across five groups of boundaries:
 2. **Tool argument boundaries**: What the model sends to a tool. There is one boundary for each kind of tool. `tool_arguments_function`, `tool_arguments_http`, `tool_arguments_mcp`, `tool_arguments_agent`
 3. **Tool result boundaries**: What a tool returns, its text parts and text files, and its error with its details, before the model reads them. `tool_output_*`, `tool_failure_*`. A tool with `exposeToModel: false` is not read here, since the model reads none of it.
 4. **Tool shown boundaries**: What a tool call shows the person on the turn's events: its output, each of its parts but a file's bytes, its error, and its trace. A part blocked here is left out, and the other parts stay. `tool_shown_*`
-
-A CSV, plain-text or Markdown file a tool returns is read at both, as an attachment is. The model reads it as UTF-8, with a CSV's formula cells escaped. The person gets the file's own bytes, and a redact writes the new text back in the file's own encoding.
 5. **Outbound boundaries**: The model's own text on its way to the person. `reply`, `reply_structured`, `live_reply`, `thought`
+
+A CSV, plain-text or Markdown file a tool returns is read at both tool result and tool shown boundaries, as an attachment is. The model reads it as UTF-8, with a CSV's formula cells escaped. The person gets the file's own bytes, and a redact writes the new text back in the file's own encoding.
 
 ## The Four Enforcement Actions
 
