@@ -1,6 +1,6 @@
 ---
 title: Tools & Execution Pipeline
-updated: 2026-11-13
+updated: 2026-11-14
 summary: Give an agent tools that run custom code, call REST APIs, query MCP servers, or delegate to sub-agents.
 entry: src/kernel/tools/mod.ts
 covers: src/kernel/tools, src/kernel/auth
@@ -140,7 +140,7 @@ Every custom tool registered with `registerTool` declares metadata that governs 
 * **`category`**: A label for grouping tools. Nothing reads it yet.
 * **`after`**: `true` lets the model order its calls in a step. The tool's input gains an `after` field, a list of tool names called in the same step that must settle before this call starts. The kernel removes the field before the tool, the stages or a gate read the input. A name with no other call in the step fails the call with `wait_unknown`. Outside a step, as in a live session, `after` waits on nothing. `registerTool` refuses `after` on a tool whose input already has a field of that name, or whose input is not an object or a union of objects. The cookbook sets it on `read_pages`, `read_model_card`, `read_dataset_card`, `read_readme` and `read_library_docs`. For an order your own code decides, return `waitFor` at `pre_tool` (see [Lifecycle Hooks & Interception](/docs/profiles/lifecycle)).
 * **`background`**: `'never'`, `'always'`, `{ afterMs }` or `'ask'`: when the model gets its reply, so a slow tool can finish after its turn (see [Finish a Call After Its Turn](#finish-a-call-after-its-turn)).
-* **`exposeToModel`**: On a function tool, `false` keeps what the tool returns from the model. The model can call it, but reads only `Completed.` (the `tool.completed_hidden` label). The person still sees the media it sends.
+* **`exposeToModel`**: On a tool of any type, `false` keeps what the tool returns from the model. The model can call it, but reads only `Completed.` (the `tool.completed_hidden` label). The person still sees the media it sends.
 
 ## Fields Only the Host Reads (`exposeToModel: false`)
 

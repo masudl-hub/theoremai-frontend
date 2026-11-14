@@ -1010,7 +1010,7 @@
 			"src/kernel/tools/call-order.ts": "b8da2df17d7df00dde11f39911ae2d9dfee2ff33",
 			"src/kernel/tools/coordinate.ts": "47d229196bad05a7ccbb44a50e081a223e099ee6",
 			"src/kernel/tools/events.ts": "e7b527c072e7ffa1f50415311c03eedecde2afbd",
-			"src/kernel/tools/execute.ts": "cc70763373ca619443460906cd64ea717c7dc856",
+			"src/kernel/tools/execute.ts": "253d9d52e01a26b64291014a2d12d424733b4f1e",
 			"src/kernel/tools/failed.ts": "bbf5ce2f69c534ff1ead7995952400f97b1d2e02",
 			"src/kernel/tools/gate-answer.ts": "dd44d0e76159a008248c11971c1537ef815a4e9c",
 			"src/kernel/tools/handler-events.ts": "f9c7a6d550036cccff550adcc0314af167e77e7c",
@@ -1037,7 +1037,7 @@
 			"src/kernel/tools/signed-in-fetch.ts": "eb5ceabae661169891bcc6b38ae3170ccb1633a2",
 			"src/kernel/tools/stage-run.ts": "6e418fcabb3a5f30f3f7efbbf1077e36853aaf41",
 			"src/kernel/tools/steer.ts": "9f207af78f05a64bb3235e7bafbc67ca9390d9be",
-			"src/kernel/tools/types.ts": "508927aba10042aad7b169d787cebc1e3f96e832",
+			"src/kernel/tools/types.ts": "b09144577430b6a6472420880df684349acd57c5",
 			"src/kernel/tools/unchecked-output.ts": "cd3ad46a12d91555ceec356258efc9f3707f0ecb"
 		}
 	},
@@ -1046,7 +1046,7 @@
 		"files": {
 			"src/kernel/engine/runner/nested.ts": "9a0258fa9b01bd830f900cca801ae01705c939d4",
 			"src/kernel/tools/agent.ts": "7d477e6dbdc277e552e77236eeab42186b49d061",
-			"src/kernel/tools/types.ts": "508927aba10042aad7b169d787cebc1e3f96e832"
+			"src/kernel/tools/types.ts": "b09144577430b6a6472420880df684349acd57c5"
 		}
 	},
 	"tools/auth": {
@@ -1065,8 +1065,8 @@
 	"tools/function": {
 		"reviewed": "2026-11-14",
 		"files": {
-			"src/kernel/tools/execute.ts": "cc70763373ca619443460906cd64ea717c7dc856",
-			"src/kernel/tools/types.ts": "508927aba10042aad7b169d787cebc1e3f96e832"
+			"src/kernel/tools/execute.ts": "253d9d52e01a26b64291014a2d12d424733b4f1e",
+			"src/kernel/tools/types.ts": "b09144577430b6a6472420880df684349acd57c5"
 		}
 	},
 	"tools/gates": {
@@ -1088,7 +1088,7 @@
 		"reviewed": "2026-11-14",
 		"files": {
 			"src/kernel/tools/activity-label.ts": "84c72fb50bfcdeedc7d814f505d9b7a35c7985b7",
-			"src/kernel/tools/types.ts": "508927aba10042aad7b169d787cebc1e3f96e832"
+			"src/kernel/tools/types.ts": "b09144577430b6a6472420880df684349acd57c5"
 		}
 	},
 	"tools/mcp": {
