@@ -137,7 +137,7 @@ const onStage: StageHandler = (ctx) => {
 
 The body of `read_readme` starts only after those search calls settle. A call held for confirmation is held at once and does not wait.
 
-`waitFor` is your code's answer at a stage. A tool can also let the model set the order. A tool registered with `after: true` gets an `after` field in its input: a list of tool names in the same step that must settle first. The scout's `read_pages`, `read_model_card`, `read_dataset_card`, `read_readme` and `read_library_docs` set it. Theorem turns each name into that tool's other calls in the step, waits for them as for `waitFor`, and takes `after` out of the input before the body runs. A name with no call in the step fails the call with `wait_unknown`. Outside a step, as in a live session, `after` waits on nothing.
+`waitFor` is your code's answer at a stage. A tool can also let the model set the order. A tool registered with `after: true` gets an `after` field in its input: a list of tool names in the same step that must settle first. The scout's `read_pages`, `read_model_card`, `read_dataset_card`, `read_readme` and `read_library_docs` set it. Theorem turns each name into that tool's other calls in the step, waits for them as for `waitFor`, and takes `after` out of the input before the body runs. A name with no call in the step fails the call with `wait_unknown`, and the model reads that `after` takes tool names, not call ids. Outside a step, as in a live session, `after` waits on nothing.
 
 ## Sub-Agent Interception (`onAgentCall`)
 

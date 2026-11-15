@@ -286,7 +286,7 @@ A failed call settles with a `code` and a message. Theorem sets these codes for 
 
 `tainted_turn` never stops a `read-only` tool. With `afterRemoteRead: 'write'`, it stops `read-write` and `destructive` tools. With `'destructive'`, it stops `destructive` tools only.
 
-A call that waits fails in two more ways. `wait_unknown` means `after` or `waitFor` names a call that is not in the step. `wait_cycle` means the call waits for a call that cannot finish before it.
+A call that waits fails in two more ways. `wait_unknown` means `after` or `waitFor` names a call that is not in the step. When only `after` names it, as a call id sent in place of a tool name, the model reads `tool.after_unknown`, which says `after` takes tool names. `wait_cycle` means the call waits for a call that cannot finish before it.
 
 ## Tool Types In Detail
 
