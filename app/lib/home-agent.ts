@@ -248,12 +248,15 @@ const FIELD_EDITS: Partial<Record<GoalTokenId, FieldEdit>> = {
 		'tool_output_agent',
 	]),
 	'refuse-after-read': {
-		isOn: (draft) => draft.guardrails.taintAfterRemoteRead === 'write',
+		isOn: (draft) => draft.guardrails.taintWrite === 'block',
 		on: (draft) => ({
 			...draft,
-			guardrails: { ...draft.guardrails, taintAfterRemoteRead: 'write' },
+			guardrails: { ...draft.guardrails, taintWrite: 'block', taintDestructive: '' },
 		}),
-		off: (draft) => ({ ...draft, guardrails: { ...draft.guardrails, taintAfterRemoteRead: '' } }),
+		off: (draft) => ({
+			...draft,
+			guardrails: { ...draft.guardrails, taintWrite: '', taintDestructive: '' },
+		}),
 	},
 };
 

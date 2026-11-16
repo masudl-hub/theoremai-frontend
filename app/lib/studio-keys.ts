@@ -218,5 +218,5 @@ export const SITE_KEYS: LentKeys = {
 	 * Anyone's draft runs on the site's server, so it reaches public hosts only, and fetched text
 	 * can't steer it into deleting or overwriting.
 	 */
-	holds: { publicHostsOnly: true, afterRemoteRead: 'destructive' },
+	holds: { publicHostsOnly: true, afterRemoteRead: { destructive: 'block' } },
 };
