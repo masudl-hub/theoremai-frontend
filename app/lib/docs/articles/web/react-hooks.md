@@ -1,6 +1,6 @@
 ---
 title: React Hooks
-updated: 2026-11-13
+updated: 2026-11-16
 summary: Headless React hooks for chat, decision, embedding and host profiles.
 entry: react/src/index.ts
 covers: react, src/interface, web
@@ -162,7 +162,7 @@ query.embed(['episodic memory'], { task: 'query' });
 
 ## 5. Host Tools & MCP Consoles (`useTheoremHost`)
 
-A host profile serves its tools to the page through `createTheoremHostHandler`, and to MCP clients through `createTheoremMcpHandler`. The `useTheoremHost` hook describes the host once, then `run(name, input)` starts a call and returns its id at once. Calls run side by side: `cancel(id)` stops one, and `answer(id, resolution)` answers the gate it pauses on. Each call carries its streamed `events`, its latest `progress`, `isRunning` and `failure`. A call whose tool goes on after its reply ends its stream with `call.state.phase` as `'background'`, so `isRunning` is false while the tool works. The hook renders nothing.
+A host profile serves its tools to the page through `createTheoremHostHandler`, and to MCP clients through `createTheoremMcpHandler`. The `useTheoremHost` hook describes the host once. Each tool shows the input it declares: the `after` field the kernel adds for the model is left out, since a call from the page is one call in no step. Then `run(name, input)` starts a call and returns its id at once. Calls run side by side: `cancel(id)` stops one, and `answer(id, resolution)` answers the gate it pauses on. Each call carries its streamed `events`, its latest `progress`, `isRunning` and `failure`. A call whose tool goes on after its reply ends its stream with `call.state.phase` as `'background'`, so `isRunning` is false while the tool works. The hook renders nothing.
 
 ```tsx
 import { createHostTransport, useTheoremHost } from '@theoremjs/react';

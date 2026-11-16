@@ -1,6 +1,6 @@
 ---
 title: Tool Permissions & Gates
-updated: 2026-11-02
+updated: 2026-11-16
 summary: Decoupling model tool calls with human confirmation gates, argument editing, and turn resumption.
 entry: src/kernel/tools/permission.ts
 covers: src/kernel/tools/permission.ts, src/kernel/tools/gate-answer.ts
@@ -97,7 +97,7 @@ The kernel categorizes held calls into four distinct gate kinds (`ToolGateKind`)
 
 | Gate Kind | Trigger Condition | Resumption Mechanism |
 | :--- | :--- | :--- |
-| **`'confirmation'`** | Tool has `permission: 'always_confirm'` or was escalated dynamically. | User confirms or denies the action. |
+| **`'confirmation'`** | Tool has `permission: 'always_confirm'`, was escalated dynamically, or `guardrails.taint` holds it after the turn read a remote result (see [Confused-Deputy Taint Tracking](/docs/guardrails/ingress)). | User confirms or denies the action. |
 | **`'permission'`** | Tool has `permission: 'session_consent'` and is absent from `sessionPermissions`. | User grants session consent. |
 | **`'auth'`** | Remote tool credential is missing or expired (`onUnauthenticated: 'gate'`). | User signs in via OAuth or provides credentials. |
 | **`'page'`** | Tool declares `answeredBy: 'page'`. | The page runs the call and returns the result. |

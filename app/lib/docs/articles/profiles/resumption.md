@@ -1,6 +1,6 @@
 ---
 title: Turn Resumption & Steering
-updated: 2026-11-13
+updated: 2026-11-16
 summary: Continuing turns across token limits, resuming after gates, and steering mid-flight.
 entry: src/kernel/engine/runner/mod.ts
 covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -51,11 +51,14 @@ The `resumption` block controls whether recoveries are automatic or require user
 
 ### A File the Provider Refuses
 
-One file a provider cannot read refuses every call that replays it. So when a text turn may send a failed call again (see `autoContinue`), and a call that carried files fails as `unsupported` with no reply and no tool call, the turn sends it once more without them. It takes out this turn's files. If this turn has none, it takes out the files in the conversation. A turn tries this once.
+One file a provider cannot read refuses every call that replays it. So when a text turn may send a failed call again (see `autoContinue`), and a call that carried files fails as `unsupported` with no reply and no tool call, the turn sends it again without them:
 
-A note stands where each file was, so the model knows what it could not read. The notes are the labels `turn.media_refused_image`, `turn.media_refused_video` and `turn.media_refused_file`, and a profile's `labels` can reword them.
+* **The provider names the type**: the turn leaves out every file of that type, wherever the conversation holds it. A named `image/*` covers every image. It tries each named type once, so a provider that names another type on the next call gets another try. The `error` event's `refusedMedia` lists the types the provider named; `forClient` removes it.
+* **The provider names none**: the turn leaves out this turn's files. If this turn has none, it leaves out the files in the conversation. A turn tries this once.
 
-If the provider accepts the call, the turn goes on and `done.mediaRefused` says what happened. `dropped` lists each file's `mimeType` and where the turn carried it (`from`: `'input'`, `'history'` or `'tool'`). `said` is the provider's own reason. `forClient` removes `mediaRefused`, so your server reads it and a client does not. If the provider refuses the call again, the files go back and the failure stands.
+A note stands where each file was, so the model knows what it could not read. The notes are the labels `turn.media_refused_image`, `turn.media_refused_video` and `turn.media_refused_file`, and `turn.media_refused_tool` where a tool returned the file. A profile's `labels` can reword them.
+
+`done.mediaRefused` says what happened. `dropped` lists each file's `mimeType` and where the turn carried it (`from`: `'input'`, `'history'` or `'tool'`). `said` is the provider's own reason. `forClient` removes `mediaRefused`, so your server reads it and a client does not. If the provider refuses the call again, a file the turn only guessed at comes back and the failure stands. A file whose type the provider named stays out, and `done.mediaRefused` still reports it.
 
 ### Executing a Continuation Turn
 
