@@ -1,6 +1,6 @@
 ---
 title: Embedded Studio Screen
-updated: 2026-11-04
+updated: 2026-11-16
 summary: Embedding Theorem Studio into existing React applications with scoped project workspaces.
 entry: studio/server.ts
 covers: studio/server.ts, studio/browser.ts
@@ -171,7 +171,7 @@ export const lentKeys: LentKeys = {
 	// Enforce security boundaries
 	holds: {
 		publicHostsOnly: true, // Prevents SSRF to internal private networks
-		afterRemoteRead: 'write', // Refuses writes after a turn reads a remote result
+		afterRemoteRead: { write: 'block' }, // Refuses writes after a turn reads a remote result
 	},
 };
 ```
@@ -179,7 +179,7 @@ export const lentKeys: LentKeys = {
 ### Enforced Protections
 * **Model Allowlisting**: If a visitor attempts to configure an unpermitted model (such as an expensive reasoning model), Studio surfaces an inline validation badge and blocks execution.
 * **Network Sandboxing**: Setting `holds.publicHostsOnly: true` forces all outbound network calls through Theorem's private IP detector, preventing SSRF attacks against internal services.
-* **Remote-Read Gate**: `holds.afterRemoteRead` sets the calls a turn refuses once it has read a remote result: `'off'`, `'destructive'`, or `'write'`. A profile that refuses more keeps its own setting.
+* **Remote-Read Gate**: `holds.afterRemoteRead` sets what a turn does with calls that change something once it has read a remote result. It takes the profile's own shape, `{ write, destructive }`, each `'off'`, `'confirm'`, or `'block'`. For each access, a profile with a stricter setting keeps its own.
 * **Payload Caps**: Decision profile questions, state byte sizes, and image attachments are capped to prevent memory exhaustion.
 
 ## 4. Answering at `/api/studio`

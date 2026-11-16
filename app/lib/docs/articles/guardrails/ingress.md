@@ -1,6 +1,6 @@
 ---
 title: Ingress Protection & Taint Tracking
-updated: 2026-11-13
+updated: 2026-11-16
 summary: Protect agents against direct prompt injections, indirect payload steering, and confused-deputy attacks.
 entry: src/guardrails/injection.ts
 covers: src/guardrails/injection.ts, src/guardrails/detectors.ts
@@ -22,7 +22,7 @@ Theorem provides two layers of ingress protection:
     "src": "/imagery/th30_cobaltpaddies.png",
     "position": "50% 50%"
   },
-  "caption": "A page tries to steer the scout. Whatever its wording, the turn read a remote result, so with afterRemoteRead: 'write' the write is refused.",
+  "caption": "A page tries to steer the scout. Whatever its wording, the turn read a remote result, so with afterRemoteRead: { write: 'block' } the write is refused.",
   "lanes": [
     "The tool",
     "The model",
@@ -55,7 +55,7 @@ Theorem provides two layers of ingress protection:
     },
     {
       "lane": "Theorem",
-      "label": "afterRemoteRead: 'write' refuses it",
+      "label": "afterRemoteRead.write: 'block' refuses it",
       "text": "export_report is read-write. The default, 'off', flags the call and does not refuse it.",
       "kind": "guardrail"
     }
@@ -132,23 +132,29 @@ Taint lasts for the reply that read the text. A pause does not end a reply: the 
 
 ### Gating Tools After Remote Reads (`afterRemoteRead`)
 
-The `afterRemoteRead` gate refuses tool calls on a tainted turn by each tool's declared `access` (`'read-only'`, `'read-write'` or `'destructive'`). The scout sets it:
+The `afterRemoteRead` gate decides what happens to a call that changes something once the turn has read a remote result. It goes by each tool's declared `access`: `write` sets it for `'read-write'` tools, and `destructive` for `'destructive'` ones. The scout refuses writes:
 
 ```ts frame=profile:text
 guardrails: {
 	taint: {
-		afterRemoteRead: 'write', // 'off' | 'destructive' | 'write'
+		afterRemoteRead: { write: 'block' }, // 'off' | 'confirm' | 'block'
 	},
 },
 ```
 
-| Policy | Behavior After Reading Remote Content |
+| Setting | What happens to the call after a remote read |
 | :--- | :--- |
-| **`'off'`** (Default) | No call is refused. Calls to `'read-write'` and `'destructive'` tools are flagged. |
-| **`'destructive'`** | Refuses calls to tools with `access: 'destructive'`. |
-| **`'write'`** | Refuses calls to tools with `access: 'read-write'` or `'destructive'`, so only read-only tools run for the rest of the turn. |
+| **`'off'`** (Default) | The call runs. It is flagged. |
+| **`'confirm'`** | The call waits on a confirmation gate (`kind: 'confirmation'`). An approval runs it. |
+| **`'block'`** | The call is refused, and the model is told why. |
 
-`afterRemoteRead` never refuses a read-only call. `research.scout` sets `'write'`, and `export_report` is its one tool that writes, so after the turn reads a page, a call to `export_report` is refused. Because `afterRemoteRead` looks only at where the turn read from and at declared tool access, it stops a call even when the injection got past every content detector.
+Left out, `destructive` is the same as `write`. It may not be weaker than `write`, since a destructive call also writes: `defineProfile` refuses `{ write: 'block', destructive: 'confirm' }`. To let the user approve writes and refuse deletes, set `{ write: 'confirm', destructive: 'block' }`.
+
+`afterRemoteRead` never holds a read-only call. `research.scout` refuses writes, and `export_report` is its one tool that writes, so after the turn reads a page, a call to `export_report` is refused. Because `afterRemoteRead` looks only at where the turn read from and at declared tool access, it stops a call even when the injection got past every content detector.
+
+One approval answers every ask on a call. When `afterRemoteRead`, `remoteDestination` and a tool's `always_confirm` all hold the same call, the user sees one card, and one approval runs the call. A `'block'` still refuses it.
+
+To write a rule of your own, read the turn's record in a `pre_tool` stage (see [Lifecycle Hooks & Interception](/docs/profiles/lifecycle)). `ctx.taint` lists the remote results the turn read, in `sources`, and what in them looked like orders to the agent, in `suspicious`. It is unset when the turn has read nothing remote. A stage that returns `confirm` asks the user, and one that returns `deny` refuses the call.
 
 ## Destination Steering Protection (`remoteDestination`)
 

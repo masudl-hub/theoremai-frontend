@@ -1,6 +1,6 @@
 ---
 title: Tools & Execution Pipeline
-updated: 2026-11-14
+updated: 2026-11-16
 summary: Give an agent tools that run custom code, call REST APIs, query MCP servers, or delegate to sub-agents.
 entry: src/kernel/tools/mod.ts
 covers: src/kernel/tools, src/kernel/auth
@@ -128,7 +128,7 @@ Every custom tool registered with `registerTool` declares metadata that governs 
 * **`access`**: `'read-only'`, `'read-write'`, or `'destructive'`:
   * `'read-only'`: Only reads. An `http` tool with this access is sent again when the service is busy or briefly down.
   * `'read-write'`: Changes external state, as `export_report` does. A write is never sent twice.
-  * `'destructive'`: Deletes data or performs irreversible actions. `guardrails.taint.afterRemoteRead` can refuse these calls after a turn reads a remote result.
+  * `'destructive'`: Deletes data or performs irreversible actions. `guardrails.taint.afterRemoteRead` can hold these calls for the user, or refuse them, after a turn reads a remote result.
 * **`permission`**: `'auto'`, `'session_consent'`, or `'always_confirm'`:
   * `'auto'`: Executes without human intervention.
   * `'session_consent'`: Asks once. The approval lasts as long as the host passes the tool name back in `sessionPermissions`.
@@ -273,7 +273,7 @@ A failed call settles with a `code` and a message. Theorem sets these codes for 
 | `cancelled` | The approval or the sign-in was left without an answer | Ask again |
 | `expired` | The sign-in link expired before the user finished | Ask the user to sign in again |
 | `arguments_blocked` | `guardrails.detect` blocks a match in the arguments | Change the action at `tool_arguments_<kind>`, or keep that data from the model |
-| `tainted_turn` | The turn read a remote result, and `guardrails.taint.afterRemoteRead` refuses the `access` of this tool | Change the taint setting, or the `access` of the tool |
+| `tainted_turn` | The turn read a remote result, and `guardrails.taint.afterRemoteRead` is `block` for the `access` of this tool | Change the taint setting, or the `access` of the tool |
 | `remote_destination` | The arguments name an address that only a remote result mentioned, and `guardrails.taint.remoteDestination` is `block` | Change that setting, or have the user give the address |
 | `invalid_input` | The arguments do not match `input` | Fix the schema, or the description that the model reads |
 | `handler_error` | The handler threw an error | Fix the handler. The model reads the text of the error |
@@ -284,7 +284,7 @@ A failed call settles with a `code` and a message. Theorem sets these codes for 
 | `run_failed` | A call that went on after its reply threw before it settled | Read the message. It says what threw |
 | `result_too_large` | The result is larger than the coordinator's `maxOutcomeBytes` | Return less from the tool, or raise that limit |
 
-`tainted_turn` never stops a `read-only` tool. With `afterRemoteRead: 'write'`, it stops `read-write` and `destructive` tools. With `'destructive'`, it stops `destructive` tools only.
+`tainted_turn` never stops a `read-only` tool. With `afterRemoteRead: { write: 'block' }`, it stops `read-write` and `destructive` tools. With `{ destructive: 'block' }`, it stops `destructive` tools only.
 
 A call that waits fails in two more ways. `wait_unknown` means `after` or `waitFor` names a call that is not in the step. When only `after` names it, as a call id sent in place of a tool name, the model reads `tool.after_unknown`, which says `after` takes tool names. `wait_cycle` means the call waits for a call that cannot finish before it.
 

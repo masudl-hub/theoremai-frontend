@@ -1,6 +1,6 @@
 ---
 title: Function Tools
-updated: 2026-11-13
+updated: 2026-11-16
 summary: Authoring TypeScript function tools with Zod schema validation, streaming progress generators, and tools the page answers.
 entry: src/kernel/tools/execute.ts
 covers: src/kernel/tools/execute.ts, src/kernel/tools/types.ts
@@ -56,7 +56,7 @@ access: 'read-write',
 // ...
 ```
 
-`access` decides whether a call survives a page read. `research.scout` sets `guardrails.taint.afterRemoteRead: 'write'`, so once a turn has read a remote result, `export_report` fails with `tainted_turn` and its handler does not run. A page the scout read cannot steer what it saves. A `read-only` tool such as `check_device` is never stopped this way. See [Confused-Deputy Taint Tracking](/docs/guardrails/ingress).
+`access` decides whether a call survives a page read. `research.scout` sets `guardrails.taint.afterRemoteRead: { write: 'block' }`, so once a turn has read a remote result, `export_report` fails with `tainted_turn` and its handler does not run. A page the scout read cannot steer what it saves. A `read-only` tool such as `check_device` is never stopped this way. See [Confused-Deputy Taint Tracking](/docs/guardrails/ingress).
 
 ## Handler Execution Models
 

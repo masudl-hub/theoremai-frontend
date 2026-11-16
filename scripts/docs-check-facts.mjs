@@ -140,7 +140,7 @@ const sameSet = (what, docSet, kernelSet) => {
 		egress: 'guardrails.egress',
 		quota: 'guardrails.quota',
 		disclosure: 'guardrails.disclosure',
-		taint: 'guardrails.taint.afterRemoteRead',
+		taint: 'guardrails.taint.afterRemoteRead.write',
 	};
 	for (const row of tableCells('guardrails', 'know-the-defaults')) {
 		const name = row[0].code[0];
