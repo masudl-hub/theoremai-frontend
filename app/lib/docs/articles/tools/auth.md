@@ -1,9 +1,9 @@
 ---
 title: Auth & Credentials
-updated: 2026-10-30
+updated: 2026-11-16
 summary: Authenticating tools with OAuth, bearer tokens, and API keys without exposing secrets to models.
 entry: src/kernel/auth/mod.ts
-covers: src/kernel/auth, src/kernel/tools/signed-in-fetch.ts
+covers: src/kernel/auth, src/kernel/tools/signed-in-fetch.ts, src/kernel/tools/probe.ts
 cover: /imagery/th30_roads.png
 coverAlt: Winding desert highway cutting across vast open plains
 coverPosition: 50% 50%
@@ -142,6 +142,42 @@ async function answerSignIn(gate: ToolGate, secret: string) {
 ```
 
 Because typed secrets are validated server-side, client code cannot tamper with the credential kind or target slot.
+
+## Checking a Key Before You Keep It (`probeTool`)
+
+Check a pasted key with the service before you save it, so the person learns at once that it is wrong, not when the model first calls the tool. `probeTool` sends one request the way the tool's own call sends it: the key goes where `auth` puts it, through the network guardrail, and a redirect that leaves the first origin drops it. An MCP server is asked for its tool list, and gets a session when it asks for one. Nothing is stored.
+
+```ts frame=statements
+import type { ToolGate } from '@theoremjs/agents';
+import { credentialForSignInGate, probeTool } from '@theoremjs/agents/kernel';
+
+async function answerSignIn(gate: ToolGate, secret: string) {
+	if (gate.kind !== 'auth') return;
+
+	const probe = await probeTool({
+		target: { type: 'mcp', serverUrl: 'https://api.githubcopilot.com/mcp' },
+		auth: { type: 'bearer' },
+		credential: secret,
+		timeoutMs: 10_000,
+	});
+	if (probe.verdict !== 'accepted') return probe.verdict;
+
+	const { slot, credential } = credentialForSignInGate(gate.authChallenge, secret);
+	await userCredentials.set(slot, credential);
+	// ...
+}
+```
+
+The result's `verdict` is one of four:
+
+| `verdict` | Meaning |
+| :--- | :--- |
+| `accepted` | The service answered 2xx. For an MCP server, it sent its tool list, and `mcp` names the tools. |
+| `refused` | The service answered 401 or 403 to the key. |
+| `inconclusive` | The service answered, but said nothing about the key: a 402 or a 500, a body past `maxResponseBytes`, or an MCP server that erred. `reason` says which. |
+| `unanswered` | No answer came back: the guardrail refused the address, the request failed, or `timeoutMs` ran out. `reason` says which. |
+
+Only `accepted` means the key works. An answer's body comes back with the key replaced, but it is still the service's own text, so do not show it to the person. Without `timeoutMs` or `maxResponseBytes`, the request waits and reads as long as the tool's own call would. The studio's **Test connection** runs on the same call.
 
 ## Scope Protection & Network Safety
 

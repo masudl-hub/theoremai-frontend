@@ -1050,15 +1050,16 @@
 		}
 	},
 	"tools/auth": {
-		"reviewed": "2026-11-14",
+		"reviewed": "2026-11-17",
 		"files": {
 			"src/kernel/auth/credential-source.ts": "b791a1d6f39ce5b5e048c83f3db108c68c8baf6d",
 			"src/kernel/auth/crypto.ts": "5f1d8e3906b072368be6715f165b6ee2a1534acd",
 			"src/kernel/auth/mod.ts": "36a585a94d41299cf6e8903cf153d1bb47693ea0",
-			"src/kernel/auth/oauth.ts": "25fe177018a6b5ed3f46d2a7b1826bf4d3f7f4de",
+			"src/kernel/auth/oauth.ts": "20bca631dac69f195980ec779e9ce248bb320ba0",
 			"src/kernel/auth/scope-refusal.ts": "32af737d1562a10600a03b0ddae0408f64d9dd55",
 			"src/kernel/auth/typed-secret.ts": "307a280cf1ba474928b3f7be8389d4d97df81dbf",
-			"src/kernel/auth/types.ts": "6e7f2cd4ccacd91349464dee9e846b8594640dff",
+			"src/kernel/auth/types.ts": "9f466cd46f6f56fa282fa3a98061dc02d742b812",
+			"src/kernel/tools/probe.ts": "97272b9665fa407209ea79a58e00fe8820a60ebe",
 			"src/kernel/tools/signed-in-fetch.ts": "eb5ceabae661169891bcc6b38ae3170ccb1633a2"
 		}
 	},
@@ -1077,11 +1078,11 @@
 		}
 	},
 	"tools/http": {
-		"reviewed": "2026-11-14",
+		"reviewed": "2026-11-17",
 		"files": {
 			"src/kernel/tools/http-limit.ts": "66de16b2453fa26b3b27d409a2faaf4f13b6732c",
 			"src/kernel/tools/image-fetch.ts": "98f40c1c270da02a0f3f90d252433dadd91e7c46",
-			"src/kernel/tools/remote.ts": "d694070a93caffe69c1953b749745f8eaa192603"
+			"src/kernel/tools/remote.ts": "1deea960aee42e5d9bb01cafa0d7b84e781a4586"
 		}
 	},
 	"tools/liquid-labels": {
@@ -1092,10 +1093,10 @@
 		}
 	},
 	"tools/mcp": {
-		"reviewed": "2026-11-14",
+		"reviewed": "2026-11-17",
 		"files": {
 			"src/kernel/tools/mcp-sessions.ts": "a7d9d5b32f49880585dd16d1d6660645bc6f53b9",
-			"src/kernel/tools/remote.ts": "d694070a93caffe69c1953b749745f8eaa192603"
+			"src/kernel/tools/remote.ts": "1deea960aee42e5d9bb01cafa0d7b84e781a4586"
 		}
 	},
 	"tools/oauth": {
