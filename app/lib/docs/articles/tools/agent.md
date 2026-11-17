@@ -1,6 +1,6 @@
 ---
 title: Agent Tools
-updated: 2026-11-13
+updated: 2026-11-16
 summary: Delegating turns to other registered agents, with input derived from the called profile and host-only channels and fields.
 entry: src/kernel/tools/agent.ts
 covers: src/kernel/tools/agent.ts, src/kernel/tools/types.ts, src/kernel/engine/runner/nested.ts
@@ -91,7 +91,7 @@ The kernel enforces four rules on every agent tool. Breaking the first three is 
 
 1. **Registration Order**: The called profile, and every tool it allows, must be registered before the agent tool.
 2. **Modality Support**: The called profile must be a `text`, `image`, or `speech` profile that takes text. `research.pagereader` is a `decision` profile, so it is not an agent tool: it reads each page result at `post_tool` (see [Lifecycle Hooks & Interception](/docs/profiles/lifecycle)).
-3. **No Gated Tools**: None of the called agent's own tools may stop on a gate, because no one can answer it there. Every tool it allows needs `permission: 'auto'`, and a tool with `auth` needs an `onUnauthenticated` policy other than `'gate'`, which is the default.
+3. **No Gated Tools**: None of the called agent's own tools may stop on a gate, because no one can answer it there. Every tool it allows needs `permission: 'auto'`, and a tool with `auth` needs an `onUnauthenticated` policy other than `'gate'`, which is the default. A tool whose `auth` is a function counts as gated, because its sign-in is known only once a call picks it.
 4. **Context Isolation**: The caller's `ctx.host` is not passed down. The called agent's tools read no `host` unless `onAgentCall` returns one.
 
 ## Channel & Field Governance

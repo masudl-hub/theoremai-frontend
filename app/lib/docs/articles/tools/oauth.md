@@ -1,7 +1,7 @@
 ---
 title: OAuth PKCE Flow
-updated: 2026-11-02
-summary: OAuth 2.0 PKCE authorization flow with stateless encrypted state, session binding, and token refresh.
+updated: 2026-11-16
+summary: OAuth 2.0 PKCE authorization flow with stateless encrypted state, session binding, token refresh, and revocation.
 entry: src/kernel/auth/oauth.ts
 covers: src/kernel/auth/oauth.ts, src/kernel/auth/crypto.ts
 cover: /imagery/th30_saltflats.png
@@ -166,6 +166,39 @@ OAuth access tokens expire. When a tool with an OAuth credential executes, Theor
 * With no `refreshToken`, the tool's `onUnauthenticated` policy applies.
 * The kernel saves the newly issued tokens to your `credentials` source via `credentials.set()` before dispatching the request.
 * Concurrent calls that find the same expired token share a single refresh request.
+* If the refresh fails, the stream gets a tool `progress` event with `kind: 'auth_token_refresh_failed'` and the slot, and the tool's `onUnauthenticated` policy applies. The server's own words go to the host as `errorInternal`, never to the model.
+
+### Refreshing a Token Yourself
+
+`refreshOAuthToken` and `exchangeOAuthPkce` throw `OAuthTokenError` when the token endpoint refuses. It is a `TheoremError` with the HTTP `status` and, when the body names them, the server's `error` code and `errorDescription`. Read its `kind` to decide what to do next:
+
+* `auth`: the refresh token is dead (`invalid_grant`), the client was refused (`invalid_client`), or the endpoint answered 401, 402 or 403. Ask the person to sign in again.
+* `busy`, `unavailable`, `rate_limit` or `timeout`: the server could not answer now. Try again later.
+
+A request that gets no answer throws a `TheoremError` with kind `network`.
+
+## Disconnecting a Sign-In (`revokeOAuthToken`)
+
+When the person disconnects a service, call `revokeOAuthToken` so the provider also forgets the sign-in (RFC 7009):
+
+```ts frame=statements
+import { type OAuth2Credential, revokeOAuthToken } from '@theoremjs/agents/kernel';
+
+async function disconnect(credential: OAuth2Credential) {
+	const outcome = await revokeOAuthToken({
+		credential,
+		clientSecret: process.env.GITHUB_CLIENT_SECRET,
+	});
+	// outcome: 'revoked' | 'already_invalid' | 'unsupported'
+	// Then delete the credential from the store behind your ToolCredentialSource.
+	return outcome;
+}
+```
+
+* Theorem revokes the refresh token first, else the access token. Revoking a refresh token also ends the access tokens of its grant.
+* Theorem finds the endpoint in the issuer's `revocation_endpoint` metadata. Pass `revocationEndpoint` to skip discovery.
+* `already_invalid` means the provider no longer knew the token. `unsupported` means it names no revocation endpoint, or revoked neither token type. Any other refusal throws `OAuthTokenError`.
+* Delete the credential from your store whatever the outcome. `ToolCredentialSource` has no delete; the store behind it is yours.
 
 ## Related Guides
 

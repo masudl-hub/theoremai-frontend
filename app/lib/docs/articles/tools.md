@@ -98,6 +98,7 @@ When a model asks for a tool, Theorem runs the call through these checks, in thi
    * **Taint**: A tainted turn can refuse the call.
    * **Destination**: Theorem checks where the arguments point.
    * **Input schema**: The arguments must fit the tool's input Zod schema.
+   * **Which sign-in**: A function tool whose `auth` is a function picks the call's sign-in from the checked input. See [Auth & Credentials](/docs/tools/auth).
    * **Permission**: A tool that needs approval holds the call, and the turn stops with `stop.kind: 'gate'`.
    * **Sign-in**: A tool that signs in gets its credential.
    * **`pre_tool`**: Your hook can stop the call.

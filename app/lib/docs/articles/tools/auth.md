@@ -43,6 +43,43 @@ You supply the rest: a GitHub OAuth App, the sign-in routes from [OAuth PKCE Flo
 * **`scopes`**: OAuth scopes required for execution.
 * **`preResolved`**: Optional. Its `issuer` and `resource` are named on the auth gate. To skip discovery for a service with no metadata, pass the endpoints to `createOAuthPkceFlow` (see [OAuth PKCE Flow](/docs/tools/oauth)).
 
+### Picking the Sign-In From the Call
+
+A `function` tool can act on one of several accounts that its input names. Give `auth` a function of the call's checked input. It returns the sign-in for that call, or `undefined` when the call needs none:
+
+```ts
+import { registerTool } from '@theoremjs/agents';
+import { z } from 'zod';
+
+registerTool({
+	type: 'function',
+	name: 'read_inbox',
+	description: "Read the newest messages in the person's work or home mail.",
+	category: 'mail',
+	access: 'read-only',
+	permission: 'auto',
+	loadTier: 'T0',
+	paths: ['*'],
+	input: z.object({ account: z.enum(['work', 'home']) }),
+	output: z.object({ messages: z.array(z.record(z.string(), z.unknown())) }),
+	auth: ({ account }) => ({
+		slot: `mail_${account}`,
+		type: 'oauth2',
+		service: account === 'work' ? 'Work mail' : 'Home mail',
+	}),
+	handler: async (_input, ctx) => {
+		const response = await ctx.signedInFetch?.('https://mail.example/v1/inbox');
+		return { messages: (await response?.json()) ?? [] };
+	},
+});
+```
+
+* The kernel picks once per call, before the permission check, and checks the pick as it checks a registered `auth`. The call's gate, its resume and its `sign_in` notes all read that one pick.
+* If the function throws or its pick fails the checks, the call fails with `handler_error` before the handler runs. The turn goes on.
+* Input that the schema refuses picks nothing; the call fails on its input.
+* A host that rebuilds a held call's sign-in gate from the registered tool calls `toolAuthForCall(tool, input)` for the same pick. The studio does this.
+* An agent tool counts a tool with a function `auth` as one that can stop on a gate. See [Agent Tools](/docs/tools/agent).
+
 ## Credential Placement
 
 By default, bearer tokens and API keys are sent in the `Authorization` header:
