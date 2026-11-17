@@ -81,6 +81,7 @@ export declare const kmsClient: {
 export declare const secureVault: {
 	load(userId: string, slot: string): Promise<import('@theoremjs/agents/kernel').ToolCredential | undefined>;
 	save(userId: string, slot: string, cred: import('@theoremjs/agents/kernel').ToolCredential): Promise<void>;
+	remove(userId: string, slot: string): Promise<void>;
 };
 
 /** A valid profile of each type: `profile:<type>` samples spread it, then add their own members. */

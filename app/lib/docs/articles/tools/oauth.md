@@ -184,13 +184,13 @@ When the person disconnects a service, call `revokeOAuthToken` so the provider a
 ```ts frame=statements
 import { type OAuth2Credential, revokeOAuthToken } from '@theoremjs/agents/kernel';
 
-async function disconnect(credential: OAuth2Credential) {
+async function disconnect(slot: string, credential: OAuth2Credential) {
 	const outcome = await revokeOAuthToken({
 		credential,
 		clientSecret: process.env.GITHUB_CLIENT_SECRET,
 	});
 	// outcome: 'revoked' | 'already_invalid' | 'unsupported'
-	// Then delete the credential from the store behind your ToolCredentialSource.
+	await userCredentials.delete(slot);
 	return outcome;
 }
 ```
@@ -198,7 +198,7 @@ async function disconnect(credential: OAuth2Credential) {
 * Theorem revokes the refresh token first, else the access token. Revoking a refresh token also ends the access tokens of its grant.
 * Theorem finds the endpoint in the issuer's `revocation_endpoint` metadata. Pass `revocationEndpoint` to skip discovery.
 * `already_invalid` means the provider no longer knew the token. `unsupported` means it names no revocation endpoint, or revoked neither token type. Any other refusal throws `OAuthTokenError`.
-* Delete the credential from your store whatever the outcome. `ToolCredentialSource` has no delete; the store behind it is yours.
+* Call `delete(slot)` on your `ToolCredentialSource` whatever the outcome. The next call that needs the slot then asks the person to sign in.
 
 ## Related Guides
 

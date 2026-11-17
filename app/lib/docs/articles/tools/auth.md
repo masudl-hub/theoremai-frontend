@@ -146,6 +146,9 @@ const userCredentials: ToolCredentialSource = {
 	set: async (slot: string, credential: ToolCredential): Promise<void> => {
 		await secureVault.save(currentUserId, slot, credential);
 	},
+	delete: async (slot: string): Promise<void> => {
+		await secureVault.remove(currentUserId, slot);
+	},
 	clientSecret: async (_clientId: string): Promise<string | undefined> => {
 		return process.env.OAUTH_CLIENT_SECRET;
 	},
@@ -157,6 +160,11 @@ const _events = runTurn({
 	credentials: userCredentials,
 });
 ```
+
+* **`get`**: The slot's credential, or `undefined` when the person has not signed in.
+* **`set`**: A refreshed OAuth token, or a key typed at a sign-in gate. The call goes on only once it resolves, so persist it here.
+* **`delete`**: Forgets the slot, as when the person disconnects the service. After it resolves, `get` answers `undefined`, and the next call that needs the slot gates. The kernel never calls it; you do. For an OAuth sign-in, call `revokeOAuthToken` first (see [OAuth PKCE Flow](/docs/tools/oauth)).
+* **`clientSecret`**: Optional. A confidential OAuth client's secret, read when the kernel refreshes a token.
 
 For test environments and local development, initialize an in-memory store using `memoryCredentialSource({ slot: credential })`.
 
