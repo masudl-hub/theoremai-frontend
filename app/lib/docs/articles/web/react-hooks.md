@@ -80,12 +80,12 @@ const blocks = chat.shownBlocks;
 The `chat.phase` enum indicates the active runtime state:
 - `'idle'`: Ready for user input.
 - `'streaming'`: Model response tokens are actively flowing into `chat.streamBlocks`.
-- `'gated'`: The turn waits for a person to answer a tool gate.
+- `'gated'`: The turn waits on a tool gate.
 
-When `chat.phase === 'gated'`, draw the question and answer it with `handleToolDecision` and `'allow'` or `'deny'`. The chat answers the one gate that waits, so the index the transcript passes is not used. A sign-in gate is answered with `handleAuthenticated` instead. A gate can show in `chat.streamBlocks` before its run ends: an answer given then waits for the run, then goes to that gate. Every tool of `research.scout` runs without asking, so add `permission: 'always_confirm'` to the tool that must ask.
+`chat.waitingGate` is the gate that waits for a person, and `null` when none waits. A page gate is never one, because the page answers it. When `chat.waitingGate` is set, draw the question and answer it with `handleToolDecision` and `'allow'` or `'deny'`. The chat answers the one gate that waits, so the index the transcript passes is not used. A sign-in gate, whose `gateKind` is `'auth'`, is answered with `handleAuthenticated` instead. A gate can show in `chat.streamBlocks` before its run ends: an answer given then waits for the run, then goes to that gate. Every tool of `research.scout` runs without asking, so add `permission: 'always_confirm'` to the tool that must ask.
 
 ```tsx
-{chat.phase === 'gated' && (
+{chat.waitingGate && chat.waitingGate.gateKind !== 'auth' && (
 	<div>
 		{/* ... */}
 		<button onClick={() => chat.handleToolDecision(0, 'allow')}>Approve</button>
