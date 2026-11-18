@@ -62,7 +62,7 @@ A tool call whose `state.phase` is `'background'` has answered the model and goe
 
 `chat.backgroundJobs` lists the calls still running in the background, oldest first, each as `{ callId, label }`. A call leaves the list when its late result lands.
 
-To display incoming tokens as they arrive over the wire, concatenate committed `chat.blocks` with active `chat.streamBlocks`:
+To display incoming tokens as they arrive over the wire, draw `chat.shownBlocks`: the committed `chat.blocks`, then the active `chat.streamBlocks`.
 
 ```tsx
 const chat = useTheoremChat({
@@ -70,11 +70,10 @@ const chat = useTheoremChat({
 	iface: described.status === 'ready' && described.iface.type !== 'live' ? described.iface : null,
 });
 
-const allBlocks = useMemo(
-	() => [...chat.blocks, ...chat.streamBlocks],
-	[chat.blocks, chat.streamBlocks],
-);
+const blocks = chat.shownBlocks;
 ```
+
+`chat.workingSince` is when the reply in progress started, less its waits for approval, and `undefined` when no reply runs. Draw the time a reply has worked from it. `chat.turnClock` gives each turn's time, for `ChatTranscript`'s `clock`.
 
 ### Transcript Phases & Gating
 

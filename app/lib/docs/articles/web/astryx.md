@@ -66,6 +66,32 @@ import { TheoremChat } from '@theoremjs/react/ui';
 - **`composerLayout`**: `'stacked'`, the default, or `'row'`. In `'row'`, the field, the mic and send share one line, and text that wraps moves the field onto its own line. Above them, a pill shows the reply in progress, as "Working for 12s" with its stop button, and a pill shows each tool call still running in the background. What waits to send, such as queued drafts and staged files, sits in a tray between the pills and the field, which folds to its count. While a reply runs or a step waits, Enter queues a draft and send opens the send menu.
 - **`composerIcons`**: The `'row'` composer's icons: `working`, `backgroundJob` and `stop`. Each one you leave out keeps Theorem's.
 
+### The Composer and the Transcript Apart
+
+`<TheoremChat />` is built from two pieces you can place yourself: `<TheoremChatComposer />` and `<TheoremChatTranscript />`. Use them when the composer and the transcript do not sit in one column, such as a composer docked at the bottom of a page with the transcript shown only while the person is in it. You decide where each piece sits and when each one shows. Theorem moves neither of them.
+
+Each piece takes the `chat` from `useTheoremChat` and the `iface` from `useTheoremInterface`:
+
+```tsx
+import { TheoremChatComposer, TheoremChatTranscript } from '@theoremjs/react/ui';
+
+function Dock({ chat, iface }) {
+	const [open, setOpen] = useState(false);
+	return (
+		<div onFocus={() => setOpen(true)}>
+			{open && <TheoremChatTranscript chat={chat} iface={iface} />}
+			<TheoremChatComposer chat={chat} iface={iface} layout="row" />
+		</div>
+	);
+}
+```
+
+- **`<TheoremChatComposer />`**: Takes `layout`, `icons`, `placeholder` and `inputRef`, as `<TheoremChat />` takes `composerLayout`, `composerIcons` and `placeholder`.
+- **`<TheoremChatTranscript />`**: Takes `handle`, `emptyState`, `dividers`, `usage` and `bodyKindPlacement`. Its `handle` is the profile's handle when you leave it out.
+- **One clock**: Both pieces read `chat.turnClock`, so the composer's working pill and the transcript's status line show the same time wherever each sits.
+
+Put both pieces inside `TheoremThemeProvider`, as for any piece in [Composable UI Primitives](#6-composable-ui-primitives).
+
 ## 2. Realtime Voice & Video (`<LiveRunner />`)
 
 `<LiveRunner />` runs calls for a `live` profile. Before a call, it offers a voice or video call. In a call, it shows the agent over the ink waveform, the captions in a column on the right, the call controls in a toolbar, and tool gates in a dialog. The call streams the microphone and camera over a WebSocket relay and plays the model's 24kHz audio without gaps.
@@ -162,6 +188,8 @@ When building hybrid interfaces that combine custom layouts with pre-built Theor
 
 ```tsx
 import {
+	TheoremChatComposer,
+	TheoremChatTranscript,
 	ChatTranscript,
 	ChatComposerBar,
 	ApprovalCard,
@@ -170,8 +198,9 @@ import {
 } from '@theoremjs/react/ui';
 ```
 
-- **`<ChatTranscript />`**: Theorem transcript blocks drawn as Astryx chat messages. A tool call that goes on after its turn draws as running.
-- **`<ChatComposerBar />`**: The Astryx composer wired to send, stop, queue, steer and stash. It takes `layout`, as `TheoremChat` takes `composerLayout`, and `backgroundJobs` for the row's pills. For a live profile, it is the text field and send button only.
+- **`<TheoremChatComposer />`** and **`<TheoremChatTranscript />`**: The composer and the transcript bound to one `useTheoremChat`. See [The Composer and the Transcript Apart](#the-composer-and-the-transcript-apart).
+- **`<ChatTranscript />`**: Theorem transcript blocks drawn as Astryx chat messages. A tool call that goes on after its turn draws as running. Pass `clock={chat.turnClock}` so its times agree with the composer's.
+- **`<ChatComposerBar />`**: The Astryx composer wired to send, stop, queue, steer and stash. It takes `layout`, as `TheoremChat` takes `composerLayout`, `backgroundJobs` for the row's pills, and `workingSince` for the working pill's time. For a live profile, it is the text field and send button only.
 - **`<ApprovalCard />`**: The card for a tool gate: the tool, its access, the gate's summary and the call's input, and an answer of `'allow'` or `'deny'`.
 - **`<InkWaveform />`**: Waveform bars driven by microphone and speaker levels.
 - **`<LiveCaptionsPanel />`**: A live call's captions: the transcript, an empty state, and the text composer.
