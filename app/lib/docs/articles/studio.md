@@ -1,6 +1,6 @@
 ---
 title: Theorem Studio
-updated: 2026-11-13
+updated: 2026-11-18
 summary: Edit, run and test Theorem agents on your own project with one command, or as a screen in your own app.
 entry: studio/mod.ts
 covers: studio, studio/server.ts
@@ -88,6 +88,7 @@ The chat sits beside the editor, so you can test a change at once:
 * **Tool Readers**: A tool can name a decision agent as its reader, so the model reads less. When a tool returns text and its call carries a `question`, Studio splits the text at blank lines and the reader judges each passage. A passage stays when each of the reader's choice questions lands on its first choice. If the reader fails, the model reads the output whole. The kernel has no such setting: in your own app, you run a reader at `post_tool`.
 * **Options**: **Options** sit in the editor's **System prompt** section, above the prompt. There is one row for each option: its name and its values. The marked value is the one the studio states. An option your code states starts unset, as your code may leave it, and a run sends no value for it. An option a person picks starts on its first value, as the chat's own picker does. Press a value to state it on the next run and on an open live call. Press the value your code states again to leave it unset. An option's pencil opens **Shown in interface**. Turn it on and the option goes on `inputs.options`, where a person picks it. Turn it off and the option goes on `identity.options`.
 * **Unsaved Edits**: While a project has edits you have not saved, your files and your edits run side by side under one composer. What you send goes to both, and each side treats it as its own chat would. An idle side sends it, and a busy side queues it. A steer goes to each side whose running turn takes one. The composer's model control shows each side's models in two columns, so you can run a different model on each side and compare them. Each column offers only what that side's profile offers. If you attach a file that a side's profile does not take, that side refuses the turn in its own pane. If you pick no model, each side runs its own default.
+* **Composer Layout**: Settings, under Chat, lays out the chat's composer as **Stacked** or **Row**. It is the same choice your app makes with `TheoremChat`'s `composerLayout`.
 * **Who a Run Acts As**: A setup file can export `people` and `host`. You then pick a place and a person in Settings, under People, and each run acts for that person. Each person keeps their own chat and session.
 
 ### 5. Trace Replay

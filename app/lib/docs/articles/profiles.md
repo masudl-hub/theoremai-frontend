@@ -1,6 +1,6 @@
 ---
 title: Profiles
-updated: 2026-11-02
+updated: 2026-11-18
 summary: The central specification for configuring an agent identity, models, tools, and boundaries.
 entry: src/kernel/registry/profiles.ts
 covers: src/kernel/registry/profiles.ts, src/kernel/schema.ts
@@ -223,7 +223,7 @@ The model gets private parts as instructions, and Theorem reads the reply for th
 
 ### 3. `models`
 
-Under `models`, an agent binds one or more upstream models, declaring the protocol, provider, model ID, reasoning effort tiers (`efforts`), token limits (`limits`), and history compaction thresholds (`compaction`) detailed in [Model Bindings & Compaction](/docs/profiles/bindings). When multiple models are bound, `defaultModel` specifies the fallback selection, while `allowModelSelect` controls whether turn callers can explicitly select among them.
+Under `models`, an agent binds one or more upstream models, declaring the protocol, provider, model ID, reasoning effort tiers (`efforts`), token limits (`limits`), and history compaction thresholds (`compaction`) detailed in [Model Bindings & Compaction](/docs/profiles/bindings). When multiple models are bound, `defaultModel` specifies the fallback selection, while `allowModelSelect` controls whether the person can pick among them from the page.
 
 ### 4. `tools`
 

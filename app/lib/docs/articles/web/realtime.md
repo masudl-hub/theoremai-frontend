@@ -1,6 +1,6 @@
 ---
 title: Realtime Voice & Video
-updated: 2026-11-03
+updated: 2026-11-18
 summary: Real-time bidirectional WebSockets, audio worklets, and live camera video frames in React.
 entry: react/src/index.ts
 covers: react, src/surface, web
@@ -285,7 +285,7 @@ client.sendText('Look for datasets that test long context memory.');
 client.disconnect();
 ```
 
-`model` and `effort` pick the call's model and that model's effort. The profile must allow the pick (`allowModelSelect`), and the binding must allow the effort.
+`model` and `effort` pick the call's model and that model's effort. The session boundary refuses the pick unless the profile sets `allowModelSelect`, and the binding sets `allowEffortSelect`.
 
 The client runs each call the model makes on the relay, one at a time, and answers every step itself:
 

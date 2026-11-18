@@ -1,6 +1,6 @@
 ---
 title: Model Bindings
-updated: 2026-11-02
+updated: 2026-11-18
 summary: Binding a provider, a protocol and a model to a profile, with its keys, efforts, limits and built-in tools.
 entry: src/kernel/protocols/binding.ts
 covers: src/kernel/protocols/binding.ts, src/kernel/registry/profiles.ts
@@ -152,11 +152,11 @@ allowModelSelect: true,
 ```
 
 * **`defaultModel`**: The model a turn gets when it does not pick one. Required when more than one model is bound. With one model, it is that model.
-* **`allowModelSelect`**: When `true`, a turn can pick a model by its key (`runTurn({ profile: 'research.scout', model: 'gemini', input: { ... } })`). A key the profile does not declare is refused. When it is left out or `false`, a turn that names a model is refused with a `TheoremError`. A live call picks its model and effort the same way, on its `runSession()` request.
+* **`allowModelSelect`**: When `true`, the person may pick the model from the page. Your server code can name any declared key whether it is on or not (`runTurn({ profile: 'research.scout', model: 'gemini', input: { ... } })`). A key the profile does not declare is refused. When it is left out or `false`, the web handler refuses a model the page picked, with a `TheoremError`. A live call picks its model and effort the same way, on its `runSession()` request.
 
 ## Reasoning Efforts & Thinking
 
-For reasoning models, a binding names its own efforts, and each maps to one of Theorem's thinking levels. These are the scout's efforts. To let a turn pick one, add `allowEffortSelect`:
+For reasoning models, a binding names its own efforts, and each maps to one of Theorem's thinking levels. These are the scout's efforts. To let the person pick one from the page, add `allowEffortSelect`:
 
 ```ts frame=models
 models: {
@@ -175,7 +175,7 @@ models: {
 
 * **`efforts`**: Maps your effort names to thinking levels: `'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'`. A provider refuses a level its model does not take.
 * **`defaultEffort`**: The effort a turn gets when it does not pick one. Required when more than one effort is declared. With one effort, it is that effort.
-* **`allowEffortSelect`**: Lets a turn pick an effort by name (`runTurn({ profile: 'research.scout', effort: 'deep', input: { ... } })`). It needs two or more efforts.
+* **`allowEffortSelect`**: Lets the person pick an effort from the page. Your server code can name any declared effort whether it is on or not (`runTurn({ profile: 'research.scout', effort: 'deep', input: { ... } })`). It needs two or more efforts.
 * **`summaries`**: Asks the model for summaries of its thinking. Not every model sends them. With some providers, `false` only hides thoughts, and others ignore it.
 
 `defaultEffort` and `allowEffortSelect` need `efforts`.

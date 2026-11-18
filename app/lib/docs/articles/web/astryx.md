@@ -1,6 +1,6 @@
 ---
 title: Astryx UI Components
-updated: 2026-11-13
+updated: 2026-11-18
 summary: Ready-made Astryx components for chat, live, decision, embedding and host profiles.
 entry: react/src/index.ts
 covers: react, web
@@ -63,6 +63,7 @@ import { TheoremChat } from '@theoremjs/react/ui';
 - **`media`**: Which media a tool returned the chat shows. `'sent'`, the default, shows only what the tool sent to the person (`sent: true`) and its references. `'all'` also shows what only the model read, for an evaluation view. Media the model made and files the person attached always show. Hiding is not withholding: the page still receives every piece.
 - **`resolveMedia`**: Turns a reference a tool sent (`{ type, mimeType, uri }`) into an address the page can load, under the viewer's own sign-in, or `null`. Until it answers, and on `null`, the chat shows the file name. The model never reads a reference.
 - **`usage`**: Shows tokens and cost: each reply's total under it, and, on an agent tool's call row, what that agent used. Off by default.
+- **`composerLayout`**: `'stacked'`, the default, or `'row'`. In `'row'`, the field, the mic and send share one line, and text that wraps moves the field onto its own line. Above them, a pill shows the reply in progress, with its stop button, and a pill shows each tool call still running in the background. While a reply runs or a step waits, Enter queues a draft and send opens the send menu.
 
 ## 2. Realtime Voice & Video (`<LiveRunner />`)
 
@@ -169,7 +170,7 @@ import {
 ```
 
 - **`<ChatTranscript />`**: Theorem transcript blocks drawn as Astryx chat messages. A tool call that goes on after its turn draws as running.
-- **`<ChatComposerBar />`**: The Astryx composer wired to send, stop, queue, steer and stash. For a live profile, it is the text field and send button only.
+- **`<ChatComposerBar />`**: The Astryx composer wired to send, stop, queue, steer and stash. It takes `layout`, as `TheoremChat` takes `composerLayout`, and `backgroundJobs` for the row's pills. For a live profile, it is the text field and send button only.
 - **`<ApprovalCard />`**: The card for a tool gate: the tool, its access, the gate's summary and the call's input, and an answer of `'allow'` or `'deny'`.
 - **`<InkWaveform />`**: Waveform bars driven by microphone and speaker levels.
 - **`<LiveCaptionsPanel />`**: A live call's captions: the transcript, an empty state, and the text composer.

@@ -1,6 +1,6 @@
 ---
 title: Getting started
-updated: 2026-11-02
+updated: 2026-11-18
 summary: Define an agent once as a typed profile, run a turn, and enforce hard runtime boundaries.
 entry: src/kernel/engine/runner/mod.ts
 covers: mod.ts, src/kernel/engine/runner, src/kernel/registry/profiles.ts
@@ -230,7 +230,7 @@ The program below is the scout as the studio builds it. It adds a second tool, a
 
 A request can never ask for more than the profile declares:
 
-1. **Model selection**: Theorem refuses a request that sets `model`, unless the profile sets `allowModelSelect`. Even then, the request must name one of the profile's `models`.
+1. **Model selection**: A request that sets `model` must name one of the profile's `models`. Theorem refuses any other name. Whether the person may pick the model from the page is a separate switch, `allowModelSelect`.
 2. **Tool scope**: The model can only call the tools that `tools.allow` names.
 3. **Inputs**: Theorem refuses [options](/docs/profiles#prompt-lines-and-options) the profile does not declare, option values it does not list, context from a sender that `inputs.context` does not list, and files or voice clips of a type that the profile does not accept.
 
@@ -258,7 +258,7 @@ try {
 The turn throws a `TheoremError` before it calls the model:
 
 ```text
-Refused [request]: Profile research.scout does not allow model selection
+Refused [request]: Unknown model 'bigger' for research.scout
 ```
 
-A `TheoremError` carries a typed `kind` (`ErrorKind`), from which hosts choose an HTTP status and the user's wording. To allow the choice, change the profile: bind a second model and set `allowModelSelect`.
+A `TheoremError` carries a typed `kind` (`ErrorKind`), from which hosts choose an HTTP status and the user's wording. To run on another model, change the profile: bind it under `models`.

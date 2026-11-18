@@ -239,7 +239,7 @@ live: {
 
 Live sessions are opened using `runSession(request, options)`. The options carry the key vault and transport settings. Unlike `runTurn()`, which runs a discrete exchange and closes, `runSession()` resolves a persistent `LiveSession` controller.
 
-The request picks the model and effort as a turn does: `model` needs `allowModelSelect`, and `effort` needs the binding's `allowEffortSelect`. `execution`, `pageExecution` and `background` also go on the request. `background` is your service for tool calls that go on after their reply. It needs an `execution` coordinator with `detach`, and without it every tool runs inline.
+The request picks the model and effort as a turn does: any model the profile declares, and any effort that model declares. `allowModelSelect` and `allowEffortSelect` only say whether the page may pick them. `execution`, `pageExecution` and `background` also go on the request. `background` is your service for tool calls that go on after their reply. It needs an `execution` coordinator with `detach`, and without it every tool runs inline.
 
 ### Basic Invocation
 
