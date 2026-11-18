@@ -1,9 +1,9 @@
 ---
 title: Live Profiles
-updated: 2026-11-13
+updated: 2026-11-18
 summary: Real-time duplex audio and video streaming over WebSockets with interruption handling.
 entry: src/kernel/engine/runner/mod.ts
-covers: src/kernel/engine/runner, src/kernel/registry/profiles.ts
+covers: src/kernel/engine/runner, src/kernel/engine/session, src/kernel/registry/profiles.ts
 cover: /imagery/th30_bleachedgypsumdunes.png
 coverAlt: Curving white gypsum sand dunes under open sky
 coverPosition: 50% 50%
@@ -279,6 +279,7 @@ The `LiveSession` object provides methods to push media, inject context, run too
 | **`sendVideo`** | `({ data, mimeType }) => Promise<void>` | Sends a single camera frame (`image/jpeg`). |
 | **`sendText`** | `(text) => Promise<void>` | Sends typed text. The profile must set `live.ingress.text: true`. |
 | **`sendContext`** | `(context) => Promise<void>` | Tells the model what the page or host knows. It opens no turn and draws no reply. The model sees it from its next turn on. |
+| **`wake`** | `() => Promise<LiveWakeOutcome>` | Makes the model read what waits for it and answer, with no one speaking. See [Waking the Call](#waking-the-call). |
 | **`events`** | `() => AsyncGenerator<TurnEvent>` | Returns the stream of incoming text, media, tool calls, and lifecycle events. |
 | **`executeTool`** | `(args) => Promise<LiveExecuteToolResult>` | Runs a call the model made, by its `callId`. Its events join `events()`. A gate returns `gated`, and the model gets no answer until the call has its `decision`. |
 | **`answerToolCall`** | `(args) => LiveExecuteToolResult` | Settles a call whose body ran in the process that owns the tool registry. Its events join `events()`, and the model reads its `readBack`. When that process cannot answer, pass a `tool` event of your own in the `error` phase, with `readBack: formatToolResult(formatToolFailureForModel(failure))`, so the model reads it like every other failure. |
@@ -324,6 +325,48 @@ const session = await runSession(
 ```
 
 Without `lines`, lines get no ids, and your host reads them from `events()`. Either way, the session history holds one entry per line.
+
+### Waking the Call
+
+Use `wake()` when the model must say something while no one speaks, for example that the call has two minutes left. Your app keeps what waits. The session reads it at a turn's moments, as a text turn does, and the model answers it.
+
+The model reads two things:
+
+* **What your `onStage` handler injects** at `pre_turn`, `post_tool` and `before_end`. An inject lands whole or not at all. When the inbound guardrail blocks one of its texts, none of it is sent. A named inject (`injectId`) that lands is in that stage's `injected` list.
+* **What `lateResults` on the request gives**: the background tool calls that ended after their turn. The session asks it as a turn opens, after each tool call ends, and once the model has answered. A result lands once in the call. With `allowSteering: false`, the session asks only as a turn opens.
+
+What lands once the model has answered opens the next turn, so that answer has its own stages.
+
+```ts frame=statements
+let timeIsShort = false;
+
+const session = await runSession(
+	{
+		profile: 'research.scout.live',
+		onStage: ({ stage }) =>
+			stage === 'pre_turn' && timeIsShort
+				? { inject: [{ role: 'user', content: 'Two minutes are left on the call.' }], injectId: 'time-left' }
+				: undefined,
+	},
+	hostOptions,
+);
+
+// Later, when two minutes are left:
+timeIsShort = true;
+const woke = await session.wake();
+```
+
+`wake()` resolves to one of three outcomes:
+
+| `outcome` | When | What happens |
+| :--- | :--- | :--- |
+| `folded` | The model is answering, or one of its tool calls is open | Nothing new starts. What waits lands at `stage`: `post_tool` while a call is open, else `before_end`. |
+| `started` | Neither, and something landed as the turn opened | A turn opens, and the model answers what landed. |
+| `nothing_landed` | Neither, and nothing landed | The model is sent nothing and says nothing. |
+
+`started` and `nothing_landed` carry a `wake` id. Each `stage` event of a turn a wake started carries the same `wake`. `wake()` gives the model no words of its own, and on a closed session it rejects.
+
+Mark an item told once the model has spoken it: after the `post_turn` of the turn it landed in, when that turn's `done` is not interrupted. A blocked inject is not in `injected`, so its item still waits.
 
 ## Browser Client & WebSocket Relay
 

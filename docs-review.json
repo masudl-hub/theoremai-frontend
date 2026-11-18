@@ -1,15 +1,15 @@
 {
 	"glossary": {
-		"reviewed": "2026-11-17",
+		"reviewed": "2026-11-18",
 		"files": {
 			"src/guardrails/labels.ts": "560a44c7f4431b8c870ce934b63bcd447a95c03b",
-			"src/kernel/api-catalog.ts": "7fa7ac2668a9868db75023580bc3eddf26ae5aa4",
+			"src/kernel/api-catalog.ts": "565cb4a318351adc910ca077f1640f4351e8e668",
 			"src/kernel/schema.ts": "3ace4fddd9f4a296d4b131c6bfb94a76f22ab7a3",
 			"src/observability/trace-catalog.ts": "d875bbd4f3e6cfca6d06368cc51ea1809c50e984"
 		}
 	},
 	"guardrails": {
-		"reviewed": "2026-11-16",
+		"reviewed": "2026-11-18",
 		"files": {
 			"src/guardrails/boundaries.ts": "428227b0be862d3b8325ecd1436757f4620010ae",
 			"src/guardrails/canary-gate.ts": "68e9fd922d448f9781cb90e16a1e6f42550eff9f",
@@ -49,7 +49,7 @@
 			"src/guardrails/labels.ts": "560a44c7f4431b8c870ce934b63bcd447a95c03b",
 			"src/guardrails/live-outbound-gate.ts": "ddb1d552a45dade82eee99678b37b15c4414b9f7",
 			"src/guardrails/mod.ts": "28cc1398f942407272aa60f2525f4821dc83a57d",
-			"src/guardrails/network.ts": "65487c8f3fdac6e14ce16bd46c4a20ac77d61cde",
+			"src/guardrails/network.ts": "ef511111ae1c6af08e80a907aa03710ada00a4a1",
 			"src/guardrails/normalize.ts": "ea417771c58365cfb57ea76e67f35a0d3eb88d7b",
 			"src/guardrails/policy.ts": "b6d37b1028048e16365ac786f16294507db769f5",
 			"src/guardrails/progressive-yield.ts": "583b9b2cda5befc4fce91e28f48efc6b46e6b379",
@@ -86,10 +86,10 @@
 		}
 	},
 	"guardrails/network": {
-		"reviewed": "2026-11-16",
+		"reviewed": "2026-11-18",
 		"files": {
 			"src/guardrails/destinations.ts": "e754ff4fbba2fd39b33f1a498ba34fa79c80a9a9",
-			"src/guardrails/network.ts": "65487c8f3fdac6e14ce16bd46c4a20ac77d61cde"
+			"src/guardrails/network.ts": "ef511111ae1c6af08e80a907aa03710ada00a4a1"
 		}
 	},
 	"identity": {
@@ -303,15 +303,15 @@
 		}
 	},
 	"profiles/compaction": {
-		"reviewed": "2026-11-16",
+		"reviewed": "2026-11-18",
 		"files": {
 			"src/kernel/engine/runner/gates.ts": "0e5a6eb083c691bd856d96404672772c3b1f301b",
 			"src/kernel/engine/runner/mod.ts": "76e706af68a82c18fdc118825cd7129850ea0b95",
 			"src/kernel/engine/runner/nested.ts": "9a0258fa9b01bd830f900cca801ae01705c939d4",
 			"src/kernel/engine/runner/refused-media.ts": "4968799576ccd2ae3ecd2412cd7045d0865ad443",
 			"src/kernel/engine/runner/schema-validation.ts": "0a8c0371e269a2663c645dc5b386b065fb06a111",
-			"src/kernel/engine/runner/stages.ts": "94b334ff97c2430742aadccd1c893d21355cf6e0",
-			"src/kernel/engine/runner/state.ts": "75b69cba3ba288f1fa9b239be4cb60a67d938109",
+			"src/kernel/engine/runner/stages.ts": "ae2c863cd8d61043a71ce8f9c00ad119a7623531",
+			"src/kernel/engine/runner/state.ts": "bd5923f2e1023bfc1416cb8341ef0d37eca20f92",
 			"src/kernel/engine/runner/step-order.ts": "de2f4bdf82cf202f0bf5131937671fabaf32605a",
 			"src/kernel/engine/runner/steps.ts": "7249e644781c43c93f0b4c10e0ab1ce283d6d73f",
 			"src/kernel/engine/runner/stream.ts": "ea2105b13b7f80d3619013027c7f0c032fdc17e1",
@@ -327,15 +327,15 @@
 		}
 	},
 	"profiles/embedding": {
-		"reviewed": "2026-11-16",
+		"reviewed": "2026-11-18",
 		"files": {
 			"src/kernel/engine/runner/gates.ts": "0e5a6eb083c691bd856d96404672772c3b1f301b",
 			"src/kernel/engine/runner/mod.ts": "76e706af68a82c18fdc118825cd7129850ea0b95",
 			"src/kernel/engine/runner/nested.ts": "9a0258fa9b01bd830f900cca801ae01705c939d4",
 			"src/kernel/engine/runner/refused-media.ts": "4968799576ccd2ae3ecd2412cd7045d0865ad443",
 			"src/kernel/engine/runner/schema-validation.ts": "0a8c0371e269a2663c645dc5b386b065fb06a111",
-			"src/kernel/engine/runner/stages.ts": "94b334ff97c2430742aadccd1c893d21355cf6e0",
-			"src/kernel/engine/runner/state.ts": "75b69cba3ba288f1fa9b239be4cb60a67d938109",
+			"src/kernel/engine/runner/stages.ts": "ae2c863cd8d61043a71ce8f9c00ad119a7623531",
+			"src/kernel/engine/runner/state.ts": "bd5923f2e1023bfc1416cb8341ef0d37eca20f92",
 			"src/kernel/engine/runner/step-order.ts": "de2f4bdf82cf202f0bf5131937671fabaf32605a",
 			"src/kernel/engine/runner/steps.ts": "7249e644781c43c93f0b4c10e0ab1ce283d6d73f",
 			"src/kernel/engine/runner/stream.ts": "ea2105b13b7f80d3619013027c7f0c032fdc17e1",
@@ -351,15 +351,15 @@
 		}
 	},
 	"profiles/image": {
-		"reviewed": "2026-11-16",
+		"reviewed": "2026-11-18",
 		"files": {
 			"src/kernel/engine/runner/gates.ts": "0e5a6eb083c691bd856d96404672772c3b1f301b",
 			"src/kernel/engine/runner/mod.ts": "76e706af68a82c18fdc118825cd7129850ea0b95",
 			"src/kernel/engine/runner/nested.ts": "9a0258fa9b01bd830f900cca801ae01705c939d4",
 			"src/kernel/engine/runner/refused-media.ts": "4968799576ccd2ae3ecd2412cd7045d0865ad443",
 			"src/kernel/engine/runner/schema-validation.ts": "0a8c0371e269a2663c645dc5b386b065fb06a111",
-			"src/kernel/engine/runner/stages.ts": "94b334ff97c2430742aadccd1c893d21355cf6e0",
-			"src/kernel/engine/runner/state.ts": "75b69cba3ba288f1fa9b239be4cb60a67d938109",
+			"src/kernel/engine/runner/stages.ts": "ae2c863cd8d61043a71ce8f9c00ad119a7623531",
+			"src/kernel/engine/runner/state.ts": "bd5923f2e1023bfc1416cb8341ef0d37eca20f92",
 			"src/kernel/engine/runner/step-order.ts": "de2f4bdf82cf202f0bf5131937671fabaf32605a",
 			"src/kernel/engine/runner/steps.ts": "7249e644781c43c93f0b4c10e0ab1ce283d6d73f",
 			"src/kernel/engine/runner/stream.ts": "ea2105b13b7f80d3619013027c7f0c032fdc17e1",
@@ -376,15 +376,15 @@
 		}
 	},
 	"profiles/lifecycle": {
-		"reviewed": "2026-11-16",
+		"reviewed": "2026-11-18",
 		"files": {
 			"src/kernel/engine/runner/gates.ts": "0e5a6eb083c691bd856d96404672772c3b1f301b",
 			"src/kernel/engine/runner/mod.ts": "76e706af68a82c18fdc118825cd7129850ea0b95",
 			"src/kernel/engine/runner/nested.ts": "9a0258fa9b01bd830f900cca801ae01705c939d4",
 			"src/kernel/engine/runner/refused-media.ts": "4968799576ccd2ae3ecd2412cd7045d0865ad443",
 			"src/kernel/engine/runner/schema-validation.ts": "0a8c0371e269a2663c645dc5b386b065fb06a111",
-			"src/kernel/engine/runner/stages.ts": "94b334ff97c2430742aadccd1c893d21355cf6e0",
-			"src/kernel/engine/runner/state.ts": "75b69cba3ba288f1fa9b239be4cb60a67d938109",
+			"src/kernel/engine/runner/stages.ts": "ae2c863cd8d61043a71ce8f9c00ad119a7623531",
+			"src/kernel/engine/runner/state.ts": "bd5923f2e1023bfc1416cb8341ef0d37eca20f92",
 			"src/kernel/engine/runner/step-order.ts": "de2f4bdf82cf202f0bf5131937671fabaf32605a",
 			"src/kernel/engine/runner/steps.ts": "7249e644781c43c93f0b4c10e0ab1ce283d6d73f",
 			"src/kernel/engine/runner/stream.ts": "ea2105b13b7f80d3619013027c7f0c032fdc17e1",
@@ -393,32 +393,34 @@
 		}
 	},
 	"profiles/live": {
-		"reviewed": "2026-11-16",
+		"reviewed": "2026-11-18",
 		"files": {
 			"src/kernel/engine/runner/gates.ts": "0e5a6eb083c691bd856d96404672772c3b1f301b",
 			"src/kernel/engine/runner/mod.ts": "76e706af68a82c18fdc118825cd7129850ea0b95",
 			"src/kernel/engine/runner/nested.ts": "9a0258fa9b01bd830f900cca801ae01705c939d4",
 			"src/kernel/engine/runner/refused-media.ts": "4968799576ccd2ae3ecd2412cd7045d0865ad443",
 			"src/kernel/engine/runner/schema-validation.ts": "0a8c0371e269a2663c645dc5b386b065fb06a111",
-			"src/kernel/engine/runner/stages.ts": "94b334ff97c2430742aadccd1c893d21355cf6e0",
-			"src/kernel/engine/runner/state.ts": "75b69cba3ba288f1fa9b239be4cb60a67d938109",
+			"src/kernel/engine/runner/stages.ts": "ae2c863cd8d61043a71ce8f9c00ad119a7623531",
+			"src/kernel/engine/runner/state.ts": "bd5923f2e1023bfc1416cb8341ef0d37eca20f92",
 			"src/kernel/engine/runner/step-order.ts": "de2f4bdf82cf202f0bf5131937671fabaf32605a",
 			"src/kernel/engine/runner/steps.ts": "7249e644781c43c93f0b4c10e0ab1ce283d6d73f",
 			"src/kernel/engine/runner/stream.ts": "ea2105b13b7f80d3619013027c7f0c032fdc17e1",
 			"src/kernel/engine/runner/usage.ts": "2fb451f7bd9b53f51f5d2faf5263a772356d6e3e",
+			"src/kernel/engine/session/mod.ts": "7845326b2e33bcc38d0bc0f3f1d28966b51b976d",
+			"src/kernel/engine/session/session-trace.ts": "706747be0f9a71589682e9f72cfbdedc8c857f2f",
 			"src/kernel/registry/profiles.ts": "664e10d571a4b1d958a786a1b6e17b8009e2e74b"
 		}
 	},
 	"profiles/resumption": {
-		"reviewed": "2026-11-16",
+		"reviewed": "2026-11-18",
 		"files": {
 			"src/kernel/engine/runner/gates.ts": "0e5a6eb083c691bd856d96404672772c3b1f301b",
 			"src/kernel/engine/runner/mod.ts": "76e706af68a82c18fdc118825cd7129850ea0b95",
 			"src/kernel/engine/runner/nested.ts": "9a0258fa9b01bd830f900cca801ae01705c939d4",
 			"src/kernel/engine/runner/refused-media.ts": "4968799576ccd2ae3ecd2412cd7045d0865ad443",
 			"src/kernel/engine/runner/schema-validation.ts": "0a8c0371e269a2663c645dc5b386b065fb06a111",
-			"src/kernel/engine/runner/stages.ts": "94b334ff97c2430742aadccd1c893d21355cf6e0",
-			"src/kernel/engine/runner/state.ts": "75b69cba3ba288f1fa9b239be4cb60a67d938109",
+			"src/kernel/engine/runner/stages.ts": "ae2c863cd8d61043a71ce8f9c00ad119a7623531",
+			"src/kernel/engine/runner/state.ts": "bd5923f2e1023bfc1416cb8341ef0d37eca20f92",
 			"src/kernel/engine/runner/step-order.ts": "de2f4bdf82cf202f0bf5131937671fabaf32605a",
 			"src/kernel/engine/runner/steps.ts": "7249e644781c43c93f0b4c10e0ab1ce283d6d73f",
 			"src/kernel/engine/runner/stream.ts": "ea2105b13b7f80d3619013027c7f0c032fdc17e1",
@@ -427,15 +429,15 @@
 		}
 	},
 	"profiles/speech": {
-		"reviewed": "2026-11-16",
+		"reviewed": "2026-11-18",
 		"files": {
 			"src/kernel/engine/runner/gates.ts": "0e5a6eb083c691bd856d96404672772c3b1f301b",
 			"src/kernel/engine/runner/mod.ts": "76e706af68a82c18fdc118825cd7129850ea0b95",
 			"src/kernel/engine/runner/nested.ts": "9a0258fa9b01bd830f900cca801ae01705c939d4",
 			"src/kernel/engine/runner/refused-media.ts": "4968799576ccd2ae3ecd2412cd7045d0865ad443",
 			"src/kernel/engine/runner/schema-validation.ts": "0a8c0371e269a2663c645dc5b386b065fb06a111",
-			"src/kernel/engine/runner/stages.ts": "94b334ff97c2430742aadccd1c893d21355cf6e0",
-			"src/kernel/engine/runner/state.ts": "75b69cba3ba288f1fa9b239be4cb60a67d938109",
+			"src/kernel/engine/runner/stages.ts": "ae2c863cd8d61043a71ce8f9c00ad119a7623531",
+			"src/kernel/engine/runner/state.ts": "bd5923f2e1023bfc1416cb8341ef0d37eca20f92",
 			"src/kernel/engine/runner/step-order.ts": "de2f4bdf82cf202f0bf5131937671fabaf32605a",
 			"src/kernel/engine/runner/steps.ts": "7249e644781c43c93f0b4c10e0ab1ce283d6d73f",
 			"src/kernel/engine/runner/stream.ts": "ea2105b13b7f80d3619013027c7f0c032fdc17e1",
@@ -444,15 +446,15 @@
 		}
 	},
 	"profiles/text": {
-		"reviewed": "2026-11-16",
+		"reviewed": "2026-11-18",
 		"files": {
 			"src/kernel/engine/runner/gates.ts": "0e5a6eb083c691bd856d96404672772c3b1f301b",
 			"src/kernel/engine/runner/mod.ts": "76e706af68a82c18fdc118825cd7129850ea0b95",
 			"src/kernel/engine/runner/nested.ts": "9a0258fa9b01bd830f900cca801ae01705c939d4",
 			"src/kernel/engine/runner/refused-media.ts": "4968799576ccd2ae3ecd2412cd7045d0865ad443",
 			"src/kernel/engine/runner/schema-validation.ts": "0a8c0371e269a2663c645dc5b386b065fb06a111",
-			"src/kernel/engine/runner/stages.ts": "94b334ff97c2430742aadccd1c893d21355cf6e0",
-			"src/kernel/engine/runner/state.ts": "75b69cba3ba288f1fa9b239be4cb60a67d938109",
+			"src/kernel/engine/runner/stages.ts": "ae2c863cd8d61043a71ce8f9c00ad119a7623531",
+			"src/kernel/engine/runner/state.ts": "bd5923f2e1023bfc1416cb8341ef0d37eca20f92",
 			"src/kernel/engine/runner/step-order.ts": "de2f4bdf82cf202f0bf5131937671fabaf32605a",
 			"src/kernel/engine/runner/steps.ts": "7249e644781c43c93f0b4c10e0ab1ce283d6d73f",
 			"src/kernel/engine/runner/stream.ts": "ea2105b13b7f80d3619013027c7f0c032fdc17e1",
@@ -461,15 +463,15 @@
 		}
 	},
 	"profiles/transcription": {
-		"reviewed": "2026-11-16",
+		"reviewed": "2026-11-18",
 		"files": {
 			"src/kernel/engine/runner/gates.ts": "0e5a6eb083c691bd856d96404672772c3b1f301b",
 			"src/kernel/engine/runner/mod.ts": "76e706af68a82c18fdc118825cd7129850ea0b95",
 			"src/kernel/engine/runner/nested.ts": "9a0258fa9b01bd830f900cca801ae01705c939d4",
 			"src/kernel/engine/runner/refused-media.ts": "4968799576ccd2ae3ecd2412cd7045d0865ad443",
 			"src/kernel/engine/runner/schema-validation.ts": "0a8c0371e269a2663c645dc5b386b065fb06a111",
-			"src/kernel/engine/runner/stages.ts": "94b334ff97c2430742aadccd1c893d21355cf6e0",
-			"src/kernel/engine/runner/state.ts": "75b69cba3ba288f1fa9b239be4cb60a67d938109",
+			"src/kernel/engine/runner/stages.ts": "ae2c863cd8d61043a71ce8f9c00ad119a7623531",
+			"src/kernel/engine/runner/state.ts": "bd5923f2e1023bfc1416cb8341ef0d37eca20f92",
 			"src/kernel/engine/runner/step-order.ts": "de2f4bdf82cf202f0bf5131937671fabaf32605a",
 			"src/kernel/engine/runner/steps.ts": "7249e644781c43c93f0b4c10e0ab1ce283d6d73f",
 			"src/kernel/engine/runner/stream.ts": "ea2105b13b7f80d3619013027c7f0c032fdc17e1",
@@ -634,16 +636,16 @@
 		}
 	},
 	"start": {
-		"reviewed": "2026-11-17",
+		"reviewed": "2026-11-18",
 		"files": {
-			"mod.ts": "2eaa0c014c2fd514e5f074c8bdc1e1a3eb3cf82b",
+			"mod.ts": "f1fc51c358f595278e91fda309462d756862b9cd",
 			"src/kernel/engine/runner/gates.ts": "0e5a6eb083c691bd856d96404672772c3b1f301b",
 			"src/kernel/engine/runner/mod.ts": "76e706af68a82c18fdc118825cd7129850ea0b95",
 			"src/kernel/engine/runner/nested.ts": "9a0258fa9b01bd830f900cca801ae01705c939d4",
 			"src/kernel/engine/runner/refused-media.ts": "4968799576ccd2ae3ecd2412cd7045d0865ad443",
 			"src/kernel/engine/runner/schema-validation.ts": "0a8c0371e269a2663c645dc5b386b065fb06a111",
-			"src/kernel/engine/runner/stages.ts": "94b334ff97c2430742aadccd1c893d21355cf6e0",
-			"src/kernel/engine/runner/state.ts": "75b69cba3ba288f1fa9b239be4cb60a67d938109",
+			"src/kernel/engine/runner/stages.ts": "ae2c863cd8d61043a71ce8f9c00ad119a7623531",
+			"src/kernel/engine/runner/state.ts": "bd5923f2e1023bfc1416cb8341ef0d37eca20f92",
 			"src/kernel/engine/runner/step-order.ts": "de2f4bdf82cf202f0bf5131937671fabaf32605a",
 			"src/kernel/engine/runner/steps.ts": "7249e644781c43c93f0b4c10e0ab1ce283d6d73f",
 			"src/kernel/engine/runner/stream.ts": "ea2105b13b7f80d3619013027c7f0c032fdc17e1",
@@ -652,21 +654,21 @@
 		}
 	},
 	"start/architecture": {
-		"reviewed": "2026-11-17",
+		"reviewed": "2026-11-18",
 		"files": {
-			"mod.ts": "2eaa0c014c2fd514e5f074c8bdc1e1a3eb3cf82b",
+			"mod.ts": "f1fc51c358f595278e91fda309462d756862b9cd",
 			"react/src/index.ts": "72e32fc273515803083dc8c2585d3d93e4c2ed5a",
 			"react/src/live.ts": "2b15d0b0ba7800d61074ff199d417d779e4568c9",
 			"src/guardrails/boundaries.ts": "428227b0be862d3b8325ecd1436757f4620010ae",
 			"src/guardrails/detectors.ts": "c648b2248c408a32631b4f8199987766b0a4d727",
-			"src/guardrails/network.ts": "65487c8f3fdac6e14ce16bd46c4a20ac77d61cde",
+			"src/guardrails/network.ts": "ef511111ae1c6af08e80a907aa03710ada00a4a1",
 			"src/kernel/engine/runner/gates.ts": "0e5a6eb083c691bd856d96404672772c3b1f301b",
 			"src/kernel/engine/runner/mod.ts": "76e706af68a82c18fdc118825cd7129850ea0b95",
 			"src/kernel/engine/runner/nested.ts": "9a0258fa9b01bd830f900cca801ae01705c939d4",
 			"src/kernel/engine/runner/refused-media.ts": "4968799576ccd2ae3ecd2412cd7045d0865ad443",
 			"src/kernel/engine/runner/schema-validation.ts": "0a8c0371e269a2663c645dc5b386b065fb06a111",
-			"src/kernel/engine/runner/stages.ts": "94b334ff97c2430742aadccd1c893d21355cf6e0",
-			"src/kernel/engine/runner/state.ts": "75b69cba3ba288f1fa9b239be4cb60a67d938109",
+			"src/kernel/engine/runner/stages.ts": "ae2c863cd8d61043a71ce8f9c00ad119a7623531",
+			"src/kernel/engine/runner/state.ts": "bd5923f2e1023bfc1416cb8341ef0d37eca20f92",
 			"src/kernel/engine/runner/step-order.ts": "de2f4bdf82cf202f0bf5131937671fabaf32605a",
 			"src/kernel/engine/runner/steps.ts": "7249e644781c43c93f0b4c10e0ab1ce283d6d73f",
 			"src/kernel/engine/runner/stream.ts": "ea2105b13b7f80d3619013027c7f0c032fdc17e1",
@@ -674,7 +676,7 @@
 			"src/kernel/protocols/runtime.ts": "e24fc3668ff8ee51dd898380dd33f1f5dbb9d2b6",
 			"src/kernel/registry/profiles.ts": "664e10d571a4b1d958a786a1b6e17b8009e2e74b",
 			"src/kernel/registry/vault.ts": "5bc4470d8333e61aaf0c701da08694e14040d8fd",
-			"web/src/server/handler.ts": "8f2f6d059db95073f54202494edcea403609b2bb"
+			"web/src/server/handler.ts": "4a78da8df60f1cedf2baa51759acca5564671cca"
 		}
 	},
 	"statuses": {
@@ -687,7 +689,7 @@
 		}
 	},
 	"studio": {
-		"reviewed": "2026-11-17",
+		"reviewed": "2026-11-18",
 		"files": {
 			"studio/.npmrc": "521a9f7c0773588848ad5fa8a074ceca964a6b41",
 			"studio/README.md": "2e2bc691597fbe663e8bb3a00565d1c2b4249331",
@@ -757,8 +759,8 @@
 			"studio/media-accept.ts": "8870c48f9cac9253cd12a2fb0d0087b6821d48d0",
 			"studio/mod.ts": "e24aa753368fdae202e45a6b923d070a9735b18a",
 			"studio/origins.ts": "fe66359a525de17bae161829d157a35e1b2e71af",
-			"studio/package-lock.json": "0e09704772893b2615641d0675dc07a61e48858e",
-			"studio/package.json": "98491e4dbf03347652b66f452463df5aa68ef746",
+			"studio/package-lock.json": "3ee8ea6b3536db73c83e27cc6041949efadb12e1",
+			"studio/package.json": "dc91ebc48e5fe8d9ddc3f840af95c637c5a67f70",
 			"studio/page.mjs": "d53c05d7f49f41745c62b1685f984ba1a8ed5b38",
 			"studio/people.ts": "f493f93ae38633089ab2425676fe269dc8e0102d",
 			"studio/policy.ts": "0d0247e196b7e38ac27d2e36574147d56fb5e016",
@@ -808,7 +810,7 @@
 			"studio/server/save-wire.ts": "a8f1ff435688e49ec5bd2cd58372ca35e6b2eb9e",
 			"studio/server/save.ts": "7f97cf108fc8326ce309c9ab4d55acd679740dfa",
 			"studio/server/serve.ts": "ff2a12adfcd2daeb5156e1b075bde5134f59b05e",
-			"studio/server/test-connection.ts": "3ebfc936f847f7c6022c00641a0d1b867ecd0bf9",
+			"studio/server/test-connection.ts": "3907c99c392736a30092ce535ab317bf1c220d3c",
 			"studio/server/test-key.ts": "ca03e665936e29ff0e8065434b8c8e0b572f30d6",
 			"studio/server/watch.ts": "990b3602123a20813db98e9d67dc10ad5951f2eb",
 			"studio/server/zod-edit.ts": "aa1e2b50171cf077e75898fcc552f2301ce4b0d2",
@@ -857,11 +859,11 @@
 			"studio/ui/boot-mark.tsx": "d3c00e5608b367c01a22b43a79bb53b9f51c9bff",
 			"studio/ui/boot-paint.ts": "2de93e64d1ea904af9ad60ad6e27dd7f8406ffad",
 			"studio/ui/brand-icons.tsx": "445e7f28997895cc354fe302eefc249759d51286",
-			"studio/ui/built/theme.css": "3c2a12a0ec7afcc9ff542be352e0fb1a7d97c478",
-			"studio/ui/built/theme.css.d.ts": "7c8c79f41bd4a6018940b8852e56edb956733223",
-			"studio/ui/built/theorem-studio.d.ts": "9a0b09fe94dc61d9839b4ccdbee5a6d544efff67",
-			"studio/ui/built/theorem-studio.js": "6ce9dd6e09a1be467dcd7073cfb21647ccb03f28",
-			"studio/ui/built/theorem-studio.variants.d.ts": "9ad8ea4380a68c983cb02188341914ea95099b76",
+			"studio/ui/built/theme.css": "1b8b8f4a23a642562662e841b393285c8af9f07f",
+			"studio/ui/built/theme.css.d.ts": "184b63b25ceeaa88baffb1924dbff14beaff61eb",
+			"studio/ui/built/theorem-studio.d.ts": "32fc3a8fed37907bc857e1cc6833ca45b01c1ed7",
+			"studio/ui/built/theorem-studio.js": "fd230712052b3712f8ce3257e850c92d28af258b",
+			"studio/ui/built/theorem-studio.variants.d.ts": "b095e3ff7c76b58b8ff0bf6ed8ea991438ca55ef",
 			"studio/ui/code/json-code.tsx": "1b37bc3737659d10098acc0a10ba0300c1e4aa6e",
 			"studio/ui/code/monaco-contributions.d.ts": "b0b71960f003ff8e16b5eb06882b1f68be032deb",
 			"studio/ui/code/studio-code.tsx": "0ac2388c858aec5ca59e9232c0b65e69f99a2d7d",
@@ -995,9 +997,9 @@
 		}
 	},
 	"tools": {
-		"reviewed": "2026-11-17",
+		"reviewed": "2026-11-18",
 		"files": {
-			"src/kernel/auth/credential-source.ts": "c9ca625b8d18a6000a1cd424f56039abd855efd6",
+			"src/kernel/auth/credential-source.ts": "a7deec8c5cb72b4b763d284a08cda4581c5a8df9",
 			"src/kernel/auth/crypto.ts": "5f1d8e3906b072368be6715f165b6ee2a1534acd",
 			"src/kernel/auth/mod.ts": "36a585a94d41299cf6e8903cf153d1bb47693ea0",
 			"src/kernel/auth/oauth.ts": "20bca631dac69f195980ec779e9ce248bb320ba0",
@@ -1009,8 +1011,9 @@
 			"src/kernel/tools/background.ts": "4415d8b4bcd4aa148419f1eeb68be8a9abcb79de",
 			"src/kernel/tools/call-order.ts": "c1ed5de082528d74f4b9823b5e3c6cce0969c4ab",
 			"src/kernel/tools/coordinate.ts": "47d229196bad05a7ccbb44a50e081a223e099ee6",
+			"src/kernel/tools/credential-send.ts": "d16908bb2566b62b96f11b51b93fdaf0e6dc983c",
 			"src/kernel/tools/events.ts": "e7b527c072e7ffa1f50415311c03eedecde2afbd",
-			"src/kernel/tools/execute.ts": "4703cd6d527ada86125ba60263ec4f48e7368091",
+			"src/kernel/tools/execute.ts": "8f6e67ca3acf67ae9a2b535975abcfb0292164c4",
 			"src/kernel/tools/failed.ts": "bbf5ce2f69c534ff1ead7995952400f97b1d2e02",
 			"src/kernel/tools/gate-answer.ts": "dd44d0e76159a008248c11971c1537ef815a4e9c",
 			"src/kernel/tools/handler-events.ts": "f9c7a6d550036cccff550adcc0314af167e77e7c",
@@ -1018,57 +1021,57 @@
 			"src/kernel/tools/http-limit.ts": "66de16b2453fa26b3b27d409a2faaf4f13b6732c",
 			"src/kernel/tools/image-fetch.ts": "98f40c1c270da02a0f3f90d252433dadd91e7c46",
 			"src/kernel/tools/invoke.ts": "ddea81a9fc8389d9dd45adaee6fe487e0887eb0e",
-			"src/kernel/tools/mcp-sessions.ts": "a7d9d5b32f49880585dd16d1d6660645bc6f53b9",
+			"src/kernel/tools/mcp-sessions.ts": "2f9973177ca409fb599dfa6f79029bb9d14443c8",
 			"src/kernel/tools/memory-execution.ts": "39de141c88b53a6b76f27ed67c2d2cf59a58dbfe",
-			"src/kernel/tools/mod.ts": "cbbe902f592f80c2a487e19f71815c5fd96dedb7",
+			"src/kernel/tools/mod.ts": "4192361f67d7c032c3fb8bfed7d5be75c64d9866",
 			"src/kernel/tools/model-text.ts": "131d5f663d71ca24eea530a8409cbff5aa2fe27f",
 			"src/kernel/tools/model-view.ts": "dd086466de71dc4001e367ed3c4a079a6a396b02",
 			"src/kernel/tools/operation.ts": "12d1a635257dbb8e641b8324d8639cfbd8b40d01",
 			"src/kernel/tools/output-parts.ts": "7de1c826b3692787fb9695ea95a51605dca7c563",
 			"src/kernel/tools/page-answer.ts": "ef14c4adfb89038c2166e75ad07bbb67097dcb7d",
 			"src/kernel/tools/permission.ts": "9fbcb6ac4cda38e715e3ca299f61976e87579c7f",
-			"src/kernel/tools/probe.ts": "97272b9665fa407209ea79a58e00fe8820a60ebe",
+			"src/kernel/tools/probe.ts": "bfcc1e7a07688ed13d3e62e789ef0e6e05d8f6e8",
 			"src/kernel/tools/project.ts": "f52a2d7f7609c628b8b090a93aac1d1397860d69",
 			"src/kernel/tools/registry.ts": "5d8eaf42f81487ce311f0990d59e384dad6faf01",
-			"src/kernel/tools/remote.ts": "1deea960aee42e5d9bb01cafa0d7b84e781a4586",
+			"src/kernel/tools/remote.ts": "0cd3e49d8960f2075d7e408bbcd8797ee3c7adb3",
 			"src/kernel/tools/resolve.ts": "aedaa0b890d4fba1bac454790f87848d83272af9",
 			"src/kernel/tools/run.ts": "166b053f3cde946b67704c4a7983a16d48514f0a",
 			"src/kernel/tools/schema-issues.ts": "22ddc1c54fc490eea5aa4cf1002fa0cf3370dbdd",
 			"src/kernel/tools/schema.ts": "63635feb20524576b13d838894fafd8ea97ee120",
-			"src/kernel/tools/signed-in-fetch.ts": "eb5ceabae661169891bcc6b38ae3170ccb1633a2",
+			"src/kernel/tools/signed-in-fetch.ts": "a63a5d9dd1039f475c1b2b22ca6368f2a8a4af8b",
 			"src/kernel/tools/stage-run.ts": "ec91a631582336156185edcef965e0acf0130b7b",
 			"src/kernel/tools/steer.ts": "9f207af78f05a64bb3235e7bafbc67ca9390d9be",
-			"src/kernel/tools/types.ts": "d7da69ec37c57652a87846e458d96e605a4a6a17",
+			"src/kernel/tools/types.ts": "a87c61c6ba9b4d17fa5c215253fb9ee9b6056fd6",
 			"src/kernel/tools/unchecked-output.ts": "cd3ad46a12d91555ceec356258efc9f3707f0ecb"
 		}
 	},
 	"tools/agent": {
-		"reviewed": "2026-11-17",
+		"reviewed": "2026-11-18",
 		"files": {
 			"src/kernel/engine/runner/nested.ts": "9a0258fa9b01bd830f900cca801ae01705c939d4",
 			"src/kernel/tools/agent.ts": "049ab9e1313ff063943c034e3848db715de06db6",
-			"src/kernel/tools/types.ts": "d7da69ec37c57652a87846e458d96e605a4a6a17"
+			"src/kernel/tools/types.ts": "a87c61c6ba9b4d17fa5c215253fb9ee9b6056fd6"
 		}
 	},
 	"tools/auth": {
-		"reviewed": "2026-11-17",
+		"reviewed": "2026-11-18",
 		"files": {
-			"src/kernel/auth/credential-source.ts": "c9ca625b8d18a6000a1cd424f56039abd855efd6",
+			"src/kernel/auth/credential-source.ts": "a7deec8c5cb72b4b763d284a08cda4581c5a8df9",
 			"src/kernel/auth/crypto.ts": "5f1d8e3906b072368be6715f165b6ee2a1534acd",
 			"src/kernel/auth/mod.ts": "36a585a94d41299cf6e8903cf153d1bb47693ea0",
 			"src/kernel/auth/oauth.ts": "20bca631dac69f195980ec779e9ce248bb320ba0",
 			"src/kernel/auth/scope-refusal.ts": "32af737d1562a10600a03b0ddae0408f64d9dd55",
 			"src/kernel/auth/typed-secret.ts": "307a280cf1ba474928b3f7be8389d4d97df81dbf",
 			"src/kernel/auth/types.ts": "9f466cd46f6f56fa282fa3a98061dc02d742b812",
-			"src/kernel/tools/probe.ts": "97272b9665fa407209ea79a58e00fe8820a60ebe",
-			"src/kernel/tools/signed-in-fetch.ts": "eb5ceabae661169891bcc6b38ae3170ccb1633a2"
+			"src/kernel/tools/probe.ts": "bfcc1e7a07688ed13d3e62e789ef0e6e05d8f6e8",
+			"src/kernel/tools/signed-in-fetch.ts": "a63a5d9dd1039f475c1b2b22ca6368f2a8a4af8b"
 		}
 	},
 	"tools/function": {
-		"reviewed": "2026-11-17",
+		"reviewed": "2026-11-18",
 		"files": {
-			"src/kernel/tools/execute.ts": "4703cd6d527ada86125ba60263ec4f48e7368091",
-			"src/kernel/tools/types.ts": "d7da69ec37c57652a87846e458d96e605a4a6a17"
+			"src/kernel/tools/execute.ts": "8f6e67ca3acf67ae9a2b535975abcfb0292164c4",
+			"src/kernel/tools/types.ts": "a87c61c6ba9b4d17fa5c215253fb9ee9b6056fd6"
 		}
 	},
 	"tools/gates": {
@@ -1079,25 +1082,25 @@
 		}
 	},
 	"tools/http": {
-		"reviewed": "2026-11-17",
+		"reviewed": "2026-11-18",
 		"files": {
 			"src/kernel/tools/http-limit.ts": "66de16b2453fa26b3b27d409a2faaf4f13b6732c",
 			"src/kernel/tools/image-fetch.ts": "98f40c1c270da02a0f3f90d252433dadd91e7c46",
-			"src/kernel/tools/remote.ts": "1deea960aee42e5d9bb01cafa0d7b84e781a4586"
+			"src/kernel/tools/remote.ts": "0cd3e49d8960f2075d7e408bbcd8797ee3c7adb3"
 		}
 	},
 	"tools/liquid-labels": {
-		"reviewed": "2026-11-17",
+		"reviewed": "2026-11-18",
 		"files": {
 			"src/kernel/tools/activity-label.ts": "84c72fb50bfcdeedc7d814f505d9b7a35c7985b7",
-			"src/kernel/tools/types.ts": "d7da69ec37c57652a87846e458d96e605a4a6a17"
+			"src/kernel/tools/types.ts": "a87c61c6ba9b4d17fa5c215253fb9ee9b6056fd6"
 		}
 	},
 	"tools/mcp": {
-		"reviewed": "2026-11-17",
+		"reviewed": "2026-11-18",
 		"files": {
-			"src/kernel/tools/mcp-sessions.ts": "a7d9d5b32f49880585dd16d1d6660645bc6f53b9",
-			"src/kernel/tools/remote.ts": "1deea960aee42e5d9bb01cafa0d7b84e781a4586"
+			"src/kernel/tools/mcp-sessions.ts": "2f9973177ca409fb599dfa6f79029bb9d14443c8",
+			"src/kernel/tools/remote.ts": "0cd3e49d8960f2075d7e408bbcd8797ee3c7adb3"
 		}
 	},
 	"tools/oauth": {
@@ -1136,14 +1139,14 @@
 		}
 	},
 	"web": {
-		"reviewed": "2026-11-17",
+		"reviewed": "2026-11-18",
 		"files": {
 			"react/README.md": "47fdf1ff8ca7307f2306dad42b291d0ba56fc5f8",
 			"react/docs/composer.md": "24c2e1e33af6f41cd7cb9021149ecd49385c6e4b",
 			"react/docs/credentials.md": "5cecc169547a841b141dd561cce78ab528c13621",
 			"react/docs/wire.md": "e9eda4200b473c9a091b35e4f5eb8872279ce95b",
-			"react/package-lock.json": "868c63cffdc66188c0652f46cce47d713ce341e3",
-			"react/package.json": "11a143f8e7d76435a24ae936cf0e4cb9b0aa6d75",
+			"react/package-lock.json": "695603ee545b18412db31a66f2ebcc265ff6bbb0",
+			"react/package.json": "38d26a84d8f089a2ac3e60539b297927aef00fb0",
 			"react/src/client/attachment-hover-preview.ts": "71c528ca0ac4c90b69b06e6659bd0f576011821a",
 			"react/src/client/composer-attachments.ts": "4cb4769ed650263540591229f418c33b648fc410",
 			"react/src/client/decision-images.ts": "bb38de7787b99f46a69e6f964c42a421723345a3",
@@ -1232,11 +1235,11 @@
 			"react/src/ui/VoiceNote.tsx": "61fc3be52c97d61860655c5eecf1d1edd8af5e94",
 			"react/src/ui/approval-heading.ts": "bcdee1a180583e6342f5fd09da2cd2d2ad6ceb5b",
 			"react/src/ui/arrive.tsx": "9dd272830f7e86e03702c0b63857277bc18f5e89",
-			"react/src/ui/built/theme.css": "a68e0f1e2d86223e8f34e54820af0a5a273e8f3c",
-			"react/src/ui/built/theme.css.d.ts": "95b2f234b708b695bb5008a94aa2fce87b4ec6f0",
-			"react/src/ui/built/theorem.d.ts": "fe3101eea60cdc40e82e420c5d37610631c58a89",
-			"react/src/ui/built/theorem.js": "b84af22b784bd45e877c3b88942c974d27b5e5d5",
-			"react/src/ui/built/theorem.variants.d.ts": "5e71bbdaff069b7c8ad993bcc8e1d5251d37f394",
+			"react/src/ui/built/theme.css": "ab3ba14083b8395cd46e8744e208e76bead6ffb3",
+			"react/src/ui/built/theme.css.d.ts": "db26d3f0628c2b815ed3dfa49a3efde33d5edb6a",
+			"react/src/ui/built/theorem.d.ts": "cb62216720536fc9f9ffad2991c7ab95ce6adb11",
+			"react/src/ui/built/theorem.js": "0a867a72c35b05b7f2597d15abb852ce8d862450",
+			"react/src/ui/built/theorem.variants.d.ts": "e821f8d012c53610aeec92e7c6003ae42440b3d0",
 			"react/src/ui/code-language.ts": "87d5125cd938e8aecf5fa925ac4429be4c7ce407",
 			"react/src/ui/disclosure-motion.ts": "8ec7ccf51c0c262fdcddb966f7551db2a8399b5c",
 			"react/src/ui/embedding-space-gl.ts": "08568b73b71ec0ad37af40da698bc8a9c90aae97",
@@ -1328,7 +1331,7 @@
 			"web/src/server/credential-store.ts": "64f33ec27540a9f9e77a5c5fee40ba04d7d9e236",
 			"web/src/server/decision-handler.ts": "e749d79345f91f0f08f35e55c2e352bde4f696a2",
 			"web/src/server/embedding-handler.ts": "007393b778a9c53c2cd24176961435e851913ac0",
-			"web/src/server/handler.ts": "8f2f6d059db95073f54202494edcea403609b2bb",
+			"web/src/server/handler.ts": "4a78da8df60f1cedf2baa51759acca5564671cca",
 			"web/src/server/json-response.ts": "c241932fcebf4f22e2c789b0b312b3f2f6b848a6",
 			"web/src/server/mcp-handler.ts": "2bcc5e5958f768bb18355170bd99d9065af9ce70",
 			"web/src/server/mod.ts": "6d2898059e1b222ef5725ac29b3724c5046cd496",
@@ -1346,20 +1349,20 @@
 			"web/src/server/tell-every-result.ts": "d949204dccea3855383fca337d805b7ecd262677",
 			"web/src/server/tool-operations.ts": "de7fe8894a138aca52a6197915bbdfdbd1b9d3ec",
 			"web/src/server/turn-input.ts": "84a4ed8047c28b8b4742830f1d3963b75fd751b7",
-			"web/src/server/turn-wiring.ts": "e3545ccbd81090f69ca76fe3adb4390ee3447be0",
+			"web/src/server/turn-wiring.ts": "be24e09d5dec2b94af38061edc6ed276ea0d4317",
 			"web/tsconfig.build.json": "797c964d4d29d1528195750327dddc5f3795dc61",
 			"web/tsconfig.json": "70e51339e546a79d1b8e72786884ec6662ea4336"
 		}
 	},
 	"web/astryx": {
-		"reviewed": "2026-11-17",
+		"reviewed": "2026-11-18",
 		"files": {
 			"react/README.md": "47fdf1ff8ca7307f2306dad42b291d0ba56fc5f8",
 			"react/docs/composer.md": "24c2e1e33af6f41cd7cb9021149ecd49385c6e4b",
 			"react/docs/credentials.md": "5cecc169547a841b141dd561cce78ab528c13621",
 			"react/docs/wire.md": "e9eda4200b473c9a091b35e4f5eb8872279ce95b",
-			"react/package-lock.json": "868c63cffdc66188c0652f46cce47d713ce341e3",
-			"react/package.json": "11a143f8e7d76435a24ae936cf0e4cb9b0aa6d75",
+			"react/package-lock.json": "695603ee545b18412db31a66f2ebcc265ff6bbb0",
+			"react/package.json": "38d26a84d8f089a2ac3e60539b297927aef00fb0",
 			"react/src/client/attachment-hover-preview.ts": "71c528ca0ac4c90b69b06e6659bd0f576011821a",
 			"react/src/client/composer-attachments.ts": "4cb4769ed650263540591229f418c33b648fc410",
 			"react/src/client/decision-images.ts": "bb38de7787b99f46a69e6f964c42a421723345a3",
@@ -1448,11 +1451,11 @@
 			"react/src/ui/VoiceNote.tsx": "61fc3be52c97d61860655c5eecf1d1edd8af5e94",
 			"react/src/ui/approval-heading.ts": "bcdee1a180583e6342f5fd09da2cd2d2ad6ceb5b",
 			"react/src/ui/arrive.tsx": "9dd272830f7e86e03702c0b63857277bc18f5e89",
-			"react/src/ui/built/theme.css": "a68e0f1e2d86223e8f34e54820af0a5a273e8f3c",
-			"react/src/ui/built/theme.css.d.ts": "95b2f234b708b695bb5008a94aa2fce87b4ec6f0",
-			"react/src/ui/built/theorem.d.ts": "fe3101eea60cdc40e82e420c5d37610631c58a89",
-			"react/src/ui/built/theorem.js": "b84af22b784bd45e877c3b88942c974d27b5e5d5",
-			"react/src/ui/built/theorem.variants.d.ts": "5e71bbdaff069b7c8ad993bcc8e1d5251d37f394",
+			"react/src/ui/built/theme.css": "ab3ba14083b8395cd46e8744e208e76bead6ffb3",
+			"react/src/ui/built/theme.css.d.ts": "db26d3f0628c2b815ed3dfa49a3efde33d5edb6a",
+			"react/src/ui/built/theorem.d.ts": "cb62216720536fc9f9ffad2991c7ab95ce6adb11",
+			"react/src/ui/built/theorem.js": "0a867a72c35b05b7f2597d15abb852ce8d862450",
+			"react/src/ui/built/theorem.variants.d.ts": "e821f8d012c53610aeec92e7c6003ae42440b3d0",
 			"react/src/ui/code-language.ts": "87d5125cd938e8aecf5fa925ac4429be4c7ce407",
 			"react/src/ui/disclosure-motion.ts": "8ec7ccf51c0c262fdcddb966f7551db2a8399b5c",
 			"react/src/ui/embedding-space-gl.ts": "08568b73b71ec0ad37af40da698bc8a9c90aae97",
@@ -1529,7 +1532,7 @@
 			"web/src/server/credential-store.ts": "64f33ec27540a9f9e77a5c5fee40ba04d7d9e236",
 			"web/src/server/decision-handler.ts": "e749d79345f91f0f08f35e55c2e352bde4f696a2",
 			"web/src/server/embedding-handler.ts": "007393b778a9c53c2cd24176961435e851913ac0",
-			"web/src/server/handler.ts": "8f2f6d059db95073f54202494edcea403609b2bb",
+			"web/src/server/handler.ts": "4a78da8df60f1cedf2baa51759acca5564671cca",
 			"web/src/server/json-response.ts": "c241932fcebf4f22e2c789b0b312b3f2f6b848a6",
 			"web/src/server/mcp-handler.ts": "2bcc5e5958f768bb18355170bd99d9065af9ce70",
 			"web/src/server/mod.ts": "6d2898059e1b222ef5725ac29b3724c5046cd496",
@@ -1547,20 +1550,20 @@
 			"web/src/server/tell-every-result.ts": "d949204dccea3855383fca337d805b7ecd262677",
 			"web/src/server/tool-operations.ts": "de7fe8894a138aca52a6197915bbdfdbd1b9d3ec",
 			"web/src/server/turn-input.ts": "84a4ed8047c28b8b4742830f1d3963b75fd751b7",
-			"web/src/server/turn-wiring.ts": "e3545ccbd81090f69ca76fe3adb4390ee3447be0",
+			"web/src/server/turn-wiring.ts": "be24e09d5dec2b94af38061edc6ed276ea0d4317",
 			"web/tsconfig.build.json": "797c964d4d29d1528195750327dddc5f3795dc61",
 			"web/tsconfig.json": "70e51339e546a79d1b8e72786884ec6662ea4336"
 		}
 	},
 	"web/react-hooks": {
-		"reviewed": "2026-11-17",
+		"reviewed": "2026-11-18",
 		"files": {
 			"react/README.md": "47fdf1ff8ca7307f2306dad42b291d0ba56fc5f8",
 			"react/docs/composer.md": "24c2e1e33af6f41cd7cb9021149ecd49385c6e4b",
 			"react/docs/credentials.md": "5cecc169547a841b141dd561cce78ab528c13621",
 			"react/docs/wire.md": "e9eda4200b473c9a091b35e4f5eb8872279ce95b",
-			"react/package-lock.json": "868c63cffdc66188c0652f46cce47d713ce341e3",
-			"react/package.json": "11a143f8e7d76435a24ae936cf0e4cb9b0aa6d75",
+			"react/package-lock.json": "695603ee545b18412db31a66f2ebcc265ff6bbb0",
+			"react/package.json": "38d26a84d8f089a2ac3e60539b297927aef00fb0",
 			"react/src/client/attachment-hover-preview.ts": "71c528ca0ac4c90b69b06e6659bd0f576011821a",
 			"react/src/client/composer-attachments.ts": "4cb4769ed650263540591229f418c33b648fc410",
 			"react/src/client/decision-images.ts": "bb38de7787b99f46a69e6f964c42a421723345a3",
@@ -1649,11 +1652,11 @@
 			"react/src/ui/VoiceNote.tsx": "61fc3be52c97d61860655c5eecf1d1edd8af5e94",
 			"react/src/ui/approval-heading.ts": "bcdee1a180583e6342f5fd09da2cd2d2ad6ceb5b",
 			"react/src/ui/arrive.tsx": "9dd272830f7e86e03702c0b63857277bc18f5e89",
-			"react/src/ui/built/theme.css": "a68e0f1e2d86223e8f34e54820af0a5a273e8f3c",
-			"react/src/ui/built/theme.css.d.ts": "95b2f234b708b695bb5008a94aa2fce87b4ec6f0",
-			"react/src/ui/built/theorem.d.ts": "fe3101eea60cdc40e82e420c5d37610631c58a89",
-			"react/src/ui/built/theorem.js": "b84af22b784bd45e877c3b88942c974d27b5e5d5",
-			"react/src/ui/built/theorem.variants.d.ts": "5e71bbdaff069b7c8ad993bcc8e1d5251d37f394",
+			"react/src/ui/built/theme.css": "ab3ba14083b8395cd46e8744e208e76bead6ffb3",
+			"react/src/ui/built/theme.css.d.ts": "db26d3f0628c2b815ed3dfa49a3efde33d5edb6a",
+			"react/src/ui/built/theorem.d.ts": "cb62216720536fc9f9ffad2991c7ab95ce6adb11",
+			"react/src/ui/built/theorem.js": "0a867a72c35b05b7f2597d15abb852ce8d862450",
+			"react/src/ui/built/theorem.variants.d.ts": "e821f8d012c53610aeec92e7c6003ae42440b3d0",
 			"react/src/ui/code-language.ts": "87d5125cd938e8aecf5fa925ac4429be4c7ce407",
 			"react/src/ui/disclosure-motion.ts": "8ec7ccf51c0c262fdcddb966f7551db2a8399b5c",
 			"react/src/ui/embedding-space-gl.ts": "08568b73b71ec0ad37af40da698bc8a9c90aae97",
@@ -1745,7 +1748,7 @@
 			"web/src/server/credential-store.ts": "64f33ec27540a9f9e77a5c5fee40ba04d7d9e236",
 			"web/src/server/decision-handler.ts": "e749d79345f91f0f08f35e55c2e352bde4f696a2",
 			"web/src/server/embedding-handler.ts": "007393b778a9c53c2cd24176961435e851913ac0",
-			"web/src/server/handler.ts": "8f2f6d059db95073f54202494edcea403609b2bb",
+			"web/src/server/handler.ts": "4a78da8df60f1cedf2baa51759acca5564671cca",
 			"web/src/server/json-response.ts": "c241932fcebf4f22e2c789b0b312b3f2f6b848a6",
 			"web/src/server/mcp-handler.ts": "2bcc5e5958f768bb18355170bd99d9065af9ce70",
 			"web/src/server/mod.ts": "6d2898059e1b222ef5725ac29b3724c5046cd496",
@@ -1763,20 +1766,20 @@
 			"web/src/server/tell-every-result.ts": "d949204dccea3855383fca337d805b7ecd262677",
 			"web/src/server/tool-operations.ts": "de7fe8894a138aca52a6197915bbdfdbd1b9d3ec",
 			"web/src/server/turn-input.ts": "84a4ed8047c28b8b4742830f1d3963b75fd751b7",
-			"web/src/server/turn-wiring.ts": "e3545ccbd81090f69ca76fe3adb4390ee3447be0",
+			"web/src/server/turn-wiring.ts": "be24e09d5dec2b94af38061edc6ed276ea0d4317",
 			"web/tsconfig.build.json": "797c964d4d29d1528195750327dddc5f3795dc61",
 			"web/tsconfig.json": "70e51339e546a79d1b8e72786884ec6662ea4336"
 		}
 	},
 	"web/realtime": {
-		"reviewed": "2026-11-17",
+		"reviewed": "2026-11-18",
 		"files": {
 			"react/README.md": "47fdf1ff8ca7307f2306dad42b291d0ba56fc5f8",
 			"react/docs/composer.md": "24c2e1e33af6f41cd7cb9021149ecd49385c6e4b",
 			"react/docs/credentials.md": "5cecc169547a841b141dd561cce78ab528c13621",
 			"react/docs/wire.md": "e9eda4200b473c9a091b35e4f5eb8872279ce95b",
-			"react/package-lock.json": "868c63cffdc66188c0652f46cce47d713ce341e3",
-			"react/package.json": "11a143f8e7d76435a24ae936cf0e4cb9b0aa6d75",
+			"react/package-lock.json": "695603ee545b18412db31a66f2ebcc265ff6bbb0",
+			"react/package.json": "38d26a84d8f089a2ac3e60539b297927aef00fb0",
 			"react/src/client/attachment-hover-preview.ts": "71c528ca0ac4c90b69b06e6659bd0f576011821a",
 			"react/src/client/composer-attachments.ts": "4cb4769ed650263540591229f418c33b648fc410",
 			"react/src/client/decision-images.ts": "bb38de7787b99f46a69e6f964c42a421723345a3",
@@ -1865,11 +1868,11 @@
 			"react/src/ui/VoiceNote.tsx": "61fc3be52c97d61860655c5eecf1d1edd8af5e94",
 			"react/src/ui/approval-heading.ts": "bcdee1a180583e6342f5fd09da2cd2d2ad6ceb5b",
 			"react/src/ui/arrive.tsx": "9dd272830f7e86e03702c0b63857277bc18f5e89",
-			"react/src/ui/built/theme.css": "a68e0f1e2d86223e8f34e54820af0a5a273e8f3c",
-			"react/src/ui/built/theme.css.d.ts": "95b2f234b708b695bb5008a94aa2fce87b4ec6f0",
-			"react/src/ui/built/theorem.d.ts": "fe3101eea60cdc40e82e420c5d37610631c58a89",
-			"react/src/ui/built/theorem.js": "b84af22b784bd45e877c3b88942c974d27b5e5d5",
-			"react/src/ui/built/theorem.variants.d.ts": "5e71bbdaff069b7c8ad993bcc8e1d5251d37f394",
+			"react/src/ui/built/theme.css": "ab3ba14083b8395cd46e8744e208e76bead6ffb3",
+			"react/src/ui/built/theme.css.d.ts": "db26d3f0628c2b815ed3dfa49a3efde33d5edb6a",
+			"react/src/ui/built/theorem.d.ts": "cb62216720536fc9f9ffad2991c7ab95ce6adb11",
+			"react/src/ui/built/theorem.js": "0a867a72c35b05b7f2597d15abb852ce8d862450",
+			"react/src/ui/built/theorem.variants.d.ts": "e821f8d012c53610aeec92e7c6003ae42440b3d0",
 			"react/src/ui/code-language.ts": "87d5125cd938e8aecf5fa925ac4429be4c7ce407",
 			"react/src/ui/disclosure-motion.ts": "8ec7ccf51c0c262fdcddb966f7551db2a8399b5c",
 			"react/src/ui/embedding-space-gl.ts": "08568b73b71ec0ad37af40da698bc8a9c90aae97",
@@ -1951,7 +1954,7 @@
 			"web/src/server/credential-store.ts": "64f33ec27540a9f9e77a5c5fee40ba04d7d9e236",
 			"web/src/server/decision-handler.ts": "e749d79345f91f0f08f35e55c2e352bde4f696a2",
 			"web/src/server/embedding-handler.ts": "007393b778a9c53c2cd24176961435e851913ac0",
-			"web/src/server/handler.ts": "8f2f6d059db95073f54202494edcea403609b2bb",
+			"web/src/server/handler.ts": "4a78da8df60f1cedf2baa51759acca5564671cca",
 			"web/src/server/json-response.ts": "c241932fcebf4f22e2c789b0b312b3f2f6b848a6",
 			"web/src/server/mcp-handler.ts": "2bcc5e5958f768bb18355170bd99d9065af9ce70",
 			"web/src/server/mod.ts": "6d2898059e1b222ef5725ac29b3724c5046cd496",
@@ -1969,7 +1972,7 @@
 			"web/src/server/tell-every-result.ts": "d949204dccea3855383fca337d805b7ecd262677",
 			"web/src/server/tool-operations.ts": "de7fe8894a138aca52a6197915bbdfdbd1b9d3ec",
 			"web/src/server/turn-input.ts": "84a4ed8047c28b8b4742830f1d3963b75fd751b7",
-			"web/src/server/turn-wiring.ts": "e3545ccbd81090f69ca76fe3adb4390ee3447be0",
+			"web/src/server/turn-wiring.ts": "be24e09d5dec2b94af38061edc6ed276ea0d4317",
 			"web/tsconfig.build.json": "797c964d4d29d1528195750327dddc5f3795dc61",
 			"web/tsconfig.json": "70e51339e546a79d1b8e72786884ec6662ea4336"
 		}

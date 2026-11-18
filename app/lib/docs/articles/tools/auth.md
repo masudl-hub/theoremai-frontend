@@ -1,6 +1,6 @@
 ---
 title: Auth & Credentials
-updated: 2026-11-16
+updated: 2026-11-18
 summary: Authenticating tools with OAuth, bearer tokens, and API keys without exposing secrets to models.
 entry: src/kernel/auth/mod.ts
 covers: src/kernel/auth, src/kernel/tools/signed-in-fetch.ts, src/kernel/tools/probe.ts
@@ -167,6 +167,44 @@ const _events = runTurn({
 * **`clientSecret`**: Optional. A confidential OAuth client's secret, read when the kernel refreshes a token.
 
 For test environments and local development, initialize an in-memory store using `memoryCredentialSource({ slot: credential })`.
+
+## Keeping Keys Out of the Run (`sealedCredentialHost`)
+
+Use a sealed credential source when the code a turn runs must never hold a key. The run asks the sealed side to get a slot ready, and sends each request on the call's own origin through it. The key stays on the sealed side.
+
+1. Where the keys are kept, out of reach of the run's code (for example, in its own Worker), build that side with `sealedCredentialHost({ source, slots })`. `source` is your `ToolCredentialSource`. `slots` names every slot it sends for, each with the `resource` its key may go to: an https URL, matched by origin and by its path or a path below it.
+2. Give the run a source with `sealed: true` whose `prepare` and `send` forward to that side, and pass it as `credentials`.
+
+```ts frame=statements
+import type { SealedCredentialSource } from '@theoremjs/agents/kernel';
+import { sealedCredentialHost } from '@theoremjs/agents/kernel';
+
+// Where the keys are kept:
+const keys = sealedCredentialHost({
+	source: userCredentials,
+	slots: { github: { resource: 'https://api.githubcopilot.com/mcp' } },
+});
+
+// In the run, forward each call to that side, for example over your Worker's messages:
+const sealed: SealedCredentialSource = {
+	sealed: true,
+	prepare: (slot) => keys.prepare(slot),
+	send: (slot, url, request) => keys.send(slot, url, request),
+};
+
+const _events = runTurn({
+	profile: 'research.scout',
+	// ...
+	credentials: sealed,
+});
+```
+
+* **`prepare`** gets the slot ready: an OAuth token near its expiry is refreshed and stored on the sealed side. It answers `absent`, `ready` or `unusable`, never the key.
+* **`send`** sends one request with the key, follows no redirect, and replaces the key wherever the service echoed it. A request outside the slot's `resource`, or outside the resource an OAuth token was issued for, is refused before the key is read. So is a slot that `slots` does not name. The `network` option sets the network guardrail each request is checked against.
+* Gates, scope refusals and echo scrubbing work as with a source the run reads. A key typed at a sign-in gate is refused: the person enters it where the keys are kept.
+* When the sealed side throws, only that call fails. It is reported as a `hook_failed` event with `hook: 'credentials'`.
+
+`credentials` on a turn, a tool call and a tool's context takes either kind of source. Check it with `isSealedSource` before you call `get` or `set`. In the web handler, a sealed application `credentials` stands alone: the session's own store is not used beside it.
 
 ## Interactive Key & Token Sign-In
 
