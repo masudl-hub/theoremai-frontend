@@ -1142,7 +1142,7 @@
 	"web": {
 		"reviewed": "2026-11-18",
 		"files": {
-			"react/README.md": "0e9f3d8da5a378af12f0e8786f6efb47cc183527",
+			"react/README.md": "4b96a6007a220e3f8b70278cc6e3b1d7b4b193e7",
 			"react/docs/composer.md": "24c2e1e33af6f41cd7cb9021149ecd49385c6e4b",
 			"react/docs/credentials.md": "5cecc169547a841b141dd561cce78ab528c13621",
 			"react/docs/wire.md": "e9eda4200b473c9a091b35e4f5eb8872279ce95b",
@@ -1197,7 +1197,7 @@
 			"react/src/styles/ink-controls.css": "d8390cc7d5568240161e319ba4abde8c5a9024d9",
 			"react/src/ui/CardWall.tsx": "ee29723ab3f115488848d9aea9f2b7ef1e84bbfa",
 			"react/src/ui/ChatComposerBar.tsx": "5dc5e0d5544ba99e553e1ea1f1394042abe9c2c8",
-			"react/src/ui/ChatComposerRow.tsx": "cb1077c8c9784849ed8b84c217d2ef370ef0452c",
+			"react/src/ui/ChatComposerRow.tsx": "a314624d8e90fa49a0140ee1bad7999fa303734e",
 			"react/src/ui/ChatTranscript.tsx": "51859010dfe5f091a6d98a7ffec58c45196aef4a",
 			"react/src/ui/ComposerControls.tsx": "ea2504dc16465c3a6adc7e2aedcea4b07a24558e",
 			"react/src/ui/ConsoleFrame.tsx": "651323a33878e70b8f5aac65352be2aabfcf113e",
@@ -1360,7 +1360,7 @@
 	"web/astryx": {
 		"reviewed": "2026-11-18",
 		"files": {
-			"react/README.md": "0e9f3d8da5a378af12f0e8786f6efb47cc183527",
+			"react/README.md": "4b96a6007a220e3f8b70278cc6e3b1d7b4b193e7",
 			"react/docs/composer.md": "24c2e1e33af6f41cd7cb9021149ecd49385c6e4b",
 			"react/docs/credentials.md": "5cecc169547a841b141dd561cce78ab528c13621",
 			"react/docs/wire.md": "e9eda4200b473c9a091b35e4f5eb8872279ce95b",
@@ -1415,7 +1415,7 @@
 			"react/src/styles/ink-controls.css": "d8390cc7d5568240161e319ba4abde8c5a9024d9",
 			"react/src/ui/CardWall.tsx": "ee29723ab3f115488848d9aea9f2b7ef1e84bbfa",
 			"react/src/ui/ChatComposerBar.tsx": "5dc5e0d5544ba99e553e1ea1f1394042abe9c2c8",
-			"react/src/ui/ChatComposerRow.tsx": "cb1077c8c9784849ed8b84c217d2ef370ef0452c",
+			"react/src/ui/ChatComposerRow.tsx": "a314624d8e90fa49a0140ee1bad7999fa303734e",
 			"react/src/ui/ChatTranscript.tsx": "51859010dfe5f091a6d98a7ffec58c45196aef4a",
 			"react/src/ui/ComposerControls.tsx": "ea2504dc16465c3a6adc7e2aedcea4b07a24558e",
 			"react/src/ui/ConsoleFrame.tsx": "651323a33878e70b8f5aac65352be2aabfcf113e",
@@ -1563,7 +1563,7 @@
 	"web/react-hooks": {
 		"reviewed": "2026-11-18",
 		"files": {
-			"react/README.md": "0e9f3d8da5a378af12f0e8786f6efb47cc183527",
+			"react/README.md": "4b96a6007a220e3f8b70278cc6e3b1d7b4b193e7",
 			"react/docs/composer.md": "24c2e1e33af6f41cd7cb9021149ecd49385c6e4b",
 			"react/docs/credentials.md": "5cecc169547a841b141dd561cce78ab528c13621",
 			"react/docs/wire.md": "e9eda4200b473c9a091b35e4f5eb8872279ce95b",
@@ -1618,7 +1618,7 @@
 			"react/src/styles/ink-controls.css": "d8390cc7d5568240161e319ba4abde8c5a9024d9",
 			"react/src/ui/CardWall.tsx": "ee29723ab3f115488848d9aea9f2b7ef1e84bbfa",
 			"react/src/ui/ChatComposerBar.tsx": "5dc5e0d5544ba99e553e1ea1f1394042abe9c2c8",
-			"react/src/ui/ChatComposerRow.tsx": "cb1077c8c9784849ed8b84c217d2ef370ef0452c",
+			"react/src/ui/ChatComposerRow.tsx": "a314624d8e90fa49a0140ee1bad7999fa303734e",
 			"react/src/ui/ChatTranscript.tsx": "51859010dfe5f091a6d98a7ffec58c45196aef4a",
 			"react/src/ui/ComposerControls.tsx": "ea2504dc16465c3a6adc7e2aedcea4b07a24558e",
 			"react/src/ui/ConsoleFrame.tsx": "651323a33878e70b8f5aac65352be2aabfcf113e",
@@ -1781,7 +1781,7 @@
 	"web/realtime": {
 		"reviewed": "2026-11-18",
 		"files": {
-			"react/README.md": "0e9f3d8da5a378af12f0e8786f6efb47cc183527",
+			"react/README.md": "4b96a6007a220e3f8b70278cc6e3b1d7b4b193e7",
 			"react/docs/composer.md": "24c2e1e33af6f41cd7cb9021149ecd49385c6e4b",
 			"react/docs/credentials.md": "5cecc169547a841b141dd561cce78ab528c13621",
 			"react/docs/wire.md": "e9eda4200b473c9a091b35e4f5eb8872279ce95b",
@@ -1836,7 +1836,7 @@
 			"react/src/styles/ink-controls.css": "d8390cc7d5568240161e319ba4abde8c5a9024d9",
 			"react/src/ui/CardWall.tsx": "ee29723ab3f115488848d9aea9f2b7ef1e84bbfa",
 			"react/src/ui/ChatComposerBar.tsx": "5dc5e0d5544ba99e553e1ea1f1394042abe9c2c8",
-			"react/src/ui/ChatComposerRow.tsx": "cb1077c8c9784849ed8b84c217d2ef370ef0452c",
+			"react/src/ui/ChatComposerRow.tsx": "a314624d8e90fa49a0140ee1bad7999fa303734e",
 			"react/src/ui/ChatTranscript.tsx": "51859010dfe5f091a6d98a7ffec58c45196aef4a",
 			"react/src/ui/ComposerControls.tsx": "ea2504dc16465c3a6adc7e2aedcea4b07a24558e",
 			"react/src/ui/ConsoleFrame.tsx": "651323a33878e70b8f5aac65352be2aabfcf113e",

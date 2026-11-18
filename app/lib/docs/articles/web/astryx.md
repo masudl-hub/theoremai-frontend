@@ -219,7 +219,7 @@ Every part of the `'row'` composer's look is a CSS custom property. Set one on a
 - `--theorem-composer-radius`, `--theorem-composer-fill`, `--theorem-composer-shadow` and `--theorem-composer-padding`: The surface around the field. The tray takes the same fill and shadow. Send follows the surface's curve.
 - `--theorem-composer-gap`: The space between the pills, the tray and the surface.
 - `--theorem-composer-inset`: How far the pills and the tray sit in from the surface's sides. The default is `0px`.
-- `--theorem-composer-tray-radius` and `--theorem-composer-tray-padding`: The tray's corners and inner space.
+- `--theorem-composer-tray-radius` and `--theorem-composer-tray-padding`: The open tray's corners and inner space. By default the open tray has the surface's radius, and the folded tray is round at both ends; `--theorem-composer-tray-folded-radius` changes the folded radius.
 - `--theorem-composer-pill-height`, `--theorem-composer-pill-radius`, `--theorem-composer-pill-fill` and `--theorem-composer-pill-shadow`: Each pill. The radius also rounds stop.
 - `--theorem-composer-pill-align`: Where one pill sits, as `justify-content`. The default is `center`. Two or more pills start at the row's start and scroll when they do not fit.
 
