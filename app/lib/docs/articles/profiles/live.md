@@ -332,7 +332,7 @@ Use `wake()` when the model must say something while no one speaks, for example 
 
 The model reads two things:
 
-* **What your `onStage` handler injects** at `pre_turn`, `post_tool` and `before_end`. An inject lands whole or not at all. When the inbound guardrail blocks one of its texts, none of it is sent. A named inject (`injectId`) that lands is in that stage's `injected` list.
+* **What your `onStage` handler injects** at `pre_turn`, `post_tool` and `before_end`. Give each message the role `user` or `system` and plain text. A `user` message reaches the model inside the `<user_data>` fence, as the visitor's words. A `system` message reaches it as your own words, outside the fence. Any other role refuses the whole inject. The call checks injects at the `injected` guardrail boundary, as a text turn does: when it blocks one, none of that stage's injects is sent, and the call goes on. A named inject (`injectId`) that lands is in that stage's `injected` list. At the call's opening, what lands at the first `pre_turn` goes before the `greeting`, so the greeting answers it.
 * **What `lateResults` on the request gives**: the background tool calls that ended after their turn. The session asks it as a turn opens, after each tool call ends, and once the model has answered. A result lands once in the call. With `allowSteering: false`, the session asks only as a turn opens.
 
 What lands once the model has answered opens the next turn, so that answer has its own stages.
@@ -345,7 +345,7 @@ const session = await runSession(
 		profile: 'research.scout.live',
 		onStage: ({ stage }) =>
 			stage === 'pre_turn' && timeIsShort
-				? { inject: [{ role: 'user', content: 'Two minutes are left on the call.' }], injectId: 'time-left' }
+				? { inject: [{ role: 'system', content: 'Two minutes are left on the call. Say so briefly.' }], injectId: 'time-left' }
 				: undefined,
 	},
 	hostOptions,

@@ -13,7 +13,7 @@
 		"files": {
 			"src/guardrails/boundaries.ts": "428227b0be862d3b8325ecd1436757f4620010ae",
 			"src/guardrails/canary-gate.ts": "68e9fd922d448f9781cb90e16a1e6f42550eff9f",
-			"src/guardrails/canary.ts": "70449ea141dcf321f71fad16247d88876ece96c0",
+			"src/guardrails/canary.ts": "97df5afe54cdf2e75fb7ae0a5ce16182c9fc77a6",
 			"src/guardrails/compile-egress.ts": "4d637ada7cf6d5caa46658e42f8967b911948c2c",
 			"src/guardrails/corpus/canary-egress-attacks.ts": "29113ff0822322a311366723d4e6c9195fad3795",
 			"src/guardrails/corpus/fuzz-inbound.ts": "470f82729b94a161cebf96af5756aefd178ec10e",
@@ -68,13 +68,13 @@
 			"src/guardrails/tool-leak.ts": "22d3db0c544da2248e96cc4f8826beba6e81fc3e",
 			"src/guardrails/tool-result.ts": "4fa8c9a851fffb8cdd227568c778d6e1c5a744d6",
 			"src/guardrails/types.ts": "f0cc7ce119b88a6e20dc43154e349810c737359d",
-			"src/kernel/stages.ts": "f91e3c7e666dd63a7ae033cb55092cc7a2b1fed2"
+			"src/kernel/stages.ts": "8d624a129e3e26e54bd2bbceb635f2f21ea6fc53"
 		}
 	},
 	"guardrails/egress": {
-		"reviewed": "2026-11-14",
+		"reviewed": "2026-11-18",
 		"files": {
-			"src/guardrails/canary.ts": "70449ea141dcf321f71fad16247d88876ece96c0",
+			"src/guardrails/canary.ts": "97df5afe54cdf2e75fb7ae0a5ce16182c9fc77a6",
 			"src/guardrails/prompt-echo.ts": "671e45a66b9fea1f1256973e4ab8aa82293868b5"
 		}
 	},
@@ -406,7 +406,7 @@
 			"src/kernel/engine/runner/steps.ts": "7249e644781c43c93f0b4c10e0ab1ce283d6d73f",
 			"src/kernel/engine/runner/stream.ts": "ea2105b13b7f80d3619013027c7f0c032fdc17e1",
 			"src/kernel/engine/runner/usage.ts": "2fb451f7bd9b53f51f5d2faf5263a772356d6e3e",
-			"src/kernel/engine/session/mod.ts": "7845326b2e33bcc38d0bc0f3f1d28966b51b976d",
+			"src/kernel/engine/session/mod.ts": "312e00b0dc58a870a4344275dd4f9af6d6ae7a18",
 			"src/kernel/engine/session/session-trace.ts": "706747be0f9a71589682e9f72cfbdedc8c857f2f",
 			"src/kernel/registry/profiles.ts": "664e10d571a4b1d958a786a1b6e17b8009e2e74b"
 		}
