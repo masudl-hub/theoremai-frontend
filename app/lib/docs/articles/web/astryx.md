@@ -63,7 +63,8 @@ import { TheoremChat } from '@theoremjs/react/ui';
 - **`media`**: Which media a tool returned the chat shows. `'sent'`, the default, shows only what the tool sent to the person (`sent: true`) and its references. `'all'` also shows what only the model read, for an evaluation view. Media the model made and files the person attached always show. Hiding is not withholding: the page still receives every piece.
 - **`resolveMedia`**: Turns a reference a tool sent (`{ type, mimeType, uri }`) into an address the page can load, under the viewer's own sign-in, or `null`. Until it answers, and on `null`, the chat shows the file name. The model never reads a reference.
 - **`usage`**: Shows tokens and cost: each reply's total under it, and, on an agent tool's call row, what that agent used. Off by default.
-- **`composerLayout`**: `'stacked'`, the default, or `'row'`. In `'row'`, the field, the mic and send share one line, and text that wraps moves the field onto its own line. Above them, a pill shows the reply in progress, with its stop button, and a pill shows each tool call still running in the background. While a reply runs or a step waits, Enter queues a draft and send opens the send menu.
+- **`composerLayout`**: `'stacked'`, the default, or `'row'`. In `'row'`, the field, the mic and send share one line, and text that wraps moves the field onto its own line. Above them, a pill shows the reply in progress, as "Working for 12s" with its stop button, and a pill shows each tool call still running in the background. What waits to send, such as queued drafts and staged files, sits in a tray between the pills and the field, which folds to its count. While a reply runs or a step waits, Enter queues a draft and send opens the send menu.
+- **`composerIcons`**: The `'row'` composer's icons: `working`, `backgroundJob` and `stop`. Each one you leave out keeps Theorem's.
 
 ## 2. Realtime Voice & Video (`<LiveRunner />`)
 
@@ -210,6 +211,26 @@ Pass the customized theme and mode directly to components:
 Adjust pane geometry using scoped CSS custom properties:
 - `--theorem-pane-background`: The background of raised side panes. The default is `--color-background-card`.
 - `--theorem-pane-edge`: A raised pane's gap from the page's end and bottom edges. The default is `--spacing-3`. Set it to `0` when your page already insets its content.
+
+### The Row Composer's Look
+
+Every part of the `'row'` composer's look is a CSS custom property. Set one on any element above the composer, or in your theme's `tokens`. A property you do not set keeps Theorem's value.
+
+- `--theorem-composer-radius`, `--theorem-composer-fill`, `--theorem-composer-shadow` and `--theorem-composer-padding`: The surface around the field. The tray takes the same fill and shadow. Send follows the surface's curve.
+- `--theorem-composer-gap`: The space between the pills, the tray and the surface.
+- `--theorem-composer-inset`: How far the pills and the tray sit in from the surface's sides. The default is `0px`.
+- `--theorem-composer-tray-radius` and `--theorem-composer-tray-padding`: The tray's corners and inner space.
+- `--theorem-composer-pill-height`, `--theorem-composer-pill-radius`, `--theorem-composer-pill-fill` and `--theorem-composer-pill-shadow`: Each pill. The radius also rounds stop.
+- `--theorem-composer-pill-align`: Where one pill sits, as `justify-content`. The default is `center`. Two or more pills start at the row's start and scroll when they do not fit.
+
+```text
+.chat {
+	--theorem-composer-radius: 22px;
+	--theorem-composer-pill-align: start;
+}
+```
+
+The words are labels, such as `@theorem.composer.pill.working_for`, which takes `{duration}`. For a rule no property covers, each part has a class: `theorem-composer-row`, `theorem-composer-pills`, `theorem-composer-pill` (with `data-pill` set to `working` or `background`), `theorem-composer-tray` (with `data-open`) and `theorem-composer-surface`.
 
 ## 8. Localized Labels & ICU Overrides
 
