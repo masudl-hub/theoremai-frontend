@@ -73,24 +73,26 @@ import { TheoremChat } from '@theoremjs/react/ui';
 Each piece takes the `chat` from `useTheoremChat` and the `iface` from `useTheoremInterface`:
 
 ```tsx
-import { TheoremChatComposer, TheoremChatTranscript } from '@theoremjs/react/ui';
+import { TheoremChatComposer, TheoremChatTranscript, TheoremSurface } from '@theoremjs/react/ui';
 
 function Dock({ chat, iface }) {
 	const [open, setOpen] = useState(false);
 	return (
-		<div onFocus={() => setOpen(true)}>
-			{open && <TheoremChatTranscript chat={chat} iface={iface} />}
-			<TheoremChatComposer chat={chat} iface={iface} layout="row" />
-		</div>
+		<TheoremSurface>
+			<div onFocus={() => setOpen(true)}>
+				{open && <TheoremChatTranscript chat={chat} iface={iface} />}
+				<TheoremChatComposer chat={chat} iface={iface} layout="row" />
+			</div>
+		</TheoremSurface>
 	);
 }
 ```
 
 - **`<TheoremChatComposer />`**: Takes `layout`, `icons`, `placeholder` and `inputRef`, as `<TheoremChat />` takes `composerLayout`, `composerIcons` and `placeholder`.
 - **`<TheoremChatTranscript />`**: Takes `handle`, `emptyState`, `dividers`, `usage` and `bodyKindPlacement`. Its `handle` is the profile's handle when you leave it out.
-- **One clock**: Both pieces read `chat.turnClock`, so the composer's working pill and the transcript's status line show the same time wherever each sits.
+- **One clock**: Both pieces read `chat.turnClock`, so the composer's working pill and the transcript's status line show the same time wherever each sits. A transcript you mount while a reply runs shows the time the reply has already run.
 
-Put both pieces inside `TheoremThemeProvider`, as for any piece in [Composable UI Primitives](#6-composable-ui-primitives).
+Put both pieces inside one `<TheoremSurface />`. It takes what `<TheoremChat />` takes for the look and the media: `theme`, `mode`, `labels`, `detectCodeLanguage`, `media` and `resolveMedia`.
 
 ## 2. Realtime Voice & Video (`<LiveRunner />`)
 
